@@ -22,11 +22,11 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class YearMonthConversions {
+final class YearMonthConversions {
 
     private YearMonthConversions() {}
 
-    static Map toMap(Object from, Converter converter, ConverterOptions options) {
+    static Map toMap(Object from, Converter converter) {
         YearMonth yearMonth = (YearMonth) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("year", yearMonth.getYear());

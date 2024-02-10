@@ -23,72 +23,73 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class AtomicBooleanConversions {
+final class AtomicBooleanConversions {
 
     private AtomicBooleanConversions() {}
 
-    static Byte toByte(Object from, Converter converter, ConverterOptions options) {
+    static Byte toByte(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? CommonValues.BYTE_ONE : CommonValues.BYTE_ZERO;
     }
 
-    static Short toShort(Object from, Converter converter, ConverterOptions options) {
+    static Short toShort(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? CommonValues.SHORT_ONE : CommonValues.SHORT_ZERO;
     }
 
-    static Integer toInteger(Object from, Converter converter, ConverterOptions options) {
+    static Integer toInteger(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
     }
 
-    static Long toLong(Object from, Converter converter, ConverterOptions options) {
+    static Long toLong(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
     }
 
-    static Float toFloat(Object from, Converter converter, ConverterOptions options) {
+    static Float toFloat(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
     }
 
-    static Double toDouble(Object from, Converter converter, ConverterOptions options) {
+    static Double toDouble(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
     }
 
-    static boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
+    static boolean toBoolean(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get();
     }
 
-    static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
+    static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return new AtomicBoolean(b.get());
     }
 
-    static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
+    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? new AtomicInteger(1) : new AtomicInteger (0);
     }
 
 
-    static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? new AtomicLong(1) : new AtomicLong(0);
     }
 
-    static Character toCharacter(Object from, Converter converter, ConverterOptions options) {
+    static Character toCharacter(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
+        ConverterOptions options = converter.getOptions();
         return b.get() ? options.trueChar() : options.falseChar();
     }
 
-    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? BigDecimal.ONE : BigDecimal.ZERO;
     }
 
-    public static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+    public static BigInteger toBigInteger(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? BigInteger.ONE : BigInteger.ZERO;
     }

@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.convert.CommonValues;
 import com.cedarsoftware.util.convert.Convert;
-import com.cedarsoftware.util.convert.ConverterOptions;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
 
 /**
@@ -75,16 +74,7 @@ public final class Converter
     public static <T> T convert(Object fromInstance, Class<T> toType) {
         return instance.convert(fromInstance, toType);
     }
-
-    /**
-     * Allows you to specify (per each call) different conversion options.  Useful so you don't have
-     * to recreate the instance of Converter that is out there for every configuration option.  Just
-     * provide a different set of ConverterOptions on the call itself.
-     */
-    public static <T> T convert(Object fromInstance, Class<T> toType, ConverterOptions options) {
-        return instance.convert(fromInstance, toType, options);
-    }
-
+    
     /**
      * Check to see if a conversion from type to another type is supported (may use inheritance via super classes/interfaces).
      *

@@ -23,11 +23,11 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class LocalTimeConversions {
+final class LocalTimeConversions {
 
     private LocalTimeConversions() {}
 
-    static Map<String, Object> toMap(Object from, Converter converter, ConverterOptions options) {
+    static Map<String, Object> toMap(Object from, Converter converter) {
         LocalTime localTime = (LocalTime) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("hour", localTime.getHour());
@@ -43,7 +43,7 @@ public final class LocalTimeConversions {
         return target;
     }
 
-    static String toString(Object from, Converter converter, ConverterOptions options) {
+    static String toString(Object from, Converter converter) {
         LocalTime localTime = (LocalTime) from;
         return localTime.format(DateTimeFormatter.ISO_LOCAL_TIME);
     }

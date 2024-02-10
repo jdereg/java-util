@@ -1,12 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.ClassUtilities;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,6 +13,13 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.stream.Stream;
+
+import com.cedarsoftware.util.ClassUtilities;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -210,7 +210,8 @@ class StringConversionsTests {
         // ZoneId options not used since all string format has zone in it somewhere.
         // This is how json-io would use the convert.
         ConverterOptions options = createCustomZones(SOUTH_POLE);
-        OffsetDateTime actual = converter.convert(input, OffsetDateTime.class, options);
+        Converter converter = new Converter(options);
+        OffsetDateTime actual = converter.convert(input, OffsetDateTime.class);
         assertThat(actual.toInstant().toEpochMilli()).isEqualTo(epochMilli);
 
         assertThat(actual.getOffset()).isNotEqualTo(ZoneOffset.of("+13:00"));

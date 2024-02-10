@@ -21,12 +21,12 @@ import java.util.UUID;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class UUIDConversions {
+final class UUIDConversions {
 
     private UUIDConversions() {
     }
 
-    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
         UUID uuid = (UUID) from;
         BigInteger mostSignificant = BigInteger.valueOf(uuid.getMostSignificantBits());
         BigInteger leastSignificant = BigInteger.valueOf(uuid.getLeastSignificantBits());
@@ -34,7 +34,7 @@ public final class UUIDConversions {
         return new BigDecimal(mostSignificant.shiftLeft(64).add(leastSignificant));
     }
 
-    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+    static BigInteger toBigInteger(Object from, Converter converter) {
         UUID uuid = (UUID) from;
         BigInteger mostSignificant = BigInteger.valueOf(uuid.getMostSignificantBits());
         BigInteger leastSignificant = BigInteger.valueOf(uuid.getLeastSignificantBits());

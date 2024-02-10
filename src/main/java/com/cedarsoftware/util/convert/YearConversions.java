@@ -7,58 +7,71 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class YearConversions {
+/**
+ * @author Kenny Partlow (kpartlow@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
+ */
+final class YearConversions {
     private YearConversions() {}
 
-    static int toInt(Object from) {
-        return ((Year)from).getValue();
+    static long toLong(Object from, Converter converter) {
+        return toInt(from, converter);
     }
 
-    static long toLong(Object from, Converter converter, ConverterOptions options) {
-        return toInt(from);
+    static short toShort(Object from, Converter converter) {
+        return (short) toInt(from, converter);
     }
 
-    static short toShort(Object from, Converter converter, ConverterOptions options) {
-        return (short) toInt(from);
+    static int toInt(Object from, Converter converter) {
+        return ((Year) from).getValue();
     }
 
-    static int toInt(Object from, Converter converter, ConverterOptions options) {
-        return toInt(from);
+    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
+        return new AtomicInteger(toInt(from, converter));
     }
 
-    static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
-        return new AtomicInteger(toInt(from));
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
+        return new AtomicLong(toInt(from, converter));
     }
 
-    static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
-        return new AtomicLong(toInt(from));
+    static double toDouble(Object from, Converter converter) {
+        return toInt(from, converter);
     }
 
-    static double toDouble(Object from, Converter converter, ConverterOptions options) {
-        return toInt(from);
+    static float toFloat(Object from, Converter converter) {
+        return toInt(from, converter);
     }
 
-    static float toFloat(Object from, Converter converter, ConverterOptions options) {
-        return toInt(from);
+    static boolean toBoolean(Object from, Converter converter) {
+        return toInt(from, converter) == 0;
     }
 
-    static boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
-        return toInt(from) == 0;
+    static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
+        return new AtomicBoolean(toInt(from, converter) == 0);
     }
 
-    static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
-        return new AtomicBoolean(toInt(from) == 0);
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        return BigInteger.valueOf(toInt(from, converter));
     }
 
-    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
-        return BigInteger.valueOf(toInt(from));
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        return BigDecimal.valueOf(toInt(from, converter));
     }
 
-    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
-        return BigDecimal.valueOf(toInt(from));
-    }
-
-    static String toString(Object from, Converter converter, ConverterOptions options) {
+    static String toString(Object from, Converter converter) {
         return ((Year)from).toString();
     }
 }

@@ -17,18 +17,18 @@ package com.cedarsoftware.util.convert;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class VoidConversions {
+final class VoidConversions {
     private VoidConversions() {
     }
-    static Object toNull(Object from, Converter converter, ConverterOptions options) {
+    static Object toNull(Object from, Converter converter) {
         return null;
     }
 
-    static Boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
+    static Boolean toBoolean(Object from, Converter converter) {
         return Boolean.FALSE;
     }
 
-    static Character toChar(Object from, Converter converter, ConverterOptions options) {
+    static Character toChar(Object from, Converter converter) {
         return Character.MIN_VALUE;
     }
 }

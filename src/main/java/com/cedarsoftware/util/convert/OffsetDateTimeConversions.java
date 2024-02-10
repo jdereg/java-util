@@ -31,78 +31,70 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class OffsetDateTimeConversions {
+final class OffsetDateTimeConversions {
     private OffsetDateTimeConversions() {}
 
-    static OffsetDateTime toDifferentZone(Object from, ConverterOptions options) {
+    static OffsetDateTime toDifferentZone(Object from, Converter converter) {
         OffsetDateTime offsetDateTime = (OffsetDateTime) from;
-        return offsetDateTime.toInstant().atZone(options.getZoneId()).toOffsetDateTime();
+        return offsetDateTime.toInstant().atZone(converter.getOptions().getZoneId()).toOffsetDateTime();
     }
 
-    static Instant toInstant(Object from) {
+    static Instant toInstant(Object from, Converter converter) {
         return ((OffsetDateTime)from).toInstant();
     }
 
-    static long toLong(Object from) {
-        return toInstant(from).toEpochMilli();
+    static long toLong(Object from, Converter converter) {
+        return toInstant(from, converter).toEpochMilli();
+    }
+    
+    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
+        return toDifferentZone(from, converter).toLocalDateTime();
     }
 
-    static long toLong(Object from, Converter converter, ConverterOptions options) {
-        return toLong(from);
+    static LocalDate toLocalDate(Object from, Converter converter) {
+        return toDifferentZone(from, converter).toLocalDate();
     }
 
-    static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
-        return toInstant(from);
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        return toDifferentZone(from, converter).toLocalTime();
     }
 
-    static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
-        return toDifferentZone(from, options).toLocalDateTime();
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
+        return new AtomicLong(toLong(from, converter));
     }
 
-    static LocalDate toLocalDate(Object from, Converter converter, ConverterOptions options) {
-        return toDifferentZone(from, options).toLocalDate();
+    static Timestamp toTimestamp(Object from, Converter converter) {
+        return new Timestamp(toLong(from, converter));
     }
 
-    static LocalTime toLocalTime(Object from, Converter converter, ConverterOptions options) {
-        return toDifferentZone(from, options).toLocalTime();
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
-        return new AtomicLong(toLong(from));
-    }
-
-    static Timestamp toTimestamp(Object from, Converter converter, ConverterOptions options) {
-        return new Timestamp(toLong(from));
-    }
-
-    static Calendar toCalendar(Object from, Converter converter, ConverterOptions options) {
-        Calendar calendar = Calendar.getInstance(options.getTimeZone());
-        calendar.setTimeInMillis(toLong(from));
+    static Calendar toCalendar(Object from, Converter converter) {
+        Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
+        calendar.setTimeInMillis(toLong(from, converter));
         return calendar;
     }
 
-    static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
-        return new java.sql.Date(toLong(from));
+    static java.sql.Date toSqlDate(Object from, Converter converter) {
+        return new java.sql.Date(toLong(from, converter));
     }
 
-    static Date toDate(Object from, Converter converter, ConverterOptions options) {
-        return new Date(toLong(from));
+    static Date toDate(Object from, Converter converter) {
+        return new Date(toLong(from, converter));
     }
 
-    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
-        return BigInteger.valueOf(toLong(from));
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        return BigInteger.valueOf(toLong(from, converter));
     }
 
-    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
-        return BigDecimal.valueOf(toLong(from));
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        return BigDecimal.valueOf(toLong(from, converter));
     }
 
-    static OffsetTime toOffsetTime(Object from, Converter converter, ConverterOptions options) {
+    static OffsetTime toOffsetTime(Object from, Converter converter) {
         OffsetDateTime dateTime = (OffsetDateTime) from;
         return dateTime.toOffsetTime();
     }
 
-    static String toString(Object from, Converter converter, ConverterOptions options) {
+    static String toString(Object from, Converter converter) {
         OffsetDateTime offsetDateTime = (OffsetDateTime) from;
         return offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     }

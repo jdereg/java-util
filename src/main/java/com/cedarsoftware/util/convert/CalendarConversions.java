@@ -30,97 +30,80 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class CalendarConversions {
+final class CalendarConversions {
 
     private CalendarConversions() {}
 
-    static Date toDate(Object from) {
-        return ((Calendar)from).getTime();
-    }
-
-    static long toLong(Object from) {
-        return toDate(from).getTime();
-    }
-
-    static Instant toInstant(Object from) {
-        Calendar calendar = (Calendar)from;
-        return calendar.toInstant();
-    }
-
-    static ZonedDateTime toZonedDateTime(Object from, ConverterOptions options) {
+    static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         Calendar calendar = (Calendar)from;
         return calendar.toInstant().atZone(calendar.getTimeZone().toZoneId());
     }
 
-    static ZonedDateTime toZonedDateTime(Object from, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(from, options);
+    static Long toLong(Object from, Converter converter) {
+        return ((Calendar) from).getTime().getTime();
     }
 
-    static Long toLong(Object from, Converter converter, ConverterOptions options) {
-        return toLong(from);
+    static double toDouble(Object from, Converter converter) {
+        return (double)toLong(from, converter);
+    }
+    
+    static Date toDate(Object from, Converter converter) {
+        return ((Calendar) from).getTime();
     }
 
-    static double toDouble(Object from, Converter converter, ConverterOptions options) {
-        return (double)toLong(from);
+    static java.sql.Date toSqlDate(Object from, Converter converter) {
+        return new java.sql.Date(((Calendar) from).getTime().getTime());
     }
 
-
-    static Date toDate(Object from, Converter converter, ConverterOptions options) {
-        return toDate(from);
+    static Timestamp toTimestamp(Object from, Converter converter) {
+        return new Timestamp(((Calendar) from).getTime().getTime());
     }
 
-    static java.sql.Date toSqlDate(Object from, Converter converter, ConverterOptions options) {
-        return new java.sql.Date(toLong(from));
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
+        return new AtomicLong(((Calendar) from).getTime().getTime());
     }
 
-    static Timestamp toTimestamp(Object from, Converter converter, ConverterOptions options) {
-        return new Timestamp(toLong(from));
+    static Instant toInstant(Object from, Converter converter) {
+        Calendar calendar = (Calendar) from;
+        return calendar.toInstant();
     }
 
-    static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
-        return new AtomicLong(toLong(from));
+    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalDateTime();
     }
 
-    static Instant toInstant(Object from, Converter converter, ConverterOptions options) {
-        return toInstant(from);
+    static LocalDate toLocalDate(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalDate();
     }
 
-    static LocalDateTime toLocalDateTime(Object from, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(from, options).toLocalDateTime();
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalTime();
     }
 
-    static LocalDate toLocalDate(Object from, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(from, options).toLocalDate();
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        return BigDecimal.valueOf(((Calendar) from).getTime().getTime());
     }
 
-    static LocalTime toLocalTime(Object from, Converter converter, ConverterOptions options) {
-        return toZonedDateTime(from, options).toLocalTime();
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        return BigInteger.valueOf(((Calendar) from).getTime().getTime());
     }
 
-    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
-        return BigDecimal.valueOf(toLong(from));
-    }
-
-    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
-        return BigInteger.valueOf(toLong(from));
-    }
-
-    static Calendar clone(Object from, Converter converter, ConverterOptions options) {
+    static Calendar clone(Object from, Converter converter) {
         Calendar calendar = (Calendar)from;
         // mutable class, so clone it.
         return (Calendar)calendar.clone();
     }
 
-    static Calendar create(long epochMilli, ConverterOptions options) {
-        Calendar cal = Calendar.getInstance(options.getTimeZone());
+    static Calendar create(long epochMilli, Converter converter) {
+        Calendar cal = Calendar.getInstance(converter.getOptions().getTimeZone());
         cal.clear();
         cal.setTimeInMillis(epochMilli);
         return cal;
     }
 
-    static String toString(Object from, Converter converter, ConverterOptions options) {
+    static String toString(Object from, Converter converter) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        simpleDateFormat.setTimeZone(options.getTimeZone());
+        simpleDateFormat.setTimeZone(converter.getOptions().getTimeZone());
         return simpleDateFormat.format(((Calendar) from).getTime());
     }
 }

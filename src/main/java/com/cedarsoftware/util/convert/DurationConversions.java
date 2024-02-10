@@ -22,11 +22,11 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class DurationConversions {
+final class DurationConversions {
 
     private DurationConversions() {}
 
-    static Map toMap(Object from, Converter converter, ConverterOptions options) {
+    static Map toMap(Object from, Converter converter) {
         long sec = ((Duration) from).getSeconds();
         long nanos = ((Duration) from).getNano();
         Map<String, Object> target = new CompactLinkedMap<>();

@@ -24,65 +24,66 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class BooleanConversions {
+final class BooleanConversions {
     private BooleanConversions() {}
 
-    static Byte toByte(Object from, Converter converter, ConverterOptions options) {
+    static Byte toByte(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return b ? CommonValues.BYTE_ONE : CommonValues.BYTE_ZERO;
     }
 
-    static Short toShort(Object from, Converter converter, ConverterOptions options) {
+    static Short toShort(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return b ? CommonValues.SHORT_ONE : CommonValues.SHORT_ZERO;
     }
 
-    static Integer toInteger(Object from, Converter converter, ConverterOptions options) {
+    static Integer toInteger(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return b ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
     }
 
-    static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
+    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return new AtomicInteger(b ? 1 : 0);
     }
 
-    static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return new AtomicLong(b ? 1 : 0);
     }
 
-    static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
+    static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return new AtomicBoolean(b);
     }
 
-    static Long toLong(Object from, Converter converter, ConverterOptions options) {
+    static Long toLong(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return b.booleanValue() ? CommonValues.LONG_ONE : CommonValues.LONG_ZERO;
     }
 
-    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
         Boolean b = (Boolean)from;
         return b ? BigDecimal.ONE : BigDecimal.ZERO;
     }
 
-    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+    static BigInteger toBigInteger(Object from, Converter converter) {
         return ((Boolean)from) ? BigInteger.ONE : BigInteger.ZERO;
     }
 
-    static Float toFloat(Object from, Converter converter, ConverterOptions options) {
+    static Float toFloat(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return b ? CommonValues.FLOAT_ONE : CommonValues.FLOAT_ZERO;
     }
 
-    static Double toDouble(Object from, Converter converter, ConverterOptions options) {
+    static Double toDouble(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return b ? CommonValues.DOUBLE_ONE : CommonValues.DOUBLE_ZERO;
     }
 
-    static char toCharacter(Object from, Converter converter, ConverterOptions options) {
+    static char toCharacter(Object from, Converter converter) {
         Boolean b = (Boolean) from;
+        ConverterOptions options = converter.getOptions();
         return b ? options.trueChar() : options.falseChar();
     }
 }

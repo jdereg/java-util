@@ -1,10 +1,7 @@
 package com.cedarsoftware.util.convert;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -17,8 +14,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class BooleanConversionsTests {
 
@@ -40,7 +35,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toByteParams")
     void testToByte(boolean value, Byte expected) {
-        Byte actual = BooleanConversions.toByte(value, null, null);
+        Byte actual = BooleanConversions.toByte(value, null);
         assertThat(actual).isSameAs(expected);
     }
 
@@ -54,7 +49,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toShortParams")
     void testToShort(boolean value, Short expected) {
-        Short actual = BooleanConversions.toShort(value, null, null);
+        Short actual = BooleanConversions.toShort(value, null);
         assertThat(actual).isSameAs(expected);
     }
 
@@ -68,7 +63,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toIntegerParams")
     void testToInteger(boolean value, Integer expected) {
-        Integer actual = BooleanConversions.toInteger(value, null, null);
+        Integer actual = BooleanConversions.toInteger(value, null);
         assertThat(actual).isSameAs(expected);
     }
 
@@ -82,7 +77,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toLongParams")
     void testToLong(boolean value, long expected) {
-        long actual = BooleanConversions.toLong(value, null, null);
+        long actual = BooleanConversions.toLong(value, null);
         assertThat(actual).isSameAs(expected);
     }
 
@@ -96,7 +91,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toFloatParams")
     void testToFloat(boolean value, Float expected) {
-        Float actual = BooleanConversions.toFloat(value, null, null);
+        Float actual = BooleanConversions.toFloat(value, null);
         assertThat(actual).isSameAs(expected);
     }
 
@@ -111,7 +106,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toDoubleParams")
     void testToDouble(boolean value, Double expected) {
-        Double actual = BooleanConversions.toDouble(value, null, null);
+        Double actual = BooleanConversions.toDouble(value, null);
         assertThat(actual).isSameAs(expected);
     }
 
@@ -127,7 +122,7 @@ class BooleanConversionsTests {
     @MethodSource("toBooleanParams")
     void testToAtomicBoolean(boolean value) {
         AtomicBoolean expected = new AtomicBoolean(value);;
-        AtomicBoolean actual = BooleanConversions.toAtomicBoolean(value, null, null);
+        AtomicBoolean actual = BooleanConversions.toAtomicBoolean(value, null);
         assertThat(actual.get()).isEqualTo(expected.get());
     }
 
@@ -135,7 +130,7 @@ class BooleanConversionsTests {
     @MethodSource("toIntegerParams")
     void testToAtomicInteger(boolean value, int integer) {
         AtomicInteger expected = new AtomicInteger(integer);;
-        AtomicInteger actual = BooleanConversions.toAtomicInteger(value, null, null);
+        AtomicInteger actual = BooleanConversions.toAtomicInteger(value, null);
         assertThat(actual.get()).isEqualTo(expected.get());
     }
 
@@ -143,42 +138,10 @@ class BooleanConversionsTests {
     @MethodSource("toLongParams")
     void testToAtomicLong(boolean value, long expectedLong) {
         AtomicLong expected = new AtomicLong(expectedLong);
-        AtomicLong actual = BooleanConversions.toAtomicLong(value, null, null);
+        AtomicLong actual = BooleanConversions.toAtomicLong(value, null);
         assertThat(actual.get()).isEqualTo(expected.get());
     }
-
-    private static Stream<Arguments> toCharacterDefaultParams() {
-        return Stream.of(
-                Arguments.of(true, CommonValues.CHARACTER_ONE),
-                Arguments.of(false, CommonValues.CHARACTER_ZERO)
-        );
-    }
-
-
-    @ParameterizedTest
-    @MethodSource("toCharacterDefaultParams")
-    void testToCharacter_withDefaultChars(boolean value, char expected) {
-        ConverterOptions options = createConvertOptions(CommonValues.CHARACTER_ONE, CommonValues.CHARACTER_ZERO);
-        Character actual = BooleanConversions.toCharacter(value, null, options);
-        assertThat(actual).isSameAs(expected);
-    }
-
-    private static Stream<Arguments> toCharacterCustomParams() {
-        return Stream.of(
-                Arguments.of('T', 'F', true, 'T'),
-                Arguments.of('T', 'F', false, 'F')
-        );
-    }
-
-
-    @ParameterizedTest
-    @MethodSource("toCharacterCustomParams")
-    void testToCharacter_withCustomChars(char trueChar, char falseChar, boolean value, char expected) {
-        ConverterOptions options = createConvertOptions(trueChar, falseChar);
-        char actual = BooleanConversions.toCharacter(value, null, options);
-        assertThat(actual).isEqualTo(expected);
-    }
-
+    
     private static Stream<Arguments> toBigDecimalParams() {
         return Stream.of(
                 Arguments.of(true, BigDecimal.ONE),
@@ -189,7 +152,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toBigDecimalParams")
     void testToBigDecimal(boolean value, BigDecimal expected) {
-        BigDecimal actual = BooleanConversions.toBigDecimal(value, null, null);
+        BigDecimal actual = BooleanConversions.toBigDecimal(value, null);
         assertThat(actual).isSameAs(expected);
     }
 
@@ -202,7 +165,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toBigIntegerParams")
     void testToBigDecimal(boolean value, BigInteger expected) {
-        BigInteger actual = BooleanConversions.toBigInteger(value, null, null);
+        BigInteger actual = BooleanConversions.toBigInteger(value, null);
         assertThat(actual).isSameAs(expected);
     }
 

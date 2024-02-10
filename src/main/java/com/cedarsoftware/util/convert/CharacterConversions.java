@@ -23,65 +23,61 @@ import java.util.concurrent.atomic.AtomicLong;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class CharacterConversions {
+final class CharacterConversions {
 
     private CharacterConversions() {}
+    
+    static String toString(Object from, Converter converter) {
+        return "" + from;
+    }
 
-    static boolean toBoolean(Object from) {
+    static boolean toBoolean(Object from, Converter converter) {
         char c = (char) from;
         return (c == 1) || (c == 't') || (c == 'T') || (c == '1') || (c == 'y') || (c == 'Y');
     }
 
-    static String toString(Object from, Converter converter, ConverterOptions options) {
-        return "" + from;
-    }
-
-    static boolean toBoolean(Object from, Converter converter, ConverterOptions options) {
-        return toBoolean(from);
-    }
-
     // downcasting -- not always a safe conversino
-    static byte toByte(Object from, Converter converter, ConverterOptions options) {
+    static byte toByte(Object from, Converter converter) {
         return (byte) (char) from;
     }
 
-    static short toShort(Object from, Converter converter, ConverterOptions options) {
+    static short toShort(Object from, Converter converter) {
         return (short) (char) from;
     }
 
-    static int toInt(Object from, Converter converter, ConverterOptions options) {
+    static int toInt(Object from, Converter converter) {
         return (char) from;
     }
 
-    static long toLong(Object from, Converter converter, ConverterOptions options) {
+    static long toLong(Object from, Converter converter) {
         return (char) from;
     }
 
-    static float toFloat(Object from, Converter converter, ConverterOptions options) {
+    static float toFloat(Object from, Converter converter) {
         return (char) from;
     }
 
-    static double toDouble(Object from, Converter converter, ConverterOptions options) {
+    static double toDouble(Object from, Converter converter) {
         return (char) from;
     }
 
-    static AtomicInteger toAtomicInteger(Object from, Converter converter, ConverterOptions options) {
+    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
         return new AtomicInteger((char) from);
     }
 
-    static AtomicLong toAtomicLong(Object from, Converter converter, ConverterOptions options) {
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
         return new AtomicLong((char) from);
     }
 
-    static AtomicBoolean toAtomicBoolean(Object from, Converter converter, ConverterOptions options) {
-        return new AtomicBoolean(toBoolean(from));
+    static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
+        return new AtomicBoolean(toBoolean(from, converter));
     }
 
-    static BigInteger toBigInteger(Object from, Converter converter, ConverterOptions options) {
+    static BigInteger toBigInteger(Object from, Converter converter) {
         return BigInteger.valueOf((char) from);
     }
 
-    static BigDecimal toBigDecimal(Object from, Converter converter, ConverterOptions options) {
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
         return BigDecimal.valueOf((char) from);
     }
 }

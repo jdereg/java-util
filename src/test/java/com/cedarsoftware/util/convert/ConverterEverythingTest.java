@@ -734,17 +734,17 @@ class ConverterEverythingTest {
 
         // if the source/target are the same Class, then ensure identity lambda is used.
         if (sourceClass.equals(targetClass)) {
-            assertSame(source, converter.convert(source, targetClass, options));
+            assertSame(source, converter.convert(source, targetClass));
         }
 
         if (target instanceof Throwable) {
             Throwable t = (Throwable) target;
             assertThatExceptionOfType(t.getClass())
-                    .isThrownBy(() -> converter.convert(source, targetClass, options))
+                    .isThrownBy(() -> converter.convert(source, targetClass))
                     .withMessageContaining(((Throwable) target).getMessage());
         } else {
             // Assert values are equals
-            Object actual = converter.convert(source, targetClass, options);
+            Object actual = converter.convert(source, targetClass);
             assertEquals(target, actual);
         }
     }

@@ -22,11 +22,11 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class ZoneOffsetConversions {
+final class ZoneOffsetConversions {
 
     private ZoneOffsetConversions() {}
 
-    static Map toMap(Object from, Converter converter, ConverterOptions options) {
+    static Map toMap(Object from, Converter converter) {
         ZoneOffset offset = (ZoneOffset) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         int totalSeconds = offset.getTotalSeconds();

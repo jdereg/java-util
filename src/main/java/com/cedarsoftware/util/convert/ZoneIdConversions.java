@@ -22,11 +22,11 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class ZoneIdConversions {
+final class ZoneIdConversions {
 
     private ZoneIdConversions() {}
 
-    static Map toMap(Object from, Converter converter, ConverterOptions options) {
+    static Map toMap(Object from, Converter converter) {
         ZoneId zoneID = (ZoneId) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("zone", zoneID.toString());

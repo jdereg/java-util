@@ -20,10 +20,10 @@ import java.time.format.DateTimeFormatter;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class OffsetTimeConversions {
+final class OffsetTimeConversions {
     private OffsetTimeConversions() {}
 
-    static String toString(Object from, Converter converter, ConverterOptions options) {
+    static String toString(Object from, Converter converter) {
         OffsetTime offsetTime = (OffsetTime) from;
         return offsetTime.format(DateTimeFormatter.ISO_OFFSET_TIME);
     }

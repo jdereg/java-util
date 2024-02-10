@@ -26,8 +26,6 @@ import java.util.TimeZone;
  *         limitations under the License.
  */
 public interface ConverterOptions {
-
-
     /**
      * @return {@link ZoneId} to use for source conversion when one is not provided and is required on the target
      * type. ie. {@link LocalDateTime}, {@link LocalDate}, or {@link String} when no zone is provided.
@@ -43,8 +41,7 @@ public interface ConverterOptions {
      * @return Charset to use os target Charset on types that require a Charset during conversion (if required).
      */
     default Charset getCharset() { return StandardCharsets.UTF_8; }
-
-
+    
     /**
      * @return Classloader for loading and initializing classes.
      */

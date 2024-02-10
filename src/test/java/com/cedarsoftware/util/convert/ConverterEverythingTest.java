@@ -6,11 +6,13 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Month;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
@@ -23,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -45,6 +48,7 @@ import static com.cedarsoftware.util.convert.Converter.getShortName;
 import static com.cedarsoftware.util.convert.Converter.pair;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -72,7 +76,7 @@ class ConverterEverythingTest {
             return TZ_TOKYO;
         }
     };
-    private static final Map<Map.Entry<Class<?>, Class<?>>, Object[][]> TEST_FACTORY = new ConcurrentHashMap<>(500, .8f);
+    private static final Map<Map.Entry<Class<?>, Class<?>>, Object[][]> TEST_DB = new ConcurrentHashMap<>(500, .8f);
 
     static {
         //   {source1, answer1},
@@ -80,20 +84,20 @@ class ConverterEverythingTest {
         //   {source-n, answer-n}
 
         // Byte/byte
-        TEST_FACTORY.put(pair(Void.class, byte.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, byte.class), new Object[][] {
                 { null, (byte) 0 }
         });
-        TEST_FACTORY.put(pair(Void.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, Byte.class), new Object[][] {
                 { null, null }
         });
-        TEST_FACTORY.put(pair(Byte.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Byte.class, Byte.class), new Object[][] {
                 { (byte) -1, (byte) -1 },
                 { (byte) 0, (byte) 0 },
                 { (byte) 1, (byte) 1 },
                 { Byte.MIN_VALUE, Byte.MIN_VALUE },
                 { Byte.MAX_VALUE, Byte.MAX_VALUE }
         });
-        TEST_FACTORY.put(pair(Short.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Short.class, Byte.class), new Object[][] {
                 { (short) -1, (byte) -1 },
                 { (short) 0, (byte) 0 },
                 { (short) 1, (byte) 1 },
@@ -102,7 +106,7 @@ class ConverterEverythingTest {
                 { (short) -129, (byte) 127 },  // verify wrap around
                 { (short) 128, (byte) -128 }    // verify wrap around
         });
-        TEST_FACTORY.put(pair(Integer.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Integer.class, Byte.class), new Object[][] {
                 { -1, (byte) -1 },
                 { 0, (byte) 0 },
                 { 1, (byte) 1 },
@@ -111,7 +115,7 @@ class ConverterEverythingTest {
                 { -129, (byte) 127 }, // verify wrap around
                 { 128, (byte) -128 }   // verify wrap around
         });
-        TEST_FACTORY.put(pair(Long.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Long.class, Byte.class), new Object[][] {
                 { -1L, (byte) -1 },
                 { 0L, (byte) 0 },
                 { 1L, (byte) 1 },
@@ -120,7 +124,7 @@ class ConverterEverythingTest {
                 { -129L, (byte) 127 }, // verify wrap around
                 { 128L, (byte) -128 }   // verify wrap around
         });
-        TEST_FACTORY.put(pair(Float.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Float.class, Byte.class), new Object[][] {
                 { -1f, (byte) -1 },
                 { -1.99f, (byte) -1 },
                 { -1.1f, (byte) -1 },
@@ -133,7 +137,7 @@ class ConverterEverythingTest {
                 { -129f, (byte) 127 }, // verify wrap around
                 { 128f, (byte) -128 }   // verify wrap around
         });
-        TEST_FACTORY.put(pair(Double.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Double.class, Byte.class), new Object[][] {
                 { -1d, (byte) -1 },
                 { -1.99d, (byte) -1 },
                 { -1.1d, (byte) -1 },
@@ -146,21 +150,21 @@ class ConverterEverythingTest {
                 { -129d, (byte) 127 }, // verify wrap around
                 { 128d, (byte) -128 }   // verify wrap around
         });
-        TEST_FACTORY.put(pair(Boolean.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Boolean.class, Byte.class), new Object[][] {
                 { true, (byte) 1 },
                 { false, (byte) 0 },
         });
-        TEST_FACTORY.put(pair(Character.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Character.class, Byte.class), new Object[][] {
                 { '1', (byte) 49 },
                 { '0', (byte) 48 },
                 { (char) 1, (byte) 1 },
                 { (char) 0, (byte) 0 },
         });
-        TEST_FACTORY.put(pair(AtomicBoolean.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(AtomicBoolean.class, Byte.class), new Object[][] {
                 { new AtomicBoolean(true), (byte) 1 },
                 { new AtomicBoolean(false), (byte) 0 },
         });
-        TEST_FACTORY.put(pair(AtomicInteger.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(AtomicInteger.class, Byte.class), new Object[][] {
                 { new AtomicInteger(-1), (byte) -1 },
                 { new AtomicInteger(0), (byte) 0 },
                 { new AtomicInteger(1), (byte) 1 },
@@ -169,7 +173,7 @@ class ConverterEverythingTest {
                 { new AtomicInteger(-129), (byte) 127 },
                 { new AtomicInteger(128), (byte) -128 },
         });
-        TEST_FACTORY.put(pair(AtomicLong.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(AtomicLong.class, Byte.class), new Object[][] {
                 { new AtomicLong(-1), (byte) -1 },
                 { new AtomicLong(0), (byte) 0 },
                 { new AtomicLong(1), (byte) 1 },
@@ -178,7 +182,7 @@ class ConverterEverythingTest {
                 { new AtomicLong(-129), (byte) 127 },
                 { new AtomicLong(128), (byte) -128 },
         });
-        TEST_FACTORY.put(pair(BigInteger.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(BigInteger.class, Byte.class), new Object[][] {
                 { new BigInteger("-1"), (byte) -1 },
                 { new BigInteger("0"), (byte) 0 },
                 { new BigInteger("1"), (byte) 1 },
@@ -187,7 +191,7 @@ class ConverterEverythingTest {
                 { new BigInteger("-129"), (byte) 127 },
                 { new BigInteger("128"), (byte) -128 },
         });
-        TEST_FACTORY.put(pair(BigDecimal.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(BigDecimal.class, Byte.class), new Object[][] {
                 { new BigDecimal("-1"), (byte) -1 },
                 { new BigDecimal("-1.1"), (byte) -1 },
                 { new BigDecimal("-1.9"), (byte) -1 },
@@ -200,10 +204,10 @@ class ConverterEverythingTest {
                 { new BigDecimal("-129"), (byte) 127 },
                 { new BigDecimal("128"), (byte) -128 },
         });
-        TEST_FACTORY.put(pair(Number.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Number.class, Byte.class), new Object[][] {
                 { -2L, (byte) -2 },
         });
-        TEST_FACTORY.put(pair(Map.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(Map.class, Byte.class), new Object[][] {
                 { mapOf("_v", "-1"), (byte) -1 },
                 { mapOf("_v", -1), (byte) -1 },
                 { mapOf("value", "-1"), (byte) -1 },
@@ -228,7 +232,7 @@ class ConverterEverythingTest {
                 { mapOf("_v", 128), (byte) -128 },
                 { mapOf("_v", mapOf("_v", 128L)), (byte) -128 },    // Prove use of recursive call to .convert()
         });
-        TEST_FACTORY.put(pair(String.class, Byte.class), new Object[][] {
+        TEST_DB.put(pair(String.class, Byte.class), new Object[][] {
                 { "-1", (byte) -1 },
                 { "-1.1", (byte) -1 },
                 { "-1.9", (byte) -1 },
@@ -249,15 +253,15 @@ class ConverterEverythingTest {
         });
 
         // MonthDay
-        TEST_FACTORY.put(pair(Void.class, MonthDay.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, MonthDay.class), new Object[][] {
                 { null, null },
         });
-        TEST_FACTORY.put(pair(MonthDay.class, MonthDay.class), new Object[][] {
+        TEST_DB.put(pair(MonthDay.class, MonthDay.class), new Object[][] {
                 { MonthDay.of(1, 1), MonthDay.of(1, 1) },
                 { MonthDay.of(12, 31), MonthDay.of(12, 31) },
                 { MonthDay.of(6, 30), MonthDay.of(6, 30) },
         });
-        TEST_FACTORY.put(pair(String.class, MonthDay.class), new Object[][] {
+        TEST_DB.put(pair(String.class, MonthDay.class), new Object[][] {
                 { "1-1", MonthDay.of(1, 1) },
                 { "01-01", MonthDay.of(1, 1) },
                 { "--01-01", MonthDay.of(1, 1) },
@@ -270,7 +274,7 @@ class ConverterEverythingTest {
                 { "--06-30", MonthDay.of(6, 30) },
                 { "--6-30", new IllegalArgumentException("Unable to extract Month-Day from string: --6-30") },
         });
-        TEST_FACTORY.put(pair(Map.class, MonthDay.class), new Object[][] {
+        TEST_DB.put(pair(Map.class, MonthDay.class), new Object[][] {
                 { mapOf("_v", "1-1"), MonthDay.of(1, 1) },
                 { mapOf("value", "1-1"), MonthDay.of(1, 1) },
                 { mapOf("_v", "01-01"), MonthDay.of(1, 1) },
@@ -290,15 +294,15 @@ class ConverterEverythingTest {
         });
 
         // YearMonth
-        TEST_FACTORY.put(pair(Void.class, YearMonth.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, YearMonth.class), new Object[][] {
                 { null, null },
         });
-        TEST_FACTORY.put(pair(YearMonth.class, YearMonth.class), new Object[][] {
+        TEST_DB.put(pair(YearMonth.class, YearMonth.class), new Object[][] {
                 { YearMonth.of(2023, 12), YearMonth.of(2023, 12) },
                 { YearMonth.of(1970, 1), YearMonth.of(1970, 1) },
                 { YearMonth.of(1999, 6), YearMonth.of(1999, 6) },
         });
-        TEST_FACTORY.put(pair(String.class, YearMonth.class), new Object[][] {
+        TEST_DB.put(pair(String.class, YearMonth.class), new Object[][] {
                 { "2024-01", YearMonth.of(2024, 1) },
                 { "2024-1", new IllegalArgumentException("Unable to extract Year-Month from string: 2024-1") },
                 { "2024-1-1", YearMonth.of(2024, 1) },
@@ -306,7 +310,7 @@ class ConverterEverythingTest {
                 { "2024-12-31", YearMonth.of(2024, 12) },
                 { "05:45 2024-12-31", YearMonth.of(2024, 12) },
         });
-        TEST_FACTORY.put(pair(Map.class, YearMonth.class), new Object[][] {
+        TEST_DB.put(pair(Map.class, YearMonth.class), new Object[][] {
                 { mapOf("_v", "2024-01"), YearMonth.of(2024, 1) },
                 { mapOf("value", "2024-01"), YearMonth.of(2024, 1) },
                 { mapOf("year", "2024", "month", 12), YearMonth.of(2024, 12) },
@@ -317,14 +321,14 @@ class ConverterEverythingTest {
         });
 
         // Period
-        TEST_FACTORY.put(pair(Void.class, Period.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, Period.class), new Object[][] {
                 { null, null },
         });
-        TEST_FACTORY.put(pair(Period.class, Period.class), new Object[][] {
+        TEST_DB.put(pair(Period.class, Period.class), new Object[][] {
                 { Period.of(0, 0, 0), Period.of(0, 0, 0) },
                 { Period.of(1, 1, 1), Period.of(1, 1, 1) },
         });
-        TEST_FACTORY.put(pair(String.class, Period.class), new Object[][] {
+        TEST_DB.put(pair(String.class, Period.class), new Object[][] {
                 { "P0D", Period.of(0, 0, 0) },
                 { "P1D", Period.of(0, 0, 1) },
                 { "P1M", Period.of(0, 1, 0) },
@@ -335,7 +339,7 @@ class ConverterEverythingTest {
                 { "P10Y10M10D", Period.of(10, 10, 10) },
                 { "PONY", new IllegalArgumentException("Unable to parse 'PONY' as a Period.") },
         });
-        TEST_FACTORY.put(pair(Map.class, Period.class), new Object[][] {
+        TEST_DB.put(pair(Map.class, Period.class), new Object[][] {
                 { mapOf("_v", "P0D"), Period.of(0, 0, 0) },
                 { mapOf("value", "P1Y1M1D"), Period.of(1, 1, 1) },
                 { mapOf("years", "2", "months", 2, "days", 2.0d), Period.of(2, 2, 2) },
@@ -343,13 +347,13 @@ class ConverterEverythingTest {
         });
 
         // Year
-        TEST_FACTORY.put(pair(Void.class, Year.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, Year.class), new Object[][] {
                 { null, null },
         });
-        TEST_FACTORY.put(pair(Year.class, Year.class), new Object[][] {
+        TEST_DB.put(pair(Year.class, Year.class), new Object[][] {
                 { Year.of(1970), Year.of(1970) },
         });
-        TEST_FACTORY.put(pair(String.class, Year.class), new Object[][] {
+        TEST_DB.put(pair(String.class, Year.class), new Object[][] {
                 { "1970", Year.of(1970) },
                 { "1999", Year.of(1999) },
                 { "2000", Year.of(2000) },
@@ -357,13 +361,13 @@ class ConverterEverythingTest {
                 { "1670", Year.of(1670) },
                 { "PONY", new IllegalArgumentException("Unable to parse 4-digit year from 'PONY'") },
         });
-        TEST_FACTORY.put(pair(Map.class, Year.class), new Object[][] {
+        TEST_DB.put(pair(Map.class, Year.class), new Object[][] {
                 { mapOf("_v", "1984"), Year.of(1984) },
                 { mapOf("value", 1984L), Year.of(1984) },
                 { mapOf("year", 1492), Year.of(1492) },
                 { mapOf("year", mapOf("_v", (short) 2024)), Year.of(2024) }, // recursion
         });
-        TEST_FACTORY.put(pair(Number.class, Year.class), new Object[][] {
+        TEST_DB.put(pair(Number.class, Year.class), new Object[][] {
                 { (byte) 101, new IllegalArgumentException("Unsupported conversion, source type [Byte (101)] target type 'Year'") },
                 { (short) 2024, Year.of(2024) },
         });
@@ -371,19 +375,19 @@ class ConverterEverythingTest {
         // ZoneId
         ZoneId NY_Z = ZoneId.of("America/New_York");
         ZoneId TOKYO_Z = ZoneId.of("Asia/Tokyo");
-        TEST_FACTORY.put(pair(Void.class, ZoneId.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, ZoneId.class), new Object[][] {
                 { null, null },
         });
-        TEST_FACTORY.put(pair(ZoneId.class, ZoneId.class), new Object[][] {
+        TEST_DB.put(pair(ZoneId.class, ZoneId.class), new Object[][] {
                 { NY_Z, NY_Z },
                 { TOKYO_Z, TOKYO_Z },
         });
-        TEST_FACTORY.put(pair(String.class, ZoneId.class), new Object[][] {
+        TEST_DB.put(pair(String.class, ZoneId.class), new Object[][] {
                 { "America/New_York", NY_Z },
                 { "Asia/Tokyo", TOKYO_Z },
                 { "America/Cincinnati", new IllegalArgumentException("Unknown time-zone ID: 'America/Cincinnati'") },
         });
-        TEST_FACTORY.put(pair(Map.class, ZoneId.class), new Object[][] {
+        TEST_DB.put(pair(Map.class, ZoneId.class), new Object[][] {
                 { mapOf("_v", "America/New_York"), NY_Z },
                 { mapOf("_v", NY_Z), NY_Z },
                 { mapOf("zone", NY_Z), NY_Z },
@@ -393,21 +397,21 @@ class ConverterEverythingTest {
         });
 
         // ZoneOffset
-        TEST_FACTORY.put(pair(Void.class, ZoneOffset.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, ZoneOffset.class), new Object[][] {
                 { null, null },
         });
-        TEST_FACTORY.put(pair(ZoneOffset.class, ZoneOffset.class), new Object[][] {
+        TEST_DB.put(pair(ZoneOffset.class, ZoneOffset.class), new Object[][] {
                 { ZoneOffset.of("-05:00"), ZoneOffset.of("-05:00") },
                 { ZoneOffset.of("+5"), ZoneOffset.of("+05:00") },
         });
-        TEST_FACTORY.put(pair(String.class, ZoneOffset.class), new Object[][] {
+        TEST_DB.put(pair(String.class, ZoneOffset.class), new Object[][] {
                 { "-00:00", ZoneOffset.of("+00:00") },
                 { "-05:00", ZoneOffset.of("-05:00") },
                 { "+5", ZoneOffset.of("+05:00") },
                 { "+05:00:01", ZoneOffset.of("+05:00:01") },
                 { "America/New_York", new IllegalArgumentException("Unknown time-zone offset: 'America/New_York'") },
         });
-        TEST_FACTORY.put(pair(Map.class, ZoneOffset.class), new Object[][] {
+        TEST_DB.put(pair(Map.class, ZoneOffset.class), new Object[][] {
                 { mapOf("_v", "-10"), ZoneOffset.of("-10:00") },
                 { mapOf("hours", -10L), ZoneOffset.of("-10:00") },
                 { mapOf("hours", -10L, "minutes", "0"), ZoneOffset.of("-10:00") },
@@ -419,30 +423,30 @@ class ConverterEverythingTest {
         });
 
         // String
-        TEST_FACTORY.put(pair(Void.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Void.class, String.class), new Object[][] {
                 { null, null }
         });
-        TEST_FACTORY.put(pair(Byte.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Byte.class, String.class), new Object[][] {
                 { (byte) 0, "0" },
                 { Byte.MIN_VALUE, "-128" },
                 { Byte.MAX_VALUE, "127" },
         });
-        TEST_FACTORY.put(pair(Short.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Short.class, String.class), new Object[][] {
                 { (short) 0, "0" },
                 { Short.MIN_VALUE, "-32768" },
                 { Short.MAX_VALUE, "32767" },
         });
-        TEST_FACTORY.put(pair(Integer.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Integer.class, String.class), new Object[][] {
                 { 0, "0" },
                 { Integer.MIN_VALUE, "-2147483648" },
                 { Integer.MAX_VALUE, "2147483647" },
         });
-        TEST_FACTORY.put(pair(Long.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Long.class, String.class), new Object[][] {
                 { 0L, "0" },
                 { Long.MIN_VALUE, "-9223372036854775808" },
                 { Long.MAX_VALUE, "9223372036854775807" },
         });
-        TEST_FACTORY.put(pair(Float.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Float.class, String.class), new Object[][] {
                 { 0f, "0" },
                 { 0.0f, "0" },
                 { Float.MIN_VALUE, "1.4E-45" },
@@ -453,7 +457,7 @@ class ConverterEverythingTest {
                 { 12345f, "12345.0" },
                 { 0.00012345f, "1.2345E-4" },
         });
-        TEST_FACTORY.put(pair(Double.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Double.class, String.class), new Object[][] {
                 { 0d, "0" },
                 { 0.0d, "0" },
                 { Double.MIN_VALUE, "4.9E-324" },
@@ -464,20 +468,20 @@ class ConverterEverythingTest {
                 { 12345d, "12345.0" },
                 { 0.00012345d, "1.2345E-4" },
         });
-        TEST_FACTORY.put(pair(Boolean.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Boolean.class, String.class), new Object[][] {
                 { false, "false" },
                 { true, "true" }
         });
-        TEST_FACTORY.put(pair(Character.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Character.class, String.class), new Object[][] {
                 { '1', "1" },
                 { (char) 32, " " },
         });
-        TEST_FACTORY.put(pair(BigInteger.class, String.class), new Object[][] {
+        TEST_DB.put(pair(BigInteger.class, String.class), new Object[][] {
                 { new BigInteger("-1"), "-1" },
                 { new BigInteger("0"), "0" },
                 { new BigInteger("1"), "1" },
         });
-        TEST_FACTORY.put(pair(BigDecimal.class, String.class), new Object[][] {
+        TEST_DB.put(pair(BigDecimal.class, String.class), new Object[][] {
                 { new BigDecimal("-1"), "-1" },
                 { new BigDecimal("-1.0"), "-1" },
                 { new BigDecimal("0"), "0" },
@@ -485,79 +489,79 @@ class ConverterEverythingTest {
                 { new BigDecimal("1.0"), "1" },
                 { new BigDecimal("3.141519265358979323846264338"), "3.141519265358979323846264338" },
         });
-        TEST_FACTORY.put(pair(AtomicBoolean.class, String.class), new Object[][] {
+        TEST_DB.put(pair(AtomicBoolean.class, String.class), new Object[][] {
                 { new AtomicBoolean(false), "false" },
                 { new AtomicBoolean(true), "true" },
         });
-        TEST_FACTORY.put(pair(AtomicInteger.class, String.class), new Object[][] {
+        TEST_DB.put(pair(AtomicInteger.class, String.class), new Object[][] {
                 { new AtomicInteger(-1), "-1" },
                 { new AtomicInteger(0), "0" },
                 { new AtomicInteger(1), "1" },
                 { new AtomicInteger(Integer.MIN_VALUE), "-2147483648" },
                 { new AtomicInteger(Integer.MAX_VALUE), "2147483647" },
         });
-        TEST_FACTORY.put(pair(AtomicLong.class, String.class), new Object[][] {
+        TEST_DB.put(pair(AtomicLong.class, String.class), new Object[][] {
                 { new AtomicLong(-1), "-1" },
                 { new AtomicLong(0), "0" },
                 { new AtomicLong(1), "1" },
                 { new AtomicLong(Long.MIN_VALUE), "-9223372036854775808" },
                 { new AtomicLong(Long.MAX_VALUE), "9223372036854775807" },
         });
-        TEST_FACTORY.put(pair(byte[].class, String.class), new Object[][] {
+        TEST_DB.put(pair(byte[].class, String.class), new Object[][] {
                 { new byte[] { (byte) 0xf0, (byte) 0x9f, (byte) 0x8d, (byte) 0xba }, "\uD83C\uDF7A" }, // beer mug, byte[] treated as UTF-8.
                 { new byte[] { (byte) 65, (byte) 66, (byte) 67, (byte) 68 }, "ABCD" }
         });
-        TEST_FACTORY.put(pair(char[].class, String.class), new Object[][] {
+        TEST_DB.put(pair(char[].class, String.class), new Object[][] {
                 { new char[] { 'A', 'B', 'C', 'D' }, "ABCD" }
         });
-        TEST_FACTORY.put(pair(Character[].class, String.class), new Object[][] {
+        TEST_DB.put(pair(Character[].class, String.class), new Object[][] {
                 { new Character[] { 'A', 'B', 'C', 'D' }, "ABCD" }
         });
-        TEST_FACTORY.put(pair(ByteBuffer.class, String.class), new Object[][] {
+        TEST_DB.put(pair(ByteBuffer.class, String.class), new Object[][] {
                 { ByteBuffer.wrap(new byte[] { (byte) 0x30, (byte) 0x31, (byte) 0x32, (byte) 0x33 }), "0123" }
         });
-        TEST_FACTORY.put(pair(CharBuffer.class, String.class), new Object[][] {
+        TEST_DB.put(pair(CharBuffer.class, String.class), new Object[][] {
                 { CharBuffer.wrap(new char[] { 'A', 'B', 'C', 'D' }), "ABCD" },
         });
-        TEST_FACTORY.put(pair(Class.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Class.class, String.class), new Object[][] {
                 { Date.class, "java.util.Date" }
         });
-        TEST_FACTORY.put(pair(Date.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Date.class, String.class), new Object[][] {
                 { new Date(1), toGmtString(new Date(1)) },
                 { new Date(Integer.MAX_VALUE), toGmtString(new Date(Integer.MAX_VALUE)) },
                 { new Date(Long.MAX_VALUE), toGmtString(new Date(Long.MAX_VALUE)) }
         });
-        TEST_FACTORY.put(pair(java.sql.Date.class, String.class), new Object[][] {
+        TEST_DB.put(pair(java.sql.Date.class, String.class), new Object[][] {
                 { new java.sql.Date(1), toGmtString(new java.sql.Date(1)) },
                 { new java.sql.Date(Integer.MAX_VALUE), toGmtString(new java.sql.Date(Integer.MAX_VALUE)) },
                 { new java.sql.Date(Long.MAX_VALUE), toGmtString(new java.sql.Date(Long.MAX_VALUE)) }
         });
-        TEST_FACTORY.put(pair(Timestamp.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Timestamp.class, String.class), new Object[][] {
                 { new Timestamp(1), toGmtString(new Timestamp(1)) },
                 { new Timestamp(Integer.MAX_VALUE), toGmtString(new Timestamp(Integer.MAX_VALUE)) },
                 { new Timestamp(Long.MAX_VALUE), toGmtString(new Timestamp(Long.MAX_VALUE)) },
         });
-        TEST_FACTORY.put(pair(LocalDate.class, String.class), new Object[][] {
+        TEST_DB.put(pair(LocalDate.class, String.class), new Object[][] {
                 { LocalDate.parse("1965-12-31"), "1965-12-31" },
         });
-        TEST_FACTORY.put(pair(LocalTime.class, String.class), new Object[][] {
+        TEST_DB.put(pair(LocalTime.class, String.class), new Object[][] {
                 { LocalTime.parse("16:20:00"), "16:20:00" },
         });
-        TEST_FACTORY.put(pair(LocalDateTime.class, String.class), new Object[][] {
+        TEST_DB.put(pair(LocalDateTime.class, String.class), new Object[][] {
                 { LocalDateTime.parse("1965-12-31T16:20:00"), "1965-12-31T16:20:00" },
         });
-        TEST_FACTORY.put(pair(ZonedDateTime.class, String.class), new Object[][] {
+        TEST_DB.put(pair(ZonedDateTime.class, String.class), new Object[][] {
                 { ZonedDateTime.parse("1965-12-31T16:20:00+00:00"), "1965-12-31T16:20:00Z" },
                 { ZonedDateTime.parse("2024-02-14T19:20:00-05:00"), "2024-02-14T19:20:00-05:00" },
                 { ZonedDateTime.parse("2024-02-14T19:20:00+05:00"), "2024-02-14T19:20:00+05:00" }
         });
-        TEST_FACTORY.put(pair(UUID.class, String.class), new Object[][] {
+        TEST_DB.put(pair(UUID.class, String.class), new Object[][] {
                 { new UUID(0L, 0L), "00000000-0000-0000-0000-000000000000" },
                 { new UUID(1L, 1L), "00000000-0000-0001-0000-000000000001" },
                 { new UUID(Long.MAX_VALUE, Long.MAX_VALUE), "7fffffff-ffff-ffff-7fff-ffffffffffff" },
                 { new UUID(Long.MIN_VALUE, Long.MIN_VALUE), "80000000-0000-0000-8000-000000000000" },
         });
-        TEST_FACTORY.put(pair(Calendar.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Calendar.class, String.class), new Object[][] {
                 { (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
@@ -566,60 +570,90 @@ class ConverterEverythingTest {
                     return cal;
                 }, "2024-02-05T22:31:00" }
         });
-        TEST_FACTORY.put(pair(Number.class, String.class), new Object[][] {
+        TEST_DB.put(pair(Number.class, String.class), new Object[][] {
                 { (byte) 1, "1" },
                 { (short) 2, "2" },
                 { 3, "3" },
                 { 4L, "4" },
                 { 5f, "5.0" },
                 { 6d, "6.0" },
+                { new AtomicInteger(7), "7" },
+                { new AtomicLong(8L), "8" },
+                { new BigInteger("9"), "9" },
+                { new BigDecimal("10"), "10" },
         });
-        TEST_FACTORY.put(pair(Map.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(Map.class, String.class), new Object[][] {
+                { mapOf("_v", "alpha"), "alpha" },
+                { mapOf("value", "alpha"), "alpha" },
         });
-        TEST_FACTORY.put(pair(Enum.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(Enum.class, String.class), new Object[][] {
+                { DayOfWeek.MONDAY, "MONDAY" },
+                { Month.JANUARY, "JANUARY" },
         });
-        TEST_FACTORY.put(pair(String.class, String.class), new Object[][] {
+        TEST_DB.put(pair(String.class, String.class), new Object[][] {
                 { "same", "same" },
         });
-        TEST_FACTORY.put(pair(Duration.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(Duration.class, String.class), new Object[][] {
+                { Duration.parse("PT20.345S"), "PT20.345S"},
+                { Duration.ofSeconds(60), "PT1M"},
         });
-        TEST_FACTORY.put(pair(Instant.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(Instant.class, String.class), new Object[][] {
+                { Instant.ofEpochMilli(0), "1970-01-01T00:00:00Z"},
+                { Instant.ofEpochMilli(1), "1970-01-01T00:00:00.001Z"},
+                { Instant.ofEpochMilli(1000), "1970-01-01T00:00:01Z"},
+                { Instant.ofEpochMilli(1001), "1970-01-01T00:00:01.001Z"},
+                { Instant.ofEpochSecond(0), "1970-01-01T00:00:00Z"},
+                { Instant.ofEpochSecond(1), "1970-01-01T00:00:01Z"},
+                { Instant.ofEpochSecond(60), "1970-01-01T00:01:00Z"},
+                { Instant.ofEpochSecond(61), "1970-01-01T00:01:01Z"},
+                { Instant.ofEpochSecond(0, 0), "1970-01-01T00:00:00Z"},
+                { Instant.ofEpochSecond(0, 1), "1970-01-01T00:00:00.000000001Z"},
+                { Instant.ofEpochSecond(0, 999999999), "1970-01-01T00:00:00.999999999Z"},
+                { Instant.ofEpochSecond(0, 9999999999L), "1970-01-01T00:00:09.999999999Z"},
         });
-        TEST_FACTORY.put(pair(LocalTime.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(LocalTime.class, String.class), new Object[][] {
+                { LocalTime.of(9, 26), "09:26" },
+                { LocalTime.of(9, 26, 17), "09:26:17" },
+                { LocalTime.of(9, 26, 17, 1), "09:26:17.000000001" },
         });
-        TEST_FACTORY.put(pair(MonthDay.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(MonthDay.class, String.class), new Object[][] {
+                { MonthDay.of(1, 1), "--01-01"},
+                { MonthDay.of(12, 31), "--12-31"},
         });
-        TEST_FACTORY.put(pair(YearMonth.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(YearMonth.class, String.class), new Object[][] {
+                { YearMonth.of(2024, 1), "2024-01" },
+                { YearMonth.of(2024, 12), "2024-12" },
         });
-        TEST_FACTORY.put(pair(Period.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(Period.class, String.class), new Object[][] {
+                { Period.of(6, 3, 21), "P6Y3M21D" },
+                { Period.ofWeeks(160), "P1120D" },
         });
-        TEST_FACTORY.put(pair(ZoneId.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(ZoneId.class, String.class), new Object[][] {
+                { ZoneId.of("America/New_York"), "America/New_York"},
+                { ZoneId.of("Z"), "Z"},
+                { ZoneId.of("UTC"), "UTC"},
+                { ZoneId.of("GMT"), "GMT"},
         });
-        TEST_FACTORY.put(pair(ZoneOffset.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(ZoneOffset.class, String.class), new Object[][] {
+                { ZoneOffset.of("+1"), "+01:00" },
+                { ZoneOffset.of("+0109"), "+01:09" },
         });
-        TEST_FACTORY.put(pair(OffsetTime.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(OffsetTime.class, String.class), new Object[][] {
+                { OffsetTime.parse("10:15:30+01:00"), "10:15:30+01:00" },
         });
-        TEST_FACTORY.put(pair(OffsetDateTime.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(OffsetDateTime.class, String.class), new Object[][] {
+                { OffsetDateTime.parse("2024-02-10T10:15:07+01:00"), "2024-02-10T10:15:07+01:00" },
         });
-        TEST_FACTORY.put(pair(Year.class, String.class), new Object[][] {
-
+        TEST_DB.put(pair(Year.class, String.class), new Object[][] {
+                { Year.of(2024), "2024" },
+                { Year.of(1582), "1582" },
+                { Year.of(500), "500" },
+                { Year.of(1), "1" },
+                { Year.of(0), "0" },
+                { Year.of(-1), "-1" },
         });
     }
-
-    public static Map<String, Class<?>> shortNamesToClass = new ConcurrentHashMap<>();
-
+    
     private static String toGmtString(Date date) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
         simpleDateFormat.setTimeZone(TZ_TOKYO);
@@ -632,7 +666,6 @@ class ConverterEverythingTest {
         converter = new Converter(options);
     }
 
-
     @Test
     void testForMissingTests() {
         Map<Class<?>, Set<Class<?>>> map = converter.allSupportedConversions();
@@ -642,11 +675,8 @@ class ConverterEverythingTest {
             Class<?> sourceClass = entry.getKey();
             Set<Class<?>> targetClasses = entry.getValue();
 
-
-
             for (Class<?> targetClass : targetClasses) {
-
-                Object[][] testData = TEST_FACTORY.get(pair(sourceClass, targetClass));
+                Object[][] testData = TEST_DB.get(pair(sourceClass, targetClass));
 
                 if (testData == null) { // data set needs added
                     // Change to throw exception, so that when new conversions are added, the tests will fail until
@@ -673,45 +703,40 @@ class ConverterEverythingTest {
     }
 
     private static Stream<Arguments> generateTestEverythingParams() {
+        List<Arguments> list = new ArrayList<>(400);
 
-        ArrayList<Arguments> list = new ArrayList<>(400);
-
-        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Object[][]> entry : TEST_FACTORY.entrySet()) {
+        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Object[][]> entry : TEST_DB.entrySet()) {
             Class<?> sourceClass = entry.getKey().getKey();
             Class<?> targetClass = entry.getKey().getValue();
+
+            String sourceName = Converter.getShortName(sourceClass);
+            String targetName = Converter.getShortName(targetClass);
             Object[][] testData = entry.getValue();
 
             for (int i = 0; i < testData.length; i++) {
                 Object[] testPair = testData[i];
 
-                // don't worry about putting back into the pair for tests when suppliers.  We can get each time for now.
-                // protecting Test integrity.
                 Object source = possiblyConvertSupplier(testPair[0]);
                 Object target = possiblyConvertSupplier(testPair[1]);
 
-                String shortNameSource = addShortName(sourceClass);
-                String shortNameTarget = addShortName(targetClass);
-
-                list.add(Arguments.of(shortNameSource, shortNameTarget, source, target));
+                list.add(Arguments.of(sourceName, targetName, source, target, sourceClass, targetClass));
             }
-
         }
 
         return Stream.of(list.toArray(new Arguments[] {}));
     }
-
+    
     @ParameterizedTest(name = "<{0}, {1}> ==> {2}")
     @MethodSource("generateTestEverythingParams")
-    void testSourceMatchesExpectedType(String shortNameSource, String shortNameTarget, Object source, Object actual) {
-        Class<?> sourceClass = getFromShortName(shortNameSource);
-        assertTrue(source == null || sourceClass.isAssignableFrom(source.getClass()));
-    }
+    void testConvert(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass) {
+        // Make sure data is authored correctly
+        assertTrue(source == null || sourceClass.isAssignableFrom(sourceClass));
 
-    @ParameterizedTest(name = "<{0}, {1}> ==> {2}")
-    @MethodSource("generateTestEverythingParams")
-    void testConvert(String shortNameSource, String shortNameTarget, Object source, Object target) {
-        Class<?> targetClass = getFromShortName(shortNameTarget);
-        //TODO:  does the exception actually get thrown on the convert or should we just check if they are equal?
+        // if the source/target are the same Class, then ensure identity lambda is used.
+        if (sourceClass.equals(targetClass)) {
+            assertSame(source, converter.convert(source, targetClass, options));
+        }
+
         if (target instanceof Throwable) {
             Throwable t = (Throwable) target;
             assertThatExceptionOfType(t.getClass())
@@ -723,30 +748,4 @@ class ConverterEverythingTest {
             assertEquals(target, actual);
         }
     }
-
-    @ParameterizedTest(name = "<{0}, {1}> ==> {2}")
-    @MethodSource("generateTestEverythingParams")
-    void testIdentity(String shortNameSource, String shortNameTarget, Object source, Object actual) {
-        Class<?> sourceClass = getFromShortName(shortNameSource);
-        Class<?> targetClass = getFromShortName(shortNameTarget);
-        // do not test identity on Throwables.
-        // if source and target classes match then we expect the objects to be the same object.
-        assertTrue(actual instanceof Throwable ||
-                !sourceClass.equals(targetClass) ||
-                (source == converter.convert(source, targetClass, options)));
-    }
-
-    public static String addShortName(Class<?> c) {
-        String name = c.getSimpleName();
-        if (java.sql.Date.class.isAssignableFrom(c)) {
-            name = "java.sql.Date";
-        }
-        shortNamesToClass.put(name, c);
-        return name;
-    }
-
-    public static Class<?> getFromShortName(String name) {
-        return shortNamesToClass.get(name);
-    }
-
 }

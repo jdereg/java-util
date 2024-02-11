@@ -52,26 +52,28 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * @author John DeRegnaucourt (jdereg@gmail.com) & Ken Partlow
- * <br>
- * Copyright (c) Cedar Software LLC
- * <br><br>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <br><br>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <br><br>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ * @author Kenny Partlow (kpartlow@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
+
 class ConverterEverythingTest {
     private static final TimeZone TZ_TOKYO = TimeZone.getTimeZone("Asia/Tokyo");
     private Converter converter;
-    private ConverterOptions options = new ConverterOptions() {
+    private final ConverterOptions options = new ConverterOptions() {
         public TimeZone getTimeZone() {
             return TZ_TOKYO;
         }
@@ -232,6 +234,9 @@ class ConverterEverythingTest {
                 { mapOf("_v", 128), Byte.MIN_VALUE },
                 { mapOf("_v", mapOf("_v", 128L)), Byte.MIN_VALUE },    // Prove use of recursive call to .convert()
         });
+        TEST_DB.put(pair(Year.class, Byte.class), new Object[][] {
+                {Year.of(2024), new IllegalArgumentException("Unsupported conversion, source type [Year (2024)] target type 'Byte'")},
+        });
         TEST_DB.put(pair(String.class, Byte.class), new Object[][] {
                 { "-1", (byte) -1 },
                 { "-1.1", (byte) -1 },
@@ -243,6 +248,7 @@ class ConverterEverythingTest {
                 { "-128", (byte) -128 },
                 { "127", (byte) 127 },
                 { "", (byte) 0 },
+                { " ", (byte) 0 },
                 { "crapola", new IllegalArgumentException("Value 'crapola' not parseable as a byte value or outside -128 to 127") },
                 { "54 crapola", new IllegalArgumentException("Value '54 crapola' not parseable as a byte value or outside -128 to 127") },
                 { "54crapola", new IllegalArgumentException("Value '54crapola' not parseable as a byte value or outside -128 to 127") },
@@ -406,6 +412,7 @@ class ConverterEverythingTest {
                 { "-32768", (short) -32768 },
                 { "32767", (short) 32767 },
                 { "", (short) 0 },
+                { " ", (short) 0 },
                 { "crapola", new IllegalArgumentException("Value 'crapola' not parseable as a short value or outside -32768 to 32767") },
                 { "54 crapola", new IllegalArgumentException("Value '54 crapola' not parseable as a short value or outside -32768 to 32767") },
                 { "54crapola", new IllegalArgumentException("Value '54crapola' not parseable as a short value or outside -32768 to 32767") },
@@ -423,6 +430,14 @@ class ConverterEverythingTest {
                 { Year.of(2000), (short) 2000 },
                 { Year.of(2024), (short) 2024 },
                 { Year.of(9999), (short) 9999 },
+        });
+
+        // Instant
+        TEST_DB.put(pair(String.class, Instant.class), new Object[][] {
+                { "", null },
+                { " ", null },
+                { "1980-01-01T00:00Z", Instant.parse("1980-01-01T00:00:00Z") },
+                { "2024-12-31T23:59:59.999999999Z", Instant.parse("2024-12-31T23:59:59.999999999Z") },
         });
 
         // MonthDay
@@ -886,9 +901,7 @@ class ConverterEverythingTest {
             String targetName = Converter.getShortName(targetClass);
             Object[][] testData = entry.getValue();
 
-            for (int i = 0; i < testData.length; i++) {
-                Object[] testPair = testData[i];
-
+            for (Object[] testPair : testData) {
                 Object source = possiblyConvertSupplier(testPair[0]);
                 Object target = possiblyConvertSupplier(testPair[1]);
 
@@ -903,7 +916,11 @@ class ConverterEverythingTest {
     @MethodSource("generateTestEverythingParams")
     void testConvert(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass) {
         // Make sure source instance is of the sourceClass
-        assertTrue(source == null || Converter.toPrimitiveWrapperClass(sourceClass).isInstance(source), "source type mismatch");
+        if (source == null) {
+            assertEquals(sourceClass, Void.class);
+        } else {
+            assertTrue(Converter.toPrimitiveWrapperClass(sourceClass).isInstance(source), "source type mismatch");
+        }
         assertTrue(target == null || target instanceof Throwable || Converter.toPrimitiveWrapperClass(targetClass).isInstance(target), "target type mismatch");
 
         // if the source/target are the same Class, then ensure identity lambda is used.

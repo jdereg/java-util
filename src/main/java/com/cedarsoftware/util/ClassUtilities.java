@@ -40,7 +40,7 @@ public class ClassUtilities
 {
     private static final Set<Class<?>> prims = new HashSet<>();
 
-    private static final Map<String, Class<?>> nameToClass = new HashMap();
+    private static final Map<String, Class<?>> nameToClass = new HashMap<>();
 
     static
     {

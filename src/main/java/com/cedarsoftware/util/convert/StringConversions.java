@@ -75,16 +75,16 @@ final class StringConversions {
     }
 
     static Byte toByte(Object from, Converter converter) {
-        String s = asString(from);
-        if (s.isEmpty()) {
+        String str = StringUtilities.trimToEmpty((String) from);
+        if (str.isEmpty()) {
             return CommonValues.BYTE_ZERO;
         }
         try {
-            return Byte.valueOf(s);
+            return Byte.valueOf(str);
         } catch (NumberFormatException e) {
-            Long value = toLong(s, bigDecimalMinByte, bigDecimalMaxByte);
+            Long value = toLong(str, bigDecimalMinByte, bigDecimalMaxByte);
             if (value == null) {
-                throw new IllegalArgumentException("Value '" + s + "' not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + str + "' not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
             }
             return value.byteValue();
         }
@@ -420,7 +420,15 @@ final class StringConversions {
     }
 
     static Instant toInstant(Object from, Converter converter) {
-        return parseDate(from, converter).map(ZonedDateTime::toInstant).orElse(null);
+        String s = (String)from;
+        if (StringUtilities.isEmpty(s)) {
+            return null;
+        }
+        try {
+            return Instant.parse(s);
+        } catch (Exception e) {
+            return parseDate(s, converter).map(ZonedDateTime::toInstant).orElse(null);
+        }
     }
 
     static char[] toCharArray(Object from, Converter converter) {

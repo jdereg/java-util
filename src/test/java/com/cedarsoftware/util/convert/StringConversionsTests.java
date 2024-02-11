@@ -81,12 +81,38 @@ class StringConversionsTests {
         );
     }
 
+
     @ParameterizedTest
     @MethodSource("toYear_extremeParams")
     void toYear_withExtremeParams_returnsValue(String source, int value) {
         Year expected = Year.of(value);
         Year actual = this.converter.convert(source, Year.class);
         assertThat(actual).isEqualTo(expected);
+    }
+
+    private static Stream<Arguments> toCharParams() {
+        return Stream.of(
+                Arguments.of("0000", '\u0000'),
+                Arguments.of("65", 'A'),
+                Arguments.of("\t", '\t'),
+                Arguments.of("\u0005", '\u0005')
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("toCharParams")
+    void toChar(String source, char value) {
+        char actual = this.converter.convert(source, char.class);
+        //System.out.println(Integer.toHexString(actual) + " = " + Integer.toHexString(value));
+        assertThat(actual).isEqualTo(value);
+    }
+
+    @ParameterizedTest
+    @MethodSource("toCharParams")
+    void toChar(String source, Character value) {
+        Character actual = this.converter.convert(source, Character.class);
+        //System.out.println(Integer.toHexString(actual) + " = " + Integer.toHexString(value));
+        assertThat(actual).isEqualTo(value);
     }
 
     private static Stream<Arguments> toCharSequenceTypes() {

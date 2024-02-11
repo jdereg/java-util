@@ -204,8 +204,8 @@ final class StringConversions {
     }
 
     static char toCharacter(Object from, Converter converter) {
-        String str = StringUtilities.trimToNull(asString(from));
-        if (str == null) {
+        String str = (String)from;
+        if (str == null || str.isEmpty()) {
             return CommonValues.CHARACTER_ZERO;
         }
         if (str.length() == 1) {

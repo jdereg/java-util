@@ -58,7 +58,7 @@ final class LocalDateConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         ZoneId zoneId = converter.getOptions().getZoneId();
-        return ((LocalDate) from).atStartOfDay(zoneId).withZoneSameInstant(zoneId);
+        return ((LocalDate) from).atStartOfDay(zoneId);
     }
     
     /**

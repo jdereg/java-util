@@ -211,8 +211,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Float.class), NumberConversions::toFloat);
         CONVERSION_DB.put(pair(Boolean.class, Float.class), BooleanConversions::toFloat);
         CONVERSION_DB.put(pair(Character.class, Float.class), CharacterConversions::toFloat);
-        CONVERSION_DB.put(pair(Instant.class, Float.class), InstantConversions::toFloat);
-        CONVERSION_DB.put(pair(LocalDate.class, Float.class), LocalDateConversions::toFloat);
         CONVERSION_DB.put(pair(AtomicBoolean.class, Float.class), AtomicBooleanConversions::toFloat);
         CONVERSION_DB.put(pair(AtomicInteger.class, Float.class), NumberConversions::toFloat);
         CONVERSION_DB.put(pair(AtomicLong.class, Float.class), NumberConversions::toFloat);

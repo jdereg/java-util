@@ -1049,14 +1049,7 @@ class ConverterTest
         BigDecimal intermediate = converter.convert(expected, BigDecimal.class);
         assertThat(intermediate.longValue()).isEqualTo(epochMilli);
     }
-
-    @Test
-    void testLocalDateToFloat() {
-        Converter converter = new Converter(createCustomZones(TOKYO));
-        float intermediate = converter.convert(LD_MILLENNIUM_NY, float.class);
-        assertThat((long)intermediate).isNotEqualTo(946616400000L);
-    }
-
+    
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testZonedDateTimeToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
@@ -1263,16 +1256,6 @@ class ConverterTest
         Converter converter = new Converter(createCustomZones(zoneId));
         AtomicLong actual = converter.convert(instant, AtomicLong.class);
         assertThat(actual.get()).isEqualTo(epochMilli);
-    }
-
-    @ParameterizedTest
-    @MethodSource("epochMillis_withLocalDateTimeInformation")
-    void testInstantToFloat(long epochMilli, ZoneId zoneId, LocalDateTime expected)
-    {
-        Instant instant = Instant.ofEpochMilli(epochMilli);
-        Converter converter = new Converter(createCustomZones(zoneId));
-        float actual = converter.convert(instant, float.class);
-        assertThat(actual).isEqualTo((float)epochMilli);
     }
 
     @ParameterizedTest

@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
-import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -37,6 +36,8 @@ import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
+
+import com.cedarsoftware.util.DeepEquals;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
@@ -3076,7 +3077,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to LocalDateTime the map must include one of the following: [_v], or [value] with associated values");
+                .hasMessageContaining("To convert from Map to LocalDateTime the map must include one of the following: [date, time], [_v], or [value] with associated values");
     }
 
     @Test
@@ -3095,7 +3096,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, ZonedDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to ZonedDateTime the map must include one of the following: [_v], or [value] with associated values");
+                .hasMessageContaining("To convert from Map to ZonedDateTime the map must include one of the following: [zone, dateTime], [_v], or [value] with associated values");
 
     }
 

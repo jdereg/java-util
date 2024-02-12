@@ -9,10 +9,14 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.CompactLinkedMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -34,11 +38,6 @@ import java.util.concurrent.atomic.AtomicLong;
 final class OffsetDateTimeConversions {
     private OffsetDateTimeConversions() {}
 
-    static OffsetDateTime toDifferentZone(Object from, Converter converter) {
-        OffsetDateTime offsetDateTime = (OffsetDateTime) from;
-        return offsetDateTime.toInstant().atZone(converter.getOptions().getZoneId()).toOffsetDateTime();
-    }
-
     static Instant toInstant(Object from, Converter converter) {
         return ((OffsetDateTime)from).toInstant();
     }
@@ -48,15 +47,15 @@ final class OffsetDateTimeConversions {
     }
     
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalDateTime();
+        return ((OffsetDateTime)from).toLocalDateTime();
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalDate();
+        return ((OffsetDateTime)from).toLocalDate();
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalTime();
+        return ((OffsetDateTime)from).toLocalTime();
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
@@ -97,5 +96,17 @@ final class OffsetDateTimeConversions {
     static String toString(Object from, Converter converter) {
         OffsetDateTime offsetDateTime = (OffsetDateTime) from;
         return offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    }
+
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        OffsetDateTime offsetDateTime = (OffsetDateTime) from;
+
+        LocalDateTime localDateTime = offsetDateTime.toLocalDateTime();
+        ZoneOffset zoneOffset = offsetDateTime.getOffset();
+
+        Map<String, Object> target = new CompactLinkedMap<>();
+        target.put(MapConversions.DATE_TIME, converter.convert(localDateTime, String.class));
+        target.put(MapConversions.OFFSET, converter.convert(zoneOffset, String.class));
+        return target;
     }
 }

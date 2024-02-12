@@ -52,6 +52,7 @@ import com.cedarsoftware.util.Convention;
 final class MapConversions {
     private static final String V = "_v";
     private static final String VALUE = "value";
+    private static final String DATE = "date";
     private static final String TIME = "time";
     private static final String ZONE = "zone";
     private static final String YEAR = "year";
@@ -72,6 +73,14 @@ final class MapConversions {
     private static final String OFFSET_MINUTE = "offsetMinute";
     private static final String MOST_SIG_BITS = "mostSigBits";
     private static final String LEAST_SIG_BITS = "leastSigBits";
+
+    static final String OFFSET = "offset";
+
+    private static final String TOTAL_SECONDS = "totalSeconds";
+
+    static final String DATE_TIME = "dateTime";
+
+    private static final String ID = "id";
 
     private MapConversions() {}
     
@@ -245,8 +254,12 @@ final class MapConversions {
     private static final String[] OFFSET_DATE_TIME_PARAMS = new String[] { YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, NANO, OFFSET_HOUR, OFFSET_MINUTE };
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
         Map<?, ?> map = (Map<?, ?>) from;
-        if (map.containsKey(YEAR) && map.containsKey(OFFSET_HOUR)) {
-            ConverterOptions options = converter.getOptions();
+        ConverterOptions options = converter.getOptions();
+        if (map.containsKey(DATE_TIME) && map.containsKey(OFFSET)) {
+            LocalDateTime dateTime = converter.convert(map.get(DATE_TIME), LocalDateTime.class);
+            ZoneOffset zoneOffset = converter.convert(map.get(OFFSET), ZoneOffset.class);
+            return OffsetDateTime.of(dateTime, zoneOffset);
+        } else if (map.containsKey(YEAR) && map.containsKey(OFFSET_HOUR)) {
             int year = converter.convert(map.get(YEAR), int.class);
             int month = converter.convert(map.get(MONTH), int.class);
             int day = converter.convert(map.get(DAY), int.class);
@@ -263,12 +276,30 @@ final class MapConversions {
         }
     }
 
+    private static final String[] LOCAL_DATE_TIME_PARAMS = new String[] { DATE, TIME };
+
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return fromValue(from, converter, LocalDateTime.class);
+        Map<?, ?> map = (Map<?, ?>) from;
+        if (map.containsKey(DATE)) {
+            LocalDate localDate = converter.convert(map.get(DATE), LocalDate.class);
+            LocalTime localTime = map.containsKey(TIME) ? converter.convert(map.get(TIME), LocalTime.class) : LocalTime.MIDNIGHT;
+            // validate date isn't null?
+            return LocalDateTime.of(localDate, localTime);
+        } else {
+            return fromValueForMultiKey(from, converter, LocalDateTime.class, LOCAL_DATE_TIME_PARAMS);
+        }
     }
 
+    private static final String[] ZONED_DATE_TIME_PARAMS = new String[] { ZONE, DATE_TIME };
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        return fromValue(from, converter, ZonedDateTime.class);
+        Map<?, ?> map = (Map<?, ?>) from;
+        if (map.containsKey(ZONE) && map.containsKey(DATE_TIME)) {
+            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
+            LocalDateTime localDateTime = converter.convert(map.get(DATE_TIME), LocalDateTime.class);
+            return ZonedDateTime.of(localDateTime, zoneId);
+        } else {
+            return fromValueForMultiKey(from, converter, ZonedDateTime.class, ZONED_DATE_TIME_PARAMS);
+        }
     }
 
     static Class<?> toClass(Object from, Converter converter) {

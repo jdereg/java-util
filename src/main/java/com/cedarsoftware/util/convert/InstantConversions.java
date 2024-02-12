@@ -8,7 +8,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
@@ -84,10 +83,6 @@ final class InstantConversions {
 
     static BigInteger toBigInteger(Object from, Converter converter) {
         return BigInteger.valueOf(toLong(from, converter));
-    }
-
-    static String toString(Object from, Converter converter) {
-        return DateTimeFormatter.ISO_INSTANT.format((Instant)from);
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {

@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -10,7 +11,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.cedarsoftware.util.DeepEquals;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ZonedDateTimeConversionsTests {
 
@@ -44,11 +47,13 @@ class ZonedDateTimeConversionsTests {
     void testZonedDateTime(ZonedDateTime zdt) {
 
         String value = this.converter.convert(zdt, String.class);
-        System.out.println(value);
         ZonedDateTime actual = this.converter.convert(value, ZonedDateTime.class);
-        System.out.println(actual);
 
-        assertThat(actual).isEqualTo(zdt);
+        assertTrue(DeepEquals.deepEquals(actual, zdt));
+
+        value = DateTimeFormatter.ISO_ZONED_DATE_TIME.format(zdt);
+        actual = this.converter.convert(value, ZonedDateTime.class);
+
+        assertTrue(DeepEquals.deepEquals(actual, zdt));
     }
-
 }

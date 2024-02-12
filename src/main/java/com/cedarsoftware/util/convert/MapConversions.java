@@ -378,6 +378,10 @@ final class MapConversions {
             ConverterOptions options = converter.getOptions();
             ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
             return zoneId;
+        } else if (map.containsKey(ID)) {
+            ConverterOptions options = converter.getOptions();
+            ZoneId zoneId = converter.convert(map.get(ID), ZoneId.class);
+            return zoneId;
         } else {
             return fromSingleKey(from, converter, ZONE, ZoneId.class);
         }

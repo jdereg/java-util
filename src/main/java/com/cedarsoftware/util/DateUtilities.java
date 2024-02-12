@@ -260,9 +260,10 @@ public final class DateUtilities {
                 tz = matcher.group(5).trim();
             }
             if (matcher.group(6) != null) {
-                if (StringUtilities.isEmpty(tz)) {    // Only use timezone name when offset is not used
-                    tz = stripBrackets(matcher.group(6).trim());
-                }
+                // to make round trip of ZonedDateTime equivalent we need to use the original Zone as ZoneId
+                // ZoneId is a much broader definition handling multiple possible dates, and we want this to
+                // be equivalent to the original zone that was used if one was present.
+                tz = stripBrackets(matcher.group(6).trim());
             }
         }
 

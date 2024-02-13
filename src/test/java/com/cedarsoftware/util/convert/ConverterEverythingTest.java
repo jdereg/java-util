@@ -1391,7 +1391,7 @@ class ConverterEverythingTest {
                 { Float.MIN_VALUE, "1.4E-45" },
                 { -Float.MAX_VALUE, "-3.4028235E38" },
                 { Float.MAX_VALUE, "3.4028235E38" },
-                { 123456789f, "1.23456792E8" },
+                { 12345679f, "1.2345679E7" },
                 { 0.000000123456789f, "1.2345679E-7" },
                 { 12345f, "12345.0" },
                 { 0.00012345f, "1.2345E-4" },
@@ -1689,15 +1689,10 @@ class ConverterEverythingTest {
             Object actual = converter.convert(source, targetClass);
             try {
                 assertEquals(target, actual);
-            }
-            catch (Throwable e) {
-                throw new RuntimeException(e);
+            } catch (Throwable e) {
+                System.err.println(shortNameSource + "[" + source + "] ==> " + shortNameTarget + "[" + target + "] Failed");
+                throw e;
             }
         }
-    }
-    
-    @Test
-    void testStuff()
-    {
     }
 }

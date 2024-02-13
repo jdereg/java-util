@@ -878,9 +878,9 @@ class ConverterEverythingTest {
                 { 1d, 1f },
                 { 1.1d, 1.1f },
                 { 1.999d, 1.999f },
-                { Double.MIN_VALUE, (float)Double.MIN_VALUE },
-                { Double.MAX_VALUE, (float)Double.MAX_VALUE },
-                { -Double.MAX_VALUE, (float)-Double.MAX_VALUE },
+                { (double)Float.MIN_VALUE, Float.MIN_VALUE },
+                { (double)Float.MAX_VALUE, Float.MAX_VALUE },
+                { (double)-Float.MAX_VALUE, -Float.MAX_VALUE },
         });
         TEST_DB.put(pair(Boolean.class, Float.class), new Object[][] {
                 { true, 1f },
@@ -914,8 +914,8 @@ class ConverterEverythingTest {
                 { new BigInteger("-1"), -1f },
                 { new BigInteger("0"), 0f },
                 { new BigInteger("1"), 1f },
-                { new BigInteger("-16777216"), -16_777_216f  },
-                { new BigInteger("16777216"), 16_777_216f  },
+                { new BigInteger("-16777216"), -16777216f  },
+                { new BigInteger("16777216"), 16777216f  },
         });
         TEST_DB.put(pair(BigDecimal.class, Float.class), new Object[][] {
                 { new BigDecimal("-1"), -1f },
@@ -925,8 +925,8 @@ class ConverterEverythingTest {
                 { new BigDecimal("1"), 1f },
                 { new BigDecimal("1.1"), 1.1f },
                 { new BigDecimal("1.9"), 1.9f },
-                { new BigDecimal("-16777216"), -16_777_216f  },
-                { new BigDecimal("16777216"), 16_777_216f  },
+                { new BigDecimal("-16777216"), -16777216f  },
+                { new BigDecimal("16777216"), 16777216f  },
         });
         TEST_DB.put(pair(Number.class, Float.class), new Object[][] {
                 { -2.2d, -2.2f}
@@ -973,6 +973,202 @@ class ConverterEverythingTest {
                 { Year.of(2024), 2024f }
         });
 
+        /////////////////////////////////////////////////////////////
+        // Double/double
+        /////////////////////////////////////////////////////////////
+        TEST_DB.put(pair(Void.class, double.class), new Object[][] {
+                { null, 0d }
+        });
+        TEST_DB.put(pair(Void.class, Double.class), new Object[][] {
+                { null, null }
+        });
+        TEST_DB.put(pair(Byte.class, Double.class), new Object[][] {
+                { (byte) -1, -1d },
+                { (byte) 0, 0d },
+                { (byte) 1, 1d },
+                { Byte.MIN_VALUE, (double)Byte.MIN_VALUE },
+                { Byte.MAX_VALUE, (double)Byte.MAX_VALUE },
+        });
+        TEST_DB.put(pair(Short.class, Double.class), new Object[][] {
+                { (short)-1, -1d },
+                { (short)0, 0d },
+                { (short)1, 1d },
+                { Short.MIN_VALUE, (double)Short.MIN_VALUE },
+                { Short.MAX_VALUE, (double)Short.MAX_VALUE },
+        });
+        TEST_DB.put(pair(Integer.class, Double.class), new Object[][] {
+                { -1, -1d },
+                { 0, 0d },
+                { 1, 1d },
+                { 2147483647, 2147483647d },
+                { -2147483648, -2147483648d },
+        });
+        TEST_DB.put(pair(Long.class, Double.class), new Object[][] {
+                { -1L, -1d },
+                { 0L, 0d },
+                { 1L, 1d },
+                { 9007199254740991L, 9007199254740991d },
+                { -9007199254740991L, -9007199254740991d },
+        });
+        TEST_DB.put(pair(Float.class, Double.class), new Object[][] {
+                { -1f, -1d },
+                { 0f, 0d },
+                { 1f, 1d },
+                { Float.MIN_VALUE, (double)Float.MIN_VALUE },
+                { Float.MAX_VALUE, (double)Float.MAX_VALUE },
+                { -Float.MAX_VALUE, (double)-Float.MAX_VALUE },
+        });
+        TEST_DB.put(pair(Double.class, Double.class), new Object[][] {
+                { -1d, -1d },
+                { -1.99d, -1.99d },
+                { -1.1d, -1.1d },
+                { 0d, 0d },
+                { 1d, 1d },
+                { 1.1d, 1.1d },
+                { 1.999d, 1.999d },
+                { Double.MIN_VALUE, Double.MIN_VALUE },
+                { Double.MAX_VALUE, Double.MAX_VALUE },
+                { -Double.MAX_VALUE, -Double.MAX_VALUE },
+        });
+        TEST_DB.put(pair(Boolean.class, Double.class), new Object[][] {
+                { true, 1d },
+                { false, 0d },
+        });
+        TEST_DB.put(pair(Character.class, Double.class), new Object[][] {
+                { '1', 49d },
+                { '0', 48d },
+                { (char) 1, 1d },
+                { (char) 0, 0d },
+        });
+        TEST_DB.put(pair(Instant.class, Double.class), new Object[][] {
+                { Instant.parse("2024-02-12T11:38:00+01:00"), 1707734280000d },
+        });
+        TEST_DB.put(pair(LocalDate.class, Double.class), new Object[][] {
+                { (Supplier<LocalDate>) () -> {
+                    ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:01");
+                    return zdt.toLocalDate();
+                }, 1707714000000d },                    // Epoch millis in Tokyo timezone (at start of day - no time)
+        });
+        TEST_DB.put(pair(LocalDateTime.class, Double.class), new Object[][] {
+                { (Supplier<LocalDateTime>) () -> {
+                    ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:01");
+                    return zdt.toLocalDateTime();
+                }, 1707755880000d },                    // Epoch millis in Tokyo timezone
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, Double.class), new Object[][] {
+                { ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000d },
+        });
+        TEST_DB.put(pair(Date.class, Double.class), new Object[][] {
+                { new Date(Long.MIN_VALUE), (double) Long.MIN_VALUE },
+                { new Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE },
+                { new Date(0), 0d },
+                { new Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE },
+                { new Date(Long.MAX_VALUE), (double) Long.MAX_VALUE },
+        });
+        TEST_DB.put(pair(java.sql.Date.class, Double.class), new Object[][] {
+                { new java.sql.Date(Long.MIN_VALUE), (double) Long.MIN_VALUE },
+                { new java.sql.Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE },
+                { new java.sql.Date(0), 0d },
+                { new java.sql.Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE },
+                { new java.sql.Date(Long.MAX_VALUE), (double) Long.MAX_VALUE },
+        });
+        TEST_DB.put(pair(Timestamp.class, Double.class), new Object[][] {
+                { new Timestamp(Long.MIN_VALUE), (double) Long.MIN_VALUE },
+                { new Timestamp(Integer.MIN_VALUE), (double) Integer.MIN_VALUE },
+                { new Timestamp(0), 0d },
+                { new Timestamp(Integer.MAX_VALUE), (double) Integer.MAX_VALUE },
+                { new Timestamp(Long.MAX_VALUE), (double) Long.MAX_VALUE },
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, Double.class), new Object[][] {
+                { new AtomicBoolean(true), 1d },
+                { new AtomicBoolean(false), 0d },
+        });
+        TEST_DB.put(pair(AtomicInteger.class, Double.class), new Object[][] {
+                { new AtomicInteger(-1), -1d },
+                { new AtomicInteger(0), 0d },
+                { new AtomicInteger(1), 1d },
+                { new AtomicInteger(-2147483648), (double)Integer.MIN_VALUE },
+                { new AtomicInteger(2147483647), (double)Integer.MAX_VALUE },
+        });
+        TEST_DB.put(pair(AtomicLong.class, Double.class), new Object[][] {
+                { new AtomicLong(-1), -1d },
+                { new AtomicLong(0), 0d },
+                { new AtomicLong(1), 1d },
+                { new AtomicLong(-9007199254740991L), -9007199254740991d },
+                { new AtomicLong(9007199254740991L), 9007199254740991d },
+        });
+        TEST_DB.put(pair(BigInteger.class, Double.class), new Object[][] {
+                { new BigInteger("-1"), -1d },
+                { new BigInteger("0"), 0d },
+                { new BigInteger("1"), 1d },
+                { new BigInteger("-9007199254740991"), -9007199254740991d },
+                { new BigInteger("9007199254740991"), 9007199254740991d },
+        });
+        TEST_DB.put(pair(BigDecimal.class, Double.class), new Object[][] {
+                { new BigDecimal("-1"), -1d },
+                { new BigDecimal("-1.1"), -1.1d },
+                { new BigDecimal("-1.9"), -1.9d },
+                { new BigDecimal("0"), 0d },
+                { new BigDecimal("1"), 1d },
+                { new BigDecimal("1.1"), 1.1d },
+                { new BigDecimal("1.9"), 1.9d },
+                { new BigDecimal("-9007199254740991"), -9007199254740991d },
+                { new BigDecimal("9007199254740991"), 9007199254740991d },
+        });
+        TEST_DB.put(pair(Calendar.class, Double.class), new Object[][] {
+                { (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TZ_TOKYO);
+                    cal.set(2024, Calendar.FEBRUARY, 12, 11, 38, 0);
+                    return cal;
+                }, 1707705480000d }
+        });
+        TEST_DB.put(pair(Number.class, Double.class), new Object[][] {
+                { 2.5f, 2.5d }
+        });
+        TEST_DB.put(pair(Map.class, Double.class), new Object[][] {
+                { mapOf("_v", "-1"), -1d },
+                { mapOf("_v", -1), -1d },
+                { mapOf("value", "-1"), -1d },
+                { mapOf("value", -1L), -1d },
+
+                { mapOf("_v", "0"), 0d },
+                { mapOf("_v", 0), 0d },
+
+                { mapOf("_v", "1"), 1d },
+                { mapOf("_v", 1), 1d },
+
+                { mapOf("_v", "-9007199254740991"), -9007199254740991d },
+                { mapOf("_v", -9007199254740991L), -9007199254740991d },
+
+                { mapOf("_v", "9007199254740991"), 9007199254740991d },
+                { mapOf("_v", 9007199254740991L), 9007199254740991d },
+                
+                { mapOf("_v", mapOf("_v", -9007199254740991L)), -9007199254740991d },    // Prove use of recursive call to .convert()
+        });
+        TEST_DB.put(pair(String.class, Double.class), new Object[][] {
+                { "-1", -1d },
+                { "-1.1", -1.1d },
+                { "-1.9", -1.9d },
+                { "0", 0d },
+                { "1", 1d },
+                { "1.1", 1.1d },
+                { "1.9", 1.9d },
+                { "-2147483648", -2147483648d },
+                { "2147483647", 2147483647d },
+                { "", 0d },
+                { " ", 0d },
+                { "crapola", new IllegalArgumentException("Value 'crapola' not parseable as a double") },
+                { "54 crapola", new IllegalArgumentException("Value '54 crapola' not parseable as a double") },
+                { "54crapola", new IllegalArgumentException("Value '54crapola' not parseable as a double") },
+                { "crapola 54", new IllegalArgumentException("Value 'crapola 54' not parseable as a double") },
+                { "crapola54", new IllegalArgumentException("Value 'crapola54' not parseable as a double") },
+        });
+        TEST_DB.put(pair(Year.class, Double.class), new Object[][] {
+                { Year.of(2024), 2024d }
+        });
+        
         /////////////////////////////////////////////////////////////
         // Instant
         /////////////////////////////////////////////////////////////

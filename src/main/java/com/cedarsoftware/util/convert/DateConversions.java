@@ -42,6 +42,10 @@ final class DateConversions {
         return ((Date) from).getTime();
     }
 
+    static double toDouble(Object from, Converter converter) {
+        return ((Date) from).getTime();
+    }
+
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         return new java.sql.Date(toLong(from, converter));
     }

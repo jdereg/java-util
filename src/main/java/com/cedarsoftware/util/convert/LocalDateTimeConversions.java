@@ -46,7 +46,11 @@ final class LocalDateTimeConversions {
     static long toLong(Object from, Converter converter) {
         return toInstant(from, converter).toEpochMilli();
     }
-    
+
+    static double toDouble(Object from, Converter converter) {
+        return toInstant(from, converter).toEpochMilli();
+    }
+
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDateTime();
     }

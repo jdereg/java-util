@@ -221,7 +221,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(String.class, Float.class), StringConversions::toFloat);
         CONVERSION_DB.put(pair(Year.class, Float.class), YearConversions::toFloat);
 
-        // Double/double conversions supported
+        // toDouble
         CONVERSION_DB.put(pair(Void.class, double.class), NumberConversions::toDoubleZero);
         CONVERSION_DB.put(pair(Void.class, Double.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, Double.class), NumberConversions::toDouble);
@@ -234,11 +234,11 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character.class, Double.class), CharacterConversions::toDouble);
         CONVERSION_DB.put(pair(Instant.class, Double.class), InstantConversions::toDouble);
         CONVERSION_DB.put(pair(LocalDate.class, Double.class), LocalDateConversions::toDouble);
-        CONVERSION_DB.put(pair(LocalDateTime.class, Double.class), LocalDateTimeConversions::toLong);
-        CONVERSION_DB.put(pair(ZonedDateTime.class, Double.class), ZonedDateTimeConversions::toLong);
-        CONVERSION_DB.put(pair(Date.class, Double.class), DateConversions::toLong);
-        CONVERSION_DB.put(pair(java.sql.Date.class, Double.class), DateConversions::toLong);
-        CONVERSION_DB.put(pair(Timestamp.class, Double.class), DateConversions::toLong);
+        CONVERSION_DB.put(pair(LocalDateTime.class, Double.class), LocalDateTimeConversions::toDouble);
+        CONVERSION_DB.put(pair(ZonedDateTime.class, Double.class), ZonedDateTimeConversions::toDouble);
+        CONVERSION_DB.put(pair(Date.class, Double.class), DateConversions::toDouble);
+        CONVERSION_DB.put(pair(java.sql.Date.class, Double.class), DateConversions::toDouble);
+        CONVERSION_DB.put(pair(Timestamp.class, Double.class), DateConversions::toDouble);
         CONVERSION_DB.put(pair(AtomicBoolean.class, Double.class), AtomicBooleanConversions::toDouble);
         CONVERSION_DB.put(pair(AtomicInteger.class, Double.class), NumberConversions::toDouble);
         CONVERSION_DB.put(pair(AtomicLong.class, Double.class), NumberConversions::toDouble);

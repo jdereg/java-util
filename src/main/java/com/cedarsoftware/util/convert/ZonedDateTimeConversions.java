@@ -35,28 +35,32 @@ final class ZonedDateTimeConversions {
 
     private ZonedDateTimeConversions() {}
 
-    static ZonedDateTime toDifferentZone(Object from, Converter converter) {
-        return ((ZonedDateTime)from).withZoneSameInstant(converter.getOptions().getZoneId());
-    }
-    
     static long toLong(Object from, Converter converter) {
-        return toInstant(from, converter).toEpochMilli();
+        return ((ZonedDateTime) from).toInstant().toEpochMilli();   // speed over shorter code.
+    }
+
+    static double toDouble(Object from, Converter converter) {
+        return ((ZonedDateTime) from).toInstant().toEpochMilli();   // speed over shorter code.
     }
 
     static Instant toInstant(Object from, Converter converter) {
         return ((ZonedDateTime) from).toInstant();
     }
 
+    private static ZonedDateTime toDifferentZone(Object from, Converter converter) {
+        return ((ZonedDateTime)from).withZoneSameInstant(converter.getOptions().getZoneId());
+    }
+    
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalDateTime();
+        return toDifferentZone(from, converter).toLocalDateTime();  // shorter code over speed
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalDate();
+        return toDifferentZone(from, converter).toLocalDate();  // shorter code over speed
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalTime();
+        return toDifferentZone(from, converter).toLocalTime();  // shorter code over speed
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {

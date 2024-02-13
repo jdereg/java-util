@@ -792,7 +792,7 @@ class ConverterEverythingTest {
                 { new Timestamp(Long.MAX_VALUE), Long.MAX_VALUE },
         });
         TEST_DB.put(pair(Instant.class, Long.class), new Object[][] {
-                { Instant.parse("2024-02-12T11:38:00+01:00"), 1707734280000L },
+                { ZonedDateTime.parse("2024-02-12T11:38:00+01:00").toInstant(), 1707734280000L },
         });
         TEST_DB.put(pair(LocalDate.class, Long.class), new Object[][] {
                 { (Supplier<LocalDate>) () -> {
@@ -1041,7 +1041,7 @@ class ConverterEverythingTest {
                 { (char) 0, 0d },
         });
         TEST_DB.put(pair(Instant.class, Double.class), new Object[][] {
-                { Instant.parse("2024-02-12T11:38:00+01:00"), 1707734280000d },
+                { ZonedDateTime.parse("2024-02-12T11:38:00+01:00").toInstant(), 1707734280000d },
         });
         TEST_DB.put(pair(LocalDate.class, Double.class), new Object[][] {
                 { (Supplier<LocalDate>) () -> {

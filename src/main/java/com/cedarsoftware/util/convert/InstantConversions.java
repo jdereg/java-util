@@ -80,7 +80,7 @@ final class InstantConversions {
     static Calendar toCalendar(Object from, Converter converter) {
         return CalendarConversions.create(toLong(from, converter), converter);
     }
-    
+
     static BigInteger toBigInteger(Object from, Converter converter) {
         return BigInteger.valueOf(toLong(from, converter));
     }

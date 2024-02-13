@@ -618,6 +618,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetDateTime.class, OffsetDateTime.class), Converter::identity);
         CONVERSION_DB.put(pair(Map.class, OffsetDateTime.class), MapConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(String.class, OffsetDateTime.class), StringConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(Long.class, OffsetDateTime.class), NumberConversions::toOffsetDateTime);
 
         // toOffsetTime
         CONVERSION_DB.put(pair(Void.class, OffsetTime.class), VoidConversions::toNull);
@@ -852,6 +853,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Number.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(Map.class, Map.class), MapConversions::toMap);
         CONVERSION_DB.put(pair(Enum.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(OffsetDateTime.class, Map.class), OffsetDateTimeConversions::toMap);
     }
 
     public Converter(ConverterOptions options) {

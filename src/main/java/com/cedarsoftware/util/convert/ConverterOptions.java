@@ -5,7 +5,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 
 /**
@@ -68,4 +70,10 @@ public interface ConverterOptions {
      * @return the Character representing false
      */
     default Character falseChar() { return CommonValues.CHARACTER_ZERO; }
+
+    /**
+     * Overrides for converter conversions..
+     * @return The Map of overrides.
+     */
+    default Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> getConverterOverrides() { return new HashMap<>(); }
 }

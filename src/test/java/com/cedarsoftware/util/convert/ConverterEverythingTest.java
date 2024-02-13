@@ -70,11 +70,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *         limitations under the License.
  */
 class ConverterEverythingTest {
-    private static final TimeZone TZ_TOKYO = TimeZone.getTimeZone("Asia/Tokyo");
+    private static final String TOKYO = "Asia/Tokyo";
+    private static final ZoneId TOKYO_Z = ZoneId.of(TOKYO);
+    private static final TimeZone TOKYO_TZ = TimeZone.getTimeZone(TOKYO_Z);
     private Converter converter;
     private final ConverterOptions options = new ConverterOptions() {
         public TimeZone getTimeZone() {
-            return TZ_TOKYO;
+            return TOKYO_TZ;
         }
     };
     private static final Map<Map.Entry<Class<?>, Class<?>>, Object[][]> TEST_DB = new ConcurrentHashMap<>(500, .8f);
@@ -797,14 +799,16 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(LocalDate.class, Long.class), new Object[][] {
                 { (Supplier<LocalDate>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
+                    zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDate();           
-                }, 1707663600000L },                    // Epoch millis in Tokyo timezone (at start of day - no time)
+                }, 1707714000000L },                    // Epoch millis in Tokyo timezone (at start of day - no time)
         });
         TEST_DB.put(pair(LocalDateTime.class, Long.class), new Object[][] {
                 { (Supplier<LocalDateTime>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
+                    zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDateTime();
-                }, 1707705480000L },                    // Epoch millis in Tokyo timezone
+                }, 1707784680000L },                    // Epoch millis in Tokyo timezone
         });
         TEST_DB.put(pair(ZonedDateTime.class, Long.class), new Object[][] {
                 { ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000L },
@@ -813,7 +817,7 @@ class ConverterEverythingTest {
                 { (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
-                    cal.setTimeZone(TZ_TOKYO);
+                    cal.setTimeZone(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 12, 11, 38, 0);
                     return cal;
                 }, 1707705480000L }
@@ -1046,14 +1050,16 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(LocalDate.class, Double.class), new Object[][] {
                 { (Supplier<LocalDate>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
+                    zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDate();
-                }, 1707663600000d },                    // Epoch millis in Tokyo timezone (at start of day - no time)
+                }, 1.707714E12d },                    // Epoch millis in Tokyo timezone (at start of day - no time)
         });
         TEST_DB.put(pair(LocalDateTime.class, Double.class), new Object[][] {
                 { (Supplier<LocalDateTime>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
+                    zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDateTime();
-                }, 1707705480000d },                    // Epoch millis in Tokyo timezone
+                }, 1.70778468E12d },                    // Epoch millis in Tokyo timezone
         });
         TEST_DB.put(pair(ZonedDateTime.class, Double.class), new Object[][] {
                 { ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000d },
@@ -1119,7 +1125,7 @@ class ConverterEverythingTest {
                 { (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
-                    cal.setTimeZone(TZ_TOKYO);
+                    cal.setTimeZone(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 12, 11, 38, 0);
                     return cal;
                 }, 1707705480000d }
@@ -1504,7 +1510,7 @@ class ConverterEverythingTest {
                 { (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
-                    cal.setTimeZone(TZ_TOKYO);
+                    cal.setTimeZone(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 0);
                     return cal;
                 }, "2024-02-05T22:31:00" }
@@ -1595,12 +1601,12 @@ class ConverterEverythingTest {
     
     private static String toGmtString(Date date) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        simpleDateFormat.setTimeZone(TZ_TOKYO);
+        simpleDateFormat.setTimeZone(TOKYO_TZ);
         return simpleDateFormat.format(date);
     }
 
     @BeforeEach
-    public void before() {
+    void before() {
         // create converter with default options
         converter = new Converter(options);
     }

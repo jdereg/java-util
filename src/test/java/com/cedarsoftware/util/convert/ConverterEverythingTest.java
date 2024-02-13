@@ -77,8 +77,8 @@ class ConverterEverythingTest {
     private static final TimeZone TOKYO_TZ = TimeZone.getTimeZone(TOKYO_Z);
     private Converter converter;
     private final ConverterOptions options = new ConverterOptions() {
-        public TimeZone getTimeZone() {
-            return TOKYO_TZ;
+        public ZoneId getZoneId() {
+            return TOKYO_Z;
         }
     };
     private static final Map<Map.Entry<Class<?>, Class<?>>, Object[][]> TEST_DB = new ConcurrentHashMap<>(500, .8f);
@@ -803,14 +803,14 @@ class ConverterEverythingTest {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDate();           
-                }, 1707714000000L },                    // Epoch millis in Tokyo timezone (at start of day - no time)
+                }, 1707663600000L },                    // Epoch millis in Tokyo timezone (at start of day - no time)
         });
         TEST_DB.put(pair(LocalDateTime.class, Long.class), new Object[][] {
                 { (Supplier<LocalDateTime>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDateTime();
-                }, 1707784680000L },                    // Epoch millis in Tokyo timezone
+                }, 1707734280000L },                    // Epoch millis in Tokyo timezone
         });
         TEST_DB.put(pair(ZonedDateTime.class, Long.class), new Object[][] {
                 { ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000L },
@@ -1054,14 +1054,14 @@ class ConverterEverythingTest {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDate();
-                }, 1.707714E12d },                    // Epoch millis in Tokyo timezone (at start of day - no time)
+                }, 1.7076636E12 },                    // Epoch millis in Tokyo timezone (at start of day - no time)
         });
         TEST_DB.put(pair(LocalDateTime.class, Double.class), new Object[][] {
                 { (Supplier<LocalDateTime>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDateTime();
-                }, 1.70778468E12d },                    // Epoch millis in Tokyo timezone
+                }, 1.70773428E12 },                    // Epoch millis in Tokyo timezone
         });
         TEST_DB.put(pair(ZonedDateTime.class, Double.class), new Object[][] {
                 { ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000d },

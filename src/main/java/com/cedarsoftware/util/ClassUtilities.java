@@ -40,6 +40,7 @@ public class ClassUtilities
 {
     private static final Set<Class<?>> prims = new HashSet<>();
 
+    private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<String, Class<?>> nameToClass = new HashMap<>();
 
     static
@@ -64,6 +65,16 @@ public class ClassUtilities
         nameToClass.put("string", String.class);
         nameToClass.put("date", Date.class);
         nameToClass.put("class", Class.class);
+
+        primitiveToWrapper.put(int.class, Integer.class);
+        primitiveToWrapper.put(long.class, Long.class);
+        primitiveToWrapper.put(double.class, Double.class);
+        primitiveToWrapper.put(float.class, Float.class);
+        primitiveToWrapper.put(boolean.class, Boolean.class);
+        primitiveToWrapper.put(char.class, Character.class);
+        primitiveToWrapper.put(byte.class, Byte.class);
+        primitiveToWrapper.put(short.class, Short.class);
+        primitiveToWrapper.put(void.class, Void.class);
 
     }
 
@@ -307,4 +318,20 @@ public class ClassUtilities
 
         return true;
     }
+
+    public static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass) {
+        if (!primitiveClass.isPrimitive()) {
+            return primitiveClass;
+        }
+
+        Class<?> c = primitiveToWrapper.get(primitiveClass);
+
+        if (c == null) {
+            throw new IllegalArgumentException("Passed in class: " + primitiveClass + " is not a primitive class");
+        }
+
+        return c;
+    }
+
+
 }

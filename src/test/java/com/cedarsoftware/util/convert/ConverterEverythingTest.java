@@ -43,6 +43,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import com.cedarsoftware.util.ClassUtilities;
+
 import static com.cedarsoftware.util.MapUtilities.mapOf;
 import static com.cedarsoftware.util.convert.Converter.getShortName;
 import static com.cedarsoftware.util.convert.Converter.pair;
@@ -1676,9 +1678,9 @@ class ConverterEverythingTest {
         if (source == null) {
             assertEquals(sourceClass, Void.class, "On the source-side of test input, null can only appear in the Void.class data");
         } else {
-            assertTrue(Converter.toPrimitiveWrapperClass(sourceClass).isInstance(source), "source type mismatch");
+            assertTrue(ClassUtilities.toPrimitiveWrapperClass(sourceClass).isInstance(source), "source type mismatch");
         }
-        assertTrue(target == null || target instanceof Throwable || Converter.toPrimitiveWrapperClass(targetClass).isInstance(target), "target type mismatch");
+        assertTrue(target == null || target instanceof Throwable || ClassUtilities.toPrimitiveWrapperClass(targetClass).isInstance(target), "target type mismatch");
 
         // if the source/target are the same Class, then ensure identity lambda is used.
         if (sourceClass.equals(targetClass)) {

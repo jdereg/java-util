@@ -23,7 +23,6 @@ import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -34,6 +33,8 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.ClassUtilities;
 
 /**
  * Instance conversion utility.  Convert from primitive to other primitives, plus support for Number, Date,
@@ -78,7 +79,6 @@ public final class Converter {
     private final ConverterOptions options;
 
     private static final Map<Class<?>, Set<ClassLevel>> cacheParentTypes = new ConcurrentHashMap<>();
-    private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> CONVERSION_DB = new ConcurrentHashMap<>(500, .8f);
 
     // Create a Map.Entry (pair) of source class to target class.
@@ -87,24 +87,11 @@ public final class Converter {
     }
 
     static {
-        buildPrimitiveWrappers();
         buildFactoryConversions();
     }
 
     public ConverterOptions getOptions() {
         return options;
-    }
-
-    private static void buildPrimitiveWrappers() {
-        primitiveToWrapper.put(int.class, Integer.class);
-        primitiveToWrapper.put(long.class, Long.class);
-        primitiveToWrapper.put(double.class, Double.class);
-        primitiveToWrapper.put(float.class, Float.class);
-        primitiveToWrapper.put(boolean.class, Boolean.class);
-        primitiveToWrapper.put(char.class, Character.class);
-        primitiveToWrapper.put(byte.class, Byte.class);
-        primitiveToWrapper.put(short.class, Short.class);
-        primitiveToWrapper.put(void.class, Void.class);
     }
 
     private static void buildFactoryConversions() {
@@ -859,6 +846,7 @@ public final class Converter {
     public Converter(ConverterOptions options) {
         this.options = options;
         this.factory = new ConcurrentHashMap<>(CONVERSION_DB);
+        this.factory.putAll(this.options.getConverterOverrides());
     }
 
     /**
@@ -901,7 +889,7 @@ public final class Converter {
             // Promote primitive to primitive wrapper, so we don't have to define so many duplicates in the factory map.
             sourceType = from.getClass();
             if (toType.isPrimitive()) {
-                toType = (Class<T>) toPrimitiveWrapperClass(toType);
+                toType = (Class<T>)  ClassUtilities.toPrimitiveWrapperClass(toType);
             }
         }
 
@@ -1038,8 +1026,8 @@ public final class Converter {
      * @return boolean true if the Converter converts from the source type to the destination type, false otherwise.
      */
     boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
-        source = toPrimitiveWrapperClass(source);
-        target = toPrimitiveWrapperClass(target);
+        source =  ClassUtilities.toPrimitiveWrapperClass(source);
+        target =  ClassUtilities.toPrimitiveWrapperClass(target);
         Convert<?> method = factory.get(pair(source, target));
         return method != null && method != UNSUPPORTED;
     }
@@ -1052,8 +1040,8 @@ public final class Converter {
      * @return boolean true if the Converter converts from the source type to the destination type, false otherwise.
      */
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
-        source = toPrimitiveWrapperClass(source);
-        target = toPrimitiveWrapperClass(target);
+        source =  ClassUtilities.toPrimitiveWrapperClass(source);
+        target =  ClassUtilities.toPrimitiveWrapperClass(target);
         Convert<?> method = factory.get(pair(source, target));
         if (method != null && method != UNSUPPORTED) {
             return true;
@@ -1104,28 +1092,14 @@ public final class Converter {
      * @return prior conversion function if one existed.
      */
     public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
-        source = toPrimitiveWrapperClass(source);
-        target = toPrimitiveWrapperClass(target);
+        source = ClassUtilities.toPrimitiveWrapperClass(source);
+        target = ClassUtilities.toPrimitiveWrapperClass(target);
         return factory.put(pair(source, target), conversionFunction);
     }
-    
+
     /**
      * Given a primitive class, return the Wrapper class equivalent.
      */
-    static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass) {
-        if (!primitiveClass.isPrimitive()) {
-            return primitiveClass;
-        }
-
-        Class<?> c = primitiveToWrapper.get(primitiveClass);
-
-        if (c == null) {
-            throw new IllegalArgumentException("Passed in class: " + primitiveClass + " is not a primitive class");
-        }
-
-        return c;
-    }
-
     private static <T> T identity(T from, Converter converter) {
         return from;
     }

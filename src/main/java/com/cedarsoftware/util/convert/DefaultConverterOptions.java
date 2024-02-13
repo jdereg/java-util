@@ -1,9 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.time.ZoneId;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,8 +24,11 @@ public class DefaultConverterOptions implements ConverterOptions {
 
     private final Map<String, Object> customOptions;
 
+    private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> converterOverrides;
+
     public DefaultConverterOptions() {
         this.customOptions = new ConcurrentHashMap<>();
+        this.converterOverrides = new ConcurrentHashMap<>();
     }
 
     @SuppressWarnings("unchecked")
@@ -37,4 +36,7 @@ public class DefaultConverterOptions implements ConverterOptions {
     public <T> T getCustomOption(String name) {
         return (T) this.customOptions.get(name);
     }
+
+    @Override
+    public Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> getConverterOverrides() { return this.converterOverrides; }
 }

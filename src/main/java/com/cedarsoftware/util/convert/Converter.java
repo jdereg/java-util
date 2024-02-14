@@ -3,6 +3,8 @@ package com.cedarsoftware.util.convert;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URI;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.sql.Timestamp;
@@ -23,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -628,6 +631,12 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, Class.class), MapConversions::toClass);
         CONVERSION_DB.put(pair(String.class, Class.class), StringConversions::toClass);
 
+        // Class conversions supported
+        CONVERSION_DB.put(pair(Void.class, Locale.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(Locale.class, Locale.class), Converter::identity);
+        CONVERSION_DB.put(pair(String.class, Locale.class), StringConversions::toLocale);
+        CONVERSION_DB.put(pair(Map.class, Locale.class), MapConversions::toLocale);
+
         // String conversions supported
         CONVERSION_DB.put(pair(Void.class, String.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, String.class), StringConversions::toString);
@@ -673,6 +682,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetTime.class, String.class), OffsetTimeConversions::toString);
         CONVERSION_DB.put(pair(OffsetDateTime.class, String.class), OffsetDateTimeConversions::toString);
         CONVERSION_DB.put(pair(Year.class, String.class), YearConversions::toString);
+        CONVERSION_DB.put(pair(Locale.class, String.class), LocaleConversions::toString);
+        CONVERSION_DB.put(pair(URL.class, String.class), StringConversions::toString);
+        CONVERSION_DB.put(pair(URI.class, String.class), StringConversions::toString);
         
         // Duration conversions supported
         CONVERSION_DB.put(pair(Void.class, Duration.class), VoidConversions::toNull);

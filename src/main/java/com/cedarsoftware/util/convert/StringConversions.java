@@ -25,6 +25,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -349,6 +350,15 @@ final class StringConversions {
         } catch (Exception e) {
             return parseDate(str, converter).map(ZonedDateTime::toLocalTime).orElse(null);
         }
+    }
+
+    static Locale toLocale(Object from, Converter converter) {
+        String str = StringUtilities.trimToNull(asString(from));
+        if (str == null) {
+            return null;
+        }
+
+        return Locale.forLanguageTag(str);
     }
 
     private static Optional<ZonedDateTime> parseDate(Object from, Converter converter) {

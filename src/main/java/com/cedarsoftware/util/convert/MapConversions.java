@@ -20,6 +20,7 @@ import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -81,6 +82,9 @@ final class MapConversions {
     static final String DATE_TIME = "dateTime";
 
     private static final String ID = "id";
+    public static final String LANGUAGE = "language";
+    public static final String VARIANT = "variant";
+    private static String COUNTRY = "country";
 
     private MapConversions() {}
     
@@ -203,6 +207,32 @@ final class MapConversions {
             return fromValueForMultiKey(map, converter, Calendar.class, CALENDAR_PARAMS);
         }
     }
+
+    private static final String[] LOCALE_PARAMS = new String[] { LANGUAGE };
+    static Locale toLocale(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+
+        if (map.containsKey(VALUE) || map.containsKey(V)) {
+            return fromValueForMultiKey(map, converter, Locale.class, LOCALE_PARAMS);
+        }
+
+        String language = converter.convert(map.get(LANGUAGE), String.class);
+        if (language == null) {
+            throw new IllegalArgumentException("java.util.Locale must specify 'language' field");
+        }
+        String country = converter.convert(map.get(COUNTRY), String.class);
+        String variant = converter.convert(map.get(VARIANT), String.class);
+
+        if (country == null) {
+            return new Locale(language);
+        }
+        if (variant == null) {
+            return new Locale(language, country);
+        }
+
+        return new Locale(language, country, variant);
+    }
+
 
     private static final String[] LOCAL_DATE_PARAMS = new String[] { YEAR, MONTH, DAY };
     static LocalDate toLocalDate(Object from, Converter converter) {
@@ -360,16 +390,18 @@ final class MapConversions {
 
     private static final String[] PERIOD_PARAMS = new String[] { YEARS, MONTHS, DAYS };
     static Period toPeriod(Object from, Converter converter) {
+
         Map<String, Object> map = (Map<String, Object>) from;
-        if (map.containsKey(YEARS) && map.containsKey(MONTHS) && map.containsKey(DAYS)) {
-            ConverterOptions options = converter.getOptions();
-            int years = converter.convert(map.get(YEARS), int.class);
-            int months = converter.convert(map.get(MONTHS), int.class);
-            int days = converter.convert(map.get(DAYS), int.class);
-            return Period.of(years, months, days);
-        } else {
+
+        if (map.containsKey(VALUE) || map.containsKey(V)) {
             return fromValueForMultiKey(from, converter, Period.class, PERIOD_PARAMS);
         }
+
+        Number years = converter.convert(map.getOrDefault(YEARS, 0), int.class);
+        Number months = converter.convert(map.getOrDefault(MONTHS, 0), int.class);
+        Number days = converter.convert(map.getOrDefault(DAYS, 0), int.class);
+
+        return Period.of(years.intValue(), months.intValue(), days.intValue());
     }
 
     static ZoneId toZoneId(Object from, Converter converter) {
@@ -391,10 +423,9 @@ final class MapConversions {
     static ZoneOffset toZoneOffset(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
         if (map.containsKey(HOURS)) {
-            ConverterOptions options = converter.getOptions();
             int hours = converter.convert(map.get(HOURS), int.class);
-            int minutes = converter.convert(map.get(MINUTES), int.class);  // optional
-            int seconds = converter.convert(map.get(SECONDS), int.class);  // optional
+            int minutes = converter.convert(map.getOrDefault(MINUTES, 0), int.class);  // optional
+            int seconds = converter.convert(map.getOrDefault(SECONDS, 0), int.class);  // optional
             return ZoneOffset.ofHoursMinutesSeconds(hours, minutes, seconds);
         } else {
             return fromValueForMultiKey(from, converter, ZoneOffset.class, ZONE_OFFSET_PARAMS);

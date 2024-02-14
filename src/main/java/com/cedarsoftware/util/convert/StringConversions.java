@@ -3,6 +3,9 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.sql.Timestamp;
@@ -239,6 +242,27 @@ final class StringConversions {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigDecimal value.");
         }
+    }
+
+    static URL toURL(Object from, Converter converter) {
+        String str = StringUtilities.trimToNull(asString(from));
+        if (str == null) {
+            return null;
+        }
+        try {
+            URI uri = URI.create((String) from);
+            return uri.toURL();
+        } catch (MalformedURLException mue) {
+            throw new IllegalArgumentException("Cannot convert String '" + str);
+        }
+    }
+
+    static URI toURI(Object from, Converter converter) {
+        String str = StringUtilities.trimToNull(asString(from));
+        if (str == null) {
+            return null;
+        }
+        return URI.create((String) from);
     }
 
     static String enumToString(Object from, Converter converter) {

@@ -2,6 +2,9 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -84,6 +87,13 @@ final class MapConversions {
     private static final String ID = "id";
     public static final String LANGUAGE = "language";
     public static final String VARIANT = "variant";
+    public static final String JAR = "jar";
+    public static final String AUTHORITY = "authority";
+    public static final String REF = "ref";
+    public static final String PORT = "port";
+    public static final String FILE = "file";
+    public static final String HOST = "host";
+    public static final String PROTOCOL = "protocol";
     private static String COUNTRY = "country";
 
     private MapConversions() {}
@@ -181,6 +191,18 @@ final class MapConversions {
         }
 
         return fromValueForMultiKey(map, converter, Timestamp.class, TIMESTAMP_PARAMS);
+    }
+
+    private static final String[] TIMEZONE_PARAMS = new String[] { ZONE };
+    static TimeZone toTimeZone(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+        ConverterOptions options = converter.getOptions();
+
+        if (map.containsKey(ZONE)) {
+            return converter.convert(map.get(ZONE), TimeZone.class);
+        } else {
+            return fromValueForMultiKey(map, converter, TimeZone.class, TIMEZONE_PARAMS);
+        }
     }
 
     private static final String[] CALENDAR_PARAMS = new String[] { TIME, ZONE };
@@ -434,6 +456,54 @@ final class MapConversions {
 
     static Year toYear(Object from, Converter converter) {
         return fromSingleKey(from, converter, YEAR, Year.class);
+    }
+
+    static URL toURL(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>)from;
+        StringBuilder builder = new StringBuilder(20);
+
+        try {
+            if (map.containsKey(VALUE) || map.containsKey(V)) {
+                return fromValue(map, converter, URL.class);
+            }
+
+            String protocol = (String) map.get(PROTOCOL);
+            String host = (String) map.get(HOST);
+            String file = (String) map.get(FILE);
+            String authority = (String) map.get(AUTHORITY);
+            String ref = (String) map.get(REF);
+            Long port = (Long) map.get(PORT);
+
+            builder.append(protocol);
+            builder.append(':');
+            if (!protocol.equalsIgnoreCase(JAR)) {
+                builder.append("//");
+            }
+            if (authority != null && !authority.isEmpty()) {
+                builder.append(authority);
+            } else {
+                if (host != null && !host.isEmpty()) {
+                    builder.append(host);
+                }
+                if (!port.equals(-1L)) {
+                    builder.append(":" + port);
+                }
+            }
+            if (file != null && !file.isEmpty()) {
+                builder.append(file);
+            }
+            if (ref != null && !ref.isEmpty()) {
+                builder.append("#" + ref);
+            }
+            return URI.create(builder.toString()).toURL();
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Cannot convert Map to URL.  Malformed URL:  '" + builder + "'");
+        }
+    }
+
+    static URI toURI(Object from, Converter converter) {
+        Map<?, ?> map = asMap(from);
+        return fromValue(map, converter, URI.class);
     }
 
     static Map<String, ?> initMap(Object from, Converter converter) {

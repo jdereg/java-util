@@ -1069,25 +1069,25 @@ class ConverterEverythingTest {
                 { ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000d },
         });
         TEST_DB.put(pair(Date.class, Double.class), new Object[][] {
-                { new Date(Long.MIN_VALUE), (double) Long.MIN_VALUE },
-                { new Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE },
-                { new Date(0), 0d },
-                { new Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE },
-                { new Date(Long.MAX_VALUE), (double) Long.MAX_VALUE },
+                { new Date(Long.MIN_VALUE), (double) Long.MIN_VALUE, true },
+                { new Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE, true },
+                { new Date(0), 0d, true },
+                { new Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE, true },
+                { new Date(Long.MAX_VALUE), (double) Long.MAX_VALUE, true },
         });
         TEST_DB.put(pair(java.sql.Date.class, Double.class), new Object[][] {
-                { new java.sql.Date(Long.MIN_VALUE), (double) Long.MIN_VALUE },
-                { new java.sql.Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE },
-                { new java.sql.Date(0), 0d },
-                { new java.sql.Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE },
-                { new java.sql.Date(Long.MAX_VALUE), (double) Long.MAX_VALUE },
+                { new java.sql.Date(Long.MIN_VALUE), (double) Long.MIN_VALUE, true },
+                { new java.sql.Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE, true },
+                { new java.sql.Date(0), 0d, true },
+                { new java.sql.Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE, true },
+                { new java.sql.Date(Long.MAX_VALUE), (double) Long.MAX_VALUE, true },
         });
         TEST_DB.put(pair(Timestamp.class, Double.class), new Object[][] {
-                { new Timestamp(Long.MIN_VALUE), (double) Long.MIN_VALUE },
-                { new Timestamp(Integer.MIN_VALUE), (double) Integer.MIN_VALUE },
-                { new Timestamp(0), 0d },
-                { new Timestamp(Integer.MAX_VALUE), (double) Integer.MAX_VALUE },
-                { new Timestamp(Long.MAX_VALUE), (double) Long.MAX_VALUE },
+                { new Timestamp(Long.MIN_VALUE), (double) Long.MIN_VALUE, true },
+                { new Timestamp(Integer.MIN_VALUE), (double) Integer.MIN_VALUE, true },
+                { new Timestamp(0), 0d, true },
+                { new Timestamp(Integer.MAX_VALUE), (double) Integer.MAX_VALUE, true },
+                { new Timestamp(Long.MAX_VALUE), (double) Long.MAX_VALUE, true },
         });
         TEST_DB.put(pair(AtomicBoolean.class, Double.class), new Object[][] {
                 { new AtomicBoolean(true), 1d },
@@ -1108,11 +1108,11 @@ class ConverterEverythingTest {
                 { new AtomicLong(9007199254740991L), 9007199254740991d },
         });
         TEST_DB.put(pair(BigInteger.class, Double.class), new Object[][] {
-                { new BigInteger("-1"), -1d },
-                { new BigInteger("0"), 0d },
-                { new BigInteger("1"), 1d },
-                { new BigInteger("-9007199254740991"), -9007199254740991d },
-                { new BigInteger("9007199254740991"), 9007199254740991d },
+                { new BigInteger("-1"), -1d, true },
+                { new BigInteger("0"), 0d, true },
+                { new BigInteger("1"), 1d, true },
+                { new BigInteger("-9007199254740991"), -9007199254740991d, true },
+                { new BigInteger("9007199254740991"), 9007199254740991d, true },
         });
         TEST_DB.put(pair(BigDecimal.class, Double.class), new Object[][] {
                 { new BigDecimal("-1"), -1d },
@@ -1201,14 +1201,14 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(String.class, MonthDay.class), new Object[][] {
                 { "1-1", MonthDay.of(1, 1) },
                 { "01-01", MonthDay.of(1, 1) },
-                { "--01-01", MonthDay.of(1, 1) },
+                { "--01-01", MonthDay.of(1, 1), true },
                 { "--1-1", new IllegalArgumentException("Unable to extract Month-Day from string: --1-1") },
                 { "12-31", MonthDay.of(12, 31) },
-                { "--12-31", MonthDay.of(12, 31) },
+                { "--12-31", MonthDay.of(12, 31), true },
                 { "-12-31", new IllegalArgumentException("Unable to extract Month-Day from string: -12-31") },
                 { "6-30", MonthDay.of(6, 30) },
                 { "06-30", MonthDay.of(6, 30) },
-                { "--06-30", MonthDay.of(6, 30) },
+                { "--06-30", MonthDay.of(6, 30), true },
                 { "--6-30", new IllegalArgumentException("Unable to extract Month-Day from string: --6-30") },
         });
         TEST_DB.put(pair(Map.class, MonthDay.class), new Object[][] {
@@ -1237,9 +1237,9 @@ class ConverterEverythingTest {
                 { null, null },
         });
         TEST_DB.put(pair(YearMonth.class, YearMonth.class), new Object[][] {
-                { YearMonth.of(2023, 12), YearMonth.of(2023, 12) },
-                { YearMonth.of(1970, 1), YearMonth.of(1970, 1) },
-                { YearMonth.of(1999, 6), YearMonth.of(1999, 6) },
+                { YearMonth.of(2023, 12), YearMonth.of(2023, 12), true },
+                { YearMonth.of(1970, 1), YearMonth.of(1970, 1), true },
+                { YearMonth.of(1999, 6), YearMonth.of(1999, 6), true },
         });
         TEST_DB.put(pair(String.class, YearMonth.class), new Object[][] {
                 { "2024-01", YearMonth.of(2024, 1) },
@@ -1270,14 +1270,14 @@ class ConverterEverythingTest {
                 { Period.of(1, 1, 1), Period.of(1, 1, 1) },
         });
         TEST_DB.put(pair(String.class, Period.class), new Object[][] {
-                { "P0D", Period.of(0, 0, 0) },
-                { "P1D", Period.of(0, 0, 1) },
-                { "P1M", Period.of(0, 1, 0) },
-                { "P1Y", Period.of(1, 0, 0) },
-                { "P1Y1M", Period.of(1, 1, 0) },
-                { "P1Y1D", Period.of(1, 0, 1) },
-                { "P1Y1M1D", Period.of(1, 1, 1) },
-                { "P10Y10M10D", Period.of(10, 10, 10) },
+                { "P0D", Period.of(0, 0, 0), true },
+                { "P1D", Period.of(0, 0, 1), true },
+                { "P1M", Period.of(0, 1, 0), true },
+                { "P1Y", Period.of(1, 0, 0), true },
+                { "P1Y1M", Period.of(1, 1, 0), true },
+                { "P1Y1D", Period.of(1, 0, 1), true },
+                { "P1Y1M1D", Period.of(1, 1, 1), true },
+                { "P10Y10M10D", Period.of(10, 10, 10), true },
                 { "PONY", new IllegalArgumentException("Unable to parse 'PONY' as a Period.") },
         });
         TEST_DB.put(pair(Map.class, Period.class), new Object[][] {
@@ -1297,11 +1297,11 @@ class ConverterEverythingTest {
                 { Year.of(1970), Year.of(1970) },
         });
         TEST_DB.put(pair(String.class, Year.class), new Object[][] {
-                { "1970", Year.of(1970) },
-                { "1999", Year.of(1999) },
-                { "2000", Year.of(2000) },
-                { "2024", Year.of(2024) },
-                { "1670", Year.of(1670) },
+                { "1970", Year.of(1970), true },
+                { "1999", Year.of(1999), true },
+                { "2000", Year.of(2000), true },
+                { "2024", Year.of(2024), true },
+                { "1670", Year.of(1670), true },
                 { "PONY", new IllegalArgumentException("Unable to parse 4-digit year from 'PONY'") },
         });
         TEST_DB.put(pair(Map.class, Year.class), new Object[][] {
@@ -1381,30 +1381,30 @@ class ConverterEverythingTest {
                 { Byte.MAX_VALUE, "127" },
         });
         TEST_DB.put(pair(Short.class, String.class), new Object[][] {
-                { (short) 0, "0" },
-                { Short.MIN_VALUE, "-32768" },
-                { Short.MAX_VALUE, "32767" },
+                { (short) 0, "0", true },
+                { Short.MIN_VALUE, "-32768", true },
+                { Short.MAX_VALUE, "32767", true },
         });
         TEST_DB.put(pair(Integer.class, String.class), new Object[][] {
-                { 0, "0" },
-                { Integer.MIN_VALUE, "-2147483648" },
-                { Integer.MAX_VALUE, "2147483647" },
+                { 0, "0", true },
+                { Integer.MIN_VALUE, "-2147483648", true },
+                { Integer.MAX_VALUE, "2147483647", true },
         });
         TEST_DB.put(pair(Long.class, String.class), new Object[][] {
-                { 0L, "0" },
-                { Long.MIN_VALUE, "-9223372036854775808" },
-                { Long.MAX_VALUE, "9223372036854775807" },
+                { 0L, "0", true },
+                { Long.MIN_VALUE, "-9223372036854775808", true },
+                { Long.MAX_VALUE, "9223372036854775807", true },
         });
         TEST_DB.put(pair(Float.class, String.class), new Object[][] {
-                { 0f, "0" },
-                { 0.0f, "0" },
-                { Float.MIN_VALUE, "1.4E-45" },
-                { -Float.MAX_VALUE, "-3.4028235E38" },
-                { Float.MAX_VALUE, "3.4028235E38" },
-                { 12345679f, "1.2345679E7" },
-                { 0.000000123456789f, "1.2345679E-7" },
-                { 12345f, "12345.0" },
-                { 0.00012345f, "1.2345E-4" },
+                { 0f, "0", true },
+                { 0.0f, "0", true },
+                { Float.MIN_VALUE, "1.4E-45", true },
+                { -Float.MAX_VALUE, "-3.4028235E38", true },
+                { Float.MAX_VALUE, "3.4028235E38", true },
+                { 12345679f, "1.2345679E7", true },
+                { 0.000000123456789f, "1.2345679E-7", true },
+                { 12345f, "12345.0", true },
+                { 0.00012345f, "1.2345E-4", true },
         });
         TEST_DB.put(pair(Double.class, String.class), new Object[][] {
                 { 0d, "0" },
@@ -1433,10 +1433,10 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(BigDecimal.class, String.class), new Object[][] {
                 { new BigDecimal("-1"), "-1" },
                 { new BigDecimal("-1.0"), "-1" },
-                { new BigDecimal("0"), "0" },
+                { new BigDecimal("0"), "0", true },
                 { new BigDecimal("0.0"), "0" },
                 { new BigDecimal("1.0"), "1" },
-                { new BigDecimal("3.141519265358979323846264338"), "3.141519265358979323846264338" },
+                { new BigDecimal("3.141519265358979323846264338"), "3.141519265358979323846264338", true },
         });
         TEST_DB.put(pair(AtomicBoolean.class, String.class), new Object[][] {
                 { new AtomicBoolean(false), "false" },
@@ -1473,7 +1473,7 @@ class ConverterEverythingTest {
                 { CharBuffer.wrap(new char[] { 'A', 'B', 'C', 'D' }), "ABCD" },
         });
         TEST_DB.put(pair(Class.class, String.class), new Object[][] {
-                { Date.class, "java.util.Date" }
+                { Date.class, "java.util.Date", true }
         });
         TEST_DB.put(pair(Date.class, String.class), new Object[][] {
                 { new Date(1), toGmtString(new Date(1)) },
@@ -1502,13 +1502,13 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(ZonedDateTime.class, String.class), new Object[][] {
                 { ZonedDateTime.parse("1965-12-31T16:20:00+00:00"), "1965-12-31T16:20:00Z" },
                 { ZonedDateTime.parse("2024-02-14T19:20:00-05:00"), "2024-02-14T19:20:00-05:00" },
-                { ZonedDateTime.parse("2024-02-14T19:20:00+05:00"), "2024-02-14T19:20:00+05:00" }
+                { ZonedDateTime.parse("2024-02-14T19:20:00+05:00"), "2024-02-14T19:20:00+05:00" },
         });
         TEST_DB.put(pair(UUID.class, String.class), new Object[][] {
-                { new UUID(0L, 0L), "00000000-0000-0000-0000-000000000000" },
-                { new UUID(1L, 1L), "00000000-0000-0001-0000-000000000001" },
-                { new UUID(Long.MAX_VALUE, Long.MAX_VALUE), "7fffffff-ffff-ffff-7fff-ffffffffffff" },
-                { new UUID(Long.MIN_VALUE, Long.MIN_VALUE), "80000000-0000-0000-8000-000000000000" },
+                { new UUID(0L, 0L), "00000000-0000-0000-0000-000000000000", true },
+                { new UUID(1L, 1L), "00000000-0000-0001-0000-000000000001", true },
+                { new UUID(Long.MAX_VALUE, Long.MAX_VALUE), "7fffffff-ffff-ffff-7fff-ffffffffffff", true },
+                { new UUID(Long.MIN_VALUE, Long.MIN_VALUE), "80000000-0000-0000-8000-000000000000", true },
         });
         TEST_DB.put(pair(Calendar.class, String.class), new Object[][] {
                 { (Supplier<Calendar>) () -> {
@@ -1543,22 +1543,22 @@ class ConverterEverythingTest {
                 { "same", "same" },
         });
         TEST_DB.put(pair(Duration.class, String.class), new Object[][] {
-                { Duration.parse("PT20.345S"), "PT20.345S"},
-                { Duration.ofSeconds(60), "PT1M"},
+                { Duration.parse("PT20.345S"), "PT20.345S", true },
+                { Duration.ofSeconds(60), "PT1M", true },
         });
         TEST_DB.put(pair(Instant.class, String.class), new Object[][] {
-                { Instant.ofEpochMilli(0), "1970-01-01T00:00:00Z"},
-                { Instant.ofEpochMilli(1), "1970-01-01T00:00:00.001Z"},
-                { Instant.ofEpochMilli(1000), "1970-01-01T00:00:01Z"},
-                { Instant.ofEpochMilli(1001), "1970-01-01T00:00:01.001Z"},
-                { Instant.ofEpochSecond(0), "1970-01-01T00:00:00Z"},
-                { Instant.ofEpochSecond(1), "1970-01-01T00:00:01Z"},
-                { Instant.ofEpochSecond(60), "1970-01-01T00:01:00Z"},
-                { Instant.ofEpochSecond(61), "1970-01-01T00:01:01Z"},
-                { Instant.ofEpochSecond(0, 0), "1970-01-01T00:00:00Z"},
-                { Instant.ofEpochSecond(0, 1), "1970-01-01T00:00:00.000000001Z"},
-                { Instant.ofEpochSecond(0, 999999999), "1970-01-01T00:00:00.999999999Z"},
-                { Instant.ofEpochSecond(0, 9999999999L), "1970-01-01T00:00:09.999999999Z"},
+                { Instant.ofEpochMilli(0), "1970-01-01T00:00:00Z", true },
+                { Instant.ofEpochMilli(1), "1970-01-01T00:00:00.001Z", true },
+                { Instant.ofEpochMilli(1000), "1970-01-01T00:00:01Z", true },
+                { Instant.ofEpochMilli(1001), "1970-01-01T00:00:01.001Z", true },
+                { Instant.ofEpochSecond(0), "1970-01-01T00:00:00Z", true },
+                { Instant.ofEpochSecond(1), "1970-01-01T00:00:01Z", true },
+                { Instant.ofEpochSecond(60), "1970-01-01T00:01:00Z", true },
+                { Instant.ofEpochSecond(61), "1970-01-01T00:01:01Z", true },
+                { Instant.ofEpochSecond(0, 0), "1970-01-01T00:00:00Z", true },
+                { Instant.ofEpochSecond(0, 1), "1970-01-01T00:00:00.000000001Z", true },
+                { Instant.ofEpochSecond(0, 999999999), "1970-01-01T00:00:00.999999999Z", true },
+                { Instant.ofEpochSecond(0, 9999999999L), "1970-01-01T00:00:09.999999999Z", true },
         });
         TEST_DB.put(pair(LocalTime.class, String.class), new Object[][] {
                 { LocalTime.of(9, 26), "09:26" },

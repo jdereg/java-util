@@ -1643,6 +1643,13 @@ class ConverterEverythingTest {
                 { toURI("jar:file:/c://my.jar!/"), "jar:file:/c://my.jar!/", true },
                 { toURI("jar:file:/c://my.jar!/com/mycompany/MyClass.class"), "jar:file:/c://my.jar!/com/mycompany/MyClass.class", true }
         });
+
+        TEST_DB.put(pair(TimeZone.class, String.class), new Object[][] {
+                { TimeZone.getTimeZone("America/New_York"), "America/New_York", true },
+                { TimeZone.getTimeZone("EST"), "EST", true },
+                { TimeZone.getTimeZone(ZoneId.of("+05:00")), "GMT+05:00", true },
+                { TimeZone.getTimeZone(ZoneId.of("America/Denver")), "America/Denver", true },
+        });
     }
 
     private static String toGmtString(Date date) {

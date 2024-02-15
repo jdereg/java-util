@@ -3083,22 +3083,6 @@ class ConverterTest
 
     }
 
-    @Test
-    void testUnsupportedType()
-    {
-        try
-        {
-            this.converter.convert("Lamb", TimeZone.class);
-            fail();
-        }
-        catch (Exception e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [string"));
-        }
-    }
-
-
-
     private static Stream<Arguments> classesThatReturnZero_whenConvertingFromNull() {
         return Stream.of(
                 Arguments.of(byte.class, CommonValues.BYTE_ZERO),
@@ -3317,17 +3301,6 @@ class ConverterTest
         assertThat(converter.convert(source, Character.class)).isEqualTo('N');
     }
 
-
-    @Test
-    void testConvertUnknown()
-    {
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), String.class);
-            fail();
-        }
-        catch (IllegalArgumentException e) { }
-    }
 
     @Test
     void testLongToBigDecimal()

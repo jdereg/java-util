@@ -30,6 +30,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -349,6 +350,15 @@ final class StringConversions {
     static Timestamp toTimestamp(Object from, Converter converter) {
         Instant instant = toInstant(from, converter);
         return instant == null ? null : new Timestamp(instant.toEpochMilli());
+    }
+
+    static TimeZone toTimeZone(Object from, Converter converter) {
+        String str = StringUtilities.trimToNull((String)from);
+        if (str == null) {
+            return null;
+        }
+
+        return TimeZone.getTimeZone(str);
     }
 
     static Calendar toCalendar(Object from, Converter converter) {

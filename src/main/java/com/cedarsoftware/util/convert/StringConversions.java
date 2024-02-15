@@ -3,6 +3,9 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.sql.Timestamp;
@@ -27,6 +30,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -241,6 +245,27 @@ final class StringConversions {
         }
     }
 
+    static URL toURL(Object from, Converter converter) {
+        String str = StringUtilities.trimToNull(asString(from));
+        if (str == null) {
+            return null;
+        }
+        try {
+            URI uri = URI.create((String) from);
+            return uri.toURL();
+        } catch (MalformedURLException mue) {
+            throw new IllegalArgumentException("Cannot convert String '" + str);
+        }
+    }
+
+    static URI toURI(Object from, Converter converter) {
+        String str = StringUtilities.trimToNull(asString(from));
+        if (str == null) {
+            return null;
+        }
+        return URI.create((String) from);
+    }
+
     static String enumToString(Object from, Converter converter) {
         return ((Enum<?>) from).name();
     }
@@ -325,6 +350,15 @@ final class StringConversions {
     static Timestamp toTimestamp(Object from, Converter converter) {
         Instant instant = toInstant(from, converter);
         return instant == null ? null : new Timestamp(instant.toEpochMilli());
+    }
+
+    static TimeZone toTimeZone(Object from, Converter converter) {
+        String str = StringUtilities.trimToNull((String)from);
+        if (str == null) {
+            return null;
+        }
+
+        return TimeZone.getTimeZone(str);
     }
 
     static Calendar toCalendar(Object from, Converter converter) {

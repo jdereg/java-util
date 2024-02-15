@@ -28,6 +28,7 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -38,6 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ClassUtilities;
+
 
 /**
  * Instance conversion utility.  Convert from primitive to other primitives, plus support for Number, Date,
@@ -685,7 +687,36 @@ public final class Converter {
         CONVERSION_DB.put(pair(Locale.class, String.class), LocaleConversions::toString);
         CONVERSION_DB.put(pair(URL.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(URI.class, String.class), StringConversions::toString);
-        
+        CONVERSION_DB.put(pair(TimeZone.class, String.class), TimeZoneConversions::toString);
+
+        try {
+            Class zoneInfoClass = Class.forName("sun.util.calendar.ZoneInfo");
+            CONVERSION_DB.put(pair(zoneInfoClass, String.class), TimeZoneConversions::toString);
+            CONVERSION_DB.put(pair(Void.class, zoneInfoClass), VoidConversions::toNull);
+            CONVERSION_DB.put(pair(String.class, zoneInfoClass), StringConversions::toTimeZone);
+            CONVERSION_DB.put(pair(Map.class, zoneInfoClass), MapConversions::toTimeZone);
+
+
+
+        } catch (Exception e) {
+            // ignore
+        }
+
+        // URL conversions
+        CONVERSION_DB.put(pair(Void.class, URL.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(String.class, URL.class), StringConversions::toURL);
+        CONVERSION_DB.put(pair(Map.class, URL.class), MapConversions::toURL);
+
+        // URI Conversions
+        CONVERSION_DB.put(pair(Void.class, URI.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(String.class, URI.class), StringConversions::toURI);
+        CONVERSION_DB.put(pair(Map.class, URI.class), MapConversions::toURI);
+
+        // TimeZone Conversions
+        CONVERSION_DB.put(pair(Void.class, TimeZone.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(String.class, TimeZone.class), StringConversions::toTimeZone);
+        CONVERSION_DB.put(pair(Map.class, TimeZone.class), MapConversions::toTimeZone);
+
         // Duration conversions supported
         CONVERSION_DB.put(pair(Void.class, Duration.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Duration.class, Duration.class), Converter::identity);

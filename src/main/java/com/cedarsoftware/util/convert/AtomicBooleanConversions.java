@@ -37,7 +37,7 @@ final class AtomicBooleanConversions {
         return b.get() ? CommonValues.SHORT_ONE : CommonValues.SHORT_ZERO;
     }
 
-    static Integer toInteger(Object from, Converter converter) {
+    static Integer toInt(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
     }

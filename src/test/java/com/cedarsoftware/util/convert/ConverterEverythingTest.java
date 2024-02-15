@@ -39,13 +39,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import com.cedarsoftware.util.ClassUtilities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import com.cedarsoftware.util.ClassUtilities;
 
 import static com.cedarsoftware.util.MapUtilities.mapOf;
 import static com.cedarsoftware.util.convert.Converter.getShortName;
@@ -1180,6 +1179,249 @@ class ConverterEverythingTest {
         });
         
         /////////////////////////////////////////////////////////////
+        // Boolean/boolean
+        /////////////////////////////////////////////////////////////
+        TEST_DB.put(pair(Void.class, boolean.class), new Object[][] {
+                { null, false },
+        });
+        TEST_DB.put(pair(Void.class, Boolean.class), new Object[][] {
+                { null, null },
+        });
+        TEST_DB.put(pair(Byte.class, Boolean.class), new Object[][] {
+                { (byte) -2, true },
+                { (byte) -1, true },
+                { (byte) 0, false },
+                { (byte) 1, true },
+                { (byte) 2, true },
+        });
+        TEST_DB.put(pair(Short.class, Boolean.class), new Object[][] {
+                { (short) -2, true },
+                { (short) -1, true },
+                { (short) 0, false },
+                { (short) 1, true },
+                { (short) 2, true },
+        });
+        TEST_DB.put(pair(Integer.class, Boolean.class), new Object[][] {
+                { -2, true },
+                { -1, true },
+                { 0, false },
+                { 1, true },
+                { 2, true },
+        });
+        TEST_DB.put(pair(Long.class, Boolean.class), new Object[][] {
+                { -2L, true },
+                { -1L, true },
+                { 0L, false },
+                { 1L, true },
+                { 2L, true },
+        });
+        TEST_DB.put(pair(Float.class, Boolean.class), new Object[][] {
+                { -2f, true },
+                { -1.5f, true },
+                { -1f, true },
+                { 0f, false },
+                { 1f, true },
+                { 1.5f, true },
+                { 2f, true },
+        });
+        TEST_DB.put(pair(Double.class, Boolean.class), new Object[][] {
+                { -2d, true },
+                { -1.5d, true },
+                { -1d, true },
+                { 0d, false },
+                { 1d, true },
+                { 1.5d, true },
+                { 2d, true },
+        });
+        TEST_DB.put(pair(Boolean.class, Boolean.class), new Object[][] {
+                { true, true },
+                { false, false },
+        });
+        TEST_DB.put(pair(Character.class, Boolean.class), new Object[][] {
+                { (char) 1, true },
+                { '1', true },
+                { '2', false },
+                { 'a', false },
+                { 'z', false },
+                { (char) 0, false },
+                { '0', false },
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, Boolean.class), new Object[][] {
+                { new AtomicBoolean(true), true },
+                { new AtomicBoolean(false), false },
+        });
+        TEST_DB.put(pair(AtomicInteger.class, Boolean.class), new Object[][] {
+                { new AtomicInteger(-2), true },
+                { new AtomicInteger(-1), true },
+                { new AtomicInteger(0), false },
+                { new AtomicInteger(1), true },
+                { new AtomicInteger(2), true },
+        });
+        TEST_DB.put(pair(AtomicLong.class, Boolean.class), new Object[][] {
+                { new AtomicLong(-2), true },
+                { new AtomicLong(-1), true },
+                { new AtomicLong(0), false },
+                { new AtomicLong(1), true },
+                { new AtomicLong(2), true },
+        });
+        TEST_DB.put(pair(BigInteger.class, Boolean.class), new Object[][] {
+                { BigInteger.valueOf(-2), true },
+                { BigInteger.valueOf(-1), true },
+                { BigInteger.valueOf(0), false },
+                { BigInteger.valueOf(1), true },
+                { BigInteger.valueOf(2), true },
+        });
+        TEST_DB.put(pair(BigDecimal.class, Boolean.class), new Object[][] {
+                { BigDecimal.valueOf(-2L), true },
+                { BigDecimal.valueOf(-1L), true },
+                { BigDecimal.valueOf(0L), false },
+                { BigDecimal.valueOf(1L), true },
+                { BigDecimal.valueOf(2L), true },
+        });
+        TEST_DB.put(pair(Number.class, Boolean.class), new Object[][] {
+                { -2, true },
+                { -1L, true },
+                { 0.0d, false },
+                { 1.0f, true },
+                { BigInteger.valueOf(2), true },
+        });
+        TEST_DB.put(pair(Map.class, Boolean.class), new Object[][] {
+                { mapOf("_v", 16), true },
+                { mapOf("_v", 0), false },
+                { mapOf("_v", "0"), false },
+                { mapOf("_v", "1"), true },
+                { mapOf("_v", mapOf("_v", 5.0d)), true },
+        });
+        TEST_DB.put(pair(String.class, Boolean.class), new Object[][] {
+                { "0", false },
+                { "false", false },
+                { "FaLse", false },
+                { "FALSE", false },
+                { "F", false },
+                { "f", false },
+                { "1", true },
+                { "true", true },
+                { "TrUe", true },
+                { "TRUE", true },
+                { "T", true },
+                { "t", true },
+        });
+
+        /////////////////////////////////////////////////////////////
+        // Character/char
+        /////////////////////////////////////////////////////////////
+        TEST_DB.put(pair(Void.class, char.class), new Object[][] {
+                { null, (char) 0 },
+        });
+        TEST_DB.put(pair(Void.class, Character.class), new Object[][] {
+                { null, null },
+        });
+        TEST_DB.put(pair(Byte.class, Character.class), new Object[][] {
+                { (byte) -1, new IllegalArgumentException("Value '-1' out of range to be converted to character"), },
+                { (byte) 0, (char) 0, true },
+                { (byte) 1, (char) 1, true },
+                { Byte.MAX_VALUE, (char) Byte.MAX_VALUE, true },
+        });
+        TEST_DB.put(pair(Short.class, Character.class), new Object[][] {
+                { (short) -1, new IllegalArgumentException("Value '-1' out of range to be converted to character"), },
+                { (short) 0, (char) 0, true },
+                { (short) 1, (char) 1, true },
+                { Short.MAX_VALUE, (char) Short.MAX_VALUE, true },
+        });
+        TEST_DB.put(pair(Integer.class, Character.class), new Object[][] {
+                { -1, new IllegalArgumentException("Value '-1' out of range to be converted to character"), },
+                { 0, (char) 0, true },
+                { 1, (char) 1, true },
+                { 65535, (char) 65535, true },
+                { 65536, new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(Long.class, Character.class), new Object[][] {
+                { -1L, new IllegalArgumentException("Value '-1' out of range to be converted to character"), },
+                { 0L, (char) 0L, true },
+                { 1L, (char) 1L, true },
+                { 65535L, (char) 65535L, true },
+                { 65536L, new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(Float.class, Character.class), new Object[][] {
+                { -1f, new IllegalArgumentException("Value '-1' out of range to be converted to character"), },
+                { 0f, (char) 0, true },
+                { 1f, (char) 1, true },
+                { 65535f, (char) 65535f, true },
+                { 65536f, new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(Double.class, Character.class), new Object[][] {
+                { -1d, new IllegalArgumentException("Value '-1' out of range to be converted to character") },
+                { 0d, (char) 0, true },
+                { 1d, (char) 1, true },
+                { 65535d, (char) 65535d, true },
+                { 65536d, new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(Boolean.class, Character.class), new Object[][] {
+                { false, (char) 0, true },
+                { true, (char) 1, true },
+        });
+        TEST_DB.put(pair(Character.class, Character.class), new Object[][] {
+                { (char) 0, (char) 0, true },
+                { (char) 1, (char) 1, true },
+                { (char) 65535, (char) 65535, true },
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, Character.class), new Object[][] {
+                { new AtomicBoolean(true), (char) 1 },  // can't run reverse because equals() on AtomicBoolean is not implemented, it needs .get() called first.
+                { new AtomicBoolean(false), (char) 0 },
+        });
+        TEST_DB.put(pair(AtomicInteger.class, Character.class), new Object[][] {
+                { new AtomicInteger(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character") },
+                { new AtomicInteger(0), (char) 0 },
+                { new AtomicInteger(1), (char) 1 },
+                { new AtomicInteger(65535), (char) 65535 },
+                { new AtomicInteger(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(AtomicLong.class, Character.class), new Object[][] {
+                { new AtomicLong(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character") },
+                { new AtomicLong(0), (char) 0 },
+                { new AtomicLong(1), (char) 1 },
+                { new AtomicLong(65535), (char) 65535 },
+                { new AtomicLong(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(BigInteger.class, Character.class), new Object[][] {
+                { BigInteger.valueOf(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character") },
+                { BigInteger.valueOf(0), (char) 0, true },
+                { BigInteger.valueOf(1), (char) 1, true },
+                { BigInteger.valueOf(65535), (char) 65535, true },
+                { BigInteger.valueOf(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(BigDecimal.class, Character.class), new Object[][] {
+                { BigDecimal.valueOf(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character") },
+                { BigDecimal.valueOf(0), (char) 0, true },
+                { BigDecimal.valueOf(1), (char) 1, true },
+                { BigDecimal.valueOf(65535), (char) 65535, true },
+                { BigDecimal.valueOf(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(Number.class, Character.class), new Object[][] {
+                { BigDecimal.valueOf(-1), new IllegalArgumentException("Value '-1' out of range to be converted to character") },
+                { BigDecimal.valueOf(0), (char) 0 },
+                { BigInteger.valueOf(1), (char) 1 },
+                { BigInteger.valueOf(65535), (char) 65535 },
+                { BigInteger.valueOf(65536), new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(Map.class, Character.class), new Object[][] {
+                { mapOf("_v", -1), new IllegalArgumentException("Value '-1' out of range to be converted to character") },
+                { mapOf("value", 0), (char) 0 },
+                { mapOf("_v", 1), (char) 1 },
+                { mapOf("_v", 65535), (char) 65535 },
+                { mapOf("_v", mapOf("_v", 65535)), (char) 65535 },
+                { mapOf("_v", "0"), (char) 48 },
+                { mapOf("_v", 65536), new IllegalArgumentException("Value '65536' out of range to be converted to character") },
+        });
+        TEST_DB.put(pair(String.class, Character.class), new Object[][] {
+                { "0", '0', true },
+                { "A", 'A', true },
+                { "{", '{', true },
+                { "\uD83C", '\uD83C', true },
+                { "\uFFFF", '\uFFFF', true },
+        });
+        
+        /////////////////////////////////////////////////////////////
         // Instant
         /////////////////////////////////////////////////////////////
         TEST_DB.put(pair(String.class, Instant.class), new Object[][] {
@@ -1294,7 +1536,7 @@ class ConverterEverythingTest {
                 { null, null },
         });
         TEST_DB.put(pair(Year.class, Year.class), new Object[][] {
-                { Year.of(1970), Year.of(1970) },
+                { Year.of(1970), Year.of(1970), true },
         });
         TEST_DB.put(pair(String.class, Year.class), new Object[][] {
                 { "1970", Year.of(1970), true },
@@ -1307,7 +1549,7 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, Year.class), new Object[][] {
                 { mapOf("_v", "1984"), Year.of(1984) },
                 { mapOf("value", 1984L), Year.of(1984) },
-                { mapOf("year", 1492), Year.of(1492) },
+                { mapOf("year", 1492), Year.of(1492), true },
                 { mapOf("year", mapOf("_v", (short) 2024)), Year.of(2024) }, // recursion
         });
         TEST_DB.put(pair(Number.class, Year.class), new Object[][] {
@@ -1680,6 +1922,8 @@ class ConverterEverythingTest {
     void testForMissingTests() {
         Map<Class<?>, Set<Class<?>>> map = converter.allSupportedConversions();
         int neededTests = 0;
+        int conversionPairCount = 0;
+        int testCount = 0;
 
         for (Map.Entry<Class<?>, Set<Class<?>>> entry : map.entrySet()) {
             Class<?> sourceClass = entry.getKey();
@@ -1687,18 +1931,23 @@ class ConverterEverythingTest {
 
             for (Class<?> targetClass : targetClasses) {
                 Object[][] testData = TEST_DB.get(pair(sourceClass, targetClass));
+                conversionPairCount++;
 
                 if (testData == null) { // data set needs added
                     // Change to throw exception, so that when new conversions are added, the tests will fail until
                     // an "everything" test entry is added.
                     System.err.println("No test data for: " + getShortName(sourceClass) + " ==> " + getShortName(targetClass));
                     neededTests++;
+                } else {
+                    testCount += testData.length;
                 }
             }
         }
 
+        System.out.println("Total conversion pairs = " + conversionPairCount);
+        System.out.println("Total tests            = " + testCount);
         if (neededTests > 0) {
-            System.err.println(neededTests + " tests need to be added.");
+            System.err.println("Conversion pairs not tested = " + neededTests);
             System.err.flush();
             // fail(neededTests + " tests need to be added.");
         }
@@ -1831,6 +2080,4 @@ class ConverterEverythingTest {
             }
         }
     }
-
-
 }

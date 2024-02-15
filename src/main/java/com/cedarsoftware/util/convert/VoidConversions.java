@@ -28,7 +28,7 @@ final class VoidConversions {
         return Boolean.FALSE;
     }
 
-    static Character toChar(Object from, Converter converter) {
+    static Character toCharacter(Object from, Converter converter) {
         return Character.MIN_VALUE;
     }
 }

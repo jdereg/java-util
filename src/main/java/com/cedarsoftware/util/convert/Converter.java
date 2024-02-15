@@ -77,7 +77,7 @@ import com.cedarsoftware.util.ClassUtilities;
  */
 
 public final class Converter {
-    public static final Convert<?> UNSUPPORTED = Converter::unsupported;
+    private static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
 
     private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> factory;
@@ -150,9 +150,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(Float.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(Double.class, Integer.class), NumberConversions::toInt);
-        CONVERSION_DB.put(pair(Boolean.class, Integer.class), BooleanConversions::toInteger);
+        CONVERSION_DB.put(pair(Boolean.class, Integer.class), BooleanConversions::toInt);
         CONVERSION_DB.put(pair(Character.class, Integer.class), CharacterConversions::toInt);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Integer.class), AtomicBooleanConversions::toInteger);
+        CONVERSION_DB.put(pair(AtomicBoolean.class, Integer.class), AtomicBooleanConversions::toInt);
         CONVERSION_DB.put(pair(AtomicInteger.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(AtomicLong.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(BigInteger.class, Integer.class), NumberConversions::toInt);
@@ -261,10 +261,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Number.class, Boolean.class), NumberConversions::isIntTypeNotZero);
         CONVERSION_DB.put(pair(Map.class, Boolean.class), MapConversions::toBoolean);
         CONVERSION_DB.put(pair(String.class, Boolean.class), StringConversions::toBoolean);
-        CONVERSION_DB.put(pair(Year.class, Boolean.class), YearConversions::toBoolean);
 
         // Character/char conversions supported
-        CONVERSION_DB.put(pair(Void.class, char.class), VoidConversions::toChar);
+        CONVERSION_DB.put(pair(Void.class, char.class), VoidConversions::toCharacter);
         CONVERSION_DB.put(pair(Void.class, Character.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, Character.class), NumberConversions::toCharacter);
         CONVERSION_DB.put(pair(Short.class, Character.class), NumberConversions::toCharacter);
@@ -690,30 +689,29 @@ public final class Converter {
         CONVERSION_DB.put(pair(TimeZone.class, String.class), TimeZoneConversions::toString);
 
         try {
-            Class zoneInfoClass = Class.forName("sun.util.calendar.ZoneInfo");
+            Class<?> zoneInfoClass = Class.forName("sun.util.calendar.ZoneInfo");
             CONVERSION_DB.put(pair(zoneInfoClass, String.class), TimeZoneConversions::toString);
             CONVERSION_DB.put(pair(Void.class, zoneInfoClass), VoidConversions::toNull);
             CONVERSION_DB.put(pair(String.class, zoneInfoClass), StringConversions::toTimeZone);
             CONVERSION_DB.put(pair(Map.class, zoneInfoClass), MapConversions::toTimeZone);
-
-
-
-        } catch (Exception e) {
-            // ignore
+        } catch (Exception ignore) {
         }
 
         // URL conversions
         CONVERSION_DB.put(pair(Void.class, URL.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(URL.class, URL.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, URL.class), StringConversions::toURL);
         CONVERSION_DB.put(pair(Map.class, URL.class), MapConversions::toURL);
 
         // URI Conversions
         CONVERSION_DB.put(pair(Void.class, URI.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(URI.class, URI.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, URI.class), StringConversions::toURI);
         CONVERSION_DB.put(pair(Map.class, URI.class), MapConversions::toURI);
 
         // TimeZone Conversions
         CONVERSION_DB.put(pair(Void.class, TimeZone.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(TimeZone.class, TimeZone.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, TimeZone.class), StringConversions::toTimeZone);
         CONVERSION_DB.put(pair(Map.class, TimeZone.class), MapConversions::toTimeZone);
 
@@ -884,6 +882,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, Map.class), MapConversions::toMap);
         CONVERSION_DB.put(pair(Enum.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Map.class), OffsetDateTimeConversions::toMap);
+        CONVERSION_DB.put(pair(Year.class, Map.class), YearConversions::toMap);
     }
 
     public Converter(ConverterOptions options) {

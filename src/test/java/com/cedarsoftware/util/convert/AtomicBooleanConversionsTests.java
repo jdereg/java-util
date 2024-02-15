@@ -53,7 +53,7 @@ class AtomicBooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toIntegerParams")
     void testToInteger(boolean value, Integer expected) {
-        Integer actual = AtomicBooleanConversions.toInteger(new AtomicBoolean(value), null);
+        Integer actual = AtomicBooleanConversions.toInt(new AtomicBoolean(value), null);
         assertThat(actual).isSameAs(expected);
     }
 

@@ -54,29 +54,29 @@ import com.cedarsoftware.util.Convention;
  *         limitations under the License.
  */
 final class MapConversions {
-    private static final String V = "_v";
-    private static final String VALUE = "value";
-    private static final String DATE = "date";
-    private static final String TIME = "time";
-    private static final String ZONE = "zone";
-    private static final String YEAR = "year";
-    private static final String YEARS = "years";
-    private static final String MONTH = "month";
-    private static final String MONTHS = "months";
-    private static final String DAY = "day";
-    private static final String DAYS = "days";
-    private static final String HOUR = "hour";
-    private static final String HOURS = "hours";
-    private static final String MINUTE = "minute";
-    private static final String MINUTES = "minutes";
-    private static final String SECOND = "second";
-    private static final String SECONDS = "seconds";
-    private static final String NANO = "nano";
-    private static final String NANOS = "nanos";
-    private static final String OFFSET_HOUR = "offsetHour";
-    private static final String OFFSET_MINUTE = "offsetMinute";
-    private static final String MOST_SIG_BITS = "mostSigBits";
-    private static final String LEAST_SIG_BITS = "leastSigBits";
+    static final String V = "_v";
+    static final String VALUE = "value";
+    static final String DATE = "date";
+    static final String TIME = "time";
+    static final String ZONE = "zone";
+    static final String YEAR = "year";
+    static final String YEARS = "years";
+    static final String MONTH = "month";
+    static final String MONTHS = "months";
+    static final String DAY = "day";
+    static final String DAYS = "days";
+    static final String HOUR = "hour";
+    static final String HOURS = "hours";
+    static final String MINUTE = "minute";
+    static final String MINUTES = "minutes";
+    static final String SECOND = "second";
+    static final String SECONDS = "seconds";
+    static final String NANO = "nano";
+    static final String NANOS = "nanos";
+    static final String OFFSET_HOUR = "offsetHour";
+    static final String OFFSET_MINUTE = "offsetMinute";
+    static final String MOST_SIG_BITS = "mostSigBits";
+    static final String LEAST_SIG_BITS = "leastSigBits";
 
     static final String OFFSET = "offset";
 

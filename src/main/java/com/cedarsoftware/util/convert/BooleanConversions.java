@@ -37,7 +37,7 @@ final class BooleanConversions {
         return b ? CommonValues.SHORT_ONE : CommonValues.SHORT_ZERO;
     }
 
-    static Integer toInteger(Object from, Converter converter) {
+    static Integer toInt(Object from, Converter converter) {
         Boolean b = (Boolean) from;
         return b ? CommonValues.INTEGER_ONE : CommonValues.INTEGER_ZERO;
     }

@@ -61,16 +61,6 @@ final class LocalDateConversions {
         return ((LocalDate) from).atStartOfDay(zoneId);
     }
     
-    /**
-     * Warning:  Can lose precision going from a full long down to a floating point number
-     * @param from instance to convert
-     * @param converter converter instance
-     * @return the floating point number cast from a long.
-     */
-    static float toFloat(Object from, Converter converter) {
-        return toLong(from, converter);
-    }
-
     static double toDouble(Object from, Converter converter) {
         return toLong(from, converter);
     }

@@ -3,9 +3,14 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Year;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.CompactLinkedMap;
+
+import static com.cedarsoftware.util.convert.MapConversions.YEAR;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -54,11 +59,7 @@ final class YearConversions {
     static float toFloat(Object from, Converter converter) {
         return toInt(from, converter);
     }
-
-    static boolean toBoolean(Object from, Converter converter) {
-        return toInt(from, converter) == 0;
-    }
-
+    
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
         return new AtomicBoolean(toInt(from, converter) == 0);
     }
@@ -73,5 +74,12 @@ final class YearConversions {
 
     static String toString(Object from, Converter converter) {
         return ((Year)from).toString();
+    }
+
+    static Map<?, ?> toMap(Object from, Converter converter) {
+        Year year = (Year) from;
+        Map<String, Integer> map = new CompactLinkedMap<>();
+        map.put(YEAR, year.getValue());
+        return map;
     }
 }

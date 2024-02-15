@@ -63,7 +63,7 @@ class BooleanConversionsTests {
     @ParameterizedTest
     @MethodSource("toIntegerParams")
     void testToInteger(boolean value, Integer expected) {
-        Integer actual = BooleanConversions.toInteger(value, null);
+        Integer actual = BooleanConversions.toInt(value, null);
         assertThat(actual).isSameAs(expected);
     }
 

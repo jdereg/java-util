@@ -1422,6 +1422,66 @@ class ConverterEverythingTest {
         });
         
         /////////////////////////////////////////////////////////////
+        // BigInteger
+        /////////////////////////////////////////////////////////////
+        TEST_DB.put(pair(Void.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Byte.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Short.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Integer.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Long.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Float.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Double.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Boolean.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Character.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(BigInteger.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(BigDecimal.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(AtomicInteger.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(AtomicLong.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Date.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(java.sql.Date.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Timestamp.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Instant.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(LocalDate.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(LocalDateTime.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(UUID.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Calendar.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Number.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Map.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(String.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(OffsetDateTime.class, BigInteger.class), new Object[][] {
+        });
+        TEST_DB.put(pair(Year.class, BigInteger.class), new Object[][] {
+        });
+        
+        /////////////////////////////////////////////////////////////
         // Instant
         /////////////////////////////////////////////////////////////
         TEST_DB.put(pair(String.class, Instant.class), new Object[][] {
@@ -2018,7 +2078,6 @@ class ConverterEverythingTest {
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testConvert(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass) {
-        // Make sure source instance is of the sourceClass
         if (source == null) {
             assertEquals(sourceClass, Void.class, "On the source-side of test input, null can only appear in the Void.class data");
         } else {
@@ -2051,33 +2110,6 @@ class ConverterEverythingTest {
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParamsInReverse")
     void testConvertReverse(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass) {
-        // Make sure source instance is of the sourceClass
-        if (source == null) {
-            assertEquals(sourceClass, Void.class, "On the source-side of test input, null can only appear in the Void.class data");
-        } else {
-            assertTrue(ClassUtilities.toPrimitiveWrapperClass(sourceClass).isInstance(source), "source type mismatch");
-        }
-        assertTrue(target == null || target instanceof Throwable || ClassUtilities.toPrimitiveWrapperClass(targetClass).isInstance(target), "target type mismatch");
-
-        // if the source/target are the same Class, then ensure identity lambda is used.
-        if (sourceClass.equals(targetClass)) {
-            assertSame(source, converter.convert(source, targetClass));
-        }
-
-        if (target instanceof Throwable) {
-            Throwable t = (Throwable) target;
-            assertThatExceptionOfType(t.getClass())
-                    .isThrownBy(() -> converter.convert(source, targetClass))
-                    .withMessageContaining(((Throwable) target).getMessage());
-        } else {
-            // Assert values are equals
-            Object actual = converter.convert(source, targetClass);
-            try {
-                assertEquals(target, actual);
-            } catch (Throwable e) {
-                System.err.println(shortNameSource + "[" + source + "] ==> " + shortNameTarget + "[" + target + "] Failed with: " + actual);
-                throw e;
-            }
-        }
+        testConvert(shortNameSource, shortNameTarget, source, target, sourceClass, targetClass);
     }
 }

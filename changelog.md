@@ -1,4 +1,6 @@
 ### Revision History
+* 2.4.2
+  * Fixed `SafeSimpleDateFormat` to properly format dates having years with fewer than four digits.
 * 2.4.1
   * `Converter` has had significant expansion in the types that it can convert between, greater than 500 combinations.  In addition, you can add your own conversions to it as well. Call the `Converter.getSupportedConversions()` to see all the combinations supported.  Also, you can use `Converter` instance-based now, allowing it to have different conversion tables if needed.
   * `DateUtilities` has had performance improvements (> 35%), and adds a new `.parseDate()` API that allows it to return a `ZonedDateTime.` See the updated Javadoc on the class for a complete description of all of the formats it supports.  Normally, you do not need to use this class directly, as you can use `Converter` to convert between `Dates`, `Calendars`, and the new Temporal classes like `ZonedDateTime,` `Duration,` `Instance,` as well as `long,` `BigInteger,` etc. 

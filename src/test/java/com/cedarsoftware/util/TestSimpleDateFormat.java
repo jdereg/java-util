@@ -10,8 +10,12 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Random;
 import java.util.TimeZone;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -37,23 +41,33 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class TestSimpleDateFormat
 {
-    @Test
-    void testSimpleDateFormat1() throws Exception
+    @ParameterizedTest
+    @MethodSource("testDates")
+    void testSimpleDateFormat1(int year, int month, int day, int hour, int min, int sec, String expectedDateFormat) throws Exception
     {
         SafeSimpleDateFormat x = new SafeSimpleDateFormat("yyyy-MM-dd");
-        String s = x.format(getDate(2013, 9, 7, 16, 15, 31));
-        assertEquals("2013-09-07", s);
+        String s = x.format(getDate(year, month, day, hour, min, sec));
+        assertEquals(expectedDateFormat, s);
 
         Date then = x.parse(s);
         Calendar cal = Calendar.getInstance();
         cal.clear();
         cal.setTime(then);
-        assertEquals(2013, cal.get(Calendar.YEAR));
-        assertEquals(8, cal.get(Calendar.MONTH));   // Sept
-        assertEquals(7, cal.get(Calendar.DAY_OF_MONTH));
+        assertEquals(year, cal.get(Calendar.YEAR));
+        assertEquals(month - 1, cal.get(Calendar.MONTH));   // Sept
+        assertEquals(day, cal.get(Calendar.DAY_OF_MONTH));
         assertEquals(0, cal.get(Calendar.HOUR_OF_DAY));
         assertEquals(0, cal.get(Calendar.MINUTE));
         assertEquals(0, cal.get(Calendar.SECOND));
+    }
+
+    private static Stream<Arguments> testDates() {
+        return Stream.of(
+                Arguments.of(2013, 9, 7, 16, 15, 31, "2013-09-07"),
+                Arguments.of(169, 5, 1, 11, 45, 15, "0169-05-01"),
+                Arguments.of(42, 1, 28, 7, 4, 23, "0042-01-28"),
+                Arguments.of(8, 11, 2, 12, 43, 56, "0008-11-02")
+        );
     }
 
     @Test

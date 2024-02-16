@@ -68,7 +68,9 @@ public class SafeSimpleDateFormat extends DateFormat
         dateFormat.setCalendar(cal);
         dateFormat.setLenient(cal.isLenient());
         dateFormat.setTimeZone(cal.getTimeZone());
-        dateFormat.setNumberFormat(NumberFormat.getNumberInstance());
+        NumberFormat numberFormat = NumberFormat.getNumberInstance();
+        numberFormat.setGroupingUsed(false);
+        dateFormat.setNumberFormat(numberFormat);
     }
 
     public StringBuffer format(Date date, StringBuffer toAppendTo, FieldPosition fieldPosition)

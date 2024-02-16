@@ -739,7 +739,7 @@ public class DeepEquals
         Set<Object> visited = new HashSet<>();
         LinkedList<Object> stack = new LinkedList<>();
         stack.addFirst(obj);
-        int hash = 0;
+        int hash = 1;
 
         while (!stack.isEmpty())
         {
@@ -784,7 +784,7 @@ public class DeepEquals
 
             if (hasCustomHashCode(obj.getClass()))
             {   // A real hashCode() method exists, call it.
-                hash += obj.hashCode();
+                hash = 31 * hash + obj.hashCode();
                 continue;
             }
 

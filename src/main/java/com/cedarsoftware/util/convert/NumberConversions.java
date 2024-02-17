@@ -171,17 +171,34 @@ final class NumberConversions {
 
     static UUID bigIntegerToUUID(Object from, Converter converter) {
         BigInteger bigInteger = (BigInteger) from;
-        BigInteger mask = BigInteger.valueOf(Long.MAX_VALUE);
-        long mostSignificantBits = bigInteger.shiftRight(64).and(mask).longValue();
-        long leastSignificantBits = bigInteger.and(mask).longValue();
-        return new UUID(mostSignificantBits, leastSignificantBits);
+        if (bigInteger.signum() < 0) {
+            throw new IllegalArgumentException("Cannot convert a negative number [" + bigInteger + "] to a UUID");
+        }
+        StringBuilder hex = new StringBuilder(bigInteger.toString(16));
+        
+        // Pad the string to 32 characters with leading zeros (if necessary)
+        while (hex.length() < 32) {
+            hex.insert(0, "0");
+        }
+
+        // Split into two 64-bit parts
+        String highBitsHex = hex.substring(0, 16);
+        String lowBitsHex = hex.substring(16, 32);
+
+        // Combine and format into standard UUID format
+        String uuidString = highBitsHex.substring(0, 8) + "-" +
+                highBitsHex.substring(8, 12) + "-" +
+                highBitsHex.substring(12, 16) + "-" +
+                lowBitsHex.substring(0, 4) + "-" +
+                lowBitsHex.substring(4, 16);
+
+        // Create UUID from string
+        return UUID.fromString(uuidString);
     }
 
     static UUID bigDecimalToUUID(Object from, Converter converter) {
         BigInteger bigInt = ((BigDecimal) from).toBigInteger();
-        long mostSigBits = bigInt.shiftRight(64).longValue();
-        long leastSigBits = bigInt.and(new BigInteger("FFFFFFFFFFFFFFFF", 16)).longValue();
-        return new UUID(mostSigBits, leastSigBits);
+        return bigIntegerToUUID(bigInt, converter);
     }
 
     /**

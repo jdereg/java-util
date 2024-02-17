@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
+import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -36,8 +37,6 @@ import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
-
-import com.cedarsoftware.util.DeepEquals;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
@@ -3459,7 +3458,7 @@ class ConverterTest
         assert bigInt.intValue() == 100;
 
         bigInt = this.converter.convert(UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), BigInteger.class);
-        assert bigInt.toString().equals("-18446744073709551617");
+        assert bigInt.toString().equals("340282366920938463463374607431768211455");
 
         bigInt = this.converter.convert(UUID.fromString("00000000-0000-0000-0000-000000000000"), BigInteger.class);
         assert bigInt.intValue() == 0;
@@ -3476,7 +3475,7 @@ class ConverterTest
         assert bigDec.intValue() == 100;
 
         bigDec = this.converter.convert(UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), BigDecimal.class);
-        assert bigDec.toString().equals("-18446744073709551617");
+        assert bigDec.toString().equals("340282366920938463463374607431768211455");
 
         bigDec = this.converter.convert(UUID.fromString("00000000-0000-0000-0000-000000000000"), BigDecimal.class);
         assert bigDec.intValue() == 0;

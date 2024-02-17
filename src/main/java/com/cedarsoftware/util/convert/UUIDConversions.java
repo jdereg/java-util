@@ -2,7 +2,6 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.UUID;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -27,19 +26,12 @@ final class UUIDConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        UUID uuid = (UUID) from;
-        BigInteger mostSignificant = BigInteger.valueOf(uuid.getMostSignificantBits());
-        BigInteger leastSignificant = BigInteger.valueOf(uuid.getLeastSignificantBits());
-        // Shift the most significant bits to the left and add the least significant bits
-        return new BigDecimal(mostSignificant.shiftLeft(64).add(leastSignificant));
+        return new BigDecimal(toBigInteger(from, converter));
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        UUID uuid = (UUID) from;
-        BigInteger mostSignificant = BigInteger.valueOf(uuid.getMostSignificantBits());
-        BigInteger leastSignificant = BigInteger.valueOf(uuid.getLeastSignificantBits());
-        // Shift the most significant bits to the left and add the least significant bits
-        return mostSignificant.shiftLeft(64).add(leastSignificant);
+        String hex = from.toString().replace("-", "");
+        return new BigInteger(hex, 16);
     }
 }
 

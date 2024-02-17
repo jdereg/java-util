@@ -48,7 +48,8 @@ final class LocalDateTimeConversions {
     }
 
     static double toDouble(Object from, Converter converter) {
-        return toInstant(from, converter).toEpochMilli();
+        Instant instant = toInstant(from, converter);
+        return InstantConversions.toDouble(instant, converter);
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {

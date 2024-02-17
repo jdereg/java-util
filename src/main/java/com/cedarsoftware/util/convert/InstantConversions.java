@@ -57,8 +57,18 @@ final class InstantConversions {
         return toLong(from, converter);
     }
 
+    /**
+     * @return double number of milliseconds. When integerized, the number returned is always the number of epoch
+     * milliseconds.  If the Instant specified resolution further than milliseconds, the double returned captures
+     * that as fractional milliseconds.
+     * Example 1: "2024-02-12T11:38:00.123937482+01:00" (as an Instant) = 1707734280123.937482d
+     * Example 2: "2024-02-12T11:38:00.1239+01:00"      (as an Instant) = 1707734280123.9d
+     */
     static double toDouble(Object from, Converter converter) {
-        return toLong(from, converter);
+        Instant instant = (Instant) from;
+        long millis = instant.toEpochMilli();
+        int nanos = instant.getNano();
+        return millis + (nanos % 1_000_000) / 1_000_000.0d;
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {

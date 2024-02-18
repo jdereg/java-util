@@ -805,34 +805,20 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Instant.class, Long.class), new Object[][]{
                 {ZonedDateTime.parse("2024-02-12T11:38:00.123456789+01:00").toInstant(), 1707734280123L},   // maintains millis (best long can do)
                 {ZonedDateTime.parse("2024-02-12T11:38:00.123999+01:00").toInstant(), 1707734280123L},      // maintains millis (best long can do)
-                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").toInstant(), 1707734280000L},
+                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").toInstant(), 1707734280000L, true},
         });
         TEST_DB.put(pair(LocalDate.class, Long.class), new Object[][]{
-                {(Supplier<LocalDate>) () -> {
-                    ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
-                    zdt = zdt.withZoneSameInstant(TOKYO_Z);
-                    return zdt.toLocalDate();
-                }, 1707663600000L},                    // Epoch millis in Tokyo timezone (at start of day - no time)
+                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").withZoneSameInstant(TOKYO_Z).toLocalDate(), 1707663600000L, true},   // Epoch millis in Tokyo timezone (at start of day - no time)
         });
         TEST_DB.put(pair(LocalDateTime.class, Long.class), new Object[][]{
-                {(Supplier<LocalDateTime>) () -> {
-                    ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
-                    zdt = zdt.withZoneSameInstant(TOKYO_Z);
-                    return zdt.toLocalDateTime();
-                }, 1707734280000L},                    // Epoch millis in Tokyo timezone
-                {(Supplier<LocalDateTime>) () -> {
-                    ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00.123+01:00");     // maintains millis (best long can do)
-                    zdt = zdt.withZoneSameInstant(TOKYO_Z);
-                    return zdt.toLocalDateTime();
-                }, 1707734280123L},                    // Epoch millis in Tokyo timezone
-                {(Supplier<LocalDateTime>) () -> {
-                    ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00.12399+01:00");   // maintains millis (best long can do)
-                    zdt = zdt.withZoneSameInstant(TOKYO_Z);
-                    return zdt.toLocalDateTime();
-                }, 1707734280123L},                    // Epoch millis in Tokyo timezone
+                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 1707734280000L, true}, // Epoch millis in Tokyo timezone
+                {ZonedDateTime.parse("2024-02-12T11:38:00.123+01:00").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 1707734280123L, true},   // maintains millis (best long can do)
+                {ZonedDateTime.parse("2024-02-12T11:38:00.12399+01:00").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 1707734280123L},   // maintains millis (best long can do)
         });
         TEST_DB.put(pair(ZonedDateTime.class, Long.class), new Object[][]{
-                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000L},
+                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000L},     // no reverse, because zone name added by .toString()s
+                {ZonedDateTime.parse("2024-02-12T11:38:00.123+01:00"), 1707734280123L},
+                {ZonedDateTime.parse("2024-02-12T11:38:00.1234+01:00"), 1707734280123L},    // long only supports to millisecond
         });
         TEST_DB.put(pair(Calendar.class, Long.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
@@ -1075,49 +1061,53 @@ class ConverterEverythingTest {
                 {(char) 0, 0d},
         });
         TEST_DB.put(pair(Instant.class, Double.class), new Object[][]{
-                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").toInstant(), 1707734280000d},
-                {ZonedDateTime.parse("2024-02-12T11:38:00.123+01:00").toInstant(), 1707734280123d},
-                {ZonedDateTime.parse("2024-02-12T11:38:00.1234+01:00").toInstant(), 1707734280123.4d},      // fractional milliseconds (nano support)
-                {ZonedDateTime.parse("2024-02-12T11:38:00.1239+01:00").toInstant(), 1707734280123.9d},
-                {ZonedDateTime.parse("2024-02-12T11:38:00.123937482+01:00").toInstant(), 1707734280123.937482d},  // nano = one-millionth of a milli
+                {Instant.parse("2024-02-12T11:38:00+01:00"), 1707734280000d, true},
+                {Instant.parse("2024-02-12T11:38:00.123+01:00"), 1707734280123d, true},
+                {Instant.parse("2024-02-12T11:38:00.1234+01:00"), 1707734280123.4d},      // fractional milliseconds (nano support) - no reverse because of IEEE-754 limitations
+                {Instant.parse("2024-02-12T11:38:00.1234+01:00"), 1.7077342801234E12},      // fractional milliseconds (nano support)
+                {Instant.parse("2024-02-12T11:38:00.1239+01:00"), 1707734280123.9d},
+                {Instant.parse("2024-02-12T11:38:00.123937482+01:00"), 1707734280123.937482d},  // nano = one-millionth of a milli
         });
         TEST_DB.put(pair(LocalDate.class, Double.class), new Object[][]{
                 {(Supplier<LocalDate>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDate();
-                }, 1.7076636E12},                    // Epoch millis in Tokyo timezone (at start of day - no time)
+                }, 1.7076636E12, true},                    // Epoch millis in Tokyo timezone (at start of day - no time)
         });
         TEST_DB.put(pair(LocalDateTime.class, Double.class), new Object[][]{
                 {(Supplier<LocalDateTime>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDateTime();
-                }, 1.70773428E12},                    // Epoch millis in Tokyo timezone
+                }, 1.70773428E12, true},                    // Epoch millis in Tokyo timezone
                 {(Supplier<LocalDateTime>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00.123+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDateTime();
-                }, 1.707734280123E12},                    // Epoch millis in Tokyo timezone
+                }, 1.707734280123E12, true},                    // Epoch millis in Tokyo timezone
                 {(Supplier<LocalDateTime>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00.1239+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDateTime();
-                }, 1.7077342801239E12},                    // Epoch millis in Tokyo timezone
+                }, 1707734280123.9d},                       // Epoch millis in Tokyo timezone (no reverse - IEEE-754 limitations)
                 {(Supplier<LocalDateTime>) () -> {
                     ZonedDateTime zdt = ZonedDateTime.parse("2024-02-12T11:38:00.123937482+01:00");
                     zdt = zdt.withZoneSameInstant(TOKYO_Z);
                     return zdt.toLocalDateTime();
-                }, 1707734280123.937482d},                    // Epoch millis in Tokyo timezone
+                }, 1707734280123.937482d},                  // Epoch millis in Tokyo timezone (no reverse - IEEE-754 limitations)
         });
-        TEST_DB.put(pair(ZonedDateTime.class, Double.class), new Object[][]{
+        TEST_DB.put(pair(ZonedDateTime.class, Double.class), new Object[][]{    // no reverse due to .toString adding zone name
                 {ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000d},
+                {ZonedDateTime.parse("2024-02-12T11:38:00.123+01:00"), 1707734280123d},
+                {ZonedDateTime.parse("2024-02-12T11:38:00.1234+01:00"), 1707734280123.4d},
+                {ZonedDateTime.parse("2024-02-12T11:38:00.123937482+01:00"), 1707734280123.937482d},
         });
-        // Left off here (need to fix ZoneDateTime and Timestamp)
         TEST_DB.put(pair(Date.class, Double.class), new Object[][]{
                 {new Date(Long.MIN_VALUE), (double) Long.MIN_VALUE, true},
                 {new Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE, true},
                 {new Date(0), 0d, true},
+                {new Date(now), (double) now, true},
                 {new Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE, true},
                 {new Date(Long.MAX_VALUE), (double) Long.MAX_VALUE, true},
         });
@@ -1125,15 +1115,31 @@ class ConverterEverythingTest {
                 {new java.sql.Date(Long.MIN_VALUE), (double) Long.MIN_VALUE, true},
                 {new java.sql.Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE, true},
                 {new java.sql.Date(0), 0d, true},
+                {new java.sql.Date(now), (double) now, true},
                 {new java.sql.Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE, true},
                 {new java.sql.Date(Long.MAX_VALUE), (double) Long.MAX_VALUE, true},
         });
+
+
+
+        TEST_DB.put(pair(Timestamp.class, BigDecimal.class), new Object[][] {
+                { Timestamp.from(Instant.parse("2024-02-18T06:31:55.987654321+00:00")), new BigDecimal("1708237915987.654321"), true },
+                { Timestamp.from(Instant.parse("2024-02-18T06:31:55.123456789+00:00")), new BigDecimal("1708237915123.456789"), true },
+        });
+        TEST_DB.put(pair(BigDecimal.class, Timestamp.class), new Object[][] {
+                { new BigDecimal("1708237915987.654321"), Timestamp.from(Instant.parse("2024-02-18T06:31:55.987654321+00:00")), true },
+                { new BigDecimal("1708237915123.456789"), Timestamp.from(Instant.parse("2024-02-18T06:31:55.123456789+00:00")), true },
+        });
+
+
+
         TEST_DB.put(pair(Timestamp.class, Double.class), new Object[][]{
-                {new Timestamp(Long.MIN_VALUE), (double) Long.MIN_VALUE, true},
-                {new Timestamp(Integer.MIN_VALUE), (double) Integer.MIN_VALUE, true},
+                {new Timestamp(Long.MIN_VALUE), (double) Long.MIN_VALUE},
+                {new Timestamp(Integer.MIN_VALUE), (double) Integer.MIN_VALUE},
                 {new Timestamp(0), 0d, true},
-                {new Timestamp(Integer.MAX_VALUE), (double) Integer.MAX_VALUE, true},
-                {new Timestamp(Long.MAX_VALUE), (double) Long.MAX_VALUE, true},
+                {new Timestamp(now), (double) now},
+                {new Timestamp(Integer.MAX_VALUE), (double) Integer.MAX_VALUE},
+                {new Timestamp(Long.MAX_VALUE), (double) Long.MAX_VALUE},
         });
         TEST_DB.put(pair(AtomicBoolean.class, Double.class), new Object[][]{
                 {new AtomicBoolean(true), 1d},

@@ -230,7 +230,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(ZonedDateTime.class, Double.class), ZonedDateTimeConversions::toDouble);
         CONVERSION_DB.put(pair(Date.class, Double.class), DateConversions::toDouble);
         CONVERSION_DB.put(pair(java.sql.Date.class, Double.class), DateConversions::toDouble);
-        CONVERSION_DB.put(pair(Timestamp.class, Double.class), DateConversions::toDouble);
+        CONVERSION_DB.put(pair(Timestamp.class, Double.class), TimestampConversions::toDouble);
         CONVERSION_DB.put(pair(AtomicBoolean.class, Double.class), AtomicBooleanConversions::toDouble);
         CONVERSION_DB.put(pair(AtomicInteger.class, Double.class), NumberConversions::toDouble);
         CONVERSION_DB.put(pair(AtomicLong.class, Double.class), NumberConversions::toDouble);
@@ -293,7 +293,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Boolean.class, BigInteger.class), BooleanConversions::toBigInteger);
         CONVERSION_DB.put(pair(Character.class, BigInteger.class), CharacterConversions::toBigInteger);
         CONVERSION_DB.put(pair(BigInteger.class, BigInteger.class), Converter::identity);
-        CONVERSION_DB.put(pair(BigDecimal.class, BigInteger.class), NumberConversions::bigDecimalToBigInteger);
+        CONVERSION_DB.put(pair(BigDecimal.class, BigInteger.class), BigDecimalConversions::toBigInteger);
         CONVERSION_DB.put(pair(AtomicBoolean.class, BigInteger.class), AtomicBooleanConversions::toBigInteger);
         CONVERSION_DB.put(pair(AtomicInteger.class, BigInteger.class),  NumberConversions::integerTypeToBigInteger);
         CONVERSION_DB.put(pair(AtomicLong.class, BigInteger.class),  NumberConversions::integerTypeToBigInteger);
@@ -323,13 +323,13 @@ public final class Converter {
         CONVERSION_DB.put(pair(Boolean.class, BigDecimal.class), BooleanConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Character.class, BigDecimal.class), CharacterConversions::toBigDecimal);
         CONVERSION_DB.put(pair(BigDecimal.class, BigDecimal.class), Converter::identity);
-        CONVERSION_DB.put(pair(BigInteger.class, BigDecimal.class), NumberConversions::bigIntegerToBigDecimal);
+        CONVERSION_DB.put(pair(BigInteger.class, BigDecimal.class), BigIntegerConversions::toBigDecimal);
         CONVERSION_DB.put(pair(AtomicBoolean.class, BigDecimal.class), AtomicBooleanConversions::toBigDecimal);
         CONVERSION_DB.put(pair(AtomicInteger.class, BigDecimal.class), NumberConversions::integerTypeToBigDecimal);
         CONVERSION_DB.put(pair(AtomicLong.class, BigDecimal.class), NumberConversions::integerTypeToBigDecimal);
         CONVERSION_DB.put(pair(Date.class, BigDecimal.class), DateConversions::toBigDecimal);
         CONVERSION_DB.put(pair(java.sql.Date.class, BigDecimal.class), DateConversions::toBigDecimal);
-        CONVERSION_DB.put(pair(Timestamp.class, BigDecimal.class), DateConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(Timestamp.class, BigDecimal.class), TimestampConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Instant.class, BigDecimal.class), InstantConversions::toBigDecimal);
         CONVERSION_DB.put(pair(LocalDate.class, BigDecimal.class), LocalDateConversions::toBigDecimal);
         CONVERSION_DB.put(pair(LocalDateTime.class, BigDecimal.class), LocalDateTimeConversions::toBigDecimal);
@@ -466,9 +466,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, Timestamp.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, Timestamp.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, Timestamp.class), NumberConversions::toTimestamp);
-        CONVERSION_DB.put(pair(Double.class, Timestamp.class), NumberConversions::toTimestamp);
+        CONVERSION_DB.put(pair(Double.class, Timestamp.class), DoubleConversions::toTimestamp);
         CONVERSION_DB.put(pair(BigInteger.class, Timestamp.class), NumberConversions::toTimestamp);
-        CONVERSION_DB.put(pair(BigDecimal.class, Timestamp.class), NumberConversions::toTimestamp);
+        CONVERSION_DB.put(pair(BigDecimal.class, Timestamp.class), BigDecimalConversions::toTimestamp);
         CONVERSION_DB.put(pair(AtomicInteger.class, Timestamp.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, Timestamp.class), NumberConversions::toTimestamp);
         CONVERSION_DB.put(pair(Timestamp.class, Timestamp.class), DateConversions::toTimestamp);
@@ -538,9 +538,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, LocalDateTime.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, LocalDateTime.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
-        CONVERSION_DB.put(pair(Double.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
+        CONVERSION_DB.put(pair(Double.class, LocalDateTime.class), DoubleConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(BigInteger.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
-        CONVERSION_DB.put(pair(BigDecimal.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
+        CONVERSION_DB.put(pair(BigDecimal.class, LocalDateTime.class), BigDecimalConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(AtomicInteger.class, LocalDateTime.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(java.sql.Date.class, LocalDateTime.class), DateConversions::toLocalDateTime);
@@ -587,9 +587,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, ZonedDateTime.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, ZonedDateTime.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
-        CONVERSION_DB.put(pair(Double.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
+        CONVERSION_DB.put(pair(Double.class, ZonedDateTime.class), DoubleConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(BigInteger.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
-        CONVERSION_DB.put(pair(BigDecimal.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
+        CONVERSION_DB.put(pair(BigDecimal.class, ZonedDateTime.class), BigDecimalConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(AtomicInteger.class, ZonedDateTime.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(java.sql.Date.class, ZonedDateTime.class), DateConversions::toZonedDateTime);
@@ -622,8 +622,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(Void.class, UUID.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(UUID.class, UUID.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, UUID.class), StringConversions::toUUID);
-        CONVERSION_DB.put(pair(BigInteger.class, UUID.class), NumberConversions::bigIntegerToUUID);
-        CONVERSION_DB.put(pair(BigDecimal.class, UUID.class), NumberConversions::bigDecimalToUUID);
+        CONVERSION_DB.put(pair(BigInteger.class, UUID.class), BigIntegerConversions::toUUID);
+        CONVERSION_DB.put(pair(BigDecimal.class, UUID.class), BigDecimalConversions::toUUID);
         CONVERSION_DB.put(pair(Map.class, UUID.class), MapConversions::toUUID);
 
         // Class conversions supported
@@ -649,7 +649,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Boolean.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(Character.class, String.class), CharacterConversions::toString);
         CONVERSION_DB.put(pair(BigInteger.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(BigDecimal.class, String.class), NumberConversions::bigDecimalToString);
+        CONVERSION_DB.put(pair(BigDecimal.class, String.class), BigDecimalConversions::toString);
         CONVERSION_DB.put(pair(AtomicBoolean.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(AtomicInteger.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(AtomicLong.class, String.class), StringConversions::toString);
@@ -728,9 +728,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, Instant.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, Instant.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, Instant.class), NumberConversions::toInstant);
-        CONVERSION_DB.put(pair(Double.class, Instant.class), NumberConversions::toInstant);
+        CONVERSION_DB.put(pair(Double.class, Instant.class), DoubleConversions::toInstant);
         CONVERSION_DB.put(pair(BigInteger.class, Instant.class), NumberConversions::toInstant);
-        CONVERSION_DB.put(pair(BigDecimal.class, Instant.class), NumberConversions::toInstant);
+        CONVERSION_DB.put(pair(BigDecimal.class, Instant.class), BigDecimalConversions::toInstant);
         CONVERSION_DB.put(pair(AtomicInteger.class, Instant.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, Instant.class), NumberConversions::toInstant);
         CONVERSION_DB.put(pair(java.sql.Date.class, Instant.class), DateConversions::toInstant);

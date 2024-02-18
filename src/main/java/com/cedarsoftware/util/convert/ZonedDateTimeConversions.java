@@ -40,7 +40,8 @@ final class ZonedDateTimeConversions {
     }
 
     static double toDouble(Object from, Converter converter) {
-        return ((ZonedDateTime) from).toInstant().toEpochMilli();   // speed over shorter code.
+        ZonedDateTime zdt = (ZonedDateTime) from;
+        return InstantConversions.toDouble(zdt.toInstant(), converter);
     }
 
     static Instant toInstant(Object from, Converter converter) {

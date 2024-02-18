@@ -12,7 +12,6 @@ import java.time.Year;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -118,19 +117,7 @@ final class NumberConversions {
     static AtomicInteger toAtomicInteger(Object from, Converter converter) {
         return new AtomicInteger(toInt(from, converter));
     }
-
-    static BigDecimal bigIntegerToBigDecimal(Object from, Converter converter) {
-        return new BigDecimal((BigInteger)from);
-    }
-
-    static BigInteger bigDecimalToBigInteger(Object from, Converter converter) {
-        return ((BigDecimal)from).toBigInteger();
-    }
-
-    static String bigDecimalToString(Object from, Converter converter) {
-        return ((BigDecimal) from).stripTrailingZeros().toPlainString();
-    }
-
+    
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         return new BigDecimal(StringUtilities.trimToEmpty(from.toString()));
     }
@@ -168,39 +155,7 @@ final class NumberConversions {
     static BigInteger toBigInteger(Object from, Converter converter) {
         return new BigInteger(StringUtilities.trimToEmpty(from.toString()));
     }
-
-    static UUID bigIntegerToUUID(Object from, Converter converter) {
-        BigInteger bigInteger = (BigInteger) from;
-        if (bigInteger.signum() < 0) {
-            throw new IllegalArgumentException("Cannot convert a negative number [" + bigInteger + "] to a UUID");
-        }
-        StringBuilder hex = new StringBuilder(bigInteger.toString(16));
-        
-        // Pad the string to 32 characters with leading zeros (if necessary)
-        while (hex.length() < 32) {
-            hex.insert(0, "0");
-        }
-
-        // Split into two 64-bit parts
-        String highBitsHex = hex.substring(0, 16);
-        String lowBitsHex = hex.substring(16, 32);
-
-        // Combine and format into standard UUID format
-        String uuidString = highBitsHex.substring(0, 8) + "-" +
-                highBitsHex.substring(8, 12) + "-" +
-                highBitsHex.substring(12, 16) + "-" +
-                lowBitsHex.substring(0, 4) + "-" +
-                lowBitsHex.substring(4, 16);
-
-        // Create UUID from string
-        return UUID.fromString(uuidString);
-    }
-
-    static UUID bigDecimalToUUID(Object from, Converter converter) {
-        BigInteger bigInt = ((BigDecimal) from).toBigInteger();
-        return bigIntegerToUUID(bigInt, converter);
-    }
-
+    
     /**
      * @param from      - object that is a number to be converted to char
      * @param converter - instance of converter mappings to use.

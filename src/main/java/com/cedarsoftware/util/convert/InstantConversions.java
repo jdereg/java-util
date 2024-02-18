@@ -52,11 +52,7 @@ final class InstantConversions {
     static long toLong(Object from, Converter converter) {
         return ((Instant) from).toEpochMilli();
     }
-
-    static float toFloat(Object from, Converter converter) {
-        return toLong(from, converter);
-    }
-
+    
     /**
      * @return double number of milliseconds. When integerized, the number returned is always the number of epoch
      * milliseconds.  If the Instant specified resolution further than milliseconds, the double returned captures
@@ -66,9 +62,9 @@ final class InstantConversions {
      */
     static double toDouble(Object from, Converter converter) {
         Instant instant = (Instant) from;
-        long millis = instant.toEpochMilli();
-        int nanos = instant.getNano();
-        return millis + (nanos % 1_000_000) / 1_000_000.0d;
+        long seconds = instant.getEpochSecond();
+        int nanoAdjustment = instant.getNano();
+        return (double) seconds * 1000 + (double) nanoAdjustment / 1_000_000;
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
@@ -96,7 +92,10 @@ final class InstantConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        return BigDecimal.valueOf(toLong(from, converter));
+        Instant instant = (Instant) from;
+        long seconds = instant.getEpochSecond();
+        int nanos = instant.getNano();
+        return BigDecimal.valueOf(seconds * 1000).add(BigDecimal.valueOf(nanos, 6));
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {

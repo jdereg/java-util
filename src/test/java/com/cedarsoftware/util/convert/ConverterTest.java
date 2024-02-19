@@ -1174,17 +1174,6 @@ class ConverterTest
 
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
-    void testBigIntegerToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
-    {
-        BigInteger bi = BigInteger.valueOf(epochMilli);
-
-        Converter converter = new Converter(createCustomZones(zoneId));
-        LocalDateTime localDateTime = converter.convert(bi, LocalDateTime.class);
-        assertThat(localDateTime).isEqualTo(expected);
-    }
-
-    @ParameterizedTest
-    @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testBigDecimalToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         BigDecimal bd = BigDecimal.valueOf(epochMilli);
@@ -1706,21 +1695,7 @@ class ConverterTest
         LocalDateTime actual = converter.convert(intermediate, LocalDateTime.class);
         assertThat(actual).isEqualTo(expected);
     }
-
-    @ParameterizedTest
-    @MethodSource("localDateTimeConversion_params")
-    void testLocalDateTimeToBigInteger(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)
-    {
-        Converter converter = new Converter(createCustomZones(sourceZoneId));
-        BigInteger milli = converter.convert(initial, BigInteger.class);
-        assertThat(milli.longValue()).isEqualTo(epochMilli);
-
-        converter = new Converter(createCustomZones(targetZoneId));
-        LocalDateTime actual = converter.convert(milli, LocalDateTime.class);
-        assertThat(actual).isEqualTo(expected);
-
-    }
-
+    
     @ParameterizedTest
     @MethodSource("localDateTimeConversion_params")
     void testLocalDateTimeToBigDecimal(long epochMilli, ZoneId sourceZoneId, LocalDateTime initial, ZoneId targetZoneId, LocalDateTime expected)

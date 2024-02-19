@@ -10,6 +10,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
@@ -36,26 +37,27 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         limitations under the License.
  */
 final class OffsetDateTimeConversions {
-    private OffsetDateTimeConversions() {}
+    private OffsetDateTimeConversions() {
+    }
 
     static Instant toInstant(Object from, Converter converter) {
-        return ((OffsetDateTime)from).toInstant();
+        return ((OffsetDateTime) from).toInstant();
     }
 
     static long toLong(Object from, Converter converter) {
         return toInstant(from, converter).toEpochMilli();
     }
-    
+
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return ((OffsetDateTime)from).toLocalDateTime();
+        return toZonedDateTime(from, converter).toLocalDateTime();
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {
-        return ((OffsetDateTime)from).toLocalDate();
+        return toZonedDateTime(from, converter).toLocalDate();
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
-        return ((OffsetDateTime)from).toLocalTime();
+        return toZonedDateTime(from, converter).toLocalTime();
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
@@ -74,6 +76,11 @@ final class OffsetDateTimeConversions {
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         return new java.sql.Date(toLong(from, converter));
+    }
+
+    static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
+        return ((OffsetDateTime) from).toInstant().atZone(converter.getOptions().getZoneId());
+//        return ((OffsetDateTime) from).atZoneSameInstant(converter.getOptions().getZoneId());
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -108,5 +115,9 @@ final class OffsetDateTimeConversions {
         target.put(MapConversions.DATE_TIME, converter.convert(localDateTime, String.class));
         target.put(MapConversions.OFFSET, converter.convert(zoneOffset, String.class));
         return target;
+    }
+
+    static double toDouble(Object from, Converter converter) {
+        throw new UnsupportedOperationException("This needs to be implemented");
     }
 }

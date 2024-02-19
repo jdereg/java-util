@@ -1828,6 +1828,16 @@ class ConverterEverythingTest {
         // Timestamp
         /////////////////////////////////////////////////////////////
         TEST_DB.put(pair(BigDecimal.class, Timestamp.class), new Object[][] {
+                { new BigDecimal("-62167219200000.000000"), Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()), true },
+                { new BigDecimal("-62167219199999.999999"), Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00.000000001Z").toInstant()), true },
+                { new BigDecimal("-1000.000001"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:58.999999999Z").toInstant()), true },
+                { new BigDecimal("-1000.000000"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59Z").toInstant()), true },
+                { new BigDecimal("-0.000010"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999990Z").toInstant()), true },
+                { new BigDecimal("-0.000001"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant()), true },
+                { new BigDecimal("0.000000"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000000Z").toInstant()), true },
+                { new BigDecimal("0.000001"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant()), true },
+                { new BigDecimal("999.999999"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.999999999Z").toInstant()), true },
+                { new BigDecimal("1000.000000"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:01.000000000Z").toInstant()), true },
                 { new BigDecimal("1708237915987.654321"), Timestamp.from(ZonedDateTime.parse("2024-02-18T06:31:55.987654321+00:00").toInstant()), true },
                 { new BigDecimal("1708237915123.456789"), Timestamp.from(ZonedDateTime.parse("2024-02-18T06:31:55.123456789+00:00").toInstant()), true },
         });

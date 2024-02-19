@@ -5,6 +5,9 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 /**
@@ -61,24 +64,22 @@ final class BigIntegerConversions {
         return UUID.fromString(uuidString);
     }
 
-    /**
-     * Epoch nanos to Timestamp
-     */
     static Timestamp toTimestamp(Object from, Converter converter) {
-        BigInteger nanoseconds = (BigInteger) from;
-        Duration duration = toDuration(nanoseconds, converter);
-        Instant epoch = Instant.EPOCH;
-
-        // Add the duration to the epoch
-        Instant timestampInstant = epoch.plus(duration);
-
-        // Convert Instant to Timestamp
-        return Timestamp.from(timestampInstant);
+        return Timestamp.from(toInstant(from, converter));
     }
 
-    /**
-     * Epoch nanos to Instant
-     */
+    static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
+        return toInstant(from, converter).atZone(converter.getOptions().getZoneId());
+    }
+
+    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalDateTime();
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toOffsetDateTime();
+    }
+
     static Instant toInstant(Object from, Converter converter) {
         BigInteger nanoseconds = (BigInteger) from;
         BigInteger[] secondsAndNanos = nanoseconds.divideAndRemainder(BILLION);
@@ -87,9 +88,6 @@ final class BigIntegerConversions {
         return Instant.ofEpochSecond(seconds, nanos);
     }
 
-    /**
-     * Epoch nanos to Duration
-     */
     static Duration toDuration(Object from, Converter converter) {
         BigInteger nanoseconds = (BigInteger) from;
         BigInteger[] secondsAndNanos = nanoseconds.divideAndRemainder(BILLION);

@@ -5,6 +5,7 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
@@ -37,6 +38,10 @@ final class BigDecimalConversions {
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDateTime();
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toOffsetDateTime();
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {

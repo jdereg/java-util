@@ -88,7 +88,13 @@ final class InstantConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return BigInteger.valueOf(toLong(from, converter));
+        Instant instant = (Instant) from;
+        // Get seconds and nanoseconds from the Instant
+        long seconds = instant.getEpochSecond();
+        int nanoseconds = instant.getNano();
+
+        // Convert the entire time to nanoseconds
+        return BigInteger.valueOf(seconds).multiply(BigIntegerConversions.BILLION).add(BigInteger.valueOf(nanoseconds));
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {

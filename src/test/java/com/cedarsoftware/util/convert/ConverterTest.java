@@ -856,7 +856,23 @@ class ConverterTest
                 Arguments.of(946702799959L, NEW_YORK, LDT_MILLENNIUM_NY),
                 Arguments.of(946702799959L, CHICAGO, LDT_MILLENNIUM_CHICAGO),
                 Arguments.of(946702799959L, LOS_ANGELES, LDT_MILLENNIUM_LA)
+        );
+    }
 
+    private static Stream<Arguments> epochNanos_withLocalDateTimeInformation() {
+        return Stream.of(
+                Arguments.of(1687622249729000000L, TOKYO, LDT_2023_TOKYO),
+                Arguments.of(1687622249729000000L, PARIS, LDT_2023_PARIS),
+                Arguments.of(1687622249729000000L, GMT, LDT_2023_GMT),
+                Arguments.of(1687622249729000000L, NEW_YORK, LDT_2023_NY),
+                Arguments.of(1687622249729000000L, CHICAGO, LDT_2023_CHICAGO),
+                Arguments.of(1687622249729000000L, LOS_ANGELES, LDT_2023_LA),
+                Arguments.of(946702799959000000L, TOKYO, LDT_MILLENNIUM_TOKYO),
+                Arguments.of(946702799959000000L, PARIS, LDT_MILLENNIUM_PARIS),
+                Arguments.of(946702799959000000L, GMT, LDT_MILLENNIUM_GMT),
+                Arguments.of(946702799959000000L, NEW_YORK, LDT_MILLENNIUM_NY),
+                Arguments.of(946702799959000000L, CHICAGO, LDT_MILLENNIUM_CHICAGO),
+                Arguments.of(946702799959000000L, LOS_ANGELES, LDT_MILLENNIUM_LA)
         );
     }
 
@@ -1308,17 +1324,7 @@ class ConverterTest
         assertThat(actual.getTime().getTime()).isEqualTo(epochMilli);
         assertThat(actual.getTimeZone()).isEqualTo(TimeZone.getTimeZone(zoneId));
     }
-
-    @ParameterizedTest
-    @MethodSource("epochMillis_withLocalDateTimeInformation")
-    void testInstantToBigInteger(long epochMilli, ZoneId zoneId, LocalDateTime expected)
-    {
-        Instant instant = Instant.ofEpochMilli(epochMilli);
-        Converter converter = new Converter(createCustomZones(zoneId));
-        BigInteger actual = converter.convert(instant, BigInteger.class);
-        assertThat(actual.longValue()).isEqualTo(epochMilli);
-    }
-
+    
     @ParameterizedTest
     @MethodSource("epochMillis_withLocalDateTimeInformation")
     void testInstantToBigDecimal(long epochMilli, ZoneId zoneId, LocalDateTime expected)
@@ -2280,7 +2286,7 @@ class ConverterTest
         assert sqlDate.getTime() == now;
 
         // BigInteger to Timestamp
-        bigInt = new BigInteger("" + now);
+        bigInt = new BigInteger("" + now * 1000000L);
         tstamp = this.converter.convert(bigInt, Timestamp.class);
         assert tstamp.getTime() == now;
 

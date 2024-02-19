@@ -1,7 +1,10 @@
 package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -21,6 +24,8 @@ import java.sql.Timestamp;
  *         limitations under the License.
  */
 final class TimestampConversions {
+    private static final BigInteger MILLION = BigInteger.valueOf(1_000_000);
+    
     private TimestampConversions() {}
 
     static double toDouble(Object from, Converter converter) {
@@ -41,5 +46,17 @@ final class TimestampConversions {
 
         // Convert time to fractional milliseconds
         return BigDecimal.valueOf(epochMillis).add(BigDecimal.valueOf(nanoPart, 6)); // Dividing by 1_000_000 with scale 6
+    }
+    
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        Duration duration = toDuration(from, converter);
+        return DurationConversions.toBigInteger(duration, converter);
+    }
+
+    static Duration toDuration(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+        Instant epoch = Instant.EPOCH;
+        Instant timestampInstant = timestamp.toInstant();
+        return Duration.between(epoch, timestampInstant);
     }
 }

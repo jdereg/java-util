@@ -26,6 +26,8 @@ import java.util.UUID;
  *         limitations under the License.
  */
 final class BigDecimalConversions {
+    private BigDecimalConversions() { }
+
     static Instant toInstant(Object from, Converter converter) {
         BigDecimal time = (BigDecimal) from;
         long seconds = time.longValue() / 1000;

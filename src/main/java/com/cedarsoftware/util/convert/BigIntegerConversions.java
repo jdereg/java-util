@@ -2,6 +2,9 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -22,6 +25,11 @@ import java.util.UUID;
  *         limitations under the License.
  */
 final class BigIntegerConversions {
+    static final BigInteger MILLION = BigInteger.valueOf(1_000_000);
+    static final BigInteger BILLION = BigInteger.valueOf(1_000_000_000);
+
+    private BigIntegerConversions() { }
+    
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         return new BigDecimal((BigInteger)from);
     }
@@ -51,5 +59,42 @@ final class BigIntegerConversions {
 
         // Create UUID from string
         return UUID.fromString(uuidString);
+    }
+
+    /**
+     * Epoch nanos to Timestamp
+     */
+    static Timestamp toTimestamp(Object from, Converter converter) {
+        BigInteger nanoseconds = (BigInteger) from;
+        Duration duration = toDuration(nanoseconds, converter);
+        Instant epoch = Instant.EPOCH;
+
+        // Add the duration to the epoch
+        Instant timestampInstant = epoch.plus(duration);
+
+        // Convert Instant to Timestamp
+        return Timestamp.from(timestampInstant);
+    }
+
+    /**
+     * Epoch nanos to Instant
+     */
+    static Instant toInstant(Object from, Converter converter) {
+        BigInteger nanoseconds = (BigInteger) from;
+        BigInteger[] secondsAndNanos = nanoseconds.divideAndRemainder(BILLION);
+        long seconds = secondsAndNanos[0].longValue(); // Total seconds
+        int nanos = secondsAndNanos[1].intValue(); // Nanoseconds part
+        return Instant.ofEpochSecond(seconds, nanos);
+    }
+
+    /**
+     * Epoch nanos to Duration
+     */
+    static Duration toDuration(Object from, Converter converter) {
+        BigInteger nanoseconds = (BigInteger) from;
+        BigInteger[] secondsAndNanos = nanoseconds.divideAndRemainder(BILLION);
+        long seconds = secondsAndNanos[0].longValue();
+        int nanos = secondsAndNanos[1].intValue();
+        return Duration.ofSeconds(seconds, nanos);
     }
 }

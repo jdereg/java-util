@@ -1,6 +1,9 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 
 import com.cedarsoftware.util.CompactLinkedMap;
@@ -33,5 +36,21 @@ final class DurationConversions {
         target.put("seconds", sec);
         target.put("nanos", nanos);
         return target;
+    }
+
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        BigInteger seconds = BigInteger.valueOf(duration.getSeconds());
+        BigInteger nanos = BigInteger.valueOf(duration.getNano());
+
+        // Convert seconds to nanoseconds and add the nanosecond part
+        return seconds.multiply(BigIntegerConversions.BILLION).add(nanos);
+    }
+
+    static Timestamp toTimestamp(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        Instant epoch = Instant.EPOCH;
+        Instant timeAfterDuration = epoch.plus(duration);
+        return Timestamp.from(timeAfterDuration);
     }
 }

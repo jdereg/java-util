@@ -184,12 +184,12 @@ public final class Converter {
         CONVERSION_DB.put(pair(Instant.class, Long.class), InstantConversions::toLong);
         CONVERSION_DB.put(pair(LocalDate.class, Long.class), LocalDateConversions::toLong);
         CONVERSION_DB.put(pair(LocalDateTime.class, Long.class), LocalDateTimeConversions::toLong);
+        CONVERSION_DB.put(pair(OffsetDateTime.class, Long.class), OffsetDateTimeConversions::toLong);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Long.class), ZonedDateTimeConversions::toLong);
         CONVERSION_DB.put(pair(Calendar.class, Long.class), CalendarConversions::toLong);
         CONVERSION_DB.put(pair(Number.class, Long.class), NumberConversions::toLong);
         CONVERSION_DB.put(pair(Map.class, Long.class), MapConversions::toLong);
         CONVERSION_DB.put(pair(String.class, Long.class), StringConversions::toLong);
-        CONVERSION_DB.put(pair(OffsetDateTime.class, Long.class), OffsetDateTimeConversions::toLong);
         CONVERSION_DB.put(pair(Year.class, Long.class), YearConversions::toLong);
 
         // toFloat
@@ -614,8 +614,10 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, OffsetDateTime.class), MapConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(String.class, OffsetDateTime.class), StringConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(Long.class, OffsetDateTime.class), NumberConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(Double.class, OffsetDateTime.class), DoubleConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(BigInteger.class, OffsetDateTime.class), BigIntegerConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(BigDecimal.class, OffsetDateTime.class), BigDecimalConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(Timestamp.class, OffsetDateTime.class), TimestampConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(ZonedDateTime.class, OffsetDateTime.class), ZonedDateTimeConversions::toOffsetDateTime);
 
         // toOffsetTime

@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 
 /**
@@ -38,6 +39,10 @@ final class DoubleConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return toInstant(from, converter).atZone(converter.getOptions().getZoneId());
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        return toInstant(from, converter).atZone(converter.getOptions().getZoneId()).toOffsetDateTime();
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

@@ -5,6 +5,9 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -24,8 +27,6 @@ import java.time.Instant;
  *         limitations under the License.
  */
 final class TimestampConversions {
-    private static final BigInteger MILLION = BigInteger.valueOf(1_000_000);
-    
     private TimestampConversions() {}
 
     static double toDouble(Object from, Converter converter) {
@@ -58,5 +59,17 @@ final class TimestampConversions {
         Instant epoch = Instant.EPOCH;
         Instant timestampInstant = timestamp.toInstant();
         return Duration.between(epoch, timestampInstant);
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+
+        // Get the current date-time in the options ZoneId timezone
+        ZonedDateTime zonedDateTime = ZonedDateTime.now(converter.getOptions().getZoneId());
+
+        // Extract the ZoneOffset
+        ZoneOffset zoneOffset = zonedDateTime.getOffset();
+
+        return timestamp.toInstant().atOffset(zoneOffset);
     }
 }

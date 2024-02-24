@@ -65,7 +65,8 @@ final class OffsetDateTimeConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        return new Timestamp(toLong(from, converter));
+        OffsetDateTime odt = (OffsetDateTime) from;
+        return Timestamp.from(odt.toInstant());
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
@@ -80,7 +81,6 @@ final class OffsetDateTimeConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return ((OffsetDateTime) from).toInstant().atZone(converter.getOptions().getZoneId());
-//        return ((OffsetDateTime) from).atZoneSameInstant(converter.getOptions().getZoneId());
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -88,10 +88,12 @@ final class OffsetDateTimeConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
+        // TODO: nanosecond resolution needed
         return BigInteger.valueOf(toLong(from, converter));
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
+        // TODO: nanosecond resolution needed
         return BigDecimal.valueOf(toLong(from, converter));
     }
 
@@ -118,6 +120,13 @@ final class OffsetDateTimeConversions {
     }
 
     static double toDouble(Object from, Converter converter) {
-        throw new UnsupportedOperationException("This needs to be implemented");
+        OffsetDateTime odt = (OffsetDateTime) from;
+        Instant instant = odt.toInstant();
+
+        long epochSecond = instant.getEpochSecond();
+        int nano = instant.getNano();
+
+        // Convert seconds to milliseconds and add the fractional milliseconds
+        return epochSecond * 1000.0 + nano / 1_000_000.0;
     }
 }

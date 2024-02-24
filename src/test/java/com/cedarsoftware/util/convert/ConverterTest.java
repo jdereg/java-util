@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -4241,6 +4242,21 @@ class ConverterTest
         Converter converter = new Converter(createCharsetOptions(charSet));
         char[] actual = converter.convert(source, char[].class);
         assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    void testTimestampAndOffsetDateTimeSymmetry()
+    {
+        Timestamp ts1 = new Timestamp(System.currentTimeMillis());
+        Instant instant1 = ts1.toInstant();
+
+        OffsetDateTime odt = converter.convert(ts1, OffsetDateTime.class);
+        Instant instant2 = odt.toInstant();
+
+        assertEquals(instant1, instant2);
+
+        Timestamp ts2 = converter.convert(odt, Timestamp. class);
+        assertEquals(ts1, ts2);
     }
 
     @Test

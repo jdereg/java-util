@@ -54,6 +54,10 @@ final class BigDecimalConversions {
         return Date.from(toInstant(from, converter));
     }
 
+    static java.sql.Date toSqlDate(Object from, Converter converter) {
+        return new java.sql.Date(toInstant(from, converter).toEpochMilli());
+    }
+
     static Timestamp toTimestamp(Object from, Converter converter) {
         return Timestamp.from(toInstant(from, converter));
     }

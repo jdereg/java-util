@@ -446,8 +446,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(Integer.class, java.sql.Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, java.sql.Date.class), NumberConversions::toSqlDate);
         CONVERSION_DB.put(pair(Double.class, java.sql.Date.class), DoubleConversions::toDate);
-        CONVERSION_DB.put(pair(BigInteger.class, java.sql.Date.class), BigIntegerConversions::toDate);
-        CONVERSION_DB.put(pair(BigDecimal.class, java.sql.Date.class), BigDecimalConversions::toDate);
+        CONVERSION_DB.put(pair(BigInteger.class, java.sql.Date.class), BigIntegerConversions::toSqlDate);
+        CONVERSION_DB.put(pair(BigDecimal.class, java.sql.Date.class), BigDecimalConversions::toSqlDate);
         CONVERSION_DB.put(pair(AtomicInteger.class, java.sql.Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, java.sql.Date.class), NumberConversions::toSqlDate);
         CONVERSION_DB.put(pair(java.sql.Date.class, java.sql.Date.class), DateConversions::toSqlDate);

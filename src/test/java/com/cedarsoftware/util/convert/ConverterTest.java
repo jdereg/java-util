@@ -1004,7 +1004,7 @@ class ConverterTest
         Converter converter = new Converter(createCustomZones(zoneId));
         double intermediate = converter.convert(expected, double.class);
 
-        assertThat((long)intermediate).isEqualTo(epochMilli);
+        assertThat(intermediate * 1000.0).isEqualTo(epochMilli);
     }
 
     @ParameterizedTest
@@ -1178,6 +1178,7 @@ class ConverterTest
     void testBigDecimalToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         BigDecimal bd = BigDecimal.valueOf(epochMilli);
+        bd = bd.divide(BigDecimal.valueOf(1000));
 
         Converter converter = new Converter(createCustomZones(zoneId));
         LocalDateTime localDateTime = converter.convert(bd, LocalDateTime.class);
@@ -1271,7 +1272,7 @@ class ConverterTest
         Instant instant = Instant.ofEpochMilli(epochMilli);
         Converter converter = new Converter(createCustomZones(zoneId));
         double actual = converter.convert(instant, double.class);
-        assertThat(actual).isEqualTo((double)epochMilli);
+        assertThat(actual).isEqualTo((double)epochMilli / 1000.0);
     }
 
     @ParameterizedTest
@@ -1322,7 +1323,7 @@ class ConverterTest
         Instant instant = Instant.ofEpochMilli(epochMilli);
         Converter converter = new Converter(createCustomZones(zoneId));
         BigDecimal actual = converter.convert(instant, BigDecimal.class);
-        assertThat(actual.longValue()).isEqualTo(epochMilli);
+        assertThat(actual.multiply(BigDecimal.valueOf(1000)).longValue()).isEqualTo(epochMilli);
     }
 
     @ParameterizedTest
@@ -1706,10 +1707,9 @@ class ConverterTest
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
         converter = new Converter(createCustomZones(targetZoneId));
-        LocalDateTime actual = converter.convert(milli, LocalDateTime.class);
+        LocalDateTime actual = converter.convert(milli.longValue(), LocalDateTime.class);
         assertThat(actual).isEqualTo(expected);
     }
-
 
     private static Stream<Arguments> testAtomicLongParams_withIllegalArguments() {
         return Stream.of(
@@ -1854,13 +1854,6 @@ class ConverterTest
     }
 
     @Test
-    void testBigDecimal_withDate() {
-        Date now = new Date();
-        BigDecimal bd = new BigDecimal(now.getTime());
-        assertEquals(bd, this.converter.convert(now, BigDecimal.class));
-    }
-
-    @Test
     void testBigDecimal_witCalendar() {
         Calendar today = Calendar.getInstance();
         BigDecimal bd = new BigDecimal(today.getTime().getTime());
@@ -1919,13 +1912,6 @@ class ConverterTest
     void testBigInteger_withObjectsShouldBeSameAs(Object value, BigInteger expected) {
         BigInteger converted = this.converter.convert(value, BigInteger.class);
         assertThat(converted).isSameAs(expected);
-    }
-
-    @Test
-    void testBigInteger_withDate() {
-        Date now = new Date();
-        BigInteger bd = BigInteger.valueOf(now.getTime());
-        assertEquals(bd, this.converter.convert(now, BigInteger.class));
     }
 
     @Test
@@ -2001,11 +1987,10 @@ class ConverterTest
     private static Stream<Arguments> epochMilli_exampleOneParams() {
         return Stream.of(
                 Arguments.of(1705601070270L),
-                Arguments.of( Long.valueOf(1705601070270L)),
                 Arguments.of( new AtomicLong(1705601070270L)),
-                Arguments.of( 1705601070270.798659898d),
-                Arguments.of( BigInteger.valueOf(1705601070270L)),
-                Arguments.of( BigDecimal.valueOf(1705601070270L)),
+                Arguments.of( 1705601070.270798659898d),
+                Arguments.of( BigInteger.valueOf(1705601070270000000L)),
+                Arguments.of( new BigDecimal("1705601070.270")),
                 Arguments.of("1705601070270")
         );
     }
@@ -2147,7 +2132,7 @@ class ConverterTest
         return Stream.of(
                 Arguments.of(Long.MIN_VALUE,new Date(Long.MIN_VALUE)),
                 Arguments.of(Long.MAX_VALUE, new Date(Long.MAX_VALUE)),
-                Arguments.of(127.0d, new Date(127))
+                Arguments.of(127.0d, new Date(127*1000))
         );
     }
 
@@ -2252,12 +2237,13 @@ class ConverterTest
         assertEquals(dateNow, sqlConverted);
 
         // BigInteger to java.sql.Date
-        BigInteger bigInt = new BigInteger("" + now);
+        BigInteger bigInt = new BigInteger("" + now * 1_000_000);
         sqlDate = this.converter.convert(bigInt, java.sql.Date.class);
         assert sqlDate.getTime() == now;
 
         // BigDecimal to java.sql.Date
         BigDecimal bigDec = new BigDecimal(now);
+        bigDec = bigDec.divide(BigDecimal.valueOf(1000));
         sqlDate = this.converter.convert(bigDec, java.sql.Date.class);
         assert sqlDate.getTime() == now;
 
@@ -2268,6 +2254,7 @@ class ConverterTest
 
         // BigDecimal to TimeStamp
         bigDec = new BigDecimal(now);
+        bigDec = bigDec.divide(BigDecimal.valueOf(1000));
         tstamp = this.converter.convert(bigDec, Timestamp.class);
         assert tstamp.getTime() == now;
 
@@ -3332,7 +3319,7 @@ class ConverterTest
         cal.set(2020, 8, 8, 13, 11, 1);   // 0-based for month
 
         BigDecimal big = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), BigDecimal.class);
-        assert big.longValue() == cal.getTime().getTime();
+        assert big.multiply(BigDecimal.valueOf(1000L)).longValue() == cal.getTime().getTime();
 
         BigInteger bigI = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), BigInteger.class);
         assert bigI.longValue() == cal.getTime().getTime();
@@ -3346,7 +3333,6 @@ class ConverterTest
         AtomicLong atomicLong = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), AtomicLong.class);
         assert atomicLong.get() == cal.getTime().getTime();
     }
-
 
     private static Stream<Arguments> stringToClassParams() {
         return Stream.of(

@@ -53,7 +53,7 @@ final class DateConversions {
     }
 
     static Date toDate(Object from, Converter converter) {
-        return new Date(toLong(from,converter));
+        return new Date(toLong(from, converter));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
@@ -67,10 +67,18 @@ final class DateConversions {
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Date date = (Date) from;
         long epochMillis = date.getTime();
-        return new BigDecimal(epochMillis).divide(BigDecimalConversions.GRAND, 9, RoundingMode.HALF_UP);    }
+
+        // Truncate decimal portion
+        return new BigDecimal(epochMillis).divide(BigDecimalConversions.GRAND, 9, RoundingMode.DOWN);
+    }
 
     static Instant toInstant(Object from, Converter converter) {
-        return Instant.ofEpochMilli(toLong(from, converter));
+        Date date = (Date) from;
+        if (date instanceof java.sql.Date) {
+            return new java.util.Date(date.getTime()).toInstant();
+        } else {
+            return date.toInstant();
+        }
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
@@ -86,13 +94,7 @@ final class DateConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        Date date = (Date) from;
-        Instant instant;
-        if (date instanceof java.sql.Date) {
-            instant = new java.util.Date(date.getTime()).toInstant();
-        } else {
-            instant = date.toInstant();
-        }
+        Instant instant = toInstant(from, converter);
         BigInteger seconds = BigInteger.valueOf(instant.getEpochSecond());
         BigInteger nanos = BigInteger.valueOf(instant.getNano());
 

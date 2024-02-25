@@ -62,7 +62,7 @@ final class LocalDateConversions {
     }
     
     static double toDouble(Object from, Converter converter) {
-        return toInstant(from, converter).toEpochMilli();
+        return toInstant(from, converter).toEpochMilli() / 1000d;
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {

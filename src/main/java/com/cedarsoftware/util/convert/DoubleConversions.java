@@ -30,8 +30,8 @@ final class DoubleConversions {
 
     static Instant toInstant(Object from, Converter converter) {
         double d = (Double) from;
-        long seconds = (long) d / 1000;
-        int nanoAdjustment = (int) ((d - seconds * 1000) * 1_000_000);
+        long seconds = (long) d;
+        long nanoAdjustment = (long) ((d - seconds) * 1_000_000_000L);
         return Instant.ofEpochSecond(seconds, nanoAdjustment);
     }
 
@@ -59,7 +59,7 @@ final class DoubleConversions {
         double d = (Double) from;
         // Separate whole seconds and nanoseconds
         long seconds = (long) d;
-        int nanoAdjustment = (int) ((d - seconds) * 1_000_000_000);
+        long nanoAdjustment = (long) ((d - seconds) * 1_000_000_000L);
         return Duration.ofSeconds(seconds, nanoAdjustment);
     }
 }

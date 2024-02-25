@@ -30,14 +30,10 @@ final class TimestampConversions {
     private TimestampConversions() {}
 
     static double toDouble(Object from, Converter converter) {
-        Timestamp timestamp = (Timestamp) from;
-        long timeInMilliseconds = timestamp.getTime();
-        int nanoseconds = timestamp.getNanos();
-        // Subtract the milliseconds part of the nanoseconds to avoid double counting
-        double additionalNanos = nanoseconds % 1_000_000 / 1_000_000.0;
-        return timeInMilliseconds + additionalNanos;
+        Duration d = toDuration(from, converter);
+        return d.getSeconds() + d.getNano() / 1_000_000_000d;
     }
-
+    
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Timestamp timestamp = (Timestamp) from;
         long epochMillis = timestamp.getTime();

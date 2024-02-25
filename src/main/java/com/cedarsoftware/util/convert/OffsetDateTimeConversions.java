@@ -127,6 +127,6 @@ final class OffsetDateTimeConversions {
         int nano = instant.getNano();
 
         // Convert seconds to milliseconds and add the fractional milliseconds
-        return epochSecond * 1000.0 + nano / 1_000_000.0;
+        return epochSecond + nano / 1_000_000_000.0d;
     }
 }

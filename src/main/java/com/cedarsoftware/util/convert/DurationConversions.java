@@ -50,7 +50,7 @@ final class DurationConversions {
     static double toDouble(Object from, Converter converter) {
         Duration duration = (Duration) from;
         // Convert to seconds with nanosecond precision
-        return duration.getSeconds() + duration.getNano() / 1_000_000_000.0;
+        return duration.getSeconds() + duration.getNano() / 1_000_000_000d;
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

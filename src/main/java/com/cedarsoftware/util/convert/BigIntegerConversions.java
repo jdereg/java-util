@@ -29,7 +29,6 @@ import java.util.UUID;
  *         limitations under the License.
  */
 final class BigIntegerConversions {
-    static final BigInteger MILLION = BigInteger.valueOf(1_000_000);
     static final BigInteger BILLION = BigInteger.valueOf(1_000_000_000);
 
     private BigIntegerConversions() { }

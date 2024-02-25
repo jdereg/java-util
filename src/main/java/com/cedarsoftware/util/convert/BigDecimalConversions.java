@@ -28,6 +28,8 @@ import java.util.UUID;
  *         limitations under the License.
  */
 final class BigDecimalConversions {
+    static final BigDecimal GRAND = BigDecimal.valueOf(1000);
+
     private BigDecimalConversions() { }
 
     static Instant toInstant(Object from, Converter converter) {

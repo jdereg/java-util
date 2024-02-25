@@ -21,6 +21,7 @@ import com.cedarsoftware.util.CompactLinkedMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -93,8 +94,17 @@ final class OffsetDateTimeConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        // TODO: nanosecond resolution needed
-        return BigDecimal.valueOf(toLong(from, converter));
+        OffsetDateTime offsetDateTime = (OffsetDateTime) from;
+        Instant instant = offsetDateTime.toInstant();
+
+        long epochSecond = instant.getEpochSecond();
+        long nano = instant.getNano();
+
+        // Convert to BigDecimal and add
+        BigDecimal seconds = BigDecimal.valueOf(epochSecond);
+        BigDecimal nanoSeconds = BigDecimal.valueOf(nano).scaleByPowerOfTen(-9);
+
+        return seconds.add(nanoSeconds);
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {

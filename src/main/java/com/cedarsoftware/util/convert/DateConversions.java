@@ -2,6 +2,7 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -64,8 +65,9 @@ final class DateConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        return BigDecimal.valueOf(toLong(from, converter));
-    }
+        Date date = (Date) from;
+        long epochMillis = date.getTime();
+        return new BigDecimal(epochMillis).divide(BigDecimalConversions.GRAND, 9, RoundingMode.HALF_UP);    }
 
     static Instant toInstant(Object from, Converter converter) {
         return Instant.ofEpochMilli(toLong(from, converter));

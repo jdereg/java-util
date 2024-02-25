@@ -36,13 +36,8 @@ final class TimestampConversions {
     
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Timestamp timestamp = (Timestamp) from;
-        long epochMillis = timestamp.getTime();
-
-        // Get nanoseconds part (fraction of the current millisecond)
-        int nanoPart = timestamp.getNanos() % 1_000_000;
-
-        // Convert time to fractional milliseconds
-        return BigDecimal.valueOf(epochMillis).add(BigDecimal.valueOf(nanoPart, 6)); // Dividing by 1_000_000 with scale 6
+        Instant instant = timestamp.toInstant();
+        return InstantConversions.toBigDecimal(instant, converter);
     }
     
     static BigInteger toBigInteger(Object from, Converter converter) {

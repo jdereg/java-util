@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.Date;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -33,6 +34,11 @@ final class DoubleConversions {
         long seconds = (long) d;
         long nanoAdjustment = (long) ((d - seconds) * 1_000_000_000L);
         return Instant.ofEpochSecond(seconds, nanoAdjustment);
+    }
+
+    static Date toDate(Object from, Converter converter) {
+        double d = (Double) from;
+        return new Date((long)(d * 1000));
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {

@@ -43,7 +43,8 @@ final class DateConversions {
     }
 
     static double toDouble(Object from, Converter converter) {
-        return ((Date) from).getTime();
+        Date date = (Date) from;
+        return date.getTime() / 1000.0;
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
@@ -83,7 +84,18 @@ final class DateConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return BigInteger.valueOf(toLong(from, converter));
+        Date date = (Date) from;
+        Instant instant;
+        if (date instanceof java.sql.Date) {
+            instant = new java.util.Date(date.getTime()).toInstant();
+        } else {
+            instant = date.toInstant();
+        }
+        BigInteger seconds = BigInteger.valueOf(instant.getEpochSecond());
+        BigInteger nanos = BigInteger.valueOf(instant.getNano());
+
+        // Convert the seconds to nanoseconds and add the nanosecond fraction
+        return seconds.multiply(BigIntegerConversions.BILLION).add(nanos);
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {

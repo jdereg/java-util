@@ -421,9 +421,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, Date.class), NumberConversions::toDate);
-        CONVERSION_DB.put(pair(Double.class, Date.class), NumberConversions::toDate);
-        CONVERSION_DB.put(pair(BigInteger.class, Date.class), NumberConversions::toDate);
-        CONVERSION_DB.put(pair(BigDecimal.class, Date.class), NumberConversions::toDate);
+        CONVERSION_DB.put(pair(Double.class, Date.class), DoubleConversions::toDate);
+        CONVERSION_DB.put(pair(BigInteger.class, Date.class), BigIntegerConversions::toDate);
+        CONVERSION_DB.put(pair(BigDecimal.class, Date.class), BigDecimalConversions::toDate);
         CONVERSION_DB.put(pair(AtomicInteger.class, Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, Date.class), NumberConversions::toDate);
         CONVERSION_DB.put(pair(Date.class, Date.class), DateConversions::toDate);
@@ -445,8 +445,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, java.sql.Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, java.sql.Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, java.sql.Date.class), NumberConversions::toSqlDate);
-        CONVERSION_DB.put(pair(Double.class, java.sql.Date.class), NumberConversions::toSqlDate);
-        CONVERSION_DB.put(pair(BigInteger.class, java.sql.Date.class), NumberConversions::toSqlDate);
+        CONVERSION_DB.put(pair(Double.class, java.sql.Date.class), DoubleConversions::toDate);
+        CONVERSION_DB.put(pair(BigInteger.class, java.sql.Date.class), BigIntegerConversions::toDate);
         CONVERSION_DB.put(pair(BigDecimal.class, java.sql.Date.class), NumberConversions::toSqlDate);
         CONVERSION_DB.put(pair(AtomicInteger.class, java.sql.Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, java.sql.Date.class), NumberConversions::toSqlDate);

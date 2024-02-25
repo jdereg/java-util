@@ -98,7 +98,7 @@ final class InstantConversions {
         Instant instant = (Instant) from;
         long seconds = instant.getEpochSecond();
         int nanos = instant.getNano();
-        return BigDecimal.valueOf(seconds * 1000).add(BigDecimal.valueOf(nanos, 6));
+        return BigDecimal.valueOf(seconds).add(BigDecimal.valueOf(nanos, 9));
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {

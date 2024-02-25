@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.UUID;
 
 /**
@@ -62,6 +63,10 @@ final class BigIntegerConversions {
 
         // Create UUID from string
         return UUID.fromString(uuidString);
+    }
+
+    static Date toDate(Object from, Converter converter) {
+        return Date.from(toInstant(from, converter));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

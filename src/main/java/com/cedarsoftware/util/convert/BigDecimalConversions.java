@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.UUID;
 
 /**
@@ -30,10 +31,9 @@ final class BigDecimalConversions {
     private BigDecimalConversions() { }
 
     static Instant toInstant(Object from, Converter converter) {
-        BigDecimal time = (BigDecimal) from;
-        long seconds = time.longValue() / 1000;
-        int nanos = time.remainder(BigDecimal.valueOf(1000)).multiply(BigDecimal.valueOf(1_000_000)).intValue();
-        return Instant.ofEpochSecond(seconds, nanos);
+        BigDecimal bigDec = (BigDecimal) from;
+        BigDecimal fractionalPart = bigDec.remainder(BigDecimal.ONE);
+        return Instant.ofEpochSecond(bigDec.longValue(), fractionalPart.movePointRight(9).longValue());
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
@@ -46,6 +46,10 @@ final class BigDecimalConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return toInstant(from, converter).atZone(converter.getOptions().getZoneId());
+    }
+
+    static Date toDate(Object from, Converter converter) {
+        return Date.from(toInstant(from, converter));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

@@ -1060,6 +1060,15 @@ class ConverterEverythingTest {
                 {(char) 1, 1d},
                 {(char) 0, 0d},
         });
+        TEST_DB.put(pair(Duration.class, Double.class), new Object[][] {
+                { Duration.ofSeconds(-1), -1d, true },
+                { Duration.ofSeconds(0), 0d, true },
+                { Duration.ofSeconds(1), 1d, true },
+                { Duration.ofNanos(1), 0.000000001d, true },
+                { Duration.ofNanos(1_000_000_000), 1d, true },
+                { Duration.ofNanos(2_000_000_001), 2.000000001d, true },
+                { Duration.ofSeconds(10, 9), 10.000000009d, true },
+        });
         TEST_DB.put(pair(Instant.class, Double.class), new Object[][]{      // JDK 1.8 cannot handle the format +01:00 in Instant.parse().  JDK11+ handle it fine.
 //                {ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant(), -0.000001d, true},    // IEEE-754 double cannot represent this number precisely
                 {ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant(), 0d, true},
@@ -1072,13 +1081,16 @@ class ConverterEverythingTest {
                 {ZonedDateTime.parse("2024-02-12T11:38:00.123937482+01:00").toInstant(), 1707734280123.937482d},  // nano = one-millionth of a milli
         });
         TEST_DB.put(pair(LocalDate.class, Double.class), new Object[][]{
+                {LocalDate.parse("1969-12-31"), -118800000d, true},    // Proves it always works from "startOfDay", using the zoneId from options
+                {LocalDate.parse("1970-01-01"), -32400000d, true},    // Proves it always works from "startOfDay", using the zoneId from options
+                {LocalDate.parse("1970-01-02"), 54000000d, true},    // Proves it always works from "startOfDay", using the zoneId from options
                 {ZonedDateTime.parse("1969-12-31T00:00:00Z").withZoneSameInstant(ZoneId.of("UTC")).toLocalDate(), -1.188E8, true},    // Proves it always works from "startOfDay", using the zoneId from options
                 {ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").withZoneSameInstant(ZoneId.of("UTC")).toLocalDate(), -1.188E8, true},    // Proves it always works from "startOfDay", using the zoneId from options
                 {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(ZoneId.of("UTC")).toLocalDate(), -32400000d, true},    // Proves it always works from "startOfDay", using the zoneId from options
                 {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -32400000d, true},
                 {ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -32400000.000000001d, true},
                 {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").withZoneSameInstant(TOKYO_Z).toLocalDate(), 1.7076636E12, true},     // Epoch millis in Tokyo timezone (at start of day - no time)
-                {ZonedDateTime.parse("2024-02-12T11:38:00.123456789+01:00").withZoneSameInstant(TOKYO_Z).toLocalDate(), 1.7076636E12}, // Only to start of day resolution
+                {ZonedDateTime.parse("2024-02-12T11:38:00.123456789+01:00").withZoneSameInstant(TOKYO_Z).toLocalDate(), 1.7076636E12, true}, // Only to start of day resolution
         });
         TEST_DB.put(pair(LocalDateTime.class, Double.class), new Object[][]{
 //                {ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), -0.000001d, true},        // IEEE-754 double does not quite have the resolution
@@ -1144,6 +1156,27 @@ class ConverterEverythingTest {
                 {new Timestamp(Long.MAX_VALUE), (double) Long.MAX_VALUE},
         });
         TEST_DB.put(pair(Calendar.class, Double.class), new Object[][]{
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    cal.setTimeInMillis(-1);
+                    return cal;
+                }, -1d},
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    cal.setTimeInMillis(0);
+                    return cal;
+                }, 0d},
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    cal.setTimeInMillis(1);
+                    return cal;
+                }, 1d},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
@@ -1710,6 +1743,11 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(OffsetDateTime.class, OffsetDateTime.class), new Object[][]{
                 {OffsetDateTime.parse("2024-02-18T06:31:55.987654321+00:00"), OffsetDateTime.parse("2024-02-18T06:31:55.987654321+00:00"), true },
         });
+        TEST_DB.put(pair(Double.class, OffsetDateTime.class), new Object[][]{
+                {-0.000001d, OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z").withOffsetSameInstant(ZonedDateTime.now(TOKYO_Z).getOffset()) },  // IEEE-754 resolution prevents perfect symmetry (close)
+                {0d, OffsetDateTime.parse("1970-01-01T00:00:00Z").withOffsetSameInstant(ZonedDateTime.now(TOKYO_Z).getOffset()), true },
+                {0.000001d, OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z").withOffsetSameInstant(ZonedDateTime.now(TOKYO_Z).getOffset()), true },
+        });
 
         /////////////////////////////////////////////////////////////
         // MonthDay
@@ -1868,6 +1906,16 @@ class ConverterEverythingTest {
         /////////////////////////////////////////////////////////////
         // Timestamp
         /////////////////////////////////////////////////////////////
+        TEST_DB.put(pair(Void.class, Timestamp.class), new Object[][]{
+                { null, null },
+        });
+        // No identity test - Timestamp is mutable
+        TEST_DB.put(pair(Double.class, Timestamp.class), new Object[][]{
+                { -0.000001d, Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant())},    // IEEE-754 limit prevents reverse test
+                { 0d, Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant()), true},
+                { 0.000001d, Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant()), true},
+                { (double)now, new Timestamp(now), true},
+        });
         TEST_DB.put(pair(BigDecimal.class, Timestamp.class), new Object[][] {
                 { new BigDecimal("-62167219200000.000000"), Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()), true },
                 { new BigDecimal("-62167219199999.999999"), Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00.000000001Z").toInstant()), true },
@@ -1904,6 +1952,53 @@ class ConverterEverythingTest {
                 {OffsetDateTime.parse("1970-01-01T00:00:00.000000000Z"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000000Z").toInstant()) },
                 {OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant()) },
                 {OffsetDateTime.parse("2024-02-18T06:31:55.987654321+00:00"), Timestamp.from(ZonedDateTime.parse("2024-02-18T06:31:55.987654321+00:00").toInstant()) },
+        });
+
+        /////////////////////////////////////////////////////////////
+        // LocalDate
+        /////////////////////////////////////////////////////////////
+        TEST_DB.put(pair(Void.class, LocalDate.class), new Object[][] {
+                { null, null }
+        });
+        TEST_DB.put(pair(LocalDate.class, LocalDate.class), new Object[][] {
+                { LocalDate.parse("1970-01-01"), LocalDate.parse("1970-01-01"), true }
+        });
+        TEST_DB.put(pair(Double.class, LocalDate.class), new Object[][] {   // options timezone is factored in (86,400,000 millis per day)
+                { -32400001d, LocalDate.parse("1969-12-31") },
+                { -32400000d, LocalDate.parse("1970-01-01"), true },
+                { 0d, LocalDate.parse("1970-01-01") },
+                { 53999999d, LocalDate.parse("1970-01-01") },
+                { 54000000d, LocalDate.parse("1970-01-02"), true },
+        });
+
+        /////////////////////////////////////////////////////////////
+        // LocalDateTime
+        /////////////////////////////////////////////////////////////
+        TEST_DB.put(pair(Void.class, LocalDateTime.class), new Object[][] {
+                { null, null }
+        });
+        TEST_DB.put(pair(LocalDateTime.class, LocalDateTime.class), new Object[][] {
+                { LocalDateTime.of(1970, 1, 1, 0,0), LocalDateTime.of(1970, 1, 1, 0,0), true }
+        });
+        TEST_DB.put(pair(Double.class, LocalDateTime.class), new Object[][] {
+                { -0.000001d, LocalDateTime.parse("1969-12-31T23:59:59.999999999").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime() },   // IEEE-754 prevents perfect symmetry
+                { 0d, LocalDateTime.parse("1970-01-01T00:00:00").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true },
+                { 0.000001d, LocalDateTime.parse("1970-01-01T00:00:00.000000001").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true },
+        });
+
+        /////////////////////////////////////////////////////////////
+        // ZonedDateTime
+        /////////////////////////////////////////////////////////////
+        TEST_DB.put(pair(Void.class, ZonedDateTime.class), new Object[][]{
+                { null, null },
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, ZonedDateTime.class), new Object[][]{
+                { ZonedDateTime.parse("1970-01-01T00:00:00.000000000Z").withZoneSameInstant(TOKYO_Z), ZonedDateTime.parse("1970-01-01T00:00:00.000000000Z").withZoneSameInstant(TOKYO_Z) },
+        });
+        TEST_DB.put(pair(Double.class, ZonedDateTime.class), new Object[][]{
+                { -0.000001d, ZonedDateTime.parse("1969-12-31T23:59:59.999999999+00:00").withZoneSameInstant(TOKYO_Z)},    // IEEE-754 limit prevents reverse test
+                { 0d, ZonedDateTime.parse("1970-01-01T00:00:00+00:00").withZoneSameInstant(TOKYO_Z), true},
+                { 0.000001d, ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").withZoneSameInstant(TOKYO_Z), true},
         });
 
         /////////////////////////////////////////////////////////////

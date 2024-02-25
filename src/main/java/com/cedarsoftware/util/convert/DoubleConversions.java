@@ -1,7 +1,9 @@
 package com.cedarsoftware.util.convert;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -33,6 +35,10 @@ final class DoubleConversions {
         return Instant.ofEpochSecond(seconds, nanoAdjustment);
     }
 
+    static LocalDate toLocalDate(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalDate();
+    }
+
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDateTime();
     }
@@ -46,11 +52,14 @@ final class DoubleConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        double milliseconds = (Double) from;
-        long millisPart = (long) milliseconds;
-        int nanosPart = (int) ((milliseconds - millisPart) * 1_000_000);
-        Timestamp timestamp = new Timestamp(millisPart);
-        timestamp.setNanos(timestamp.getNanos() + nanosPart);
-        return timestamp;
+        return Timestamp.from(toInstant(from, converter));
+    }
+    
+    static Duration toDuration(Object from, Converter converter) {
+        double d = (Double) from;
+        // Separate whole seconds and nanoseconds
+        long seconds = (long) d;
+        int nanoAdjustment = (int) ((d - seconds) * 1_000_000_000);
+        return Duration.ofSeconds(seconds, nanoAdjustment);
     }
 }

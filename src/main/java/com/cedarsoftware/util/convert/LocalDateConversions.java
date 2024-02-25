@@ -62,7 +62,7 @@ final class LocalDateConversions {
     }
     
     static double toDouble(Object from, Converter converter) {
-        return toLong(from, converter);
+        return toInstant(from, converter).toEpochMilli();
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
@@ -89,10 +89,12 @@ final class LocalDateConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
+        // TODO: Upgrade precision
         return BigInteger.valueOf(toLong(from, converter));
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
+        // TODO: Upgrade precision
         return BigDecimal.valueOf(toLong(from, converter));
     }
 

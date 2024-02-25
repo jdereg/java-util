@@ -224,6 +224,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Double.class), Converter::identity);
         CONVERSION_DB.put(pair(Boolean.class, Double.class), BooleanConversions::toDouble);
         CONVERSION_DB.put(pair(Character.class, Double.class), CharacterConversions::toDouble);
+        CONVERSION_DB.put(pair(Duration.class, Double.class), DurationConversions::toDouble);
         CONVERSION_DB.put(pair(Instant.class, Double.class), InstantConversions::toDouble);
         CONVERSION_DB.put(pair(LocalDate.class, Double.class), LocalDateConversions::toDouble);
         CONVERSION_DB.put(pair(LocalDateTime.class, Double.class), LocalDateTimeConversions::toDouble);
@@ -517,7 +518,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, LocalDate.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, LocalDate.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, LocalDate.class), NumberConversions::toLocalDate);
-        CONVERSION_DB.put(pair(Double.class, LocalDate.class), NumberConversions::toLocalDate);
+        CONVERSION_DB.put(pair(Double.class, LocalDate.class), DoubleConversions::toLocalDate);
         CONVERSION_DB.put(pair(BigInteger.class, LocalDate.class), NumberConversions::toLocalDate);
         CONVERSION_DB.put(pair(BigDecimal.class, LocalDate.class), NumberConversions::toLocalDate);
         CONVERSION_DB.put(pair(AtomicInteger.class, LocalDate.class), UNSUPPORTED);
@@ -727,6 +728,7 @@ public final class Converter {
         // Duration conversions supported
         CONVERSION_DB.put(pair(Void.class, Duration.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Duration.class, Duration.class), Converter::identity);
+        CONVERSION_DB.put(pair(Double.class, Duration.class), DoubleConversions::toDuration);
         CONVERSION_DB.put(pair(BigInteger.class, Duration.class), BigIntegerConversions::toDuration);
         CONVERSION_DB.put(pair(Timestamp.class, Duration.class), TimestampConversions::toDuration);
         CONVERSION_DB.put(pair(String.class, Duration.class), StringConversions::toDuration);

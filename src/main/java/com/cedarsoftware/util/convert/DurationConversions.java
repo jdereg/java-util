@@ -47,6 +47,12 @@ final class DurationConversions {
         return seconds.multiply(BigIntegerConversions.BILLION).add(nanos);
     }
 
+    static double toDouble(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Convert to seconds with nanosecond precision
+        return duration.getSeconds() + duration.getNano() / 1_000_000_000.0;
+    }
+
     static Timestamp toTimestamp(Object from, Converter converter) {
         Duration duration = (Duration) from;
         Instant epoch = Instant.EPOCH;

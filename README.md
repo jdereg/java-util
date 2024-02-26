@@ -7,7 +7,7 @@ java-util
 Rare, hard-to-find utilities that are thoroughly tested (> 98% code coverage via JUnit tests).
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is only`155K.`
+The`.jar`file is `232K.`
 Works with`JDK 1.8`through`JDK 21`.
 The classes in the`.jar`file are version 52 (`JDK 1.8`).
 

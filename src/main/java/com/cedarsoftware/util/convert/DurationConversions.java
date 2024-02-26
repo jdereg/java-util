@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.CompactLinkedMap;
 
@@ -39,6 +40,15 @@ final class DurationConversions {
         return target;
     }
 
+    static long toLong(Object from, Converter converter) {
+        return ((Duration) from).toMillis();
+    }
+
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        return new AtomicLong(duration.toMillis());
+    }
+    
     static BigInteger toBigInteger(Object from, Converter converter) {
         Duration duration = (Duration) from;
         BigInteger epochSeconds = BigInteger.valueOf(duration.getSeconds());

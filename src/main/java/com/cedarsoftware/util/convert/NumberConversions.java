@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -174,7 +175,11 @@ final class NumberConversions {
     static Date toDate(Object from, Converter converter) {
         return new Date(toLong(from, converter));
     }
-    
+
+    static Duration toDuration(Object from, Converter converter) {
+        return Duration.ofMillis(toLong(from, converter));
+    }
+
     static Instant toInstant(Object from, Converter converter) {
         return Instant.ofEpochMilli(toLong(from, converter));
     }

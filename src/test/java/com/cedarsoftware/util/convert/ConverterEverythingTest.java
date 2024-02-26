@@ -113,8 +113,36 @@ class ConverterEverythingTest {
         loadZoneDateTimeTests();
         loadZoneOffsetTests();
         loadStringTests();
+        loadAtomicLongTests();
     }
 
+    /**
+     * AtomicLong
+     */
+    private static void loadAtomicLongTests() {
+        TEST_DB.put(pair(Void.class, AtomicLong.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(Instant.class, AtomicLong.class), new Object[][]{
+                { Instant.parse("0000-01-01T00:00:00Z"), new AtomicLong(-62167219200000L), true},
+                { Instant.parse("0000-01-01T00:00:00.001Z"), new AtomicLong(-62167219199999L), true},
+                { Instant.parse("1969-12-31T23:59:59Z"), new AtomicLong(-1000L), true},
+                { Instant.parse("1969-12-31T23:59:59.999Z"), new AtomicLong(-1L), true},
+                { Instant.parse("1970-01-01T00:00:00Z"), new AtomicLong(0L), true},
+                { Instant.parse("1970-01-01T00:00:00.001Z"), new AtomicLong(1L), true},
+                { Instant.parse("1970-01-01T00:00:00.999Z"), new AtomicLong(999L), true},
+        });
+        TEST_DB.put(pair(Duration.class, AtomicLong.class), new Object[][]{
+                { Duration.ofMillis(Long.MIN_VALUE / 2), new AtomicLong(Long.MIN_VALUE / 2), true },
+                { Duration.ofMillis(Integer.MIN_VALUE), new AtomicLong(Integer.MIN_VALUE), true },
+                { Duration.ofMillis(-1), new AtomicLong(-1), true },
+                { Duration.ofMillis(0), new AtomicLong(0), true },
+                { Duration.ofMillis(1), new AtomicLong(1), true },
+                { Duration.ofMillis(Integer.MAX_VALUE), new AtomicLong(Integer.MAX_VALUE), true },
+                { Duration.ofMillis(Long.MAX_VALUE / 2), new AtomicLong(Long.MAX_VALUE / 2), true },
+        });
+    }
+    
     /**
      * String
      */
@@ -811,6 +839,24 @@ class ConverterEverythingTest {
                 {"PT16M40S", Duration.ofSeconds(1000), true},
                 {"PT2H46M40S", Duration.ofSeconds(10000), true},
         });
+        TEST_DB.put(pair(Long.class, Duration.class), new Object[][]{
+                { Long.MIN_VALUE / 2, Duration.ofMillis(Long.MIN_VALUE / 2), true },
+                { (long)Integer.MIN_VALUE, Duration.ofMillis(Integer.MIN_VALUE), true },
+                { -1L, Duration.ofMillis(-1), true },
+                { 0L, Duration.ofMillis(0), true },
+                { 1L, Duration.ofMillis(1), true },
+                { (long)Integer.MAX_VALUE, Duration.ofMillis(Integer.MAX_VALUE), true },
+                { Long.MAX_VALUE / 2, Duration.ofMillis(Long.MAX_VALUE / 2), true },
+        });
+        TEST_DB.put(pair(AtomicLong.class, Duration.class), new Object[][]{
+                { new AtomicLong(Long.MIN_VALUE / 2), Duration.ofMillis(Long.MIN_VALUE / 2), true },
+                { new AtomicLong(Integer.MIN_VALUE), Duration.ofMillis(Integer.MIN_VALUE), true },
+                { new AtomicLong(-1), Duration.ofMillis(-1), true },
+                { new AtomicLong(0), Duration.ofMillis(0), true },
+                { new AtomicLong(1), Duration.ofMillis(1), true },
+                { new AtomicLong(Integer.MAX_VALUE), Duration.ofMillis(Integer.MAX_VALUE), true },
+                { new AtomicLong(Long.MAX_VALUE / 2), Duration.ofMillis(Long.MAX_VALUE / 2), true },
+        });
         TEST_DB.put(pair(Double.class, Duration.class), new Object[][]{
                 {-0.000000001, Duration.ofNanos(-1) },   // IEEE 754 prevents reverse
                 {0d, Duration.ofNanos(0), true},
@@ -935,6 +981,24 @@ class ConverterEverythingTest {
                 { " ", null},
                 { "1980-01-01T00:00:00Z", Instant.parse("1980-01-01T00:00:00Z"), true},
                 { "2024-12-31T23:59:59.999999999Z", Instant.parse("2024-12-31T23:59:59.999999999Z")},
+        });
+        TEST_DB.put(pair(Long.class, Instant.class), new Object[][]{
+                {-62167219200000L, Instant.parse("0000-01-01T00:00:00Z"), true},
+                {-62167219199999L, Instant.parse("0000-01-01T00:00:00.001Z"), true},
+                {-1000L, Instant.parse("1969-12-31T23:59:59Z"), true},
+                {-1L, Instant.parse("1969-12-31T23:59:59.999Z"), true},
+                {0L, Instant.parse("1970-01-01T00:00:00Z"), true},
+                {1L, Instant.parse("1970-01-01T00:00:00.001Z"), true},
+                {999L, Instant.parse("1970-01-01T00:00:00.999Z"), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, Instant.class), new Object[][]{
+                {new AtomicLong(-62167219200000L), Instant.parse("0000-01-01T00:00:00Z"), true},
+                {new AtomicLong(-62167219199999L), Instant.parse("0000-01-01T00:00:00.001Z"), true},
+                {new AtomicLong(-1000L), Instant.parse("1969-12-31T23:59:59Z"), true},
+                {new AtomicLong(-1L), Instant.parse("1969-12-31T23:59:59.999Z"), true},
+                {new AtomicLong(0L), Instant.parse("1970-01-01T00:00:00Z"), true},
+                {new AtomicLong(1L), Instant.parse("1970-01-01T00:00:00.001Z"), true},
+                {new AtomicLong(999L), Instant.parse("1970-01-01T00:00:00.999Z"), true},
         });
         TEST_DB.put(pair(Double.class, Instant.class), new Object[][]{
                 { -62167219200d, Instant.parse("0000-01-01T00:00:00Z"), true},
@@ -2118,28 +2182,37 @@ class ConverterEverythingTest {
                 {Year.of(9999), 9999L},
         });
         TEST_DB.put(pair(Date.class, Long.class), new Object[][]{
-                {new Date(Long.MIN_VALUE), Long.MIN_VALUE},
-                {new Date(now), now},
-                {new Date(Integer.MIN_VALUE), (long) Integer.MIN_VALUE},
-                {new Date(0), 0L},
-                {new Date(Integer.MAX_VALUE), (long) Integer.MAX_VALUE},
-                {new Date(Long.MAX_VALUE), Long.MAX_VALUE},
+                {new Date(Long.MIN_VALUE), Long.MIN_VALUE, true},
+                {new Date(now), now, true},
+                {new Date(Integer.MIN_VALUE), (long) Integer.MIN_VALUE, true},
+                {new Date(0), 0L, true},
+                {new Date(Integer.MAX_VALUE), (long) Integer.MAX_VALUE, true},
+                {new Date(Long.MAX_VALUE), Long.MAX_VALUE, true},
         });
         TEST_DB.put(pair(java.sql.Date.class, Long.class), new Object[][]{
-                {new java.sql.Date(Long.MIN_VALUE), Long.MIN_VALUE},
-                {new java.sql.Date(Integer.MIN_VALUE), (long) Integer.MIN_VALUE},
-                {new java.sql.Date(now), now},
-                {new java.sql.Date(0), 0L},
-                {new java.sql.Date(Integer.MAX_VALUE), (long) Integer.MAX_VALUE},
-                {new java.sql.Date(Long.MAX_VALUE), Long.MAX_VALUE},
+                {new java.sql.Date(Long.MIN_VALUE), Long.MIN_VALUE, true},
+                {new java.sql.Date(Integer.MIN_VALUE), (long) Integer.MIN_VALUE, true},
+                {new java.sql.Date(now), now, true},
+                {new java.sql.Date(0), 0L, true},
+                {new java.sql.Date(Integer.MAX_VALUE), (long) Integer.MAX_VALUE, true},
+                {new java.sql.Date(Long.MAX_VALUE), Long.MAX_VALUE, true},
         });
         TEST_DB.put(pair(Timestamp.class, Long.class), new Object[][]{
-                {new Timestamp(Long.MIN_VALUE), Long.MIN_VALUE},
-                {new Timestamp(Integer.MIN_VALUE), (long) Integer.MIN_VALUE},
-                {new Timestamp(now), now},
-                {new Timestamp(0), 0L},
-                {new Timestamp(Integer.MAX_VALUE), (long) Integer.MAX_VALUE},
-                {new Timestamp(Long.MAX_VALUE), Long.MAX_VALUE},
+                {new Timestamp(Long.MIN_VALUE), Long.MIN_VALUE, true},
+                {new Timestamp(Integer.MIN_VALUE), (long) Integer.MIN_VALUE, true},
+                {new Timestamp(now), now, true},
+                {new Timestamp(0), 0L, true},
+                {new Timestamp(Integer.MAX_VALUE), (long) Integer.MAX_VALUE, true},
+                {new Timestamp(Long.MAX_VALUE), Long.MAX_VALUE, true},
+        });
+        TEST_DB.put(pair(Duration.class, Long.class), new Object[][]{
+                { Duration.ofMillis(Long.MIN_VALUE / 2), Long.MIN_VALUE / 2, true },
+                { Duration.ofMillis(Integer.MIN_VALUE), (long)Integer.MIN_VALUE, true },
+                { Duration.ofMillis(-1), -1L, true },
+                { Duration.ofMillis(0), 0L, true },
+                { Duration.ofMillis(1), 1L, true },
+                { Duration.ofMillis(Integer.MAX_VALUE), (long)Integer.MAX_VALUE, true },
+                { Duration.ofMillis(Long.MAX_VALUE / 2), Long.MAX_VALUE / 2, true },
         });
         TEST_DB.put(pair(Instant.class, Long.class), new Object[][]{
                 {Instant.parse("0000-01-01T00:00:00Z"), -62167219200000L, true},
@@ -2864,7 +2937,7 @@ class ConverterEverythingTest {
         } else {
             assert ClassUtilities.toPrimitiveWrapperClass(sourceClass).isInstance(source) : "source type mismatch ==> Expected: " + shortNameSource + ", Actual: " + Converter.getShortName(source.getClass());
         }
-        assert target == null || target instanceof Throwable || ClassUtilities.toPrimitiveWrapperClass(targetClass).isInstance(target) : "target type mismatch ==> " + shortNameTarget + ", actual: " + Converter.getShortName(target.getClass());
+        assert target == null || target instanceof Throwable || ClassUtilities.toPrimitiveWrapperClass(targetClass).isInstance(target) : "target type mismatch ==> Expected: " + shortNameTarget + ", Actual: " + Converter.getShortName(target.getClass());
         
         // if the source/target are the same Class, then ensure identity lambda is used.
         if (sourceClass.equals(targetClass)) {
@@ -2880,7 +2953,9 @@ class ConverterEverythingTest {
             // Assert values are equals
             Object actual = converter.convert(source, targetClass);
             try {
-                if (target instanceof BigDecimal) {
+                if (target instanceof AtomicLong) {
+                    assertEquals(((AtomicLong) target).get(), ((AtomicLong) actual).get());
+                } else if (target instanceof BigDecimal) {
                     if (((BigDecimal) target).compareTo((BigDecimal) actual) != 0) {
                         assertEquals(target, actual);
                     }

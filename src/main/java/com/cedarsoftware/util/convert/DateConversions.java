@@ -95,11 +95,7 @@ final class DateConversions {
 
     static BigInteger toBigInteger(Object from, Converter converter) {
         Instant instant = toInstant(from, converter);
-        BigInteger seconds = BigInteger.valueOf(instant.getEpochSecond());
-        BigInteger nanos = BigInteger.valueOf(instant.getNano());
-
-        // Convert the seconds to nanoseconds and add the nanosecond fraction
-        return seconds.multiply(BigIntegerConversions.BILLION).add(nanos);
+        return InstantConversions.toBigInteger(instant, converter);
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {

@@ -91,7 +91,8 @@ final class ZonedDateTimeConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return BigInteger.valueOf(toLong(from, converter));
+        Instant instant = toInstant(from, converter);
+        return InstantConversions.toBigInteger(instant, converter);
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {

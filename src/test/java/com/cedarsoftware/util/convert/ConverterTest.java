@@ -1056,7 +1056,7 @@ class ConverterTest
     void testLocalDateToBigInteger(long epochMilli, ZoneId zoneId, LocalDate expected) {
         Converter converter = new Converter(createCustomZones(zoneId));
         BigInteger intermediate = converter.convert(expected, BigInteger.class);
-        assertThat(intermediate.longValue()).isEqualTo(epochMilli);
+        assertThat(intermediate.longValue()).isEqualTo(epochMilli * 1_000_000);
     }
 
     @ParameterizedTest
@@ -3294,7 +3294,7 @@ class ConverterTest
         assert big.longValue() * 1000 == cal.getTime().getTime();
 
         BigInteger bigI = this.converter.convert(LocalDateTime.of(2020, 9, 8, 13, 11, 1), BigInteger.class);
-        assert bigI.longValue() == cal.getTime().getTime();
+        assert bigI.longValue() == cal.getTime().getTime() * 1_000_000;
 
         java.sql.Date sqlDate = this.converter.convert(LocalDateTime.of(2020, 9, 8, 13, 11, 1), java.sql.Date.class);
         assert sqlDate.getTime() == cal.getTime().getTime();
@@ -3323,7 +3323,7 @@ class ConverterTest
         assert big.multiply(BigDecimal.valueOf(1000L)).longValue() == cal.getTime().getTime();
 
         BigInteger bigI = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), BigInteger.class);
-        assert bigI.longValue() == cal.getTime().getTime();
+        assert bigI.longValue() == cal.getTime().getTime() * 1_000_000;
 
         java.sql.Date sqlDate = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), java.sql.Date.class);
         assert sqlDate.getTime() == cal.getTime().getTime();

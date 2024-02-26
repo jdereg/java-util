@@ -89,22 +89,14 @@ final class OffsetDateTimeConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        // TODO: nanosecond resolution needed
-        return BigInteger.valueOf(toLong(from, converter));
+        Instant instant = toInstant(from, converter);
+        return InstantConversions.toBigInteger(instant, converter);
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         OffsetDateTime offsetDateTime = (OffsetDateTime) from;
         Instant instant = offsetDateTime.toInstant();
-
-        long epochSecond = instant.getEpochSecond();
-        long nano = instant.getNano();
-
-        // Convert to BigDecimal and add
-        BigDecimal seconds = BigDecimal.valueOf(epochSecond);
-        BigDecimal nanoSeconds = BigDecimal.valueOf(nano).scaleByPowerOfTen(-9);
-
-        return seconds.add(nanoSeconds);
+        return InstantConversions.toBigDecimal(instant, converter);
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {

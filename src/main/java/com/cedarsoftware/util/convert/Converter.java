@@ -446,7 +446,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, java.sql.Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, java.sql.Date.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, java.sql.Date.class), NumberConversions::toSqlDate);
-        CONVERSION_DB.put(pair(Double.class, java.sql.Date.class), DoubleConversions::toDate);
+        CONVERSION_DB.put(pair(Double.class, java.sql.Date.class), DoubleConversions::toSqlDate);
         CONVERSION_DB.put(pair(BigInteger.class, java.sql.Date.class), BigIntegerConversions::toSqlDate);
         CONVERSION_DB.put(pair(BigDecimal.class, java.sql.Date.class), BigDecimalConversions::toSqlDate);
         CONVERSION_DB.put(pair(AtomicInteger.class, java.sql.Date.class), UNSUPPORTED);
@@ -520,7 +520,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Integer.class, LocalDate.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, LocalDate.class), NumberConversions::toLocalDate);
         CONVERSION_DB.put(pair(Double.class, LocalDate.class), DoubleConversions::toLocalDate);
-        CONVERSION_DB.put(pair(BigInteger.class, LocalDate.class), NumberConversions::toLocalDate);
+        CONVERSION_DB.put(pair(BigInteger.class, LocalDate.class), BigIntegerConversions::toLocalDate);
         CONVERSION_DB.put(pair(BigDecimal.class, LocalDate.class), BigDecimalConversions::toLocalDate);
         CONVERSION_DB.put(pair(AtomicInteger.class, LocalDate.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, LocalDate.class), NumberConversions::toLocalDate);

@@ -41,6 +41,11 @@ final class DoubleConversions {
         return new Date((long)(d * 1000));
     }
 
+    static Date toSqlDate(Object from, Converter converter) {
+        double d = (Double) from;
+        return new java.sql.Date((long)(d * 1000));
+    }
+
     static LocalDate toLocalDate(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDate();
     }

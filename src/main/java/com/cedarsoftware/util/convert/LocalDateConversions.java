@@ -94,8 +94,12 @@ final class LocalDateConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        // TODO: Upgrade precision
-        return BigDecimal.valueOf(toLong(from, converter));
+        Instant instant = toInstant(from, converter);
+        BigDecimal epochSeconds = BigDecimal.valueOf(instant.getEpochSecond());
+        BigDecimal nanos = new BigDecimal(BigInteger.valueOf(instant.getNano()), 9);
+
+        // Add the nanos to the whole seconds
+        return epochSeconds.add(nanos);
     }
 
     static String toString(Object from, Converter converter) {

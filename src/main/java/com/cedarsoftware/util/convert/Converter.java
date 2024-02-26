@@ -334,6 +334,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(java.sql.Date.class, BigDecimal.class), DateConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Timestamp.class, BigDecimal.class), TimestampConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Instant.class, BigDecimal.class), InstantConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(Duration.class, BigDecimal.class), DurationConversions::toBigDecimal);
         CONVERSION_DB.put(pair(LocalDate.class, BigDecimal.class), LocalDateConversions::toBigDecimal);
         CONVERSION_DB.put(pair(LocalDateTime.class, BigDecimal.class), LocalDateTimeConversions::toBigDecimal);
         CONVERSION_DB.put(pair(ZonedDateTime.class, BigDecimal.class), ZonedDateTimeConversions::toBigDecimal);
@@ -520,7 +521,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, LocalDate.class), NumberConversions::toLocalDate);
         CONVERSION_DB.put(pair(Double.class, LocalDate.class), DoubleConversions::toLocalDate);
         CONVERSION_DB.put(pair(BigInteger.class, LocalDate.class), NumberConversions::toLocalDate);
-        CONVERSION_DB.put(pair(BigDecimal.class, LocalDate.class), NumberConversions::toLocalDate);
+        CONVERSION_DB.put(pair(BigDecimal.class, LocalDate.class), BigDecimalConversions::toLocalDate);
         CONVERSION_DB.put(pair(AtomicInteger.class, LocalDate.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, LocalDate.class), NumberConversions::toLocalDate);
         CONVERSION_DB.put(pair(java.sql.Date.class, LocalDate.class), DateConversions::toLocalDate);
@@ -730,6 +731,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Duration.class, Duration.class), Converter::identity);
         CONVERSION_DB.put(pair(Double.class, Duration.class), DoubleConversions::toDuration);
         CONVERSION_DB.put(pair(BigInteger.class, Duration.class), BigIntegerConversions::toDuration);
+        CONVERSION_DB.put(pair(BigDecimal.class, Duration.class), BigDecimalConversions::toDuration);
         CONVERSION_DB.put(pair(Timestamp.class, Duration.class), TimestampConversions::toDuration);
         CONVERSION_DB.put(pair(String.class, Duration.class), StringConversions::toDuration);
         CONVERSION_DB.put(pair(Map.class, Duration.class), MapConversions::toDuration);

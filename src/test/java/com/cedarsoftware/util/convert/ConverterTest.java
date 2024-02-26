@@ -1064,7 +1064,7 @@ class ConverterTest
     void testLocalDateToBigDecimal(long epochMilli, ZoneId zoneId, LocalDate expected) {
         Converter converter = new Converter(createCustomZones(zoneId));
         BigDecimal intermediate = converter.convert(expected, BigDecimal.class);
-        assertThat(intermediate.longValue()).isEqualTo(epochMilli);
+        assertThat(intermediate.longValue() * 1000).isEqualTo(epochMilli);
     }
     
     @ParameterizedTest
@@ -1704,6 +1704,7 @@ class ConverterTest
     {
         Converter converter = new Converter(createCustomZones(sourceZoneId));
         BigDecimal milli = converter.convert(initial, BigDecimal.class);
+        milli = milli.multiply(BigDecimal.valueOf(1000));
         assertThat(milli.longValue()).isEqualTo(epochMilli);
 
         converter = new Converter(createCustomZones(targetZoneId));
@@ -3290,7 +3291,7 @@ class ConverterTest
         cal.set(2020, 8, 8, 13, 11, 1);   // 0-based for month
 
         BigDecimal big = this.converter.convert(LocalDateTime.of(2020, 9, 8, 13, 11, 1), BigDecimal.class);
-        assert big.longValue() == cal.getTime().getTime();
+        assert big.longValue() * 1000 == cal.getTime().getTime();
 
         BigInteger bigI = this.converter.convert(LocalDateTime.of(2020, 9, 8, 13, 11, 1), BigInteger.class);
         assert bigI.longValue() == cal.getTime().getTime();

@@ -92,7 +92,8 @@ final class LocalDateTimeConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        return BigDecimal.valueOf(toLong(from, converter));
+        Instant instant = toInstant(from, converter);
+        return InstantConversions.toBigDecimal(instant, converter);
     }
 
     static String toString(Object from, Converter converter) {

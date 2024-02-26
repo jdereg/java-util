@@ -3,7 +3,9 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -33,9 +35,19 @@ final class BigDecimalConversions {
     private BigDecimalConversions() { }
 
     static Instant toInstant(Object from, Converter converter) {
-        BigDecimal bigDec = (BigDecimal) from;
-        BigDecimal fractionalPart = bigDec.remainder(BigDecimal.ONE);
-        return Instant.ofEpochSecond(bigDec.longValue(), fractionalPart.movePointRight(9).longValue());
+        BigDecimal seconds = (BigDecimal) from;
+        BigDecimal nanos = seconds.remainder(BigDecimal.ONE);
+        return Instant.ofEpochSecond(seconds.longValue(), nanos.movePointRight(9).longValue());
+    }
+
+    static Duration toDuration(Object from, Converter converter) {
+        BigDecimal seconds = (BigDecimal) from;
+        BigDecimal nanos = seconds.remainder(BigDecimal.ONE);
+        return Duration.ofSeconds(seconds.longValue(), nanos.movePointRight(9).longValue());
+    }
+
+    static LocalDate toLocalDate(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalDate();
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {

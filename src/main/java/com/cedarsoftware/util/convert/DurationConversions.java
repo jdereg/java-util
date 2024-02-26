@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -40,19 +41,27 @@ final class DurationConversions {
 
     static BigInteger toBigInteger(Object from, Converter converter) {
         Duration duration = (Duration) from;
-        BigInteger seconds = BigInteger.valueOf(duration.getSeconds());
+        BigInteger epochSeconds = BigInteger.valueOf(duration.getSeconds());
         BigInteger nanos = BigInteger.valueOf(duration.getNano());
 
         // Convert seconds to nanoseconds and add the nanosecond part
-        return seconds.multiply(BigIntegerConversions.BILLION).add(nanos);
+        return epochSeconds.multiply(BigIntegerConversions.BILLION).add(nanos);
     }
 
     static double toDouble(Object from, Converter converter) {
         Duration duration = (Duration) from;
-        // Convert to seconds with nanosecond precision
         return duration.getSeconds() + duration.getNano() / 1_000_000_000d;
     }
 
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        BigDecimal seconds = new BigDecimal(duration.getSeconds());
+        
+        // Convert nanoseconds to fractional seconds and add to seconds
+        BigDecimal fracSec = BigDecimal.valueOf(duration.getNano(), 9);
+        return seconds.add(fracSec);
+    }
+    
     static Timestamp toTimestamp(Object from, Converter converter) {
         Duration duration = (Duration) from;
         Instant epoch = Instant.EPOCH;

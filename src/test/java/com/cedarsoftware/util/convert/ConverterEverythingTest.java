@@ -802,22 +802,41 @@ class ConverterEverythingTest {
                 {new Timestamp(Long.MAX_VALUE), Long.MAX_VALUE},
         });
         TEST_DB.put(pair(Instant.class, Long.class), new Object[][]{
-                {ZonedDateTime.parse("2024-02-12T11:38:00.123456789+01:00").toInstant(), 1707734280123L},   // maintains millis (best long can do)
-                {ZonedDateTime.parse("2024-02-12T11:38:00.123999+01:00").toInstant(), 1707734280123L},      // maintains millis (best long can do)
-                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").toInstant(), 1707734280000L, true},
+                {Instant.parse("0000-01-01T00:00:00Z"), -62167219200000L, true},
+                {Instant.parse("0000-01-01T00:00:00.001Z"), -62167219199999L, true},
+                {Instant.parse("1969-12-31T23:59:59Z"), -1000L, true},
+                {Instant.parse("1969-12-31T23:59:59.999Z"), -1L, true},
+                {Instant.parse("1970-01-01T00:00:00Z"), 0L, true},
+                {Instant.parse("1970-01-01T00:00:00.001Z"), 1L, true},
+                {Instant.parse("1970-01-01T00:00:00.999Z"), 999L, true},
         });
         TEST_DB.put(pair(LocalDate.class, Long.class), new Object[][]{
-                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").withZoneSameInstant(TOKYO_Z).toLocalDate(), 1707663600000L, true},   // Epoch millis in Tokyo timezone (at start of day - no time)
+                {ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -62167252739000L, true},
+                {ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -62167252739000L, true},
+                {ZonedDateTime.parse("1969-12-31T14:59:59.999Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -118800000L, true},
+                {ZonedDateTime.parse("1969-12-31T15:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -32400000L, true},
+                {ZonedDateTime.parse("1969-12-31T23:59:59.999Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -32400000L, true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -32400000L, true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -32400000L, true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), -32400000L, true},
         });
         TEST_DB.put(pair(LocalDateTime.class, Long.class), new Object[][]{
-                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 1707734280000L, true}, // Epoch millis in Tokyo timezone
-                {ZonedDateTime.parse("2024-02-12T11:38:00.123+01:00").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 1707734280123L, true},   // maintains millis (best long can do)
-                {ZonedDateTime.parse("2024-02-12T11:38:00.12399+01:00").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 1707734280123L},   // maintains millis (best long can do)
+                {ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), -62167219200000L, true},
+                {ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), -62167219199999L, true},
+                {ZonedDateTime.parse("1969-12-31T23:59:59Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), -1000L, true},
+                {ZonedDateTime.parse("1969-12-31T23:59:59.999Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), -1L, true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 0L, true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 1L, true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), 999L, true},
         });
-        TEST_DB.put(pair(ZonedDateTime.class, Long.class), new Object[][]{
-                {ZonedDateTime.parse("2024-02-12T11:38:00+01:00"), 1707734280000L},     // no reverse, because zone name added by .toString()s
-                {ZonedDateTime.parse("2024-02-12T11:38:00.123+01:00"), 1707734280123L},
-                {ZonedDateTime.parse("2024-02-12T11:38:00.1234+01:00"), 1707734280123L},    // long only supports to millisecond
+        TEST_DB.put(pair(ZonedDateTime.class, Long.class), new Object[][]{      // no reverse check - timezone display issue
+                {ZonedDateTime.parse("0000-01-01T00:00:00Z"), -62167219200000L},
+                {ZonedDateTime.parse("0000-01-01T00:00:00.001Z"), -62167219199999L},
+                {ZonedDateTime.parse("1969-12-31T23:59:59Z"), -1000L},
+                {ZonedDateTime.parse("1969-12-31T23:59:59.999Z"), -1L},
+                {ZonedDateTime.parse("1970-01-01T00:00:00Z"), 0L},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.001Z"), 1L},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.999Z"), 999L},
         });
         TEST_DB.put(pair(Calendar.class, Long.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
@@ -1071,15 +1090,15 @@ class ConverterEverythingTest {
                 { Duration.ofDays(1), 86400d, true},
         });
         TEST_DB.put(pair(Instant.class, Double.class), new Object[][]{      // JDK 1.8 cannot handle the format +01:00 in Instant.parse().  JDK11+ handles it fine.
-                {ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant(), -62167219200.0, true},
-                {ZonedDateTime.parse("1969-12-31T00:00:00Z").toInstant(), -86400d, true},
-                {ZonedDateTime.parse("1969-12-31T00:00:00Z").toInstant(), -86400d, true},
-                {ZonedDateTime.parse("1969-12-31T00:00:00.999999999Z").toInstant(), -86399.000000001, true },
-//                {ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant(), -0.000000001 },    // IEEE-754 double cannot represent this number precisely
-                {ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant(), 0d, true},
-                {ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant(), 0.000000001, true},
-                {ZonedDateTime.parse("1970-01-02T00:00:00Z").toInstant(), 86400d, true},
-                {ZonedDateTime.parse("1970-01-02T00:00:00.000000001Z").toInstant(), 86400.000000001, true},
+                {Instant.parse("0000-01-01T00:00:00Z"), -62167219200.0, true},
+                {Instant.parse("1969-12-31T00:00:00Z"), -86400d, true},
+                {Instant.parse("1969-12-31T00:00:00Z"), -86400d, true},
+                {Instant.parse("1969-12-31T00:00:00.999999999Z"), -86399.000000001, true },
+//                {Instant.parse("1969-12-31T23:59:59.999999999Z"), -0.000000001 },    // IEEE-754 double cannot represent this number precisely
+                {Instant.parse("1970-01-01T00:00:00Z"), 0d, true},
+                {Instant.parse("1970-01-01T00:00:00.000000001Z"), 0.000000001, true},
+                {Instant.parse("1970-01-02T00:00:00Z"), 86400d, true},
+                {Instant.parse("1970-01-02T00:00:00.000000001Z"), 86400.000000001, true},
         });
         TEST_DB.put(pair(LocalDate.class, Double.class), new Object[][]{
                 {LocalDate.parse("0000-01-01"), -62167252739d, true},  // Proves it always works from "startOfDay", using the zoneId from options
@@ -1121,8 +1140,8 @@ class ConverterEverythingTest {
                 {new Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE / 1000d, true},
                 {new Date(0), 0d, true},
                 {new Date(now), (double) now / 1000d, true},
-                {Date.from(ZonedDateTime.parse("2024-02-18T06:31:55.987654321+00:00").toInstant()), 1708237915.987, true },    // Date only has millisecond resolution
-                {Date.from(ZonedDateTime.parse("2024-02-18T06:31:55.123456789+00:00").toInstant()), 1708237915.123, true },      // Date only has millisecond resolution
+                {Date.from(Instant.parse("2024-02-18T06:31:55.987654321Z")), 1708237915.987, true },    // Date only has millisecond resolution
+                {Date.from(Instant.parse("2024-02-18T06:31:55.123456789Z")), 1708237915.123, true },      // Date only has millisecond resolution
                 {new Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE / 1000d, true},
                 {new Date(Long.MAX_VALUE), (double) Long.MAX_VALUE / 1000d, true},
         });
@@ -1131,22 +1150,22 @@ class ConverterEverythingTest {
                 {new java.sql.Date(Integer.MIN_VALUE), (double) Integer.MIN_VALUE / 1000d, true},
                 {new java.sql.Date(0), 0d, true},
                 {new java.sql.Date(now), (double) now / 1000d, true},
-                {new java.sql.Date(ZonedDateTime.parse("2024-02-18T06:31:55.987654321+00:00").toInstant().toEpochMilli()), 1708237915.987, true },    // java.sql.Date only has millisecond resolution
-                {new java.sql.Date(ZonedDateTime.parse("2024-02-18T06:31:55.123456789+00:00").toInstant().toEpochMilli()), 1708237915.123, true },      // java.sql.Date only has millisecond resolution
+                {new java.sql.Date(Instant.parse("2024-02-18T06:31:55.987654321Z").toEpochMilli()), 1708237915.987, true },    // java.sql.Date only has millisecond resolution
+                {new java.sql.Date(Instant.parse("2024-02-18T06:31:55.123456789Z").toEpochMilli()), 1708237915.123, true },      // java.sql.Date only has millisecond resolution
                 {new java.sql.Date(Integer.MAX_VALUE), (double) Integer.MAX_VALUE / 1000d, true},
                 {new java.sql.Date(Long.MAX_VALUE), (double) Long.MAX_VALUE / 1000d, true},
         });
         TEST_DB.put(pair(Timestamp.class, Double.class), new Object[][]{
                 {new Timestamp(0), 0d, true},
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T00:00:00Z").toInstant()), -86400d, true},
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T00:00:00.000000001Z").toInstant()), -86399.999999999},    // IEEE-754 resolution issue (almost symmetrical)
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T00:00:01Z").toInstant()), -86399d, true },    
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:58.9Z").toInstant()), -1.1, true },
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59Z").toInstant()), -1.0, true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant()), 0d, true},
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant()), 0.000000001, true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.9Z").toInstant()), 0.9, true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.999999999Z").toInstant()), 0.999999999, true },
+                { Timestamp.from(Instant.parse("1969-12-31T00:00:00Z")), -86400d, true},
+                { Timestamp.from(Instant.parse("1969-12-31T00:00:00.000000001Z")), -86399.999999999},    // IEEE-754 resolution issue (almost symmetrical)
+                { Timestamp.from(Instant.parse("1969-12-31T00:00:01Z")), -86399d, true },    
+                { Timestamp.from(Instant.parse("1969-12-31T23:59:58.9Z")), -1.1, true },
+                { Timestamp.from(Instant.parse("1969-12-31T23:59:59Z")), -1.0, true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00Z")), 0d, true},
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), 0.000000001, true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.9Z")), 0.9, true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.999999999Z")), 0.999999999, true },
         });
         TEST_DB.put(pair(Calendar.class, Double.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
@@ -1592,44 +1611,44 @@ class ConverterEverythingTest {
                 { new AtomicLong(Long.MAX_VALUE), BigInteger.valueOf(Long.MAX_VALUE) },
         });
         TEST_DB.put(pair(Date.class, BigInteger.class), new Object[][]{
-                { Date.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()), new BigInteger("-62167219200000000000"), true },
-                { Date.from(ZonedDateTime.parse("0001-02-18T19:58:01Z").toInstant()), new BigInteger("-62131377719000000000"), true },
-                { Date.from(ZonedDateTime.parse("1969-12-31T23:59:59Z").toInstant()), BigInteger.valueOf(-1_000_000_000), true },
-                { Date.from(ZonedDateTime.parse("1969-12-31T23:59:59.1Z").toInstant()), BigInteger.valueOf(-900000000), true },
-                { Date.from(ZonedDateTime.parse("1969-12-31T23:59:59.9Z").toInstant()), BigInteger.valueOf(-100000000), true },
-                { Date.from(ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant()), BigInteger.valueOf(0), true },
-                { Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.1Z").toInstant()), BigInteger.valueOf(100000000), true },
-                { Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.9Z").toInstant()), BigInteger.valueOf(900000000), true },
-                { Date.from(ZonedDateTime.parse("1970-01-01T00:00:01Z").toInstant()), BigInteger.valueOf(1000000000), true },
-                { Date.from(ZonedDateTime.parse("9999-02-18T19:58:01Z").toInstant()), new BigInteger("253374983881000000000"), true },
+                { Date.from(Instant.parse("0000-01-01T00:00:00Z")), new BigInteger("-62167219200000000000"), true },
+                { Date.from(Instant.parse("0001-02-18T19:58:01Z")), new BigInteger("-62131377719000000000"), true },
+                { Date.from(Instant.parse("1969-12-31T23:59:59Z")), BigInteger.valueOf(-1_000_000_000), true },
+                { Date.from(Instant.parse("1969-12-31T23:59:59.1Z")), BigInteger.valueOf(-900000000), true },
+                { Date.from(Instant.parse("1969-12-31T23:59:59.9Z")), BigInteger.valueOf(-100000000), true },
+                { Date.from(Instant.parse("1970-01-01T00:00:00Z")), BigInteger.valueOf(0), true },
+                { Date.from(Instant.parse("1970-01-01T00:00:00.1Z")), BigInteger.valueOf(100000000), true },
+                { Date.from(Instant.parse("1970-01-01T00:00:00.9Z")), BigInteger.valueOf(900000000), true },
+                { Date.from(Instant.parse("1970-01-01T00:00:01Z")), BigInteger.valueOf(1000000000), true },
+                { Date.from(Instant.parse("9999-02-18T19:58:01Z")), new BigInteger("253374983881000000000"), true },
         });
         TEST_DB.put(pair(java.sql.Date.class, BigInteger.class), new Object[][]{
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()).getTime()), new BigInteger("-62167219200000000000"), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("0001-02-18T19:58:01Z").toInstant()).getTime()), new BigInteger("-62131377719000000000"), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1969-12-31T23:59:59Z").toInstant()).getTime()), BigInteger.valueOf(-1_000_000_000), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1969-12-31T23:59:59.1Z").toInstant()).getTime()), BigInteger.valueOf(-900000000), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1969-12-31T23:59:59.9Z").toInstant()).getTime()), BigInteger.valueOf(-100000000), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant()).getTime()), BigInteger.valueOf(0), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.1Z").toInstant()).getTime()), BigInteger.valueOf(100000000), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.9Z").toInstant()).getTime()), BigInteger.valueOf(900000000), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:01Z").toInstant()).getTime()), BigInteger.valueOf(1000000000), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("9999-02-18T19:58:01Z").toInstant()).getTime()), new BigInteger("253374983881000000000"), true },
+                { new java.sql.Date(Instant.parse("0000-01-01T00:00:00Z").toEpochMilli()), new BigInteger("-62167219200000000000"), true },
+                { new java.sql.Date(Instant.parse("0001-02-18T19:58:01Z").toEpochMilli()), new BigInteger("-62131377719000000000"), true },
+                { new java.sql.Date(Instant.parse("1969-12-31T23:59:59Z").toEpochMilli()), BigInteger.valueOf(-1_000_000_000), true },
+                { new java.sql.Date(Instant.parse("1969-12-31T23:59:59.1Z").toEpochMilli()), BigInteger.valueOf(-900000000), true },
+                { new java.sql.Date(Instant.parse("1969-12-31T23:59:59.9Z").toEpochMilli()), BigInteger.valueOf(-100000000), true },
+                { new java.sql.Date(Instant.parse("1970-01-01T00:00:00Z").toEpochMilli()), BigInteger.valueOf(0), true },
+                { new java.sql.Date(Instant.parse("1970-01-01T00:00:00.1Z").toEpochMilli()), BigInteger.valueOf(100000000), true },
+                { new java.sql.Date(Instant.parse("1970-01-01T00:00:00.9Z").toEpochMilli()), BigInteger.valueOf(900000000), true },
+                { new java.sql.Date(Instant.parse("1970-01-01T00:00:01Z").toEpochMilli()), BigInteger.valueOf(1000000000), true },
+                { new java.sql.Date(Instant.parse("9999-02-18T19:58:01Z").toEpochMilli()), new BigInteger("253374983881000000000"), true },
         });
         TEST_DB.put(pair(Timestamp.class, BigInteger.class), new Object[][]{
-                { Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00.000000000+00:00").toInstant()), new BigInteger("-62167219200000000000"), true },
-                { Timestamp.from(ZonedDateTime.parse("0001-02-18T19:58:01.000000000+00:00").toInstant()), new BigInteger("-62131377719000000000"), true },
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.000000000+00:00").toInstant()), BigInteger.valueOf(-1000000000), true },
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.000000001+00:00").toInstant()), BigInteger.valueOf(-999999999), true },
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.100000000+00:00").toInstant()), BigInteger.valueOf(-900000000), true },
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.900000000+00:00").toInstant()), BigInteger.valueOf(-100000000), true },
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999999+00:00").toInstant()), BigInteger.valueOf(-1), true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000000+00:00").toInstant()), BigInteger.valueOf(0), true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001+00:00").toInstant()), BigInteger.valueOf(1), true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.100000000+00:00").toInstant()), BigInteger.valueOf(100000000), true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.900000000+00:00").toInstant()), BigInteger.valueOf(900000000), true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.999999999+00:00").toInstant()), BigInteger.valueOf(999999999), true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:01.000000000+00:00").toInstant()), BigInteger.valueOf(1000000000), true },
-                { Timestamp.from(ZonedDateTime.parse("9999-02-18T19:58:01.000000000+00:00").toInstant()), new BigInteger("253374983881000000000"), true },
+                { Timestamp.from(Instant.parse("0000-01-01T00:00:00.000000000Z")), new BigInteger("-62167219200000000000"), true },
+                { Timestamp.from(Instant.parse("0001-02-18T19:58:01.000000000Z")), new BigInteger("-62131377719000000000"), true },
+                { Timestamp.from(Instant.parse("1969-12-31T23:59:59.000000000Z")), BigInteger.valueOf(-1000000000), true },
+                { Timestamp.from(Instant.parse("1969-12-31T23:59:59.000000001Z")), BigInteger.valueOf(-999999999), true },
+                { Timestamp.from(Instant.parse("1969-12-31T23:59:59.100000000Z")), BigInteger.valueOf(-900000000), true },
+                { Timestamp.from(Instant.parse("1969-12-31T23:59:59.900000000Z")), BigInteger.valueOf(-100000000), true },
+                { Timestamp.from(Instant.parse("1969-12-31T23:59:59.999999999Z")), BigInteger.valueOf(-1), true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000000Z")), BigInteger.valueOf(0), true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), BigInteger.valueOf(1), true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.100000000Z")), BigInteger.valueOf(100000000), true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.900000000Z")), BigInteger.valueOf(900000000), true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.999999999Z")), BigInteger.valueOf(999999999), true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:01.000000000Z")), BigInteger.valueOf(1000000000), true },
+                { Timestamp.from(Instant.parse("9999-02-18T19:58:01.000000000Z")), new BigInteger("253374983881000000000"), true },
         });
         TEST_DB.put(pair(Duration.class, BigInteger.class), new Object[][] {
                 { Duration.ofNanos(-1000000), BigInteger.valueOf(-1000000), true},
@@ -1645,20 +1664,20 @@ class ConverterEverythingTest {
                 { Duration.ofNanos(Long.MIN_VALUE), BigInteger.valueOf(Long.MIN_VALUE), true},
         });
         TEST_DB.put(pair(Instant.class, BigInteger.class), new Object[][]{
-                { ZonedDateTime.parse("0000-01-01T00:00:00.000000000+00:00").toInstant(), new BigInteger("-62167219200000000000"), true },
-                { ZonedDateTime.parse("0001-02-18T19:58:01.000000000+00:00").toInstant(), new BigInteger("-62131377719000000000"), true },
-                { ZonedDateTime.parse("1969-12-31T23:59:59.000000000+00:00").toInstant(), BigInteger.valueOf(-1000000000), true },
-                { ZonedDateTime.parse("1969-12-31T23:59:59.000000001+00:00").toInstant(), BigInteger.valueOf(-999999999), true },
-                { ZonedDateTime.parse("1969-12-31T23:59:59.100000000+00:00").toInstant(), BigInteger.valueOf(-900000000), true },
-                { ZonedDateTime.parse("1969-12-31T23:59:59.900000000+00:00").toInstant(), BigInteger.valueOf(-100000000), true },
-                { ZonedDateTime.parse("1969-12-31T23:59:59.999999999+00:00").toInstant(), BigInteger.valueOf(-1), true },
-                { ZonedDateTime.parse("1970-01-01T00:00:00.000000000+00:00").toInstant(), BigInteger.valueOf(0), true },
-                { ZonedDateTime.parse("1970-01-01T00:00:00.000000001+00:00").toInstant(), BigInteger.valueOf(1), true },
-                { ZonedDateTime.parse("1970-01-01T00:00:00.100000000+00:00").toInstant(), BigInteger.valueOf(100000000), true },
-                { ZonedDateTime.parse("1970-01-01T00:00:00.900000000+00:00").toInstant(), BigInteger.valueOf(900000000), true },
-                { ZonedDateTime.parse("1970-01-01T00:00:00.999999999+00:00").toInstant(), BigInteger.valueOf(999999999), true },
-                { ZonedDateTime.parse("1970-01-01T00:00:01.000000000+00:00").toInstant(), BigInteger.valueOf(1000000000), true },
-                { ZonedDateTime.parse("9999-02-18T19:58:01.000000000+00:00").toInstant(), new BigInteger("253374983881000000000"), true },
+                { Instant.parse("0000-01-01T00:00:00.000000000Z"), new BigInteger("-62167219200000000000"), true },
+                { Instant.parse("0001-02-18T19:58:01.000000000Z"), new BigInteger("-62131377719000000000"), true },
+                { Instant.parse("1969-12-31T23:59:59.000000000Z"), BigInteger.valueOf(-1000000000), true },
+                { Instant.parse("1969-12-31T23:59:59.000000001Z"), BigInteger.valueOf(-999999999), true },
+                { Instant.parse("1969-12-31T23:59:59.100000000Z"), BigInteger.valueOf(-900000000), true },
+                { Instant.parse("1969-12-31T23:59:59.900000000Z"), BigInteger.valueOf(-100000000), true },
+                { Instant.parse("1969-12-31T23:59:59.999999999Z"), BigInteger.valueOf(-1), true },
+                { Instant.parse("1970-01-01T00:00:00.000000000Z"), BigInteger.valueOf(0), true },
+                { Instant.parse("1970-01-01T00:00:00.000000001Z"), BigInteger.valueOf(1), true },
+                { Instant.parse("1970-01-01T00:00:00.100000000Z"), BigInteger.valueOf(100000000), true },
+                { Instant.parse("1970-01-01T00:00:00.900000000Z"), BigInteger.valueOf(900000000), true },
+                { Instant.parse("1970-01-01T00:00:00.999999999Z"), BigInteger.valueOf(999999999), true },
+                { Instant.parse("1970-01-01T00:00:01.000000000Z"), BigInteger.valueOf(1000000000), true },
+                { Instant.parse("9999-02-18T19:58:01.000000000Z"), new BigInteger("253374983881000000000"), true },
         });
         TEST_DB.put(pair(LocalDate.class, BigInteger.class), new Object[][]{
                 {(Supplier<LocalDate>) () -> {
@@ -1728,25 +1747,25 @@ class ConverterEverythingTest {
                 { "3.1415926535897932384626433", new BigDecimal("3.1415926535897932384626433"), true}
         });
         TEST_DB.put(pair(Date.class, BigDecimal.class), new Object[][] {
-                { Date.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()), new BigDecimal("-62167219200"), true },
-                { Date.from(ZonedDateTime.parse("0000-01-01T00:00:00.001Z").toInstant()), new BigDecimal("-62167219199.999"), true },
-                { Date.from(ZonedDateTime.parse("1969-12-31T23:59:59.999Z").toInstant()), new BigDecimal("-0.001"), true },
-                { Date.from(ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant()), new BigDecimal("0"), true },
-                { Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.001Z").toInstant()), new BigDecimal("0.001"), true },
+                { Date.from(Instant.parse("0000-01-01T00:00:00Z")), new BigDecimal("-62167219200"), true },
+                { Date.from(Instant.parse("0000-01-01T00:00:00.001Z")), new BigDecimal("-62167219199.999"), true },
+                { Date.from(Instant.parse("1969-12-31T23:59:59.999Z")), new BigDecimal("-0.001"), true },
+                { Date.from(Instant.parse("1970-01-01T00:00:00Z")), new BigDecimal("0"), true },
+                { Date.from(Instant.parse("1970-01-01T00:00:00.001Z")), new BigDecimal("0.001"), true },
         });
         TEST_DB.put(pair(java.sql.Date.class, BigDecimal.class), new Object[][] {
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()).getTime()), new BigDecimal("-62167219200"), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("0000-01-01T00:00:00.001Z").toInstant()).getTime()), new BigDecimal("-62167219199.999"), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1969-12-31T23:59:59.999Z").toInstant()).getTime()), new BigDecimal("-0.001"), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant()).getTime()), new BigDecimal("0"), true },
-                { new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.001Z").toInstant()).getTime()), new BigDecimal("0.001"), true },
+                { new java.sql.Date(Instant.parse("0000-01-01T00:00:00Z").toEpochMilli()), new BigDecimal("-62167219200"), true },
+                { new java.sql.Date(Instant.parse("0000-01-01T00:00:00.001Z").toEpochMilli()), new BigDecimal("-62167219199.999"), true },
+                { new java.sql.Date(Instant.parse("1969-12-31T23:59:59.999Z").toEpochMilli()), new BigDecimal("-0.001"), true },
+                { new java.sql.Date(Instant.parse("1970-01-01T00:00:00Z").toEpochMilli()), new BigDecimal("0"), true },
+                { new java.sql.Date(Instant.parse("1970-01-01T00:00:00.001Z").toEpochMilli()), new BigDecimal("0.001"), true },
         });
         TEST_DB.put(pair(Timestamp.class, BigDecimal.class), new Object[][] {
-                { Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()), new BigDecimal("-62167219200"), true },
-                { Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00.000000001Z").toInstant()), new BigDecimal("-62167219199.999999999"), true },
-                { Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant()), new BigDecimal("-0.000000001"), true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant()), new BigDecimal("0"), true },
-                { Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant()), new BigDecimal("0.000000001"), true },
+                { Timestamp.from(Instant.parse("0000-01-01T00:00:00Z")), new BigDecimal("-62167219200"), true },
+                { Timestamp.from(Instant.parse("0000-01-01T00:00:00.000000001Z")), new BigDecimal("-62167219199.999999999"), true },
+                { Timestamp.from(Instant.parse("1969-12-31T23:59:59.999999999Z")), new BigDecimal("-0.000000001"), true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00Z")), new BigDecimal("0"), true },
+                { Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), new BigDecimal("0.000000001"), true },
         });
         TEST_DB.put(pair(LocalDate.class, BigDecimal.class), new Object[][]{
                 { LocalDate.parse("0000-01-01"), new BigDecimal("-62167252739"), true},  // Proves it always works from "startOfDay", using the zoneId from options
@@ -1793,15 +1812,15 @@ class ConverterEverythingTest {
                 { Duration.ofDays(1), new BigDecimal("86400"), true},
         });
         TEST_DB.put(pair(Instant.class, BigDecimal.class), new Object[][]{      // JDK 1.8 cannot handle the format +01:00 in Instant.parse().  JDK11+ handles it fine.
-                { ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant(), new BigDecimal("-62167219200.0"), true},
-                { ZonedDateTime.parse("0000-01-01T00:00:00.000000001Z").toInstant(), new BigDecimal("-62167219199.999999999"), true},
-                { ZonedDateTime.parse("1969-12-31T00:00:00Z").toInstant(), new BigDecimal("-86400"), true},
-                { ZonedDateTime.parse("1969-12-31T00:00:00.999999999Z").toInstant(), new BigDecimal("-86399.000000001"), true },
-                { ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant(), new BigDecimal("-0.000000001"), true },
-                { ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant(), BigDecimal.ZERO, true},
-                { ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant(), new BigDecimal("0.000000001"), true},
-                { ZonedDateTime.parse("1970-01-02T00:00:00Z").toInstant(), new BigDecimal("86400"), true},
-                { ZonedDateTime.parse("1970-01-02T00:00:00.000000001Z").toInstant(), new BigDecimal("86400.000000001"), true},
+                { Instant.parse("0000-01-01T00:00:00Z"), new BigDecimal("-62167219200.0"), true},
+                { Instant.parse("0000-01-01T00:00:00.000000001Z"), new BigDecimal("-62167219199.999999999"), true},
+                { Instant.parse("1969-12-31T00:00:00Z"), new BigDecimal("-86400"), true},
+                { Instant.parse("1969-12-31T00:00:00.999999999Z"), new BigDecimal("-86399.000000001"), true },
+                { Instant.parse("1969-12-31T23:59:59.999999999Z"), new BigDecimal("-0.000000001"), true },
+                { Instant.parse("1970-01-01T00:00:00Z"), BigDecimal.ZERO, true},
+                { Instant.parse("1970-01-01T00:00:00.000000001Z"), new BigDecimal("0.000000001"), true},
+                { Instant.parse("1970-01-02T00:00:00Z"), new BigDecimal("86400"), true},
+                { Instant.parse("1970-01-02T00:00:00.000000001Z"), new BigDecimal("86400.000000001"), true},
         });
 
         /////////////////////////////////////////////////////////////
@@ -1838,15 +1857,15 @@ class ConverterEverythingTest {
         });
         // No identity test for Date, as it is mutable
         TEST_DB.put(pair(BigDecimal.class, Date.class), new Object[][] {
-                { new BigDecimal("-62167219200"), Date.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()), true },
-                { new BigDecimal("-62167219199.999"), Date.from(ZonedDateTime.parse("0000-01-01T00:00:00.001Z").toInstant()), true },
-                { new BigDecimal("-1.001"), Date.from(ZonedDateTime.parse("1969-12-31T23:59:58.999Z").toInstant()), true },
-                { new BigDecimal("-1"), Date.from(ZonedDateTime.parse("1969-12-31T23:59:59Z").toInstant()), true },
-                { new BigDecimal("-0.001"), Date.from(ZonedDateTime.parse("1969-12-31T23:59:59.999Z").toInstant()), true },
-                { new BigDecimal("0"), Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000000Z").toInstant()), true },
-                { new BigDecimal("0.001"), Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.001Z").toInstant()), true },
-                { new BigDecimal(".999"), Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.999Z").toInstant()), true },
-                { new BigDecimal("1"), Date.from(ZonedDateTime.parse("1970-01-01T00:00:01Z").toInstant()), true },
+                { new BigDecimal("-62167219200"), Date.from(Instant.parse("0000-01-01T00:00:00Z")), true },
+                { new BigDecimal("-62167219199.999"), Date.from(Instant.parse("0000-01-01T00:00:00.001Z")), true },
+                { new BigDecimal("-1.001"), Date.from(Instant.parse("1969-12-31T23:59:58.999Z")), true },
+                { new BigDecimal("-1"), Date.from(Instant.parse("1969-12-31T23:59:59Z")), true },
+                { new BigDecimal("-0.001"), Date.from(Instant.parse("1969-12-31T23:59:59.999Z")), true },
+                { new BigDecimal("0"), Date.from(Instant.parse("1970-01-01T00:00:00.000000000Z")), true },
+                { new BigDecimal("0.001"), Date.from(Instant.parse("1970-01-01T00:00:00.001Z")), true },
+                { new BigDecimal(".999"), Date.from(Instant.parse("1970-01-01T00:00:00.999Z")), true },
+                { new BigDecimal("1"), Date.from(Instant.parse("1970-01-01T00:00:01Z")), true },
         });
         
         /////////////////////////////////////////////////////////////
@@ -1857,15 +1876,15 @@ class ConverterEverythingTest {
         });
         // No identity test for Date, as it is mutable
         TEST_DB.put(pair(BigDecimal.class, java.sql.Date.class), new Object[][] {
-                { new BigDecimal("-62167219200"), new java.sql.Date(Date.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()).getTime()), true },
-                { new BigDecimal("-62167219199.999"), new java.sql.Date(Date.from(ZonedDateTime.parse("0000-01-01T00:00:00.001Z").toInstant()).getTime()), true },
-                { new BigDecimal("-1.001"), new java.sql.Date(Date.from(ZonedDateTime.parse("1969-12-31T23:59:58.999Z").toInstant()).getTime()), true },
-                { new BigDecimal("-1"), new java.sql.Date(Date.from(ZonedDateTime.parse("1969-12-31T23:59:59Z").toInstant()).getTime()), true },
-                { new BigDecimal("-0.001"), new java.sql.Date(Date.from(ZonedDateTime.parse("1969-12-31T23:59:59.999Z").toInstant()).getTime()), true },
-                { new BigDecimal("0"), new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000000Z").toInstant()).getTime()), true },
-                { new BigDecimal("0.001"), new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.001Z").toInstant()).getTime()), true },
-                { new BigDecimal(".999"), new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:00.999Z").toInstant()).getTime()), true },
-                { new BigDecimal("1"), new java.sql.Date(Date.from(ZonedDateTime.parse("1970-01-01T00:00:01Z").toInstant()).getTime()), true },
+                { new BigDecimal("-62167219200"), new java.sql.Date(Date.from(Instant.parse("0000-01-01T00:00:00Z")).getTime()), true },
+                { new BigDecimal("-62167219199.999"), new java.sql.Date(Date.from(Instant.parse("0000-01-01T00:00:00.001Z")).getTime()), true },
+                { new BigDecimal("-1.001"), new java.sql.Date(Date.from(Instant.parse("1969-12-31T23:59:58.999Z")).getTime()), true },
+                { new BigDecimal("-1"), new java.sql.Date(Date.from(Instant.parse("1969-12-31T23:59:59Z")).getTime()), true },
+                { new BigDecimal("-0.001"), new java.sql.Date(Date.from(Instant.parse("1969-12-31T23:59:59.999Z")).getTime()), true },
+                { new BigDecimal("0"), new java.sql.Date(Date.from(Instant.parse("1970-01-01T00:00:00.000000000Z")).getTime()), true },
+                { new BigDecimal("0.001"), new java.sql.Date(Date.from(Instant.parse("1970-01-01T00:00:00.001Z")).getTime()), true },
+                { new BigDecimal(".999"), new java.sql.Date(Date.from(Instant.parse("1970-01-01T00:00:00.999Z")).getTime()), true },
+                { new BigDecimal("1"), new java.sql.Date(Date.from(Instant.parse("1970-01-01T00:00:01Z")).getTime()), true },
         });
 
         /////////////////////////////////////////////////////////////
@@ -1908,7 +1927,7 @@ class ConverterEverythingTest {
                 { null, null }
         });
         TEST_DB.put(pair(OffsetDateTime.class, OffsetDateTime.class), new Object[][]{
-                {OffsetDateTime.parse("2024-02-18T06:31:55.987654321+00:00"), OffsetDateTime.parse("2024-02-18T06:31:55.987654321+00:00"), true },
+                {OffsetDateTime.parse("2024-02-18T06:31:55.987654321Z"), OffsetDateTime.parse("2024-02-18T06:31:55.987654321Z"), true },
         });
         TEST_DB.put(pair(Double.class, OffsetDateTime.class), new Object[][]{
                 {-0.000000001, OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z").withOffsetSameInstant(ZonedDateTime.now(TOKYO_Z).getOffset()) },  // IEEE-754 resolution prevents perfect symmetry (close)
@@ -2083,47 +2102,47 @@ class ConverterEverythingTest {
         });
         // No identity test - Timestamp is mutable
         TEST_DB.put(pair(Double.class, Timestamp.class), new Object[][]{
-                { -0.000000001, Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant())},    // IEEE-754 limit prevents reverse test
-                { 0d, Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00Z").toInstant()), true},
-                { 0.000000001, Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant()), true},
+                { -0.000000001, Timestamp.from(Instant.parse("1969-12-31T23:59:59.999999999Z"))},    // IEEE-754 limit prevents reverse test
+                { 0d, Timestamp.from(Instant.parse("1970-01-01T00:00:00Z")), true},
+                { 0.000000001, Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), true},
                 { (double)now, new Timestamp((long)(now * 1000d)), true},
         });
         TEST_DB.put(pair(BigDecimal.class, Timestamp.class), new Object[][] {
-                { new BigDecimal("-62167219200"), Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()), true },
-                { new BigDecimal("-62167219199.999999999"), Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00.000000001Z").toInstant()), true },
-                { new BigDecimal("-1.000000001"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:58.999999999Z").toInstant()), true },
-                { new BigDecimal("-1"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59Z").toInstant()), true },
-                { new BigDecimal("-0.00000001"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.99999999Z").toInstant()), true },
-                { new BigDecimal("-0.000000001"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant()), true },
-                { new BigDecimal("0"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000000Z").toInstant()), true },
-                { new BigDecimal("0.000000001"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant()), true },
-                { new BigDecimal(".999999999"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.999999999Z").toInstant()), true },
-                { new BigDecimal("1"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:01Z").toInstant()), true },
+                { new BigDecimal("-62167219200"), Timestamp.from(Instant.parse("0000-01-01T00:00:00Z")), true },
+                { new BigDecimal("-62167219199.999999999"), Timestamp.from(Instant.parse("0000-01-01T00:00:00.000000001Z")), true },
+                { new BigDecimal("-1.000000001"), Timestamp.from(Instant.parse("1969-12-31T23:59:58.999999999Z")), true },
+                { new BigDecimal("-1"), Timestamp.from(Instant.parse("1969-12-31T23:59:59Z")), true },
+                { new BigDecimal("-0.00000001"), Timestamp.from(Instant.parse("1969-12-31T23:59:59.99999999Z")), true },
+                { new BigDecimal("-0.000000001"), Timestamp.from(Instant.parse("1969-12-31T23:59:59.999999999Z")), true },
+                { new BigDecimal("0"), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000000Z")), true },
+                { new BigDecimal("0.000000001"), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), true },
+                { new BigDecimal(".999999999"), Timestamp.from(Instant.parse("1970-01-01T00:00:00.999999999Z")), true },
+                { new BigDecimal("1"), Timestamp.from(Instant.parse("1970-01-01T00:00:01Z")), true },
         });
         TEST_DB.put(pair(Duration.class, Timestamp.class), new Object[][] {
-                { Duration.ofSeconds(-62167219200L), Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00Z").toInstant()), true},
-                { Duration.ofSeconds(-62167219200L, 1), Timestamp.from(ZonedDateTime.parse("0000-01-01T00:00:00.000000001Z").toInstant()), true},
-                { Duration.ofNanos(-1000000001), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:58.999999999+00:00").toInstant()), true},
-                { Duration.ofNanos(-1000000000), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.000000000+00:00").toInstant()), true},
-                { Duration.ofNanos(-999999999), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.000000001+00:00").toInstant()), true},
-                { Duration.ofNanos(-1), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999999+00:00").toInstant()), true},
-                { Duration.ofNanos(0), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000000+00:00").toInstant()), true},
-                { Duration.ofNanos(1), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001+00:00").toInstant()), true},
-                { Duration.ofNanos(999999999), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.999999999+00:00").toInstant()), true},
-                { Duration.ofNanos(1000000000), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:01.000000000+00:00").toInstant()), true},
-                { Duration.ofNanos(1000000001), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:01.000000001+00:00").toInstant()), true},
-                { Duration.ofNanos(686629800000000001L), Timestamp.from(ZonedDateTime.parse("1991-10-05T02:30:00.000000001Z").toInstant()), true },
-                { Duration.ofNanos(1199145600000000001L), Timestamp.from(ZonedDateTime.parse("2008-01-01T00:00:00.000000001Z").toInstant()), true },
-                { Duration.ofNanos(1708255140987654321L), Timestamp.from(ZonedDateTime.parse("2024-02-18T11:19:00.987654321Z").toInstant()), true },
-                { Duration.ofNanos(2682374400000000001L), Timestamp.from(ZonedDateTime.parse("2055-01-01T00:00:00.000000001Z").toInstant()), true },
+                { Duration.ofSeconds(-62167219200L), Timestamp.from(Instant.parse("0000-01-01T00:00:00Z")), true},
+                { Duration.ofSeconds(-62167219200L, 1), Timestamp.from(Instant.parse("0000-01-01T00:00:00.000000001Z")), true},
+                { Duration.ofNanos(-1000000001), Timestamp.from(Instant.parse("1969-12-31T23:59:58.999999999Z")), true},
+                { Duration.ofNanos(-1000000000), Timestamp.from(Instant.parse("1969-12-31T23:59:59.000000000Z")), true},
+                { Duration.ofNanos(-999999999), Timestamp.from(Instant.parse("1969-12-31T23:59:59.000000001Z")), true},
+                { Duration.ofNanos(-1), Timestamp.from(Instant.parse("1969-12-31T23:59:59.999999999Z")), true},
+                { Duration.ofNanos(0), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000000Z")), true},
+                { Duration.ofNanos(1), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), true},
+                { Duration.ofNanos(999999999), Timestamp.from(Instant.parse("1970-01-01T00:00:00.999999999Z")), true},
+                { Duration.ofNanos(1000000000), Timestamp.from(Instant.parse("1970-01-01T00:00:01.000000000Z")), true},
+                { Duration.ofNanos(1000000001), Timestamp.from(Instant.parse("1970-01-01T00:00:01.000000001Z")), true},
+                { Duration.ofNanos(686629800000000001L), Timestamp.from(Instant.parse("1991-10-05T02:30:00.000000001Z")), true },
+                { Duration.ofNanos(1199145600000000001L), Timestamp.from(Instant.parse("2008-01-01T00:00:00.000000001Z")), true },
+                { Duration.ofNanos(1708255140987654321L), Timestamp.from(Instant.parse("2024-02-18T11:19:00.987654321Z")), true },
+                { Duration.ofNanos(2682374400000000001L), Timestamp.from(Instant.parse("2055-01-01T00:00:00.000000001Z")), true },
         });
 
         // No symmetry checks - because an OffsetDateTime of "2024-02-18T06:31:55.987654321+00:00" and "2024-02-18T15:31:55.987654321+09:00" are equivalent but not equals. They both describe the same Instant.
         TEST_DB.put(pair(OffsetDateTime.class, Timestamp.class), new Object[][]{
-                {OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z"), Timestamp.from(ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").toInstant()) },
-                {OffsetDateTime.parse("1970-01-01T00:00:00.000000000Z"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000000Z").toInstant()) },
-                {OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z"), Timestamp.from(ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").toInstant()) },
-                {OffsetDateTime.parse("2024-02-18T06:31:55.987654321+00:00"), Timestamp.from(ZonedDateTime.parse("2024-02-18T06:31:55.987654321+00:00").toInstant()) },
+                {OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z"), Timestamp.from(Instant.parse("1969-12-31T23:59:59.999999999Z")) },
+                {OffsetDateTime.parse("1970-01-01T00:00:00.000000000Z"), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000000Z")) },
+                {OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z"), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")) },
+                {OffsetDateTime.parse("2024-02-18T06:31:55.987654321Z"), Timestamp.from(Instant.parse("2024-02-18T06:31:55.987654321Z")) },
         });
 
         /////////////////////////////////////////////////////////////

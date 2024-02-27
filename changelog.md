@@ -1,4 +1,8 @@
 ### Revision History
+* 2.4.2
+  * Fixed compatibility issues with `StringUtilities.` Method parameters changed from String to CharSequence broke backward compatibility.  Linked jars are bound to method signature at compile time, not at runtime. Added both methods where needed.  Removed methods with "Not" in the name.
+  * Fixed compatibility issue with `FastByteArrayOutputStream.` The `.getBuffer()` API was removed in favor of toByteArray(). Now both methods exist, leaving `getBuffer()` for backward compatibility.
+  * The Converter "Everything" test updated to track which pairs are tested (fowarded or reverse) and then outputs in order what tests combinations are left to write.
 * 2.4.1
   * `Converter` has had significant expansion in the types that it can convert between, about 670 combinations.  In addition, you can add your own conversions to it as well. Call the `Converter.getSupportedConversions()` to see all the combinations supported.  Also, you can use `Converter` instance-based now, allowing it to have different conversion tables if needed.
   * `DateUtilities` has had performance improvements (> 35%), and adds a new `.parseDate()` API that allows it to return a `ZonedDateTime.` See the updated Javadoc on the class for a complete description of all the formats it supports.  Normally, you do not need to use this class directly, as you can use `Converter` to convert between `Dates`, `Calendars`, and the new Temporal classes like `ZonedDateTime,` `Duration,` `Instance,` as well as Strings. 

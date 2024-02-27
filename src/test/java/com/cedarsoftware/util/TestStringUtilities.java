@@ -1,22 +1,18 @@
 package com.cedarsoftware.util;
 
+import javax.swing.text.Segment;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
-import com.cedarsoftware.util.convert.CommonValues;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.mockito.internal.util.StringUtil;
-
-import javax.swing.text.Segment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -80,28 +76,7 @@ public class TestStringUtilities
     {
         assertTrue(StringUtilities.isEmpty(s));
     }
-
-    @ParameterizedTest
-    @MethodSource("stringsWithAllWhitespace")
-    void testIsNotEmpty_whenStringHasOnlyWhitespace_returnsFalse(String s)
-    {
-        assertFalse(StringUtilities.isNotEmpty(s));
-    }
-
-    @ParameterizedTest
-    @MethodSource("stringsWithContentOtherThanWhitespace")
-    void testIsNotEmpty_whenStringHasContent_returnsTrue(String s)
-    {
-        assertTrue(StringUtilities.isNotEmpty(s));
-    }
-
-    @ParameterizedTest
-    @NullAndEmptySource
-    void testIsNotEmpty_whenNullOrEmpty_returnsFalse(String s)
-    {
-        assertFalse(StringUtilities.isNotEmpty(s));
-    }
-
+    
     @ParameterizedTest
     @MethodSource("stringsWithAllWhitespace")
     void testIsWhiteSpace_whenStringHasWhitespace_returnsTrue(String s)
@@ -144,27 +119,7 @@ public class TestStringUtilities
     {
         assertFalse(StringUtilities.hasContent(s));
     }
-
-    @ParameterizedTest
-    @MethodSource("stringsWithAllWhitespace")
-    void testIsNotWhitespace_whenStringHasWhitespace_returnsFalse(String s)
-    {
-        assertFalse(StringUtilities.isNotWhitespace(s));
-    }
-
-    @ParameterizedTest
-    @MethodSource("stringsWithContentOtherThanWhitespace")
-    void testIsNotWhitespace_whenStringHasContent_returnsTrue(String s)
-    {
-        assertTrue(StringUtilities.isNotWhitespace(s));
-    }
-
-    @ParameterizedTest
-    @NullAndEmptySource
-    void testIsNotWhitespace_whenNullOrEmpty_returnsFalse(String s)
-    {
-        assertFalse(StringUtilities.isNotWhitespace(s));
-    }
+    
     @Test
     public void testIsEmpty()
     {

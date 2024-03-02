@@ -8,7 +8,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -47,6 +49,15 @@ final class DoubleConversions {
         return new java.sql.Date((long)(d * 1000));
     }
 
+    static Calendar toCalendar(Object from, Converter converter) {
+        double seconds = (double) from;
+        long epochMillis = (long)(seconds * 1000);
+        Calendar calendar = GregorianCalendar.getInstance(converter.getOptions().getTimeZone());
+        calendar.clear();
+        calendar.setTimeInMillis(epochMillis);
+        return calendar;
+    }
+    
     static LocalTime toLocalTime(Object from, Converter converter) {
         double seconds = (double) from;
         double nanos = seconds * 1_000_000_000.0;

@@ -504,9 +504,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Short.class, Calendar.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Integer.class, Calendar.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Long.class, Calendar.class), NumberConversions::toCalendar);
-        CONVERSION_DB.put(pair(Double.class, Calendar.class), NumberConversions::toCalendar);
-        CONVERSION_DB.put(pair(BigInteger.class, Calendar.class), NumberConversions::toCalendar);
-        CONVERSION_DB.put(pair(BigDecimal.class, Calendar.class), NumberConversions::toCalendar);
+        CONVERSION_DB.put(pair(Double.class, Calendar.class), DoubleConversions::toCalendar);
+        CONVERSION_DB.put(pair(BigInteger.class, Calendar.class), BigIntegerConversions::toCalendar);
+        CONVERSION_DB.put(pair(BigDecimal.class, Calendar.class), BigDecimalConversions::toCalendar);
         CONVERSION_DB.put(pair(AtomicInteger.class, Calendar.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, Calendar.class), NumberConversions::toCalendar);
         CONVERSION_DB.put(pair(Date.class, Calendar.class), DateConversions::toCalendar);

@@ -1385,7 +1385,7 @@ class ConverterTest
 
         Converter converter = new Converter(createCustomZones(zoneId));
         double d = converter.convert(calendar, double.class);
-        assertThat(d).isEqualTo((double)epochMilli);
+        assertThat(d * 1000).isEqualTo((double)epochMilli);
     }
 
     @ParameterizedTest
@@ -1441,6 +1441,7 @@ class ConverterTest
 
         Converter converter = new Converter(createCustomZones(zoneId));
         BigDecimal actual = converter.convert(calendar, BigDecimal.class);
+        actual = actual.multiply(BigDecimal.valueOf(1000));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -1453,6 +1454,7 @@ class ConverterTest
 
         Converter converter = new Converter(createCustomZones(zoneId));
         BigInteger actual = converter.convert(calendar, BigInteger.class);
+        actual = actual.divide(BigInteger.valueOf(1_000_000));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -1848,7 +1850,7 @@ class ConverterTest
     @Test
     void testBigDecimal_witCalendar() {
         Calendar today = Calendar.getInstance();
-        BigDecimal bd = new BigDecimal(today.getTime().getTime());
+        BigDecimal bd = new BigDecimal(today.getTime().getTime()).divide(BigDecimal.valueOf(1000));
         assertEquals(bd, this.converter.convert(today, BigDecimal.class));
     }
 
@@ -1909,7 +1911,7 @@ class ConverterTest
     @Test
     void testBigInteger_withCalendar() {
         Calendar today = Calendar.getInstance();
-        BigInteger bd = BigInteger.valueOf(today.getTime().getTime());
+        BigInteger bd = BigInteger.valueOf(today.getTime().getTime()).multiply(BigInteger.valueOf(1_000_000));
         assertEquals(bd, this.converter.convert(today, BigInteger.class));
     }
 
@@ -2310,8 +2312,8 @@ class ConverterTest
                 Arguments.of(new Timestamp(1687622249729L)),
                 Arguments.of(Instant.ofEpochMilli(1687622249729L)),
                 Arguments.of(1687622249729L),
-                Arguments.of(BigInteger.valueOf(1687622249729L)),
-                Arguments.of(BigDecimal.valueOf(1687622249729L)),
+                Arguments.of(new BigInteger("1687622249729000000")),
+                Arguments.of(BigDecimal.valueOf(1687622249.729)),
                 Arguments.of("1687622249729"),
                 Arguments.of(new AtomicLong(1687622249729L))
         );
@@ -2323,6 +2325,7 @@ class ConverterTest
     {
         Long epochMilli = 1687622249729L;
 
+        System.out.println("source.getClass().getName() = " + source.getClass().getName());
         Calendar calendar = this.converter.convert(source, Calendar.class);
         assertEquals(calendar.getTime().getTime(), epochMilli);
 
@@ -2359,10 +2362,11 @@ class ConverterTest
 
         // Calendar to BigInteger
         BigInteger bigInt = this.converter.convert(calendar, BigInteger.class);
-        assertEquals(now.getTime().getTime(), bigInt.longValue());
+        assertEquals(now.getTime().getTime() * 1_000_000, bigInt.longValue());
 
         // Calendar to BigDecimal
         BigDecimal bigDec = this.converter.convert(calendar, BigDecimal.class);
+        bigDec = bigDec.multiply(BigDecimal.valueOf(1000));
         assertEquals(now.getTime().getTime(), bigDec.longValue());
     }
     

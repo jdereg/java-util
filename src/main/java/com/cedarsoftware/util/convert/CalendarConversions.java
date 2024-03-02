@@ -44,7 +44,9 @@ final class CalendarConversions {
     }
 
     static double toDouble(Object from, Converter converter) {
-        return (double)toLong(from, converter);
+        Calendar calendar = (Calendar) from;
+        long epochMillis = calendar.getTime().getTime();
+        return epochMillis / 1000.0;
     }
     
     static Date toDate(Object from, Converter converter) {
@@ -81,11 +83,13 @@ final class CalendarConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        return BigDecimal.valueOf(((Calendar) from).getTime().getTime());
+        Calendar cal = (Calendar) from;
+        long epochMillis = cal.getTime().getTime();
+        return new BigDecimal(epochMillis).divide(BigDecimalConversions.GRAND);
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return BigInteger.valueOf(((Calendar) from).getTime().getTime());
+        return BigInteger.valueOf(((Calendar) from).getTime().getTime() * 1_000_000L);
     }
 
     static Calendar clone(Object from, Converter converter) {

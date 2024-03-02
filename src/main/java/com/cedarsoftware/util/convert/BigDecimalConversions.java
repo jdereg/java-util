@@ -10,7 +10,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.UUID;
 
 /**
@@ -34,6 +36,14 @@ final class BigDecimalConversions {
     static final BigDecimal GRAND = BigDecimal.valueOf(1000);
 
     private BigDecimalConversions() { }
+
+    static Calendar toCalendar(Object from, Converter converter) {
+        BigDecimal seconds = (BigDecimal) from;
+        BigDecimal millis = seconds.multiply(BigDecimal.valueOf(1000));
+        Calendar calendar = GregorianCalendar.getInstance(converter.getOptions().getTimeZone());
+        calendar.setTimeInMillis(millis.longValue());
+        return calendar;
+    }
 
     static Instant toInstant(Object from, Converter converter) {
         BigDecimal seconds = (BigDecimal) from;

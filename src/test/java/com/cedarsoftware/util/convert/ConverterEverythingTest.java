@@ -50,6 +50,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import static com.cedarsoftware.util.MapUtilities.mapOf;
+import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.Converter.pair;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,6 +79,7 @@ class ConverterEverythingTest {
     private static final ZoneId TOKYO_Z = ZoneId.of(TOKYO);
     private static final TimeZone TOKYO_TZ = TimeZone.getTimeZone(TOKYO_Z);
     private static final Set<Class<?>> immutable = new HashSet<>();
+    private static final long now = System.currentTimeMillis();
     private Converter converter;
     private final ConverterOptions options = new ConverterOptions() {
         public ZoneId getZoneId() {
@@ -88,9 +90,6 @@ class ConverterEverythingTest {
     private static final Map<Map.Entry<Class<?>, Class<?>>, Boolean> STAT_DB = new ConcurrentHashMap<>(500, .8f);
 
     static {
-        // Useful values for input
-        long now = System.currentTimeMillis();
-
         // List classes that should be checked for immutability
         immutable.add(byte.class);
         immutable.add(Byte.class);
@@ -164,6 +163,9 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, Map.class), new Object[][]{
                 {null, null}
         });
+        TEST_DB.put(pair(BigDecimal.class, Map.class), new Object[][]{
+                {BigDecimal.valueOf(1), mapOf(VALUE, BigDecimal.valueOf(1))}
+        });
     }
 
     /**
@@ -186,6 +188,11 @@ class ConverterEverythingTest {
                 { new AtomicLong((byte)-1), new AtomicBoolean(true)},
                 { new AtomicLong((byte)0), new AtomicBoolean(false), true},
                 { new AtomicLong((byte)1), new AtomicBoolean(true), true},
+        });
+        TEST_DB.put(pair(BigInteger.class, AtomicBoolean.class), new Object[][] {
+                { BigInteger.valueOf(-1), new AtomicBoolean(true)},
+                { BigInteger.ZERO, new AtomicBoolean(false), true},
+                { BigInteger.valueOf(1), new AtomicBoolean(true), true},
         });
         TEST_DB.put(pair(BigDecimal.class, AtomicBoolean.class), new Object[][] {
                 { new BigDecimal("-1.1"), new AtomicBoolean(true)},
@@ -582,6 +589,13 @@ class ConverterEverythingTest {
                 {86400d, ZonedDateTime.parse("1970-01-02T00:00:00Z").withZoneSameInstant(TOKYO_Z), true},
                 {86400.000000001, ZonedDateTime.parse("1970-01-02T00:00:00.000000001Z").withZoneSameInstant(TOKYO_Z), true},
         });
+        TEST_DB.put(pair(AtomicLong.class, ZonedDateTime.class), new Object[][]{
+                {new AtomicLong(-62167219200000L), ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), true},
+                {new AtomicLong(-62167219199999L), ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), true},
+                {new AtomicLong(-1), ZonedDateTime.parse("1969-12-31T23:59:59.999Z").withZoneSameInstant(TOKYO_Z), true},
+                {new AtomicLong(0), ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), true},
+                {new AtomicLong(1), ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), true},
+        });
         TEST_DB.put(pair(BigInteger.class, ZonedDateTime.class), new Object[][]{
                 {new BigInteger("-62167219200000000000"), ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), true},
                 {new BigInteger("-62167219199999999999"), ZonedDateTime.parse("0000-01-01T00:00:00.000000001Z").withZoneSameInstant(TOKYO_Z), true},
@@ -745,6 +759,22 @@ class ConverterEverythingTest {
                 {0d, Timestamp.from(Instant.parse("1970-01-01T00:00:00Z")), true},
                 {0.000000001, Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), true},
                 {(double) now, new Timestamp((long) (now * 1000d)), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, Timestamp.class), new Object[][]{
+                {new AtomicLong(-62167219200000L), Timestamp.from(Instant.parse("0000-01-01T00:00:00.000Z")), true},
+                {new AtomicLong(-62131377719000L), Timestamp.from(Instant.parse("0001-02-18T19:58:01.000Z")), true},
+                {new AtomicLong(-1000), Timestamp.from(Instant.parse("1969-12-31T23:59:59.000000000Z")), true},
+                {new AtomicLong(-999), Timestamp.from(Instant.parse("1969-12-31T23:59:59.001Z")), true},
+                {new AtomicLong(-900), Timestamp.from(Instant.parse("1969-12-31T23:59:59.100000000Z")), true},
+                {new AtomicLong(-100), Timestamp.from(Instant.parse("1969-12-31T23:59:59.900000000Z")), true},
+                {new AtomicLong(-1), Timestamp.from(Instant.parse("1969-12-31T23:59:59.999Z")), true},
+                {new AtomicLong(0), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000000Z")), true},
+                {new AtomicLong(1), Timestamp.from(Instant.parse("1970-01-01T00:00:00.001Z")), true},
+                {new AtomicLong(100), Timestamp.from(Instant.parse("1970-01-01T00:00:00.100Z")), true},
+                {new AtomicLong(900), Timestamp.from(Instant.parse("1970-01-01T00:00:00.900Z")), true},
+                {new AtomicLong(999), Timestamp.from(Instant.parse("1970-01-01T00:00:00.999Z")), true},
+                {new AtomicLong(1000), Timestamp.from(Instant.parse("1970-01-01T00:00:01.000Z")), true},
+                {new AtomicLong(253374983881000L), Timestamp.from(Instant.parse("9999-02-18T19:58:01.000Z")), true},
         });
         TEST_DB.put(pair(BigInteger.class, Timestamp.class), new Object[][]{
                 {new BigInteger("-62167219200000000000"), Timestamp.from(Instant.parse("0000-01-01T00:00:00.000000000Z")), true},
@@ -982,13 +1012,18 @@ class ConverterEverythingTest {
                 {0d, OffsetDateTime.parse("1970-01-01T00:00:00Z").withOffsetSameInstant(tokyoOffset), true},
                 {0.000000001, OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z").withOffsetSameInstant(tokyoOffset), true},
         });
+        TEST_DB.put(pair(AtomicLong.class, OffsetDateTime.class), new Object[][]{
+                {new AtomicLong(-1), OffsetDateTime.parse("1969-12-31T23:59:59.999Z").withOffsetSameInstant(tokyoOffset), true},
+                {new AtomicLong(0), OffsetDateTime.parse("1970-01-01T00:00:00Z").withOffsetSameInstant(tokyoOffset), true},
+                {new AtomicLong(1), OffsetDateTime.parse("1970-01-01T00:00:00.001Z").withOffsetSameInstant(tokyoOffset), true},
+        });
         TEST_DB.put(pair(BigInteger.class, OffsetDateTime.class), new Object[][]{
-                {new BigInteger("-1"), OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z").withOffsetSameInstant(tokyoOffset)},
-                {BigInteger.ZERO, OffsetDateTime.parse("1970-01-01T00:00:00Z").withOffsetSameInstant(tokyoOffset)},
-                {new BigInteger("1"), OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z").withOffsetSameInstant(tokyoOffset)},
+                {new BigInteger("-1"), OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z").withOffsetSameInstant(tokyoOffset), true},
+                {BigInteger.ZERO, OffsetDateTime.parse("1970-01-01T00:00:00Z").withOffsetSameInstant(tokyoOffset), true},
+                {new BigInteger("1"), OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z").withOffsetSameInstant(tokyoOffset), true},
         });
         TEST_DB.put(pair(BigDecimal.class, OffsetDateTime.class), new Object[][]{
-                {new BigDecimal("-0.000000001"), OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z").withOffsetSameInstant(ZonedDateTime.now(TOKYO_Z).getOffset())},  // IEEE-754 resolution prevents perfect symmetry (close)
+                {new BigDecimal("-0.000000001"), OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z").withOffsetSameInstant(ZonedDateTime.now(TOKYO_Z).getOffset()), true},
                 {BigDecimal.ZERO, OffsetDateTime.parse("1970-01-01T00:00:00Z").withOffsetSameInstant(ZonedDateTime.now(TOKYO_Z).getOffset()), true},
                 {new BigDecimal(".000000001"), OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z").withOffsetSameInstant(ZonedDateTime.now(TOKYO_Z).getOffset()), true},
         });
@@ -1066,6 +1101,17 @@ class ConverterEverythingTest {
                 {0.999, new java.sql.Date(Instant.parse("1970-01-01T00:00:00.999Z").toEpochMilli()), true},
                 {1d, new java.sql.Date(Instant.parse("1970-01-01T00:00:01Z").toEpochMilli()), true},
         });
+        TEST_DB.put(pair(AtomicLong.class, java.sql.Date.class), new Object[][]{
+                {new AtomicLong(-62167219200000L), new java.sql.Date(Instant.parse("0000-01-01T00:00:00Z").toEpochMilli()), true},
+                {new AtomicLong(-62167219199999L), new java.sql.Date(Instant.parse("0000-01-01T00:00:00.001Z").toEpochMilli()), true},
+                {new AtomicLong(-1001), new java.sql.Date(Instant.parse("1969-12-31T23:59:58.999Z").toEpochMilli()), true},
+                {new AtomicLong(-1000), new java.sql.Date(Instant.parse("1969-12-31T23:59:59Z").toEpochMilli()), true},
+                {new AtomicLong(-1), new java.sql.Date(Instant.parse("1969-12-31T23:59:59.999Z").toEpochMilli()), true},
+                {new AtomicLong(0), new java.sql.Date(Instant.parse("1970-01-01T00:00:00Z").toEpochMilli()), true},
+                {new AtomicLong(1), new java.sql.Date(Instant.parse("1970-01-01T00:00:00.001Z").toEpochMilli()), true},
+                {new AtomicLong(999), new java.sql.Date(Instant.parse("1970-01-01T00:00:00.999Z").toEpochMilli()), true},
+                {new AtomicLong(1000), new java.sql.Date(Instant.parse("1970-01-01T00:00:01Z").toEpochMilli()), true},
+        });
         TEST_DB.put(pair(BigDecimal.class, java.sql.Date.class), new Object[][]{
                 {new BigDecimal("-62167219200"), new java.sql.Date(Instant.parse("0000-01-01T00:00:00Z").toEpochMilli()), true},
                 {new BigDecimal("-62167219199.999"), new java.sql.Date(Instant.parse("0000-01-01T00:00:00.001Z").toEpochMilli()), true},
@@ -1103,14 +1149,80 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, Calendar.class), new Object[][]{
                 {null, null}
         });
+        TEST_DB.put(pair(Calendar.class, Calendar.class), new Object[][] {
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(now);
+                    return cal;
+                }, (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(now);
+                    return cal;
+                } }
+        });
         TEST_DB.put(pair(AtomicLong.class, Calendar.class), new Object[][]{
+                {new AtomicLong(-1), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(-1);
+                    return cal;
+                }, true},
                 {new AtomicLong(0), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
                     cal.setTimeZone(TOKYO_TZ);
                     cal.setTimeInMillis(0);
                     return cal;
-                }, true}
+                }, true},
+                {new AtomicLong(1), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(1);
+                    return cal;
+                }, true},
+        });
+        TEST_DB.put(pair(BigDecimal.class, Calendar.class), new Object[][]{
+                {new BigDecimal(-1), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(-1000);
+                    return cal;
+                }, true},
+                {new BigDecimal("-0.001"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(-1);
+                    return cal;
+                }, true},
+                {BigDecimal.ZERO, (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(0);
+                    return cal;
+                }, true},
+                {new BigDecimal("0.001"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(1);
+                    return cal;
+                }, true},
+                {new BigDecimal(1), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(1000);
+                    return cal;
+                }, true},
         });
     }
 
@@ -1144,6 +1256,9 @@ class ConverterEverythingTest {
     private static void loadBigDecimalTests() {
         TEST_DB.put(pair(Void.class, BigDecimal.class), new Object[][]{
                 {null, null}
+        });
+        TEST_DB.put(pair(BigDecimal.class, BigDecimal.class), new Object[][]{
+                {new BigDecimal("3.1415926535897932384626433"), new BigDecimal("3.1415926535897932384626433"), true}
         });
         TEST_DB.put(pair(String.class, BigDecimal.class), new Object[][]{
                 {"3.1415926535897932384626433", new BigDecimal("3.1415926535897932384626433"), true}
@@ -1230,6 +1345,21 @@ class ConverterEverythingTest {
                 {Instant.parse("1970-01-01T00:00:00.000000001Z"), new BigDecimal("0.000000001"), true},
                 {Instant.parse("1970-01-02T00:00:00Z"), new BigDecimal("86400"), true},
                 {Instant.parse("1970-01-02T00:00:00.000000001Z"), new BigDecimal("86400.000000001"), true},
+        });
+        TEST_DB.put(pair(UUID.class, BigDecimal.class), new Object[][]{
+                {new UUID(0L, 0L), BigDecimal.ZERO, true},
+                {new UUID(1L, 1L), new BigDecimal("18446744073709551617"), true},
+                {new UUID(Long.MAX_VALUE, Long.MAX_VALUE), new BigDecimal("170141183460469231722463931679029329919"), true},
+                {UUID.fromString("00000000-0000-0000-0000-000000000000"), BigDecimal.ZERO, true},
+                {UUID.fromString("00000000-0000-0000-0000-000000000001"), BigDecimal.valueOf(1), true},
+                {UUID.fromString("00000000-0000-0001-0000-000000000001"), new BigDecimal("18446744073709551617"), true},
+                {UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), new BigDecimal("340282366920938463463374607431768211455"), true},
+                {UUID.fromString("ffffffff-ffff-ffff-ffff-fffffffffffe"), new BigDecimal("340282366920938463463374607431768211454"), true},
+                {UUID.fromString("f0000000-0000-0000-0000-000000000000"), new BigDecimal("319014718988379809496913694467282698240"), true},
+                {UUID.fromString("f0000000-0000-0000-0000-000000000001"), new BigDecimal("319014718988379809496913694467282698241"), true},
+                {UUID.fromString("7fffffff-ffff-ffff-ffff-fffffffffffe"), new BigDecimal("170141183460469231731687303715884105726"), true},
+                {UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffffff"), new BigDecimal("170141183460469231731687303715884105727"), true},
+                {UUID.fromString("80000000-0000-0000-0000-000000000000"), new BigDecimal("170141183460469231731687303715884105728"), true},
         });
     }
 
@@ -1410,9 +1540,23 @@ class ConverterEverythingTest {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
                     cal.setTimeZone(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 12, 11, 38, 0);
+                    cal.setTimeInMillis(-1);
                     return cal;
-                }, BigInteger.valueOf(1707705480000L)}
+                }, BigInteger.valueOf(-1000000), true},
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(0);
+                    return cal;
+                }, BigInteger.ZERO, true},
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(1);
+                    return cal;
+                }, BigInteger.valueOf(1000000), true},
         });
         TEST_DB.put(pair(Number.class, BigInteger.class), new Object[][]{
                 {0, BigInteger.ZERO},
@@ -1844,38 +1988,38 @@ class ConverterEverythingTest {
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
-                    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(-1000);
+                    return cal;
+                }, -1.0, true},
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
                     return cal;
-                }, -1d},
+                }, -0.001, true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
-                    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    cal.setTimeZone(TOKYO_TZ);
                     cal.setTimeInMillis(0);
                     return cal;
-                }, 0d},
+                }, 0d, true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
-                    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    cal.setTimeZone(TOKYO_TZ);
                     cal.setTimeInMillis(1);
                     return cal;
-                }, 1d},
+                }, 0.001d, true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance();
                     cal.clear();
                     cal.setTimeZone(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 12, 11, 38, 0);
+                    cal.setTimeInMillis(1000);
                     return cal;
-                }, 1707705480000d},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
-                    cal.setTimeInMillis(now);   // Calendar maintains time to millisecond resolution
-                    return cal;
-                }, (double) now}
+                }, 1.0, true},
         });
         TEST_DB.put(pair(AtomicBoolean.class, Double.class), new Object[][]{
                 {new AtomicBoolean(true), 1d},

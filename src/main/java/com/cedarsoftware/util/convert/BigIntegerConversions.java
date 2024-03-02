@@ -10,7 +10,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.UUID;
 
 /**
@@ -32,6 +34,7 @@ import java.util.UUID;
  */
 final class BigIntegerConversions {
     static final BigInteger BILLION = BigInteger.valueOf(1_000_000_000);
+    static final BigInteger MILLION = BigInteger.valueOf(1_000_000);
 
     private BigIntegerConversions() { }
     
@@ -78,6 +81,14 @@ final class BigIntegerConversions {
         return Timestamp.from(toInstant(from, converter));
     }
 
+    static Calendar toCalendar(Object from, Converter converter) {
+        BigInteger epochNanos = (BigInteger) from;
+        BigInteger epochMillis = epochNanos.divide(MILLION);
+        Calendar calendar = GregorianCalendar.getInstance(converter.getOptions().getTimeZone());
+        calendar.setTimeInMillis(epochMillis.longValue());
+        return calendar;
+    }
+    
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return toInstant(from, converter).atZone(converter.getOptions().getZoneId());
     }

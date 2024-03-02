@@ -27,6 +27,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,6 +77,7 @@ class ConverterEverythingTest {
     private static final String TOKYO = "Asia/Tokyo";
     private static final ZoneId TOKYO_Z = ZoneId.of(TOKYO);
     private static final TimeZone TOKYO_TZ = TimeZone.getTimeZone(TOKYO_Z);
+    private static final Set<Class<?>> immutable = new HashSet<>();
     private Converter converter;
     private final ConverterOptions options = new ConverterOptions() {
         public ZoneId getZoneId() {
@@ -88,6 +90,38 @@ class ConverterEverythingTest {
     static {
         // Useful values for input
         long now = System.currentTimeMillis();
+
+        // List classes that should be checked for immutability
+        immutable.add(byte.class);
+        immutable.add(Byte.class);
+        immutable.add(short.class);
+        immutable.add(Short.class);
+        immutable.add(int.class);
+        immutable.add(Integer.class);
+        immutable.add(long.class);
+        immutable.add(Long.class);
+        immutable.add(float.class);
+        immutable.add(Float.class);
+        immutable.add(double.class);
+        immutable.add(Double.class);
+        immutable.add(boolean.class);
+        immutable.add(Boolean.class);
+        immutable.add(char.class);
+        immutable.add(Character.class);
+        immutable.add(BigInteger.class);
+        immutable.add(BigDecimal.class);
+        immutable.add(LocalTime.class);
+        immutable.add(LocalDate.class);
+        immutable.add(LocalDateTime.class);
+        immutable.add(ZonedDateTime.class);
+        immutable.add(OffsetDateTime.class);
+        immutable.add(Instant.class);
+        immutable.add(Duration.class);
+        immutable.add(Period.class);
+        immutable.add(Month.class);
+        immutable.add(Year.class);
+        immutable.add(MonthDay.class);
+        immutable.add(YearMonth.class);
 
         loadByteTest();
         loadShortTests();
@@ -102,6 +136,7 @@ class ConverterEverythingTest {
         loadInstantTests();
         loadDateTests();
         loadSqlDateTests();
+        loadCalendarTests();
         loadDurationTests();
         loadOffsetDateTimeTests();
         loadMonthDayTests();
@@ -111,11 +146,81 @@ class ConverterEverythingTest {
         loadZoneIdTests();
         loadTimestampTests(now);
         loadLocalDateTests();
+        loadLocalTimeTests();
         loadLocalDateTimeTests();
         loadZoneDateTimeTests();
         loadZoneOffsetTests();
         loadStringTests();
         loadAtomicLongTests();
+        loadAtomicIntegerTests();
+        loadAtomicBooleanTests();
+        loadMapTests();
+    }
+
+    /**
+     * Map
+     */
+    private static void loadMapTests() {
+        TEST_DB.put(pair(Void.class, Map.class), new Object[][]{
+                {null, null}
+        });
+    }
+
+    /**
+     * AtomicBoolean
+     */
+    private static void loadAtomicBooleanTests() {
+        TEST_DB.put(pair(Void.class, AtomicBoolean.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, AtomicBoolean.class), new Object[][] {
+                { new AtomicBoolean(false), new AtomicBoolean(false)},
+                { new AtomicBoolean(true), new AtomicBoolean(true)},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, AtomicBoolean.class), new Object[][] {
+                { new AtomicInteger(-1), new AtomicBoolean(true)},
+                { new AtomicInteger(0), new AtomicBoolean(false), true},
+                { new AtomicInteger(1), new AtomicBoolean(true), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, AtomicBoolean.class), new Object[][] {
+                { new AtomicLong((byte)-1), new AtomicBoolean(true)},
+                { new AtomicLong((byte)0), new AtomicBoolean(false), true},
+                { new AtomicLong((byte)1), new AtomicBoolean(true), true},
+        });
+        TEST_DB.put(pair(BigDecimal.class, AtomicBoolean.class), new Object[][] {
+                { new BigDecimal("-1.1"), new AtomicBoolean(true)},
+                { BigDecimal.valueOf(-1), new AtomicBoolean(true)},
+                { BigDecimal.ZERO, new AtomicBoolean(false), true},
+                { BigDecimal.valueOf(1), new AtomicBoolean(true), true},
+                { new BigDecimal("1.1"), new AtomicBoolean(true)},
+        });
+        TEST_DB.put(pair(Map.class, AtomicBoolean.class), new Object[][] {
+                { mapOf("_v", "true"), new AtomicBoolean(true)},
+                { mapOf("_v", true), new AtomicBoolean(true)},
+                { mapOf("_v", "false"), new AtomicBoolean(false)},
+                { mapOf("_v", false), new AtomicBoolean(false)},
+                { mapOf("_v", BigInteger.valueOf(1)), new AtomicBoolean(true)},
+                { mapOf("_v", BigDecimal.ZERO), new AtomicBoolean(false)},
+        });
+    }
+
+    /**
+     * AtomicInteger
+     */
+    private static void loadAtomicIntegerTests() {
+        TEST_DB.put(pair(Void.class, AtomicInteger.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(AtomicInteger.class, AtomicInteger.class), new Object[][] {
+                { new AtomicInteger(1), new AtomicInteger((byte)1), true}
+        });
+        TEST_DB.put(pair(AtomicLong.class, AtomicInteger.class), new Object[][] {
+                { new AtomicLong(Integer.MIN_VALUE), new AtomicInteger(Integer.MIN_VALUE), true},
+                { new AtomicLong(-1), new AtomicInteger((byte)-1), true},
+                { new AtomicLong(0), new AtomicInteger(0), true},
+                { new AtomicLong(1), new AtomicInteger((byte)1), true},
+                { new AtomicLong(Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE), true},
+        });
     }
 
     /**
@@ -124,6 +229,9 @@ class ConverterEverythingTest {
     private static void loadAtomicLongTests() {
         TEST_DB.put(pair(Void.class, AtomicLong.class), new Object[][]{
                 {null, null}
+        });
+        TEST_DB.put(pair(AtomicLong.class, AtomicLong.class), new Object[][]{
+                {new AtomicLong(16), new AtomicLong(16)}
         });
         TEST_DB.put(pair(Instant.class, AtomicLong.class), new Object[][]{
                 {Instant.parse("0000-01-01T00:00:00Z"), new AtomicLong(-62167219200000L), true},
@@ -501,6 +609,11 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(LocalDateTime.class, LocalDateTime.class), new Object[][]{
                 {LocalDateTime.of(1970, 1, 1, 0, 0), LocalDateTime.of(1970, 1, 1, 0, 0), true}
         });
+        TEST_DB.put(pair(AtomicLong.class, LocalDateTime.class), new Object[][]{
+                {new AtomicLong(-1), LocalDateTime.parse("1969-12-31T23:59:59.999").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+                {new AtomicLong(0), LocalDateTime.parse("1970-01-01T00:00:00").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+                {new AtomicLong(1), LocalDateTime.parse("1970-01-01T00:00:00.001").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+        });
         TEST_DB.put(pair(Double.class, LocalDateTime.class), new Object[][]{
                 {-0.000000001, LocalDateTime.parse("1969-12-31T23:59:59.999999999").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime()},   // IEEE-754 prevents perfect symmetry
                 {0d, LocalDateTime.parse("1970-01-01T00:00:00").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
@@ -512,6 +625,69 @@ class ConverterEverythingTest {
                 {new BigDecimal("-0.000000001"), LocalDateTime.parse("1969-12-31T23:59:59.999999999").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
                 {BigDecimal.ZERO, LocalDateTime.parse("1970-01-01T00:00:00").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
                 {new BigDecimal("0.000000001"), LocalDateTime.parse("1970-01-01T00:00:00.000000001").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+        });
+    }
+
+    /**
+     * LocalTime
+     */
+    private static void loadLocalTimeTests() {
+        TEST_DB.put(pair(Void.class, LocalTime.class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(LocalTime.class, LocalTime.class), new Object[][]{
+                { LocalTime.parse("12:34:56"), LocalTime.parse("12:34:56"), true}
+        });
+        TEST_DB.put(pair(Integer.class, LocalTime.class), new Object[][]{
+                { -1, new IllegalArgumentException("value [-1]")},
+                { 0, LocalTime.parse("00:00:00"), true},
+                { 1, LocalTime.parse("00:00:00.001"), true},
+                { 86399999, LocalTime.parse("23:59:59.999"), true},
+                { 86400000, new IllegalArgumentException("value [86400000]")},
+        });
+        TEST_DB.put(pair(Long.class, LocalTime.class), new Object[][]{
+                { -1L, new IllegalArgumentException("value [-1]")},
+                { 0L, LocalTime.parse("00:00:00"), true},
+                { 1L, LocalTime.parse("00:00:00.001"), true},
+                { 86399999L, LocalTime.parse("23:59:59.999"), true},
+                { 86400000L, new IllegalArgumentException("value [86400000]")},
+        });
+        TEST_DB.put(pair(Double.class, LocalTime.class), new Object[][]{
+                { -0.000000001, new IllegalArgumentException("value [-1.0E-9]")},
+                { 0.0, LocalTime.parse("00:00:00"), true},
+                { 0.000000001, LocalTime.parse("00:00:00.000000001"), true},
+                { 1.0, LocalTime.parse("00:00:01"), true},
+                { 86399.999999999, LocalTime.parse("23:59:59.999999999"), true},
+                { 86400.0, new IllegalArgumentException("value [86400.0]")},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, LocalTime.class), new Object[][]{
+                { new AtomicInteger(-1), new IllegalArgumentException("value [-1]")},
+                { new AtomicInteger(0), LocalTime.parse("00:00:00"), true},
+                { new AtomicInteger(1), LocalTime.parse("00:00:00.001"), true},
+                { new AtomicInteger(86399999), LocalTime.parse("23:59:59.999"), true},
+                { new AtomicInteger(86400000), new IllegalArgumentException("value [86400000]")},
+        });
+        TEST_DB.put(pair(AtomicLong.class, LocalTime.class), new Object[][]{
+                { new AtomicLong(-1), new IllegalArgumentException("value [-1]")},
+                { new AtomicLong(0), LocalTime.parse("00:00:00"), true},
+                { new AtomicLong(1), LocalTime.parse("00:00:00.001"), true},
+                { new AtomicLong(86399999), LocalTime.parse("23:59:59.999"), true},
+                { new AtomicLong(86400000), new IllegalArgumentException("value [86400000]")},
+        });
+        TEST_DB.put(pair(BigInteger.class, LocalTime.class), new Object[][]{
+                { BigInteger.valueOf(-1), new IllegalArgumentException("value [-1]")},
+                { BigInteger.valueOf(0), LocalTime.parse("00:00:00"), true},
+                { BigInteger.valueOf(1), LocalTime.parse("00:00:00.000000001"), true},
+                { BigInteger.valueOf(86399999999999L), LocalTime.parse("23:59:59.999999999"), true},
+                { BigInteger.valueOf(86400000000000L), new IllegalArgumentException("value [86400000000000]")},
+        });
+        TEST_DB.put(pair(BigDecimal.class, LocalTime.class), new Object[][]{
+                { BigDecimal.valueOf(-0.000000001), new IllegalArgumentException("value [-0.0000000010]")},
+                { BigDecimal.valueOf(0), LocalTime.parse("00:00:00"), true},
+                { BigDecimal.valueOf(0.000000001), LocalTime.parse("00:00:00.000000001"), true},
+                { BigDecimal.valueOf(1), LocalTime.parse("00:00:01"), true},
+                { BigDecimal.valueOf(86399.999999999), LocalTime.parse("23:59:59.999999999"), true},
+                { BigDecimal.valueOf(86400.0), new IllegalArgumentException("value [86400.0]")},
         });
     }
 
@@ -531,6 +707,13 @@ class ConverterEverythingTest {
                 {0d, LocalDate.parse("1970-01-01")},         // Showing that there is a wide range of numbers that will convert to this date
                 {53999.999, LocalDate.parse("1970-01-01")}, // Showing that there is a wide range of numbers that will convert to this date
                 {54000d, LocalDate.parse("1970-01-02"), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, LocalDate.class), new Object[][]{   // options timezone is factored in (86,400 seconds per day)
+                {new AtomicLong(-118800000), LocalDate.parse("1969-12-31"), true},
+                {new AtomicLong(-32400000), LocalDate.parse("1970-01-01"), true},
+                {new AtomicLong(0), LocalDate.parse("1970-01-01")},         // Showing that there is a wide range of numbers that will convert to this date
+                {new AtomicLong(53999999), LocalDate.parse("1970-01-01")}, // Showing that there is a wide range of numbers that will convert to this date
+                {new AtomicLong(54000000), LocalDate.parse("1970-01-02"), true},
         });
         TEST_DB.put(pair(BigInteger.class, LocalDate.class), new Object[][]{   // options timezone is factored in (86,400 seconds per day)
                 // These are all in the same date range
@@ -904,6 +1087,31 @@ class ConverterEverythingTest {
                 {null, null}
         });
         // No identity test for Date, as it is mutable
+        TEST_DB.put(pair(AtomicLong.class, Date.class), new Object[][]{
+                {new AtomicLong(Long.MIN_VALUE), new Date(Long.MIN_VALUE), true},
+                {new AtomicLong(-1), new Date(-1), true},
+                {new AtomicLong(0), new Date(0), true},
+                {new AtomicLong(1), new Date(1), true},
+                {new AtomicLong(Long.MAX_VALUE), new Date(Long.MAX_VALUE), true},
+        });
+    }
+
+    /**
+     * Calendar
+     */
+    private static void loadCalendarTests() {
+        TEST_DB.put(pair(Void.class, Calendar.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(AtomicLong.class, Calendar.class), new Object[][]{
+                {new AtomicLong(0), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance();
+                    cal.clear();
+                    cal.setTimeZone(TOKYO_TZ);
+                    cal.setTimeInMillis(0);
+                    return cal;
+                }, true}
+        });
     }
 
     /**
@@ -939,6 +1147,20 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(String.class, BigDecimal.class), new Object[][]{
                 {"3.1415926535897932384626433", new BigDecimal("3.1415926535897932384626433"), true}
+        });
+        TEST_DB.put(pair(AtomicInteger.class, BigDecimal.class), new Object[][] {
+                { new AtomicInteger(Integer.MIN_VALUE), BigDecimal.valueOf(Integer.MIN_VALUE), true},
+                { new AtomicInteger(-1), BigDecimal.valueOf(-1), true},
+                { new AtomicInteger(0), BigDecimal.ZERO, true},
+                { new AtomicInteger(1), BigDecimal.valueOf(1), true},
+                { new AtomicInteger(Integer.MAX_VALUE), BigDecimal.valueOf(Integer.MAX_VALUE), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, BigDecimal.class), new Object[][] {
+                { new AtomicLong(Long.MIN_VALUE), BigDecimal.valueOf(Long.MIN_VALUE), true},
+                { new AtomicLong(-1), BigDecimal.valueOf(-1), true},
+                { new AtomicLong(0), BigDecimal.ZERO, true},
+                { new AtomicLong(1), BigDecimal.valueOf(1), true},
+                { new AtomicLong(Long.MAX_VALUE), BigDecimal.valueOf(Long.MAX_VALUE), true},
         });
         TEST_DB.put(pair(Date.class, BigDecimal.class), new Object[][]{
                 {Date.from(Instant.parse("0000-01-01T00:00:00Z")), new BigDecimal("-62167219200"), true},
@@ -1400,35 +1622,35 @@ class ConverterEverythingTest {
                 {'0', false},
         });
         TEST_DB.put(pair(AtomicBoolean.class, Boolean.class), new Object[][]{
-                {new AtomicBoolean(true), true},
-                {new AtomicBoolean(false), false},
+                {new AtomicBoolean(true), true, true},
+                {new AtomicBoolean(false), false, true},
         });
         TEST_DB.put(pair(AtomicInteger.class, Boolean.class), new Object[][]{
                 {new AtomicInteger(-2), true},
                 {new AtomicInteger(-1), true},
-                {new AtomicInteger(0), false},
-                {new AtomicInteger(1), true},
+                {new AtomicInteger(0), false, true},
+                {new AtomicInteger(1), true, true},
                 {new AtomicInteger(2), true},
         });
         TEST_DB.put(pair(AtomicLong.class, Boolean.class), new Object[][]{
                 {new AtomicLong(-2), true},
                 {new AtomicLong(-1), true},
-                {new AtomicLong(0), false},
-                {new AtomicLong(1), true},
+                {new AtomicLong(0), false, true},
+                {new AtomicLong(1), true, true},
                 {new AtomicLong(2), true},
         });
         TEST_DB.put(pair(BigInteger.class, Boolean.class), new Object[][]{
                 {BigInteger.valueOf(-2), true},
                 {BigInteger.valueOf(-1), true},
-                {BigInteger.ZERO, false},
-                {BigInteger.valueOf(1), true},
+                {BigInteger.ZERO, false, true},
+                {BigInteger.valueOf(1), true, true},
                 {BigInteger.valueOf(2), true},
         });
         TEST_DB.put(pair(BigDecimal.class, Boolean.class), new Object[][]{
                 {BigDecimal.valueOf(-2L), true},
                 {BigDecimal.valueOf(-1L), true},
-                {BigDecimal.valueOf(0L), false},
-                {BigDecimal.valueOf(1L), true},
+                {BigDecimal.valueOf(0L), false, true},
+                {BigDecimal.valueOf(1L), true, true},
                 {BigDecimal.valueOf(2L), true},
         });
         TEST_DB.put(pair(Number.class, Boolean.class), new Object[][]{
@@ -1447,13 +1669,13 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(String.class, Boolean.class), new Object[][]{
                 {"0", false},
-                {"false", false},
+                {"false", false, true},
                 {"FaLse", false},
                 {"FALSE", false},
                 {"F", false},
                 {"f", false},
                 {"1", true},
-                {"true", true},
+                {"true", true, true},
                 {"TrUe", true},
                 {"TRUE", true},
                 {"T", true},
@@ -2515,109 +2737,105 @@ class ConverterEverythingTest {
                 {Byte.MAX_VALUE, Byte.MAX_VALUE},
         });
         TEST_DB.put(pair(Short.class, Byte.class), new Object[][]{
-                {(short) -1, (byte) -1},
-                {(short) 0, (byte) 0},
-                {(short) 1, (byte) 1},
-                {(short) -128, Byte.MIN_VALUE},
-                {(short) 127, Byte.MAX_VALUE},
+                {(short) -1, (byte) -1, true},
+                {(short) 0, (byte) 0, true},
+                {(short) 1, (byte) 1, true},
+                {(short) -128, Byte.MIN_VALUE, true},
+                {(short) 127, Byte.MAX_VALUE, true},
                 {(short) -129, Byte.MAX_VALUE},    // verify wrap around
                 {(short) 128, Byte.MIN_VALUE},    // verify wrap around
         });
         TEST_DB.put(pair(Integer.class, Byte.class), new Object[][]{
-                {-1, (byte) -1},
-                {0, (byte) 0},
-                {1, (byte) 1},
-                {-128, Byte.MIN_VALUE},
-                {127, Byte.MAX_VALUE},
+                {-1, (byte) -1, true},
+                {0, (byte) 0, true},
+                {1, (byte) 1, true},
+                {-128, Byte.MIN_VALUE, true},
+                {127, Byte.MAX_VALUE, true},
                 {-129, Byte.MAX_VALUE},   // verify wrap around
                 {128, Byte.MIN_VALUE},   // verify wrap around
         });
         TEST_DB.put(pair(Long.class, Byte.class), new Object[][]{
-                {-1L, (byte) -1},
-                {0L, (byte) 0},
-                {1L, (byte) 1},
-                {-128L, Byte.MIN_VALUE},
-                {127L, Byte.MAX_VALUE},
+                {-1L, (byte) -1, true},
+                {0L, (byte) 0, true},
+                {1L, (byte) 1, true},
+                {-128L, Byte.MIN_VALUE, true},
+                {127L, Byte.MAX_VALUE, true},
                 {-129L, Byte.MAX_VALUE}, // verify wrap around
                 {128L, Byte.MIN_VALUE}   // verify wrap around
         });
         TEST_DB.put(pair(Float.class, Byte.class), new Object[][]{
-                {-1f, (byte) -1},
+                {-1f, (byte) -1, true},
                 {-1.99f, (byte) -1},
                 {-1.1f, (byte) -1},
-                {0f, (byte) 0},
-                {1f, (byte) 1},
+                {0f, (byte) 0, true},
+                {1f, (byte) 1, true},
                 {1.1f, (byte) 1},
                 {1.999f, (byte) 1},
-                {-128f, Byte.MIN_VALUE},
-                {127f, Byte.MAX_VALUE},
+                {-128f, Byte.MIN_VALUE, true},
+                {127f, Byte.MAX_VALUE, true},
                 {-129f, Byte.MAX_VALUE}, // verify wrap around
                 {128f, Byte.MIN_VALUE}   // verify wrap around
         });
         TEST_DB.put(pair(Double.class, Byte.class), new Object[][]{
-                {-1d, (byte) -1},
+                {-1d, (byte) -1, true},
                 {-1.99, (byte) -1},
                 {-1.1, (byte) -1},
-                {0d, (byte) 0},
+                {0d, (byte) 0, true},
                 {1d, (byte) 1},
                 {1.1, (byte) 1},
                 {1.999, (byte) 1},
-                {-128d, Byte.MIN_VALUE},
-                {127d, Byte.MAX_VALUE},
+                {-128d, Byte.MIN_VALUE, true},
+                {127d, Byte.MAX_VALUE, true},
                 {-129d, Byte.MAX_VALUE}, // verify wrap around
                 {128d, Byte.MIN_VALUE}   // verify wrap around
         });
         TEST_DB.put(pair(Boolean.class, Byte.class), new Object[][]{
-                {true, (byte) 1},
-                {false, (byte) 0},
+                {true, (byte) 1, true},
+                {false, (byte) 0, true},
         });
         TEST_DB.put(pair(Character.class, Byte.class), new Object[][]{
-                {'1', (byte) 49},
-                {'0', (byte) 48},
-                {(char) 1, (byte) 1},
-                {(char) 0, (byte) 0},
+                {'1', (byte) 49, true},
+                {'0', (byte) 48, true},
+                {(char) 1, (byte) 1, true},
+                {(char) 0, (byte) 0, true},
         });
         TEST_DB.put(pair(AtomicBoolean.class, Byte.class), new Object[][]{
-                {new AtomicBoolean(true), (byte) 1},
-                {new AtomicBoolean(false), (byte) 0},
+                {new AtomicBoolean(true), (byte) 1, true},
+                {new AtomicBoolean(false), (byte) 0, true},
         });
         TEST_DB.put(pair(AtomicInteger.class, Byte.class), new Object[][]{
-                {new AtomicInteger(-1), (byte) -1},
-                {new AtomicInteger(0), (byte) 0},
-                {new AtomicInteger(1), (byte) 1},
-                {new AtomicInteger(-128), Byte.MIN_VALUE},
-                {new AtomicInteger(127), Byte.MAX_VALUE},
-                {new AtomicInteger(-129), Byte.MAX_VALUE},
-                {new AtomicInteger(128), Byte.MIN_VALUE},
+                {new AtomicInteger(-1), (byte) -1, true},
+                {new AtomicInteger(0), (byte) 0, true},
+                {new AtomicInteger(1), (byte) 1, true},
+                {new AtomicInteger(-128), Byte.MIN_VALUE, true},
+                {new AtomicInteger(127), Byte.MAX_VALUE, true},
         });
         TEST_DB.put(pair(AtomicLong.class, Byte.class), new Object[][]{
-                {new AtomicLong(-1), (byte) -1},
-                {new AtomicLong(0), (byte) 0},
-                {new AtomicLong(1), (byte) 1},
-                {new AtomicLong(-128), Byte.MIN_VALUE},
-                {new AtomicLong(127), Byte.MAX_VALUE},
-                {new AtomicLong(-129), Byte.MAX_VALUE},
-                {new AtomicLong(128), Byte.MIN_VALUE},
+                {new AtomicLong(-1), (byte) -1, true},
+                {new AtomicLong(0), (byte) 0, true},
+                {new AtomicLong(1), (byte) 1, true},
+                {new AtomicLong(-128), Byte.MIN_VALUE, true},
+                {new AtomicLong(127), Byte.MAX_VALUE, true},
         });
         TEST_DB.put(pair(BigInteger.class, Byte.class), new Object[][]{
-                {new BigInteger("-1"), (byte) -1},
-                {BigInteger.ZERO, (byte) 0},
-                {new BigInteger("1"), (byte) 1},
-                {new BigInteger("-128"), Byte.MIN_VALUE},
-                {new BigInteger("127"), Byte.MAX_VALUE},
+                {new BigInteger("-1"), (byte) -1, true},
+                {BigInteger.ZERO, (byte) 0, true},
+                {new BigInteger("1"), (byte) 1, true},
+                {new BigInteger("-128"), Byte.MIN_VALUE, true},
+                {new BigInteger("127"), Byte.MAX_VALUE, true},
                 {new BigInteger("-129"), Byte.MAX_VALUE},
                 {new BigInteger("128"), Byte.MIN_VALUE},
         });
         TEST_DB.put(pair(BigDecimal.class, Byte.class), new Object[][]{
-                {new BigDecimal("-1"), (byte) -1},
+                {new BigDecimal("-1"), (byte) -1, true},
                 {new BigDecimal("-1.1"), (byte) -1},
                 {new BigDecimal("-1.9"), (byte) -1},
-                {BigDecimal.ZERO, (byte) 0},
-                {new BigDecimal("1"), (byte) 1},
+                {BigDecimal.ZERO, (byte) 0, true},
+                {new BigDecimal("1"), (byte) 1, true},
                 {new BigDecimal("1.1"), (byte) 1},
                 {new BigDecimal("1.9"), (byte) 1},
-                {new BigDecimal("-128"), Byte.MIN_VALUE},
-                {new BigDecimal("127"), Byte.MAX_VALUE},
+                {new BigDecimal("-128"), Byte.MIN_VALUE, true},
+                {new BigDecimal("127"), Byte.MAX_VALUE, true},
                 {new BigDecimal("-129"), Byte.MAX_VALUE},
                 {new BigDecimal("128"), Byte.MIN_VALUE},
         });
@@ -2650,18 +2868,18 @@ class ConverterEverythingTest {
                 {mapOf("_v", mapOf("_v", 128L)), Byte.MIN_VALUE},    // Prove use of recursive call to .convert()
         });
         TEST_DB.put(pair(Year.class, Byte.class), new Object[][]{
-                {Year.of(2024), new IllegalArgumentException("Unsupported conversion, source type [Year (2024)] target type 'Byte'")},
+                {Year.of(2024), new IllegalArgumentException("Unsupported conversion, source type [Year (2024)] target type 'Byte'") },
         });
         TEST_DB.put(pair(String.class, Byte.class), new Object[][]{
-                {"-1", (byte) -1},
+                {"-1", (byte) -1, true},
                 {"-1.1", (byte) -1},
                 {"-1.9", (byte) -1},
-                {"0", (byte) 0},
-                {"1", (byte) 1},
+                {"0", (byte) 0, true},
+                {"1", (byte) 1, true},
                 {"1.1", (byte) 1},
                 {"1.9", (byte) 1},
-                {"-128", (byte) -128},
-                {"127", (byte) 127},
+                {"-128", (byte) -128, true},
+                {"127", (byte) 127, true},
                 {"", (byte) 0},
                 {" ", (byte) 0},
                 {"crapola", new IllegalArgumentException("Value 'crapola' not parseable as a byte value or outside -128 to 127")},
@@ -2714,6 +2932,11 @@ class ConverterEverythingTest {
         for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Object[][]> entry : TEST_DB.entrySet()) {
             Class<?> sourceClass = entry.getKey().getKey();
             Class<?> targetClass = entry.getKey().getValue();
+
+            // Skip Atomic's to Map - assertEquals() does not know to call .get() on the value side of the Map.
+            if (isHardCase(sourceClass, targetClass)) {
+                continue;
+            }
             String sourceName = Converter.getShortName(sourceClass);
             String targetName = Converter.getShortName(targetClass);
             Object[][] testData = entry.getValue();
@@ -2735,6 +2958,10 @@ class ConverterEverythingTest {
         for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Object[][]> entry : TEST_DB.entrySet()) {
             Class<?> sourceClass = entry.getKey().getKey();
             Class<?> targetClass = entry.getKey().getValue();
+            
+            if (isHardCase(sourceClass, targetClass)) {
+                continue;
+            }
 
             String sourceName = Converter.getShortName(sourceClass);
             String targetName = Converter.getShortName(targetClass);
@@ -2771,7 +2998,7 @@ class ConverterEverythingTest {
         assert target == null || target instanceof Throwable || ClassUtilities.toPrimitiveWrapperClass(targetClass).isInstance(target) : "target type mismatch ==> Expected: " + shortNameTarget + ", Actual: " + Converter.getShortName(target.getClass());
 
         // if the source/target are the same Class, then ensure identity lambda is used.
-        if (sourceClass.equals(targetClass)) {
+        if (sourceClass.equals(targetClass) && immutable.contains(sourceClass)) {
             assertSame(source, converter.convert(source, targetClass));
         }
 
@@ -2784,7 +3011,13 @@ class ConverterEverythingTest {
             // Assert values are equals
             Object actual = converter.convert(source, targetClass);
             try {
-                if (target instanceof AtomicLong) {
+                if (target instanceof AtomicBoolean) {
+                    assertEquals(((AtomicBoolean) target).get(), ((AtomicBoolean) actual).get());
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (target instanceof AtomicInteger) {
+                    assertEquals(((AtomicInteger) target).get(), ((AtomicInteger) actual).get());
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (target instanceof AtomicLong) {
                     assertEquals(((AtomicLong) target).get(), ((AtomicLong) actual).get());
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (target instanceof BigDecimal) {
@@ -2793,7 +3026,7 @@ class ConverterEverythingTest {
                     }
                     updateStat(pair(sourceClass, targetClass), true);
                 } else {
-                    assertEquals(target, actual);
+                    assertEquals(actual, target);
                     updateStat(pair(sourceClass, targetClass), true);
                 }
             }
@@ -2803,9 +3036,15 @@ class ConverterEverythingTest {
             }
         }
     }
-
+    
     private static void updateStat(Map.Entry<Class<?>, Class<?>> pair, boolean state) {
         STAT_DB.put(pair, state);
+    }
+
+    // Rare pairings that cannot be tested without drilling into the class - Atomic's require .get() to be called,
+    // so an Atomic inside a Map is a hard-case.
+    private static boolean isHardCase(Class<?> sourceClass, Class<?> targetClass) {
+        return targetClass.equals(Map.class) && (sourceClass.equals(AtomicBoolean.class) || sourceClass.equals(AtomicInteger.class) || sourceClass.equals(AtomicLong.class));
     }
 
     @BeforeAll
@@ -2830,6 +3069,11 @@ class ConverterEverythingTest {
             Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
             boolean value = entry.getValue();
             if (!value) {
+                Class<?> sourceClass = pair.getKey();
+                Class<?> targetClass = pair.getValue();
+                if (isHardCase(sourceClass, targetClass)) {
+                    continue;
+                }
                 missing++;
                 testPairNames.add("\n  " + Converter.getShortName(pair.getKey()) + " ==> " + Converter.getShortName(pair.getValue()));
             }

@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -44,6 +45,17 @@ final class BigDecimalConversions {
         BigDecimal seconds = (BigDecimal) from;
         BigDecimal nanos = seconds.remainder(BigDecimal.ONE);
         return Duration.ofSeconds(seconds.longValue(), nanos.movePointRight(9).longValue());
+    }
+
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        BigDecimal seconds = (BigDecimal) from;
+        BigDecimal nanos = seconds.multiply(BigDecimal.valueOf(1_000_000_000));
+        try {
+            return LocalTime.ofNanoOfDay(nanos.longValue());
+        }
+        catch (Exception e) {
+            throw new IllegalArgumentException("Input value [" + seconds.toPlainString() + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
+        }
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {

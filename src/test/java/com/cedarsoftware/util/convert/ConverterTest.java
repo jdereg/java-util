@@ -43,6 +43,7 @@ import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
 import static com.cedarsoftware.util.Converter.zonedDateTimeToMillis;
 import static com.cedarsoftware.util.StringUtilities.EMPTY;
+import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.bar;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.foo;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1616,16 +1617,6 @@ class ConverterTest
         BigInteger actual = converter.convert(source, BigInteger.class);
 
         assertThat(actual).isEqualTo(BigInteger.valueOf(expected));
-    }
-
-    @ParameterizedTest
-    @MethodSource("epochMillis_withLocalDateInformation")
-    void testLongToLocalTime(long epochMilli, ZoneId zoneId, LocalDate expected)
-    {
-        Converter converter = new Converter(createCustomZones(zoneId));
-        LocalTime actual = converter.convert(epochMilli, LocalTime.class);
-
-        assertThat(actual).isEqualTo(Instant.ofEpochMilli(epochMilli).atZone(zoneId).toLocalTime());
     }
     
     @ParameterizedTest
@@ -3511,14 +3502,14 @@ class ConverterTest
         byte b1 = (byte) 16;
         Map<?, ?> map = this.converter.convert(b1, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), (byte)16);
-        assert map.get(Converter.VALUE).getClass().equals(Byte.class);
+        assertEquals(map.get(VALUE), (byte)16);
+        assert map.get(VALUE).getClass().equals(Byte.class);
 
         Byte b2 = (byte) 16;
         map = this.converter.convert(b2, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), (byte)16);
-        assert map.get(Converter.VALUE).getClass().equals(Byte.class);
+        assertEquals(map.get(VALUE), (byte)16);
+        assert map.get(VALUE).getClass().equals(Byte.class);
     }
 
     @Test
@@ -3527,14 +3518,14 @@ class ConverterTest
         short s1 = (short) 1600;
         Map<?, ?> map = this.converter.convert(s1, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), (short)1600);
-        assert map.get(Converter.VALUE).getClass().equals(Short.class);
+        assertEquals(map.get(VALUE), (short)1600);
+        assert map.get(VALUE).getClass().equals(Short.class);
 
         Short s2 = (short) 1600;
         map = this.converter.convert(s2, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), (short)1600);
-        assert map.get(Converter.VALUE).getClass().equals(Short.class);
+        assertEquals(map.get(VALUE), (short)1600);
+        assert map.get(VALUE).getClass().equals(Short.class);
     }
 
     @Test
@@ -3543,14 +3534,14 @@ class ConverterTest
         int s1 = 1234567;
         Map<?, ?> map = this.converter.convert(s1, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 1234567);
-        assert map.get(Converter.VALUE).getClass().equals(Integer.class);
+        assertEquals(map.get(VALUE), 1234567);
+        assert map.get(VALUE).getClass().equals(Integer.class);
 
         Integer s2 = 1234567;
         map = this.converter.convert(s2, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 1234567);
-        assert map.get(Converter.VALUE).getClass().equals(Integer.class);
+        assertEquals(map.get(VALUE), 1234567);
+        assert map.get(VALUE).getClass().equals(Integer.class);
     }
 
     @Test
@@ -3559,14 +3550,14 @@ class ConverterTest
         long s1 = 123456789012345L;
         Map<?, ?> map = this.converter.convert(s1, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 123456789012345L);
-        assert map.get(Converter.VALUE).getClass().equals(Long.class);
+        assertEquals(map.get(VALUE), 123456789012345L);
+        assert map.get(VALUE).getClass().equals(Long.class);
 
         Long s2 = 123456789012345L;
         map = this.converter.convert(s2, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 123456789012345L);
-        assert map.get(Converter.VALUE).getClass().equals(Long.class);
+        assertEquals(map.get(VALUE), 123456789012345L);
+        assert map.get(VALUE).getClass().equals(Long.class);
     }
 
     @Test
@@ -3575,14 +3566,14 @@ class ConverterTest
         float s1 = 3.141592f;
         Map<?, ?> map = this.converter.convert(s1, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 3.141592f);
-        assert map.get(Converter.VALUE).getClass().equals(Float.class);
+        assertEquals(map.get(VALUE), 3.141592f);
+        assert map.get(VALUE).getClass().equals(Float.class);
 
         Float s2 = 3.141592f;
         map = this.converter.convert(s2, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 3.141592f);
-        assert map.get(Converter.VALUE).getClass().equals(Float.class);
+        assertEquals(map.get(VALUE), 3.141592f);
+        assert map.get(VALUE).getClass().equals(Float.class);
     }
 
     @Test
@@ -3591,14 +3582,14 @@ class ConverterTest
         double s1 = 3.14159265358979d;
         Map<?, ?> map = this.converter.convert(s1, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 3.14159265358979d);
-        assert map.get(Converter.VALUE).getClass().equals(Double.class);
+        assertEquals(map.get(VALUE), 3.14159265358979d);
+        assert map.get(VALUE).getClass().equals(Double.class);
 
         Double s2 = 3.14159265358979d;
         map = this.converter.convert(s2, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 3.14159265358979d);
-        assert map.get(Converter.VALUE).getClass().equals(Double.class);
+        assertEquals(map.get(VALUE), 3.14159265358979d);
+        assert map.get(VALUE).getClass().equals(Double.class);
     }
 
     @Test
@@ -3607,14 +3598,14 @@ class ConverterTest
         boolean s1 = true;
         Map<?, ?> map = this.converter.convert(s1, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), true);
-        assert map.get(Converter.VALUE).getClass().equals(Boolean.class);
+        assertEquals(map.get(VALUE), true);
+        assert map.get(VALUE).getClass().equals(Boolean.class);
 
         Boolean s2 = true;
         map = this.converter.convert(s2, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), true);
-        assert map.get(Converter.VALUE).getClass().equals(Boolean.class);
+        assertEquals(map.get(VALUE), true);
+        assert map.get(VALUE).getClass().equals(Boolean.class);
     }
 
     @Test
@@ -3623,14 +3614,14 @@ class ConverterTest
         char s1 = 'e';
         Map<?, ?> map = this.converter.convert(s1, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 'e');
-        assert map.get(Converter.VALUE).getClass().equals(Character.class);
+        assertEquals(map.get(VALUE), 'e');
+        assert map.get(VALUE).getClass().equals(Character.class);
 
         Character s2 = 'e';
         map = this.converter.convert(s2, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), 'e');
-        assert map.get(Converter.VALUE).getClass().equals(Character.class);
+        assertEquals(map.get(VALUE), 'e');
+        assert map.get(VALUE).getClass().equals(Character.class);
     }
 
     @Test
@@ -3639,8 +3630,8 @@ class ConverterTest
         BigInteger bi = BigInteger.valueOf(1234567890123456L);
         Map<?, ?> map = this.converter.convert(bi, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), bi);
-        assert map.get(Converter.VALUE).getClass().equals(BigInteger.class);
+        assertEquals(map.get(VALUE), bi);
+        assert map.get(VALUE).getClass().equals(BigInteger.class);
     }
 
     @Test
@@ -3649,8 +3640,8 @@ class ConverterTest
         BigDecimal bd = new BigDecimal("3.1415926535897932384626433");
         Map<?, ?> map = this.converter.convert(bd, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), bd);
-        assert map.get(Converter.VALUE).getClass().equals(BigDecimal.class);
+        assertEquals(map.get(VALUE), bd);
+        assert map.get(VALUE).getClass().equals(BigDecimal.class);
     }
 
     @Test
@@ -3659,8 +3650,8 @@ class ConverterTest
         AtomicBoolean ab = new AtomicBoolean(true);
         Map<?, ?> map = this.converter.convert(ab, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), ab);
-        assert map.get(Converter.VALUE).getClass().equals(AtomicBoolean.class);
+        assertEquals(map.get(VALUE), ab);
+        assert map.get(VALUE).getClass().equals(AtomicBoolean.class);
     }
 
     @Test
@@ -3669,8 +3660,8 @@ class ConverterTest
         AtomicInteger ai = new AtomicInteger(123456789);
         Map<?, ?> map = this.converter.convert(ai, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), ai);
-        assert map.get(Converter.VALUE).getClass().equals(AtomicInteger.class);
+        assertEquals(map.get(VALUE), ai);
+        assert map.get(VALUE).getClass().equals(AtomicInteger.class);
     }
 
     @Test
@@ -3679,8 +3670,8 @@ class ConverterTest
         AtomicLong al = new AtomicLong(12345678901234567L);
         Map<?, ?> map = this.converter.convert(al, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), al);
-        assert map.get(Converter.VALUE).getClass().equals(AtomicLong.class);
+        assertEquals(map.get(VALUE), al);
+        assert map.get(VALUE).getClass().equals(AtomicLong.class);
     }
 
     @Test
@@ -3689,7 +3680,7 @@ class ConverterTest
         Class<?> clazz = ConverterTest.class;
         Map<?, ?> map = this.converter.convert(clazz, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), clazz);
+        assertEquals(map.get(VALUE), clazz);
     }
 
     @Test
@@ -3698,8 +3689,8 @@ class ConverterTest
         UUID uuid = new UUID(1L, 2L);
         Map<?, ?> map = this.converter.convert(uuid, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), uuid);
-        assert map.get(Converter.VALUE).getClass().equals(UUID.class);
+        assertEquals(map.get(VALUE), uuid);
+        assert map.get(VALUE).getClass().equals(UUID.class);
     }
 
     @Test
@@ -3708,8 +3699,8 @@ class ConverterTest
         Calendar cal = Calendar.getInstance();
         Map<?, ?> map = this.converter.convert(cal, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), cal);
-        assert map.get(Converter.VALUE) instanceof Calendar;
+        assertEquals(map.get(VALUE), cal);
+        assert map.get(VALUE) instanceof Calendar;
     }
 
     @Test
@@ -3718,8 +3709,8 @@ class ConverterTest
         Date now = new Date();
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), now);
-        assert map.get(Converter.VALUE).getClass().equals(Date.class);
+        assertEquals(map.get(VALUE), now);
+        assert map.get(VALUE).getClass().equals(Date.class);
     }
 
     @Test
@@ -3728,8 +3719,8 @@ class ConverterTest
         java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), now);
-        assert map.get(Converter.VALUE).getClass().equals(java.sql.Date.class);
+        assertEquals(map.get(VALUE), now);
+        assert map.get(VALUE).getClass().equals(java.sql.Date.class);
     }
 
     @Test
@@ -3738,8 +3729,8 @@ class ConverterTest
         Timestamp now = new Timestamp(System.currentTimeMillis());
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), now);
-        assert map.get(Converter.VALUE).getClass().equals(Timestamp.class);
+        assertEquals(map.get(VALUE), now);
+        assert map.get(VALUE).getClass().equals(Timestamp.class);
     }
 
     @Test
@@ -3748,8 +3739,8 @@ class ConverterTest
         LocalDate now = LocalDate.now();
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), now);
-        assert map.get(Converter.VALUE).getClass().equals(LocalDate.class);
+        assertEquals(map.get(VALUE), now);
+        assert map.get(VALUE).getClass().equals(LocalDate.class);
     }
 
     @Test
@@ -3758,8 +3749,8 @@ class ConverterTest
         LocalDateTime now = LocalDateTime.now();
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), now);
-        assert map.get(Converter.VALUE).getClass().equals(LocalDateTime.class);
+        assertEquals(map.get(VALUE), now);
+        assert map.get(VALUE).getClass().equals(LocalDateTime.class);
     }
 
     @Test
@@ -3768,8 +3759,8 @@ class ConverterTest
         ZonedDateTime now = ZonedDateTime.now();
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(Converter.VALUE), now);
-        assert map.get(Converter.VALUE).getClass().equals(ZonedDateTime.class);
+        assertEquals(map.get(VALUE), now);
+        assert map.get(VALUE).getClass().equals(ZonedDateTime.class);
     }
 
     @Test

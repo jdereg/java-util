@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -44,6 +45,17 @@ final class DoubleConversions {
     static Date toSqlDate(Object from, Converter converter) {
         double d = (Double) from;
         return new java.sql.Date((long)(d * 1000));
+    }
+
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        double seconds = (double) from;
+        double nanos = seconds * 1_000_000_000.0;
+        try {
+            return LocalTime.ofNanoOfDay((long)nanos);
+        }
+        catch (Exception e) {
+            throw new IllegalArgumentException("Input value [" + seconds + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
+        }
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {

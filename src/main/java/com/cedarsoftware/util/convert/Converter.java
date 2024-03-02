@@ -160,6 +160,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Number.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(Map.class, Integer.class), MapConversions::toInt);
         CONVERSION_DB.put(pair(String.class, Integer.class), StringConversions::toInt);
+        CONVERSION_DB.put(pair(LocalTime.class, Integer.class), LocalTimeConversions::toInteger);
         CONVERSION_DB.put(pair(Year.class, Integer.class), YearConversions::toInt);
 
         // toLong
@@ -184,6 +185,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Instant.class, Long.class), InstantConversions::toLong);
         CONVERSION_DB.put(pair(Duration.class, Long.class), DurationConversions::toLong);
         CONVERSION_DB.put(pair(LocalDate.class, Long.class), LocalDateConversions::toLong);
+        CONVERSION_DB.put(pair(LocalTime.class, Long.class), LocalTimeConversions::toLong);
         CONVERSION_DB.put(pair(LocalDateTime.class, Long.class), LocalDateTimeConversions::toLong);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Long.class), OffsetDateTimeConversions::toLong);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Long.class), ZonedDateTimeConversions::toLong);
@@ -227,6 +229,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character.class, Double.class), CharacterConversions::toDouble);
         CONVERSION_DB.put(pair(Duration.class, Double.class), DurationConversions::toDouble);
         CONVERSION_DB.put(pair(Instant.class, Double.class), InstantConversions::toDouble);
+        CONVERSION_DB.put(pair(LocalTime.class, Double.class), LocalTimeConversions::toDouble);
         CONVERSION_DB.put(pair(LocalDate.class, Double.class), LocalDateConversions::toDouble);
         CONVERSION_DB.put(pair(LocalDateTime.class, Double.class), LocalDateTimeConversions::toDouble);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Double.class), ZonedDateTimeConversions::toDouble);
@@ -305,6 +308,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Timestamp.class, BigInteger.class), TimestampConversions::toBigInteger);
         CONVERSION_DB.put(pair(Duration.class, BigInteger.class), DurationConversions::toBigInteger);
         CONVERSION_DB.put(pair(Instant.class, BigInteger.class), InstantConversions::toBigInteger);
+        CONVERSION_DB.put(pair(LocalTime.class, BigInteger.class), LocalTimeConversions::toBigInteger);
         CONVERSION_DB.put(pair(LocalDate.class, BigInteger.class), LocalDateConversions::toBigInteger);
         CONVERSION_DB.put(pair(LocalDateTime.class, BigInteger.class), LocalDateTimeConversions::toBigInteger);
         CONVERSION_DB.put(pair(ZonedDateTime.class, BigInteger.class), ZonedDateTimeConversions::toBigInteger);
@@ -336,6 +340,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Timestamp.class, BigDecimal.class), TimestampConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Instant.class, BigDecimal.class), InstantConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Duration.class, BigDecimal.class), DurationConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(LocalTime.class, BigDecimal.class), LocalTimeConversions::toBigDecimal);
         CONVERSION_DB.put(pair(LocalDate.class, BigDecimal.class), LocalDateConversions::toBigDecimal);
         CONVERSION_DB.put(pair(LocalDateTime.class, BigDecimal.class), LocalDateTimeConversions::toBigDecimal);
         CONVERSION_DB.put(pair(ZonedDateTime.class, BigDecimal.class), ZonedDateTimeConversions::toBigDecimal);
@@ -379,9 +384,10 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character.class, AtomicInteger.class), CharacterConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(BigInteger.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(BigDecimal.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(AtomicInteger.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
+        CONVERSION_DB.put(pair(AtomicInteger.class, AtomicInteger.class), AtomicIntegerConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(AtomicBoolean.class, AtomicInteger.class), AtomicBooleanConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(AtomicLong.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
+        CONVERSION_DB.put(pair(LocalTime.class, AtomicInteger.class), LocalTimeConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(LocalDate.class, AtomicInteger.class), LocalDateConversions::toAtomicLong);
         CONVERSION_DB.put(pair(Number.class, AtomicBoolean.class), NumberConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(Map.class, AtomicInteger.class), MapConversions::toAtomicInteger);
@@ -401,14 +407,15 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigInteger.class, AtomicLong.class), NumberConversions::toAtomicLong);
         CONVERSION_DB.put(pair(BigDecimal.class, AtomicLong.class), NumberConversions::toAtomicLong);
         CONVERSION_DB.put(pair(AtomicBoolean.class, AtomicLong.class), AtomicBooleanConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(AtomicLong.class, AtomicLong.class), Converter::identity);
         CONVERSION_DB.put(pair(AtomicInteger.class, AtomicLong.class), NumberConversions::toAtomicLong);
+        CONVERSION_DB.put(pair(AtomicLong.class, AtomicLong.class), AtomicLongConversions::toAtomicLong);
         CONVERSION_DB.put(pair(Date.class, AtomicLong.class), DateConversions::toAtomicLong);
         CONVERSION_DB.put(pair(java.sql.Date.class, AtomicLong.class), DateConversions::toAtomicLong);
         CONVERSION_DB.put(pair(Timestamp.class, AtomicLong.class), DateConversions::toAtomicLong);
         CONVERSION_DB.put(pair(Instant.class, AtomicLong.class), InstantConversions::toAtomicLong);
         CONVERSION_DB.put(pair(Duration.class, AtomicLong.class), DurationConversions::toAtomicLong);
         CONVERSION_DB.put(pair(LocalDate.class, AtomicLong.class), LocalDateConversions::toAtomicLong);
+        CONVERSION_DB.put(pair(LocalTime.class, AtomicLong.class), LocalTimeConversions::toAtomicLong);
         CONVERSION_DB.put(pair(LocalDateTime.class, AtomicLong.class), LocalDateTimeConversions::toAtomicLong);
         CONVERSION_DB.put(pair(ZonedDateTime.class, AtomicLong.class), ZonedDateTimeConversions::toAtomicLong);
         CONVERSION_DB.put(pair(OffsetDateTime.class, AtomicLong.class), OffsetDateTimeConversions::toAtomicLong);
@@ -567,13 +574,13 @@ public final class Converter {
         CONVERSION_DB.put(pair(Void.class, LocalTime.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, LocalTime.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Short.class, LocalTime.class), UNSUPPORTED);
-        CONVERSION_DB.put(pair(Integer.class, LocalTime.class), UNSUPPORTED);
-        CONVERSION_DB.put(pair(Long.class, LocalTime.class), NumberConversions::toLocalTime);
-        CONVERSION_DB.put(pair(Double.class, LocalTime.class), NumberConversions::toLocalTime);
-        CONVERSION_DB.put(pair(BigInteger.class, LocalTime.class), NumberConversions::toLocalTime);
-        CONVERSION_DB.put(pair(BigDecimal.class, LocalTime.class), NumberConversions::toLocalDateTime);
-        CONVERSION_DB.put(pair(AtomicInteger.class, LocalTime.class), UNSUPPORTED);
-        CONVERSION_DB.put(pair(AtomicLong.class, LocalTime.class), NumberConversions::toLocalTime);
+        CONVERSION_DB.put(pair(Integer.class, LocalTime.class), IntegerConversions::toLocalTime);
+        CONVERSION_DB.put(pair(Long.class, LocalTime.class), LongConversions::toLocalTime);
+        CONVERSION_DB.put(pair(Double.class, LocalTime.class), DoubleConversions::toLocalTime);
+        CONVERSION_DB.put(pair(BigInteger.class, LocalTime.class), BigIntegerConversions::toLocalTime);
+        CONVERSION_DB.put(pair(BigDecimal.class, LocalTime.class), BigDecimalConversions::toLocalTime);
+        CONVERSION_DB.put(pair(AtomicInteger.class, LocalTime.class), AtomicIntegerConversions::toLocalTime);
+        CONVERSION_DB.put(pair(AtomicLong.class, LocalTime.class), AtomicLongConversions::toLocalTime);
         CONVERSION_DB.put(pair(java.sql.Date.class, LocalTime.class), DateConversions::toLocalTime);
         CONVERSION_DB.put(pair(Timestamp.class, LocalTime.class), DateConversions::toLocalTime);
         CONVERSION_DB.put(pair(Date.class, LocalTime.class), DateConversions::toLocalTime);
@@ -584,7 +591,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(ZonedDateTime.class, LocalTime.class), ZonedDateTimeConversions::toLocalTime);
         CONVERSION_DB.put(pair(OffsetDateTime.class, LocalTime.class), OffsetDateTimeConversions::toLocalTime);
         CONVERSION_DB.put(pair(Calendar.class, LocalTime.class), CalendarConversions::toLocalTime);
-        CONVERSION_DB.put(pair(Number.class, LocalTime.class), NumberConversions::toLocalTime);
         CONVERSION_DB.put(pair(Map.class, LocalTime.class), MapConversions::toLocalTime);
         CONVERSION_DB.put(pair(String.class, LocalTime.class), StringConversions::toLocalTime);
 

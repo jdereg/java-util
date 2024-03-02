@@ -72,7 +72,6 @@ final class AtomicBooleanConversions {
         return b.get() ? new AtomicInteger(1) : new AtomicInteger (0);
     }
 
-
     static AtomicLong toAtomicLong(Object from, Converter converter) {
         AtomicBoolean b = (AtomicBoolean) from;
         return b.get() ? new AtomicLong(1) : new AtomicLong(0);

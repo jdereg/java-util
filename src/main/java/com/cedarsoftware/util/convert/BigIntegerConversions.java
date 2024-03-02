@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -79,6 +80,15 @@ final class BigIntegerConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return toInstant(from, converter).atZone(converter.getOptions().getZoneId());
+    }
+
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        BigInteger bigI = (BigInteger) from;
+        try {
+            return LocalTime.ofNanoOfDay(bigI.longValue());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Input value [" + bigI + "] for conversion to LocalTime must be >= 0 && <= 86399999999999", e);
+        }
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {

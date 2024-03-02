@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.ZonedDateTime;
@@ -203,11 +202,7 @@ final class NumberConversions {
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDateTime();
     }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalTime();
-    }
-
+    
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return toInstant(from, converter).atZone(converter.getOptions().getZoneId());
     }

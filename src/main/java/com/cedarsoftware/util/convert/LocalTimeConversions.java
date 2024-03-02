@@ -1,8 +1,13 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.CompactLinkedMap;
 
@@ -24,6 +29,7 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         limitations under the License.
  */
 final class LocalTimeConversions {
+    static final BigDecimal BILLION = BigDecimal.valueOf(1_000_000_000);
 
     private LocalTimeConversions() {}
 
@@ -41,6 +47,39 @@ final class LocalTimeConversions {
             }
         }
         return target;
+    }
+
+    static int toInteger(Object from, Converter converter) {
+        LocalTime lt = (LocalTime) from;
+        return (int) (lt.toNanoOfDay() / 1_000_000); // Convert nanoseconds to milliseconds.
+    }
+
+    static long toLong(Object from, Converter converter) {
+        LocalTime lt = (LocalTime) from;
+        return lt.toNanoOfDay() / 1_000_000; // Convert nanoseconds to milliseconds.
+    }
+
+    static double toDouble(Object from, Converter converter) {
+        LocalTime lt = (LocalTime) from;
+        return lt.toNanoOfDay() / 1_000_000_000.0;
+    }
+
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        LocalTime lt = (LocalTime) from;
+        return BigInteger.valueOf(lt.toNanoOfDay());
+    }
+
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        LocalTime lt = (LocalTime) from;
+        return new BigDecimal(lt.toNanoOfDay()).divide(BILLION, 9, RoundingMode.HALF_UP);
+    }
+
+    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
+        return new AtomicInteger((int)toLong(from, converter));
+    }
+
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
+        return new AtomicLong(toLong(from, converter));
     }
 
     static String toString(Object from, Converter converter) {

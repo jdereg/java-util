@@ -36,7 +36,7 @@ final class CharacterConversions {
         return (c == 1) || (c == 't') || (c == 'T') || (c == '1') || (c == 'y') || (c == 'Y');
     }
 
-    // downcasting -- not always a safe conversino
+    // down casting -- not always a safe conversion
     static byte toByte(Object from, Converter converter) {
         return (byte) (char) from;
     }

@@ -35,8 +35,10 @@ final class DoubleConversions {
     static Instant toInstant(Object from, Converter converter) {
         double d = (Double) from;
         long seconds = (long) d;
-        long nanoAdjustment = (long) ((d - seconds) * 1_000_000_000L);
-        return Instant.ofEpochSecond(seconds, nanoAdjustment);
+        // Calculate nanoseconds by taking the fractional part of the double and multiplying by 1_000_000_000,
+        // rounding to the nearest long to maintain precision.
+        long nanos = Math.round((d - seconds) * 1_000_000_000);
+        return Instant.ofEpochSecond(seconds, nanos);
     }
 
     static Date toDate(Object from, Converter converter) {

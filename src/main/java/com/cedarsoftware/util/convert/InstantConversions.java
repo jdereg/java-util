@@ -59,9 +59,7 @@ final class InstantConversions {
      */
     static double toDouble(Object from, Converter converter) {
         Instant instant = (Instant) from;
-        long seconds = instant.getEpochSecond();
-        int nanoAdjustment = instant.getNano();
-        return (double) seconds + (double) nanoAdjustment / 1_000_000_000d;
+        return BigDecimalConversions.secondsAndNanosToDouble(instant.getEpochSecond(), instant.getNano()).doubleValue();
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
@@ -96,9 +94,7 @@ final class InstantConversions {
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Instant instant = (Instant) from;
-        long seconds = instant.getEpochSecond();
-        int nanos = instant.getNano();
-        return BigDecimal.valueOf(seconds).add(BigDecimal.valueOf(nanos, 9));
+        return BigDecimalConversions.secondsAndNanosToDouble(instant.getEpochSecond(), instant.getNano());
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {

@@ -60,16 +60,12 @@ final class DurationConversions {
 
     static double toDouble(Object from, Converter converter) {
         Duration duration = (Duration) from;
-        return duration.getSeconds() + duration.getNano() / 1_000_000_000d;
+        return BigDecimalConversions.secondsAndNanosToDouble(duration.getSeconds(), duration.getNano()).doubleValue();
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Duration duration = (Duration) from;
-        BigDecimal seconds = new BigDecimal(duration.getSeconds());
-        
-        // Convert nanoseconds to fractional seconds and add to seconds
-        BigDecimal fracSec = BigDecimal.valueOf(duration.getNano(), 9);
-        return seconds.add(fracSec);
+        return BigDecimalConversions.secondsAndNanosToDouble(duration.getSeconds(), duration.getNano());
     }
     
     static Timestamp toTimestamp(Object from, Converter converter) {

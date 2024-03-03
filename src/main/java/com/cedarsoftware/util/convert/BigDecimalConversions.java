@@ -33,13 +33,14 @@ import java.util.UUID;
  *         limitations under the License.
  */
 final class BigDecimalConversions {
+    static final BigDecimal BILLION = BigDecimal.valueOf(1_000_000_000);
     static final BigDecimal GRAND = BigDecimal.valueOf(1000);
 
     private BigDecimalConversions() { }
 
     static Calendar toCalendar(Object from, Converter converter) {
         BigDecimal seconds = (BigDecimal) from;
-        BigDecimal millis = seconds.multiply(BigDecimal.valueOf(1000));
+        BigDecimal millis = seconds.multiply(GRAND);
         Calendar calendar = GregorianCalendar.getInstance(converter.getOptions().getTimeZone());
         calendar.setTimeInMillis(millis.longValue());
         return calendar;
@@ -59,7 +60,7 @@ final class BigDecimalConversions {
 
     static LocalTime toLocalTime(Object from, Converter converter) {
         BigDecimal seconds = (BigDecimal) from;
-        BigDecimal nanos = seconds.multiply(BigDecimal.valueOf(1_000_000_000));
+        BigDecimal nanos = seconds.multiply(BILLION);
         try {
             return LocalTime.ofNanoOfDay(nanos.longValue());
         }
@@ -107,5 +108,9 @@ final class BigDecimalConversions {
     static UUID toUUID(Object from, Converter converter) {
         BigInteger bigInt = ((BigDecimal) from).toBigInteger();
         return BigIntegerConversions.toUUID(bigInt, converter);
+    }
+
+    static BigDecimal secondsAndNanosToDouble(long seconds, long nanos) {
+        return BigDecimal.valueOf(seconds).add(BigDecimal.valueOf(nanos, 9));
     }
 }

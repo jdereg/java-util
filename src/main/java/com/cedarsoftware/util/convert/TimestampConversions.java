@@ -31,7 +31,7 @@ final class TimestampConversions {
 
     static double toDouble(Object from, Converter converter) {
         Duration d = toDuration(from, converter);
-        return d.getSeconds() + d.getNano() / 1_000_000_000d;
+        return BigDecimalConversions.secondsAndNanosToDouble(d.getSeconds(), d.getNano()).doubleValue();
     }
     
     static BigDecimal toBigDecimal(Object from, Converter converter) {
@@ -47,9 +47,8 @@ final class TimestampConversions {
 
     static Duration toDuration(Object from, Converter converter) {
         Timestamp timestamp = (Timestamp) from;
-        Instant epoch = Instant.EPOCH;
         Instant timestampInstant = timestamp.toInstant();
-        return Duration.between(epoch, timestampInstant);
+        return Duration.between(Instant.EPOCH, timestampInstant);
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {

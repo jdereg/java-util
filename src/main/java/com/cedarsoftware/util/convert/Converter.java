@@ -271,7 +271,7 @@ public final class Converter {
         // Character/char conversions supported
         CONVERSION_DB.put(pair(Void.class, char.class), VoidConversions::toCharacter);
         CONVERSION_DB.put(pair(Void.class, Character.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Byte.class, Character.class), NumberConversions::toCharacter);
+        CONVERSION_DB.put(pair(Byte.class, Character.class), ByteConversions::toCharacter);
         CONVERSION_DB.put(pair(Short.class, Character.class), NumberConversions::toCharacter);
         CONVERSION_DB.put(pair(Integer.class, Character.class), NumberConversions::toCharacter);
         CONVERSION_DB.put(pair(Long.class, Character.class), NumberConversions::toCharacter);

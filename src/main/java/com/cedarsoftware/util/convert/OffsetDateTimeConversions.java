@@ -124,11 +124,6 @@ final class OffsetDateTimeConversions {
     static double toDouble(Object from, Converter converter) {
         OffsetDateTime odt = (OffsetDateTime) from;
         Instant instant = odt.toInstant();
-
-        long epochSecond = instant.getEpochSecond();
-        int nano = instant.getNano();
-
-        // Convert seconds to milliseconds and add the fractional milliseconds
-        return epochSecond + nano / 1_000_000_000.0d;
+        return BigDecimalConversions.secondsAndNanosToDouble(instant.getEpochSecond(), instant.getNano()).doubleValue();
     }
 }

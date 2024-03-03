@@ -61,7 +61,7 @@ final class CalendarConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        return new Timestamp(((Calendar) from).getTime().getTime());
+        return new Timestamp(((Calendar) from).getTimeInMillis());
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {

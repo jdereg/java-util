@@ -190,7 +190,6 @@ class ConverterEverythingTest {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
-                    cal.getTime();
                     return cal;
                 }, (Supplier<Map<String, Object>>) () -> {
                     Map<String, Object> map = new CompactLinkedMap<>();
@@ -421,7 +420,6 @@ class ConverterEverythingTest {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
-                    cal.getTime();
                     return cal;
                 }, "2024-02-05T22:31:17.409+09:00"}
         });
@@ -599,7 +597,6 @@ class ConverterEverythingTest {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.MARCH, 2, 22, 54, 17);
                     cal.set(Calendar.MILLISECOND, 0);
-                    cal.getTime();
                     return cal;
                 }, LocalDateTime.of(2024, Month.MARCH, 2, 22, 54, 17), true }
         });
@@ -675,7 +672,6 @@ class ConverterEverythingTest {
                     cal.set(Calendar.MINUTE, 47);
                     cal.set(Calendar.SECOND, 55);
                     cal.set(Calendar.MILLISECOND, 0);
-                    cal.getTime();
                     return cal;
                 }, LocalTime.of(22, 47, 55), true }
         });
@@ -774,6 +770,13 @@ class ConverterEverythingTest {
                 {new BigDecimal("0.000000001"), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), true},
                 {new BigDecimal(".999999999"), Timestamp.from(Instant.parse("1970-01-01T00:00:00.999999999Z")), true},
                 {new BigDecimal("1"), Timestamp.from(Instant.parse("1970-01-01T00:00:01Z")), true},
+        });
+        TEST_DB.put(pair(Calendar.class, Timestamp.class), new Object[][] {
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.setTimeInMillis(now);
+                    return cal;
+                }, new Timestamp(now), true},
         });
         TEST_DB.put(pair(Duration.class, Timestamp.class), new Object[][]{
                 {Duration.ofSeconds(-62167219200L), Timestamp.from(Instant.parse("0000-01-01T00:00:00Z")), true},
@@ -1086,7 +1089,6 @@ class ConverterEverythingTest {
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);
-                    cal.getTime();
                     return cal;
                 }, new java.sql.Date(now), true}
         });
@@ -1113,7 +1115,6 @@ class ConverterEverythingTest {
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);
-                    cal.getTime();
                     return cal;
                 }, new Date(now), true }
         });
@@ -1130,12 +1131,10 @@ class ConverterEverythingTest {
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);
-                    cal.getTime();
                     return cal;
                 }, (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);
-                    cal.getTime();
                     return cal;
                 } }
         });
@@ -1143,19 +1142,16 @@ class ConverterEverythingTest {
                 {new AtomicLong(-1), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
-                    cal.getTime();
                     return cal;
                 }, true},
                 {new AtomicLong(0), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(0);
-                    cal.getTime();
                     return cal;
                 }, true},
                 {new AtomicLong(1), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1);
-                    cal.getTime();
                     return cal;
                 }, true},
         });
@@ -1163,19 +1159,16 @@ class ConverterEverythingTest {
                 {new BigDecimal(-1), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1000);
-                    cal.getTime();
                     return cal;
                 }, true},
                 {new BigDecimal("-0.001"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
-                    cal.getTime();
                     return cal;
                 }, true},
                 {BigDecimal.ZERO, (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(0);
-                    cal.getTime();
                     return cal;
                 }, true},
                 {new BigDecimal("0.001"), (Supplier<Calendar>) () -> {
@@ -1203,6 +1196,19 @@ class ConverterEverythingTest {
                 {(Supplier<Map<String, Object>>) () -> {
                     Map<String, Object> map = new CompactLinkedMap<>();
                     map.put(VALUE, "2024-02-05T22:31:17.409" + TOKYO_ZO.toString());
+                    return map;
+                }, (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
+                    return cal;
+                }},
+                {(Supplier<Map<String, Object>>) () -> {
+                    Map<String, Object> map = new CompactLinkedMap<>();
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
+                    map.put(VALUE, cal);
                     return map;
                 }, (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
@@ -1246,7 +1252,6 @@ class ConverterEverythingTest {
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);
-                    cal.getTime();
                     return cal;
                 }, Instant.ofEpochMilli(now), true }
         });
@@ -1467,19 +1472,16 @@ class ConverterEverythingTest {
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
-                    cal.getTime();
                     return cal;
                 }, BigInteger.valueOf(-1000000), true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(0);
-                    cal.getTime();
                     return cal;
                 }, BigInteger.ZERO, true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1);
-                    cal.getTime();
                     return cal;
                 }, BigInteger.valueOf(1000000), true},
         });
@@ -1866,31 +1868,26 @@ class ConverterEverythingTest {
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1000);
-                    cal.getTime();
                     return cal;
                 }, -1.0, true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
-                    cal.getTime();
                     return cal;
                 }, -0.001, true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(0);
-                    cal.getTime();
                     return cal;
                 }, 0d, true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1);
-                    cal.getTime();
                     return cal;
                 }, 0.001d, true},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1000);
-                    cal.getTime();
                     return cal;
                 }, 1.0, true},
         });
@@ -2334,13 +2331,11 @@ class ConverterEverythingTest {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 12, 11, 38, 0);
                     cal.set(Calendar.MILLISECOND, 0);
-                    cal.getTime();
                     return cal;
                 }, 1707705480000L},
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);   // Calendar maintains time to millisecond resolution
-                    cal.getTime();
                     return cal;
                 }, now}
         });

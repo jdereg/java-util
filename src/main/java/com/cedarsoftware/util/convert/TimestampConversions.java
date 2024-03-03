@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Calendar;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -61,5 +62,12 @@ final class TimestampConversions {
         ZoneOffset zoneOffset = zonedDateTime.getOffset();
 
         return timestamp.toInstant().atOffset(zoneOffset);
+    }
+
+    static Calendar toCalendar(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+        Calendar cal = Calendar.getInstance(converter.getOptions().getTimeZone());
+        cal.setTimeInMillis(timestamp.getTime());
+        return cal;
     }
 }

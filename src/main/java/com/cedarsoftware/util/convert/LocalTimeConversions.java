@@ -98,7 +98,6 @@ final class LocalTimeConversions {
         cal.set(Calendar.MINUTE, localTime.getMinute());
         cal.set(Calendar.SECOND, localTime.getSecond());
         cal.set(Calendar.MILLISECOND, localTime.getNano() / 1_000_000); // Convert nanoseconds to milliseconds
-        cal.getTime();  // compute fields
         return cal;
     }
 }

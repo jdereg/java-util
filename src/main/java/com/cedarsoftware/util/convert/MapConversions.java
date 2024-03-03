@@ -252,7 +252,6 @@ final class MapConversions {
             cal.set(Calendar.MINUTE, minute);
             cal.set(Calendar.SECOND, second);
             cal.set(Calendar.MILLISECOND, ms);
-            cal.getTime();
             return cal;
         } else {
             return fromValueForMultiKey(map, converter, Calendar.class, CALENDAR_PARAMS);

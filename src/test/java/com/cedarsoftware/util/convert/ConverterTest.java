@@ -2326,7 +2326,6 @@ class ConverterTest
     {
         Long epochMilli = 1687622249729L;
 
-        System.out.println("source.getClass().getName() = " + source.getClass().getName());
         Calendar calendar = this.converter.convert(source, Calendar.class);
         assertEquals(calendar.getTime().getTime(), epochMilli);
 

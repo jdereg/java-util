@@ -366,23 +366,10 @@ final class StringConversions {
             return null;
         }
         ZonedDateTime zdt = DateUtilities.parseDate(calStr, converter.getOptions().getZoneId(), true);
-        if (zdt == null) {
-            return null;
-        }
         ZonedDateTime zdtUser = zdt.withZoneSameInstant(converter.getOptions().getZoneId());
 
-        // Must copy this way.  Using the GregorianCalendar.from(zdt) does not pass .equals() later.
-        Calendar cal = Calendar.getInstance();
-        cal.set(Calendar.YEAR, zdt.getYear());
-        cal.set(Calendar.MONTH, zdt.getMonthValue() - 1);
-        cal.set(Calendar.DAY_OF_MONTH, zdt.getDayOfMonth());
-        cal.set(Calendar.HOUR_OF_DAY, zdt.getHour());
-        cal.set(Calendar.MINUTE, zdt.getMinute());
-        cal.set(Calendar.SECOND, zdt.getSecond());
-        cal.set(Calendar.MILLISECOND, zdt.getNano() / 1_000_000);
-        cal.setTimeZone(TimeZone.getTimeZone(zdtUser.getZone()));
-        cal.getTime();
-
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zdtUser.getZone()));
+        cal.setTimeInMillis(zdtUser.toInstant().toEpochMilli());
         return cal;
     }
 

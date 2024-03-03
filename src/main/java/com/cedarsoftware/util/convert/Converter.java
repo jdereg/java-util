@@ -511,7 +511,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(AtomicLong.class, Calendar.class), NumberConversions::toCalendar);
         CONVERSION_DB.put(pair(Date.class, Calendar.class), DateConversions::toCalendar);
         CONVERSION_DB.put(pair(java.sql.Date.class, Calendar.class), DateConversions::toCalendar);
-        CONVERSION_DB.put(pair(Timestamp.class, Calendar.class), DateConversions::toCalendar);
+        CONVERSION_DB.put(pair(Timestamp.class, Calendar.class), TimestampConversions::toCalendar);
         CONVERSION_DB.put(pair(Instant.class, Calendar.class), InstantConversions::toCalendar);
         CONVERSION_DB.put(pair(LocalTime.class, Calendar.class), LocalTimeConversions::toCalendar);
         CONVERSION_DB.put(pair(LocalDate.class, Calendar.class), LocalDateConversions::toCalendar);

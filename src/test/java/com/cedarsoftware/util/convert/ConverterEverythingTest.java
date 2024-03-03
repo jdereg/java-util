@@ -42,6 +42,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.CompactLinkedMap;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -183,6 +184,26 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(BigDecimal.class, Map.class), new Object[][]{
                 {BigDecimal.valueOf(1), mapOf(VALUE, BigDecimal.valueOf(1))},
                 {BigDecimal.valueOf(2), mapOf(VALUE, BigDecimal.valueOf(2))}
+        });
+        TEST_DB.put(pair(Calendar.class, Map.class), new Object[][]{
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
+                    cal.getTime();
+                    return cal;
+                }, (Supplier<Map<String, Object>>) () -> {
+                    Map<String, Object> map = new CompactLinkedMap<>();
+                    map.put(MapConversions.YEAR, 2024);
+                    map.put(MapConversions.MONTH, 2);
+                    map.put(MapConversions.DAY, 5);
+                    map.put(MapConversions.HOUR, 22);
+                    map.put(MapConversions.MINUTE, 31);
+                    map.put(MapConversions.SECOND, 17);
+                    map.put(MapConversions.MILLI_SECONDS, 409);
+                    map.put(MapConversions.ZONE, TOKYO);
+                    return map;
+                }, true},
         });
     }
 
@@ -398,10 +419,11 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Calendar.class, String.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 0);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
                     cal.getTime();
                     return cal;
-                }, "2024-02-05T22:31:00"}
+                }, "2024-02-05T22:31:17.409+09:00"}
         });
         TEST_DB.put(pair(Number.class, String.class), new Object[][]{
                 {(byte) 1, "1"},
@@ -1159,15 +1181,35 @@ class ConverterEverythingTest {
                 {new BigDecimal("0.001"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1);
-                    cal.getTime();
                     return cal;
                 }, true},
                 {new BigDecimal(1), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1000);
-                    cal.getTime();
                     return cal;
                 }, true},
+        });
+        TEST_DB.put(pair(Map.class, Calendar.class), new Object[][]{
+                {(Supplier<Map<String, Object>>) () -> {
+                    Map<String, Object> map = new CompactLinkedMap<>();
+                    map.put(VALUE, "2024-02-05T22:31:17.409[" + TOKYO + "]");
+                    return map;
+                }, (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
+                    return cal;
+                }},
+                {(Supplier<Map<String, Object>>) () -> {
+                    Map<String, Object> map = new CompactLinkedMap<>();
+                    map.put(VALUE, "2024-02-05T22:31:17.409" + TOKYO_ZO.toString());
+                    return map;
+                }, (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
+                    return cal;
+                }},
         });
     }
 
@@ -3023,7 +3065,14 @@ class ConverterEverythingTest {
                 }
             }
             catch (Throwable e) {
-                System.err.println(shortNameSource + "[" + source + "] ==> " + shortNameTarget + "[" + target + "] Failed with: " + actual);
+                String actualClass;
+                if (actual == null) {
+                    actualClass = "Class:null";
+                } else {
+                    actualClass = Converter.getShortName(actual.getClass());
+                }
+
+                System.err.println(shortNameSource + "[" + toStr(source) + "] ==> " + shortNameTarget + "[" + toStr(target) + "] Failed with: " + actualClass + "[" + toStr(actual) + "]");
                 throw e;
             }
         }
@@ -3031,6 +3080,15 @@ class ConverterEverythingTest {
     
     private static void updateStat(Map.Entry<Class<?>, Class<?>> pair, boolean state) {
         STAT_DB.put(pair, state);
+    }
+
+    private String toStr(Object o) {
+        if (o instanceof Calendar) {
+            Calendar cal = (Calendar) o;
+            return CalendarConversions.toString(cal, converter);
+        } else {
+            return o.toString();
+        }
     }
 
     // Rare pairings that cannot be tested without drilling into the class - Atomic's require .get() to be called,

@@ -54,7 +54,7 @@ import com.cedarsoftware.util.ClassUtilities;
  * Boolean, for example, however, for primitive types, it chooses zero for the numeric ones, `false` for boolean,
  * and 0 for char.<br>
  * <br>
- * A Map can be converted to almost all JDL "data" classes.  For example, UUID can be converted to/from a Map.
+ * A Map can be converted to almost all JDK "data" classes.  For example, UUID can be converted to/from a Map.
  * It is expected for the Map to have certain keys ("mostSigBits", "leastSigBits").  For the older Java Date/Time
  * related classes, it expects "time" or "nanos", and for all others, a Map as the source, the "value" key will be
  * used to source the value for the conversion.<br>
@@ -904,7 +904,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(ZoneOffset.class, Map.class), ZoneOffsetConversions::toMap);
         CONVERSION_DB.put(pair(Class.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(UUID.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Calendar.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(Calendar.class, Map.class), CalendarConversions::toMap);
         CONVERSION_DB.put(pair(Number.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(Map.class, Map.class), MapConversions::toMap);
         CONVERSION_DB.put(pair(Enum.class, Map.class), MapConversions::initMap);

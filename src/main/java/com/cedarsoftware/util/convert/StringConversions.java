@@ -27,7 +27,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.TimeZone;
@@ -362,7 +361,29 @@ final class StringConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
-        return parseDate(from, converter).map(GregorianCalendar::from).orElse(null);
+        String calStr = (String) from;
+        if (StringUtilities.isEmpty(calStr)) {
+            return null;
+        }
+        ZonedDateTime zdt = DateUtilities.parseDate(calStr, converter.getOptions().getZoneId(), true);
+        if (zdt == null) {
+            return null;
+        }
+        ZonedDateTime zdtUser = zdt.withZoneSameInstant(converter.getOptions().getZoneId());
+
+        // Must copy this way.  Using the GregorianCalendar.from(zdt) does not pass .equals() later.
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.YEAR, zdt.getYear());
+        cal.set(Calendar.MONTH, zdt.getMonthValue() - 1);
+        cal.set(Calendar.DAY_OF_MONTH, zdt.getDayOfMonth());
+        cal.set(Calendar.HOUR_OF_DAY, zdt.getHour());
+        cal.set(Calendar.MINUTE, zdt.getMinute());
+        cal.set(Calendar.SECOND, zdt.getSecond());
+        cal.set(Calendar.MILLISECOND, zdt.getNano() / 1_000_000);
+        cal.setTimeZone(TimeZone.getTimeZone(zdtUser.getZone()));
+        cal.getTime();
+
+        return cal;
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {

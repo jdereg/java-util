@@ -3,15 +3,18 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.CompactLinkedMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -106,8 +109,22 @@ final class CalendarConversions {
     }
 
     static String toString(Object from, Converter converter) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        simpleDateFormat.setTimeZone(converter.getOptions().getTimeZone());
-        return simpleDateFormat.format(((Calendar) from).getTime());
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSS]XXX", converter.getOptions().getLocale());
+        return formatter.format(zdt);
+    }
+
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        Calendar cal = (Calendar) from;
+        Map<String, Object> target = new CompactLinkedMap<>();
+        target.put(MapConversions.YEAR, cal.get(Calendar.YEAR));
+        target.put(MapConversions.MONTH, cal.get(Calendar.MONTH) + 1);
+        target.put(MapConversions.DAY, cal.get(Calendar.DAY_OF_MONTH));
+        target.put(MapConversions.HOUR, cal.get(Calendar.HOUR_OF_DAY));
+        target.put(MapConversions.MINUTE, cal.get(Calendar.MINUTE));
+        target.put(MapConversions.SECOND, cal.get(Calendar.SECOND));
+        target.put(MapConversions.MILLI_SECONDS, cal.get(Calendar.MILLISECOND));
+        target.put(MapConversions.ZONE, cal.getTimeZone().getID());
+        return target;
     }
 }

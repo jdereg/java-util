@@ -28,7 +28,7 @@ import com.cedarsoftware.util.convert.DefaultConverterOptions;
  * to all destinations per each source.  Close to 500 "out-of-the-box" conversions ship with the library.<br>
  * <br>
  * The Converter can be used as statically or as an instance.  See the public static methods on this Converter class
- * to use statically.  Any added conversions will added to a singleton instance maintained inside this class.
+ * to use statically.  Any added conversions are added to a singleton instance maintained inside this class.
  * Alternatively, you can instantiate the Converter class to get an instance, and the conversions you add, remove, or
  * change will be scoped to just that instance. <br>
  * <br>

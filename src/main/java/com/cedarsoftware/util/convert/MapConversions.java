@@ -71,6 +71,7 @@ final class MapConversions {
     static final String MINUTES = "minutes";
     static final String SECOND = "second";
     static final String SECONDS = "seconds";
+    static final String MILLI_SECONDS = "millis";
     static final String NANO = "nano";
     static final String NANOS = "nanos";
     static final String OFFSET_HOUR = "offsetHour";
@@ -205,24 +206,52 @@ final class MapConversions {
         }
     }
 
-    private static final String[] CALENDAR_PARAMS = new String[] { TIME, ZONE };
+    private static final String[] CALENDAR_PARAMS = new String[] { YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MILLI_SECONDS, ZONE };
     static Calendar toCalendar(Object from, Converter converter) {
         Map<?, ?> map = (Map<?, ?>) from;
         if (map.containsKey(TIME)) {
             Object zoneRaw = map.get(ZONE);
             TimeZone tz;
-            ConverterOptions options = converter.getOptions();
 
             if (zoneRaw instanceof String) {
                 String zone = (String) zoneRaw;
                 tz = TimeZone.getTimeZone(zone);
             } else {
-                tz = TimeZone.getTimeZone(options.getZoneId());
+                tz = TimeZone.getTimeZone(converter.getOptions().getZoneId());
             }
-            
+
             Calendar cal = Calendar.getInstance(tz);
             Date epochInMillis = converter.convert(map.get(TIME), Date.class);
             cal.setTimeInMillis(epochInMillis.getTime());
+            return cal;
+        }
+        else if (map.containsKey(YEAR)) {
+            int year = converter.convert(map.get(YEAR), int.class);
+            int month = converter.convert(map.get(MONTH), int.class);
+            int day = converter.convert(map.get(DAY), int.class);
+            int hour = converter.convert(map.get(HOUR), int.class);
+            int minute = converter.convert(map.get(MINUTE), int.class);
+            int second = converter.convert(map.get(SECOND), int.class);
+            int ms = converter.convert(map.get(MILLI_SECONDS), int.class);
+            Object zoneRaw = map.get(ZONE);
+
+            TimeZone tz;
+
+            if (zoneRaw instanceof String) {
+                String zone = (String) zoneRaw;
+                tz = TimeZone.getTimeZone(zone);
+            } else {
+                tz = TimeZone.getTimeZone(converter.getOptions().getZoneId());
+            }
+
+            Calendar cal = Calendar.getInstance(tz);
+            cal.set(Calendar.YEAR, year);
+            cal.set(Calendar.MONTH, month - 1);
+            cal.set(Calendar.DAY_OF_MONTH, day);
+            cal.set(Calendar.HOUR_OF_DAY, hour);
+            cal.set(Calendar.MINUTE, minute);
+            cal.set(Calendar.SECOND, second);
+            cal.set(Calendar.MILLISECOND, ms);
             cal.getTime();
             return cal;
         } else {

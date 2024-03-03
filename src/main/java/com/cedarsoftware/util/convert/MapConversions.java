@@ -220,10 +220,10 @@ final class MapConversions {
                 tz = TimeZone.getTimeZone(options.getZoneId());
             }
             
-            Calendar cal = Calendar.getInstance();
-            cal.setTimeZone(tz);
+            Calendar cal = Calendar.getInstance(tz);
             Date epochInMillis = converter.convert(map.get(TIME), Date.class);
             cal.setTimeInMillis(epochInMillis.getTime());
+            cal.getTime();
             return cal;
         } else {
             return fromValueForMultiKey(map, converter, Calendar.class, CALENDAR_PARAMS);

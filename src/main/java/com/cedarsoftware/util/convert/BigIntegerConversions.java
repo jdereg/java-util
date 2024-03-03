@@ -12,7 +12,6 @@ import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.UUID;
 
 /**
@@ -84,7 +83,7 @@ final class BigIntegerConversions {
     static Calendar toCalendar(Object from, Converter converter) {
         BigInteger epochNanos = (BigInteger) from;
         BigInteger epochMillis = epochNanos.divide(MILLION);
-        Calendar calendar = GregorianCalendar.getInstance(converter.getOptions().getTimeZone());
+        Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
         calendar.setTimeInMillis(epochMillis.longValue());
         return calendar;
     }

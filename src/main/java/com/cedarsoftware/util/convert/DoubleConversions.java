@@ -10,7 +10,6 @@ import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -54,7 +53,7 @@ final class DoubleConversions {
     static Calendar toCalendar(Object from, Converter converter) {
         double seconds = (double) from;
         long epochMillis = (long)(seconds * 1000);
-        Calendar calendar = GregorianCalendar.getInstance(converter.getOptions().getTimeZone());
+        Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
         calendar.clear();
         calendar.setTimeInMillis(epochMillis);
         return calendar;

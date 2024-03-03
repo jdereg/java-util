@@ -12,7 +12,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -75,7 +74,7 @@ final class LocalDateConversions {
 
     static Calendar toCalendar(Object from, Converter converter) {
         ZonedDateTime time = toZonedDateTime(from, converter);
-        GregorianCalendar calendar = new GregorianCalendar(converter.getOptions().getTimeZone());
+        Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
         calendar.setTimeInMillis(time.toInstant().toEpochMilli());
         return calendar;
     }

@@ -53,6 +53,7 @@ import static com.cedarsoftware.util.MapUtilities.mapOf;
 import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.Converter.pair;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -124,6 +125,9 @@ class ConverterEverythingTest {
         immutable.add(YearMonth.class);
 
         loadByteTest();
+        loadByteArrayTest();
+        loadByteBufferTest();
+        loadCharArrayTest();
         loadShortTests();
         loadIntegerTests();
         loadLongTests();
@@ -164,8 +168,21 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, Map.class), new Object[][]{
                 {null, null}
         });
+        TEST_DB.put(pair(Boolean.class, Map.class), new Object[][]{
+                {true, mapOf(VALUE, true)},
+                {false, mapOf(VALUE, false)}
+        });
+        TEST_DB.put(pair(Byte.class, Map.class), new Object[][]{
+                {(byte)1, mapOf(VALUE, (byte)1)},
+                {(byte)2, mapOf(VALUE, (byte)2)}
+        });
+        TEST_DB.put(pair(BigInteger.class, Map.class), new Object[][]{
+                {BigInteger.valueOf(1), mapOf(VALUE, BigInteger.valueOf(1))},
+                {BigInteger.valueOf(2), mapOf(VALUE, BigInteger.valueOf(2))}
+        });
         TEST_DB.put(pair(BigDecimal.class, Map.class), new Object[][]{
-                {BigDecimal.valueOf(1), mapOf(VALUE, BigDecimal.valueOf(1))}
+                {BigDecimal.valueOf(1), mapOf(VALUE, BigDecimal.valueOf(1))},
+                {BigDecimal.valueOf(2), mapOf(VALUE, BigDecimal.valueOf(2))}
         });
     }
 
@@ -380,10 +397,9 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Calendar.class, String.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 0);
+                    cal.getTime();
                     return cal;
                 }, "2024-02-05T22:31:00"}
         });
@@ -556,6 +572,15 @@ class ConverterEverythingTest {
                 {new AtomicLong(0), LocalDateTime.parse("1970-01-01T00:00:00").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
                 {new AtomicLong(1), LocalDateTime.parse("1970-01-01T00:00:00.001").atZone(ZoneId.of("UTC")).withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
         });
+        TEST_DB.put(pair(Calendar.class, LocalDateTime.class), new Object[][] {
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.MARCH, 2, 22, 54, 17);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    cal.getTime();
+                    return cal;
+                }, LocalDateTime.of(2024, Month.MARCH, 2, 22, 54, 17), true }
+        });
     }
 
     /**
@@ -619,6 +644,19 @@ class ConverterEverythingTest {
                 { BigDecimal.valueOf(86399.999999999), LocalTime.parse("23:59:59.999999999"), true},
                 { BigDecimal.valueOf(86400.0), new IllegalArgumentException("value [86400.0]")},
         });
+        TEST_DB.put(pair(Calendar.class, LocalTime.class), new Object[][]{
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+
+                    // Set the calendar instance to have the same time as the LocalTime passed in
+                    cal.set(Calendar.HOUR_OF_DAY, 22);
+                    cal.set(Calendar.MINUTE, 47);
+                    cal.set(Calendar.SECOND, 55);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    cal.getTime();
+                    return cal;
+                }, LocalTime.of(22, 47, 55), true }
+        });
     }
 
     /**
@@ -666,6 +704,14 @@ class ConverterEverythingTest {
                 {BigDecimal.ZERO, ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate()},
                 {new BigDecimal("53999.999"), LocalDate.parse("1970-01-01")},
                 {new BigDecimal("54000"), LocalDate.parse("1970-01-02"), true},
+        });
+        TEST_DB.put(pair(Calendar.class, LocalDate.class), new Object[][] {
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.clear();
+                    cal.set(2024, Calendar.MARCH, 2);
+                    return cal;
+                }, LocalDate.parse("2024-03-02"), true }
         });
     }
 
@@ -1013,7 +1059,14 @@ class ConverterEverythingTest {
                 {new BigDecimal("0.001"), new java.sql.Date(Instant.parse("1970-01-01T00:00:00.001Z").toEpochMilli()), true},
                 {new BigDecimal(".999"), new java.sql.Date(Instant.parse("1970-01-01T00:00:00.999Z").toEpochMilli()), true},
                 {new BigDecimal("1"), new java.sql.Date(Instant.parse("1970-01-01T00:00:01Z").toEpochMilli()), true},
-
+        });
+        TEST_DB.put(pair(Calendar.class, java.sql.Date.class), new Object[][] {
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.setTimeInMillis(now);
+                    cal.getTime();
+                    return cal;
+                }, new java.sql.Date(now), true}
         });
     }
 
@@ -1024,13 +1077,23 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, Date.class), new Object[][]{
                 {null, null}
         });
-        // No identity test for Date, as it is mutable
+        TEST_DB.put(pair(Date.class, Date.class), new Object[][] {
+                { new Date(0), new Date(0)}
+        });
         TEST_DB.put(pair(AtomicLong.class, Date.class), new Object[][]{
                 {new AtomicLong(Long.MIN_VALUE), new Date(Long.MIN_VALUE), true},
                 {new AtomicLong(-1), new Date(-1), true},
                 {new AtomicLong(0), new Date(0), true},
                 {new AtomicLong(1), new Date(1), true},
                 {new AtomicLong(Long.MAX_VALUE), new Date(Long.MAX_VALUE), true},
+        });
+        TEST_DB.put(pair(Calendar.class, Date.class), new Object[][] {
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.setTimeInMillis(now);
+                    cal.getTime();
+                    return cal;
+                }, new Date(now), true }
         });
     }
 
@@ -1043,76 +1106,66 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Calendar.class, Calendar.class), new Object[][] {
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);
+                    cal.getTime();
                     return cal;
                 }, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);
+                    cal.getTime();
                     return cal;
                 } }
         });
         TEST_DB.put(pair(AtomicLong.class, Calendar.class), new Object[][]{
                 {new AtomicLong(-1), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
+                    cal.getTime();
                     return cal;
                 }, true},
                 {new AtomicLong(0), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(0);
+                    cal.getTime();
                     return cal;
                 }, true},
                 {new AtomicLong(1), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1);
+                    cal.getTime();
                     return cal;
                 }, true},
         });
         TEST_DB.put(pair(BigDecimal.class, Calendar.class), new Object[][]{
                 {new BigDecimal(-1), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1000);
+                    cal.getTime();
                     return cal;
                 }, true},
                 {new BigDecimal("-0.001"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
+                    cal.getTime();
                     return cal;
                 }, true},
                 {BigDecimal.ZERO, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(0);
+                    cal.getTime();
                     return cal;
                 }, true},
                 {new BigDecimal("0.001"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1);
+                    cal.getTime();
                     return cal;
                 }, true},
                 {new BigDecimal(1), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1000);
+                    cal.getTime();
                     return cal;
                 }, true},
         });
@@ -1146,6 +1199,14 @@ class ConverterEverythingTest {
                 {" ", null},
                 {"1980-01-01T00:00:00Z", Instant.parse("1980-01-01T00:00:00Z"), true},
                 {"2024-12-31T23:59:59.999999999Z", Instant.parse("2024-12-31T23:59:59.999999999Z"), true},
+        });
+        TEST_DB.put(pair(Calendar.class, Instant.class), new Object[][] {
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.setTimeInMillis(now);
+                    cal.getTime();
+                    return cal;
+                }, Instant.ofEpochMilli(now), true }
         });
     }
 
@@ -1362,24 +1423,21 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Calendar.class, BigInteger.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
+                    cal.getTime();
                     return cal;
                 }, BigInteger.valueOf(-1000000), true},
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(0);
+                    cal.getTime();
                     return cal;
                 }, BigInteger.ZERO, true},
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1);
+                    cal.getTime();
                     return cal;
                 }, BigInteger.valueOf(1000000), true},
         });
@@ -1764,38 +1822,33 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Calendar.class, Double.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1000);
+                    cal.getTime();
                     return cal;
                 }, -1.0, true},
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(-1);
+                    cal.getTime();
                     return cal;
                 }, -0.001, true},
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(0);
+                    cal.getTime();
                     return cal;
                 }, 0d, true},
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1);
+                    cal.getTime();
                     return cal;
                 }, 0.001d, true},
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(1000);
+                    cal.getTime();
                     return cal;
                 }, 1.0, true},
         });
@@ -2236,17 +2289,16 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Calendar.class, Long.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 12, 11, 38, 0);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    cal.getTime();
                     return cal;
                 }, 1707705480000L},
                 {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance();
-                    cal.clear();
-                    cal.setTimeZone(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.setTimeInMillis(now);   // Calendar maintains time to millisecond resolution
+                    cal.getTime();
                     return cal;
                 }, now}
         });
@@ -2745,6 +2797,76 @@ class ConverterEverythingTest {
         });
     }
 
+    /**
+     * byte[]
+     */
+    private static void loadByteArrayTest()
+    {
+        TEST_DB.put(pair(Void.class, byte[].class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(byte[].class, byte[].class), new Object[][]{
+                {new byte[] {}, new byte[] {}},
+                {new byte[] {1, 2}, new byte[] {1, 2}},
+        });
+        TEST_DB.put(pair(ByteBuffer.class, byte[].class), new Object[][]{
+                {ByteBuffer.wrap(new byte[]{}), new byte[] {}, true},
+                {ByteBuffer.wrap(new byte[]{1, 2}), new byte[] {1, 2}, true},
+        });
+        TEST_DB.put(pair(char[].class, byte[].class), new Object[][] {
+                {new char[] {}, new byte[] {}, true},
+                {new char[] {'a', 'b'}, new byte[] {97, 98}, true},
+        });
+        TEST_DB.put(pair(CharBuffer.class, byte[].class), new Object[][]{
+                {CharBuffer.wrap(new char[]{}), new byte[] {}, true},
+                {CharBuffer.wrap(new char[]{'a', 'b'}), new byte[] {'a', 'b'}, true},
+        });
+        TEST_DB.put(pair(StringBuffer.class, byte[].class), new Object[][]{
+                {new StringBuffer(), new byte[] {}, true},
+                {new StringBuffer("ab"), new byte[] {'a', 'b'}, true},
+        });
+        TEST_DB.put(pair(StringBuilder.class, byte[].class), new Object[][]{
+                {new StringBuilder(), new byte[] {}, true},
+                {new StringBuilder("ab"), new byte[] {'a', 'b'}, true},
+        });
+    }
+
+    /**
+     * ByteBuffer
+     */
+    private static void loadByteBufferTest() {
+        TEST_DB.put(pair(Void.class, ByteBuffer.class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(ByteBuffer.class, ByteBuffer.class), new Object[][]{
+                {ByteBuffer.wrap(new byte[] {'h'}), ByteBuffer.wrap(new byte[]{'h'})},
+        });
+        TEST_DB.put(pair(CharBuffer.class, ByteBuffer.class), new Object[][]{
+                {CharBuffer.wrap(new char[] {'h', 'i'}), ByteBuffer.wrap(new byte[]{'h', 'i'}), true},
+        });
+        TEST_DB.put(pair(StringBuffer.class, ByteBuffer.class), new Object[][]{
+                {new StringBuffer("hi"), ByteBuffer.wrap(new byte[]{'h', 'i'}), true},
+        });
+        TEST_DB.put(pair(StringBuilder.class, ByteBuffer.class), new Object[][]{
+                {new StringBuilder("hi"), ByteBuffer.wrap(new byte[]{'h', 'i'}), true},
+        });
+    }
+
+    /**
+     * char[]
+     */
+    private static void loadCharArrayTest() {
+        TEST_DB.put(pair(Void.class, char[].class), new Object[][]{
+                {null, null},
+        });
+        TEST_DB.put(pair(char[].class, char[].class), new Object[][]{
+                {new char[] {'h'}, new char[] {'h'}},
+        });
+        TEST_DB.put(pair(ByteBuffer.class, char[].class), new Object[][]{
+                {ByteBuffer.wrap(new byte[] {'h', 'i'}), new char[] {'h', 'i'}, true},
+        });
+    }
+
     private static String toGmtString(Date date) {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
         simpleDateFormat.setTimeZone(TOKYO_TZ);
@@ -2872,7 +2994,16 @@ class ConverterEverythingTest {
             // Assert values are equals
             Object actual = converter.convert(source, targetClass);
             try {
-                if (target instanceof AtomicBoolean) {
+                if (target instanceof CharSequence) {
+                    assertEquals(actual.toString(), target.toString());
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (targetClass.equals(byte[].class)) {
+                    assertArrayEquals((byte[]) actual, (byte[]) target);
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (targetClass.equals(char[].class)) {
+                    assertArrayEquals((char[])actual, (char[])target);
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (target instanceof AtomicBoolean) {
                     assertEquals(((AtomicBoolean) target).get(), ((AtomicBoolean) actual).get());
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (target instanceof AtomicInteger) {
@@ -2923,7 +3054,7 @@ class ConverterEverythingTest {
 
     @AfterAll
     static void printStats() {
-        Set<String> testPairNames = new TreeSet<>();
+        Set<String> testPairNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         int missing = 0;
 
         for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Boolean> entry : STAT_DB.entrySet()) {

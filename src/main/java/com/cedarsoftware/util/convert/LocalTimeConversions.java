@@ -5,6 +5,7 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Calendar;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -85,5 +86,19 @@ final class LocalTimeConversions {
     static String toString(Object from, Converter converter) {
         LocalTime localTime = (LocalTime) from;
         return localTime.format(DateTimeFormatter.ISO_LOCAL_TIME);
+    }
+
+    static Calendar toCalendar(Object from, Converter converter) {
+        LocalTime localTime = (LocalTime) from;
+        // Obtain the current date in the specified TimeZone
+        Calendar cal = Calendar.getInstance(converter.getOptions().getTimeZone());
+
+        // Set the calendar instance to have the same time as the LocalTime passed in
+        cal.set(Calendar.HOUR_OF_DAY, localTime.getHour());
+        cal.set(Calendar.MINUTE, localTime.getMinute());
+        cal.set(Calendar.SECOND, localTime.getSecond());
+        cal.set(Calendar.MILLISECOND, localTime.getNano() / 1_000_000); // Convert nanoseconds to milliseconds
+        cal.getTime();  // compute fields
+        return cal;
     }
 }

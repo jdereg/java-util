@@ -381,19 +381,19 @@ class ConverterEverythingTest {
                 {Date.class, "java.util.Date", true}
         });
         TEST_DB.put(pair(Date.class, String.class), new Object[][]{
-                {new Date(1), toGmtString(new Date(1))},
-                {new Date(Integer.MAX_VALUE), toGmtString(new Date(Integer.MAX_VALUE))},
-                {new Date(Long.MAX_VALUE), toGmtString(new Date(Long.MAX_VALUE))}
+                {new Date(-1), "1970-01-01T08:59:59.999+09:00", true},  // Tokyo (set in options - defaults to system when not set explicitly)
+                {new Date(0), "1970-01-01T09:00:00.000+09:00", true},
+                {new Date(1), "1970-01-01T09:00:00.001+09:00", true},
         });
         TEST_DB.put(pair(java.sql.Date.class, String.class), new Object[][]{
-                {new java.sql.Date(1), toGmtString(new java.sql.Date(1))},
-                {new java.sql.Date(Integer.MAX_VALUE), toGmtString(new java.sql.Date(Integer.MAX_VALUE))},
-                {new java.sql.Date(Long.MAX_VALUE), toGmtString(new java.sql.Date(Long.MAX_VALUE))}
+                {new java.sql.Date(-1), "1970-01-01T08:59:59.999+09:00", true}, // Tokyo (set in options - defaults to system when not set explicitly)
+                {new java.sql.Date(0), "1970-01-01T09:00:00.000+09:00", true},
+                {new java.sql.Date(1), "1970-01-01T09:00:00.001+09:00", true},
         });
         TEST_DB.put(pair(Timestamp.class, String.class), new Object[][]{
-                {new Timestamp(1), toGmtString(new Timestamp(1))},
-                {new Timestamp(Integer.MAX_VALUE), toGmtString(new Timestamp(Integer.MAX_VALUE))},
-                {new Timestamp(Long.MAX_VALUE), toGmtString(new Timestamp(Long.MAX_VALUE))},
+                {new Timestamp(-1), "1970-01-01T08:59:59.999+09:00", true},     // Tokyo (set in options - defaults to system when not set explicitly)
+                {new Timestamp(0), "1970-01-01T09:00:00.000+09:00", true},
+                {new Timestamp(1), "1970-01-01T09:00:00.001+09:00", true},
         });
         TEST_DB.put(pair(LocalDate.class, String.class), new Object[][]{
                 {LocalDate.parse("1965-12-31"), "1965-12-31"},
@@ -418,10 +418,19 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Calendar.class, String.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
-                    cal.set(Calendar.MILLISECOND, 409);
+                    cal.setTimeInMillis(-1);
                     return cal;
-                }, "2024-02-05T22:31:17.409+09:00"}
+                }, "1970-01-01T08:59:59.999+09:00", true},
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.setTimeInMillis(0);
+                    return cal;
+                }, "1970-01-01T09:00:00.000+09:00", true},
+                {(Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.setTimeInMillis(1);
+                    return cal;
+                }, "1970-01-01T09:00:00.001+09:00", true},
         });
         TEST_DB.put(pair(Number.class, String.class), new Object[][]{
                 {(byte) 1, "1"},

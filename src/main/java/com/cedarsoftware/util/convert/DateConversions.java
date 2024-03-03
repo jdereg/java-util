@@ -4,12 +4,13 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
@@ -102,21 +103,32 @@ final class DateConversions {
         return new AtomicLong(toLong(from, converter));
     }
 
-    static String dateToString(Object from, Converter converter) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        simpleDateFormat.setTimeZone(converter.getOptions().getTimeZone());
-        return simpleDateFormat.format(((Date) from));
-    }
-
     static String sqlDateToString(Object from, Converter converter) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        simpleDateFormat.setTimeZone(converter.getOptions().getTimeZone());
-        return simpleDateFormat.format(((Date) from));
+        java.sql.Date sqlDate = (java.sql.Date) from;
+        return toString(new Date(sqlDate.getTime()), converter);
     }
 
-    static String timestampToString(Object from, Converter converter) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-        simpleDateFormat.setTimeZone(converter.getOptions().getTimeZone());
-        return simpleDateFormat.format(((Date) from));
+    static String toString(Object from, Converter converter) {
+        Date date = (Date) from;
+
+        // Convert Date to ZonedDateTime
+        ZonedDateTime zonedDateTime = date.toInstant().atZone(converter.getOptions().getZoneId());
+
+        // Build a formatter with optional milliseconds and always show timezone offset
+        DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+                .appendPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
+                .appendOffset("+HH:MM", "Z") // Timezone offset
+                .toFormatter();
+
+        // Build a formatter with optional milliseconds and always show the timezone name
+//        DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+//                .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+//                .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true) // Optional milliseconds
+//                .appendLiteral('[') // Space separator
+//                .appendZoneId()
+//                .appendLiteral(']')
+//                .toFormatter();
+
+        return zonedDateTime.format(formatter);
     }
 }

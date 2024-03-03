@@ -337,8 +337,9 @@ final class StringConversions {
     }
 
     static Date toDate(Object from, Converter converter) {
-        Instant instant = toInstant(from, converter);
-        return instant == null ? null : Date.from(instant);
+        String strDate = (String) from;
+        ZonedDateTime zdt = DateUtilities.parseDate(strDate, converter.getOptions().getZoneId(), true);
+        return Date.from(zdt.toInstant());
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {

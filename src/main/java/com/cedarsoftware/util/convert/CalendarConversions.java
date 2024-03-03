@@ -8,7 +8,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
@@ -109,9 +108,8 @@ final class CalendarConversions {
     }
 
     static String toString(Object from, Converter converter) {
-        ZonedDateTime zdt = toZonedDateTime(from, converter);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSS]XXX", converter.getOptions().getLocale());
-        return formatter.format(zdt);
+        Calendar cal = (Calendar) from;
+        return DateConversions.toString(cal.getTime(), converter);
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {

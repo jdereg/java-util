@@ -11,7 +11,6 @@ import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.Date;
 import java.util.stream.Stream;
 
 import com.cedarsoftware.util.ClassUtilities;
@@ -248,9 +247,7 @@ class StringConversionsTests {
                 Arguments.of(Year.class),
                 Arguments.of(Timestamp.class),
                 Arguments.of(java.sql.Date.class),
-                Arguments.of(Date.class),
                 Arguments.of(Instant.class),
-                Arguments.of(Date.class),
                 Arguments.of(java.sql.Date.class),
                 Arguments.of(Timestamp.class),
                 Arguments.of(ZonedDateTime.class),

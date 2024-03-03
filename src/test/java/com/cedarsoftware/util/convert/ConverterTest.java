@@ -1794,18 +1794,20 @@ class ConverterTest
         Date date = cal.getTime();
 
         String converted = this.converter.convert(date, String.class);
-        assertThat(converted).isEqualTo("2015-01-17T08:34:49");
+        assertThat(converted).startsWith("2015-01-17T08:34:49");
     }
 
     @Test
     void testString_fromCalendar()
     {
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-        cal.clear();
-        cal.set(2015, 0, 17, 8, 34, 49);
-        // TODO: Gets fixed when Date.class ==> String.class is tested/added
-//        assertEquals("2015-01-17T08:34:49", this.converter.convert(cal.getTime(), String.class));
-        assertEquals("2015-01-17T08:34:49.000Z", this.converter.convert(cal, String.class));
+        cal.setTimeInMillis(1421483689000L);
+
+        Converter converter1 = new Converter(new ConverterOptions() {
+            public ZoneId getZoneId() { return ZoneId.of("GMT"); }
+        });
+        assertEquals("2015-01-17T08:34:49.000Z", converter1.convert(cal.getTime(), String.class));
+        assertEquals("2015-01-17T08:34:49.000Z", converter1.convert(cal, String.class));
     }
 
     @Test
@@ -1943,7 +1945,6 @@ class ConverterTest
     @Test
     void testAtomicInteger_withEmptyString() {
         AtomicInteger converted = this.converter.convert("", AtomicInteger.class);
-        //TODO:  Do we want nullable types to default to zero
         assertThat(converted.get()).isEqualTo(0);
     }
 
@@ -2503,7 +2504,9 @@ class ConverterTest
     @MethodSource("unparseableDates")
     void testUnparseableDates_Date(String date)
     {
-        assertNull(this.converter.convert(date, Date.class));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> this.converter.convert(date, Date.class))
+                .withMessageContaining("'dateStr' must not be null or empty String");
     }
 
     @ParameterizedTest
@@ -2923,7 +2926,9 @@ class ConverterTest
 
         map.clear();
         map.put("value", "");
-        assert null == this.converter.convert(map, Date.class);
+        assertThatThrownBy(() -> converter.convert(map, Date.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'dateStr' must not be null or empty String");
 
         map.clear();
         map.put("value", null);

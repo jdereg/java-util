@@ -680,9 +680,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(ByteBuffer.class, String.class), ByteBufferConversions::toString);
         CONVERSION_DB.put(pair(CharBuffer.class, String.class), CharBufferConversions::toString);
         CONVERSION_DB.put(pair(Class.class, String.class), ClassConversions::toString);
-        CONVERSION_DB.put(pair(Date.class, String.class), DateConversions::dateToString);
+        CONVERSION_DB.put(pair(Date.class, String.class), DateConversions::toString);
         CONVERSION_DB.put(pair(java.sql.Date.class, String.class), DateConversions::sqlDateToString);
-        CONVERSION_DB.put(pair(Timestamp.class, String.class), DateConversions::timestampToString);
+        CONVERSION_DB.put(pair(Timestamp.class, String.class), DateConversions::toString);
         CONVERSION_DB.put(pair(LocalDate.class, String.class), LocalDateConversions::toString);
         CONVERSION_DB.put(pair(LocalTime.class, String.class), LocalTimeConversions::toString);
         CONVERSION_DB.put(pair(LocalDateTime.class, String.class), LocalDateTimeConversions::toString);

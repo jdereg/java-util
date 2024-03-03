@@ -31,7 +31,7 @@ public class Convention {
      * @throws IllegalArgumentException if the string passed in is null or empty
      */
     public static void throwIfNullOrEmpty(String value, String message) {
-        if (value == null || value.isEmpty()) {
+        if (StringUtilities.isEmpty(value)) {
             throw new IllegalArgumentException(message);
         }
     }

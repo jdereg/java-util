@@ -3,7 +3,6 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -42,6 +41,7 @@ import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.StringUtilities;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
+import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHARACTER_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
 
 /**
@@ -88,7 +88,7 @@ final class StringConversions {
         } catch (NumberFormatException e) {
             Long value = toLong(str, bigDecimalMinByte, bigDecimalMaxByte);
             if (value == null) {
-                throw new IllegalArgumentException("Value '" + str + "' not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + str + "' not parseable as a byte value or outside " + Byte.MIN_VALUE + " to " + Byte.MAX_VALUE, e);
             }
             return value.byteValue();
         }
@@ -101,10 +101,10 @@ final class StringConversions {
         }
         try {
             return Short.valueOf(str);
-        } catch (NumberFormatException e) {
+        } catch (Exception e) {
             Long value = toLong(str, bigDecimalMinShort, bigDecimalMaxShort);
             if (value == null) {
-                throw new IllegalArgumentException("Value '" + from + "' not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + from + "' not parseable as a short value or outside " + Short.MIN_VALUE + " to " + Short.MAX_VALUE, e);
             }
             return value.shortValue();
         }
@@ -120,7 +120,7 @@ final class StringConversions {
         } catch (NumberFormatException e) {
             Long value = toLong(str, bigDecimalMinInteger, bigDecimalMaxInteger);
             if (value == null) {
-                throw new IllegalArgumentException("Value '" + from + "' not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + from + "' not parseable as an int value or outside " + Integer.MIN_VALUE + " to " + Integer.MAX_VALUE, e);
             }
             return value.intValue();
         }
@@ -134,10 +134,10 @@ final class StringConversions {
 
         try {
             return Long.valueOf(str);
-        } catch (NumberFormatException e) {
+        } catch (Exception e) {
             Long value = toLong(str, bigDecimalMinLong, bigDecimalMaxLong);
             if (value == null) {
-                throw new IllegalArgumentException("Value '" + from + "' not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE);
+                throw new IllegalArgumentException("Value '" + from + "' not parseable as a long value or outside " + Long.MIN_VALUE + " to " + Long.MAX_VALUE, e);
             }
             return value;
         }
@@ -163,8 +163,8 @@ final class StringConversions {
         }
         try {
             return Float.valueOf(str);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Value '" + from + "' not parseable as a float value");
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a float value", e);
         }
     }
 
@@ -175,8 +175,8 @@ final class StringConversions {
         }
         try {
             return Double.valueOf(str);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Value '" + from + "' not parseable as a double value");
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a double value", e);
         }
     }
 
@@ -216,7 +216,11 @@ final class StringConversions {
             return str.charAt(0);
         }
         // Treat as a String number, like "65" = 'A'
-        return (char) Integer.parseInt(str.trim());
+        try {
+            return (char) Integer.parseInt(str.trim());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to parse '" + from + "' as a Character.", e);
+        }
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
@@ -227,8 +231,8 @@ final class StringConversions {
         try {
             BigDecimal bigDec = new BigDecimal(str);
             return bigDec.toBigInteger();
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigInteger value.");
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigInteger value.", e);
         }
     }
 
@@ -240,7 +244,7 @@ final class StringConversions {
         try {
             return new BigDecimal(str);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigDecimal value.");
+            throw new IllegalArgumentException("Value '" + from + "' not parseable as a BigDecimal value.", e);
         }
     }
 
@@ -252,8 +256,8 @@ final class StringConversions {
         try {
             URI uri = URI.create((String) from);
             return uri.toURL();
-        } catch (MalformedURLException mue) {
-            throw new IllegalArgumentException("Cannot convert String '" + str);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot convert String '" + str, e);
         }
     }
 
@@ -274,7 +278,11 @@ final class StringConversions {
     }
 
     static Duration toDuration(Object from, Converter converter) {
-        return Duration.parse((String) from);
+        try {
+            return Duration.parse((String) from);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to parse '" + from + "' as a Duration.", e);
+        }
     }
 
     static Class<?> toClass(Object from, Converter converter) {
@@ -301,10 +309,12 @@ final class StringConversions {
             else {
                 try {
                     ZonedDateTime zdt = DateUtilities.parseDate(monthDay, converter.getOptions().getZoneId(), true);
+                    if (zdt == null) {
+                        return null;
+                    }
                     return MonthDay.of(zdt.getMonthValue(), zdt.getDayOfMonth());
-                }
-                catch (Exception ex) {
-                    throw new IllegalArgumentException("Unable to extract Month-Day from string: " + monthDay);
+                } catch (Exception ex) {
+                    throw new IllegalArgumentException("Unable to extract Month-Day from string: " + monthDay, ex);
                 }
             }
         }
@@ -314,14 +324,15 @@ final class StringConversions {
         String yearMonth = (String) from;
         try {
             return YearMonth.parse(yearMonth);
-        }
-        catch (DateTimeParseException e) {
+        } catch (DateTimeParseException e) {
             try {
                 ZonedDateTime zdt = DateUtilities.parseDate(yearMonth, converter.getOptions().getZoneId(), true);
+                if (zdt == null) {
+                    return null;
+                }
                 return YearMonth.of(zdt.getYear(), zdt.getMonthValue());
-            }
-            catch (Exception ex) {
-                throw new IllegalArgumentException("Unable to extract Year-Month from string: " + yearMonth);
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("Unable to extract Year-Month from string: " + yearMonth, ex);
             }
         }
     }
@@ -332,13 +343,16 @@ final class StringConversions {
             return Period.parse(period);
         }
         catch (Exception e) {
-            throw new IllegalArgumentException("Unable to parse '" + period + "' as a Period.");
+            throw new IllegalArgumentException("Unable to parse '" + period + "' as a Period.", e);
         }
     }
 
     static Date toDate(Object from, Converter converter) {
         String strDate = (String) from;
         ZonedDateTime zdt = DateUtilities.parseDate(strDate, converter.getOptions().getZoneId(), true);
+        if (zdt == null) {
+            return null;
+        }
         return Date.from(zdt.toInstant());
     }
 
@@ -432,9 +446,8 @@ final class StringConversions {
         }
         try {
             return ZoneId.of(s);
-        }
-        catch (Exception e) {
-            throw new IllegalArgumentException("Unknown time-zone ID: '" + s + "'");
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unknown time-zone ID: '" + s + "'", e);
         }
     }
 
@@ -445,8 +458,7 @@ final class StringConversions {
         }
         try {
             return ZoneOffset.of(s);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new IllegalArgumentException("Unknown time-zone offset: '" + s + "'");
         }
     }
@@ -494,6 +506,20 @@ final class StringConversions {
         return s.toCharArray();
     }
 
+    static Character[] toCharacterArray(Object from, Converter converter) {
+        CharSequence s = (CharSequence) from;
+
+        if (s == null) {
+            return EMPTY_CHARACTER_ARRAY;
+        }
+        int len = s.length();
+        Character[] ca = new Character[len];
+        for (int i=0; i < len; i++) {
+            ca[i] = s.charAt(i);
+        }
+        return ca;
+    }
+
     static CharBuffer toCharBuffer(Object from, Converter converter) {
         return CharBuffer.wrap(asString(from));
     }
@@ -532,14 +558,12 @@ final class StringConversions {
 
         try {
             return Year.of(Integer.parseInt(s));
-        }
-        catch (NumberFormatException e) {
+        } catch (Exception e) {
             try {
                 ZonedDateTime zdt = DateUtilities.parseDate(s, converter.getOptions().getZoneId(), true);
                 return Year.of(zdt.getYear());
-            }
-            catch (Exception ex) {
-                throw new IllegalArgumentException("Unable to parse 4-digit year from '" + s + "'");
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("Unable to parse 4-digit year from '" + s + "'", e);
             }
         }
     }

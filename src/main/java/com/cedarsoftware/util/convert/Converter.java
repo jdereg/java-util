@@ -695,7 +695,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(String.class, String.class), Converter::identity);
         CONVERSION_DB.put(pair(Duration.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(Instant.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(LocalTime.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(MonthDay.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(YearMonth.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(Period.class, String.class), StringConversions::toString);
@@ -836,7 +835,6 @@ public final class Converter {
 
         // toCharArray
         CONVERSION_DB.put(pair(Void.class, char[].class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Void.class, Character[].class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, char[].class), StringConversions::toCharArray);
         CONVERSION_DB.put(pair(StringBuilder.class, char[].class), StringConversions::toCharArray);
         CONVERSION_DB.put(pair(StringBuffer.class, char[].class), StringConversions::toCharArray);
@@ -844,6 +842,12 @@ public final class Converter {
         CONVERSION_DB.put(pair(CharBuffer.class, char[].class), CharBufferConversions::toCharArray);
         CONVERSION_DB.put(pair(char[].class, char[].class), CharArrayConversions::toCharArray);
         CONVERSION_DB.put(pair(byte[].class, char[].class), ByteArrayConversions::toCharArray);
+
+        // toCharacterArray
+        CONVERSION_DB.put(pair(Void.class, Character[].class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(String.class, Character[].class), StringConversions::toCharacterArray);
+        CONVERSION_DB.put(pair(StringBuffer.class, Character[].class), StringConversions::toCharacterArray);
+        CONVERSION_DB.put(pair(StringBuilder.class, Character[].class), StringConversions::toCharacterArray);
 
         // toCharBuffer
         CONVERSION_DB.put(pair(Void.class, CharBuffer.class), VoidConversions::toNull);
@@ -888,7 +892,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(AtomicBoolean.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(AtomicInteger.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(AtomicLong.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Date.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(Date.class, Map.class), DateConversions::toMap);
         CONVERSION_DB.put(pair(java.sql.Date.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(Timestamp.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(LocalDate.class, Map.class), MapConversions::initMap);

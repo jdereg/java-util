@@ -71,6 +71,7 @@ final class MapConversions {
     static final String MINUTES = "minutes";
     static final String SECOND = "second";
     static final String SECONDS = "seconds";
+    static final String EPOCH_MILLIS = "epochMillis";
     static final String MILLI_SECONDS = "millis";
     static final String NANO = "nano";
     static final String NANOS = "nanos";
@@ -176,7 +177,7 @@ final class MapConversions {
     }
 
     static Date toDate(Object from, Converter converter) {
-        return fromSingleKey(from, converter, TIME, Date.class);
+        return fromSingleKey(from, converter, EPOCH_MILLIS, Date.class);
     }
 
     private static final String[] TIMESTAMP_PARAMS = new String[] { TIME, NANOS };

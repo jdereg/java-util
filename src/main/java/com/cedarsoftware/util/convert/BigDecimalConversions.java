@@ -62,8 +62,7 @@ final class BigDecimalConversions {
         BigDecimal nanos = seconds.multiply(BILLION);
         try {
             return LocalTime.ofNanoOfDay(nanos.longValue());
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new IllegalArgumentException("Input value [" + seconds.toPlainString() + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
         }
     }

@@ -2504,9 +2504,7 @@ class ConverterTest
     @MethodSource("unparseableDates")
     void testUnparseableDates_Date(String date)
     {
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> this.converter.convert(date, Date.class))
-                .withMessageContaining("'dateStr' must not be null or empty String");
+        assertNull(this.converter.convert(date, Date.class));
     }
 
     @ParameterizedTest
@@ -2926,9 +2924,7 @@ class ConverterTest
 
         map.clear();
         map.put("value", "");
-        assertThatThrownBy(() -> converter.convert(map, Date.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("'dateStr' must not be null or empty String");
+        assert null == this.converter.convert(map, Date.class);
 
         map.clear();
         map.put("value", null);
@@ -3186,15 +3182,15 @@ class ConverterTest
 
     private static Stream<Arguments> toChar_numberFormatException() {
         return Stream.of(
-                Arguments.of("45.number", "For input string: \"45.number\""),
-                Arguments.of("AB", "For input string: \"AB\"")
+                Arguments.of("45.number", "Unable to parse '45.number' as a Character"),
+                Arguments.of("AB", "Unable to parse 'AB' as a Character")
         );
     }
 
     @ParameterizedTest()
     @MethodSource("toChar_numberFormatException")
     void testConvertTCharacter_withNumberFormatExceptions(Object initial, String partialMessage) {
-        assertThatExceptionOfType(NumberFormatException.class)
+        assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() ->  this.converter.convert(initial, Character.class))
                 .withMessageContaining(partialMessage);
     }
@@ -3716,8 +3712,8 @@ class ConverterTest
         Date now = new Date();
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(VALUE), now);
-        assert map.get(VALUE).getClass().equals(Date.class);
+        assertEquals(map.get(VALUE), now.getTime());
+        assert map.get(VALUE).getClass().equals(Long.class);
     }
 
     @Test

@@ -1,4 +1,6 @@
 ### Revision History
+* 2.4.3
+  * `Converter` - many more tests added.  Up to about 680 combinations now.  Waiting to release 2.5.0 when all "cross product" of tests are completed.  
 * 2.4.2
   * Fixed compatibility issues with `StringUtilities.` Method parameters changed from String to CharSequence broke backward compatibility.  Linked jars are bound to method signature at compile time, not at runtime. Added both methods where needed.  Removed methods with "Not" in the name.
   * Fixed compatibility issue with `FastByteArrayOutputStream.` The `.getBuffer()` API was removed in favor of toByteArray(). Now both methods exist, leaving `getBuffer()` for backward compatibility.

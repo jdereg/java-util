@@ -13,7 +13,12 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.CompactLinkedMap;
+
+import static com.cedarsoftware.util.convert.Converter.VALUE;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -91,7 +96,13 @@ final class DateConversions {
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalTime();
+        Instant instant = toInstant(from, converter);
+
+        // Convert Instant to LocalDateTime
+        LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, converter.getOptions().getZoneId());
+
+        // Extract the LocalTime from LocalDateTime
+        return localDateTime.toLocalTime();
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
@@ -130,5 +141,12 @@ final class DateConversions {
 //                .toFormatter();
 
         return zonedDateTime.format(formatter);
+    }
+
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        Date date = (Date) from;
+        Map<String, Object> map = new CompactLinkedMap<>();
+        map.put(VALUE, date.getTime());
+        return map;
     }
 }

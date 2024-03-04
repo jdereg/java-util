@@ -34,6 +34,7 @@ public final class ArrayUtilities
 
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     public static final char[] EMPTY_CHAR_ARRAY = new char[0];
+    public static final Character[] EMPTY_CHARACTER_ARRAY = new Character[0];
 
     public static final Class[] EMPTY_CLASS_ARRAY = new Class[0];
 

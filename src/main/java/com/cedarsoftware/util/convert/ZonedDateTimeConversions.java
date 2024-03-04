@@ -12,7 +12,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -79,7 +78,10 @@ final class ZonedDateTimeConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
-        return GregorianCalendar.from((ZonedDateTime) from);
+        ZonedDateTime zdt = (ZonedDateTime) from;
+        Calendar cal = Calendar.getInstance(converter.getOptions().getTimeZone());
+        cal.setTimeInMillis(zdt.toInstant().toEpochMilli());
+        return cal;
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {

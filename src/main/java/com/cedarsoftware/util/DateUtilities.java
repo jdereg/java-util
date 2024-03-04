@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 import java.util.Map;
 import java.util.TimeZone;
@@ -91,6 +90,7 @@ public final class DateUtilities {
     private static final String wsOrComma = "[ ,]+";
     private static final String tzUnix = "[A-Z]{1,3}";
     private static final String tz_Hh_MM = "[+-]\\d{1,2}:\\d{2}";
+    private static final String tz_Hh_MM_SS = "[+-]\\d{1,2}:\\d{2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
     private static final String tz_Hh = "[+-]\\d{1,2}";
     private static final String tzNamed = wsOp + "\\[?[A-Za-z][A-Za-z0-9~\\/._+-]+]?";
@@ -112,7 +112,7 @@ public final class DateUtilities {
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern timePattern = Pattern.compile(
-            "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
+            "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", Pattern.CASE_INSENSITIVE);
@@ -155,32 +155,33 @@ public final class DateUtilities {
      * timezone used when one is not specified.
      * @param dateStr String containing a date.  If there is excess content, it will throw an IllegalArgumentException.
      * @return Date instance that represents the passed in date.  See comments at top of class for supported
-     * formats.  This API is intended to be super flexible in terms of what it can parse.  If a null or empty String is
+     * formats.  This API is intended to be super flexible in terms of what it can parse. If a null or empty String is
      * passed in, null will be returned.
      */
     public static Date parseDate(String dateStr) {
-        if (StringUtilities.isWhitespace(dateStr)) {
+        if (StringUtilities.isEmpty(dateStr)) {
             return null;
         }
         Instant instant;
-        TemporalAccessor dateTime = parseDate(dateStr, ZoneId.systemDefault(), true);
+        ZonedDateTime dateTime = parseDate(dateStr, ZoneId.systemDefault(), true);
         instant = Instant.from(dateTime);
-        Date date = Date.from(instant);
-        return date;
+        return Date.from(instant);
     }
 
     /**
      * Main API. Retrieve date-time from passed in String.  The boolean ensureDateTimeAlone, if set true, ensures that
      * no other non-date content existed in the String.
-     * @param dateStr String containing a date.  See DateUtilities class Javadoc for all the supported formats.  Cannot
-     *                be null or empty String.
+     * @param dateStr String containing a date.  See DateUtilities class Javadoc for all the supported formats.
      * @param defaultZoneId ZoneId to use if no timezone offset or name is given.  Cannot be null.
      * @param ensureDateTimeAlone If true, if there is excess non-Date content, it will throw an IllegalArgument exception.
      * @return ZonedDateTime instance converted from the passed in date String.  See comments at top of class for supported
-     * formats.  This API is intended to be super flexible in terms of what it can parse. 
+     * formats.  This API is intended to be super flexible in terms of what it can parse. If a null or empty String is
+     * passed in, null will be returned.
      */
     public static ZonedDateTime parseDate(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
-        Convention.throwIfNullOrEmpty(dateStr, "'dateStr' must not be null or empty String.");
+        if (StringUtilities.isEmpty(dateStr)) {
+            return null;
+        }
         Convention.throwIfNull(defaultZoneId, "ZoneId cannot be null.  Use ZoneId.of(\"America/New_York\"), ZoneId.systemDefault(), etc.");
         dateStr = dateStr.trim();
 
@@ -355,7 +356,7 @@ public final class DateUtilities {
         if (StringUtilities.length(remnant) > 0) {
             remnant = remnant.replaceAll("T|,", "").trim();
             if (!remnant.isEmpty()) {
-                    throw new IllegalArgumentException("Issue parsing date-time, other characters present: " + remnant);
+                throw new IllegalArgumentException("Issue parsing date-time, other characters present: " + remnant);
             }
         }
     }

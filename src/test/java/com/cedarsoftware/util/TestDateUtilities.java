@@ -52,21 +52,25 @@ class TestDateUtilities
         Date t32 = DateUtilities.parseDate("2013-08-30T22:00-00:00");
         Date t42 = DateUtilities.parseDate("2013-08-30T22:00+0000");
         Date t52 = DateUtilities.parseDate("2013-08-30T22:00-0000");
+        Date t62 = DateUtilities.parseDate("2013-08-30T22:00+00:00:01");
         assertEquals(t12, t22);
         assertEquals(t22, t32);
         assertEquals(t32, t42);
         assertEquals(t42, t52);
+        assertNotEquals(t52, t62);
 
         Date t11 = DateUtilities.parseDate("2013-08-30T22:00:00Z");
         Date t21 = DateUtilities.parseDate("2013-08-30T22:00:00+00:00");
         Date t31 = DateUtilities.parseDate("2013-08-30T22:00:00-00:00");
         Date t41 = DateUtilities.parseDate("2013-08-30T22:00:00+0000");
         Date t51 = DateUtilities.parseDate("2013-08-30T22:00:00-0000");
+        Date t61 = DateUtilities.parseDate("2013-08-30T22:00:00-00:00:00");
         assertEquals(t11, t12);
         assertEquals(t11, t21);
         assertEquals(t21, t31);
         assertEquals(t31, t41);
         assertEquals(t41, t51);
+        assertEquals(t51, t61);
 
         Date t1 = DateUtilities.parseDate("2013-08-30T22:00:00.0Z");
         Date t2 = DateUtilities.parseDate("2013-08-30T22:00:00.0+00:00");

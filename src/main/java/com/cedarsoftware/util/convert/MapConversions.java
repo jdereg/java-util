@@ -393,7 +393,7 @@ final class MapConversions {
         if (map.containsKey(SECONDS)) {
             ConverterOptions options = converter.getOptions();
             long sec = converter.convert(map.get(SECONDS), long.class);
-            long nanos = converter.convert(map.get(NANOS), long.class);
+            int nanos = converter.convert(map.get(NANOS), int.class);
             return Duration.ofSeconds(sec, nanos);
         } else {
             return fromValueForMultiKey(from, converter, Duration.class, DURATION_PARAMS);

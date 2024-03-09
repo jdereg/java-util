@@ -911,7 +911,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Calendar.class, Map.class), CalendarConversions::toMap);
         CONVERSION_DB.put(pair(Number.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(Map.class, Map.class), MapConversions::toMap);
-        CONVERSION_DB.put(pair(Enum.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(Enum.class, Map.class), EnumConversions::toMap);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Map.class), OffsetDateTimeConversions::toMap);
         CONVERSION_DB.put(pair(Year.class, Map.class), YearConversions::toMap);
     }

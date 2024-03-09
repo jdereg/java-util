@@ -27,16 +27,14 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-final class DurationConversions {
+final class EnumConversions {
 
-    private DurationConversions() {}
+    private EnumConversions() {}
 
     static Map toMap(Object from, Converter converter) {
-        long sec = ((Duration) from).getSeconds();
-        int nanos = ((Duration) from).getNano();
+        Enum enumInstance = (Enum) from;
         Map<String, Object> target = new CompactLinkedMap<>();
-        target.put("seconds", sec);
-        target.put("nanos", nanos);
+        target.put("name", enumInstance.name());
         return target;
     }
 

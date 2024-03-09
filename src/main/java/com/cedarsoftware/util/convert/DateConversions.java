@@ -42,7 +42,8 @@ final class DateConversions {
     private DateConversions() {}
     
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        return Instant.ofEpochMilli(toLong(from, converter)).atZone(converter.getOptions().getZoneId());
+        Date date = (Date) from;
+        return Instant.ofEpochMilli(date.getTime()).atZone(converter.getOptions().getZoneId());
     }
 
     static long toLong(Object from, Converter converter) {

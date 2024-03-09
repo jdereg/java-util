@@ -1,4 +1,6 @@
 ### Revision History
+* 2.4.4
+  * `Converter` - Enum test added.  683 combinations.
 * 2.4.3
   * `DateUtilities` - now supports timezone offset with seconds component (rarer than seeing a bald eagle in your backyard).  
   * `Converter` - many more tests added...682 combinations.  

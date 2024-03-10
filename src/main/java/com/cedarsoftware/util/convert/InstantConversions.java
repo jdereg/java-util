@@ -38,7 +38,7 @@ final class InstantConversions {
     
     static Map toMap(Object from, Converter converter) {
         long sec = ((Instant) from).getEpochSecond();
-        long nanos = ((Instant) from).getNano();
+        int nanos = ((Instant) from).getNano();
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("seconds", sec);
         target.put("nanos", nanos);
@@ -67,7 +67,7 @@ final class InstantConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        return new Timestamp(toLong(from, converter));
+        return Timestamp.from((Instant) from);
     }
     
     static java.sql.Date toSqlDate(Object from, Converter converter) {

@@ -1,4 +1,6 @@
 ### Revision History
+* 2.4.5
+  * Added `ReflectionUtils.getDeclaredFields()` which gets fields from a `Class`, including an `Enum`, and special handles enum so that system fields are not returned.
 * 2.4.4
   * `Converter` - Enum test added.  683 combinations.
 * 2.4.3

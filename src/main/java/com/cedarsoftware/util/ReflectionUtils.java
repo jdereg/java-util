@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,6 +49,7 @@ public final class ReflectionUtils
     private static final ConcurrentMap<String, Method> METHOD_MAP2 = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Method> METHOD_MAP3 = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, Constructor<?>> CONSTRUCTORS = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<Class<?>, List<Field>> FIELD_META_CACHE = new ConcurrentHashMap<>();
 
     private ReflectionUtils()
     {
@@ -161,6 +163,13 @@ public final class ReflectionUtils
         {
             return null;
         }
+    }
+
+    /**
+     * Retrieve the declared fields on a Class.
+     */
+    public static List<Field> getDeclaredFields(final Class<?> c) {
+        return FIELD_META_CACHE.computeIfAbsent(c, ReflectionUtils::buildDeclaredFields);
     }
 
     /**
@@ -615,9 +624,29 @@ public final class ReflectionUtils
         return className.replace('/', '.');
     }
 
-    protected static String getClassLoaderName(Class<?> c)
+    static String getClassLoaderName(Class<?> c)
     {
         ClassLoader loader = c.getClassLoader();
         return loader == null ? "bootstrap" : loader.toString();
     }
+
+    private static List<Field> buildDeclaredFields(final Class<?> c) {
+        Convention.throwIfNull(c, "class cannot be null");
+
+        Field[] fields = c.getDeclaredFields();
+        List<Field> list = new ArrayList<>(fields.length);
+
+        for (Field field : fields) {
+            if (Modifier.isStatic(field.getModifiers()) ||
+                    (field.getDeclaringClass().isEnum() && ("internal".equals(field.getName()) || "ENUM$VALUES".equals(field.getName()))) ||
+                    (field.getDeclaringClass().isAssignableFrom(Enum.class) && ("hash".equals(field.getName()) || "ordinal".equals(field.getName())))) {
+                continue;
+            }
+
+            list.add(field);
+        }
+
+        return list;
+    }
+
 }

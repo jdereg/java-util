@@ -15,7 +15,7 @@ The classes in the`.jar`file are version 52 (`JDK 1.8`).
 To include in your project:
 ##### GradleF
 ```
-implementation 'com.cedarsoftware:java-util:2.4.4'
+implementation 'com.cedarsoftware:java-util:2.4.5'
 ```
 
 ##### Maven
@@ -23,7 +23,7 @@ implementation 'com.cedarsoftware:java-util:2.4.4'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.4.4</version>
+  <version>2.4.5</version>
 </dependency>
 ```
 ---

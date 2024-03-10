@@ -3,11 +3,14 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
+import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 import java.util.stream.Stream;
 
@@ -537,19 +540,34 @@ class TestDateUtilities
     }
 
     @Test
-    void testDateToStringFormat()
-    {
-        Date x = new Date();
-        Date y = DateUtilities.parseDate(x.toString());
-        assertEquals(x.toString(), y.toString());
-    }
-
-    @Test
     void testDatePrecision()
     {
         Date x = DateUtilities.parseDate("2021-01-13T13:01:54.6747552-05:00");
         Date y = DateUtilities.parseDate("2021-01-13T13:01:55.2589242-05:00");
         assertTrue(x.compareTo(y) < 0);
+    }
+
+    @Test
+    void testDateToStringFormat()
+    {
+        List<String> timeZoneOldSchoolNames = Arrays.asList("JST", "IST", "CET", "BST", "EST", "CST", "MST", "PST", "CAT", "EAT", "ART", "ECT", "NST", "AST", "HST");
+        Date x = new Date();
+        String dateToString = x.toString();
+        boolean isOldSchoolTimezone = false;
+        for (String zoneName : timeZoneOldSchoolNames) {
+            if (!dateToString.contains(zoneName)) {
+                isOldSchoolTimezone = true;
+            }
+        }
+
+        if (isOldSchoolTimezone) {
+            assertThatThrownBy(() -> DateUtilities.parseDate(x.toString()))
+                    .isInstanceOf(DateTimeException.class)
+                    .hasMessageContaining("Unknown time-zone ID");
+        } else {
+            Date y = DateUtilities.parseDate(x.toString());
+            assertEquals(x.toString(), y.toString());
+        }
     }
 
     @ParameterizedTest

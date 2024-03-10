@@ -236,6 +236,9 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Duration.class, Map.class), new Object[][] {
                 { Duration.ofMillis(-1), mapOf("seconds", -1L, "nanos", 999000000)},
         });
+        TEST_DB.put(pair(Instant.class, Map.class), new Object[][] {
+                { Instant.parse("2024-03-10T11:07:00.123456789Z"), mapOf("seconds", 1710068820L, "nanos", 123456789)},
+        });
         TEST_DB.put(pair(Character.class, Map.class), new Object[][]{
                 {(char) 0, mapOf(VALUE, (char)0)},
                 {(char) 1, mapOf(VALUE, (char)1)},
@@ -678,6 +681,14 @@ class ConverterEverythingTest {
                 {BigDecimal.valueOf(86400), ZonedDateTime.parse("1970-01-02T00:00:00Z").withZoneSameInstant(TOKYO_Z), true},
                 {new BigDecimal("86400.000000001"), ZonedDateTime.parse("1970-01-02T00:00:00.000000001Z").withZoneSameInstant(TOKYO_Z), true},
         });
+        TEST_DB.put(pair(Instant.class, ZonedDateTime.class), new Object[][]{
+                {Instant.ofEpochSecond(-62167219200L), ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), true},
+                {Instant.ofEpochSecond(-62167219200L, 1), ZonedDateTime.parse("0000-01-01T00:00:00.000000001Z").withZoneSameInstant(TOKYO_Z), true},
+                {Instant.ofEpochSecond(0, -1), ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z").withZoneSameInstant(TOKYO_Z), true},
+                {Instant.ofEpochSecond(0, 0), ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), true},
+                {Instant.ofEpochSecond(0, 1), ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").withZoneSameInstant(TOKYO_Z), true},
+                {Instant.parse("2024-03-10T11:43:00Z"), ZonedDateTime.parse("2024-03-10T11:43:00Z").withZoneSameInstant(TOKYO_Z), true},
+        });
     }
 
     /**
@@ -917,6 +928,15 @@ class ConverterEverythingTest {
                 {Duration.ofNanos(1199145600000000001L), Timestamp.from(Instant.parse("2008-01-01T00:00:00.000000001Z")), true},
                 {Duration.ofNanos(1708255140987654321L), Timestamp.from(Instant.parse("2024-02-18T11:19:00.987654321Z")), true},
                 {Duration.ofNanos(2682374400000000001L), Timestamp.from(Instant.parse("2055-01-01T00:00:00.000000001Z")), true},
+        });
+        TEST_DB.put(pair(Instant.class, Timestamp.class), new Object[][]{
+                {Instant.ofEpochSecond(-62167219200L), Timestamp.from(Instant.parse("0000-01-01T00:00:00Z")), true},
+                {Instant.ofEpochSecond(-62167219200L, 1), Timestamp.from(Instant.parse("0000-01-01T00:00:00.000000001Z")), true},
+                {Instant.ofEpochSecond(0, -1), Timestamp.from(Instant.parse("1969-12-31T23:59:59.999999999Z")), true},
+                {Instant.ofEpochSecond(0, 0), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000000Z")), true},
+                {Instant.ofEpochSecond(0, 1), Timestamp.from(Instant.parse("1970-01-01T00:00:00.000000001Z")), true},
+                {Instant.parse("2024-03-10T11:36:00Z"), Timestamp.from(Instant.parse("2024-03-10T11:36:00Z")), true},
+                {Instant.parse("2024-03-10T11:36:00.123456789Z"), Timestamp.from(Instant.parse("2024-03-10T11:36:00.123456789Z")), true},
         });
         // No symmetry checks - because an OffsetDateTime of "2024-02-18T06:31:55.987654321+00:00" and "2024-02-18T15:31:55.987654321+09:00" are equivalent but not equals. They both describe the same Instant.
         TEST_DB.put(pair(OffsetDateTime.class, Timestamp.class), new Object[][]{
@@ -1874,16 +1894,16 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Long.class, Boolean.class), new Object[][]{
                 {-2L, true},
                 {-1L, true},
-                {0L, false},
-                {1L, true},
+                {0L, false, true},
+                {1L, true, true},
                 {2L, true},
         });
         TEST_DB.put(pair(Float.class, Boolean.class), new Object[][]{
                 {-2f, true},
                 {-1.5f, true},
                 {-1f, true},
-                {0f, false},
-                {1f, true},
+                {0f, false, true},
+                {1f, true, true},
                 {1.5f, true},
                 {2f, true},
         });
@@ -1891,8 +1911,8 @@ class ConverterEverythingTest {
                 {-2.0, true},
                 {-1.5, true},
                 {-1.0, true},
-                {0.0, false},
-                {1.0, true},
+                {0.0, false, true},
+                {1.0, true, true},
                 {1.5, true},
                 {2.0, true},
         });
@@ -2022,10 +2042,6 @@ class ConverterEverythingTest {
                 {Double.MIN_VALUE, Double.MIN_VALUE},
                 {Double.MAX_VALUE, Double.MAX_VALUE},
                 {-Double.MAX_VALUE, -Double.MAX_VALUE},
-        });
-        TEST_DB.put(pair(Boolean.class, Double.class), new Object[][]{
-                {true, 1.0},
-                {false, 0.0},
         });
         TEST_DB.put(pair(Duration.class, Double.class), new Object[][]{
                 {Duration.ofSeconds(-1, -1), -1.000000001, true},
@@ -2214,10 +2230,6 @@ class ConverterEverythingTest {
                 {(double) Float.MAX_VALUE, Float.MAX_VALUE},
                 {(double) -Float.MAX_VALUE, -Float.MAX_VALUE},
         });
-        TEST_DB.put(pair(Boolean.class, Float.class), new Object[][]{
-                {true, 1f},
-                {false, 0f}
-        });
         TEST_DB.put(pair(BigDecimal.class, Float.class), new Object[][]{
                 {new BigDecimal("-1"), -1f, true},
                 {new BigDecimal("-1.1"), -1.1f},        // no reverse - IEEE 754 rounding errors
@@ -2334,10 +2346,6 @@ class ConverterEverythingTest {
                 {1.999, 1L},
                 {-9223372036854775808.0, Long.MIN_VALUE},
                 {9223372036854775807.0, Long.MAX_VALUE},
-        });
-        TEST_DB.put(pair(Boolean.class, Long.class), new Object[][]{
-                {true, 1L},
-                {false, 0L},
         });
         TEST_DB.put(pair(AtomicBoolean.class, Long.class), new Object[][]{
                 {new AtomicBoolean(true), 1L},

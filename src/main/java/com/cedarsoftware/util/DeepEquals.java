@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -652,7 +653,7 @@ public class DeepEquals
     }
 
     /**
-     * Correctly handles floating point comparisions. <br>
+     * Correctly handles floating point comparisons. <br>
      * source: http://floating-point-gui.de/errors/comparison/
      *
      * @param a       first number
@@ -728,77 +729,116 @@ public class DeepEquals
      *
      * This method will handle cycles correctly (A-&gt;B-&gt;C-&gt;A).  In this case,
      * Starting with object A, B, or C would yield the same hashCode.  If an
-     * object encountered (root, suboject, etc.) has a hashCode() method on it
+     * object encountered (root, sub-object, etc.) has a hashCode() method on it
      * (that is not Object.hashCode()), that hashCode() method will be called
      * and it will stop traversal on that branch.
      * @param obj Object who hashCode is desired.
      * @return the 'deep' hashCode value for the passed in object.
      */
-    public static int deepHashCode(Object obj)
-    {
+    public static int deepHashCode(Object obj) {
         Set<Object> visited = new HashSet<>();
+        return deepHashCode(obj, visited);
+    }
+
+    private static int deepHashCode(Object obj, Set<Object> visited) {
         LinkedList<Object> stack = new LinkedList<>();
         stack.addFirst(obj);
         int hash = 0;
 
-        while (!stack.isEmpty())
-        {
+        while (!stack.isEmpty()) {
             obj = stack.removeFirst();
-            if (obj == null || visited.contains(obj))
-            {
+            if (obj == null || visited.contains(obj)) {
                 continue;
             }
 
             visited.add(obj);
 
-            if (obj.getClass().isArray())
-            {
+            // Ensure array order matters to hash
+            if (obj.getClass().isArray()) {
                 final int len = Array.getLength(obj);
-                for (int i = 0; i < len; i++)
-                {
-                    stack.addFirst(Array.get(obj, i));
+                long result = 1;
+
+                for (int i = 0; i < len; i++) {
+                    Object element = Array.get(obj, i);
+                    result =  31 * result + deepHashCode(element, visited); // recursive
                 }
+                hash += (int) result;
                 continue;
             }
 
-            if (obj instanceof Collection)
-            {
-                stack.addAll(0, (Collection<?>)obj);
+            // Ensure list order matters to hash
+            if (obj instanceof List) {
+                List<?> list = (List<?>) obj;
+                long result = 1;
+
+                for (Object element : list) {
+                    result = 31 * result + deepHashCode(element, visited);  // recursive
+                }
+                hash += (int) result;
                 continue;
             }
 
-            if (obj instanceof Map)
-            {
-                stack.addAll(0, ((Map<?, ?>)obj).keySet());
-                stack.addAll(0, ((Map<?, ?>)obj).values());
+            if (obj instanceof Collection) {
+                stack.addAll(0, (Collection<?>) obj);
                 continue;
             }
 
-            if (obj instanceof Double || obj instanceof Float)
-            {
-                // just take the integral value for hashcode
-                // equality tests things more comprehensively
-                stack.add(Math.round(((Number) obj).doubleValue()));
+            if (obj instanceof Map) {
+                stack.addAll(0, ((Map<?, ?>) obj).keySet());
+                stack.addAll(0, ((Map<?, ?>) obj).values());
                 continue;
             }
 
-            if (hasCustomHashCode(obj.getClass()))
-            {   // A real hashCode() method exists, call it.
+            // Protects Floats and Doubles from causing inequality, even if there are within an epsilon distance
+            // of one another.  It does this by marshalling values of IEEE 754 numbers to coarser grained resolution,
+            // allowing for dynamic range on obviously different values, but identical values for IEEE 754 values
+            // that are near each other. Since hashes do not have to be unique, this upholds the hashCode()
+            // contract...two hash values that are not the same guarantee the objects are not equal, however, two
+            // values that are the same mean the two objects COULD be equals.
+            if (obj instanceof Float) {
+                hash += hashFloat((Float) obj);
+                continue;
+            } else if (obj instanceof Double) {
+                hash += hashDouble((Double) obj);
+                continue;
+            }
+
+            if (hasCustomHashCode(obj.getClass())) {   // A real hashCode() method exists, call it.
                 hash += obj.hashCode();
                 continue;
             }
 
             Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(obj.getClass());
-            for (Field field : fields)
-            {
-                try
-                {
+            for (Field field : fields) {
+                try {
                     stack.addFirst(field.get(obj));
+                } catch (Exception ignored) {
                 }
-                catch (Exception ignored) { }
             }
         }
         return hash;
+    }
+
+    private static final double SCALE_DOUBLE = Math.pow(10, 10);
+
+    private static int hashDouble(double value) {
+        // Normalize the value to a fixed precision
+        double normalizedValue = Math.round(value * SCALE_DOUBLE) / SCALE_DOUBLE;
+        // Convert to long for hashing
+        long bits = Double.doubleToLongBits(normalizedValue);
+        // Standard way to hash a long in Java
+        return (int)(bits ^ (bits >>> 32));
+    }
+
+    private static final float SCALE_FLOAT = (float)Math.pow(10, 5); // Scale according to epsilon for float
+
+    private static int hashFloat(float value) {
+        // Normalize the value to a fixed precision
+        float normalizedValue = Math.round(value * SCALE_FLOAT) / SCALE_FLOAT;
+        // Convert to int for hashing, as float bits can be directly converted
+        int bits = Float.floatToIntBits(normalizedValue);
+        // Return the hash
+        return bits;
     }
 
     /**

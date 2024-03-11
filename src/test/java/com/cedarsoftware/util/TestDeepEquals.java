@@ -284,6 +284,19 @@ public class TestDeepEquals
 	}
 
 	@Test
+	public void testArrayOrder()
+    {
+		int array1[] = { 3, 4, 7 };
+		int array2[] = { 7, 3, 4 };
+
+        int x = DeepEquals.deepHashCode(array1);
+        int y = DeepEquals.deepHashCode(array2);
+        assertNotEquals(x, y);
+
+        assertFalse(DeepEquals.deepEquals(array1, array2));
+	}
+
+	@Test
 	public void testOrderedCollection()
     {
         List<String> a = asList("one", "two", "three", "four", "five");
@@ -304,7 +317,27 @@ public class TestDeepEquals
 		assertTrue(DeepEquals.deepEquals(x1, x2));
 	}
 
-	@Test
+    @Test
+    public void testOrderedDoubleCollection() {
+        List<Number> aa = asList(log(pow(E, 2)), tan(PI / 4));
+        List<Number> bb = asList(2.0, 1.0);
+        List<Number> cc = asList(1.0, 2.0);
+        assertEquals(DeepEquals.deepHashCode(aa), DeepEquals.deepHashCode(bb));
+        assertNotEquals(DeepEquals.deepHashCode(aa), DeepEquals.deepHashCode(cc));
+        assertNotEquals(DeepEquals.deepHashCode(bb), DeepEquals.deepHashCode(cc));
+    }
+
+    @Test
+    public void testOrderedFloatCollection() {
+        List<Number> aa = asList((float)log(pow(E, 2)), (float)tan(PI / 4));
+        List<Number> bb = asList(2.0f, 1.0f);
+        List<Number> cc = asList(1.0f, 2.0f);
+        assertEquals(DeepEquals.deepHashCode(aa), DeepEquals.deepHashCode(bb));
+        assertNotEquals(DeepEquals.deepHashCode(aa), DeepEquals.deepHashCode(cc));
+        assertNotEquals(DeepEquals.deepHashCode(bb), DeepEquals.deepHashCode(cc));
+    }
+
+    @Test
 	public void testUnorderedCollection()
     {
         Set<String> a = new HashSet<>(asList("one", "two", "three", "four", "five"));
@@ -317,10 +350,20 @@ public class TestDeepEquals
 		Set<Integer> d = new HashSet<>(asList(4, 2, 6));
 		assertFalse(DeepEquals.deepEquals(c, d));
 
-		Set<Class1> x1 = new HashSet<>(asList(new Class1(true, log(pow(E, 2)), 6), new Class1(true, tan(PI / 4), 1)));
-		Set<Class1> x2 = new HashSet<>(asList(new Class1(true, 1, 1), new Class1(true, 2, 6)));
-		assertTrue(DeepEquals.deepEquals(x1, x2));
+		Set<Class1> x1 = new LinkedHashSet<>();
+        x1.add(new Class1(true, log(pow(E, 2)), 6));
+        x1.add(new Class1(true, tan(PI / 4), 1));
+        
+		Set<Class1> x2 = new HashSet<>();
+        x2.add(new Class1(true, 1, 1));
+        x2.add(new Class1(true, 2, 6));
 
+        int x = DeepEquals.deepHashCode(x1);
+        int y = DeepEquals.deepHashCode(x2);
+
+        assertEquals(x, y);
+        assertTrue(DeepEquals.deepEquals(x1, x2));
+        
 		// Proves that objects are being compared against the correct objects in each collection (all objects have same
         // hash code, so the unordered compare must handle checking item by item for hash-collided items)
 		Set<DumbHash> d1 = new LinkedHashSet<>();
@@ -339,6 +382,21 @@ public class TestDeepEquals
         d2.add(new DumbHash("alpha"));
         d2.add(new DumbHash("delta"));
         assert !DeepEquals.deepEquals(d2, d1);
+    }
+
+    @Test
+    public void testSetOrder() {
+        Set<String> a = new LinkedHashSet<>();
+        Set<String> b = new LinkedHashSet<>();
+        a.add("a");
+        a.add("b");
+        a.add("c");
+
+        b.add("c");
+        b.add("a");
+        b.add("b");
+        assertEquals(DeepEquals.deepHashCode(a), DeepEquals.deepHashCode(b));
+        assertTrue(DeepEquals.deepEquals(a, b));
     }
 
     @SuppressWarnings("unchecked")

@@ -192,6 +192,11 @@ class ConverterEverythingTest {
                 {(byte)1, mapOf(VALUE, (byte)1)},
                 {(byte)2, mapOf(VALUE, (byte)2)}
         });
+        TEST_DB.put(pair(Integer.class, Map.class), new Object[][]{
+                {-1, mapOf(VALUE, -1)},
+                {0, mapOf(VALUE, 0)},
+                {1, mapOf(VALUE, 1)}
+        });
         TEST_DB.put(pair(Float.class, Map.class), new Object[][]{
                 {1.0f, mapOf(VALUE, 1.0f)},
                 {2.0f, mapOf(VALUE, 2.0f)}
@@ -261,6 +266,23 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, AtomicBoolean.class), new Object[][]{
                 {null, null}
         });
+        TEST_DB.put(pair(Integer.class, AtomicBoolean.class), new Object[][]{
+                {-1, new AtomicBoolean(true)},
+                {0, new AtomicBoolean(false), true},
+                {1, new AtomicBoolean(true), true},
+        });
+        TEST_DB.put(pair(Float.class, AtomicBoolean.class), new Object[][]{
+                {1.9f, new AtomicBoolean(true)},
+                {1.0f, new AtomicBoolean(true), true},
+                {-1.0f, new AtomicBoolean(true)},
+                {0.0f, new AtomicBoolean(false), true},
+        });
+        TEST_DB.put(pair(Double.class, AtomicBoolean.class), new Object[][]{
+                {1.1, new AtomicBoolean(true)},
+                {1.0, new AtomicBoolean(true), true},
+                {-1.0, new AtomicBoolean(true)},
+                {0.0, new AtomicBoolean(false), true},
+        });
         TEST_DB.put(pair(AtomicBoolean.class, AtomicBoolean.class), new Object[][] {
                 { new AtomicBoolean(false), new AtomicBoolean(false)},
                 { new AtomicBoolean(true), new AtomicBoolean(true)},
@@ -274,18 +296,6 @@ class ConverterEverythingTest {
                 { new AtomicLong((byte)-1), new AtomicBoolean(true)},
                 { new AtomicLong((byte)0), new AtomicBoolean(false), true},
                 { new AtomicLong((byte)1), new AtomicBoolean(true), true},
-        });
-        TEST_DB.put(pair(Float.class, AtomicBoolean.class), new Object[][]{
-                {1.9f, new AtomicBoolean(true)},
-                {1.0f, new AtomicBoolean(true), true},
-                {-1.0f, new AtomicBoolean(true)},
-                {0.0f, new AtomicBoolean(false), true},
-        });
-        TEST_DB.put(pair(Double.class, AtomicBoolean.class), new Object[][]{
-                {1.1, new AtomicBoolean(true)},
-                {1.0, new AtomicBoolean(true), true},
-                {-1.0, new AtomicBoolean(true)},
-                {0.0, new AtomicBoolean(false), true},
         });
         TEST_DB.put(pair(BigInteger.class, AtomicBoolean.class), new Object[][] {
                 { BigInteger.valueOf(-1), new AtomicBoolean(true)},
@@ -325,6 +335,13 @@ class ConverterEverythingTest {
     private static void loadAtomicIntegerTests() {
         TEST_DB.put(pair(Void.class, AtomicInteger.class), new Object[][]{
                 {null, null}
+        });
+        TEST_DB.put(pair(Integer.class, AtomicInteger.class), new Object[][]{
+                {-1, new AtomicInteger(-1)},
+                {0, new AtomicInteger(0), true},
+                {1, new AtomicInteger(1), true},
+                {Integer.MIN_VALUE, new AtomicInteger(-2147483648)},
+                {Integer.MAX_VALUE, new AtomicInteger(2147483647)},
         });
         TEST_DB.put(pair(AtomicInteger.class, AtomicInteger.class), new Object[][] {
                 { new AtomicInteger(1), new AtomicInteger((byte)1), true}
@@ -712,7 +729,16 @@ class ConverterEverythingTest {
                     cal.set(2024, Calendar.MARCH, 2, 22, 54, 17);
                     cal.set(Calendar.MILLISECOND, 0);
                     return cal;
-                }, LocalDateTime.of(2024, Month.MARCH, 2, 22, 54, 17), true }
+                }, LocalDateTime.of(2024, Month.MARCH, 2, 22, 54, 17), true}
+        });
+        TEST_DB.put(pair(java.sql.Date.class, LocalDateTime.class), new Object[][]{
+                {new java.sql.Date(-62167219200000L), ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+                {new java.sql.Date(-62167219199999L), ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+                {new java.sql.Date(-1000L), ZonedDateTime.parse("1969-12-31T23:59:59Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+                {new java.sql.Date(-1L), ZonedDateTime.parse("1969-12-31T23:59:59.999Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+                {new java.sql.Date(0L), ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+                {new java.sql.Date(1L), ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
+                {new java.sql.Date(999L), ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
         });
         TEST_DB.put(pair(Instant.class, LocalDateTime.class), new Object[][] {
                 {Instant.parse("0000-01-01T00:00:00Z"), ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
@@ -1239,6 +1265,17 @@ class ConverterEverythingTest {
                 {new Date(0), new java.sql.Date(0), true },
                 {new Date(1), new java.sql.Date(1), true },
                 {new Date(Long.MAX_VALUE), new java.sql.Date(Long.MAX_VALUE), true },
+        });
+        TEST_DB.put(pair(LocalDate.class, java.sql.Date.class), new Object[][] {
+                {ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-62167252739000L), true},
+                {ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-62167252739000L), true},
+                {ZonedDateTime.parse("1969-12-31T14:59:59.999Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-118800000L), true},
+                {ZonedDateTime.parse("1969-12-31T15:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-32400000L), true},
+                {ZonedDateTime.parse("1969-12-31T23:59:59.999Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-32400000L), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-32400000L), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-32400000L), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-32400000L), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-32400000L), true},
         });
         TEST_DB.put(pair(Calendar.class, java.sql.Date.class), new Object[][] {
                 {(Supplier<Calendar>) () -> {
@@ -2600,17 +2637,6 @@ class ConverterEverythingTest {
                 {-2147483648.0, Integer.MIN_VALUE},
                 {2147483647.0, Integer.MAX_VALUE},
         });
-        TEST_DB.put(pair(AtomicBoolean.class, Integer.class), new Object[][]{
-                {new AtomicBoolean(true), 1},
-                {new AtomicBoolean(false), 0},
-        });
-        TEST_DB.put(pair(AtomicInteger.class, Integer.class), new Object[][]{
-                {new AtomicInteger(-1), -1},
-                {new AtomicInteger(0), 0},
-                {new AtomicInteger(1), 1},
-                {new AtomicInteger(-2147483648), Integer.MIN_VALUE},
-                {new AtomicInteger(2147483647), Integer.MAX_VALUE},
-        });
         TEST_DB.put(pair(AtomicLong.class, Integer.class), new Object[][]{
                 {new AtomicLong(-1), -1, true},
                 {new AtomicLong(0), 0, true},
@@ -2628,17 +2654,17 @@ class ConverterEverythingTest {
                 {new BigInteger("2147483648"), Integer.MIN_VALUE},
         });
         TEST_DB.put(pair(BigDecimal.class, Integer.class), new Object[][]{
-                {new BigDecimal("-1"), -1},
+                {new BigDecimal("-1"), -1, true},
                 {new BigDecimal("-1.1"), -1},
                 {new BigDecimal("-1.9"), -1},
-                {BigDecimal.ZERO, 0},
-                {new BigDecimal("1"), 1},
+                {BigDecimal.ZERO, 0, true},
+                {new BigDecimal("1"), 1, true},
                 {new BigDecimal("1.1"), 1},
                 {new BigDecimal("1.9"), 1},
-                {new BigDecimal("-2147483648"), Integer.MIN_VALUE},
-                {new BigDecimal("2147483647"), Integer.MAX_VALUE},
-                {new BigDecimal("-2147483649"), Integer.MAX_VALUE},
-                {new BigDecimal("2147483648"), Integer.MIN_VALUE},
+                {new BigDecimal("-2147483648"), Integer.MIN_VALUE, true},
+                {new BigDecimal("2147483647"), Integer.MAX_VALUE, true},
+                {new BigDecimal("-2147483649"), Integer.MAX_VALUE},       // wrap around test
+                {new BigDecimal("2147483648"), Integer.MIN_VALUE},        // wrap around test
         });
         TEST_DB.put(pair(Number.class, Integer.class), new Object[][]{
                 {-2L, -2},

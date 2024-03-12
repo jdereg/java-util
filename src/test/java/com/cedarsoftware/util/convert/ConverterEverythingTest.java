@@ -238,6 +238,17 @@ class ConverterEverythingTest {
                 { new Date(now), mapOf(VALUE, now), true},
                 { new Date(1L), mapOf(VALUE, 1L), true},
         });
+        TEST_DB.put(pair(LocalDate.class, Map.class), new Object[][] {
+                {LocalDate.parse("1969-12-31"), mapOf(VALUE, "1969-12-31"), true},
+                {LocalDate.parse("1970-01-01"), mapOf(VALUE, "1970-01-01"), true},
+                {LocalDate.parse("1970-01-02"), mapOf(VALUE, "1970-01-02"), true},
+        });
+        TEST_DB.put(pair(java.sql.Date.class, Map.class), new Object[][] {
+                { new java.sql.Date(-1L), mapOf(VALUE, -1L), true},
+                { new java.sql.Date(0L), mapOf(VALUE, 0L), true},
+                { new java.sql.Date(now), mapOf(VALUE, now), true},
+                { new java.sql.Date(1L), mapOf(VALUE, 1L), true},
+        });
         TEST_DB.put(pair(Duration.class, Map.class), new Object[][] {
                 { Duration.ofMillis(-1), mapOf("seconds", -1L, "nanos", 999000000)},
         });
@@ -747,6 +758,12 @@ class ConverterEverythingTest {
                 {Instant.parse("1970-01-01T00:00:00Z"), ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
                 {Instant.parse("1970-01-01T00:00:00.000000001Z"), ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), true},
         });
+        TEST_DB.put(pair(LocalDate.class, LocalDateTime.class), new Object[][] {
+                {LocalDate.parse("0000-01-01"), ZonedDateTime.parse("0000-01-01T00:00:00Z").toLocalDateTime(), true},
+                {LocalDate.parse("1969-12-31"), ZonedDateTime.parse("1969-12-31T00:00:00Z").toLocalDateTime(), true},
+                {LocalDate.parse("1970-01-01"), ZonedDateTime.parse("1970-01-01T00:00:00Z").toLocalDateTime(), true},
+                {LocalDate.parse("1970-01-02"), ZonedDateTime.parse("1970-01-02T00:00:00Z").toLocalDateTime(), true},
+        });
     }
 
     /**
@@ -829,6 +846,14 @@ class ConverterEverythingTest {
                 { new Date(1001L), LocalTime.parse("09:00:01.001")},
                 { new Date(86399999L), LocalTime.parse("08:59:59.999")},
                 { new Date(86400000L), LocalTime.parse("09:00:00")},
+        });
+        TEST_DB.put(pair(java.sql.Date.class, LocalTime.class), new Object[][]{
+                { new java.sql.Date(-1L), LocalTime.parse("08:59:59.999")},
+                { new java.sql.Date(0L), LocalTime.parse("09:00:00")},
+                { new java.sql.Date(1L), LocalTime.parse("09:00:00.001")},
+                { new java.sql.Date(1001L), LocalTime.parse("09:00:01.001")},
+                { new java.sql.Date(86399999L), LocalTime.parse("08:59:59.999")},
+                { new java.sql.Date(86400000L), LocalTime.parse("09:00:00")},
         });
         TEST_DB.put(pair(Instant.class, LocalTime.class), new Object[][]{   // no reverse option (Time local to Tokyo)
                 { Instant.parse("1969-12-31T23:59:59.999999999Z"), LocalTime.parse("08:59:59.999999999")},
@@ -937,6 +962,13 @@ class ConverterEverythingTest {
                     cal.setTimeInMillis(now);
                     return cal;
                 }, new Timestamp(now), true},
+        });
+        TEST_DB.put(pair(LocalDate.class, Timestamp.class), new Object[][] {
+                {LocalDate.parse("0000-01-01"), Timestamp.from(Instant.parse("0000-01-01T00:00:00Z")), true },
+                {LocalDate.parse("0000-01-02"), Timestamp.from(Instant.parse("0000-01-02T00:00:00Z")), true },
+                {LocalDate.parse("1969-12-31"), Timestamp.from(Instant.parse("1969-12-31T00:00:00Z")), true },
+                {LocalDate.parse("1970-01-01"), Timestamp.from(Instant.parse("1970-01-01T00:00:00Z")), true },
+                {LocalDate.parse("1970-01-02"), Timestamp.from(Instant.parse("1970-01-02T00:00:00Z")), true },
         });
         TEST_DB.put(pair(Duration.class, Timestamp.class), new Object[][]{
                 {Duration.ofSeconds(-62167219200L), Timestamp.from(Instant.parse("0000-01-01T00:00:00Z")), true},
@@ -1266,6 +1298,19 @@ class ConverterEverythingTest {
                 {new Date(1), new java.sql.Date(1), true },
                 {new Date(Long.MAX_VALUE), new java.sql.Date(Long.MAX_VALUE), true },
         });
+        TEST_DB.put(pair(Timestamp.class, java.sql.Date.class), new Object[][]{
+                {new Timestamp(Long.MIN_VALUE), new java.sql.Date(Long.MIN_VALUE), true},
+                {new Timestamp(Integer.MIN_VALUE), new java.sql.Date(Integer.MIN_VALUE), true},
+                {new Timestamp(now), new java.sql.Date(now), true},
+                {new Timestamp(-1), new java.sql.Date(-1), true},
+                {new Timestamp(0), new java.sql.Date(0), true},
+                {new Timestamp(1), new java.sql.Date(1), true},
+                {new Timestamp(Integer.MAX_VALUE), new java.sql.Date(Integer.MAX_VALUE), true},
+                {new Timestamp(Long.MAX_VALUE), new java.sql.Date(Long.MAX_VALUE), true},
+                {Timestamp.from(Instant.parse("1969-12-31T23:59:59.999Z")), new java.sql.Date(-1), true},
+                {Timestamp.from(Instant.parse("1970-01-01T00:00:00.000Z")), new java.sql.Date(0), true},
+                {Timestamp.from(Instant.parse("1970-01-01T00:00:00.001Z")), new java.sql.Date(1), true},
+        });
         TEST_DB.put(pair(LocalDate.class, java.sql.Date.class), new Object[][] {
                 {ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-62167252739000L), true},
                 {ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDate(), new java.sql.Date(-62167252739000L), true},
@@ -1297,6 +1342,15 @@ class ConverterEverythingTest {
                 {Instant.parse("1970-01-01T00:00:00Z"), new java.sql.Date(0L), true},
                 {Instant.parse("1970-01-01T00:00:00.001Z"), new java.sql.Date(1L), true},
                 {Instant.parse("1970-01-01T00:00:00.999Z"), new java.sql.Date(999L), true},
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, java.sql.Date.class), new Object[][]{
+                {ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), new java.sql.Date(-62167219200000L), true},
+                {ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), new java.sql.Date(-62167219199999L), true},
+                {ZonedDateTime.parse("1969-12-31T23:59:59Z").withZoneSameInstant(TOKYO_Z), new java.sql.Date(-1000), true},
+                {ZonedDateTime.parse("1969-12-31T23:59:59.999Z").withZoneSameInstant(TOKYO_Z), new java.sql.Date(-1), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), new java.sql.Date(0), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), new java.sql.Date(1), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z), new java.sql.Date(999), true},
         });
     }
 
@@ -1356,6 +1410,15 @@ class ConverterEverythingTest {
                 {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), new Date(0L), true},
                 {ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), new Date(1L), true},
                 {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z).toLocalDateTime(), new Date(999L), true},
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, Date.class), new Object[][]{
+                {ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), new Date(-62167219200000L), true},
+                {ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), new Date(-62167219199999L), true},
+                {ZonedDateTime.parse("1969-12-31T23:59:59Z").withZoneSameInstant(TOKYO_Z), new Date(-1000), true},
+                {ZonedDateTime.parse("1969-12-31T23:59:59.999Z").withZoneSameInstant(TOKYO_Z), new Date(-1), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), new Date(0), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), new Date(1), true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z), new Date(999), true},
         });
     }
 
@@ -2549,15 +2612,6 @@ class ConverterEverythingTest {
                 {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), 0L, true},
                 {ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), 1L, true},
                 {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z), 999L, true},
-        });
-        TEST_DB.put(pair(ZonedDateTime.class, Date.class), new Object[][]{
-                {ZonedDateTime.parse("0000-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), new Date(-62167219200000L), true},
-                {ZonedDateTime.parse("0000-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), new Date(-62167219199999L), true},
-                {ZonedDateTime.parse("1969-12-31T23:59:59Z").withZoneSameInstant(TOKYO_Z), new Date(-1000), true},
-                {ZonedDateTime.parse("1969-12-31T23:59:59.999Z").withZoneSameInstant(TOKYO_Z), new Date(-1), true},
-                {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameInstant(TOKYO_Z), new Date(0), true},
-                {ZonedDateTime.parse("1970-01-01T00:00:00.001Z").withZoneSameInstant(TOKYO_Z), new Date(1), true},
-                {ZonedDateTime.parse("1970-01-01T00:00:00.999Z").withZoneSameInstant(TOKYO_Z), new Date(999), true},
         });
         TEST_DB.put(pair(Calendar.class, Long.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {

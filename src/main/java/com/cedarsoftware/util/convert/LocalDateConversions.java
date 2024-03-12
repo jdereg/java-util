@@ -6,13 +6,17 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.CompactLinkedMap;
+
+import static com.cedarsoftware.util.convert.Converter.VALUE;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -47,14 +51,6 @@ final class LocalDateConversions {
         return toZonedDateTime(from, converter).toLocalDateTime();
     }
 
-    static LocalDate toLocalDate(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDate();
-    }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalTime();
-    }
-
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         ZoneId zoneId = converter.getOptions().getZoneId();
         return ((LocalDate) from).atStartOfDay(zoneId);
@@ -69,7 +65,8 @@ final class LocalDateConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        return new Timestamp(toLong(from, converter));
+        LocalDate localDate = (LocalDate) from;
+        return new Timestamp(localDate.toEpochDay() * 86400 * 1000);
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
@@ -100,5 +97,12 @@ final class LocalDateConversions {
     static String toString(Object from, Converter converter) {
         LocalDate localDate = (LocalDate) from;
         return localDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+    }
+
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        LocalDate localDate = (LocalDate) from;
+        Map<String, Object> target = new CompactLinkedMap<>();
+        target.put(VALUE, localDate.toString());
+        return target;
     }
 }

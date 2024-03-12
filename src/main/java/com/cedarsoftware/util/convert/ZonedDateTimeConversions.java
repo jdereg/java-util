@@ -74,7 +74,8 @@ final class ZonedDateTimeConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        return new Timestamp(toLong(from, converter));
+        ZonedDateTime zdt = (ZonedDateTime) from;
+        return Timestamp.from(zdt.toInstant());
     }
 
     static Calendar toCalendar(Object from, Converter converter) {

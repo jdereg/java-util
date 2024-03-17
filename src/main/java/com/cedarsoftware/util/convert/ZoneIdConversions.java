@@ -2,6 +2,7 @@ package com.cedarsoftware.util.convert;
 
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.TimeZone;
 
 import com.cedarsoftware.util.CompactLinkedMap;
 
@@ -31,5 +32,10 @@ final class ZoneIdConversions {
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("zone", zoneID.toString());
         return target;
+    }
+
+    static TimeZone toTimeZone(Object from, Converter converter) {
+        ZoneId zoneId = (ZoneId) from;
+        return TimeZone.getTimeZone(zoneId);
     }
 }

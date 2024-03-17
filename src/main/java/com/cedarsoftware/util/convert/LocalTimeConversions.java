@@ -37,16 +37,7 @@ final class LocalTimeConversions {
     static Map<String, Object> toMap(Object from, Converter converter) {
         LocalTime localTime = (LocalTime) from;
         Map<String, Object> target = new CompactLinkedMap<>();
-        target.put("hour", localTime.getHour());
-        target.put("minute", localTime.getMinute());
-        if (localTime.getNano() != 0) {  // Only output 'nano' when not 0 (and then 'second' is required).
-            target.put("nano", localTime.getNano());
-            target.put("second", localTime.getSecond());
-        } else {    // 0 nano, 'second' is optional if 0
-            if (localTime.getSecond() != 0) {
-                target.put("second", localTime.getSecond());
-            }
-        }
+        target.put(MapConversions.TIME, localTime.toString());
         return target;
     }
 

@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -110,14 +109,11 @@ final class OffsetDateTimeConversions {
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {
-        OffsetDateTime offsetDateTime = (OffsetDateTime) from;
-
-        LocalDateTime localDateTime = offsetDateTime.toLocalDateTime();
-        ZoneOffset zoneOffset = offsetDateTime.getOffset();
-
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
         Map<String, Object> target = new CompactLinkedMap<>();
-        target.put(MapConversions.DATE_TIME, converter.convert(localDateTime, String.class));
-        target.put(MapConversions.OFFSET, converter.convert(zoneOffset, String.class));
+        target.put(MapConversions.DATE, zdt.toLocalDate().toString());
+        target.put(MapConversions.TIME, zdt.toLocalTime().toString());
+        target.put(MapConversions.OFFSET, zdt.getOffset().toString());
         return target;
     }
 

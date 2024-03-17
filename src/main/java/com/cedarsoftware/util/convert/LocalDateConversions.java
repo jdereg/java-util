@@ -6,7 +6,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -15,8 +15,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.CompactLinkedMap;
-
-import static com.cedarsoftware.util.convert.Converter.VALUE;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -52,8 +50,8 @@ final class LocalDateConversions {
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        ZoneId zoneId = converter.getOptions().getZoneId();
-        return ((LocalDate) from).atStartOfDay(zoneId);
+        LocalDate localDate = (LocalDate) from;
+        return ZonedDateTime.of(localDate, LocalTime.parse("00:00:00"), converter.getOptions().getZoneId());
     }
     
     static double toDouble(Object from, Converter converter) {
@@ -102,7 +100,7 @@ final class LocalDateConversions {
     static Map<String, Object> toMap(Object from, Converter converter) {
         LocalDate localDate = (LocalDate) from;
         Map<String, Object> target = new CompactLinkedMap<>();
-        target.put(VALUE, localDate.toString());
+        target.put(MapConversions.DATE, localDate.toString());
         return target;
     }
 }

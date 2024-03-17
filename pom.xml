@@ -23,6 +23,7 @@
     </developers>
 
     <properties>
+        <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss.SSSZ</maven.build.timestamp.format>
         <!-- Java source, target, and release version -->
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -40,6 +41,7 @@
         <version.plugin.nexus>1.6.13</version.plugin.nexus>
 
         <!-- Build maven-***-plugins -->
+        <version.plugin.jar>3.3.0</version.plugin.jar>
         <version.plugin.gpg>3.1.0</version.plugin.gpg>
         <version.plugin.compiler>3.12.1</version.plugin.compiler>
         <version.plugin.javadoc>3.6.3</version.plugin.javadoc>
@@ -112,6 +114,28 @@
     
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${version.plugin.jar}</version> <!-- Use the latest version available -->
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Implementation-Title>java-util</Implementation-Title>
+                            <Implementation-Version>${project.version}</Implementation-Version>
+                            <Implementation-Vendor-Id>com.cedarsoftware</Implementation-Vendor-Id>
+                            <Implementation-URL>https://github.com/jdereg/java-util</Implementation-URL>
+                            <Built-By>${user.name}</Built-By>
+                            <Build-Timestamp>${maven.build.timestamp}</Build-Timestamp>
+                            <Build-Jdk>${java.version} (${java.vendor} ${java.vm.version})</Build-Jdk>
+                            <Build-OS>${os.name} ${os.arch} ${os.version}</Build-OS>
+                        </manifestEntries>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-scr-plugin</artifactId>

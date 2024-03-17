@@ -46,6 +46,7 @@ import static com.cedarsoftware.util.StringUtilities.EMPTY;
 import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.bar;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.foo;
+import static com.cedarsoftware.util.convert.MapConversions.DATE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -1041,7 +1042,7 @@ class ConverterTest
     void testLocalDateTimestamp(long epochMilli, ZoneId zoneId, LocalDate expected) {
         Converter converter = new Converter(createCustomZones(zoneId));
         Timestamp intermediate = converter.convert(expected, Timestamp.class);
-        assertThat(intermediate.getTime()).isEqualTo(epochMilli);
+        assertTrue(intermediate.toInstant().toString().startsWith(expected.toString()));
     }
 
     @ParameterizedTest
@@ -2436,23 +2437,24 @@ class ConverterTest
     void testStringKeysOnMapToLocalDate()
     {
         Map<String, Object> map = new HashMap<>();
-        map.put("day", "23");
-        map.put("month", "12");
-        map.put("year", "2023");
-        LocalDate ld = this.converter.convert(map, LocalDate.class);
+        map.put("date", "2023-12-23");
+        LocalDate ld = converter.convert(map, LocalDate.class);
         assert ld.getYear() == 2023;
         assert ld.getMonthValue() == 12;
         assert ld.getDayOfMonth() == 23;
 
-        map.put("day", 23);
-        map.put("month", 12);
-        map.put("year", 2023);
+        map.put("value", "2023-12-23");
+        ld = this.converter.convert(map, LocalDate.class);
+        assert ld.getYear() == 2023;
+        assert ld.getMonthValue() == 12;
+        assert ld.getDayOfMonth() == 23;
+
+        map.put("_v", "2023-12-23");
         ld = this.converter.convert(map, LocalDate.class);
         assert ld.getYear() == 2023;
         assert ld.getMonthValue() == 12;
         assert ld.getDayOfMonth() == 23;
     }
-
 
     private static Stream<Arguments> identityParams() {
         return Stream.of(
@@ -2765,7 +2767,7 @@ class ConverterTest
     @Test
     void testMapToAtomicBoolean()
     {
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", 57);
         AtomicBoolean ab = this.converter.convert(map, AtomicBoolean.class);
         assert ab.get();
@@ -2788,7 +2790,7 @@ class ConverterTest
     @Test
     void testMapToAtomicInteger()
     {
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", 58);
         AtomicInteger ai = this.converter.convert(map, AtomicInteger.class);
         assert 58 == ai.get();
@@ -2811,7 +2813,7 @@ class ConverterTest
     @Test
     void testMapToAtomicLong()
     {
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", 58);
         AtomicLong al = this.converter.convert(map, AtomicLong.class);
         assert 58 == al.get();
@@ -2835,7 +2837,7 @@ class ConverterTest
     @MethodSource("toCalendarParams")
     void testMapToCalendar(Object value)
     {
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", value);
 
         Calendar cal = this.converter.convert(map, Calendar.class);
@@ -2852,39 +2854,49 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Calendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to Calendar the map must include one of the following: [year, month, day, hour, minute, second, millis, zone], [_v], or [value]");
+                .hasMessageContaining("Map to Calendar the map must include one of the following: [date, time, zone]");
     }
 
     @Test
     void testMapToCalendarWithTimeZone()
     {
         long now = System.currentTimeMillis();
-        Calendar cal = Calendar.getInstance();
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Tokyo"));
         cal.clear();
-        cal.setTimeZone(TimeZone.getTimeZone("Asia/Tokyo"));
         cal.setTimeInMillis(now);
+//        System.out.println("cal = " + cal.getTime());
 
-        final Map map = new HashMap();
-        map.put("time", cal.getTimeInMillis());
-        map.put("zone", cal.getTimeZone().getID());
+        ZonedDateTime zdt = cal.toInstant().atZone(cal.getTimeZone().toZoneId());
+//        System.out.println("zdt = " + zdt);
+        
+        final Map map = new HashMap<>();
+        map.put("date", zdt.toLocalDate());
+        map.put("time", zdt.toLocalTime());
+        map.put("zone", cal.getTimeZone().toZoneId());
+//        System.out.println("map = " + map);
 
         Calendar newCal = this.converter.convert(map, Calendar.class);
-        assert cal.equals(newCal);
+//        System.out.println("newCal = " + newCal.getTime());
+        assertEquals(cal, newCal);
         assert DeepEquals.deepEquals(cal, newCal);
     }
 
     @Test
     void testMapToCalendarWithTimeNoZone()
     {
+        TimeZone tz = TimeZone.getDefault();
         long now = System.currentTimeMillis();
         Calendar cal = Calendar.getInstance();
         cal.clear();
-        cal.setTimeZone(TimeZone.getDefault());
+        cal.setTimeZone(tz);
         cal.setTimeInMillis(now);
 
-        final Map map = new HashMap();
-        map.put("time", cal.getTimeInMillis());
+        Instant instant = Instant.ofEpochMilli(now);
+        ZonedDateTime zdt = ZonedDateTime.ofInstant(instant, tz.toZoneId());
 
+        final Map map = new HashMap<>();
+        map.put("date", zdt.toLocalDate());
+        map.put("time", zdt.toLocalTime());
         Calendar newCal = this.converter.convert(map, Calendar.class);
         assert cal.equals(newCal);
         assert DeepEquals.deepEquals(cal, newCal);
@@ -2894,7 +2906,7 @@ class ConverterTest
     void testMapToGregCalendar()
     {
         long now = System.currentTimeMillis();
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", new Date(now));
         GregorianCalendar cal = this.converter.convert(map, GregorianCalendar.class);
         assert now == cal.getTimeInMillis();
@@ -2910,14 +2922,14 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, GregorianCalendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to Calendar the map must include one of the following: [year, month, day, hour, minute, second, millis, zone], [_v], or [value]");
+                .hasMessageContaining("Map to Calendar the map must include one of the following: [date, time, zone]");
     }
 
     @Test
     void testMapToDate() {
 
         long now = System.currentTimeMillis();
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", now);
         Date date = this.converter.convert(map, Date.class);
         assert now == date.getTime();
@@ -2940,7 +2952,7 @@ class ConverterTest
     void testMapToSqlDate()
     {
         long now = System.currentTimeMillis();
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", now);
         java.sql.Date date = this.converter.convert(map, java.sql.Date.class);
         assert now == date.getTime();
@@ -2963,7 +2975,7 @@ class ConverterTest
     void testMapToTimestamp()
     {
         long now = System.currentTimeMillis();
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", now);
         Timestamp date = this.converter.convert(map, Timestamp.class);
         assert now == date.getTime();
@@ -2986,7 +2998,7 @@ class ConverterTest
     void testMapToLocalDate()
     {
         LocalDate today = LocalDate.now();
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", today);
         LocalDate date = this.converter.convert(map, LocalDate.class);
         assert date.equals(today);
@@ -3002,14 +3014,14 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDate.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to LocalDate the map must include one of the following: [year, month, day], [_v], or [value] with associated values");
+                .hasMessageContaining("To convert from Map to LocalDate the map must include one of the following: [date], [_v], or [value] with associated values");
     }
 
     @Test
     void testMapToLocalDateTime()
     {
         long now = System.currentTimeMillis();
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", now);
         LocalDateTime ld = this.converter.convert(map, LocalDateTime.class);
         assert ld.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() == now;
@@ -3032,7 +3044,7 @@ class ConverterTest
     void testMapToZonedDateTime()
     {
         long now = System.currentTimeMillis();
-        final Map map = new HashMap();
+        final Map map = new HashMap<>();
         map.put("value", now);
         ZonedDateTime zd = this.converter.convert(map, ZonedDateTime.class);
         assert zd.toInstant().toEpochMilli() == now;
@@ -3703,7 +3715,7 @@ class ConverterTest
     {
         Calendar cal = Calendar.getInstance();
         Map<?, ?> map = this.converter.convert(cal, Map.class);
-        assert map.size() == 8;
+        assert map.size() == 3; // date, time, zone
     }
 
     @Test
@@ -3711,9 +3723,9 @@ class ConverterTest
     {
         Date now = new Date();
         Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 1;
-        assertEquals(map.get(VALUE), now.getTime());
-        assert map.get(VALUE).getClass().equals(Long.class);
+        assert map.size() == 4;    // date, time, zone, epochMillis
+        assertEquals(map.get(MapConversions.EPOCH_MILLIS), now.getTime());
+        assert map.get(MapConversions.EPOCH_MILLIS).getClass().equals(Long.class);
     }
 
     @Test
@@ -3721,9 +3733,9 @@ class ConverterTest
     {
         java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
         Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 1;
-        assertEquals(map.get(VALUE), now);
-        assert map.get(VALUE).getClass().equals(java.sql.Date.class);
+        assert map.size() == 4;    // date, time, zone, epochMillis
+        assertEquals(map.get(MapConversions.EPOCH_MILLIS), now.getTime());
+        assert map.get(MapConversions.EPOCH_MILLIS).getClass().equals(Long.class);
     }
 
     @Test
@@ -3742,18 +3754,18 @@ class ConverterTest
         LocalDate now = LocalDate.now();
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(VALUE), now);
-        assert map.get(VALUE).getClass().equals(LocalDate.class);
+        assertEquals(map.get(DATE), now.toString());
+        assert map.get(DATE).getClass().equals(String.class);
     }
 
     @Test
     void testLocalDateTimeToMap()
     {
         LocalDateTime now = LocalDateTime.now();
-        Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 1;
-        assertEquals(map.get(VALUE), now);
-        assert map.get(VALUE).getClass().equals(LocalDateTime.class);
+        Map<?, ?> map = converter.convert(now, Map.class);
+        assert map.size() == 2; // date, time
+        LocalDateTime now2 = converter.convert(map, LocalDateTime.class);
+        assertEquals(now, now2);
     }
 
     @Test

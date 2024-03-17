@@ -18,8 +18,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.CompactLinkedMap;
 
-import static com.cedarsoftware.util.convert.Converter.VALUE;
-
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
  *         <br>
@@ -147,7 +145,11 @@ final class DateConversions {
     static Map<String, Object> toMap(Object from, Converter converter) {
         Date date = (Date) from;
         Map<String, Object> map = new CompactLinkedMap<>();
-        map.put(VALUE, date.getTime());
+        ZonedDateTime zdt = toZonedDateTime(date, converter);
+        map.put(MapConversions.DATE, zdt.toLocalDate().toString());
+        map.put(MapConversions.TIME, zdt.toLocalTime().toString());
+        map.put(MapConversions.ZONE, converter.getOptions().getZoneId().toString());
+        map.put(MapConversions.EPOCH_MILLIS, date.getTime());
         return map;
     }
 }

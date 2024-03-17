@@ -115,14 +115,9 @@ final class CalendarConversions {
     static Map<String, Object> toMap(Object from, Converter converter) {
         Calendar cal = (Calendar) from;
         Map<String, Object> target = new CompactLinkedMap<>();
-        target.put(MapConversions.YEAR, cal.get(Calendar.YEAR));
-        target.put(MapConversions.MONTH, cal.get(Calendar.MONTH) + 1);
-        target.put(MapConversions.DAY, cal.get(Calendar.DAY_OF_MONTH));
-        target.put(MapConversions.HOUR, cal.get(Calendar.HOUR_OF_DAY));
-        target.put(MapConversions.MINUTE, cal.get(Calendar.MINUTE));
-        target.put(MapConversions.SECOND, cal.get(Calendar.SECOND));
-        target.put(MapConversions.MILLI_SECONDS, cal.get(Calendar.MILLISECOND));
-        target.put(MapConversions.ZONE, cal.getTimeZone().getID());
+        target.put(MapConversions.DATE, LocalDate.of(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH)).toString());
+        target.put(MapConversions.TIME, LocalTime.of(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND), cal.get(Calendar.MILLISECOND) * 1_000_000).toString());
+        target.put(MapConversions.ZONE, cal.getTimeZone().toZoneId().toString());
         return target;
     }
 }

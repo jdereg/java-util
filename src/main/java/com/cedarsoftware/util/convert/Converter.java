@@ -732,6 +732,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(TimeZone.class, TimeZone.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, TimeZone.class), StringConversions::toTimeZone);
         CONVERSION_DB.put(pair(Map.class, TimeZone.class), MapConversions::toTimeZone);
+        CONVERSION_DB.put(pair(ZoneId.class, TimeZone.class), ZoneIdConversions::toTimeZone);
 
         // Duration conversions supported
         CONVERSION_DB.put(pair(Void.class, Duration.class), VoidConversions::toNull);
@@ -774,7 +775,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(ZoneId.class, ZoneId.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, ZoneId.class), StringConversions::toZoneId);
         CONVERSION_DB.put(pair(Map.class, ZoneId.class), MapConversions::toZoneId);
-        
+        CONVERSION_DB.put(pair(TimeZone.class, ZoneId.class), TimeZoneConversions::toZoneId);
+
         // ZoneOffset conversions supported
         CONVERSION_DB.put(pair(Void.class, ZoneOffset.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(ZoneOffset.class, ZoneOffset.class), Converter::identity);
@@ -894,7 +896,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(java.sql.Date.class, Map.class), DateConversions::toMap);
         CONVERSION_DB.put(pair(Timestamp.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(LocalDate.class, Map.class), LocalDateConversions::toMap);
-        CONVERSION_DB.put(pair(LocalDateTime.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(LocalDateTime.class, Map.class), LocalDateTimeConversions::toMap);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(Duration.class, Map.class), DurationConversions::toMap);
         CONVERSION_DB.put(pair(Instant.class, Map.class), InstantConversions::toMap);

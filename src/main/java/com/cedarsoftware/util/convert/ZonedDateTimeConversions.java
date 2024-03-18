@@ -53,7 +53,9 @@ final class ZonedDateTimeConversions {
     }
     
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return toDifferentZone(from, converter).toLocalDateTime();  // shorter code over speed
+        ZonedDateTime zdt = (ZonedDateTime) from;
+        ZonedDateTime adjustedZonedDateTime = zdt.withZoneSameInstant(converter.getOptions().getZoneId());
+        return adjustedZonedDateTime.toLocalDateTime();
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {

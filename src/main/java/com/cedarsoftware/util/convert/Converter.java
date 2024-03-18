@@ -558,7 +558,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(AtomicInteger.class, LocalDateTime.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(AtomicLong.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(java.sql.Date.class, LocalDateTime.class), DateConversions::toLocalDateTime);
-        CONVERSION_DB.put(pair(Timestamp.class, LocalDateTime.class), DateConversions::toLocalDateTime);
+        CONVERSION_DB.put(pair(Timestamp.class, LocalDateTime.class), TimestampConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(Date.class, LocalDateTime.class), DateConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(Instant.class, LocalDateTime.class), InstantConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(LocalDateTime.class, LocalDateTime.class), LocalDateTimeConversions::toLocalDateTime);
@@ -894,7 +894,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(AtomicLong.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(Date.class, Map.class), DateConversions::toMap);
         CONVERSION_DB.put(pair(java.sql.Date.class, Map.class), DateConversions::toMap);
-        CONVERSION_DB.put(pair(Timestamp.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(Timestamp.class, Map.class), TimestampConversions::toMap);
         CONVERSION_DB.put(pair(LocalDate.class, Map.class), LocalDateConversions::toMap);
         CONVERSION_DB.put(pair(LocalDateTime.class, Map.class), LocalDateTimeConversions::toMap);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Map.class), MapConversions::initMap);

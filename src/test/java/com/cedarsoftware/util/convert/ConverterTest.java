@@ -47,6 +47,7 @@ import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.bar;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.foo;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
+import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -3743,9 +3744,9 @@ class ConverterTest
     {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 1;
-        assertEquals(map.get(VALUE), now);
-        assert map.get(VALUE).getClass().equals(Timestamp.class);
+        assert map.size() == 5;  // date, time, zone, epoch_mills, nanos
+        assertEquals(map.get(EPOCH_MILLIS), now.getTime());
+        assert map.get(EPOCH_MILLIS).getClass().equals(Long.class);
     }
 
     @Test

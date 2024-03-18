@@ -5,10 +5,15 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.Map;
+
+import com.cedarsoftware.util.CompactLinkedMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -46,6 +51,11 @@ final class TimestampConversions {
         return DurationConversions.toBigInteger(duration, converter);
     }
 
+    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+        return timestamp.toInstant().atZone(converter.getOptions().getZoneId()).toLocalDateTime();
+    }
+    
     static Duration toDuration(Object from, Converter converter) {
         Timestamp timestamp = (Timestamp) from;
         Instant timestampInstant = timestamp.toInstant();
@@ -69,5 +79,17 @@ final class TimestampConversions {
         Calendar cal = Calendar.getInstance(converter.getOptions().getTimeZone());
         cal.setTimeInMillis(timestamp.getTime());
         return cal;
+    }
+
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        Date date = (Date) from;
+        Map<String, Object> map = new CompactLinkedMap<>();
+        OffsetDateTime odt = toOffsetDateTime(date, converter);
+        map.put(MapConversions.DATE, odt.toLocalDate().toString());
+        map.put(MapConversions.TIME, odt.toLocalTime().toString());
+        map.put(MapConversions.ZONE, converter.getOptions().getZoneId().toString());
+        map.put(MapConversions.EPOCH_MILLIS, date.getTime());
+        map.put(MapConversions.NANOS, odt.getNano());
+        return map;
     }
 }

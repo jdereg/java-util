@@ -180,15 +180,15 @@ final class MapConversions {
 
     static Timestamp toTimestamp(Object from, Converter converter) {
         Map<?, ?> map = (Map<?, ?>) from;
-        if (map.containsKey(TIME)) {
-            long time = converter.convert(map.get(TIME), long.class);
+        if (map.containsKey(EPOCH_MILLIS)) {
+            long time = converter.convert(map.get(EPOCH_MILLIS), long.class);
             int ns = converter.convert(map.get(NANOS), int.class);
             Timestamp timeStamp = new Timestamp(time);
             timeStamp.setNanos(ns);
             return timeStamp;
         }
 
-        return fromMap(map, converter, Timestamp.class, TIME, NANOS);
+        return fromMap(map, converter, Timestamp.class, EPOCH_MILLIS, NANOS);
     }
 
     static TimeZone toTimeZone(Object from, Converter converter) {
@@ -364,11 +364,9 @@ final class MapConversions {
     static ZoneId toZoneId(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
         if (map.containsKey(ZONE)) {
-            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
-            return zoneId;
+            return converter.convert(map.get(ZONE), ZoneId.class);
         } else if (map.containsKey(ID)) {
-            ZoneId zoneId = converter.convert(map.get(ID), ZoneId.class);
-            return zoneId;
+            return converter.convert(map.get(ID), ZoneId.class);
         }
         return fromMap(from, converter, ZoneId.class, ZONE);
     }

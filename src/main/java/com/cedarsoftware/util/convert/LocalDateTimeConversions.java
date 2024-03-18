@@ -38,7 +38,8 @@ final class LocalDateTimeConversions {
     private LocalDateTimeConversions() {}
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        return ((LocalDateTime)from).atZone(converter.getOptions().getZoneId());
+        LocalDateTime ldt = (LocalDateTime) from;
+        return ZonedDateTime.of(ldt, converter.getOptions().getZoneId());
     }
 
     static Instant toInstant(Object from, Converter converter) {
@@ -71,7 +72,8 @@ final class LocalDateTimeConversions {
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        return new Timestamp(toLong(from, converter));
+        LocalDateTime ldt = (LocalDateTime) from;
+        return Timestamp.from(ldt.atZone(converter.getOptions().getZoneId()).toInstant());
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
@@ -104,7 +106,7 @@ final class LocalDateTimeConversions {
         return localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
-    static Map toMap(Object from, Converter converter) {
+    static Map<?, ?> toMap(Object from, Converter converter) {
         LocalDateTime localDateTime = (LocalDateTime) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put(MapConversions.DATE, localDateTime.toLocalDate().toString());

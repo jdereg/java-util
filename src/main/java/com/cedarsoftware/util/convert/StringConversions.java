@@ -274,7 +274,12 @@ final class StringConversions {
     }
 
     static UUID toUUID(Object from, Converter converter) {
-        return UUID.fromString(((String) from).trim());
+        String s = (String) from;
+        try {
+            return UUID.fromString(s);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to convert '" + s + "' to UUID", e);
+        }
     }
 
     static Duration toDuration(Object from, Converter converter) {

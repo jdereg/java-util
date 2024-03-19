@@ -908,7 +908,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(ZoneId.class, Map.class), ZoneIdConversions::toMap);
         CONVERSION_DB.put(pair(ZoneOffset.class, Map.class), ZoneOffsetConversions::toMap);
         CONVERSION_DB.put(pair(Class.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(UUID.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(UUID.class, Map.class), UUIDConversions::toMap);
         CONVERSION_DB.put(pair(Calendar.class, Map.class), CalendarConversions::toMap);
         CONVERSION_DB.put(pair(Number.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(Map.class, Map.class), UNSUPPORTED);

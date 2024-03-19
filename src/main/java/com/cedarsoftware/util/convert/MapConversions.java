@@ -81,6 +81,7 @@ final class MapConversions {
     static final String VARIANT = "variant";
     static final String URI_KEY = "URI";
     static final String URL_KEY = "URL";
+    static final String UUID = "UUID";
 
     private MapConversions() {}
     
@@ -89,13 +90,17 @@ final class MapConversions {
     static Object toUUID(Object from, Converter converter) {
         Map<?, ?> map = (Map<?, ?>) from;
 
+        if (map.containsKey(MapConversions.UUID)) {
+            return converter.convert(map.get(UUID), UUID.class);
+        }
+
         if (map.containsKey(MOST_SIG_BITS) && map.containsKey(LEAST_SIG_BITS)) {
             long most = converter.convert(map.get(MOST_SIG_BITS), long.class);
             long least = converter.convert(map.get(LEAST_SIG_BITS), long.class);
             return new UUID(most, least);
         }
 
-        return fromMap(from, converter, UUID.class, MOST_SIG_BITS, LEAST_SIG_BITS);
+        return fromMap(from, converter, UUID.class, UUID, MOST_SIG_BITS, LEAST_SIG_BITS);
     }
 
     static Byte toByte(Object from, Converter converter) {

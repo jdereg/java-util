@@ -188,6 +188,61 @@ class ConverterEverythingTest {
         loadTimeZoneTests();
         loadUriTests();
         loadUrlTests();
+        loadUuidTests();
+    }
+
+    /**
+     * UUID
+     */
+    private static void loadUuidTests() {
+        TEST_DB.put(pair(Void.class, UUID.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(UUID.class, UUID.class), new Object[][]{
+                {UUID.fromString("f0000000-0000-0000-0000-000000000001"), UUID.fromString("f0000000-0000-0000-0000-000000000001")},
+        });
+        TEST_DB.put(pair(Map.class, UUID.class), new Object[][]{
+                {mapOf("UUID", "f0000000-0000-0000-0000-000000000001"), UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
+                {mapOf("UUID", "f0000000-0000-0000-0000-00000000000x"), new IllegalArgumentException("Unable to convert 'f0000000-0000-0000-0000-00000000000x' to UUID")},
+        });
+        TEST_DB.put(pair(String.class, UUID.class), new Object[][]{
+                {"f0000000-0000-0000-0000-000000000001", UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
+                {"f0000000-0000-0000-0000-00000000000x", new IllegalArgumentException("Unable to convert 'f0000000-0000-0000-0000-00000000000x' to UUID")},
+                {"00000000-0000-0000-0000-000000000000", new UUID(0L, 0L), true},
+                {"00000000-0000-0001-0000-000000000001", new UUID(1L, 1L), true},
+                {"7fffffff-ffff-ffff-7fff-ffffffffffff", new UUID(Long.MAX_VALUE, Long.MAX_VALUE), true},
+                {"80000000-0000-0000-8000-000000000000", new UUID(Long.MIN_VALUE, Long.MIN_VALUE), true},
+        });
+        TEST_DB.put(pair(BigDecimal.class, UUID.class), new Object[][]{
+                {BigDecimal.ZERO, new UUID(0L, 0L), true},
+                {new BigDecimal("18446744073709551617"), new UUID(1L, 1L), true},
+                {new BigDecimal("170141183460469231722463931679029329919"), new UUID(Long.MAX_VALUE, Long.MAX_VALUE), true},
+                {BigDecimal.ZERO, UUID.fromString("00000000-0000-0000-0000-000000000000"), true},
+                {BigDecimal.valueOf(1), UUID.fromString("00000000-0000-0000-0000-000000000001"), true},
+                {new BigDecimal("18446744073709551617"), UUID.fromString("00000000-0000-0001-0000-000000000001"), true},
+                {new BigDecimal("340282366920938463463374607431768211455"), UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), true},
+                {new BigDecimal("340282366920938463463374607431768211454"), UUID.fromString("ffffffff-ffff-ffff-ffff-fffffffffffe"), true},
+                {new BigDecimal("319014718988379809496913694467282698240"), UUID.fromString("f0000000-0000-0000-0000-000000000000"), true},
+                {new BigDecimal("319014718988379809496913694467282698241"), UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
+                {new BigDecimal("170141183460469231731687303715884105726"), UUID.fromString("7fffffff-ffff-ffff-ffff-fffffffffffe"), true},
+                {new BigDecimal("170141183460469231731687303715884105727"), UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffffff"), true},
+                {new BigDecimal("170141183460469231731687303715884105728"), UUID.fromString("80000000-0000-0000-0000-000000000000"), true},
+        });
+        TEST_DB.put(pair(BigInteger.class, UUID.class), new Object[][]{
+                {BigInteger.ZERO, new UUID(0L, 0L), true},
+                {new BigInteger("18446744073709551617"), new UUID(1L, 1L), true},
+                {new BigInteger("170141183460469231722463931679029329919"), new UUID(Long.MAX_VALUE, Long.MAX_VALUE), true},
+                {BigInteger.ZERO, UUID.fromString("00000000-0000-0000-0000-000000000000"), true},
+                {BigInteger.valueOf(1), UUID.fromString("00000000-0000-0000-0000-000000000001"), true},
+                {new BigInteger("18446744073709551617"), UUID.fromString("00000000-0000-0001-0000-000000000001"), true},
+                {new BigInteger("340282366920938463463374607431768211455"), UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), true},
+                {new BigInteger("340282366920938463463374607431768211454"), UUID.fromString("ffffffff-ffff-ffff-ffff-fffffffffffe"), true},
+                {new BigInteger("319014718988379809496913694467282698240"), UUID.fromString("f0000000-0000-0000-0000-000000000000"), true},
+                {new BigInteger("319014718988379809496913694467282698241"), UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
+                {new BigInteger("170141183460469231731687303715884105726"), UUID.fromString("7fffffff-ffff-ffff-ffff-fffffffffffe"), true},
+                {new BigInteger("170141183460469231731687303715884105727"), UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffffff"), true},
+                {new BigInteger("170141183460469231731687303715884105728"), UUID.fromString("80000000-0000-0000-0000-000000000000"), true},
+        });
     }
 
     /**
@@ -740,12 +795,6 @@ class ConverterEverythingTest {
                 {ZonedDateTime.parse("1965-12-31T16:20:00+00:00"), "1965-12-31T16:20:00Z"},
                 {ZonedDateTime.parse("2024-02-14T19:20:00-05:00"), "2024-02-14T19:20:00-05:00"},
                 {ZonedDateTime.parse("2024-02-14T19:20:00+05:00"), "2024-02-14T19:20:00+05:00"},
-        });
-        TEST_DB.put(pair(UUID.class, String.class), new Object[][]{
-                {new UUID(0L, 0L), "00000000-0000-0000-0000-000000000000", true},
-                {new UUID(1L, 1L), "00000000-0000-0001-0000-000000000001", true},
-                {new UUID(Long.MAX_VALUE, Long.MAX_VALUE), "7fffffff-ffff-ffff-7fff-ffffffffffff", true},
-                {new UUID(Long.MIN_VALUE, Long.MIN_VALUE), "80000000-0000-0000-8000-000000000000", true},
         });
         TEST_DB.put(pair(Calendar.class, String.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
@@ -1913,21 +1962,6 @@ class ConverterEverythingTest {
                 {Instant.parse("1970-01-02T00:00:00Z"), new BigDecimal("86400"), true},
                 {Instant.parse("1970-01-02T00:00:00.000000001Z"), new BigDecimal("86400.000000001"), true},
         });
-        TEST_DB.put(pair(UUID.class, BigDecimal.class), new Object[][]{
-                {new UUID(0L, 0L), BigDecimal.ZERO, true},
-                {new UUID(1L, 1L), new BigDecimal("18446744073709551617"), true},
-                {new UUID(Long.MAX_VALUE, Long.MAX_VALUE), new BigDecimal("170141183460469231722463931679029329919"), true},
-                {UUID.fromString("00000000-0000-0000-0000-000000000000"), BigDecimal.ZERO, true},
-                {UUID.fromString("00000000-0000-0000-0000-000000000001"), BigDecimal.valueOf(1), true},
-                {UUID.fromString("00000000-0000-0001-0000-000000000001"), new BigDecimal("18446744073709551617"), true},
-                {UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), new BigDecimal("340282366920938463463374607431768211455"), true},
-                {UUID.fromString("ffffffff-ffff-ffff-ffff-fffffffffffe"), new BigDecimal("340282366920938463463374607431768211454"), true},
-                {UUID.fromString("f0000000-0000-0000-0000-000000000000"), new BigDecimal("319014718988379809496913694467282698240"), true},
-                {UUID.fromString("f0000000-0000-0000-0000-000000000001"), new BigDecimal("319014718988379809496913694467282698241"), true},
-                {UUID.fromString("7fffffff-ffff-ffff-ffff-fffffffffffe"), new BigDecimal("170141183460469231731687303715884105726"), true},
-                {UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffffff"), new BigDecimal("170141183460469231731687303715884105727"), true},
-                {UUID.fromString("80000000-0000-0000-0000-000000000000"), new BigDecimal("170141183460469231731687303715884105728"), true},
-        });
         TEST_DB.put(pair(Map.class, BigDecimal.class), new Object[][]{
                 {mapOf("_v", "0"), BigDecimal.ZERO},
                 {mapOf("_v", BigDecimal.valueOf(0)), BigDecimal.ZERO, true},
@@ -2040,21 +2074,6 @@ class ConverterEverythingTest {
                 {zdt("1969-12-31T23:59:59.999999999Z").toLocalDateTime(), new BigInteger("-1"), true},
                 {zdt("1970-01-01T00:00:00Z").toLocalDateTime(), BigInteger.ZERO, true},
                 {zdt("1970-01-01T00:00:00.000000001Z").toLocalDateTime(), new BigInteger("1"), true},
-        });
-        TEST_DB.put(pair(UUID.class, BigInteger.class), new Object[][]{
-                {new UUID(0L, 0L), BigInteger.ZERO, true},
-                {new UUID(1L, 1L), new BigInteger("18446744073709551617"), true},
-                {new UUID(Long.MAX_VALUE, Long.MAX_VALUE), new BigInteger("170141183460469231722463931679029329919"), true},
-                {UUID.fromString("00000000-0000-0000-0000-000000000000"), BigInteger.ZERO, true},
-                {UUID.fromString("00000000-0000-0000-0000-000000000001"), BigInteger.valueOf(1), true},
-                {UUID.fromString("00000000-0000-0001-0000-000000000001"), new BigInteger("18446744073709551617"), true},
-                {UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), new BigInteger("340282366920938463463374607431768211455"), true},
-                {UUID.fromString("ffffffff-ffff-ffff-ffff-fffffffffffe"), new BigInteger("340282366920938463463374607431768211454"), true},
-                {UUID.fromString("f0000000-0000-0000-0000-000000000000"), new BigInteger("319014718988379809496913694467282698240"), true},
-                {UUID.fromString("f0000000-0000-0000-0000-000000000001"), new BigInteger("319014718988379809496913694467282698241"), true},
-                {UUID.fromString("7fffffff-ffff-ffff-ffff-fffffffffffe"), new BigInteger("170141183460469231731687303715884105726"), true},
-                {UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffffff"), new BigInteger("170141183460469231731687303715884105727"), true},
-                {UUID.fromString("80000000-0000-0000-0000-000000000000"), new BigInteger("170141183460469231731687303715884105728"), true},
         });
         TEST_DB.put(pair(Calendar.class, BigInteger.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {

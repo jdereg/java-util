@@ -2,6 +2,10 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Map;
+import java.util.UUID;
+
+import com.cedarsoftware.util.CompactLinkedMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -32,6 +36,13 @@ final class UUIDConversions {
     static BigInteger toBigInteger(Object from, Converter converter) {
         String hex = from.toString().replace("-", "");
         return new BigInteger(hex, 16);
+    }
+
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        UUID uuid = (UUID) from;
+        Map<String, Object> target = new CompactLinkedMap<>();
+        target.put(MapConversions.UUID, uuid.toString());
+        return target;
     }
 }
 

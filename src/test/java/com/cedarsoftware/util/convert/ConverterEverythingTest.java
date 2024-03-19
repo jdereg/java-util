@@ -26,6 +26,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -53,10 +54,17 @@ import org.junit.jupiter.params.provider.MethodSource;
 import static com.cedarsoftware.util.MapUtilities.mapOf;
 import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.Converter.pair;
+import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
+import static com.cedarsoftware.util.convert.MapConversions.LANGUAGE;
 import static com.cedarsoftware.util.convert.MapConversions.NANOS;
+import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
 import static com.cedarsoftware.util.convert.MapConversions.TIME;
+import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
+import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
+import static com.cedarsoftware.util.convert.MapConversions.V;
+import static com.cedarsoftware.util.convert.MapConversions.VARIANT;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -124,6 +132,7 @@ class ConverterEverythingTest {
         immutable.add(LocalDate.class);
         immutable.add(LocalDateTime.class);
         immutable.add(ZonedDateTime.class);
+        immutable.add(OffsetTime.class);
         immutable.add(OffsetDateTime.class);
         immutable.add(Instant.class);
         immutable.add(Duration.class);
@@ -133,6 +142,7 @@ class ConverterEverythingTest {
         immutable.add(MonthDay.class);
         immutable.add(YearMonth.class);
         immutable.add(Locale.class);
+        immutable.add(TimeZone.class);
 
         loadByteTest();
         loadByteArrayTest();
@@ -174,6 +184,131 @@ class ConverterEverythingTest {
         loadMapTests();
         loadClassTests();
         loadLocaleTests();
+        loadOffsetTimeTests();
+        loadTimeZoneTests();
+        loadUriTests();
+        loadUrlTests();
+    }
+
+    /**
+     * URL
+     */
+    private static void loadUrlTests() {
+        TEST_DB.put(pair(Void.class, URL.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(URL.class, URL.class), new Object[][]{
+                {toURL("https://chat.openai.com"), toURL("https://chat.openai.com")},
+        });
+        TEST_DB.put(pair(String.class, URL.class), new Object[][]{
+                {"https://domain.com", toURL("https://domain.com"), true},
+                {"http://localhost", toURL("http://localhost"), true},
+                {"http://localhost:8080", toURL("http://localhost:8080"), true},
+                {"http://localhost:8080/file/path", toURL("http://localhost:8080/file/path"), true},
+                {"http://localhost:8080/path/file.html", toURL("http://localhost:8080/path/file.html"), true},
+                {"http://localhost:8080/path/file.html?foo=1&bar=2", toURL("http://localhost:8080/path/file.html?foo=1&bar=2"), true},
+                {"http://localhost:8080/path/file.html?foo=bar&qux=quy#AnchorLocation", toURL("http://localhost:8080/path/file.html?foo=bar&qux=quy#AnchorLocation"), true},
+                {"https://foo.bar.com/", toURL("https://foo.bar.com/"), true},
+                {"https://foo.bar.com/path/foo%20bar.html", toURL("https://foo.bar.com/path/foo%20bar.html"), true},
+                {"https://foo.bar.com/path/file.html?text=Hello+G%C3%BCnter", toURL("https://foo.bar.com/path/file.html?text=Hello+G%C3%BCnter"), true},
+                {"ftp://user@bar.com/foo/bar.txt", toURL("ftp://user@bar.com/foo/bar.txt"), true},
+                {"ftp://user:password@host/foo/bar.txt", toURL("ftp://user:password@host/foo/bar.txt"), true},
+                {"ftp://user:password@host:8192/foo/bar.txt", toURL("ftp://user:password@host:8192/foo/bar.txt"), true},
+                {"file:/path/to/file", toURL("file:/path/to/file"), true},
+                {"file://localhost/path/to/file.json", toURL("file://localhost/path/to/file.json"), true},
+                {"file://servername/path/to/file.json", toURL("file://servername/path/to/file.json"), true},
+                {"jar:file:/c://my.jar!/", toURL("jar:file:/c://my.jar!/"), true},
+                {"jar:file:/c://my.jar!/com/mycompany/MyClass.class", toURL("jar:file:/c://my.jar!/com/mycompany/MyClass.class"), true}
+        });
+        TEST_DB.put(pair(Map.class, URL.class), new Object[][]{
+                { mapOf(URL_KEY, "https://domain.com"), toURL("https://domain.com"), true},
+                { mapOf(URL_KEY, "bad uri"), new IllegalArgumentException("Illegal character in path")},
+        });
+    }
+
+    /**
+     * URI
+     */
+    private static void loadUriTests() {
+        TEST_DB.put(pair(Void.class, URI.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(URI.class, URI.class), new Object[][]{
+                {toURI("https://chat.openai.com"), toURI("https://chat.openai.com")},
+        });
+        TEST_DB.put(pair(String.class, URI.class), new Object[][]{
+                {"https://domain.com", toURI("https://domain.com"), true},
+                {"http://localhost", toURI("http://localhost"), true},
+                {"http://localhost:8080", toURI("http://localhost:8080"), true},
+                {"http://localhost:8080/file/path", toURI("http://localhost:8080/file/path"), true},
+                {"http://localhost:8080/path/file.html", toURI("http://localhost:8080/path/file.html"), true},
+                {"http://localhost:8080/path/file.html?foo=1&bar=2", toURI("http://localhost:8080/path/file.html?foo=1&bar=2"), true},
+                {"http://localhost:8080/path/file.html?foo=bar&qux=quy#AnchorLocation", toURI("http://localhost:8080/path/file.html?foo=bar&qux=quy#AnchorLocation"), true},
+                {"https://foo.bar.com/", toURI("https://foo.bar.com/"), true},
+                {"https://foo.bar.com/path/foo%20bar.html", toURI("https://foo.bar.com/path/foo%20bar.html"), true},
+                {"https://foo.bar.com/path/file.html?text=Hello+G%C3%BCnter", toURI("https://foo.bar.com/path/file.html?text=Hello+G%C3%BCnter"), true},
+                {"ftp://user@bar.com/foo/bar.txt", toURI("ftp://user@bar.com/foo/bar.txt"), true},
+                {"ftp://user:password@host/foo/bar.txt", toURI("ftp://user:password@host/foo/bar.txt"), true},
+                {"ftp://user:password@host:8192/foo/bar.txt", toURI("ftp://user:password@host:8192/foo/bar.txt"), true},
+                {"file:/path/to/file", toURI("file:/path/to/file"), true},
+                {"file://localhost/path/to/file.json", toURI("file://localhost/path/to/file.json"), true},
+                {"file://servername/path/to/file.json", toURI("file://servername/path/to/file.json"), true},
+                {"jar:file:/c://my.jar!/", toURI("jar:file:/c://my.jar!/"), true},
+                {"jar:file:/c://my.jar!/com/mycompany/MyClass.class", toURI("jar:file:/c://my.jar!/com/mycompany/MyClass.class"), true}
+        });
+        TEST_DB.put(pair(Map.class, URI.class), new Object[][]{
+                { mapOf(URI_KEY, "https://domain.com"), toURI("https://domain.com"), true},
+                { mapOf(URI_KEY, "bad uri"), new IllegalArgumentException("Unable to create URI from: bad uri")},
+        });
+    }
+
+    /**
+     * TimeZone
+     */
+    private static void loadTimeZoneTests() {
+        TEST_DB.put(pair(Void.class, TimeZone.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(TimeZone.class, TimeZone.class), new Object[][]{
+                {TimeZone.getTimeZone("GMT"), TimeZone.getTimeZone("GMT")},
+        });
+        TEST_DB.put(pair(String.class, TimeZone.class), new Object[][]{
+                {"America/New_York", TimeZone.getTimeZone("America/New_York"), true},
+                {"EST", TimeZone.getTimeZone("EST"), true},
+                {"GMT+05:00", TimeZone.getTimeZone(ZoneId.of("+05:00")), true},
+                {"America/Denver", TimeZone.getTimeZone(ZoneId.of("America/Denver")), true},
+                {"American/FunkyTown", TimeZone.getTimeZone("GMT")},    // Per javadoc's
+        });
+        TEST_DB.put(pair(Map.class, TimeZone.class), new Object[][]{
+                { mapOf(ZONE, "GMT"), TimeZone.getTimeZone("GMT"), true},
+                { mapOf(ZONE, "America/New_York"), TimeZone.getTimeZone("America/New_York"), true},
+                { mapOf(ZONE, "Asia/Tokyo"), TimeZone.getTimeZone("Asia/Tokyo"), true},
+        });
+    }
+
+    /**
+     * OffsetTime
+     */
+    private static void loadOffsetTimeTests() {
+        TEST_DB.put(pair(Void.class, OffsetTime.class), new Object[][]{
+                {null, null}
+        });
+        TEST_DB.put(pair(OffsetTime.class, OffsetTime.class), new Object[][]{
+                {OffsetTime.parse("00:00+09:00"), OffsetTime.parse("00:00:00+09:00")},
+        });
+        TEST_DB.put(pair(String.class, OffsetTime.class), new Object[][]{
+                {"10:15:30+01:00", OffsetTime.parse("10:15:30+01:00"), true},
+                {"10:15:30+01:00:59", OffsetTime.parse("10:15:30+01:00:59"), true},
+                {"10:15:30+01:00.001", new IllegalArgumentException("Unable to parse [10:15:30+01:00.001] as an OffsetTime")},
+        });
+        TEST_DB.put(pair(Map.class, OffsetTime.class), new Object[][]{
+                {mapOf(TIME, "00:00+09:00"), OffsetTime.parse("00:00+09:00"), true},
+                {mapOf(TIME, "00:00+09:01:23"), OffsetTime.parse("00:00+09:01:23"), true},
+                {mapOf(TIME, "00:00+09:01:23.1"), new IllegalArgumentException("Unable to parse OffsetTime")},
+                {mapOf(TIME, "00:00-09:00"), OffsetTime.parse("00:00-09:00"), true},
+                {mapOf(TIME, "00:00:00+09:00"), OffsetTime.parse("00:00+09:00")},       // no reverse
+                {mapOf(TIME, "00:00:00+09:00:00"), OffsetTime.parse("00:00+09:00")},    // no reverse
+        });
     }
 
     /**
@@ -186,8 +321,13 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Locale.class, Locale.class), new Object[][]{
                 {new Locale.Builder().setLanguage("en").setRegion("US").build(), new Locale.Builder().setLanguage("en").setRegion("US").build()},
         });
-        TEST_DB.put(pair(String.class, Locale.class), new Object[][]{
-                {"en-US", new Locale.Builder().setLanguage("en").setRegion("US").build(), true},
+        TEST_DB.put(pair(Map.class, Locale.class), new Object[][]{
+                {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Latn", VARIANT, "POSIX"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build(), true},
+                {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Latn"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").build(), true},
+                {mapOf(LANGUAGE, "en", COUNTRY, "US"), new Locale.Builder().setLanguage("en").setRegion("US").build(), true},
+                {mapOf(LANGUAGE, "en"), new Locale.Builder().setLanguage("en").build(), true},
+                {mapOf(V, "en-Latn-US-POSIX"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build()},   // no reverse
+                {mapOf(VALUE, "en-Latn-US-POSIX"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build()},   // no reverse
         });
     }
 
@@ -210,6 +350,9 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, Map.class), new Object[][]{
                 {null, null}
         });
+        TEST_DB.put(pair(Map.class, Map.class), new Object[][]{
+                { new HashMap<>(), new IllegalArgumentException("Unsupported conversion") }
+        });
         TEST_DB.put(pair(Boolean.class, Map.class), new Object[][]{
                 {true, mapOf(VALUE, true)},
                 {false, mapOf(VALUE, false)}
@@ -231,10 +374,6 @@ class ConverterEverythingTest {
                 {1.0, mapOf(VALUE, 1.0)},
                 {2.0, mapOf(VALUE, 2.0)}
         });
-        TEST_DB.put(pair(BigDecimal.class, Map.class), new Object[][]{
-                {BigDecimal.valueOf(1), mapOf(VALUE, BigDecimal.valueOf(1))},
-                {BigDecimal.valueOf(2), mapOf(VALUE, BigDecimal.valueOf(2))}
-        });
         TEST_DB.put(pair(Calendar.class, Map.class), new Object[][]{
                 {(Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
@@ -246,6 +385,7 @@ class ConverterEverythingTest {
                     map.put(DATE, "2024-02-05");
                     map.put(TIME, "22:31:17.409");
                     map.put(ZONE, TOKYO);
+                    map.put(EPOCH_MILLIS, 1707139877409L);
                     return map;
                 }, true},
         });
@@ -497,6 +637,11 @@ class ConverterEverythingTest {
                 {Duration.ofMillis(Integer.MAX_VALUE), new AtomicLong(Integer.MAX_VALUE), true},
                 {Duration.ofMillis(Long.MAX_VALUE / 2), new AtomicLong(Long.MAX_VALUE / 2), true},
         });
+        TEST_DB.put(pair(Map.class, AtomicLong.class), new Object[][]{
+                {mapOf(VALUE, new AtomicLong(0)), new AtomicLong(0)},
+                {mapOf(VALUE, new AtomicLong(1)), new AtomicLong(1)},
+                {mapOf(VALUE, 1), new AtomicLong(1)},
+        });
     }
 
     /**
@@ -553,10 +698,10 @@ class ConverterEverythingTest {
                 {new byte[]{(byte) 65, (byte) 66, (byte) 67, (byte) 68}, "ABCD"}
         });
         TEST_DB.put(pair(char[].class, String.class), new Object[][]{
-                {new char[]{'A', 'B', 'C', 'D'}, "ABCD"}
+                {new char[]{'A', 'B', 'C', 'D'}, "ABCD", true}
         });
         TEST_DB.put(pair(Character[].class, String.class), new Object[][]{
-                {new Character[]{'A', 'B', 'C', 'D'}, "ABCD"}
+                {new Character[]{'A', 'B', 'C', 'D'}, "ABCD", true}
         });
         TEST_DB.put(pair(ByteBuffer.class, String.class), new Object[][]{
                 {ByteBuffer.wrap(new byte[]{(byte) 0x30, (byte) 0x31, (byte) 0x32, (byte) 0x33}), "0123"}
@@ -642,57 +787,14 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(String.class, String.class), new Object[][]{
                 {"same", "same"},
         });
-        TEST_DB.put(pair(OffsetTime.class, String.class), new Object[][]{
-                {OffsetTime.parse("10:15:30+01:00"), "10:15:30+01:00", true},
-        });
         TEST_DB.put(pair(OffsetDateTime.class, String.class), new Object[][]{
                 {OffsetDateTime.parse("2024-02-10T10:15:07+01:00"), "2024-02-10T10:15:07+01:00", true},
         });
-        TEST_DB.put(pair(URL.class, String.class), new Object[][]{
-                {toURL("https://domain.com"), "https://domain.com", true},
-                {toURL("http://localhost"), "http://localhost", true},
-                {toURL("http://localhost:8080"), "http://localhost:8080", true},
-                {toURL("http://localhost:8080/file/path"), "http://localhost:8080/file/path", true},
-                {toURL("http://localhost:8080/path/file.html"), "http://localhost:8080/path/file.html", true},
-                {toURL("http://localhost:8080/path/file.html?foo=1&bar=2"), "http://localhost:8080/path/file.html?foo=1&bar=2", true},
-                {toURL("http://localhost:8080/path/file.html?foo=bar&qux=quy#AnchorLocation"), "http://localhost:8080/path/file.html?foo=bar&qux=quy#AnchorLocation", true},
-                {toURL("https://foo.bar.com/"), "https://foo.bar.com/", true},
-                {toURL("https://foo.bar.com/path/foo%20bar.html"), "https://foo.bar.com/path/foo%20bar.html", true},
-                {toURL("https://foo.bar.com/path/file.html?text=Hello+G%C3%BCnter"), "https://foo.bar.com/path/file.html?text=Hello+G%C3%BCnter", true},
-                {toURL("ftp://user@bar.com/foo/bar.txt"), "ftp://user@bar.com/foo/bar.txt", true},
-                {toURL("ftp://user:password@host/foo/bar.txt"), "ftp://user:password@host/foo/bar.txt", true},
-                {toURL("ftp://user:password@host:8192/foo/bar.txt"), "ftp://user:password@host:8192/foo/bar.txt", true},
-                {toURL("file:/path/to/file"), "file:/path/to/file", true},
-                {toURL("file://localhost/path/to/file.json"), "file://localhost/path/to/file.json", true},
-                {toURL("file://servername/path/to/file.json"), "file://servername/path/to/file.json", true},
-                {toURL("jar:file:/c://my.jar!/"), "jar:file:/c://my.jar!/", true},
-                {toURL("jar:file:/c://my.jar!/com/mycompany/MyClass.class"), "jar:file:/c://my.jar!/com/mycompany/MyClass.class", true}
-        });
-        TEST_DB.put(pair(URI.class, String.class), new Object[][]{
-                {toURI("https://domain.com"), "https://domain.com", true},
-                {toURI("http://localhost"), "http://localhost", true},
-                {toURI("http://localhost:8080"), "http://localhost:8080", true},
-                {toURI("http://localhost:8080/file/path"), "http://localhost:8080/file/path", true},
-                {toURI("http://localhost:8080/path/file.html"), "http://localhost:8080/path/file.html", true},
-                {toURI("http://localhost:8080/path/file.html?foo=1&bar=2"), "http://localhost:8080/path/file.html?foo=1&bar=2", true},
-                {toURI("http://localhost:8080/path/file.html?foo=bar&qux=quy#AnchorLocation"), "http://localhost:8080/path/file.html?foo=bar&qux=quy#AnchorLocation", true},
-                {toURI("https://foo.bar.com/"), "https://foo.bar.com/", true},
-                {toURI("https://foo.bar.com/path/foo%20bar.html"), "https://foo.bar.com/path/foo%20bar.html", true},
-                {toURI("https://foo.bar.com/path/file.html?text=Hello+G%C3%BCnter"), "https://foo.bar.com/path/file.html?text=Hello+G%C3%BCnter", true},
-                {toURI("ftp://user@bar.com/foo/bar.txt"), "ftp://user@bar.com/foo/bar.txt", true},
-                {toURI("ftp://user:password@host/foo/bar.txt"), "ftp://user:password@host/foo/bar.txt", true},
-                {toURI("ftp://user:password@host:8192/foo/bar.txt"), "ftp://user:password@host:8192/foo/bar.txt", true},
-                {toURI("file:/path/to/file"), "file:/path/to/file", true},
-                {toURI("file://localhost/path/to/file.json"), "file://localhost/path/to/file.json", true},
-                {toURI("file://servername/path/to/file.json"), "file://servername/path/to/file.json", true},
-                {toURI("jar:file:/c://my.jar!/"), "jar:file:/c://my.jar!/", true},
-                {toURI("jar:file:/c://my.jar!/com/mycompany/MyClass.class"), "jar:file:/c://my.jar!/com/mycompany/MyClass.class", true}
-        });
-        TEST_DB.put(pair(TimeZone.class, String.class), new Object[][]{
-                {TimeZone.getTimeZone("America/New_York"), "America/New_York", true},
-                {TimeZone.getTimeZone("EST"), "EST", true},
-                {TimeZone.getTimeZone(ZoneId.of("+05:00")), "GMT+05:00", true},
-                {TimeZone.getTimeZone(ZoneId.of("America/Denver")), "America/Denver", true},
+        TEST_DB.put(pair(Locale.class, String.class), new Object[][]{
+                { new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build(), "en-Latn-US-POSIX", true},
+                { new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").build(), "en-Latn-US", true},
+                { new Locale.Builder().setLanguage("en").setRegion("US").build(), "en-US", true},
+                { new Locale.Builder().setLanguage("en").build(), "en", true},
         });
     }
 
@@ -1825,6 +1927,11 @@ class ConverterEverythingTest {
                 {UUID.fromString("7fffffff-ffff-ffff-ffff-fffffffffffe"), new BigDecimal("170141183460469231731687303715884105726"), true},
                 {UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffffff"), new BigDecimal("170141183460469231731687303715884105727"), true},
                 {UUID.fromString("80000000-0000-0000-0000-000000000000"), new BigDecimal("170141183460469231731687303715884105728"), true},
+        });
+        TEST_DB.put(pair(Map.class, BigDecimal.class), new Object[][]{
+                {mapOf("_v", "0"), BigDecimal.ZERO},
+                {mapOf("_v", BigDecimal.valueOf(0)), BigDecimal.ZERO, true},
+                {mapOf("_v", BigDecimal.valueOf(1.1)), BigDecimal.valueOf(1.1), true},
         });
     }
 

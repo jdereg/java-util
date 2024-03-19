@@ -1,10 +1,11 @@
 package com.cedarsoftware.util.convert;
 
-import java.time.OffsetTime;
-import java.time.format.DateTimeFormatter;
+import java.net.URI;
 import java.util.Map;
 
 import com.cedarsoftware.util.CompactLinkedMap;
+
+import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -23,18 +24,14 @@ import com.cedarsoftware.util.CompactLinkedMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-final class OffsetTimeConversions {
-    private OffsetTimeConversions() {}
+final class UriConversions {
 
-    static String toString(Object from, Converter converter) {
-        OffsetTime offsetTime = (OffsetTime) from;
-        return offsetTime.format(DateTimeFormatter.ISO_OFFSET_TIME);
-    }
+    private UriConversions() {}
 
-    static Map<String, Object> toMap(Object from, Converter converter) {
-        OffsetTime offsetTime = (OffsetTime) from;
-        Map<String, Object> map = new CompactLinkedMap<>();
-        map.put(MapConversions.TIME, offsetTime.toString());
-        return map;
+    static Map toMap(Object from, Converter converter) {
+        URI uri = (URI) from;
+        Map<String, Object> target = new CompactLinkedMap<>();
+        target.put(URI_KEY, uri.toString());
+        return target;
     }
 }

@@ -904,16 +904,21 @@ public final class Converter {
         CONVERSION_DB.put(pair(MonthDay.class, Map.class), MonthDayConversions::toMap);
         CONVERSION_DB.put(pair(YearMonth.class, Map.class), YearMonthConversions::toMap);
         CONVERSION_DB.put(pair(Period.class, Map.class), PeriodConversions::toMap);
+        CONVERSION_DB.put(pair(TimeZone.class, Map.class), TimeZoneConversions::toMap);
         CONVERSION_DB.put(pair(ZoneId.class, Map.class), ZoneIdConversions::toMap);
         CONVERSION_DB.put(pair(ZoneOffset.class, Map.class), ZoneOffsetConversions::toMap);
         CONVERSION_DB.put(pair(Class.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(UUID.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(Calendar.class, Map.class), CalendarConversions::toMap);
         CONVERSION_DB.put(pair(Number.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Map.class, Map.class), MapConversions::toMap);
+        CONVERSION_DB.put(pair(Map.class, Map.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(Enum.class, Map.class), EnumConversions::toMap);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Map.class), OffsetDateTimeConversions::toMap);
+        CONVERSION_DB.put(pair(OffsetTime.class, Map.class), OffsetTimeConversions::toMap);
         CONVERSION_DB.put(pair(Year.class, Map.class), YearConversions::toMap);
+        CONVERSION_DB.put(pair(Locale.class, Map.class), LocaleConversions::toMap);
+        CONVERSION_DB.put(pair(URI.class, Map.class), UriConversions::toMap);
+        CONVERSION_DB.put(pair(URL.class, Map.class), UrlConversions::toMap);
     }
 
     public Converter(ConverterOptions options) {

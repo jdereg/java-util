@@ -26,7 +26,7 @@ final class PeriodConversions {
 
     private PeriodConversions() {}
 
-    static Map toMap(Object from, Converter converter) {
+    static Map<String, Object> toMap(Object from, Converter converter) {
         Period period = (Period) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put(MapConversions.YEARS, period.getYears());

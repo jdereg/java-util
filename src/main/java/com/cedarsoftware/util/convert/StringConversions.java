@@ -476,11 +476,7 @@ final class StringConversions {
         try {
             return OffsetTime.parse(s, DateTimeFormatter.ISO_OFFSET_TIME);
         } catch (Exception e) {
-            OffsetDateTime dateTime = toOffsetDateTime(from, converter);
-            if (dateTime == null) {
-                return null;
-            }
-            return dateTime.toOffsetTime();
+            throw new IllegalArgumentException("Unable to parse [" + s + "] as an OffsetTime");
         }
     }
 

@@ -3716,7 +3716,7 @@ class ConverterTest
     {
         Calendar cal = Calendar.getInstance();
         Map<?, ?> map = this.converter.convert(cal, Map.class);
-        assert map.size() == 3; // date, time, zone
+        assert map.size() == 4; // date, time, zone, epochMillis
     }
 
     @Test

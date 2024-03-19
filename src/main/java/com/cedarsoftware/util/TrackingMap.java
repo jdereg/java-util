@@ -25,38 +25,33 @@ import java.util.Set;
  *         limitations under the License.
  */
 public class TrackingMap<K, V> implements Map<K, V> {
-    private final Map<K, V> internalMap;
-    private final Set<K> readKeys;
 
-    /**
-     * Wrap the passed in Map with a TrackingMap.
-     * @param map Map to wrap
-     */
+    private final Map<K, V> internalMap;
+    private final KeyTracker<K> keyTracker;
+
     public TrackingMap(Map<K, V> map) {
-        if (map == null)
-        {
+        if (map == null) {
             throw new IllegalArgumentException("Cannot construct a TrackingMap() with null");
         }
         internalMap = map;
-        readKeys = new HashSet<>();
+        keyTracker = new KeyTracker<>();
     }
 
     @SuppressWarnings("unchecked")
     public V get(Object key) {
         V value = internalMap.get(key);
-        readKeys.add((K) key);
+        keyTracker.add((K) key);
         return value;
     }
 
-    public V put(K key, V value)
-    {
+    public V put(K key, V value) {
         return internalMap.put(key, value);
     }
 
     @SuppressWarnings("unchecked")
     public boolean containsKey(Object key) {
         boolean containsKey = internalMap.containsKey(key);
-        readKeys.add((K)key);
+        keyTracker.add((K) key);
         return containsKey;
     }
 
@@ -65,7 +60,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
     }
 
     public V remove(Object key) {
-        readKeys.remove(key);
+        keyTracker.remove(key);
         return internalMap.remove(key);
     }
 
@@ -90,7 +85,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
     }
 
     public void clear() {
-        readKeys.clear();
+        keyTracker.clear();
         internalMap.clear();
     }
 
@@ -110,41 +105,55 @@ public class TrackingMap<K, V> implements Map<K, V> {
         return internalMap.entrySet();
     }
 
-    /**
-     * Remove the entries from the Map that have not been accessed by .get() or .containsKey().
-     */
     public void expungeUnused() {
-        internalMap.keySet().retainAll(readKeys);
+        internalMap.keySet().retainAll(keyTracker.getKeys());
     }
 
-    /**
-     * Add the Collection of keys to the internal list of keys accessed.  If there are keys
-     * in the passed in Map that are not included in the contained Map, the readKeys will
-     * exceed the keySet() of the wrapped Map.
-     * @param additional Collection of keys to add to the list of keys read.
-     */
     public void informAdditionalUsage(Collection<K> additional) {
-        readKeys.addAll(additional);
+        keyTracker.addAll(additional);
     }
 
-    /**
-     * Add the used keys from the passed in TrackingMap to this TrackingMap's keysUsed.  This can
-     * cause the readKeys to include entries that are not in wrapped Maps keys.
-     * @param additional TrackingMap whose used keys are to be added to this maps used keys.
-     */
     public void informAdditionalUsage(TrackingMap<K, V> additional) {
-        readKeys.addAll(additional.readKeys);
+        keyTracker.addAll(additional.getKeyTracker().getKeys());
     }
 
-    /**
-     * Fetch the Set of keys that have been accessed via .get() or .containsKey() of the contained Map.
-     * @return Set of the accessed (read) keys.
-     */
-    public Set<K> keysUsed() { return readKeys; }
+    public Set<K> keysUsed() {
+        return keyTracker.getKeys();
+    }
 
-    /**
-     * Fetch the Map that this TrackingMap wraps.
-     * @return Map the wrapped Map
-     */
-    public Map<K, V> getWrappedMap() { return internalMap; }
+    public Map<K, V> getWrappedMap() {
+        return internalMap;
+    }
+
+    public KeyTracker<K> getKeyTracker() {
+        return keyTracker;
+    }
+
+}
+class KeyTracker<K> {
+    private final Set<K> keys;
+
+    KeyTracker() {
+        keys = new HashSet<>();
+    }
+
+    void add(K key) {
+        keys.add(key);
+    }
+
+    void addAll(Collection<K> keys) {
+        this.keys.addAll(keys);
+    }
+
+    void remove(Object key) {
+        keys.remove(key);
+    }
+
+    Set<K> getKeys() {
+        return keys;
+    }
+
+    void clear() {
+        keys.clear();
+    }
 }

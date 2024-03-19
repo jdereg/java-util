@@ -48,16 +48,15 @@ public class FastByteArrayInputStream extends InputStream {
             return -1;
         }
 
-        int avail = count - pos;
-        if (len > avail) {
-            len = avail;
-        }
-        if (len <= 0) {
+        int availableBytes = count - pos;
+        int bytesRead = Math.min(len, availableBytes);
+        if (bytesRead <= 0) {
             return 0;
         }
-        System.arraycopy(buffer, pos, b, off, len);
-        pos += len;
-        return len;
+
+        System.arraycopy(buffer, pos, b, off, bytesRead);
+        pos += bytesRead;
+        return bytesRead;
     }
 
     public long skip(long n) {

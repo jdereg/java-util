@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
@@ -544,8 +545,7 @@ public final class ReflectionUtils
      * @return String name of class
      * @throws Exception potential io exceptions can happen
      */
-    public static String getClassNameFromByteCode(byte[] byteCode) throws Exception
-    {
+    public static String getClassNameFromByteCode(byte[] byteCode) throws Exception {
         InputStream is = new ByteArrayInputStream(byteCode);
         DataInputStream dis = new DataInputStream(is);
         dis.readInt(); // magic number
@@ -556,64 +556,14 @@ public final class ReflectionUtils
         String[] strings = new String[cpcnt];
         int prevT;
         int t = 0;
-        for (int i=0; i < cpcnt; i++)
-        {
+        for (int i = 0; i < cpcnt; i++) {
             prevT = t;
             t = dis.read(); // tag - 1 byte
 
-            if (t == 1) // CONSTANT_Utf8
-            {
-                strings[i] = dis.readUTF();
-            }
-            else if (t == 3 || t == 4) // CONSTANT_Integer || CONSTANT_Float
-            {
-                dis.readInt(); // bytes
-            }
-            else if (t == 5 || t == 6) // CONSTANT_Long || CONSTANT_Double
-            {
-                dis.readInt(); // high_bytes
-                dis.readInt(); // low_bytes
+            processConstantType(dis, t, classes, strings, i);
+
+            if (t == 5 || t == 6) {
                 i++; // All 8-byte constants take up two entries in the constant_pool table of the class file.
-            }
-            else if (t == 7) // CONSTANT_Class
-            {
-                classes[i] = dis.readShort() & 0xffff;
-            }
-            else if (t == 8) // CONSTANT_String
-            {
-                dis.readShort(); // string_index
-            }
-            else if (t == 9 || t == 10 || t == 11)  // CONSTANT_Fieldref || CONSTANT_Methodref || CONSTANT_InterfaceMethodref
-            {
-                dis.readShort(); // class_index
-                dis.readShort(); // name_and_type_index
-            }
-            else if (t == 12) // CONSTANT_NameAndType
-            {
-                dis.readShort(); // name_index
-                dis.readShort(); // descriptor_index
-            }
-            else if (t == 15) // CONSTANT_MethodHandle
-            {
-                dis.readByte(); // reference_kind
-                dis.readShort(); // reference_index
-            }
-            else if (t == 16) // CONSTANT_MethodType
-            {
-                dis.readShort(); // descriptor_index
-            }
-            else if (t == 17 || t == 18) // CONSTANT_Dynamic || CONSTANT_InvokeDynamic
-            {
-                dis.readShort(); // bootstrap_method_attr_index
-                dis.readShort(); // name_and_type_index
-            }
-            else if (t == 19 || t == 20) // CONSTANT_Module || CONSTANT_Package
-            {
-                dis.readShort(); // name_index
-            }
-            else
-            {
-                throw new IllegalStateException("Byte code format exceeds JDK 17 format.");
             }
         }
 
@@ -623,6 +573,59 @@ public final class ReflectionUtils
         String className = strings[stringIndex - 1];
         return className.replace('/', '.');
     }
+
+    private static void processConstantType(DataInputStream dis, int t, int[] classes, String[] strings, int i) throws IOException {
+        switch (t) {
+            case 1: // CONSTANT_Utf8
+                strings[i] = dis.readUTF();
+                break;
+            case 3:
+            case 4: // CONSTANT_Integer || CONSTANT_Float
+                dis.readInt(); // bytes
+                break;
+            case 5:
+            case 6: // CONSTANT_Long || CONSTANT_Double
+                dis.readInt(); // high_bytes
+                dis.readInt(); // low_bytes
+                break;
+            case 7: // CONSTANT_Class
+                classes[i] = dis.readShort() & 0xffff;
+                break;
+            case 8: // CONSTANT_String
+                dis.readShort(); // string_index
+                break;
+            case 9:
+            case 10:
+            case 11:  // CONSTANT_Fieldref || CONSTANT_Methodref || CONSTANT_InterfaceMethodref
+                dis.readShort(); // class_index
+                dis.readShort(); // name_and_type_index
+                break;
+            case 12: // CONSTANT_NameAndType
+                dis.readShort(); // name_index
+                dis.readShort(); // descriptor_index
+                break;
+            case 15: // CONSTANT_MethodHandle
+                dis.readByte(); // reference_kind
+                dis.readShort(); // reference_index
+                break;
+            case 16: // CONSTANT_MethodType
+                dis.readShort(); // descriptor_index
+                break;
+            case 17:
+            case 18: // CONSTANT_Dynamic || CONSTANT_InvokeDynamic
+                dis.readShort(); // bootstrap_method_attr_index
+                dis.readShort(); // name_and_type_index
+                break;
+            case 19:
+            case 20: // CONSTANT_Module || CONSTANT_Package
+                dis.readShort(); // name_index
+                break;
+            default:
+                throw new IllegalStateException("Byte code format exceeds JDK 17 format.");
+        }
+    }
+
+
 
     static String getClassLoaderName(Class<?> c)
     {

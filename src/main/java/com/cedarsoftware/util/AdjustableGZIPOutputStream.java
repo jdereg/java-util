@@ -23,15 +23,17 @@ import java.util.zip.GZIPOutputStream;
  */
 public class AdjustableGZIPOutputStream extends GZIPOutputStream
 {
-    public AdjustableGZIPOutputStream(OutputStream out, int level) throws IOException
-    {
+    public AdjustableGZIPOutputStream(OutputStream out, int level) throws IOException {
         super(out);
-        def.setLevel(level);
+        setCompressionLevel(level);
     }
 
-    public AdjustableGZIPOutputStream(OutputStream out, int size, int level) throws IOException
-    {
+    public AdjustableGZIPOutputStream(OutputStream out, int size, int level) throws IOException {
         super(out, size);
+        setCompressionLevel(level);
+    }
+
+    private void setCompressionLevel(int level) {
         def.setLevel(level);
     }
 }

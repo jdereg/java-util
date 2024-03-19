@@ -67,26 +67,42 @@ public class FastWriter extends Writer {
         if (out == null) {
             throw new IOException("FastWriter stream is closed.");
         }
-        if ((off < 0) || (off > cbuf.length) || (len < 0) ||
-                ((off + len) > cbuf.length) || ((off + len) < 0)) {
-            throw new IndexOutOfBoundsException();
-        } else if (len == 0) {
-            return;
-        }
+        BufferWriter writer;
         if (len >= cb.length) {
-            // If the request length exceeds the size of the output buffer,
-            // flush the buffer and then write the data directly.
-            flushBuffer();
-            out.write(cbuf, off, len);
-            return;
+            writer = new LargeBufferWriter();
+        } else {
+            writer = new SmallBufferWriter();
         }
-        if (len > cb.length - nextChar) {
-            flushBuffer();
-        }
-        System.arraycopy(cbuf, off, cb, nextChar, len);
-        nextChar += len;
+        writer.write(cbuf, off, len);
+    }
+    private interface BufferWriter {
+        void write(char[] cbuf, int off, int len) throws IOException;
     }
 
+    private class LargeBufferWriter implements BufferWriter {
+        @Override
+        public void write(char[] cbuf, int off, int len) throws IOException {
+            flushBuffer();
+            out.write(cbuf, off, len);
+        }
+    }
+
+    private class SmallBufferWriter implements BufferWriter {
+        @Override
+        public void write(char[] cbuf, int off, int len) {
+            if (len > cb.length - nextChar) {
+                try {
+                    flushBuffer();
+                    out.write(cbuf, off, len);
+                } catch (IOException e) {
+                    // Handle or log the exception
+                }
+            } else {
+                System.arraycopy(cbuf, off, cb, nextChar, len);
+                nextChar += len;
+            }
+        }
+    }
     public void write(String str, int off, int len) throws IOException {
         if (out == null) {
             throw new IOException("FastWriter stream is closed.");

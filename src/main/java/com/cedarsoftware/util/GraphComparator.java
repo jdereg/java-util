@@ -536,119 +536,105 @@ public class GraphComparator
                 Character.class == c;
     }
 
-    private static boolean isIdObject(Object o, ID idFetcher)
-    {
-        if (o == null)
-        {
+    private static boolean isIdObject(Object object, ID idFetcher) {
+        if (object == null) {
             return false;
         }
-        Class<?> c = o.getClass();
-        if (isLogicalPrimitive(c) ||
-                c.isArray() ||
-                Collection.class.isAssignableFrom(c) ||
-                Map.class.isAssignableFrom(c) ||
-                Object.class == c)
-        {
+        Class<?> objectType = object.getClass();
+        if (isLogicalPrimitive(objectType) ||
+                objectType.isArray() ||
+                isCollectionType(objectType) ||
+                isMapType(objectType) ||
+                Object.class == objectType) {
             return false;
         }
-
-        try
-        {
-            idFetcher.getId(o);
+        try {
+            idFetcher.getId(object);
             return true;
-        }
-        catch (Exception ignored)
-        {
+        } catch (Exception ignored) {
             return false;
         }
-
     }
+    private static boolean isCollectionType(Class<?> type) {
+        return Collection.class.isAssignableFrom(type);
+    }
+
+    // Renamed method for clarity
+    private static boolean isMapType(Class<?> type) {
+        return Map.class.isAssignableFrom(type);
+    }
+
     /**
      * Deeply compare two Arrays []. Both arrays must be of the same type, same length, and all
      * elements within the arrays must be deeply equal in order to return true.  The appropriate
      * 'resize' or 'setElement' commands will be generated.
      */
-    private static void compareArrays(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher)
-    {
+    private static void compareArrays(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher) {
         int srcLen = Array.getLength(delta.srcValue);
         int targetLen = Array.getLength(delta.targetValue);
 
-        if (srcLen != targetLen)
-        {
-            delta.setCmd(ARRAY_RESIZE);
-            delta.setOptionalKey(targetLen);
-            deltas.add(delta);
+        if (srcLen != targetLen) {
+            handleArrayResize(delta, deltas, targetLen);
         }
 
         final String sysId = "(" + System.identityHashCode(delta.srcValue) + ')';
         final Class<?> compType = delta.targetValue.getClass().getComponentType();
 
-        if (isLogicalPrimitive(compType))
-        {
-            for (int i=0; i < targetLen; i++)
-            {
-                final Object targetValue = Array.get(delta.targetValue, i);
-                String srcPtr = sysId + '[' + i + ']';
+        if (isLogicalPrimitive(compType)) {
+            processPrimitiveArray(delta, deltas, sysId, srcLen, targetLen);
+        } else {
+            processNonPrimitiveArray(delta, deltas, stack, idFetcher, sysId, srcLen, targetLen);
+        }
+    }
 
-                if (i < srcLen)
-                {   // Do positional check
-                    final Object srcValue = Array.get(delta.srcValue, i);
+    private static void handleArrayResize(Delta delta, Collection<Delta> deltas, int targetLen) {
+        delta.setCmd(ARRAY_RESIZE);
+        delta.setOptionalKey(targetLen);
+        deltas.add(delta);
+    }
 
-                    if (srcValue == null && targetValue != null ||
-                            srcValue != null && targetValue == null ||
-                            !srcValue.equals(targetValue))
-                    {
-                        copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
-                    }
+    private static void processPrimitiveArray(Delta delta, Collection<Delta> deltas, String sysId, int srcLen, int targetLen) {
+        for (int i = 0; i < targetLen; i++) {
+            final Object targetValue = Array.get(delta.targetValue, i);
+            String srcPtr = sysId + '[' + i + ']';
+
+            if (i < srcLen) {
+                final Object srcValue = Array.get(delta.srcValue, i);
+                if (srcValue == null && targetValue != null ||
+                        srcValue != null && targetValue == null ||
+                        !srcValue.equals(targetValue)) {
+                    copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                 }
-                else
-                {   // Target array is larger, issue set-element-commands for each additional element
-                    copyArrayElement(delta, deltas, srcPtr, null, targetValue, i);
-                }
+            } else {
+                copyArrayElement(delta, deltas, srcPtr, null, targetValue, i);
             }
         }
-        else
-        {   // Only map IDs in array when the array type is non-primitive
-            for (int i = targetLen - 1; i >= 0; i--)
-            {
-                final Object targetValue = Array.get(delta.targetValue, i);
-                String srcPtr = sysId + '[' + i + ']';
+    }
 
-                if (i < srcLen)
-                {   // Do positional check
-                    final Object srcValue = Array.get(delta.srcValue, i);
+    private static void processNonPrimitiveArray(Delta delta, Collection<Delta> deltas, LinkedList<Delta> stack, ID idFetcher, String sysId, int srcLen, int targetLen) {
+        for (int i = targetLen - 1; i >= 0; i--) {
+            final Object targetValue = Array.get(delta.targetValue, i);
+            String srcPtr = sysId + '[' + i + ']';
 
-                    if (targetValue == null || srcValue == null)
-                    {
-                        if (srcValue != targetValue)
-                        {   // element was nulled out, create a command to copy it (no need to recurse [add to stack] because null has no depth)
-                            copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
-                        }
-                    }
-                    else if (isIdObject(srcValue, idFetcher) && isIdObject(targetValue, idFetcher))
-                    {
-                        Object srcId = idFetcher.getId(srcValue);
-                        Object targetId = idFetcher.getId(targetValue);
-
-                        if (targetId.equals(srcId))
-                        {   // No need to copy, same object in same array position, but it's fields could have changed, so add the object to
-                            // the stack for further graph delta comparison.
-                            stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i));
-                        }
-                        else
-                        {   // IDs do not match?  issue a set-element-command
-                            copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
-                        }
-                    }
-                    else if (!DeepEquals.deepEquals(srcValue, targetValue))
-                    {
+            if (i < srcLen) {
+                final Object srcValue = Array.get(delta.srcValue, i);
+                if (targetValue == null || srcValue == null) {
+                    if (srcValue != targetValue) {
                         copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                     }
+                } else if (isIdObject(srcValue, idFetcher) && isIdObject(targetValue, idFetcher)) {
+                    Object srcId = idFetcher.getId(srcValue);
+                    Object targetId = idFetcher.getId(targetValue);
+                    if (targetId.equals(srcId)) {
+                        stack.push(new Delta(delta.id, delta.fieldName, srcPtr, srcValue, targetValue, i));
+                    } else {
+                        copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
+                    }
+                } else if (!DeepEquals.deepEquals(srcValue, targetValue)) {
+                    copyArrayElement(delta, deltas, srcPtr, srcValue, targetValue, i);
                 }
-                else
-                {   // Target is larger than source - elements have been added, issue a set-element-command for each new position one at the end
-                    copyArrayElement(delta, deltas, srcPtr, null, targetValue, i);
-                }
+            } else {
+                copyArrayElement(delta, deltas, srcPtr, null, targetValue, i);
             }
         }
     }

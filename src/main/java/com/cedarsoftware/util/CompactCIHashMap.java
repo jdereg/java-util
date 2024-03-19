@@ -32,9 +32,26 @@ import java.util.Map;
  */
 public class CompactCIHashMap<K, V> extends CompactMap<K, V>
 {
-    public CompactCIHashMap() { }
-    public CompactCIHashMap(Map<K ,V> other) { super(other); }
-    protected Map<K, V> getNewMap() { return new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>(compactSize() + 1)); }
-    protected boolean isCaseInsensitive() { return true; }
-    protected boolean useCopyIterator() { return false; }
+    private Map<K, V> delegate;
+
+    public CompactCIHashMap() {
+        delegate = getNewMap();
+    }
+
+    public CompactCIHashMap(Map<K, V> other) {
+        delegate = getNewMap();
+        putAll(other);
+    }
+
+    protected Map<K, V> getNewMap() {
+        return new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>(compactSize() + 1));
+    }
+
+    protected boolean isCaseInsensitive() {
+        return true;
+    }
+
+    protected boolean useCopyIterator() {
+        return false;
+    }
 }

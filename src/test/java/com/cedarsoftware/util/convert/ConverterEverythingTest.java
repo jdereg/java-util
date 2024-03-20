@@ -92,6 +92,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 // TODO: More exception tests (make sure IllegalArgumentException is thrown, for example, not DateTimeException)
 // TODO: Throwable conversions need to be added for all the popular exception types
 // TODO: Enum and EnumSet conversions need to be added
+// TODO: URL to URI, URI to URL
+// TODO: MapConversions --> Var args of Object[]'s - show as 'OR' in message: [DATE, TIME], [epochMillis], [dateTime], [_V], or [VALUE]
 class ConverterEverythingTest {
     private static final String TOKYO = "Asia/Tokyo";
     private static final ZoneId TOKYO_Z = ZoneId.of(TOKYO);
@@ -277,7 +279,7 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, URL.class), new Object[][]{
                 { mapOf(URL_KEY, "https://domain.com"), toURL("https://domain.com"), true},
-                { mapOf(URL_KEY, "bad uri"), new IllegalArgumentException("Illegal character in path")},
+                { mapOf(URL_KEY, "bad earl"), new IllegalArgumentException("Cannot convert Map to URL. Malformed URL: 'bad earl'")},
         });
     }
 
@@ -313,7 +315,7 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, URI.class), new Object[][]{
                 { mapOf(URI_KEY, "https://domain.com"), toURI("https://domain.com"), true},
-                { mapOf(URI_KEY, "bad uri"), new IllegalArgumentException("Unable to create URI from: bad uri")},
+                { mapOf(URI_KEY, "bad uri"), new IllegalArgumentException("Cannot convert Map to URI. Malformed URI: 'bad uri'")},
         });
     }
 
@@ -354,7 +356,7 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(String.class, OffsetTime.class), new Object[][]{
                 {"10:15:30+01:00", OffsetTime.parse("10:15:30+01:00"), true},
                 {"10:15:30+01:00:59", OffsetTime.parse("10:15:30+01:00:59"), true},
-                {"10:15:30+01:00.001", new IllegalArgumentException("Unable to parse [10:15:30+01:00.001] as an OffsetTime")},
+                {"10:15:30+01:00.001", new IllegalArgumentException("Unable to parse '10:15:30+01:00.001' as an OffsetTime")},
         });
         TEST_DB.put(pair(Map.class, OffsetTime.class), new Object[][]{
                 {mapOf(TIME, "00:00+09:00"), OffsetTime.parse("00:00+09:00"), true},

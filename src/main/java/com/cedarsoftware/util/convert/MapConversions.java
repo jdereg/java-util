@@ -2,7 +2,6 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.sql.Timestamp;
@@ -32,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ArrayUtilities;
 import com.cedarsoftware.util.CompactLinkedMap;
-import com.cedarsoftware.util.Convention;
+import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.StringUtilities;
 
 /**
@@ -65,14 +64,20 @@ final class MapConversions {
     static final String MONTHS = "months";
     static final String DAY = "day";
     static final String DAYS = "days";
+    static final String HOUR = "hour";
     static final String HOURS = "hours";
+    static final String MINUTE = "minute";
     static final String MINUTES = "minutes";
+    static final String SECOND = "second";
     static final String SECONDS = "seconds";
     static final String EPOCH_MILLIS = "epochMillis";
+    static final String NANO = "nano";
     static final String NANOS = "nanos";
     static final String MOST_SIG_BITS = "mostSigBits";
     static final String LEAST_SIG_BITS = "leastSigBits";
     static final String OFFSET = "offset";
+    static final String OFFSET_HOUR = "offsetHour";
+    static final String OFFSET_MINUTE = "offsetMinute";
     static final String DATE_TIME = "dateTime";
     private static final String ID = "id";
     static final String LANGUAGE = "language";
@@ -82,13 +87,20 @@ final class MapConversions {
     static final String URI_KEY = "URI";
     static final String URL_KEY = "URL";
     static final String UUID = "UUID";
+    static final String JAR = "jar";
+    static final String AUTHORITY = "authority";
+    static final String REF = "ref";
+    static final String PORT = "port";
+    static final String FILE = "file";
+    static final String HOST = "host";
+    static final String PROTOCOL = "protocol";
 
     private MapConversions() {}
     
     public static final String KEY_VALUE_ERROR_MESSAGE = "To convert from Map to %s the map must include one of the following: %s[_v], or [value] with associated values.";
 
     static Object toUUID(Object from, Converter converter) {
-        Map<?, ?> map = (Map<?, ?>) from;
+        Map<String, Object> map = (Map<String, Object>) from;
 
         if (map.containsKey(MapConversions.UUID)) {
             return converter.convert(map.get(UUID), UUID.class);
@@ -100,7 +112,7 @@ final class MapConversions {
             return new UUID(most, least);
         }
 
-        return fromMap(from, converter, UUID.class, UUID, MOST_SIG_BITS, LEAST_SIG_BITS);
+        return fromMap(from, converter, UUID.class, UUID);
     }
 
     static Byte toByte(Object from, Converter converter) {
@@ -160,23 +172,58 @@ final class MapConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(EPOCH_MILLIS)) {
+            return fromMap(from, converter, java.sql.Date.class, EPOCH_MILLIS);
+        } else if (map.containsKey(TIME) && !map.containsKey(DATE)) {
+            return fromMap(from, converter, java.sql.Date.class, TIME);
+        } else if (map.containsKey(TIME) && map.containsKey(DATE)) {
+            LocalDate date = converter.convert(map.get(DATE), LocalDate.class);
+            LocalTime time = converter.convert(map.get(TIME), LocalTime.class);
+            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
+            ZonedDateTime zdt = ZonedDateTime.of(date, time, zoneId);
+            return new java.sql.Date(zdt.toInstant().toEpochMilli());
+        }
         return fromMap(from, converter, java.sql.Date.class, EPOCH_MILLIS);
     }
 
     static Date toDate(Object from, Converter converter) {
-        return fromMap(from, converter, Date.class, EPOCH_MILLIS);
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(EPOCH_MILLIS)) {
+            return fromMap(from, converter, Date.class, EPOCH_MILLIS);
+        } else if (map.containsKey(TIME) && !map.containsKey(DATE)) {
+            return fromMap(from, converter, Date.class, TIME);
+        } else if (map.containsKey(TIME) && map.containsKey(DATE)) {
+            LocalDate date = converter.convert(map.get(DATE), LocalDate.class);
+            LocalTime time = converter.convert(map.get(TIME), LocalTime.class);
+            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
+            ZonedDateTime zdt = ZonedDateTime.of(date, time, zoneId);
+            return new Date(zdt.toInstant().toEpochMilli());
+        }
+        return fromMap(map, converter, Date.class, EPOCH_MILLIS, NANOS);
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        Map<?, ?> map = (Map<?, ?>) from;
+        Map<String, Object> map = (Map<String, Object>) from;
         if (map.containsKey(EPOCH_MILLIS)) {
             long time = converter.convert(map.get(EPOCH_MILLIS), long.class);
             int ns = converter.convert(map.get(NANOS), int.class);
             Timestamp timeStamp = new Timestamp(time);
             timeStamp.setNanos(ns);
             return timeStamp;
+        } else if (map.containsKey(DATE) && map.containsKey(TIME) && map.containsKey(ZONE)) {
+            LocalDate date = converter.convert(map.get(DATE), LocalDate.class);
+            LocalTime time = converter.convert(map.get(TIME), LocalTime.class);
+            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
+            ZonedDateTime zdt = ZonedDateTime.of(date, time, zoneId);
+            return Timestamp.from(zdt.toInstant());
+        } else if (map.containsKey(TIME) && map.containsKey(NANOS)) {
+            long time = converter.convert(map.get(TIME), long.class);
+            int ns = converter.convert(map.get(NANOS), int.class);
+            Timestamp timeStamp = new Timestamp(time);
+            timeStamp.setNanos(ns);
+            return timeStamp;
         }
-
         return fromMap(map, converter, Timestamp.class, EPOCH_MILLIS, NANOS);
     }
 
@@ -185,7 +232,7 @@ final class MapConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
-        Map<?, ?> map = (Map<?, ?>) from;
+        Map<String, Object> map = (Map<String, Object>) from;
         if (map.containsKey(EPOCH_MILLIS)) {
             return converter.convert(map.get(EPOCH_MILLIS), Calendar.class);
         } else if (map.containsKey(DATE) && map.containsKey(TIME)) {
@@ -208,6 +255,18 @@ final class MapConversions {
             cal.set(Calendar.SECOND, zdt.getSecond());
             cal.set(Calendar.MILLISECOND, zdt.getNano() / 1_000_000);
             cal.getTime();
+            return cal;
+        } else if (map.containsKey(TIME) && !map.containsKey(DATE)) {
+            TimeZone timeZone;
+            if (map.containsKey(ZONE)) {
+                timeZone = converter.convert(map.get(ZONE), TimeZone.class);
+            } else {
+                timeZone = converter.getOptions().getTimeZone();
+            }
+            Calendar cal = Calendar.getInstance(timeZone);
+            String time = (String) map.get(TIME);
+            ZonedDateTime zdt = DateUtilities.parseDate(time, converter.getOptions().getZoneId(), true);
+            cal.setTimeInMillis(zdt.toInstant().toEpochMilli());
             return cal;
         }
         return fromMap(from, converter, Calendar.class, DATE, TIME, ZONE);
@@ -239,15 +298,41 @@ final class MapConversions {
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(YEAR) && map.containsKey(MONTH) && map.containsKey(DAY)) {
+            int month = converter.convert(map.get(MONTH), int.class);
+            int day = converter.convert(map.get(DAY), int.class);
+            int year = converter.convert(map.get(YEAR), int.class);
+            return LocalDate.of(year, month, day);
+        }
         return fromMap(from, converter, LocalDate.class, DATE);
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(HOUR) && map.containsKey(MINUTE)) {
+            int hour = converter.convert(map.get(HOUR), int.class);
+            int minute = converter.convert(map.get(MINUTE), int.class);
+            int second = converter.convert(map.get(SECOND), int.class);
+            int nano = converter.convert(map.get(NANO), int.class);
+            return LocalTime.of(hour, minute, second, nano);
+        }
         return fromMap(from, converter, LocalTime.class, TIME);
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
-        Map<?, ?> map = (Map<?, ?>) from;
+        Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(HOUR) && map.containsKey(MINUTE)) {
+            int hour = converter.convert(map.get(HOUR), int.class);
+            int minute = converter.convert(map.get(MINUTE), int.class);
+            int second = converter.convert(map.get(SECOND), int.class);
+            int nano = converter.convert(map.get(NANO), int.class);
+            int offsetHour = converter.convert(map.get(OFFSET_HOUR), int.class);
+            int offsetMinute = converter.convert(map.get(OFFSET_MINUTE), int.class);
+            ZoneOffset zoneOffset = ZoneOffset.ofHoursMinutes(offsetHour, offsetMinute);
+            return OffsetTime.of(hour, minute, second, nano, zoneOffset);
+        }
+        
         if (map.containsKey(TIME)) {
             String ot = (String) map.get(TIME);
             try {
@@ -260,18 +345,23 @@ final class MapConversions {
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        Map<?, ?> map = (Map<?, ?>) from;
+        Map<String, Object> map = (Map<String, Object>) from;
         if (map.containsKey(DATE) && map.containsKey(TIME)) {
             LocalDate date = converter.convert(map.get(DATE), LocalDate.class);
             LocalTime time = converter.convert(map.get(TIME), LocalTime.class);
             ZoneOffset zoneOffset = converter.convert(map.get(OFFSET), ZoneOffset.class);
             return OffsetDateTime.of(date, time, zoneOffset);
         }
+        if (map.containsKey(DATE_TIME) && map.containsKey(OFFSET)) {
+            LocalDateTime dateTime = converter.convert(map.get(DATE_TIME), LocalDateTime.class);
+            ZoneOffset zoneOffset = converter.convert(map.get(OFFSET), ZoneOffset.class);
+            return OffsetDateTime.of(dateTime, zoneOffset);
+        }
         return fromMap(from, converter, OffsetDateTime.class, DATE, TIME, OFFSET);
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        Map<?, ?> map = (Map<?, ?>) from;
+        Map<String, Object> map = (Map<String, Object>) from;
         if (map.containsKey(DATE)) {
             LocalDate localDate = converter.convert(map.get(DATE), LocalDate.class);
             LocalTime localTime = map.containsKey(TIME) ? converter.convert(map.get(TIME), LocalTime.class) : LocalTime.MIDNIGHT;
@@ -282,7 +372,7 @@ final class MapConversions {
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        Map<?, ?> map = (Map<?, ?>) from;
+        Map<String, Object> map = (Map<String, Object>) from;
         if (map.containsKey(ZONE) && map.containsKey(DATE_TIME)) {
             ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
             LocalDateTime localDateTime = converter.convert(map.get(DATE_TIME), LocalDateTime.class);
@@ -376,29 +466,86 @@ final class MapConversions {
     }
 
     static URL toURL(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>)from;
-        String url = (String) map.get(URL_KEY);
-        if (StringUtilities.isEmpty(url)) {
-            throw new IllegalArgumentException("null or empty string cannot be used to create URL");
-        }
+        Map<String, Object> map = (Map<String, Object>) from;
+
+        String url = null;
         try {
+            url = (String) map.get(URL_KEY);
+            if (StringUtilities.hasContent(url)) {
+                return converter.convert(url, URL.class);
+            }
+            url = (String) map.get(VALUE);
+            if (StringUtilities.hasContent(url)) {
+                return converter.convert(url, URL.class);
+            }
+            url = (String) map.get(V);
+            if (StringUtilities.hasContent(url)) {
+                return converter.convert(url, URL.class);
+            }
+
+            url = mapToUrlString(map);
             return URI.create(url).toURL();
-        } catch (MalformedURLException e) {
-            throw new IllegalArgumentException("Unable to create URL from: " + url, e);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot convert Map to URL. Malformed URL: '" + url + "'");
         }
     }
 
     static URI toURI(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>)from;
-        String uri = (String) map.get(URI_KEY);
-        if (StringUtilities.isEmpty(uri)) {
-            throw new IllegalArgumentException("null or empty string cannot be used to create URI");
-        }
+        Map<String, Object> map = (Map<String, Object>) from;
+        String uri = null;
         try {
+            uri = (String) map.get(URI_KEY);
+            if (StringUtilities.hasContent(uri)) {
+                return converter.convert(map.get(URI_KEY), URI.class);
+            }
+            uri = (String) map.get(VALUE);
+            if (StringUtilities.hasContent(uri)) {
+                return converter.convert(map.get(VALUE), URI.class);
+            }
+            uri = (String) map.get(V);
+            if (StringUtilities.hasContent(uri)) {
+                return converter.convert(map.get(V), URI.class);
+            }
+
+            uri = mapToUrlString(map);
             return URI.create(uri);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to create URI from: " + uri, e);
+            throw new IllegalArgumentException("Cannot convert Map to URI. Malformed URI: '" + uri + "'");
         }
+    }
+
+    private static String mapToUrlString(Map<String, Object> map) {
+        StringBuilder builder = new StringBuilder(20);
+        String protocol = (String) map.get(PROTOCOL);
+        String host = (String) map.get(HOST);
+        String file = (String) map.get(FILE);
+        String authority = (String) map.get(AUTHORITY);
+        String ref = (String) map.get(REF);
+        Long port = (Long) map.get(PORT);
+
+        builder.append(protocol);
+        builder.append(':');
+        if (!protocol.equalsIgnoreCase(JAR)) {
+            builder.append("//");
+        }
+        if (authority != null && !authority.isEmpty()) {
+            builder.append(authority);
+        } else {
+            if (host != null && !host.isEmpty()) {
+                builder.append(host);
+            }
+            if (!port.equals(-1L)) {
+                builder.append(":" + port);
+            }
+        }
+        if (file != null && !file.isEmpty()) {
+            builder.append(file);
+        }
+        if (ref != null && !ref.isEmpty()) {
+            builder.append("#" + ref);
+        }
+
+        return builder.toString();
     }
 
     static Map<String, ?> initMap(Object from, Converter converter) {
@@ -408,7 +555,7 @@ final class MapConversions {
     }
 
     private static <T> T fromMap(Object from, Converter converter, Class<T> type, String...keys) {
-        Map<?, ?> map = asMap(from);
+        Map<String, Object> map = (Map<String, Object>) from;
         if (keys.length == 1) {
             String key = keys[0];
             if (map.containsKey(key)) {
@@ -426,10 +573,4 @@ final class MapConversions {
         String keyText = ArrayUtilities.isEmpty(keys) ? "" : "[" + String.join(", ", keys) + "], ";
         throw new IllegalArgumentException(String.format(KEY_VALUE_ERROR_MESSAGE, Converter.getShortName(type), keyText));
     }
-    
-    private static Map<?, ?> asMap(Object o) {
-        Convention.throwIfFalse(o instanceof Map, "from must be an instance of map");
-        return (Map<?, ?>)o;
-    }
-
 }

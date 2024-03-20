@@ -257,7 +257,7 @@ final class StringConversions {
             URI uri = URI.create((String) from);
             return uri.toURL();
         } catch (Exception e) {
-            throw new IllegalArgumentException("Cannot convert String '" + str, e);
+            throw new IllegalArgumentException("Cannot convert String '" + str + "' to URL", e);
         }
     }
 
@@ -481,7 +481,15 @@ final class StringConversions {
         try {
             return OffsetTime.parse(s, DateTimeFormatter.ISO_OFFSET_TIME);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to parse [" + s + "] as an OffsetTime");
+            try {
+                OffsetDateTime dateTime = toOffsetDateTime(from, converter);
+                if (dateTime == null) {
+                    return null;
+                }
+                return dateTime.toOffsetTime();
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("Unable to parse '" + s + "' as an OffsetTime", e);
+            }
         }
     }
 

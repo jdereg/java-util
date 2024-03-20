@@ -3390,7 +3390,7 @@ class ConverterTest
 
         assertThatThrownBy(() -> this.converter.convert("00000000", UUID.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid UUID string: 00000000");
+                .hasMessageContaining("Unable to convert '00000000' to UUID");
     }
 
     @Test
@@ -3707,8 +3707,8 @@ class ConverterTest
         UUID uuid = new UUID(1L, 2L);
         Map<?, ?> map = this.converter.convert(uuid, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(VALUE), uuid);
-        assert map.get(VALUE).getClass().equals(UUID.class);
+        assertEquals(map.get(MapConversions.UUID), uuid.toString());
+        assert map.get(MapConversions.UUID).getClass().equals(String.class);
     }
 
     @Test

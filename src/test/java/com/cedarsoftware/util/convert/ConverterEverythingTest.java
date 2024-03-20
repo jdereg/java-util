@@ -1463,7 +1463,7 @@ class ConverterEverythingTest {
                 {mapOf("_v", "06-30"), MonthDay.of(6, 30)},
                 {mapOf("_v", "--06-30"), MonthDay.of(6, 30)},
                 {mapOf("_v", "--6-30"), new IllegalArgumentException("Unable to extract Month-Day from string: --6-30")},
-                {mapOf("month", "6", "day", 30), MonthDay.of(6, 30)},
+                {mapOf("month", 6, "day", 30), MonthDay.of(6, 30), true},
                 {mapOf("month", 6L, "day", "30"), MonthDay.of(6, 30)},
                 {mapOf("month", mapOf("_v", 6L), "day", "30"), MonthDay.of(6, 30)},    // recursive on "month"
                 {mapOf("month", 6L, "day", mapOf("_v", "30")), MonthDay.of(6, 30)},    // recursive on "day"

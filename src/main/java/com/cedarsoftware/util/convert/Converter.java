@@ -718,12 +718,14 @@ public final class Converter {
         // URL conversions
         CONVERSION_DB.put(pair(Void.class, URL.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(URL.class, URL.class), Converter::identity);
+        CONVERSION_DB.put(pair(URI.class, URL.class), UriConversions::toURL);
         CONVERSION_DB.put(pair(String.class, URL.class), StringConversions::toURL);
         CONVERSION_DB.put(pair(Map.class, URL.class), MapConversions::toURL);
 
         // URI Conversions
         CONVERSION_DB.put(pair(Void.class, URI.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(URI.class, URI.class), Converter::identity);
+        CONVERSION_DB.put(pair(URL.class, URI.class), UrlConversions::toURI);
         CONVERSION_DB.put(pair(String.class, URI.class), StringConversions::toURI);
         CONVERSION_DB.put(pair(Map.class, URI.class), MapConversions::toURI);
 
@@ -897,7 +899,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Timestamp.class, Map.class), TimestampConversions::toMap);
         CONVERSION_DB.put(pair(LocalDate.class, Map.class), LocalDateConversions::toMap);
         CONVERSION_DB.put(pair(LocalDateTime.class, Map.class), LocalDateTimeConversions::toMap);
-        CONVERSION_DB.put(pair(ZonedDateTime.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(ZonedDateTime.class, Map.class), ZonedDateTimeConversions::toMap);
         CONVERSION_DB.put(pair(Duration.class, Map.class), DurationConversions::toMap);
         CONVERSION_DB.put(pair(Instant.class, Map.class), InstantConversions::toMap);
         CONVERSION_DB.put(pair(LocalTime.class, Map.class), LocalTimeConversions::toMap);

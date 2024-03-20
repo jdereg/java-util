@@ -56,6 +56,7 @@ import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.Converter.pair;
 import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
+import static com.cedarsoftware.util.convert.MapConversions.DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
 import static com.cedarsoftware.util.convert.MapConversions.LANGUAGE;
 import static com.cedarsoftware.util.convert.MapConversions.NANOS;
@@ -94,6 +95,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 // TODO: Enum and EnumSet conversions need to be added
 // TODO: URL to URI, URI to URL
 // TODO: MapConversions --> Var args of Object[]'s - show as 'OR' in message: [DATE, TIME], [epochMillis], [dateTime], [_V], or [VALUE]
+// TODO: MapConversions --> Performance - containsKey() + get() ==> get() and null checks
 class ConverterEverythingTest {
     private static final String TOKYO = "Asia/Tokyo";
     private static final ZoneId TOKYO_Z = ZoneId.of(TOKYO);
@@ -316,6 +318,11 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, URI.class), new Object[][]{
                 { mapOf(URI_KEY, "https://domain.com"), toURI("https://domain.com"), true},
                 { mapOf(URI_KEY, "bad uri"), new IllegalArgumentException("Cannot convert Map to URI. Malformed URI: 'bad uri'")},
+        });
+        TEST_DB.put(pair(URL.class, URI.class), new Object[][]{
+                { (Supplier<URL>) () -> {
+                       try {return new URL("https://domain.com");} catch(Exception e){return null;}
+                }, toURI("https://domain.com"), true},
         });
     }
 
@@ -931,6 +938,14 @@ class ConverterEverythingTest {
                 {ldt("1970-01-01T08:59:59.999999999"), zdt("1969-12-31T23:59:59.999999999Z"), true},
                 {ldt("1970-01-01T09:00:00"), zdt("1970-01-01T00:00:00Z"), true},
                 {ldt("1970-01-01T09:00:00.000000001"), zdt("1970-01-01T00:00:00.000000001Z"), true},
+        });
+        TEST_DB.put(pair(Map.class, ZonedDateTime.class), new Object[][]{
+                {mapOf(VALUE, new AtomicLong(now)), Instant.ofEpochMilli(now).atZone(TOKYO_Z)},
+                {mapOf(EPOCH_MILLIS, now), Instant.ofEpochMilli(now).atZone(TOKYO_Z)},
+                {mapOf(DATE_TIME, "1970-01-01T00:00:00", ZONE, TOKYO), zdt("1970-01-01T00:00:00+09:00")},
+                {mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999", ZONE, TOKYO), zdt("1969-12-31T23:59:59.999999999+09:00"), true},
+                {mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, TOKYO), zdt("1970-01-01T00:00:00+09:00"), true},
+                {mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001", ZONE, TOKYO), zdt("1970-01-01T00:00:00.000000001+09:00"), true},
         });
     }
 

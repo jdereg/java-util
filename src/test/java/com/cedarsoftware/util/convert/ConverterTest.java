@@ -48,6 +48,8 @@ import static com.cedarsoftware.util.convert.ConverterTest.fubar.bar;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.foo;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
+import static com.cedarsoftware.util.convert.MapConversions.TIME;
+import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -3057,7 +3059,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, ZonedDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to ZonedDateTime the map must include one of the following: [zone, dateTime], [_v], or [value] with associated values");
+                .hasMessageContaining("To convert from Map to ZonedDateTime the map must include one of the following: [date, time, zone], [_v], or [value] with associated values");
 
     }
 
@@ -3774,9 +3776,10 @@ class ConverterTest
     {
         ZonedDateTime now = ZonedDateTime.now();
         Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 1;
-        assertEquals(map.get(VALUE), now);
-        assert map.get(VALUE).getClass().equals(ZonedDateTime.class);
+        assert map.size() == 3;
+        assert map.containsKey(DATE);
+        assert map.containsKey(TIME);
+        assert map.containsKey(ZONE);
     }
 
     @Test

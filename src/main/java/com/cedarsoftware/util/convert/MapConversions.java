@@ -373,12 +373,21 @@ final class MapConversions {
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
+        if (map.containsKey(EPOCH_MILLIS)) {
+            return converter.convert(map.get(EPOCH_MILLIS), ZonedDateTime.class);
+        }
+        if (map.containsKey(DATE) && map.containsKey(TIME) && map.containsKey(ZONE)) {
+            LocalDate localDate = converter.convert(map.get(DATE), LocalDate.class);
+            LocalTime localTime = converter.convert(map.get(TIME), LocalTime.class);
+            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
+            return ZonedDateTime.of(localDate, localTime, zoneId);
+        }
         if (map.containsKey(ZONE) && map.containsKey(DATE_TIME)) {
             ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
             LocalDateTime localDateTime = converter.convert(map.get(DATE_TIME), LocalDateTime.class);
             return ZonedDateTime.of(localDateTime, zoneId);
         }
-        return fromMap(from, converter, ZonedDateTime.class, ZONE, DATE_TIME);
+        return fromMap(from, converter, ZonedDateTime.class, DATE, TIME, ZONE);
     }
 
     static Class<?> toClass(Object from, Converter converter) {

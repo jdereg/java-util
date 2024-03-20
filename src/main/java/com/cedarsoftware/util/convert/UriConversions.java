@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.convert;
 
 import java.net.URI;
+import java.net.URL;
 import java.util.Map;
 
 import com.cedarsoftware.util.CompactLinkedMap;
@@ -33,5 +34,14 @@ final class UriConversions {
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put(URI_KEY, uri.toString());
         return target;
+    }
+
+    static URL toURL(Object from, Converter converter) {
+        URI uri = (URI) from;
+        try {
+            return uri.toURL();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to convert URI to URL, input URI: " + uri, e);
+        }
     }
 }

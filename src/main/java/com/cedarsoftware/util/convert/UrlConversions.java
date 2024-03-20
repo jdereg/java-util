@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.net.URI;
 import java.net.URL;
 import java.util.Map;
 
@@ -28,10 +29,19 @@ final class UrlConversions {
 
     private UrlConversions() {}
 
-    static Map toMap(Object from, Converter converter) {
+    static Map<String, Object> toMap(Object from, Converter converter) {
         URL url = (URL) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put(URL_KEY, url.toString());
         return target;
+    }
+
+    static URI toURI(Object from, Converter converter) {
+        URL url = (URL) from;
+        try {
+            return url.toURI();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to convert URL to URI, input URL: " + url, e);
+        }
     }
 }

@@ -577,7 +577,12 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, OffsetDateTime.class), DoubleConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(BigInteger.class, OffsetDateTime.class), BigIntegerConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(BigDecimal.class, OffsetDateTime.class), BigDecimalConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(java.sql.Date.class, OffsetDateTime.class), DateConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(Date.class, OffsetDateTime.class), DateConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(Calendar.class, OffsetDateTime.class), CalendarConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(Timestamp.class, OffsetDateTime.class), TimestampConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(LocalDate.class, OffsetDateTime.class), LocalDateConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(Instant.class, OffsetDateTime.class), InstantConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(ZonedDateTime.class, OffsetDateTime.class), ZonedDateTimeConversions::toOffsetDateTime);
 
         // toOffsetTime

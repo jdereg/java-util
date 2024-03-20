@@ -806,21 +806,9 @@ class ConverterEverythingTest {
                 {ZonedDateTime.parse("2024-02-14T19:20:00+05:00"), "2024-02-14T19:20:00+05:00"},
         });
         TEST_DB.put(pair(Calendar.class, String.class), new Object[][]{
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1);
-                    return cal;
-                }, "1970-01-01T08:59:59.999+09:00", true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(0);
-                    return cal;
-                }, "1970-01-01T09:00:00.000+09:00", true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1);
-                    return cal;
-                }, "1970-01-01T09:00:00.001+09:00", true},
+                {cal(-1), "1970-01-01T08:59:59.999+09:00", true},
+                {cal(0), "1970-01-01T09:00:00.000+09:00", true},
+                {cal(1), "1970-01-01T09:00:00.001+09:00", true},
         });
         TEST_DB.put(pair(Number.class, String.class), new Object[][]{
                 {(byte) 1, "1"},
@@ -1167,6 +1155,13 @@ class ConverterEverythingTest {
                 {ZonedDateTime.parse("1970-01-01T00:00:00Z").withZoneSameLocal(TOKYO_Z), LocalDate.parse("1970-01-01"), true },
                 {ZonedDateTime.parse("1970-01-02T00:00:00Z").withZoneSameLocal(TOKYO_Z), LocalDate.parse("1970-01-02"), true },
         });
+        TEST_DB.put(pair(OffsetDateTime.class, LocalDate.class), new Object[][] {
+                {OffsetDateTime.parse("0000-01-01T00:00:00+09:00"), LocalDate.parse("0000-01-01"), true },
+                {OffsetDateTime.parse("0000-01-02T00:00:00+09:00"), LocalDate.parse("0000-01-02"), true },
+                {OffsetDateTime.parse("1969-12-31T00:00:00+09:00"), LocalDate.parse("1969-12-31"), true },
+                {OffsetDateTime.parse("1970-01-01T00:00:00+09:00"), LocalDate.parse("1970-01-01"), true },
+                {OffsetDateTime.parse("1970-01-02T00:00:00+09:00"), LocalDate.parse("1970-01-02"), true },
+        });
         TEST_DB.put(pair(Map.class, LocalDate.class), new Object[][] {
                 {mapOf(DATE, "1969-12-31"), LocalDate.parse("1969-12-31"), true},
                 {mapOf(DATE, "1970-01-01"), LocalDate.parse("1970-01-01"), true},
@@ -1214,11 +1209,7 @@ class ConverterEverythingTest {
                 {new BigDecimal("1"), timestamp("1970-01-01T00:00:01Z"), true},
         });
         TEST_DB.put(pair(Calendar.class, Timestamp.class), new Object[][] {
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(now);
-                    return cal;
-                }, new Timestamp(now), true},
+                {cal(now), new Timestamp(now), true},
         });
         TEST_DB.put(pair(LocalDate.class, Timestamp.class), new Object[][] {
                 {LocalDate.parse("0000-01-01"), timestamp("0000-01-01T00:00:00Z"), true },
@@ -1353,9 +1344,33 @@ class ConverterEverythingTest {
                 {mapOf("year", 1492), Year.of(1492), true},
                 {mapOf("year", mapOf("_v", (short) 2024)), Year.of(2024)}, // recursion
         });
-        TEST_DB.put(pair(Number.class, Year.class), new Object[][]{
+        TEST_DB.put(pair(Byte.class, Year.class), new Object[][]{
                 {(byte) 101, new IllegalArgumentException("Unsupported conversion, source type [Byte (101)] target type 'Year'")},
+        });
+        TEST_DB.put(pair(Short.class, Year.class), new Object[][]{
                 {(short) 2024, Year.of(2024)},
+        });
+        TEST_DB.put(pair(Integer.class, Year.class), new Object[][]{
+                {2024, Year.of(2024)},
+        });
+        TEST_DB.put(pair(Float.class, Year.class), new Object[][]{
+                {2024f, Year.of(2024)},
+        });
+        TEST_DB.put(pair(Double.class, Year.class), new Object[][]{
+                {2024.0, Year.of(2024)},
+        });
+        TEST_DB.put(pair(BigInteger.class, Year.class), new Object[][]{
+                {BigInteger.valueOf(2024), Year.of(2024), true},
+        });
+        TEST_DB.put(pair(BigDecimal.class, Year.class), new Object[][]{
+                {BigDecimal.valueOf(2024), Year.of(2024), true},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, Year.class), new Object[][]{
+                {new AtomicInteger(2024), Year.of(2024), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, Year.class), new Object[][]{
+                {new AtomicLong(2024), Year.of(2024), true},
+                {new AtomicLong(-1), Year.of(-1), true},
         });
     }
 
@@ -1585,6 +1600,13 @@ class ConverterEverythingTest {
                 {new Date(1), new java.sql.Date(1), true },
                 {new Date(Long.MAX_VALUE), new java.sql.Date(Long.MAX_VALUE), true },
         });
+        TEST_DB.put(pair(OffsetDateTime.class, java.sql.Date.class), new Object[][]{
+                {odt("1969-12-31T23:59:59Z"), new java.sql.Date(-1000), true},
+                {odt("1969-12-31T23:59:59.999Z"), new java.sql.Date(-1), true},
+                {odt("1970-01-01T00:00:00Z"), new java.sql.Date(0), true},
+                {odt("1970-01-01T00:00:00.001Z"), new java.sql.Date(1), true},
+                {odt("1970-01-01T00:00:00.999Z"), new java.sql.Date(999), true},
+        });
         TEST_DB.put(pair(Timestamp.class, java.sql.Date.class), new Object[][]{
                 {new Timestamp(Long.MIN_VALUE), new java.sql.Date(Long.MIN_VALUE), true},
                 {new Timestamp(Integer.MIN_VALUE), new java.sql.Date(Integer.MIN_VALUE), true},
@@ -1610,16 +1632,8 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.999Z").toLocalDate(), new java.sql.Date(-32400000L), true},
         });
         TEST_DB.put(pair(Calendar.class, java.sql.Date.class), new Object[][] {
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(now);
-                    return cal;
-                }, new java.sql.Date(now), true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(0);
-                    return cal;
-                }, new java.sql.Date(0), true}
+                {cal(now), new java.sql.Date(now), true},
+                {cal(0), new java.sql.Date(0), true}
         });
         TEST_DB.put(pair(Instant.class, java.sql.Date.class), new Object[][]{
                 {Instant.parse("0000-01-01T00:00:00Z"), new java.sql.Date(-62167219200000L), true},
@@ -1659,11 +1673,7 @@ class ConverterEverythingTest {
                 {new AtomicLong(Long.MAX_VALUE), new Date(Long.MAX_VALUE), true},
         });
         TEST_DB.put(pair(Calendar.class, Date.class), new Object[][] {
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(now);
-                    return cal;
-                }, new Date(now), true }
+                {cal(now), new Date(now), true }
         });
         TEST_DB.put(pair(Timestamp.class, Date.class), new Object[][]{
                 {new Timestamp(Long.MIN_VALUE), new Date(Long.MIN_VALUE), true},
@@ -1707,6 +1717,13 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.001Z"), new Date(1), true},
                 {zdt("1970-01-01T00:00:00.999Z"), new Date(999), true},
         });
+        TEST_DB.put(pair(OffsetDateTime.class, Date.class), new Object[][]{
+                {odt("1969-12-31T23:59:59Z"), new Date(-1000), true},
+                {odt("1969-12-31T23:59:59.999Z"), new Date(-1), true},
+                {odt("1970-01-01T00:00:00Z"), new Date(0), true},
+                {odt("1970-01-01T00:00:00.001Z"), new Date(1), true},
+                {odt("1970-01-01T00:00:00.999Z"), new Date(999), true},
+        });
     }
 
     /**
@@ -1717,87 +1734,31 @@ class ConverterEverythingTest {
                 {null, null}
         });
         TEST_DB.put(pair(Calendar.class, Calendar.class), new Object[][] {
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(now);
-                    return cal;
-                }, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(now);
-                    return cal;
-                } }
+                {cal(now), cal(now)}
         });
         TEST_DB.put(pair(Long.class, Calendar.class), new Object[][]{
-                {-1L, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1);
-                    return cal;
-                }, true},
-                {0L, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(0);
-                    return cal;
-                }, true},
-                {1L, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1);
-                    return cal;
-                }, true},
+                {-1L, cal(-1), true},
+                {0L, cal(0), true},
+                {1L, cal(1), true},
                 {1707705480000L, (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 12, 11, 38, 0);
                     cal.set(Calendar.MILLISECOND, 0);
                     return cal;
                 }, true},
-                {now, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(now);   // Calendar maintains time to millisecond resolution
-                    return cal;
-                }, true},
+                {now, cal(now), true},
         });
         TEST_DB.put(pair(AtomicLong.class, Calendar.class), new Object[][]{
-                {new AtomicLong(-1), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1);
-                    return cal;
-                }, true},
-                {new AtomicLong(0), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(0);
-                    return cal;
-                }, true},
-                {new AtomicLong(1), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1);
-                    return cal;
-                }, true},
+                {new AtomicLong(-1), cal(-1), true},
+                {new AtomicLong(0), cal(0), true},
+                {new AtomicLong(1), cal(1), true},
         });
         TEST_DB.put(pair(BigDecimal.class, Calendar.class), new Object[][]{
-                {new BigDecimal(-1), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1000);
-                    return cal;
-                }, true},
-                {new BigDecimal("-0.001"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1);
-                    return cal;
-                }, true},
-                {BigDecimal.ZERO, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(0);
-                    return cal;
-                }, true},
-                {new BigDecimal("0.001"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1);
-                    return cal;
-                }, true},
-                {new BigDecimal(1), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1000);
-                    return cal;
-                }, true},
+                {new BigDecimal(-1), cal(-1000), true},
+                {new BigDecimal("-0.001"), cal(-1), true},
+                {BigDecimal.ZERO, cal(0), true},
+                {new BigDecimal("0.001"), cal(1), true},
+                {new BigDecimal(1), cal(1000), true},
         });
         TEST_DB.put(pair(Map.class, Calendar.class), new Object[][]{
                 {(Supplier<Map<String, Object>>) () -> {
@@ -1835,21 +1796,14 @@ class ConverterEverythingTest {
                 }},
         });
         TEST_DB.put(pair(ZonedDateTime.class, Calendar.class), new Object[][] {
-                {zdt("1969-12-31T23:59:59.999Z"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1);
-                    return cal;
-                }, true},
-                {zdt("1970-01-01T00:00Z"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(0);
-                    return cal;
-                }, true},
-                {zdt("1970-01-01T00:00:00.001Z"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1);
-                    return cal;
-                }, true},
+                {zdt("1969-12-31T23:59:59.999Z"), cal(-1), true},
+                {zdt("1970-01-01T00:00Z"), cal(0), true},
+                {zdt("1970-01-01T00:00:00.001Z"), cal(1), true},
+        });
+        TEST_DB.put(pair(OffsetDateTime.class, Calendar.class), new Object[][] {
+                {odt("1969-12-31T23:59:59.999Z"), cal(-1), true},
+                {odt("1970-01-01T00:00Z"), cal(0), true},
+                {odt("1970-01-01T00:00:00.001Z"), cal(1), true},
         });
     }
 
@@ -1884,11 +1838,7 @@ class ConverterEverythingTest {
                 {"Not even close", new IllegalArgumentException("Unable to parse")},
         });
         TEST_DB.put(pair(Calendar.class, Instant.class), new Object[][] {
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(now);
-                    return cal;
-                }, Instant.ofEpochMilli(now), true }
+                {cal(now), Instant.ofEpochMilli(now), true }
         });
         TEST_DB.put(pair(Date.class, Instant.class), new Object[][] {
                 {new Date(Long.MIN_VALUE), Instant.ofEpochMilli(Long.MIN_VALUE), true },
@@ -1902,6 +1852,23 @@ class ConverterEverythingTest {
                 {LocalDate.parse("1969-12-31"), Instant.parse("1969-12-30T15:00:00Z"), true},
                 {LocalDate.parse("1970-01-01"), Instant.parse("1969-12-31T15:00:00Z"), true},
                 {LocalDate.parse("1970-01-02"), Instant.parse("1970-01-01T15:00:00Z"), true},
+        });
+        TEST_DB.put(pair(OffsetDateTime.class, Instant.class), new Object[][]{
+                {odt("0000-01-01T00:00:00Z"), Instant.ofEpochMilli(-62167219200000L), true},
+                {odt("0000-01-01T00:00:00.001Z"), Instant.ofEpochMilli(-62167219199999L), true},
+                {odt("1969-12-31T23:59:59.999Z"), Instant.ofEpochMilli(-1), true},
+                {odt("1970-01-01T00:00:00Z"), Instant.ofEpochMilli(0), true},
+                {odt("1970-01-01T00:00:00.001Z"), Instant.ofEpochMilli(1), true},
+                {odt("1970-01-01T00:00:01Z"), Instant.ofEpochMilli(1000), true},
+                {odt("1970-01-01T00:00:01.001Z"), Instant.ofEpochMilli(1001), true},
+                {odt("1970-01-01T00:01:00Z"), Instant.ofEpochSecond(60), true},
+                {odt("1970-01-01T00:01:01Z"), Instant.ofEpochSecond(61), true},
+                {odt("1970-01-01T00:00:00Z"), Instant.ofEpochSecond(0, 0), true},
+                {odt("1970-01-01T00:00:00.000000001Z"), Instant.ofEpochSecond(0, 1), true},
+                {odt("1970-01-01T00:00:00.999999999Z"), Instant.ofEpochSecond(0, 999999999), true},
+                {odt("1970-01-01T00:00:09.999999999Z"), Instant.ofEpochSecond(0, 9999999999L), true},
+                {odt("1980-01-01T00:00:00Z"), Instant.parse("1980-01-01T00:00:00Z"), true},
+                {odt("2024-12-31T23:59:59.999999999Z"), Instant.parse("2024-12-31T23:59:59.999999999Z"), true},
         });
     }
 
@@ -2093,21 +2060,9 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.000000001Z").toLocalDateTime(), new BigInteger("1"), true},
         });
         TEST_DB.put(pair(Calendar.class, BigInteger.class), new Object[][]{
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1);
-                    return cal;
-                }, BigInteger.valueOf(-1000000), true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(0);
-                    return cal;
-                }, BigInteger.ZERO, true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1);
-                    return cal;
-                }, BigInteger.valueOf(1000000), true},
+                {cal(-1), BigInteger.valueOf(-1000000), true},
+                {cal(0), BigInteger.ZERO, true},
+                {cal(1), BigInteger.valueOf(1000000), true},
         });
         TEST_DB.put(pair(Number.class, BigInteger.class), new Object[][]{
                 {0, BigInteger.ZERO},
@@ -2135,9 +2090,6 @@ class ConverterEverythingTest {
                 {odt("1969-12-31T23:59:59.999999999Z"), new BigInteger("-1"), true},
                 {odt("1970-01-01T00:00:00Z"), BigInteger.ZERO, true},
                 {odt("1970-01-01T00:00:00.000000001Z"), new BigInteger("1"), true},
-        });
-        TEST_DB.put(pair(Year.class, BigInteger.class), new Object[][]{
-                {Year.of(2024), BigInteger.valueOf(2024)},
         });
     }
 
@@ -2486,31 +2438,11 @@ class ConverterEverythingTest {
                 {timestamp("1970-01-01T00:00:00.999999999Z"), 0.999999999, true},
         });
         TEST_DB.put(pair(Calendar.class, Double.class), new Object[][]{
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1000);
-                    return cal;
-                }, -1.0, true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(-1);
-                    return cal;
-                }, -0.001, true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(0);
-                    return cal;
-                }, 0.0, true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1);
-                    return cal;
-                }, 0.001, true},
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.setTimeInMillis(1000);
-                    return cal;
-                }, 1.0, true},
+                {cal(-1000), -1.0, true},
+                {cal(-1), -0.001, true},
+                {cal(0), 0.0, true},
+                {cal(1), 0.001, true},
+                {cal(1000), 1.0, true},
         });
         TEST_DB.put(pair(BigDecimal.class, Double.class), new Object[][]{
                 {new BigDecimal("-1"), -1.0, true},
@@ -3701,6 +3633,12 @@ class ConverterEverythingTest {
 
     private static LocalDateTime ldt(String s) {
         return LocalDateTime.parse(s);
+    }
+
+    private static Calendar cal(long epochMillis) {
+        Calendar cal = Calendar.getInstance(TOKYO_TZ);
+        cal.setTimeInMillis(epochMillis);
+        return cal;
     }
 
     // Rare pairings that cannot be tested without drilling into the class - Atomic's require .get() to be called,

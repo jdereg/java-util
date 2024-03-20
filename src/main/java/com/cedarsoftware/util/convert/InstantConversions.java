@@ -7,10 +7,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.CompactLinkedMap;
@@ -47,6 +50,13 @@ final class InstantConversions {
     
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return ((Instant)from).atZone(converter.getOptions().getZoneId());
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        Instant instant = (Instant) from;
+        TimeZone timeZone = converter.getOptions().getTimeZone();
+        ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(timeZone.getOffset(System.currentTimeMillis()) / 1000);
+        return instant.atOffset(zoneOffset);
     }
 
     static long toLong(Object from, Converter converter) {

@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -110,6 +112,12 @@ final class CalendarConversions {
     static String toString(Object from, Converter converter) {
         Calendar cal = (Calendar) from;
         return DateConversions.toString(cal.getTime(), converter);
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        Calendar cal = (Calendar) from;
+        OffsetDateTime offsetDateTime = cal.toInstant().atOffset(ZoneOffset.ofTotalSeconds(cal.getTimeZone().getOffset(cal.getTimeInMillis()) / 1000));
+        return offsetDateTime;
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {

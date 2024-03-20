@@ -7,11 +7,14 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.CompactLinkedMap;
@@ -54,6 +57,13 @@ final class LocalDateConversions {
         return ZonedDateTime.of(localDate, LocalTime.parse("00:00:00"), converter.getOptions().getZoneId());
     }
     
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        LocalDate localDate = (LocalDate) from;
+        TimeZone timeZone = converter.getOptions().getTimeZone();
+        ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(timeZone.getOffset(System.currentTimeMillis()) / 1000);
+        return OffsetDateTime.of(localDate, LocalTime.parse("00:00:00"), zoneOffset);
+    }
+
     static double toDouble(Object from, Converter converter) {
         return toInstant(from, converter).toEpochMilli() / 1000d;
     }

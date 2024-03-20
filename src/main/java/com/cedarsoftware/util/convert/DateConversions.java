@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -84,6 +85,10 @@ final class DateConversions {
         } else {
             return date.toInstant();
         }
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        return toInstant(from, converter).atZone(converter.getOptions().getZoneId()).toOffsetDateTime();
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {

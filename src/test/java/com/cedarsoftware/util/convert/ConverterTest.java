@@ -22,6 +22,7 @@ import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -4269,6 +4270,32 @@ class ConverterTest
         assertThatThrownBy(() -> converter.convert(100000, Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unsupported conversion");
+    }
+
+    @Test
+    void testForExceptionsThatAreNotIllegalArgument() {
+        Map<Class<?>, Set<Class<?>>> map = com.cedarsoftware.util.Converter.allSupportedConversions();
+
+        for (Map.Entry<Class<?>, Set<Class<?>>> entry : map.entrySet()) {
+            Class<?> sourceClass = entry.getKey();
+            try {
+                converter.convert("junky", sourceClass);
+            } catch (IllegalArgumentException ok) {
+            } catch (Throwable e) {
+                fail("Conversion throwing an exception that is not an IllegalArgumentException");
+            }
+
+            Set<Class<?>> targetClasses = entry.getValue();
+            for (Class<?> targetClass : targetClasses) {
+                try {
+                    converter.convert("junky", targetClass);
+                } catch (IllegalArgumentException ok) {
+                } catch (Throwable e) {
+                    fail("Conversion throwing an exception that is not an IllegalArgumentException");
+                }
+            }
+        }
+
     }
 
     private ConverterOptions createCharsetOptions(final Charset charset) {

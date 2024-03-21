@@ -7,7 +7,7 @@ java-util
 Rare, hard-to-find utilities that are thoroughly tested (> 98% code coverage via JUnit tests).
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `232K.`
+The`.jar`file is `250K.`
 Works with`JDK 1.8`through`JDK 21`.
 The classes in the`.jar`file are version 52 (`JDK 1.8`).
 
@@ -15,7 +15,7 @@ The classes in the`.jar`file are version 52 (`JDK 1.8`).
 To include in your project:
 ##### GradleF
 ```
-implementation 'com.cedarsoftware:java-util:2.4.6'
+implementation 'com.cedarsoftware:java-util:2.4.7'
 ```
 
 ##### Maven
@@ -23,7 +23,7 @@ implementation 'com.cedarsoftware:java-util:2.4.6'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.4.6</version>
+  <version>2.4.7</version>
 </dependency>
 ```
 ---

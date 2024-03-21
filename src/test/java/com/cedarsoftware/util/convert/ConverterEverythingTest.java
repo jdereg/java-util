@@ -391,6 +391,10 @@ class ConverterEverythingTest {
                 {new Locale.Builder().setLanguage("en").setRegion("US").build(), new Locale.Builder().setLanguage("en").setRegion("US").build()},
         });
         TEST_DB.put(pair(Map.class, Locale.class), new Object[][]{
+                {mapOf(LANGUAGE, "joker 75", COUNTRY, "US", SCRIPT, "Latn", VARIANT, "POSIX"), new IllegalArgumentException("joker")},
+                {mapOf(LANGUAGE, "en", COUNTRY, "Amerika", SCRIPT, "Latn", VARIANT, "POSIX"), new IllegalArgumentException("Amerika")},
+                {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Jello", VARIANT, "POSIX"), new IllegalArgumentException("Jello")},
+                {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Latn", VARIANT, "Monkey @!#!# "), new IllegalArgumentException("Monkey")},
                 {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Latn", VARIANT, "POSIX"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build(), true},
                 {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Latn"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").build(), true},
                 {mapOf(LANGUAGE, "en", COUNTRY, "US"), new Locale.Builder().setLanguage("en").setRegion("US").build(), true},
@@ -410,6 +414,10 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Class.class, Class.class), new Object[][]{
                 {int.class, int.class}
         });
+        TEST_DB.put(pair(String.class, Class.class), new Object[][]{
+                {"java.util.Date", Date.class, true},
+                {"NoWayJose", new IllegalArgumentException("not found")},
+        });
     }
 
     /**
@@ -421,10 +429,6 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, Map.class), new Object[][]{
                 { new HashMap<>(), new IllegalArgumentException("Unsupported conversion") }
-        });
-        TEST_DB.put(pair(Boolean.class, Map.class), new Object[][]{
-                {true, mapOf(VALUE, true)},
-                {false, mapOf(VALUE, false)}
         });
         TEST_DB.put(pair(Byte.class, Map.class), new Object[][]{
                 {(byte)1, mapOf(VALUE, (byte)1)},
@@ -764,14 +768,6 @@ class ConverterEverythingTest {
                 {BigInteger.ZERO, "0"},
                 {new BigInteger("1"), "1"},
         });
-        TEST_DB.put(pair(BigDecimal.class, String.class), new Object[][]{
-                {new BigDecimal("-1"), "-1", true},
-                {new BigDecimal("-1.0"), "-1", true},
-                {BigDecimal.ZERO, "0", true},
-                {new BigDecimal("0.0"), "0", true},
-                {new BigDecimal("1.0"), "1", true},
-                {new BigDecimal("3.141519265358979323846264338"), "3.141519265358979323846264338", true},
-        });
         TEST_DB.put(pair(byte[].class, String.class), new Object[][]{
                 {new byte[]{(byte) 0xf0, (byte) 0x9f, (byte) 0x8d, (byte) 0xba}, "\uD83C\uDF7A", true}, // beer mug, byte[] treated as UTF-8.
                 {new byte[]{(byte) 65, (byte) 66, (byte) 67, (byte) 68}, "ABCD", true}
@@ -784,9 +780,6 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(ByteBuffer.class, String.class), new Object[][]{
                 {ByteBuffer.wrap(new byte[]{(byte) 0x30, (byte) 0x31, (byte) 0x32, (byte) 0x33}), "0123", true}
-        });
-        TEST_DB.put(pair(Class.class, String.class), new Object[][]{
-                {Date.class, "java.util.Date", true}
         });
         TEST_DB.put(pair(Date.class, String.class), new Object[][]{
                 {new Date(-1), "1970-01-01T08:59:59.999+09:00", true},  // Tokyo (set in options - defaults to system when not set explicitly)
@@ -2007,6 +2000,15 @@ class ConverterEverythingTest {
                 {Instant.parse("1970-01-02T00:00:00Z"), new BigDecimal("86400"), true},
                 {Instant.parse("1970-01-02T00:00:00.000000001Z"), new BigDecimal("86400.000000001"), true},
         });
+        TEST_DB.put(pair(String.class, BigDecimal.class), new Object[][]{
+                {"-1", new BigDecimal("-1"), true},
+                {"-1", new BigDecimal("-1.0"), true},
+                {"0", BigDecimal.ZERO, true},
+                {"0", new BigDecimal("0.0"), true},
+                {"1", new BigDecimal("1.0"), true},
+                {"3.141519265358979323846264338", new BigDecimal("3.141519265358979323846264338"), true},
+                {"1.gf.781", new IllegalArgumentException("not parseable")},
+        });
         TEST_DB.put(pair(Map.class, BigDecimal.class), new Object[][]{
                 {mapOf("_v", "0"), BigDecimal.ZERO},
                 {mapOf("_v", BigDecimal.valueOf(0)), BigDecimal.ZERO, true},
@@ -2384,6 +2386,8 @@ class ConverterEverythingTest {
                 {mapOf("_v", "0"), false},
                 {mapOf("_v", "1"), true},
                 {mapOf("_v", mapOf("_v", 5.0)), true},
+                {mapOf(VALUE, true), true, true},
+                {mapOf(VALUE, false), false, true},
         });
         TEST_DB.put(pair(String.class, Boolean.class), new Object[][]{
                 {"0", false},

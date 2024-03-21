@@ -284,15 +284,31 @@ final class MapConversions {
         String variant = converter.convert(map.get(VARIANT), String.class);
 
         Locale.Builder builder = new Locale.Builder();
-        builder.setLanguage(language);
+        try {
+            builder.setLanguage(language);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Locale language '" + language + "' invalid.", e);
+        }
         if (StringUtilities.hasContent(country)) {
-            builder.setRegion(country);
+            try {
+                builder.setRegion(country);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Locale region '" + country + "' invalid.", e);
+            }
         }
         if (StringUtilities.hasContent(script)) {
-            builder.setScript(script);
+            try {
+                builder.setScript(script);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Locale script '" + script + "' invalid.", e);
+            }
         }
         if (StringUtilities.hasContent(variant)) {
-            builder.setVariant(variant);
+            try {
+                builder.setVariant(variant);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Locale variant '" + variant + "' invalid.", e);
+            }
         }
         return builder.build();
     }

@@ -553,14 +553,15 @@ class TestDateUtilities
         List<String> timeZoneOldSchoolNames = Arrays.asList("JST", "IST", "CET", "BST", "EST", "CST", "MST", "PST", "CAT", "EAT", "ART", "ECT", "NST", "AST", "HST");
         Date x = new Date();
         String dateToString = x.toString();
-        boolean isOldSchoolTimezone = false;
+        boolean okToTest = false;
+
         for (String zoneName : timeZoneOldSchoolNames) {
-            if (!dateToString.contains(zoneName)) {
-                isOldSchoolTimezone = true;
+            if (dateToString.contains(zoneName)) {
+                okToTest = true;
             }
         }
 
-        if (isOldSchoolTimezone) {
+        if (!okToTest) {
             assertThatThrownBy(() -> DateUtilities.parseDate(x.toString()))
                     .isInstanceOf(DateTimeException.class)
                     .hasMessageContaining("Unknown time-zone ID");

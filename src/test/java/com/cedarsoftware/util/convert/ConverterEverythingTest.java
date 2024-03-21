@@ -1392,9 +1392,6 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Short.class, Year.class), new Object[][]{
                 {(short) 2024, Year.of(2024)},
         });
-        TEST_DB.put(pair(Integer.class, Year.class), new Object[][]{
-                {2024, Year.of(2024)},
-        });
         TEST_DB.put(pair(Float.class, Year.class), new Object[][]{
                 {2024f, Year.of(2024)},
         });
@@ -3025,14 +3022,14 @@ class ConverterEverythingTest {
                 {"2147483648", new IllegalArgumentException("'2147483648' not parseable as an int value or outside -2147483648 to 2147483647")},
         });
         TEST_DB.put(pair(Year.class, Integer.class), new Object[][]{
-                {Year.of(-1), -1},
-                {Year.of(0), 0},
-                {Year.of(1), 1},
-                {Year.of(1582), 1582},
-                {Year.of(1970), 1970},
-                {Year.of(2000), 2000},
-                {Year.of(2024), 2024},
-                {Year.of(9999), 9999},
+                {Year.of(-1), -1, true},
+                {Year.of(0), 0, true},
+                {Year.of(1), 1, true},
+                {Year.of(1582), 1582, true},
+                {Year.of(1970), 1970, true},
+                {Year.of(2000), 2000, true},
+                {Year.of(2024), 2024, true},
+                {Year.of(9999), 9999, true},
         });
     }
 

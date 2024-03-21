@@ -584,6 +584,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalDate.class, OffsetDateTime.class), LocalDateConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(Instant.class, OffsetDateTime.class), InstantConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(ZonedDateTime.class, OffsetDateTime.class), ZonedDateTimeConversions::toOffsetDateTime);
+        CONVERSION_DB.put(pair(LocalDateTime.class, OffsetDateTime.class), LocalDateTimeConversions::toOffsetDateTime);
 
         // toOffsetTime
         CONVERSION_DB.put(pair(Void.class, OffsetTime.class), VoidConversions::toNull);

@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -40,6 +42,12 @@ final class LocalDateTimeConversions {
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         LocalDateTime ldt = (LocalDateTime) from;
         return ZonedDateTime.of(ldt, converter.getOptions().getZoneId());
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        LocalDateTime ldt = (LocalDateTime) from;
+        ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(converter.getOptions().getTimeZone().getOffset(System.currentTimeMillis()) / 1000);
+        return ldt.atOffset(zoneOffset);
     }
 
     static Instant toInstant(Object from, Converter converter) {

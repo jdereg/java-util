@@ -61,7 +61,7 @@ final class YearConversions {
     }
     
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new AtomicBoolean(toInt(from, converter) == 0);
+        return new AtomicBoolean(toInt(from, converter) != 0);
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {

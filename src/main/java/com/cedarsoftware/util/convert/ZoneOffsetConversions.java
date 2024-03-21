@@ -5,6 +5,9 @@ import java.util.Map;
 
 import com.cedarsoftware.util.CompactLinkedMap;
 
+import static com.cedarsoftware.util.convert.MapConversions.HOURS;
+import static com.cedarsoftware.util.convert.MapConversions.MINUTES;
+
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -35,8 +38,8 @@ final class ZoneOffsetConversions {
         int hours = totalSeconds / 3600;
         int minutes = (totalSeconds % 3600) / 60;
         int seconds = totalSeconds % 60;
-        target.put("hours", hours);
-        target.put("minutes", minutes);
+        target.put(HOURS, hours);
+        target.put(MINUTES, minutes);
         if (seconds != 0) {
             target.put("seconds", seconds);
         }

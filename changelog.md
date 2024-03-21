@@ -1,6 +1,6 @@
 ### Revision History
 * 2.4.6
-  * All 686 cross product conversions supported are now 100% tested.  There will be more exception tests coming.
+  * All 686 conversions supported are now 100% cross-product tested.  There will be more exception tests coming.
 * 2.4.5
   * Added `ReflectionUtils.getDeclaredFields()` which gets fields from a `Class`, including an `Enum`, and special handles enum so that system fields are not returned.
 * 2.4.4

@@ -485,12 +485,6 @@ class ConverterEverythingTest {
                     return map;
                 }, true},
         });
-        TEST_DB.put(pair(java.sql.Date.class, Map.class), new Object[][] {
-                { new java.sql.Date(-1L), mapOf(EPOCH_MILLIS, -1L, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), true},
-                { new java.sql.Date(0L), mapOf(EPOCH_MILLIS, 0L, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), true},
-                { new java.sql.Date(1L), mapOf(EPOCH_MILLIS, 1L, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), true},
-                { new java.sql.Date(1710714535152L), mapOf(EPOCH_MILLIS, 1710714535152L, DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), true},
-        });
         TEST_DB.put(pair(Timestamp.class, Map.class), new Object[][] {
                 { timestamp("1969-12-31T23:59:59.999999999Z"), mapOf(EPOCH_MILLIS, -1L, NANOS, 999999999, DATE, "1970-01-01", TIME, "08:59:59.999999999", ZONE, TOKYO_Z.toString()), true},
                 { new Timestamp(-1L), mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), true},
@@ -1720,6 +1714,26 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.001Z"), new java.sql.Date(1), true},
                 {zdt("1970-01-01T00:00:00.999Z"), new java.sql.Date(999), true},
         });
+        TEST_DB.put(pair(Map.class, java.sql.Date.class), new Object[][] {
+                { mapOf(EPOCH_MILLIS, -1L, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), new java.sql.Date(-1L), true},
+                { mapOf(EPOCH_MILLIS, 0L, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), new java.sql.Date(0L), true},
+                { mapOf(EPOCH_MILLIS, 1L, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), new java.sql.Date(1L), true},
+                { mapOf(EPOCH_MILLIS, 1710714535152L, DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), new java.sql.Date(1710714535152L), true},
+                { mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, "Z"), new java.sql.Date(0L)},
+                { mapOf(DATE, "X1970-01-01", TIME, "00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01", TIME, "X00:00", ZONE, "Z"), new IllegalArgumentException("Unable to parse: X00:00 as a date-time")},
+                { mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
+                { mapOf(TIME, "1970-01-01T00:00Z"), new java.sql.Date(0L)},
+                { mapOf(TIME, "1970-01-01 00:00Z"), new java.sql.Date(0L)},
+                { mapOf(TIME, "X1970-01-01 00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01", TIME, "09:00"), new java.sql.Date(0L)},
+                { mapOf(DATE, "X1970-01-01", TIME, "09:00"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01", TIME, "X09:00"), new IllegalArgumentException("Unable to parse: X09:00 as a date-time")},
+                { mapOf(TIME, "1970-01-01T00:00", ZONE, "Z"), new java.sql.Date(0L)},
+                { mapOf(TIME, "X1970-01-01T00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(TIME, "1970-01-01T00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to java.sql.Date the map must include one of the following: [epochMillis], [_v], or [value] with associated values")},
+        });
     }
 
     /**
@@ -1802,11 +1816,20 @@ class ConverterEverythingTest {
                 { mapOf(EPOCH_MILLIS, 0L, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), new Date(0L), true},
                 { mapOf(EPOCH_MILLIS, 1L, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), new Date(1L), true},
                 { mapOf(EPOCH_MILLIS, 1710714535152L, DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), new Date(1710714535152L), true},
-                { mapOf(EPOCH_MILLIS, "bad date", DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Unable to parse: bad date")},
-                { mapOf(DATE, "1970-01-01", TIME, "09:00:00", ZONE, TOKYO_Z.toString()), new Date(0)},
-                { mapOf(DATE, "bad date", TIME, "09:00:00", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Unable to parse: bad date")},
-                { mapOf(DATE, "1970-01-01", TIME, "bad time", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Unable to parse: bad time")},
-                { mapOf(DATE, "1970-01-01", TIME, "09:00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
+                { mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, "Z"), new Date(0L)},
+                { mapOf(DATE, "X1970-01-01", TIME, "00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01", TIME, "X00:00", ZONE, "Z"), new IllegalArgumentException("Unable to parse: X00:00 as a date-time")},
+                { mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
+                { mapOf(TIME, "1970-01-01T00:00Z"), new Date(0L)},
+                { mapOf(TIME, "1970-01-01 00:00Z"), new Date(0L)},
+                { mapOf(TIME, "X1970-01-01 00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01", TIME, "09:00"), new Date(0L)},
+                { mapOf(DATE, "X1970-01-01", TIME, "09:00"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01", TIME, "X09:00"), new IllegalArgumentException("Unable to parse: X09:00 as a date-time")},
+                { mapOf(TIME, "1970-01-01T00:00", ZONE, "Z"), new Date(0L)},
+                { mapOf(TIME, "X1970-01-01T00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(TIME, "1970-01-01T00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to Date the map must include one of the following: [epochMillis], [_v], or [value] with associated values")},
         });
     }
 

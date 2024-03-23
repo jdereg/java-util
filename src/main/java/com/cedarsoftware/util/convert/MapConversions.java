@@ -102,13 +102,16 @@ final class MapConversions {
     static Object toUUID(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
 
-        if (map.containsKey(MapConversions.UUID)) {
-            return converter.convert(map.get(UUID), UUID.class);
+        Object uuid = map.get(UUID);
+        if (uuid != null) {
+            return converter.convert(uuid, UUID.class);
         }
 
-        if (map.containsKey(MOST_SIG_BITS) && map.containsKey(LEAST_SIG_BITS)) {
-            long most = converter.convert(map.get(MOST_SIG_BITS), long.class);
-            long least = converter.convert(map.get(LEAST_SIG_BITS), long.class);
+        Object mostSigBits = map.get(MOST_SIG_BITS);
+        Object leastSigBits = map.get(LEAST_SIG_BITS);
+        if (mostSigBits != null && leastSigBits != null) {
+            long most = converter.convert(mostSigBits, long.class);
+            long least = converter.convert(leastSigBits, long.class);
             return new UUID(most, least);
         }
 
@@ -172,59 +175,32 @@ final class MapConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        if (map.containsKey(EPOCH_MILLIS)) {
+        Long epochMillis = toEpochMillis(from, converter);
+        if (epochMillis == null) {
             return fromMap(from, converter, java.sql.Date.class, EPOCH_MILLIS);
-        } else if (map.containsKey(TIME) && !map.containsKey(DATE)) {
-            return fromMap(from, converter, java.sql.Date.class, TIME);
-        } else if (map.containsKey(TIME) && map.containsKey(DATE)) {
-            LocalDate date = converter.convert(map.get(DATE), LocalDate.class);
-            LocalTime time = converter.convert(map.get(TIME), LocalTime.class);
-            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
-            ZonedDateTime zdt = ZonedDateTime.of(date, time, zoneId);
-            return new java.sql.Date(zdt.toInstant().toEpochMilli());
         }
-        return fromMap(from, converter, java.sql.Date.class, EPOCH_MILLIS);
+        return new java.sql.Date(epochMillis);
     }
 
     static Date toDate(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        if (map.containsKey(EPOCH_MILLIS)) {
+        Long epochMillis = toEpochMillis(from, converter);
+        if (epochMillis == null) {
             return fromMap(from, converter, Date.class, EPOCH_MILLIS);
-        } else if (map.containsKey(TIME) && !map.containsKey(DATE)) {
-            return fromMap(from, converter, Date.class, TIME);
-        } else if (map.containsKey(TIME) && map.containsKey(DATE)) {
-            LocalDate date = converter.convert(map.get(DATE), LocalDate.class);
-            LocalTime time = converter.convert(map.get(TIME), LocalTime.class);
-            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
-            ZonedDateTime zdt = ZonedDateTime.of(date, time, zoneId);
-            return new Date(zdt.toInstant().toEpochMilli());
         }
-        return fromMap(map, converter, Date.class, EPOCH_MILLIS, NANOS);
+        return new Date(epochMillis);
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        if (map.containsKey(EPOCH_MILLIS)) {
-            long time = converter.convert(map.get(EPOCH_MILLIS), long.class);
-            int ns = converter.convert(map.get(NANOS), int.class);
-            Timestamp timeStamp = new Timestamp(time);
-            timeStamp.setNanos(ns);
-            return timeStamp;
-        } else if (map.containsKey(DATE) && map.containsKey(TIME) && map.containsKey(ZONE)) {
-            LocalDate date = converter.convert(map.get(DATE), LocalDate.class);
-            LocalTime time = converter.convert(map.get(TIME), LocalTime.class);
-            ZoneId zoneId = converter.convert(map.get(ZONE), ZoneId.class);
-            ZonedDateTime zdt = ZonedDateTime.of(date, time, zoneId);
-            return Timestamp.from(zdt.toInstant());
-        } else if (map.containsKey(TIME) && map.containsKey(NANOS)) {
-            long time = converter.convert(map.get(TIME), long.class);
-            int ns = converter.convert(map.get(NANOS), int.class);
-            Timestamp timeStamp = new Timestamp(time);
-            timeStamp.setNanos(ns);
-            return timeStamp;
+        Long epochMillis = toEpochMillis(from, converter);
+        if (epochMillis == null) {
+            return fromMap(from, converter, Timestamp.class, EPOCH_MILLIS, NANOS);
         }
-        return fromMap(map, converter, Timestamp.class, EPOCH_MILLIS, NANOS);
+
+        Map<String, Object> map = (Map<String, Object>) from;
+        Timestamp timestamp = new Timestamp(epochMillis);
+        int ns = converter.convert(map.get(NANOS), int.class);
+        timestamp.setNanos(ns);
+        return timestamp;
     }
 
     static TimeZone toTimeZone(Object from, Converter converter) {
@@ -270,6 +246,51 @@ final class MapConversions {
             return cal;
         }
         return fromMap(from, converter, Calendar.class, DATE, TIME, ZONE);
+    }
+
+    static Long toEpochMillis(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>) from;
+
+        Object epochMillis = map.get(EPOCH_MILLIS);
+        if (epochMillis != null) {
+            return converter.convert(epochMillis, long.class);
+        }
+
+        Object time = map.get(TIME);
+        Object date = map.get(DATE);
+        Object zone = map.get(ZONE);
+
+        // All 3 (date, time, zone)
+        if (time != null && date != null && zone != null) {
+            LocalDate ld = converter.convert(date, LocalDate.class);
+            LocalTime lt = converter.convert(time, LocalTime.class);
+            ZoneId zoneId = converter.convert(zone, ZoneId.class);
+            ZonedDateTime zdt = ZonedDateTime.of(ld, lt, zoneId);
+            return zdt.toInstant().toEpochMilli();
+        }
+
+        // Time only
+        if (time != null && date == null && zone == null) {
+            return converter.convert(time, Date.class).getTime();
+        }
+
+        // Time & Zone, no Date
+        if (time != null && date == null && zone != null) {
+            LocalDateTime ldt = converter.convert(time, LocalDateTime.class);
+            ZoneId zoneId = converter.convert(zone, ZoneId.class);
+            ZonedDateTime zdt = ZonedDateTime.of(ldt, zoneId);
+            return zdt.toInstant().toEpochMilli();
+        }
+
+        // Time & Date, no zone
+        if (time != null && date != null && zone == null) {
+            LocalDate ld = converter.convert(date, LocalDate.class);
+            LocalTime lt = converter.convert(time, LocalTime.class);
+            ZonedDateTime zdt = ZonedDateTime.of(ld, lt, converter.getOptions().getZoneId());
+            return zdt.toInstant().toEpochMilli();
+        }
+
+        return null;
     }
 
     static Locale toLocale(Object from, Converter converter) {

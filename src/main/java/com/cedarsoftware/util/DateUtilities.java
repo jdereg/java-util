@@ -231,7 +231,7 @@ public final class DateUtilities {
             } else {
                 matcher = unixDateTimePattern.matcher(dateStr);
                 if (matcher.replaceFirst("").length() == dateStr.length()) {
-                    throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date");
+                    throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date-time");
                 }
                 year = matcher.group(6);
                 String mon = matcher.group(2);

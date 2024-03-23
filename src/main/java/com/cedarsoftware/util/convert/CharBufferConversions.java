@@ -27,7 +27,7 @@ final class CharBufferConversions {
     private CharBufferConversions() {}
 
     static CharBuffer toCharBuffer(Object from, Converter converter) {
-        // Create a readonly buffer so we aren't changing
+        // Create a readonly buffer, so we aren't changing
         // the original buffers mark and position when
         // working with this buffer.  This could be inefficient
         // if constantly fed with writeable buffers so should be documented
@@ -49,7 +49,7 @@ final class CharBufferConversions {
     static char[] toCharArray(Object from, Converter converter) {
         CharBuffer buffer = toCharBuffer(from, converter);
 
-        if (buffer == null || !buffer.hasRemaining()) {
+        if (!buffer.hasRemaining()) {
             return EMPTY_CHAR_ARRAY;
         }
 

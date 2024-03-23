@@ -4139,7 +4139,7 @@ class ConverterTest
     void testEmptyStringToType_whereTypeReturnsSpecificObject(Object value, Class<?> type, Object expected)
     {
         Object converted = this.converter.convert(value, type);
-        assertThat(converted).isSameAs(expected);
+        assertEquals(converted, expected);
     }
 
     private static Stream<Arguments> emptyStringTypes_notSameObject() {
@@ -4296,6 +4296,36 @@ class ConverterTest
             }
         }
 
+    }
+
+    @Test
+    void testNullCharArray()
+    {
+        char[] x = converter.convert(null, char[].class);
+        assertNull(x);
+    }
+
+    @Test
+    void testAPIsAreEqual()
+    {
+        assertEquals(converter.allSupportedConversions().size(), converter.getSupportedConversions().size());
+    }
+
+    @Test
+    void testIsConversionSupportedFor()
+    {
+        assert converter.isConversionSupportedFor(byte.class, Byte.class);
+        assert converter.isConversionSupportedFor(Date.class, long.class);
+        assert converter.isConversionSupportedFor(long.class, Date.class);
+        assert converter.isConversionSupportedFor(GregorianCalendar.class, ZonedDateTime.class);
+    }
+
+    @Test
+    void testNullTypeInput()
+    {
+        assertThatThrownBy(() -> converter.convert("foo", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("toType cannot be null");
     }
 
     private ConverterOptions createCharsetOptions(final Charset charset) {

@@ -179,11 +179,11 @@ public final class DateUtilities {
      * passed in, null will be returned.
      */
     public static ZonedDateTime parseDate(String dateStr, ZoneId defaultZoneId, boolean ensureDateTimeAlone) {
-        if (StringUtilities.isEmpty(dateStr)) {
+        dateStr = StringUtilities.trimToNull(dateStr);
+        if (dateStr == null) {
             return null;
         }
         Convention.throwIfNull(defaultZoneId, "ZoneId cannot be null.  Use ZoneId.of(\"America/New_York\"), ZoneId.systemDefault(), etc.");
-        dateStr = dateStr.trim();
 
         if (allDigits.matcher(dateStr).matches()) {
             return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(defaultZoneId);

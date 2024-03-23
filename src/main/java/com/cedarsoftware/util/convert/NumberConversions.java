@@ -16,8 +16,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.StringUtilities;
-
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
  *         <br>
@@ -118,10 +116,6 @@ final class NumberConversions {
         return new AtomicInteger(toInt(from, converter));
     }
     
-    static BigDecimal toBigDecimal(Object from, Converter converter) {
-        return new BigDecimal(StringUtilities.trimToEmpty(from.toString()));
-    }
-
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
         return new AtomicBoolean(toLong(from, converter) != 0);
     }
@@ -152,10 +146,6 @@ final class NumberConversions {
         return ((BigDecimal)from).compareTo(BigDecimal.ZERO) != 0;
     }
 
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        return new BigInteger(StringUtilities.trimToEmpty(from.toString()));
-    }
-    
     /**
      * @param from      - object that is a number to be converted to char
      * @param converter - instance of converter mappings to use.
@@ -212,9 +202,6 @@ final class NumberConversions {
     }
 
     static Year toYear(Object from, Converter converter) {
-        if (from instanceof Byte) {
-            throw new IllegalArgumentException("Cannot convert Byte to Year, not enough precision.");
-        }
         Number number = (Number) from;
         return Year.of(number.shortValue());
     }

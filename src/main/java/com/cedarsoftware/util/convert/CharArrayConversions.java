@@ -56,9 +56,6 @@ final class CharArrayConversions {
 
     static char[] toCharArray(Object from, Converter converter) {
         char[] chars = (char[])from;
-        if (chars == null) {
-            return null;
-        }
         return Arrays.copyOf(chars, chars.length);
     }
 }

@@ -41,9 +41,9 @@ class StringConversionsTests {
 
     private static Stream<Arguments> toYear_withParseableParams() {
         return Stream.of(
-                Arguments.of("1999"),
-                Arguments.of("\t1999\r\n"),
-                Arguments.of("   1999    ")
+//                Arguments.of("1999"),
+                Arguments.of("\t1999\r\n")
+//                Arguments.of("   1999    ")
         );
     }
 

@@ -27,7 +27,6 @@ import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,7 +40,6 @@ import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.StringUtilities;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
-import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHARACTER_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
 
 /**
@@ -79,9 +77,9 @@ final class StringConversions {
     }
 
     static Byte toByte(Object from, Converter converter) {
-        String str = StringUtilities.trimToEmpty((String) from);
-        if (str.isEmpty()) {
-            return CommonValues.BYTE_ZERO;
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
+            return (byte)0;
         }
         try {
             return Byte.valueOf(str);
@@ -95,9 +93,9 @@ final class StringConversions {
     }
 
     static Short toShort(Object from, Converter converter) {
-        String str = StringUtilities.trimToEmpty((String) from);
-        if (str.isEmpty()) {
-            return CommonValues.SHORT_ZERO;
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
+            return (short)0;
         }
         try {
             return Short.valueOf(str);
@@ -111,9 +109,9 @@ final class StringConversions {
     }
 
     static Integer toInt(Object from, Converter converter) {
-        String str = StringUtilities.trimToEmpty(asString(from));
-        if (str.isEmpty()) {
-            return CommonValues.INTEGER_ZERO;
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
+            return 0;
         }
         try {
             return Integer.valueOf(str);
@@ -127,9 +125,9 @@ final class StringConversions {
     }
 
     static Long toLong(Object from, Converter converter) {
-        String str = StringUtilities.trimToEmpty(asString(from));
-        if (str.isEmpty()) {
-            return CommonValues.LONG_ZERO;
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
+            return 0L;
         }
 
         try {
@@ -157,9 +155,9 @@ final class StringConversions {
     }
 
     static Float toFloat(Object from, Converter converter) {
-        String str = StringUtilities.trimToEmpty(asString(from));
-        if (str.isEmpty()) {
-            return CommonValues.FLOAT_ZERO;
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
+            return 0f;
         }
         try {
             return Float.valueOf(str);
@@ -169,9 +167,9 @@ final class StringConversions {
     }
 
     static Double toDouble(Object from, Converter converter) {
-        String str = StringUtilities.trimToEmpty(asString(from));
-        if (str.isEmpty()) {
-            return CommonValues.DOUBLE_ZERO;
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
+            return 0.0;
         }
         try {
             return Double.valueOf(str);
@@ -181,7 +179,7 @@ final class StringConversions {
     }
 
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return new AtomicBoolean(toBoolean(asString(from), converter));
+        return new AtomicBoolean(toBoolean(from, converter));
     }
 
     static AtomicInteger toAtomicInteger(Object from, Converter converter) {
@@ -193,11 +191,7 @@ final class StringConversions {
     }
     
     static Boolean toBoolean(Object from, Converter converter) {
-        String from1 = asString(from);
-        String str = StringUtilities.trimToEmpty(from1);
-        if (str.isEmpty()) {
-            return false;
-        }
+        String str = (String) from;
         // faster equals check "true" and "false"
         if ("true".equals(str)) {
             return true;
@@ -209,8 +203,8 @@ final class StringConversions {
 
     static char toCharacter(Object from, Converter converter) {
         String str = (String)from;
-        if (str == null || str.isEmpty()) {
-            return CommonValues.CHARACTER_ZERO;
+        if (str.isEmpty()) {
+            return (char)0;
         }
         if (str.length() == 1) {
             return str.charAt(0);
@@ -224,8 +218,8 @@ final class StringConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        String str = StringUtilities.trimToNull(asString(from));
-        if (str == null) {
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
             return BigInteger.ZERO;
         }
         try {
@@ -237,8 +231,8 @@ final class StringConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        String str = StringUtilities.trimToEmpty(asString(from));
-        if (str.isEmpty()) {
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
             return BigDecimal.ZERO;
         }
         try {
@@ -249,12 +243,12 @@ final class StringConversions {
     }
 
     static URL toURL(Object from, Converter converter) {
-        String str = StringUtilities.trimToNull(asString(from));
-        if (str == null) {
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
             return null;
         }
         try {
-            URI uri = URI.create((String) from);
+            URI uri = URI.create(str);
             return uri.toURL();
         } catch (Exception e) {
             throw new IllegalArgumentException("Cannot convert String '" + str + "' to URL", e);
@@ -262,8 +256,8 @@ final class StringConversions {
     }
 
     static URI toURI(Object from, Converter converter) {
-        String str = StringUtilities.trimToNull(asString(from));
-        if (str == null) {
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
             return null;
         }
         return URI.create((String) from);
@@ -353,8 +347,7 @@ final class StringConversions {
     }
 
     static Date toDate(Object from, Converter converter) {
-        String strDate = (String) from;
-        ZonedDateTime zdt = DateUtilities.parseDate(strDate, converter.getOptions().getZoneId(), true);
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
         if (zdt == null) {
             return null;
         }
@@ -382,104 +375,93 @@ final class StringConversions {
 
     static Calendar toCalendar(Object from, Converter converter) {
         String calStr = (String) from;
-        if (StringUtilities.isEmpty(calStr)) {
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        if (zdt == null) {
             return null;
         }
-        ZonedDateTime zdt = DateUtilities.parseDate(calStr, converter.getOptions().getZoneId(), true);
         ZonedDateTime zdtUser = zdt.withZoneSameInstant(converter.getOptions().getZoneId());
-
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zdtUser.getZone()));
         cal.setTimeInMillis(zdtUser.toInstant().toEpochMilli());
         return cal;
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {
-        return parseDate(from, converter).map(ZonedDateTime::toLocalDate).orElse(null);
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        if (zdt == null) {
+            return null;
+        }
+        return zdt.toLocalDate();
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return parseDate(from, converter).map(ZonedDateTime::toLocalDateTime).orElse(null);
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        if (zdt == null) {
+            return null;
+        }
+        return zdt.toLocalDateTime();
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
-        String str = StringUtilities.trimToNull(asString(from));
-        if (str == null) {
-            return null;
-        }
-
+        String str = (String) from;
         try {
             return LocalTime.parse(str);
         } catch (Exception e) {
-            return parseDate(str, converter).map(ZonedDateTime::toLocalTime).orElse(null);
+            ZonedDateTime zdt = toZonedDateTime(str, converter);
+            if (zdt == null) {
+                return null;
+            }
+            return zdt.toLocalTime();
         }
     }
 
     static Locale toLocale(Object from, Converter converter) {
-        String str = StringUtilities.trimToNull(asString(from));
-        if (str == null) {
+        String str = (String)from;
+        if (StringUtilities.isEmpty(str)) {
             return null;
         }
-
         return Locale.forLanguageTag(str);
     }
 
-    private static Optional<ZonedDateTime> parseDate(Object from, Converter converter) {
-        String str = StringUtilities.trimToNull(asString(from));
-
-        if (str == null) {
-            return Optional.empty();
-        }
-
-        ZonedDateTime zonedDateTime = DateUtilities.parseDate(str, converter.getOptions().getZoneId(), true);
-
-        if (zonedDateTime == null) {
-            return Optional.empty();
-        }
-
-        return Optional.of(zonedDateTime);
-    }
-
-
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        return parseDate(from, converter).orElse(null);
+        return DateUtilities.parseDate((String)from, converter.getOptions().getZoneId(), true);
     }
 
     static ZoneId toZoneId(Object from, Converter converter) {
-        String s = StringUtilities.trimToNull(asString(from));
-        if (s == null) {
+        String str = (String) from;
+        if (StringUtilities.isEmpty(str)) {
             return null;
         }
         try {
-            return ZoneId.of(s);
+            return ZoneId.of(str);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unknown time-zone ID: '" + s + "'", e);
+            throw new IllegalArgumentException("Unknown time-zone ID: '" + str + "'", e);
         }
     }
 
     static ZoneOffset toZoneOffset(Object from, Converter converter) {
-        String s = StringUtilities.trimToNull(asString(from));
-        if (s == null) {
+        String str = (String)from;
+        if (StringUtilities.isEmpty(str)) {
             return null;
         }
         try {
-            return ZoneOffset.of(s);
+            return ZoneOffset.of(str);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unknown time-zone offset: '" + s + "'");
+            throw new IllegalArgumentException("Unknown time-zone offset: '" + str + "'");
         }
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        return parseDate(from, converter).map(ZonedDateTime::toOffsetDateTime).orElse(null);
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        if (zdt == null) {
+            return null;
+        }
+        return zdt.toOffsetDateTime();
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
-        String s = StringUtilities.trimToNull(asString(from));
-        if (s == null) {
-            return null;
-        }
-
+        String str = (String) from;
         try {
-            return OffsetTime.parse(s, DateTimeFormatter.ISO_OFFSET_TIME);
+            return OffsetTime.parse(str, DateTimeFormatter.ISO_OFFSET_TIME);
         } catch (Exception e) {
             try {
                 OffsetDateTime dateTime = toOffsetDateTime(from, converter);
@@ -488,39 +470,31 @@ final class StringConversions {
                 }
                 return dateTime.toOffsetTime();
             } catch (Exception ex) {
-                throw new IllegalArgumentException("Unable to parse '" + s + "' as an OffsetTime", e);
+                throw new IllegalArgumentException("Unable to parse '" + str + "' as an OffsetTime", e);
             }
         }
     }
 
     static Instant toInstant(Object from, Converter converter) {
-        String s = (String)from;
-        if (StringUtilities.isEmpty(s)) {
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        if (zdt == null) {
             return null;
         }
-        try {
-            return Instant.parse(s);
-        } catch (Exception e) {
-            return parseDate(s, converter).map(ZonedDateTime::toInstant).orElse(null);
-        }
+        return zdt.toInstant();
     }
 
     static char[] toCharArray(Object from, Converter converter) {
-        String s = asString(from);
+        String str = from.toString();
 
-        if (s == null || s.isEmpty()) {
+        if (StringUtilities.isEmpty(str)) {
             return EMPTY_CHAR_ARRAY;
         }
 
-        return s.toCharArray();
+        return str.toCharArray();
     }
 
     static Character[] toCharacterArray(Object from, Converter converter) {
         CharSequence s = (CharSequence) from;
-
-        if (s == null) {
-            return EMPTY_CHARACTER_ARRAY;
-        }
         int len = s.length();
         Character[] ca = new Character[len];
         for (int i=0; i < len; i++) {
@@ -560,19 +534,19 @@ final class StringConversions {
     }
 
     static Year toYear(Object from, Converter converter) {
-        String s = StringUtilities.trimToNull(asString(from));
-        if (s == null) {
-            return null;
-        }
-
+        String str = (String) from;
         try {
-            return Year.of(Integer.parseInt(s));
+            str = StringUtilities.trimToNull(str);
+            return Year.of(Integer.parseInt(str));
         } catch (Exception e) {
             try {
-                ZonedDateTime zdt = DateUtilities.parseDate(s, converter.getOptions().getZoneId(), true);
+                ZonedDateTime zdt = toZonedDateTime(from, converter);
+                if (zdt == null) {
+                    return null;
+                }
                 return Year.of(zdt.getYear());
             } catch (Exception ex) {
-                throw new IllegalArgumentException("Unable to parse 4-digit year from '" + s + "'", e);
+                throw new IllegalArgumentException("Unable to parse 4-digit year from '" + str + "'", e);
             }
         }
     }

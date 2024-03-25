@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Map;
 
@@ -7,6 +8,7 @@ import com.cedarsoftware.util.CompactLinkedMap;
 
 import static com.cedarsoftware.util.convert.MapConversions.HOURS;
 import static com.cedarsoftware.util.convert.MapConversions.MINUTES;
+import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -29,7 +31,7 @@ final class ZoneOffsetConversions {
 
     private ZoneOffsetConversions() {}
 
-    static Map toMap(Object from, Converter converter) {
+    static Map<String, Object> toMap(Object from, Converter converter) {
         ZoneOffset offset = (ZoneOffset) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         int totalSeconds = offset.getTotalSeconds();
@@ -41,8 +43,12 @@ final class ZoneOffsetConversions {
         target.put(HOURS, hours);
         target.put(MINUTES, minutes);
         if (seconds != 0) {
-            target.put("seconds", seconds);
+            target.put(SECONDS, seconds);
         }
         return target;
+    }
+
+    static ZoneId toZoneId(Object from, Converter converter) {
+        return (ZoneId) from;
     }
 }

@@ -681,6 +681,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(String.class, TimeZone.class), StringConversions::toTimeZone);
         CONVERSION_DB.put(pair(Map.class, TimeZone.class), MapConversions::toTimeZone);
         CONVERSION_DB.put(pair(ZoneId.class, TimeZone.class), ZoneIdConversions::toTimeZone);
+        CONVERSION_DB.put(pair(ZoneOffset.class, TimeZone.class), UNSUPPORTED);
 
         // Duration conversions supported
         CONVERSION_DB.put(pair(Void.class, Duration.class), VoidConversions::toNull);
@@ -719,13 +720,16 @@ public final class Converter {
         CONVERSION_DB.put(pair(String.class, ZoneId.class), StringConversions::toZoneId);
         CONVERSION_DB.put(pair(Map.class, ZoneId.class), MapConversions::toZoneId);
         CONVERSION_DB.put(pair(TimeZone.class, ZoneId.class), TimeZoneConversions::toZoneId);
+        CONVERSION_DB.put(pair(ZoneOffset.class, ZoneId.class), ZoneOffsetConversions::toZoneId);
 
         // ZoneOffset conversions supported
         CONVERSION_DB.put(pair(Void.class, ZoneOffset.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(ZoneOffset.class, ZoneOffset.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, ZoneOffset.class), StringConversions::toZoneOffset);
         CONVERSION_DB.put(pair(Map.class, ZoneOffset.class), MapConversions::toZoneOffset);
-        
+        CONVERSION_DB.put(pair(ZoneId.class, ZoneOffset.class), UNSUPPORTED);
+        CONVERSION_DB.put(pair(TimeZone.class, ZoneOffset.class), UNSUPPORTED);
+
         // MonthDay conversions supported
         CONVERSION_DB.put(pair(Void.class, MonthDay.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(MonthDay.class, MonthDay.class), Converter::identity);

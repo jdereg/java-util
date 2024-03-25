@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
-import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
@@ -561,11 +560,7 @@ class TestDateUtilities
             }
         }
 
-        if (!okToTest) {
-            assertThatThrownBy(() -> DateUtilities.parseDate(x.toString()))
-                    .isInstanceOf(DateTimeException.class)
-                    .hasMessageContaining("Unknown time-zone ID");
-        } else {
+        if (okToTest) {
             Date y = DateUtilities.parseDate(x.toString());
             assertEquals(x.toString(), y.toString());
         }

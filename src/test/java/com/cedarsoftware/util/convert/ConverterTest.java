@@ -2788,7 +2788,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicBoolean.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to AtomicBoolean the map must include one of the following");
+                .hasMessageContaining("Map to 'AtomicBoolean' the map must include: [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2811,7 +2811,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicInteger.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to AtomicInteger the map must include one of the following");
+                .hasMessageContaining("Map to 'AtomicInteger' the map must include: [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2834,7 +2834,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicLong.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to AtomicLong the map must include one of the following");
+                .hasMessageContaining("Map to 'AtomicLong' the map must include: [value], or [_v] as keys with associated values");
     }
     
     @ParameterizedTest
@@ -2858,7 +2858,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Calendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to Calendar the map must include one of the following: [date, time, zone]");
+                .hasMessageContaining("Map to 'Calendar' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2926,7 +2926,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, GregorianCalendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to Calendar the map must include one of the following: [date, time, zone]");
+                .hasMessageContaining("Map to 'Calendar' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2949,7 +2949,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to Date the map must include one of the following");
+                .hasMessageContaining("Map to 'Date' the map must include: [epochMillis], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2972,7 +2972,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, java.sql.Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to java.sql.Date the map must include");
+                .hasMessageContaining("Map to 'java.sql.Date' the map must include: [epochMillis], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2995,7 +2995,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Timestamp.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to Timestamp the map must include one of the following");
+                .hasMessageContaining("Map to 'Timestamp' the map must include: [epochMillis, nanos (optional)], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -3018,7 +3018,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDate.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to LocalDate the map must include one of the following: [date], [_v], or [value] with associated values");
+                .hasMessageContaining("Map to 'LocalDate' the map must include: [date], [year, month, day], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -3041,7 +3041,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to LocalDateTime the map must include one of the following: [date, time], [_v], or [value] with associated values");
+                .hasMessageContaining("Map to 'LocalDateTime' the map must include: [date, time (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -3060,7 +3060,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, ZonedDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to ZonedDateTime the map must include one of the following: [date, time, zone], [_v], or [value] with associated values");
+                .hasMessageContaining("Map to 'ZonedDateTime' the map must include: [epochMillis], [dateTime, zone], [date, time, zone], [value], or [_v] as keys with associated values");
 
     }
 
@@ -3481,7 +3481,7 @@ class ConverterTest
         map.put("leastSigBits", uuid.getLeastSignificantBits());
         assertThatThrownBy(() -> this.converter.convert(map, UUID.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("To convert from Map to UUID the map must include one of the following");
+                .hasMessageContaining("Map to 'UUID' the map must include: [UUID], [mostSigBits, leastSigBits], [value], or [_v] as keys with associated values");
     }
 
     @Test

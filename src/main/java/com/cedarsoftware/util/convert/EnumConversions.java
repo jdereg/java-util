@@ -1,12 +1,6 @@
 package com.cedarsoftware.util.convert;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.CompactLinkedMap;
 
@@ -36,40 +30,5 @@ final class EnumConversions {
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("name", enumInstance.name());
         return target;
-    }
-
-    static long toLong(Object from, Converter converter) {
-        return ((Duration) from).toMillis();
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        Duration duration = (Duration) from;
-        return new AtomicLong(duration.toMillis());
-    }
-    
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        Duration duration = (Duration) from;
-        BigInteger epochSeconds = BigInteger.valueOf(duration.getSeconds());
-        BigInteger nanos = BigInteger.valueOf(duration.getNano());
-
-        // Convert seconds to nanoseconds and add the nanosecond part
-        return epochSeconds.multiply(BigIntegerConversions.BILLION).add(nanos);
-    }
-
-    static double toDouble(Object from, Converter converter) {
-        Duration duration = (Duration) from;
-        return BigDecimalConversions.secondsAndNanosToDouble(duration.getSeconds(), duration.getNano()).doubleValue();
-    }
-
-    static BigDecimal toBigDecimal(Object from, Converter converter) {
-        Duration duration = (Duration) from;
-        return BigDecimalConversions.secondsAndNanosToDouble(duration.getSeconds(), duration.getNano());
-    }
-    
-    static Timestamp toTimestamp(Object from, Converter converter) {
-        Duration duration = (Duration) from;
-        Instant epoch = Instant.EPOCH;
-        Instant timeAfterDuration = epoch.plus(duration);
-        return Timestamp.from(timeAfterDuration);
     }
 }

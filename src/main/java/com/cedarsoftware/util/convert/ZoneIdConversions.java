@@ -27,7 +27,7 @@ final class ZoneIdConversions {
 
     private ZoneIdConversions() {}
 
-    static Map toMap(Object from, Converter converter) {
+    static Map<String, Object> toMap(Object from, Converter converter) {
         ZoneId zoneID = (ZoneId) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("zone", zoneID.toString());

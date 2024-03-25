@@ -56,19 +56,31 @@ import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.Converter.pair;
 import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
-import static com.cedarsoftware.util.convert.MapConversions.DATE_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.DAY;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
+import static com.cedarsoftware.util.convert.MapConversions.HOUR;
 import static com.cedarsoftware.util.convert.MapConversions.HOURS;
+import static com.cedarsoftware.util.convert.MapConversions.ID;
 import static com.cedarsoftware.util.convert.MapConversions.LANGUAGE;
+import static com.cedarsoftware.util.convert.MapConversions.LEAST_SIG_BITS;
+import static com.cedarsoftware.util.convert.MapConversions.MINUTE;
 import static com.cedarsoftware.util.convert.MapConversions.MINUTES;
+import static com.cedarsoftware.util.convert.MapConversions.MONTH;
+import static com.cedarsoftware.util.convert.MapConversions.MOST_SIG_BITS;
+import static com.cedarsoftware.util.convert.MapConversions.NANO;
 import static com.cedarsoftware.util.convert.MapConversions.NANOS;
+import static com.cedarsoftware.util.convert.MapConversions.OFFSET;
+import static com.cedarsoftware.util.convert.MapConversions.OFFSET_HOUR;
+import static com.cedarsoftware.util.convert.MapConversions.OFFSET_MINUTE;
 import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
+import static com.cedarsoftware.util.convert.MapConversions.SECOND;
 import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
 import static com.cedarsoftware.util.convert.MapConversions.TIME;
 import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.V;
 import static com.cedarsoftware.util.convert.MapConversions.VARIANT;
+import static com.cedarsoftware.util.convert.MapConversions.YEAR;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -196,6 +208,19 @@ class ConverterEverythingTest {
         loadUriTests();
         loadUrlTests();
         loadUuidTests();
+        loadEnumTests();
+    }
+
+    /**
+     * Enum
+     */
+    private static void loadEnumTests() {
+        TEST_DB.put(pair(Enum.class, Map.class), new Object[][]{
+                { DayOfWeek.FRIDAY, mapOf("name", DayOfWeek.FRIDAY.name())},
+        });
+        TEST_DB.put(pair(Map.class, Enum.class), new Object[][]{
+                { mapOf("name", "funky bunch"), new IllegalArgumentException("Unsupported conversion, source type [UnmodifiableMap ({name=funky bunch})] target type 'Enum'")},
+        });
     }
 
     /**
@@ -211,6 +236,8 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, UUID.class), new Object[][]{
                 {mapOf("UUID", "f0000000-0000-0000-0000-000000000001"), UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
                 {mapOf("UUID", "f0000000-0000-0000-0000-00000000000x"), new IllegalArgumentException("Unable to convert 'f0000000-0000-0000-0000-00000000000x' to UUID")},
+                {mapOf("xyz", "f0000000-0000-0000-0000-000000000000"), new IllegalArgumentException("Map to 'UUID' the map must include: [UUID], [mostSigBits, leastSigBits], [value], or [_v] as keys with associated values")},
+                {mapOf(MOST_SIG_BITS, "1", LEAST_SIG_BITS, "2"), UUID.fromString("00000000-0000-0001-0000-000000000002")},
         });
         TEST_DB.put(pair(String.class, UUID.class), new Object[][]{
                 {"f0000000-0000-0000-0000-000000000001", UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
@@ -263,6 +290,12 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(URL.class, URL.class), new Object[][]{
                 {toURL("https://chat.openai.com"), toURL("https://chat.openai.com")},
         });
+        TEST_DB.put(pair(URI.class, URL.class), new Object[][]{
+                {toURI("urn:isbn:0451450523"), new IllegalArgumentException("Unable to convert URI to URL")},
+                {toURI("https://cedarsoftware.com"), toURL("https://cedarsoftware.com"), true},
+                {toURI("https://cedarsoftware.com:8001"), toURL("https://cedarsoftware.com:8001"), true},
+                {toURI("https://cedarsoftware.com:8001#ref1"), toURL("https://cedarsoftware.com:8001#ref1"), true},
+        });
         TEST_DB.put(pair(String.class, URL.class), new Object[][]{
                 {"", null},
                 {"https://domain.com", toURL("https://domain.com"), true},
@@ -286,7 +319,9 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, URL.class), new Object[][]{
                 { mapOf(URL_KEY, "https://domain.com"), toURL("https://domain.com"), true},
-                { mapOf(URL_KEY, "bad earl"), new IllegalArgumentException("Cannot convert Map to URL. Malformed URL: 'bad earl'")},
+                { mapOf(URL_KEY, "bad earl"), new IllegalArgumentException("Cannot convert String 'bad earl' to URL")},
+                { mapOf(MapConversions.VALUE, "https://domain.com"), toURL("https://domain.com")},
+                { mapOf(V, "https://domain.com"), toURL("https://domain.com")},
         });
         TEST_DB.put(pair(URI.class, URL.class), new Object[][]{
                 {toURI("urn:isbn:0451450523"), new IllegalArgumentException("Unable to convert URI to URL")},
@@ -302,6 +337,14 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(URI.class, URI.class), new Object[][]{
                 {toURI("https://chat.openai.com"), toURI("https://chat.openai.com"), true},
+        });
+        TEST_DB.put(pair(URL.class, URI.class), new Object[][]{
+                { (Supplier<URL>) () -> {
+                    try {return new URL("https://domain.com");} catch(Exception e){return null;}
+                }, toURI("https://domain.com"), true},
+                { (Supplier<URL>) () -> {
+                    try {return new URL("http://example.com/query?param=value with spaces");} catch(Exception e){return null;}
+                }, new IllegalArgumentException("Unable to convert URL to URI")},
         });
         TEST_DB.put(pair(String.class, URI.class), new Object[][]{
                 {"", null},
@@ -326,15 +369,8 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, URI.class), new Object[][]{
                 { mapOf(URI_KEY, "https://domain.com"), toURI("https://domain.com"), true},
-                { mapOf(URI_KEY, "bad uri"), new IllegalArgumentException("Cannot convert Map to URI. Malformed URI: 'bad uri'")},
-        });
-        TEST_DB.put(pair(URL.class, URI.class), new Object[][]{
-                { (Supplier<URL>) () -> {
-                       try {return new URL("https://domain.com");} catch(Exception e){return null;}
-                }, toURI("https://domain.com"), true},
-                { (Supplier<URL>) () -> {
-                       try {return new URL("http://example.com/query?param=value with spaces");} catch(Exception e){return null;}
-                }, new IllegalArgumentException("Unable to convert URL to URI")},
+                { mapOf(URI_KEY, "bad uri"), new IllegalArgumentException("Illegal character in path at index 3: bad uri")},
+                { mapOf(MapConversions.VALUE, "https://domain.com"), toURI("https://domain.com")},
         });
     }
 
@@ -347,6 +383,10 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(TimeZone.class, TimeZone.class), new Object[][]{
                 {TimeZone.getTimeZone("GMT"), TimeZone.getTimeZone("GMT")},
+        });
+        TEST_DB.put(pair(ZoneOffset.class, TimeZone.class), new Object[][]{
+                {ZoneOffset.of("Z"), new IllegalArgumentException("Unsupported conversion, source type [ZoneOffset (Z)] target type 'TimeZone'")},
+                {ZoneOffset.of("+09:00"), new IllegalArgumentException("Unsupported conversion, source type [ZoneOffset (+09:00)] target type 'TimeZone'")},
         });
         TEST_DB.put(pair(String.class, TimeZone.class), new Object[][]{
                 {"", null},
@@ -383,11 +423,17 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, OffsetTime.class), new Object[][]{
                 {mapOf(TIME, "00:00+09:00"), OffsetTime.parse("00:00+09:00"), true},
                 {mapOf(TIME, "00:00+09:01:23"), OffsetTime.parse("00:00+09:01:23"), true},
-                {mapOf(TIME, "00:00+09:01:23.1"), new IllegalArgumentException("Unable to parse OffsetTime")},
+                {mapOf(TIME, "00:00+09:01:23.1"), new IllegalArgumentException("Unable to parse '00:00+09:01:23.1' as an OffsetTime")},
                 {mapOf(TIME, "00:00-09:00"), OffsetTime.parse("00:00-09:00"), true},
                 {mapOf(TIME, "00:00:00+09:00"), OffsetTime.parse("00:00+09:00")},       // no reverse
                 {mapOf(TIME, "00:00:00+09:00:00"), OffsetTime.parse("00:00+09:00")},    // no reverse
-                {mapOf(TIME, "garbage"), new IllegalArgumentException("Unable to parse OffsetTime: garbage")},    // no reverse
+                {mapOf(TIME, "garbage"), new IllegalArgumentException("Unable to parse 'garbage' as an OffsetTime")},    // no reverse
+                {mapOf(HOUR, 1, MINUTE,30), new IllegalArgumentException("Map to 'OffsetTime' the map must include: [time], [hour, minute, second (optional), nano (optional), offsetHour, offsetMinute], [value], or [_v] as keys with associated values")},
+                {mapOf(HOUR, 1, MINUTE,30, SECOND, 59), new IllegalArgumentException("Map to 'OffsetTime' the map must include: [time], [hour, minute, second (optional), nano (optional), offsetHour, offsetMinute], [value], or [_v] as keys with associated values")},
+                {mapOf(HOUR, 1, MINUTE,30, SECOND, 59, NANO, 123456789), new IllegalArgumentException("Map to 'OffsetTime' the map must include: [time], [hour, minute, second (optional), nano (optional), offsetHour, offsetMinute], [value], or [_v] as keys with associated values")},
+                {mapOf(HOUR, 1, MINUTE,30, SECOND, 59, NANO, 123456789, OFFSET_HOUR, -5, OFFSET_MINUTE, -30), OffsetTime.parse("01:30:59.123456789-05:30")},
+                {mapOf(HOUR, 1, MINUTE,30, SECOND, 59, NANO, 123456789, OFFSET_HOUR, -5, OFFSET_MINUTE, 30), new IllegalArgumentException("Offset 'hour' and 'minute' are not correct")},
+                {mapOf(VALUE, "16:20:00-05:00"), OffsetTime.parse("16:20:00-05:00") },
         });
         TEST_DB.put(pair(OffsetDateTime.class, OffsetTime.class), new Object[][]{
                 {odt("1969-12-31T23:59:59.999999999Z"), OffsetTime.parse("08:59:59.999999999+09:00")},
@@ -441,6 +487,10 @@ class ConverterEverythingTest {
                 {"java.util.Date", Date.class, true},
                 {"NoWayJose", new IllegalArgumentException("not found")},
         });
+        TEST_DB.put(pair(Map.class, Class.class), new Object[][]{
+                { mapOf(VALUE, Long.class), Long.class, true},
+                { mapOf(VALUE, "not a class"), new IllegalArgumentException("Cannot convert String 'not a class' to class.  Class not found")},
+        });
     }
 
     /**
@@ -452,78 +502,6 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, Map.class), new Object[][]{
                 { new HashMap<>(), new IllegalArgumentException("Unsupported conversion") }
-        });
-        TEST_DB.put(pair(Byte.class, Map.class), new Object[][]{
-                {(byte)1, mapOf(VALUE, (byte)1)},
-                {(byte)2, mapOf(VALUE, (byte)2)}
-        });
-        TEST_DB.put(pair(Integer.class, Map.class), new Object[][]{
-                {-1, mapOf(VALUE, -1)},
-                {0, mapOf(VALUE, 0)},
-                {1, mapOf(VALUE, 1)}
-        });
-        TEST_DB.put(pair(Float.class, Map.class), new Object[][]{
-                {1.0f, mapOf(VALUE, 1.0f)},
-                {2.0f, mapOf(VALUE, 2.0f)}
-        });
-        TEST_DB.put(pair(Double.class, Map.class), new Object[][]{
-                {1.0, mapOf(VALUE, 1.0)},
-                {2.0, mapOf(VALUE, 2.0)}
-        });
-        TEST_DB.put(pair(Calendar.class, Map.class), new Object[][]{
-                {(Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
-                    cal.set(Calendar.MILLISECOND, 409);
-                    return cal;
-                }, (Supplier<Map<String, Object>>) () -> {
-                    Map<String, Object> map = new CompactLinkedMap<>();
-                    map.put(DATE, "2024-02-05");
-                    map.put(TIME, "22:31:17.409");
-                    map.put(ZONE, TOKYO);
-                    map.put(EPOCH_MILLIS, 1707139877409L);
-                    return map;
-                }, true},
-        });
-        TEST_DB.put(pair(Timestamp.class, Map.class), new Object[][] {
-                { timestamp("1969-12-31T23:59:59.999999999Z"), mapOf(EPOCH_MILLIS, -1L, NANOS, 999999999, DATE, "1970-01-01", TIME, "08:59:59.999999999", ZONE, TOKYO_Z.toString()), true},
-                { new Timestamp(-1L), mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), true},
-                { timestamp("1970-01-01T00:00:00Z"), mapOf(EPOCH_MILLIS, 0L, NANOS, 0, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), true},
-                { new Timestamp(0L), mapOf(EPOCH_MILLIS, 0L, NANOS, 0, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), true},
-                { timestamp("1970-01-01T00:00:00.000000001Z"), mapOf(EPOCH_MILLIS, 0L, NANOS, 1, DATE, "1970-01-01", TIME, "09:00:00.000000001", ZONE, TOKYO_Z.toString()), true},
-                { new Timestamp(1L), mapOf(EPOCH_MILLIS, 1L, NANOS, 1000000, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), true},
-                { new Timestamp(1710714535152L), mapOf(EPOCH_MILLIS, 1710714535152L, NANOS, 152000000, DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), true},
-        });
-        TEST_DB.put(pair(LocalDateTime.class, Map.class), new Object[][] {
-                { ldt("1969-12-31T23:59:59.999999999"), mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999"), true},
-                { ldt("1970-01-01T00:00"), mapOf(DATE, "1970-01-01", TIME, "00:00"), true},
-                { ldt("1970-01-01T00:00:00.000000001"), mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001"), true},
-                { ldt("2024-03-10T11:07:00.123456789"), mapOf(DATE, "2024-03-10", TIME, "11:07:00.123456789"), true},
-        });
-        TEST_DB.put(pair(OffsetDateTime.class, Map.class), new Object[][] {
-                { OffsetDateTime.parse("1969-12-31T23:59:59.999999999+09:00"), mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999", "offset", "+09:00"), true},
-                { OffsetDateTime.parse("1970-01-01T00:00+09:00"), mapOf(DATE, "1970-01-01", TIME, "00:00", "offset", "+09:00"), true},
-                { OffsetDateTime.parse("1970-01-01T00:00:00.000000001+09:00"), mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001", "offset", "+09:00"), true},
-                { OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00"), mapOf(DATE, "2024-03-10", TIME, "11:07:00.123456789", "offset", "+09:00"), true},
-        });
-        TEST_DB.put(pair(Duration.class, Map.class), new Object[][] {
-                { Duration.ofMillis(-1), mapOf("seconds", -1L, "nanos", 999000000), true},
-        });
-        TEST_DB.put(pair(Instant.class, Map.class), new Object[][] {
-                { Instant.parse("2024-03-10T11:07:00.123456789Z"), mapOf("seconds", 1710068820L, "nanos", 123456789), true},
-        });
-        TEST_DB.put(pair(Character.class, Map.class), new Object[][]{
-                {(char) 0, mapOf(VALUE, (char)0)},
-                {(char) 1, mapOf(VALUE, (char)1)},
-                {(char) 65535, mapOf(VALUE, (char)65535)},
-                {(char) 48, mapOf(VALUE, '0')},
-                {(char) 49, mapOf(VALUE, '1')},
-        });
-        TEST_DB.put(pair(Class.class, Map.class), new Object[][]{
-                { Long.class, mapOf(VALUE, Long.class), true}
-        });
-        TEST_DB.put(pair(Enum.class, Map.class), new Object[][]{
-                { DayOfWeek.FRIDAY, mapOf("name", DayOfWeek.FRIDAY.name())}
         });
     }
 
@@ -763,17 +741,6 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, String.class), new Object[][]{
                 {null, null}
         });
-        TEST_DB.put(pair(Double.class, String.class), new Object[][]{
-                {0.0, "0"},
-                {0.0, "0"},
-                {Double.MIN_VALUE, "4.9E-324"},
-                {-Double.MAX_VALUE, "-1.7976931348623157E308"},
-                {Double.MAX_VALUE, "1.7976931348623157E308"},
-                {123456789.0, "1.23456789E8"},
-                {0.000000123456789, "1.23456789E-7"},
-                {12345.0, "12345.0"},
-                {0.00012345, "1.2345E-4"},
-        });
         TEST_DB.put(pair(BigInteger.class, String.class), new Object[][]{
                 {new BigInteger("-1"), "-1"},
                 {BigInteger.ZERO, "0"},
@@ -843,6 +810,9 @@ class ConverterEverythingTest {
                 {ZoneOffset.of("-05:00"), ZoneOffset.of("-05:00")},
                 {ZoneOffset.of("+5"), ZoneOffset.of("+05:00")},
         });
+        TEST_DB.put(pair(ZoneId.class, ZoneOffset.class), new Object[][]{
+                {ZoneId.of("Asia/Tokyo"), new IllegalArgumentException("Unsupported conversion, source type [ZoneRegion (Asia/Tokyo)] target type 'ZoneOffset'")},
+        });
         TEST_DB.put(pair(String.class, ZoneOffset.class), new Object[][]{
                 {"", null},
                 {"-00:00", ZoneOffset.of("+00:00")},
@@ -858,7 +828,7 @@ class ConverterEverythingTest {
                 {mapOf("_v", "-10"), ZoneOffset.of("-10:00")},
                 {mapOf(HOURS, -10L), ZoneOffset.of("-10:00")},
                 {mapOf(HOURS, -10, MINUTES, 0), ZoneOffset.of("-10:00"), true},
-                {mapOf("hrs", -10L, "mins", "0"), new IllegalArgumentException("Map to ZoneOffset the map must include one of the following: [hours, minutes, seconds], [_v], or [value]")},
+                {mapOf("hrs", -10L, "mins", "0"), new IllegalArgumentException("Map to 'ZoneOffset' the map must include: [hours, minutes (optional), seconds (optional)], [value], or [_v] as keys with associated values")},
                 {mapOf(HOURS, -10L, MINUTES, "0", SECONDS, 0), ZoneOffset.of("-10:00")},
                 {mapOf(HOURS, "-10", MINUTES, (byte) -15, SECONDS, "-1"), ZoneOffset.of("-10:15:01")},
                 {mapOf(HOURS, "10", MINUTES, (byte) 15, SECONDS, true), ZoneOffset.of("+10:15:01")},
@@ -930,7 +900,7 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, ZonedDateTime.class), new Object[][]{
                 {mapOf(VALUE, new AtomicLong(now)), Instant.ofEpochMilli(now).atZone(TOKYO_Z)},
                 {mapOf(EPOCH_MILLIS, now), Instant.ofEpochMilli(now).atZone(TOKYO_Z)},
-                {mapOf(DATE_TIME, "1970-01-01T00:00:00", ZONE, TOKYO), zdt("1970-01-01T00:00:00+09:00")},
+                {mapOf(TIME, "1970-01-01T00:00:00", ZONE, TOKYO), zdt("1970-01-01T00:00:00+09:00")},
                 {mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999", ZONE, TOKYO), zdt("1969-12-31T23:59:59.999999999+09:00"), true},
                 {mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, TOKYO), zdt("1970-01-01T00:00:00+09:00"), true},
                 {mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001", ZONE, TOKYO), zdt("1970-01-01T00:00:00.000000001+09:00"), true},
@@ -985,6 +955,14 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(String.class, LocalDateTime.class), new Object[][]{
                 {"", null},
                 {"1965-12-31T16:20:00", ldt("1965-12-31T16:20:00"), true},
+        });
+        TEST_DB.put(pair(Map.class, LocalDateTime.class), new Object[][] {
+                { mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999"), ldt("1969-12-31T23:59:59.999999999"), true},
+                { mapOf(DATE, "1970-01-01", TIME, "00:00"), ldt("1970-01-01T00:00"), true},
+                { mapOf(DATE, "1970-01-01"), ldt("1970-01-01T00:00")},
+                { mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001"), ldt("1970-01-01T00:00:00.000000001"), true},
+                { mapOf(DATE, "2024-03-10", TIME, "11:07:00.123456789"), ldt("2024-03-10T11:07:00.123456789"), true},
+                { mapOf(VALUE, "2024-03-10T11:07:00.123456789"), ldt("2024-03-10T11:07:00.123456789")},
         });
     }
 
@@ -1116,6 +1094,9 @@ class ConverterEverythingTest {
                 {mapOf(TIME, "00:00"), LocalTime.parse("00:00:00"), true},
                 {mapOf(TIME, "23:59:59.999999999"), LocalTime.parse("23:59:59.999999999"), true},
                 {mapOf(VALUE, "23:59:59.999999999"), LocalTime.parse("23:59:59.999999999") },
+                {mapOf(HOUR, 23, MINUTE, 59), LocalTime.parse("23:59") },
+                {mapOf(HOUR, 23, MINUTE, 59, SECOND, 59), LocalTime.parse("23:59:59") },
+                {mapOf(HOUR, 23, MINUTE, 59, SECOND, 59, NANO, 999999999), LocalTime.parse("23:59:59.999999999") },
         });
     }
 
@@ -1198,6 +1179,7 @@ class ConverterEverythingTest {
                 {mapOf(DATE, "1970-01-01"), LocalDate.parse("1970-01-01"), true},
                 {mapOf(DATE, "1970-01-02"), LocalDate.parse("1970-01-02"), true},
                 {mapOf(VALUE, "2024-03-18"), LocalDate.parse("2024-03-18")},
+                {mapOf(YEAR, "2024", MONTH, 3, DAY, 18), LocalDate.parse("2024-03-18")},
         });
     }
 
@@ -1300,11 +1282,21 @@ class ConverterEverythingTest {
                 {Instant.parse("2024-03-10T11:36:00.123456789Z"), timestamp("2024-03-10T11:36:00.123456789Z"), true},
         });
         // No symmetry checks - because an OffsetDateTime of "2024-02-18T06:31:55.987654321+00:00" and "2024-02-18T15:31:55.987654321+09:00" are equivalent but not equals. They both describe the same Instant.
-        TEST_DB.put(pair(OffsetDateTime.class, Timestamp.class), new Object[][]{
-                {OffsetDateTime.parse("1969-12-31T23:59:59.999999999Z"), timestamp("1969-12-31T23:59:59.999999999Z")},
-                {OffsetDateTime.parse("1970-01-01T00:00:00.000000000Z"), timestamp("1970-01-01T00:00:00.000000000Z")},
-                {OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z"), timestamp("1970-01-01T00:00:00.000000001Z")},
-                {OffsetDateTime.parse("2024-02-18T06:31:55.987654321Z"), timestamp("2024-02-18T06:31:55.987654321Z")},
+        TEST_DB.put(pair(Map.class, Timestamp.class), new Object[][] {
+                { mapOf(EPOCH_MILLIS, -1L, NANOS, 999999999, DATE, "1970-01-01", TIME, "08:59:59.999999999", ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.999999999Z"), true}, // redundant DATE, TIME, and ZONE fields for reverse test
+                { mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), new Timestamp(-1L), true},
+                { mapOf(EPOCH_MILLIS, 0L, NANOS, 0, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), timestamp("1970-01-01T00:00:00Z"), true},
+                { mapOf(EPOCH_MILLIS, 0L, NANOS, 0, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), new Timestamp(0L), true},
+                { mapOf(EPOCH_MILLIS, 0L, NANOS, 1, DATE, "1970-01-01", TIME, "09:00:00.000000001", ZONE, TOKYO_Z.toString()), timestamp("1970-01-01T00:00:00.000000001Z"), true},
+                { mapOf(EPOCH_MILLIS, 1L, NANOS, 1000000, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), new Timestamp(1L), true},
+                { mapOf(EPOCH_MILLIS, 1710714535152L, NANOS, 152000000, DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), new Timestamp(1710714535152L), true},
+                { mapOf(TIME, "2024-03-18T07:28:55.152", ZONE, TOKYO_Z.toString()), new Timestamp(1710714535152L)},
+                { mapOf(TIME, "2024-03-18T07:28:55.152000001", ZONE, TOKYO_Z.toString()), (Supplier<Timestamp>) () -> {
+                    Timestamp ts = new Timestamp(1710714535152L);
+                    MapConversions.setNanosPreserveMillis(ts, 1);
+                    return ts;
+                }},
+                { mapOf("bad key", "2024-03-18T07:28:55.152", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Map to 'Timestamp' the map must include: [epochMillis, nanos (optional)], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values")},
         });
     }
 
@@ -1322,6 +1314,16 @@ class ConverterEverythingTest {
                 {NY_Z, NY_Z},
                 {TOKYO_Z, TOKYO_Z},
         });
+        TEST_DB.put(pair(ZoneOffset.class, ZoneId.class), new Object[][]{
+                {ZoneOffset.of("+09:00"), ZoneId.of("+09:00")},
+                {ZoneOffset.of("-05:00"), ZoneId.of("-05:00")},
+        });
+        TEST_DB.put(pair(TimeZone.class, ZoneId.class), new Object[][]{
+                {TimeZone.getTimeZone("America/New_York"), ZoneId.of("America/New_York"),true},
+                {TimeZone.getTimeZone("Asia/Tokyo"), ZoneId.of("Asia/Tokyo"),true},
+                {TimeZone.getTimeZone("GMT"), ZoneId.of("GMT"), true},
+                {TimeZone.getTimeZone("UTC"), ZoneId.of("UTC"), true},
+        });
         TEST_DB.put(pair(String.class, ZoneId.class), new Object[][]{
                 {"", null},
                 {"America/New_York", NY_Z, true},
@@ -1331,17 +1333,12 @@ class ConverterEverythingTest {
                 {"UTC", ZoneId.of("UTC"), true},
                 {"GMT", ZoneId.of("GMT"), true},
         });
-        TEST_DB.put(pair(TimeZone.class, ZoneId.class), new Object[][]{
-                {TimeZone.getTimeZone("America/New_York"), ZoneId.of("America/New_York"),true},
-                {TimeZone.getTimeZone("Asia/Tokyo"), ZoneId.of("Asia/Tokyo"),true},
-                {TimeZone.getTimeZone("GMT"), ZoneId.of("GMT"), true},
-                {TimeZone.getTimeZone("UTC"), ZoneId.of("UTC"), true},
-        });
         TEST_DB.put(pair(Map.class, ZoneId.class), new Object[][]{
                 {mapOf("_v", "America/New_York"), NY_Z},
                 {mapOf("_v", NY_Z), NY_Z},
-                {mapOf("zone", "America/New_York"), NY_Z, true},
-                {mapOf("zone", NY_Z), NY_Z},
+                {mapOf(ZONE, "America/New_York"), NY_Z, true},
+                {mapOf(ZONE, NY_Z), NY_Z},
+                {mapOf(ID, NY_Z), NY_Z},
                 {mapOf("_v", "Asia/Tokyo"), TOKYO_Z},
                 {mapOf("_v", TOKYO_Z), TOKYO_Z},
                 {mapOf("zone", mapOf("_v", TOKYO_Z)), TOKYO_Z},
@@ -1550,8 +1547,15 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Timestamp.class, OffsetDateTime.class), new Object[][]{
                 {new Timestamp(-1), odt("1969-12-31T23:59:59.999+00:00"), true},
+                {new Timestamp(-1), odt("1969-12-31T23:59:59.999-00:00"), true},
                 {new Timestamp(0), odt("1970-01-01T00:00:00+00:00"), true},
+                {new Timestamp(0), odt("1970-01-01T00:00:00-00:00"), true},
                 {new Timestamp(1), odt("1970-01-01T00:00:00.001+00:00"), true},
+                {new Timestamp(1), odt("1970-01-01T00:00:00.001-00:00"), true},
+                {timestamp("1969-12-31T23:59:59.999999999Z"), OffsetDateTime.parse("1970-01-01T08:59:59.999999999+09:00"), true},
+                {timestamp("1970-01-01T00:00:00Z"), OffsetDateTime.parse("1970-01-01T09:00:00+09:00"), true},
+                {timestamp("1970-01-01T00:00:00.000000001Z"), OffsetDateTime.parse("1970-01-01T09:00:00.000000001+09:00"), true},
+                {timestamp("2024-02-18T06:31:55.987654321Z"), OffsetDateTime.parse("2024-02-18T15:31:55.987654321+09:00"), true},
         });
         TEST_DB.put(pair(LocalDateTime.class, OffsetDateTime.class), new Object[][]{
                 {ldt("1970-01-01T08:59:59.999999999"), odt("1969-12-31T23:59:59.999999999Z"), true},
@@ -1571,6 +1575,15 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(String.class, OffsetDateTime.class), new Object[][]{
                 {"", null},
                 {"2024-02-10T10:15:07+01:00", OffsetDateTime.parse("2024-02-10T10:15:07+01:00"), true},
+        });
+        TEST_DB.put(pair(Map.class, OffsetDateTime.class), new Object[][] {
+                { mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999", OFFSET, "+09:00"), OffsetDateTime.parse("1969-12-31T23:59:59.999999999+09:00"), true},
+                { mapOf(DATE, "1970-01-01", TIME, "00:00", OFFSET, "+09:00"), OffsetDateTime.parse("1970-01-01T00:00+09:00"), true},
+                { mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001", OFFSET, "+09:00"), OffsetDateTime.parse("1970-01-01T00:00:00.000000001+09:00"), true},
+                { mapOf(DATE, "2024-03-10", TIME, "11:07:00.123456789", OFFSET, "+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00"), true},
+                { mapOf(DATE, "2024-03-10", TIME, "11:07:00.123456789"), new IllegalArgumentException("Map to 'OffsetDateTime' the map must include: [time, offset], [date, time, offset], [value], or [_v] as keys with associated values")},
+                { mapOf(TIME, "2024-03-10T11:07:00.123456789", OFFSET, "+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
+                { mapOf(VALUE, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
         });
     }
 
@@ -1607,6 +1620,12 @@ class ConverterEverythingTest {
                 {BigInteger.valueOf(Integer.MIN_VALUE), Duration.ofNanos(Integer.MIN_VALUE), true},
                 {BigInteger.valueOf(Long.MAX_VALUE), Duration.ofNanos(Long.MAX_VALUE), true},
                 {BigInteger.valueOf(Long.MIN_VALUE), Duration.ofNanos(Long.MIN_VALUE), true},
+        });
+        TEST_DB.put(pair(Map.class, Duration.class), new Object[][] {
+                { mapOf(SECONDS, -1L, NANOS, 999000000), Duration.ofMillis(-1), true},
+                { mapOf(SECONDS, 0L, NANOS, 0), Duration.ofMillis(0), true},
+                { mapOf(SECONDS, 0L, NANOS, 1000000), Duration.ofMillis(1), true},
+                { mapOf(VALUE, 16000L), Duration.ofSeconds(16)},        // VALUE is in milliseconds
         });
     }
 
@@ -1732,7 +1751,7 @@ class ConverterEverythingTest {
                 { mapOf(TIME, "1970-01-01T00:00", ZONE, "Z"), new java.sql.Date(0L)},
                 { mapOf(TIME, "X1970-01-01T00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(TIME, "1970-01-01T00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
-                { mapOf("foo", "bar"), new IllegalArgumentException("Map to java.sql.Date the map must include one of the following: [epochMillis], [_v], or [value] with associated values")},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'java.sql.Date' the map must include: [epochMillis], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values")},
         });
     }
 
@@ -1829,7 +1848,7 @@ class ConverterEverythingTest {
                 { mapOf(TIME, "1970-01-01T00:00", ZONE, "Z"), new Date(0L)},
                 { mapOf(TIME, "X1970-01-01T00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(TIME, "1970-01-01T00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
-                { mapOf("foo", "bar"), new IllegalArgumentException("Map to Date the map must include one of the following: [epochMillis], [_v], or [value] with associated values")},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'Date' the map must include: [epochMillis], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values")},
         });
     }
 
@@ -1868,21 +1887,13 @@ class ConverterEverythingTest {
                 {new BigDecimal(1), cal(1000), true},
         });
         TEST_DB.put(pair(Map.class, Calendar.class), new Object[][]{
-                {(Supplier<Map<String, Object>>) () -> {
-                    Map<String, Object> map = new CompactLinkedMap<>();
-                    map.put(VALUE, "2024-02-05T22:31:17.409[" + TOKYO + "]");
-                    return map;
-                }, (Supplier<Calendar>) () -> {
+                {mapOf(VALUE, "2024-02-05T22:31:17.409[" + TOKYO + "]"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
                     return cal;
                 }},
-                {(Supplier<Map<String, Object>>) () -> {
-                    Map<String, Object> map = new CompactLinkedMap<>();
-                    map.put(VALUE, "2024-02-05T22:31:17.409" + TOKYO_ZO.toString());
-                    return map;
-                }, (Supplier<Calendar>) () -> {
+                {mapOf(VALUE, "2024-02-05T22:31:17.409" + TOKYO_ZO.toString()), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
@@ -1901,6 +1912,43 @@ class ConverterEverythingTest {
                     cal.set(Calendar.MILLISECOND, 409);
                     return cal;
                 }},
+                {mapOf(DATE, "1970-01-01", TIME, "00:00:00"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    return cal;
+                }},
+                {mapOf(DATE, "1970-01-01", TIME, "00:00:00", ZONE, "America/New_York"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("America/New_York")));
+                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    return cal;
+                }},
+                {mapOf(TIME, "1970-01-01T00:00:00"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    return cal;
+                }},
+                {mapOf(TIME, "1970-01-01T00:00:00", ZONE, "America/New_York"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("America/New_York")));
+                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    return cal;
+                }},
+                {(Supplier<Map<String, Object>>) () -> {
+                    Map<String, Object> map = new CompactLinkedMap<>();
+                    map.put(DATE, "2024-02-05");
+                    map.put(TIME, "22:31:17.409");
+                    map.put(ZONE, TOKYO);
+                    map.put(EPOCH_MILLIS, 1707139877409L);
+                    return map;
+                }, (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
+                    return cal;
+                }, true},
         });
         TEST_DB.put(pair(ZonedDateTime.class, Calendar.class), new Object[][] {
                 {zdt("1969-12-31T23:59:59.999Z"), cal(-1), true},
@@ -1982,6 +2030,15 @@ class ConverterEverythingTest {
                 {odt("1970-01-01T00:00:09.999999999Z"), Instant.ofEpochSecond(0, 9999999999L), true},
                 {odt("1980-01-01T00:00:00Z"), Instant.parse("1980-01-01T00:00:00Z"), true},
                 {odt("2024-12-31T23:59:59.999999999Z"), Instant.parse("2024-12-31T23:59:59.999999999Z"), true},
+        });
+        TEST_DB.put(pair(Map.class, Instant.class), new Object[][] {
+                { mapOf(SECONDS, 1710068820L, NANOS, 123456789), Instant.parse("2024-03-10T11:07:00.123456789Z"), true},
+                { mapOf(SECONDS, -1L, NANOS, 999999999), Instant.parse("1969-12-31T23:59:59.999999999Z"), true},
+                { mapOf(SECONDS, 0L, NANOS, 0), Instant.parse("1970-01-01T00:00:00Z"), true},
+                { mapOf(SECONDS, 0L, NANOS, 1), Instant.parse("1970-01-01T00:00:00.000000001Z"), true},
+                { mapOf(VALUE, -1L), Instant.parse("1969-12-31T23:59:59.999Z")},
+                { mapOf(VALUE, 0L), Instant.parse("1970-01-01T00:00:00Z")},
+                { mapOf(VALUE, 1L), Instant.parse("1970-01-01T00:00:00.001Z")},
         });
     }
 
@@ -2319,6 +2376,11 @@ class ConverterEverythingTest {
                 {mapOf("_v", mapOf("_v", 65535)), (char) 65535},
                 {mapOf("_v", "0"), (char) 48},
                 {mapOf("_v", 65536), new IllegalArgumentException("Value '65536' out of range to be converted to character")},
+                {mapOf(VALUE, (char)0), (char) 0, true},
+                {mapOf(VALUE, (char)1), (char) 1, true},
+                {mapOf(VALUE, (char)65535), (char) 65535, true},
+                {mapOf(VALUE, '0'), (char) 48, true},
+                {mapOf(VALUE, '1'), (char) 49, true},
         });
         TEST_DB.put(pair(String.class, Character.class), new Object[][]{
                 {"", (char) 0},
@@ -2586,15 +2648,15 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, Double.class), new Object[][]{
                 {mapOf("_v", "-1"), -1.0},
-                {mapOf("_v", -1), -1.0},
+                {mapOf("_v", -1.0), -1.0, true},
                 {mapOf("value", "-1"), -1.0},
                 {mapOf("value", -1L), -1.0},
 
                 {mapOf("_v", "0"), 0.0},
-                {mapOf("_v", 0), 0.0},
+                {mapOf("_v", 0.0), 0.0, true},
 
                 {mapOf("_v", "1"), 1.0},
-                {mapOf("_v", 1), 1.0},
+                {mapOf("_v", 1.0), 1.0, true},
 
                 {mapOf("_v", "-9007199254740991"), -9007199254740991.0},
                 {mapOf("_v", -9007199254740991L), -9007199254740991.0},
@@ -2605,13 +2667,13 @@ class ConverterEverythingTest {
                 {mapOf("_v", mapOf("_v", -9007199254740991L)), -9007199254740991.0},    // Prove use of recursive call to .convert()
         });
         TEST_DB.put(pair(String.class, Double.class), new Object[][]{
-                {"-1", -1.0},
+                {"-1.0", -1.0, true},
                 {"-1.1", -1.1},
                 {"-1.9", -1.9},
-                {"0", 0.0},
-                {"1", 1.0},
-                {"1.1", 1.1},
-                {"1.9", 1.9},
+                {"0", 0.0, true},
+                {"1.0", 1.0, true},
+                {"1.1", 1.1, true},
+                {"1.9", 1.9, true},
                 {"-2147483648", -2147483648.0},
                 {"2147483647", 2147483647.0},
                 {"", 0.0},
@@ -2621,6 +2683,14 @@ class ConverterEverythingTest {
                 {"54crapola", new IllegalArgumentException("Value '54crapola' not parseable as a double")},
                 {"crapola 54", new IllegalArgumentException("Value 'crapola 54' not parseable as a double")},
                 {"crapola54", new IllegalArgumentException("Value 'crapola54' not parseable as a double")},
+                {"4.9E-324", Double.MIN_VALUE, true},
+                {"-1.7976931348623157E308", -Double.MAX_VALUE, true},
+                {"1.7976931348623157E308", Double.MAX_VALUE},
+                {"1.23456789E8", 123456789.0, true},
+                {"1.23456789E-7", 0.000000123456789, true},
+                {"12345.0", 12345.0, true},
+                {"1.2345E-4", 0.00012345, true},
+
         });
         TEST_DB.put(pair(Year.class, Double.class), new Object[][]{
                 {Year.of(2024), 2024.0}
@@ -2694,15 +2764,15 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, Float.class), new Object[][]{
                 {mapOf("_v", "-1"), -1f},
-                {mapOf("_v", -1), -1f},
+                {mapOf("_v", -1f), -1f, true},
                 {mapOf("value", "-1"), -1f},
-                {mapOf("value", -1L), -1f},
+                {mapOf("value", -1f), -1f},
 
                 {mapOf("_v", "0"), 0f},
-                {mapOf("_v", 0), 0f},
+                {mapOf("_v", 0f), 0f, true},
 
                 {mapOf("_v", "1"), 1f},
-                {mapOf("_v", 1), 1f},
+                {mapOf("_v", 1f), 1f, true},
 
                 {mapOf("_v", "-16777216"), -16777216f},
                 {mapOf("_v", -16777216), -16777216f},
@@ -3043,15 +3113,15 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, Integer.class), new Object[][]{
                 {mapOf("_v", "-1"), -1},
-                {mapOf("_v", -1), -1},
+                {mapOf("_v", -1), -1, true},
                 {mapOf("value", "-1"), -1},
                 {mapOf("value", -1L), -1},
 
                 {mapOf("_v", "0"), 0},
-                {mapOf("_v", 0), 0},
+                {mapOf("_v", 0), 0, true},
 
                 {mapOf("_v", "1"), 1},
-                {mapOf("_v", 1), 1},
+                {mapOf("_v", 1), 1, true},
 
                 {mapOf("_v", "-2147483648"), Integer.MIN_VALUE},
                 {mapOf("_v", -2147483648), Integer.MIN_VALUE},
@@ -3424,6 +3494,11 @@ class ConverterEverythingTest {
                 {"-129", new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127")},
                 {"128", new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127")},
         });
+        TEST_DB.put(pair(Map.class, Byte.class), new Object[][]{
+                {mapOf(VALUE, (byte)1), (byte)1, true},
+                {mapOf(VALUE, (byte)2), (byte)2, true},
+                {mapOf(VALUE, "nope"), new IllegalArgumentException("Value 'nope' not parseable as a byte value or outside -128 to 127")},
+        });
     }
 
     /**
@@ -3698,16 +3773,16 @@ class ConverterEverythingTest {
             Object actual = converter.convert(source, targetClass);
             try {
                 if (target instanceof CharSequence) {
-                    assertEquals(actual.toString(), target.toString());
+                    assertEquals(target.toString(), actual.toString());
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(byte[].class)) {
-                    assertArrayEquals((byte[]) actual, (byte[]) target);
+                    assertArrayEquals((byte[]) target, (byte[]) actual);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(char[].class)) {
-                    assertArrayEquals((char[]) actual, (char[]) target);
+                    assertArrayEquals((char[]) target, (char[]) actual);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(Character[].class)) {
-                    assertArrayEquals((Character[]) actual, (Character[]) target);
+                    assertArrayEquals((Character[]) target, (Character[]) actual);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (target instanceof AtomicBoolean) {
                     assertEquals(((AtomicBoolean) target).get(), ((AtomicBoolean) actual).get());
@@ -3724,7 +3799,7 @@ class ConverterEverythingTest {
                     }
                     updateStat(pair(sourceClass, targetClass), true);
                 } else {
-                    assertEquals(actual, target);
+                    assertEquals(target, actual);
                     updateStat(pair(sourceClass, targetClass), true);
                 }
             }

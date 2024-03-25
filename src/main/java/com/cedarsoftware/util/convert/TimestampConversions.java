@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -64,14 +63,8 @@ final class TimestampConversions {
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
         Timestamp timestamp = (Timestamp) from;
-
-        // Get the current date-time in the options ZoneId timezone
-        ZonedDateTime zonedDateTime = ZonedDateTime.now(converter.getOptions().getZoneId());
-
-        // Extract the ZoneOffset
-        ZoneOffset zoneOffset = zonedDateTime.getOffset();
-
-        return timestamp.toInstant().atOffset(zoneOffset);
+        ZonedDateTime zdt = ZonedDateTime.ofInstant(timestamp.toInstant(), converter.getOptions().getZoneId());
+        return zdt.toOffsetDateTime();
     }
 
     static Calendar toCalendar(Object from, Converter converter) {

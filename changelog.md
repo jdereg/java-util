@@ -1,4 +1,6 @@
 ### Revision History
+* 2.4.7
+  * All 687 conversions supported are now 100% cross-product tested.  Converter test suite is complete.
 * 2.4.6
   * All 686 conversions supported are now 100% cross-product tested.  There will be more exception tests coming.
 * 2.4.5

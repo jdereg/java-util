@@ -105,11 +105,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-// TODO: More exception tests (make sure IllegalArgumentException is thrown, for example, not DateTimeException)
 // TODO: Throwable conversions need to be added for all the popular exception types
-// TODO: Enum and EnumSet conversions need to be added
-// TODO: MapConversions --> Var args of Object[]'s - show as 'OR' in message: [DATE, TIME], [epochMillis], [dateTime], [_V], or [VALUE]
-// TODO: MapConversions --> Performance - containsKey() + get() ==> get() and null checks
+// TODO: EnumSet conversions need to be added?
 class ConverterEverythingTest {
     private static final String TOKYO = "Asia/Tokyo";
     private static final ZoneId TOKYO_Z = ZoneId.of(TOKYO);

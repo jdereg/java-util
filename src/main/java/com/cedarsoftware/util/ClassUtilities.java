@@ -214,14 +214,7 @@ public class ClassUtilities
         }
         c = loadClass(name, classLoader);
 
-        if (ClassLoader.class.isAssignableFrom(c) ||
-                ProcessBuilder.class.isAssignableFrom(c) ||
-                Process.class.isAssignableFrom(c) ||
-                Constructor.class.isAssignableFrom(c) ||
-                Method.class.isAssignableFrom(c) ||
-                Field.class.isAssignableFrom(c)) {
-            throw new SecurityException("For security reasons, cannot instantiate: " + c.getName() + " when loading JSON.");
-        }
+        SecurityChecker.checkSecurityConstraints(c);
 
         nameToClass.put(name, c);
         return c;
@@ -333,5 +326,20 @@ public class ClassUtilities
         return c;
     }
 
+}
+class SecurityChecker {
+    public static void checkSecurityConstraints(Class<?> clazz) {
+        if (isRestrictedClass(clazz)) {
+            throw new SecurityException("For security reasons, cannot instantiate: " + clazz.getName() + " when loading JSON.");
+        }
+    }
 
+    private static boolean isRestrictedClass(Class<?> clazz) {
+        return ClassLoader.class.isAssignableFrom(clazz) ||
+                ProcessBuilder.class.isAssignableFrom(clazz) ||
+                Process.class.isAssignableFrom(clazz) ||
+                Constructor.class.isAssignableFrom(clazz) ||
+                Method.class.isAssignableFrom(clazz) ||
+                Field.class.isAssignableFrom(clazz);
+    }
 }

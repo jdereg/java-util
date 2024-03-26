@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
+import static com.cedarsoftware.util.ArrayUtilities.isEmpty;
 import static com.cedarsoftware.util.GraphComparator.Delta.Command.ARRAY_RESIZE;
 import static com.cedarsoftware.util.GraphComparator.Delta.Command.ARRAY_SET_ELEMENT;
 import static com.cedarsoftware.util.GraphComparator.Delta.Command.LIST_RESIZE;
@@ -68,7 +69,28 @@ public class GraphComparator
         private Object targetValue;
         private Object optionalKey;
         private Command cmd;
-
+        private String error;
+        public String getError()
+        {
+            return error;
+        }
+        public void setError(String error)
+        {
+            this.error=error;
+        }
+        public String toString()
+        {
+            return "Delta {" +
+                    "id=" + id +
+                    ", fieldName='" + fieldName + '\'' +
+                    ", srcPtr=" + srcPtr +
+                    ", srcValue=" + srcValue +
+                    ", targetValue=" + targetValue +
+                    ", optionalKey=" + optionalKey +
+                    ", cmd='" + cmd + '\'' +
+                    ", error='"+error+'\''+
+                    '}';
+        }
         public Delta(Object id, String fieldName, String srcPtr, Object srcValue, Object targetValue, Object optKey)
         {
             this.id = id;
@@ -139,18 +161,7 @@ public class GraphComparator
             this.cmd = cmd;
         }
 
-        public String toString()
-        {
-            return "Delta {" +
-                    "id=" + id +
-                    ", fieldName='" + fieldName + '\'' +
-                    ", srcPtr=" + srcPtr +
-                    ", srcValue=" + srcValue +
-                    ", targetValue=" + targetValue +
-                    ", optionalKey=" + optionalKey +
-                    ", cmd='" + cmd + '\'' +
-                    '}';
-        }
+
 
         public boolean equals(Object other)
         {
@@ -203,7 +214,7 @@ public class GraphComparator
 
             public static Command fromName(String name)
             {
-                if (name == null || "".equals(name.trim()))
+                if (name == null || isEmpty(name.trim()))
                 {
                     throw new IllegalArgumentException("Name is required for Command.forName()");
                 }
@@ -231,11 +242,6 @@ public class GraphComparator
         {
             super(delta.getId(), delta.fieldName, delta.srcPtr, delta.srcValue, delta.targetValue, delta.optionalKey);
             this.error = error;
-        }
-
-        public String getError()
-        {
-            return error;
         }
 
         public String toString(){

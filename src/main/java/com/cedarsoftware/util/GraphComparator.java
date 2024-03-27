@@ -214,7 +214,7 @@ public class GraphComparator
 
             public static Command fromName(String name)
             {
-                if (name == null || isEmpty(name.trim()))
+                if (name == null || "".equals(name.trim()))
                 {
                     throw new IllegalArgumentException("Name is required for Command.forName()");
                 }

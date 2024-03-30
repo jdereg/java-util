@@ -17,11 +17,8 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import com.cedarsoftware.io.JsonIo;
-import com.cedarsoftware.io.ReadOptions;
-import com.cedarsoftware.io.ReadOptionsBuilder;
-import com.cedarsoftware.io.WriteOptions;
-import com.cedarsoftware.io.WriteOptionsBuilder;
+import com.cedarsoftware.util.io.JsonReader;
+import com.cedarsoftware.util.io.JsonWriter;
 import org.junit.jupiter.api.Test;
 
 import static com.cedarsoftware.util.GraphComparator.Delta.Command.ARRAY_RESIZE;
@@ -2176,9 +2173,8 @@ public class TestGraphComparator
 
     private Object clone(Object source) {
 
-        WriteOptions writeOptions = new WriteOptionsBuilder().showTypeInfoAlways().build();
-        ReadOptions readOptions = new ReadOptionsBuilder().build();
-        return JsonIo.deepCopy(source,  readOptions, writeOptions);
+        String json = JsonWriter.objectToJson(source);
+        return JsonReader.jsonToJava(json);
     }
 
     private GraphComparator.ID getIdFetcher()

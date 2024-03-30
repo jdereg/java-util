@@ -1,4 +1,6 @@
 ### Revision History
+* 2.4.8-SNAPSHOT
+  * Using json-io 4.14.2 for cloning object in "test" scope, eliminates cycle depedencies 
 * 2.4.7
   * All 687 conversions supported are now 100% cross-product tested.  Converter test suite is complete.
 * 2.4.6

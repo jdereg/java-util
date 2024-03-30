@@ -17,9 +17,11 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import com.cedarsoftware.util.io.JsonIo;
-import com.cedarsoftware.util.io.ReadOptionsBuilder;
-import com.cedarsoftware.util.io.WriteOptions;
+import com.cedarsoftware.io.JsonIo;
+import com.cedarsoftware.io.ReadOptions;
+import com.cedarsoftware.io.ReadOptionsBuilder;
+import com.cedarsoftware.io.WriteOptions;
+import com.cedarsoftware.io.WriteOptionsBuilder;
 import org.junit.jupiter.api.Test;
 
 import static com.cedarsoftware.util.GraphComparator.Delta.Command.ARRAY_RESIZE;
@@ -51,7 +53,6 @@ public class TestGraphComparator
     private static final int SET_TYPE_HASH = 1;
     private static final int SET_TYPE_TREE = 2;
     private static final int SET_TYPE_LINKED = 3;
-
     public interface HasId
     {
         Object getId();
@@ -2173,28 +2174,26 @@ public class TestGraphComparator
         return dude;
     }
 
-    private Object clone(Object source) throws Exception
-    {
-        return JsonIo.deepCopy(source,  new ReadOptionsBuilder().build(), new WriteOptions());
+    private Object clone(Object source) {
+
+        WriteOptions writeOptions = new WriteOptionsBuilder().showTypeInfoAlways().build();
+        ReadOptions readOptions = new ReadOptionsBuilder().build();
+        return JsonIo.deepCopy(source,  readOptions, writeOptions);
     }
 
     private GraphComparator.ID getIdFetcher()
     {
-        return new GraphComparator.ID()
-        {
-            public Object getId(Object objectToId)
+        return objectToId -> {
+            if (objectToId instanceof HasId)
             {
-                if (objectToId instanceof HasId)
-                {
-                    HasId obj = (HasId) objectToId;
-                    return obj.getId();
-                }
-                else if (objectToId instanceof Collection || objectToId instanceof Map)
-                {
-                    return null;
-                }
-                throw new RuntimeException("Object does not support getId(): " + (objectToId != null ? objectToId.getClass().getName() : "null"));
+                HasId obj = (HasId) objectToId;
+                return obj.getId();
             }
+            else if (objectToId instanceof Collection || objectToId instanceof Map)
+            {
+                return null;
+            }
+            throw new RuntimeException("Object does not support getId(): " + (objectToId != null ? objectToId.getClass().getName() : "null"));
         };
     }
 }

@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -71,14 +72,12 @@ final class MapConversions {
     static final String SECOND = "second";
     static final String SECONDS = "seconds";
     static final String EPOCH_MILLIS = "epochMillis";
-    static final String NANO = "nano";
     static final String NANOS = "nanos";
     static final String MOST_SIG_BITS = "mostSigBits";
     static final String LEAST_SIG_BITS = "leastSigBits";
     static final String OFFSET = "offset";
     static final String OFFSET_HOUR = "offsetHour";
     static final String OFFSET_MINUTE = "offsetMinute";
-    static final String DATE_TIME = "dateTime";
     static final String ID = "id";
     static final String LANGUAGE = "language";
     static final String COUNTRY = "country";
@@ -87,6 +86,10 @@ final class MapConversions {
     static final String URI_KEY = "URI";
     static final String URL_KEY = "URL";
     static final String UUID = "UUID";
+    static final String CLASS = "class";
+    static final String MESSAGE = "message";
+    static final String CAUSE = "cause";
+    static final String CAUSE_MESSAGE = "causeMessage";
     static final String OPTIONAL = " (optional)";
 
     private MapConversions() {}
@@ -169,7 +172,7 @@ final class MapConversions {
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         Map.Entry<Long, Integer> epochTime = toEpochMillis(from, converter);
         if (epochTime == null) {
-            return fromMap(from, converter, java.sql.Date.class, new String[]{EPOCH_MILLIS}, new String[]{DATE, TIME, ZONE + OPTIONAL}, new String[]{TIME, ZONE + OPTIONAL});
+            return fromMap(from, converter, java.sql.Date.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
         }
         return new java.sql.Date(epochTime.getKey());
     }
@@ -177,43 +180,42 @@ final class MapConversions {
     static Date toDate(Object from, Converter converter) {
         Map.Entry<Long, Integer> epochTime = toEpochMillis(from, converter);
         if (epochTime == null) {
-            return fromMap(from, converter, Date.class, new String[]{EPOCH_MILLIS}, new String[]{DATE, TIME, ZONE + OPTIONAL}, new String[]{TIME, ZONE + OPTIONAL});
+            return fromMap(from, converter, Date.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
         }
         return new Date(epochTime.getKey());
     }
 
+    /**
+     * If the time String contains seconds resolution better than milliseconds, it will be kept.  For example,
+     * If the time was "08.37:16.123456789" the sub-millisecond portion here will take precedence over a separate
+     * key/value of "nanos" mapped to a value.  However, if "nanos" is specific as a key/value, and the time does
+     * not include nanosecond resolution, then a value > 0 specified in the "nanos" key will be incorporated into
+     * the resolution of the time.
+     */
     static Timestamp toTimestamp(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
         Object epochMillis = map.get(EPOCH_MILLIS);
+        int ns = converter.convert(map.get(NANOS), int.class);  // optional
         if (epochMillis != null) {
             long time = converter.convert(epochMillis, long.class);
-            int ns = converter.convert(map.get(NANOS), int.class);  // optional
             Timestamp timeStamp = new Timestamp(time);
-            timeStamp.setNanos(ns);
+            if (map.containsKey(NANOS) && ns != 0) {
+                timeStamp.setNanos(ns);
+            }
             return timeStamp;
         }
-        
+
+        // Map.Entry<Long, Integer> return has key of epoch-millis and value of nanos-of-second
         Map.Entry<Long, Integer> epochTime = toEpochMillis(from, converter);
-        if (epochTime == null) {
-            return fromMap(from, converter, Timestamp.class, new String[]{EPOCH_MILLIS, NANOS + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL}, new String[]{TIME, ZONE + OPTIONAL});
+        if (epochTime == null) {    // specified as "value" or "_v" are not at all and will give nice exception error message.
+            return fromMap(from, converter, Timestamp.class, new String[]{EPOCH_MILLIS, NANOS + OPTIONAL}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
         }
 
         Timestamp timestamp = new Timestamp(epochTime.getKey());
-        int ns = converter.convert(epochTime.getValue(), int.class);
-        setNanosPreserveMillis(timestamp, ns);
+        if (timestamp.getTime() % 1000 == 0) {  // Add nanoseconds *if* Timestamp time was only to second resolution
+            timestamp.setNanos(epochTime.getValue());
+        }
         return timestamp;
-    }
-
-    static void setNanosPreserveMillis(Timestamp timestamp, int nanoToSet) {
-        // Extract the current milliseconds and nanoseconds
-        int currentNanos = timestamp.getNanos();
-        int milliPart = currentNanos / 1_000_000; // Milliseconds part of the current nanoseconds
-
-        // Preserve the millisecond part of the current time and add the new nanoseconds
-        int newNanos = milliPart * 1_000_000 + (nanoToSet % 1_000_000);
-
-        // Set the new nanoseconds value, preserving the milliseconds
-        timestamp.setNanos(newNanos);
     }
 
     static TimeZone toTimeZone(Object from, Converter converter) {
@@ -229,16 +231,17 @@ final class MapConversions {
 
         Object date = map.get(DATE);
         Object time = map.get(TIME);
-        Object zone = map.get(ZONE);
+        Object zone = map.get(ZONE);     // optional
+        ZoneId zoneId;
+        if (zone != null) {
+            zoneId = converter.convert(zone, ZoneId.class);
+        } else {
+            zoneId = converter.getOptions().getZoneId();
+        }
+
         if (date != null && time != null) {
             LocalDate localDate = converter.convert(date, LocalDate.class);
             LocalTime localTime = converter.convert(time, LocalTime.class);
-            ZoneId zoneId;
-            if (zone != null) {
-                zoneId = converter.convert(zone, ZoneId.class);
-            } else {
-                zoneId = converter.getOptions().getZoneId();
-            }
             LocalDateTime ldt = LocalDateTime.of(localDate, localTime);
             ZonedDateTime zdt = ldt.atZone(zoneId);
             Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
@@ -254,12 +257,6 @@ final class MapConversions {
         }
 
         if (time != null && date == null) {
-            ZoneId zoneId;
-            if (zone != null) {
-                zoneId = converter.convert(zone, ZoneId.class);
-            } else {
-                zoneId = converter.getOptions().getZoneId();
-            }
             Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
             ZonedDateTime zdt = DateUtilities.parseDate((String)time, zoneId, true);
             cal.setTimeInMillis(zdt.toInstant().toEpochMilli());
@@ -268,12 +265,14 @@ final class MapConversions {
         return fromMap(from, converter, Calendar.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
     }
 
+    // Map.Entry<Long, Integer> return has key of epoch-millis and value of nanos-of-second
     private static Map.Entry<Long, Integer> toEpochMillis(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
 
         Object epochMillis = map.get(EPOCH_MILLIS);
+        int ns = converter.convert(map.get(NANOS), int.class);  // optional
         if (epochMillis != null) {
-            return new AbstractMap.SimpleImmutableEntry<>(converter.convert(epochMillis, long.class), 0);
+            return new AbstractMap.SimpleImmutableEntry<>(converter.convert(epochMillis, long.class), ns);
         }
 
         Object time = map.get(TIME);
@@ -286,13 +285,13 @@ final class MapConversions {
             LocalTime lt = converter.convert(time, LocalTime.class);
             ZoneId zoneId = converter.convert(zone, ZoneId.class);
             ZonedDateTime zdt = ZonedDateTime.of(ld, lt, zoneId);
-            Instant instant = zdt.toInstant();
-            return new AbstractMap.SimpleImmutableEntry<>(instant.toEpochMilli(), instant.getNano());
+            return nanoRule(zdt, ns);
         }
 
         // Time only
         if (time != null && date == null && zone == null) {
-            return new AbstractMap.SimpleImmutableEntry<>(converter.convert(time, Date.class).getTime(), 0);
+            ZonedDateTime zdt = converter.convert(time, ZonedDateTime.class);
+            return nanoRule(zdt, ns);
         }
 
         // Time & Zone, no Date
@@ -300,8 +299,7 @@ final class MapConversions {
             LocalDateTime ldt = converter.convert(time, LocalDateTime.class);
             ZoneId zoneId = converter.convert(zone, ZoneId.class);
             ZonedDateTime zdt = ZonedDateTime.of(ldt, zoneId);
-            Instant instant = zdt.toInstant();
-            return new AbstractMap.SimpleImmutableEntry<>(instant.toEpochMilli(), instant.getNano());
+            return nanoRule(zdt, ns);
         }
 
         // Time & Date, no zone
@@ -309,11 +307,18 @@ final class MapConversions {
             LocalDate ld = converter.convert(date, LocalDate.class);
             LocalTime lt = converter.convert(time, LocalTime.class);
             ZonedDateTime zdt = ZonedDateTime.of(ld, lt, converter.getOptions().getZoneId());
-            Instant instant = zdt.toInstant();
-            return new AbstractMap.SimpleImmutableEntry<>(instant.toEpochMilli(), instant.getNano());
+            return nanoRule(zdt, ns);
         }
 
         return null;
+    }
+
+    private static Map.Entry<Long, Integer> nanoRule(ZonedDateTime zdt, int nanosFromMap) {
+        int nanos = zdt.getNano();
+        if (nanos != 0) {
+            nanosFromMap = nanos;
+        }
+        return new AbstractMap.SimpleImmutableEntry<>(zdt.toEpochSecond() * 1000, nanosFromMap);
     }
 
     static Locale toLocale(Object from, Converter converter) {
@@ -376,7 +381,7 @@ final class MapConversions {
         Object hour = map.get(HOUR);
         Object minute = map.get(MINUTE);
         Object second = map.get(SECOND);
-        Object nano = map.get(NANO);
+        Object nano = map.get(NANOS);
         if (hour != null && minute != null) {
             int h = converter.convert(hour, int.class);
             int m = converter.convert(minute, int.class);
@@ -384,7 +389,7 @@ final class MapConversions {
             int n = converter.convert(nano, int.class);
             return LocalTime.of(h, m, s, n);
         }
-        return fromMap(from, converter, LocalTime.class, new String[]{TIME}, new String[]{HOUR, MINUTE, SECOND + OPTIONAL, NANO + OPTIONAL});
+        return fromMap(from, converter, LocalTime.class, new String[]{TIME}, new String[]{HOUR, MINUTE, SECOND + OPTIONAL, NANOS + OPTIONAL});
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
@@ -392,7 +397,7 @@ final class MapConversions {
         Object hour = map.get(HOUR);
         Object minute = map.get(MINUTE);
         Object second = map.get(SECOND);
-        Object nano = map.get(NANO);
+        Object nano = map.get(NANOS);
         Object oh = map.get(OFFSET_HOUR);
         Object om = map.get(OFFSET_MINUTE);
         if (hour != null && minute != null) {
@@ -417,7 +422,7 @@ final class MapConversions {
         if (time != null) {
             return converter.convert(time, OffsetTime.class);
         }
-        return fromMap(from, converter, OffsetTime.class, new String[] {TIME}, new String[] {HOUR, MINUTE, SECOND + OPTIONAL, NANO + OPTIONAL, OFFSET_HOUR, OFFSET_MINUTE});
+        return fromMap(from, converter, OffsetTime.class, new String[] {TIME}, new String[] {HOUR, MINUTE, SECOND + OPTIONAL, NANOS + OPTIONAL, OFFSET_HOUR, OFFSET_MINUTE});
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
@@ -475,7 +480,7 @@ final class MapConversions {
             LocalDateTime localDateTime = converter.convert(time, LocalDateTime.class);
             return ZonedDateTime.of(localDateTime, zoneId);
         }
-        return fromMap(from, converter, ZonedDateTime.class, new String[] {EPOCH_MILLIS}, new String[] {DATE_TIME, ZONE}, new String[] {DATE, TIME, ZONE});
+        return fromMap(from, converter, ZonedDateTime.class, new String[] {EPOCH_MILLIS}, new String[] {TIME, ZONE}, new String[] {DATE, TIME, ZONE});
     }
 
     static Class<?> toClass(Object from, Converter converter) {
@@ -580,10 +585,45 @@ final class MapConversions {
         return fromMap(from, converter, URL.class, new String[] {URL_KEY});
     }
 
+    static Throwable toThrowable(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        try {
+            String className = (String) map.get(CLASS);
+            String message = (String) map.get(MESSAGE);
+            String causeClassName = (String) map.get(CAUSE);
+            String causeMessage = (String) map.get(CAUSE_MESSAGE);
+
+            Class<?> clazz = Class.forName(className);
+            Throwable cause = null;
+
+            if (causeClassName != null && !causeClassName.isEmpty()) {
+                Class<?> causeClass = Class.forName(causeClassName);
+                // Assuming the cause class has a constructor that takes a String message.
+                Constructor<?> causeConstructor = causeClass.getConstructor(String.class);
+                cause = (Throwable) causeConstructor.newInstance(causeMessage);
+            }
+
+            // Check for appropriate constructor based on whether a cause is present.
+            Constructor<?> constructor;
+            Throwable exception;
+
+            if (cause != null) {
+                constructor = clazz.getConstructor(String.class, Throwable.class);
+                exception = (Throwable) constructor.newInstance(message, cause);
+            } else {
+                constructor = clazz.getConstructor(String.class);
+                exception = (Throwable) constructor.newInstance(message);
+            }
+
+            return exception;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to reconstruct exception instance from map: " + map);
+        }
+    }
+
     static URI toURI(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        String uri = null;
-        uri = (String) map.get(URI_KEY);
+        String uri = (String) map.get(URI_KEY);
         if (StringUtilities.hasContent(uri)) {
             return converter.convert(map.get(URI_KEY), URI.class);
         }

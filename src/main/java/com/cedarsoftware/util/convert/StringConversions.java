@@ -434,7 +434,12 @@ final class StringConversions {
         try {
             return ZoneId.of(str);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unknown time-zone ID: '" + str + "'", e);
+            TimeZone tz = TimeZone.getTimeZone(str);
+            if ("GMT".equals(tz.getID())) {
+                throw new IllegalArgumentException("Unknown time-zone ID: '" + str + "'", e);
+            } else {
+                return tz.toZoneId();
+            }
         }
     }
 

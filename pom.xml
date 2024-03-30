@@ -30,25 +30,25 @@
 <!--        <maven.compiler.release>11</maven.compiler.release>-->
 
         <!-- testing only -->
-        <version.junit-jupiter-api>5.10.1</version.junit-jupiter-api>
-        <version.junit-jupiter-params>5.10.1</version.junit-jupiter-params>
-        <version.assertj>3.25.1</version.assertj>
-        <version.json.io>4.19.1</version.json.io>
+        <version.junit-jupiter-api>5.10.2</version.junit-jupiter-api>
+        <version.junit-jupiter-params>5.10.2</version.junit-jupiter-params>
+        <version.assertj>3.25.3</version.assertj>
+        <version.json.io>4.19.11</version.json.io>
         <version.mockito.inline>4.11.0</version.mockito.inline>
-        <version.agrona>1.20.0</version.agrona>
+        <version.agrona>1.21.0</version.agrona>
 
         <!-- release plugin -->
         <version.plugin.nexus>1.6.13</version.plugin.nexus>
 
         <!-- Build maven-***-plugins -->
         <version.plugin.jar>3.3.0</version.plugin.jar>
-        <version.plugin.gpg>3.1.0</version.plugin.gpg>
-        <version.plugin.compiler>3.12.1</version.plugin.compiler>
+        <version.plugin.gpg>3.2.2</version.plugin.gpg>
+        <version.plugin.compiler>3.13.0</version.plugin.compiler>
         <version.plugin.javadoc>3.6.3</version.plugin.javadoc>
-        <version.plugin.surefire>3.2.3</version.plugin.surefire>
+        <version.plugin.surefire>3.2.5</version.plugin.surefire>
         <version.plugin.source>3.3.0</version.plugin.source>
-        <version.plugin.felix.scr>1.26.4</version.plugin.felix.scr>
-        <version.plugin.felix.bundle>5.1.9</version.plugin.felix.bundle>
+        <version.plugin.scr>1.26.4</version.plugin.scr>
+        <version.plugin.bundle>5.1.9</version.plugin.bundle>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -139,13 +139,13 @@
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-scr-plugin</artifactId>
-                <version>${version.plugin.felix.scr}</version>
+                <version>${version.plugin.scr}</version>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
-                <version>${version.plugin.felix.bundle}</version>
+                <version>${version.plugin.bundle}</version>
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
@@ -261,10 +261,10 @@
         <dependency>
             <groupId>com.cedarsoftware</groupId>
             <artifactId>json-io</artifactId>
-            <version>${version.json.io}</version>
+            <version>4.19.11</version>
             <scope>test</scope>
         </dependency>
-
+        
         <dependency>
             <groupId>org.agrona</groupId>
             <artifactId>agrona</artifactId>

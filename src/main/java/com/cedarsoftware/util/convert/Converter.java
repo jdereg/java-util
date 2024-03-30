@@ -831,6 +831,10 @@ public final class Converter {
         CONVERSION_DB.put(pair(String.class, Year.class), StringConversions::toYear);
         CONVERSION_DB.put(pair(Map.class, Year.class), MapConversions::toYear);
 
+        // Throwable conversions supported
+        CONVERSION_DB.put(pair(Void.class, Throwable.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(Map.class, Throwable.class), MapConversions::toThrowable);
+
         // Map conversions supported
         CONVERSION_DB.put(pair(Void.class, Map.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, Map.class), MapConversions::initMap);
@@ -872,6 +876,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Locale.class, Map.class), LocaleConversions::toMap);
         CONVERSION_DB.put(pair(URI.class, Map.class), UriConversions::toMap);
         CONVERSION_DB.put(pair(URL.class, Map.class), UrlConversions::toMap);
+        CONVERSION_DB.put(pair(Throwable.class, Map.class), ThrowableConversions::toMap);
     }
 
     public Converter(ConverterOptions options) {

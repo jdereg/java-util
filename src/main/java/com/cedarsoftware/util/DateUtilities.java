@@ -80,7 +80,7 @@ public final class DateUtilities {
     private static final Pattern allDigits = Pattern.compile("^\\d+$");
     private static final String days = "monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun"; // longer before shorter matters
     private static final String mos = "January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec";
-    private static final String yr = "\\d{4}";
+    private static final String yr = "[+-]?\\d{4,5}\\b";
     private static final String d1or2 = "\\d{1,2}";
     private static final String d2 = "\\d{2}";
     private static final String ord = "st|nd|rd|th";

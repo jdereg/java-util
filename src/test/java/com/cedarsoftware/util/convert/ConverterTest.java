@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -43,12 +44,17 @@ import org.junit.jupiter.params.provider.NullSource;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
 import static com.cedarsoftware.util.Converter.zonedDateTimeToMillis;
+import static com.cedarsoftware.util.MapUtilities.mapOf;
 import static com.cedarsoftware.util.StringUtilities.EMPTY;
 import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.bar;
 import static com.cedarsoftware.util.convert.ConverterTest.fubar.foo;
+import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
+import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
+import static com.cedarsoftware.util.convert.MapConversions.CLASS;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
+import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.TIME;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -93,17 +99,20 @@ class ConverterTest
     private static final LocalDateTime LDT_MILLENNIUM_LA = LocalDateTime.of(1999, 12, 31, 20, 59, 59, 959000000);
     private Converter converter;
 
-
     private static final LocalDate LD_MILLENNIUM_NY = LocalDate.of(1999, 12, 31);
     private static final LocalDate LD_MILLENNIUM_TOKYO = LocalDate.of(2000, 1, 1);
-
     private static final LocalDate LD_MILLENNIUM_CHICAGO = LocalDate.of(1999, 12, 31);
-
     private static final LocalDate LD_2023_NY = LocalDate.of(2023, 6, 24);
 
     enum fubar
     {
         foo, bar, baz, quz
+    }
+
+    private class GnarlyException extends RuntimeException {
+        public GnarlyException(int x) {
+            super("" + x);
+        }
     }
 
     @BeforeEach
@@ -180,11 +189,9 @@ class ConverterTest
         return arguments.stream();
     }
 
-
     private static Stream<Arguments> toByteParams() {
         return paramsForIntegerTypes(Byte.MIN_VALUE, Byte.MAX_VALUE);
     }
-
 
     @ParameterizedTest
     @MethodSource("toByteParams")
@@ -2949,7 +2956,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Date' the map must include: [epochMillis], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Date' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2972,7 +2979,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, java.sql.Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'java.sql.Date' the map must include: [epochMillis], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'java.sql.Date' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2995,7 +3002,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Timestamp.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Timestamp' the map must include: [epochMillis, nanos (optional)], [date, time, zone (optional)], [time, zone (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Timestamp' the map must include: [epochMillis, nanos (optional)], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -3060,7 +3067,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, ZonedDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'ZonedDateTime' the map must include: [epochMillis], [dateTime, zone], [date, time, zone], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'ZonedDateTime' the map must include: [epochMillis], [time, zone], [date, time, zone], [value], or [_v] as keys with associated values");
 
     }
 
@@ -4326,6 +4333,41 @@ class ConverterTest
         assertThatThrownBy(() -> converter.convert("foo", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("toType cannot be null");
+    }
+
+    @Test
+    void testMapToThrowable()
+    {
+        Map<String, Object> map = mapOf(MESSAGE, "divide by 0", CLASS, Throwable.class.getName(), CAUSE, IllegalArgumentException.class.getName(), CAUSE_MESSAGE, "root issue");
+        Throwable expected = new Throwable("divide by 0", new IllegalArgumentException("root issue"));
+        Throwable actual = converter.convert(map, Throwable.class);
+        assertEquals(expected.getMessage(), actual.getMessage());
+        assertEquals(expected.getClass(), actual.getClass());
+        assertEquals(expected.getCause().getClass(), actual.getCause().getClass());
+        assertEquals(expected.getCause().getMessage(), actual.getCause().getMessage());
+
+        map = mapOf(MESSAGE, "null not allowed", CLASS, IllegalArgumentException.class.getName());
+        expected = new IllegalArgumentException("null not allowed");
+        actual = converter.convert(map, IllegalArgumentException.class);
+        assertEquals(expected.getMessage(), actual.getMessage());
+        assertEquals(expected.getClass(), actual.getClass());
+
+        map = mapOf(MESSAGE, "null not allowed", CLASS, IllegalArgumentException.class.getName(), CAUSE, IOException.class.getName(), CAUSE_MESSAGE, "port not open");
+        expected = new IllegalArgumentException("null not allowed", new IOException("port not open", new IllegalAccessException("foo")));
+        actual = converter.convert(map, IllegalArgumentException.class);
+        assertEquals(expected.getMessage(), actual.getMessage());
+        assertEquals(expected.getClass(), actual.getClass());
+        assertEquals(expected.getCause().getClass(), actual.getCause().getClass());
+        assertEquals(expected.getCause().getMessage(), actual.getCause().getMessage());
+    }
+
+    @Test
+    void testMapToThrowableFail() {
+        Map<String, Object> map = mapOf(MESSAGE, "5", CLASS, GnarlyException.class.getName());
+        Throwable expected = new GnarlyException(5);
+        assertThatThrownBy(() -> converter.convert(map, Throwable.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unable to reconstruct exception instance from map");
     }
 
     private ConverterOptions createCharsetOptions(final Charset charset) {

@@ -108,7 +108,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-// TODO: EnumSet conversions need to be added?
 class ConverterEverythingTest {
     private static final String TOKYO = "Asia/Tokyo";
     private static final ZoneId TOKYO_Z = ZoneId.of(TOKYO);

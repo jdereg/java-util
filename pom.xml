@@ -32,23 +32,23 @@
         <!-- testing only -->
         <version.junit-jupiter-api>5.10.2</version.junit-jupiter-api>
         <version.junit-jupiter-params>5.10.2</version.junit-jupiter-params>
-        <version.assertj>3.25.3</version.assertj>
-        <version.json.io>4.19.11</version.json.io>
-        <version.mockito.inline>4.11.0</version.mockito.inline>
-        <version.agrona>1.21.0</version.agrona>
-
-        <!-- release plugin -->
-        <version.plugin.nexus>1.6.13</version.plugin.nexus>
+        <version.assertj-core>3.25.3</version.assertj-core>
+        <version.json-io>4.19.11</version.json-io>
+        <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>
+        <version.agrona>1.21.1</version.agrona>
 
         <!-- Build maven-***-plugins -->
-        <version.plugin.jar>3.3.0</version.plugin.jar>
-        <version.plugin.gpg>3.2.2</version.plugin.gpg>
-        <version.plugin.compiler>3.13.0</version.plugin.compiler>
-        <version.plugin.javadoc>3.6.3</version.plugin.javadoc>
-        <version.plugin.surefire>3.2.5</version.plugin.surefire>
-        <version.plugin.source>3.3.0</version.plugin.source>
-        <version.plugin.scr>1.26.4</version.plugin.scr>
-        <version.plugin.bundle>5.1.9</version.plugin.bundle>
+        <version.maven-jar-plugin>3.3.0</version.maven-jar-plugin>
+        <version.maven-gpg-plugin>3.2.2</version.maven-gpg-plugin>
+        <version.maven-compiler-plugin>3.13.0</version.maven-compiler-plugin>
+        <version.maven-javadoc-plugin>3.6.3</version.maven-javadoc-plugin>
+        <version.maven-surefire-plugin>3.2.5</version.maven-surefire-plugin>
+        <version.maven-source-plugin>3.3.0</version.maven-source-plugin>
+        <version.maven-scr-plugin>1.26.4</version.maven-scr-plugin>
+        <version.maven-bundle-plugin>5.1.9</version.maven-bundle-plugin>
+
+        <!-- release plugin -->
+        <version.nexus-staging-maven-plugin>1.6.13</version.nexus-staging-maven-plugin>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -67,7 +67,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>${version.plugin.gpg}</version>
+                        <version>${version.maven-gpg-plugin}</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -117,7 +117,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>${version.plugin.jar}</version> <!-- Use the latest version available -->
+                <version>${version.maven-jar-plugin}</version> <!-- Use the latest version available -->
                 <configuration>
                     <archive>
                         <manifestEntries>
@@ -139,13 +139,13 @@
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-scr-plugin</artifactId>
-                <version>${version.plugin.scr}</version>
+                <version>${version.maven-scr-plugin}</version>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
-                <version>${version.plugin.bundle}</version>
+                <version>${version.maven-bundle-plugin}</version>
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
@@ -168,7 +168,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${version.plugin.compiler}</version>
+                <version>${version.maven-compiler-plugin}</version>
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
@@ -179,7 +179,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>${version.plugin.source}</version>
+                <version>${version.maven-source-plugin}</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -193,7 +193,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>${version.plugin.javadoc}</version>
+                <version>${version.maven-javadoc-plugin}</version>
                 <configuration>
                     <additionalOptions>-Xdoclint:none</additionalOptions>
                     <additionalJOption>-Xdoclint:none</additionalJOption>
@@ -211,7 +211,7 @@
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>${version.plugin.nexus}</version>
+                <version>${version.nexus-staging-maven-plugin}</version>
                 <extensions>true</extensions>
                 <configuration>
                     <serverId>ossrh</serverId>
@@ -223,7 +223,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>${version.plugin.surefire}</version>
+                <version>${version.maven-surefire-plugin}</version>
             </plugin>
 
         </plugins>
@@ -247,21 +247,21 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
-            <version>${version.mockito.inline}</version>
+            <version>${version.mockito-junit-jupiter}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>${version.assertj}</version>
+            <version>${version.assertj-core}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.cedarsoftware</groupId>
             <artifactId>json-io</artifactId>
-            <version>4.19.11</version>
+            <version>${version.json-io}</version>
             <scope>test</scope>
         </dependency>
         

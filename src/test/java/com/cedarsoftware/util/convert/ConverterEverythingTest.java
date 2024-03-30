@@ -3818,7 +3818,8 @@ class ConverterEverythingTest {
     }
 
     private static Timestamp timestamp(String s) {
-        return Timestamp.from(Instant.parse(s));
+        ZonedDateTime zdt = ZonedDateTime.parse(s);
+        return Timestamp.from(zdt.toInstant());
     }
 
     private static ZonedDateTime zdt(String s) {

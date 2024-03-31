@@ -12,6 +12,7 @@ import java.util.Set;
  * Usefule utilities for Maps
  *
  * @author Kenneth Partlow
+ * @author John DeRegnaucourt
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

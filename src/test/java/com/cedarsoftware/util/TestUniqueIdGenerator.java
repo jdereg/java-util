@@ -41,7 +41,7 @@ public class TestUniqueIdGenerator
     private static final int bucketSize = 200000;
 
     @Test
-    public void testIdLengths()
+    void testIdLengths()
     {
         long id18 = getUniqueId();
         long id19 = getUniqueId19();
@@ -51,7 +51,7 @@ public class TestUniqueIdGenerator
     }
 
     @Test
-    public void testIDtoDate()
+    void testIDtoDate()
     {
         long id = getUniqueId();
         Date date = getDate(id);
@@ -63,7 +63,7 @@ public class TestUniqueIdGenerator
     }
 
     @Test
-    public void testUniqueIdGeneration()
+    void testUniqueIdGeneration()
     {
         int maxIdGen = 100000;
         int testSize = maxIdGen;
@@ -112,8 +112,20 @@ public class TestUniqueIdGenerator
         }
     }
 
+//    @Test
+//    void speedTest()
+//    {
+//        long start = System.currentTimeMillis();
+//        int count = 0;
+//        while (System.currentTimeMillis() < start + 1000) {
+//            UniqueIdGenerator.getUniqueId19();
+//            count++;
+//        }
+//        out.println("count = " + count);
+//    }
+    
     @Test
-    public void testConcurrency()
+    void testConcurrency()
     {
         final CountDownLatch startLatch = new CountDownLatch(1);
         int numTests = 4;

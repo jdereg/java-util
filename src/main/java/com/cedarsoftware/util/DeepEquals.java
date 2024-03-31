@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -736,22 +737,22 @@ public class DeepEquals
      * @return the 'deep' hashCode value for the passed in object.
      */
     public static int deepHashCode(Object obj) {
-        Set<Object> visited = new HashSet<>();
+        Map<Object, Object> visited = new IdentityHashMap<>();
         return deepHashCode(obj, visited);
     }
 
-    private static int deepHashCode(Object obj, Set<Object> visited) {
+    private static int deepHashCode(Object obj, Map<Object, Object> visited) {
         LinkedList<Object> stack = new LinkedList<>();
         stack.addFirst(obj);
         int hash = 0;
 
         while (!stack.isEmpty()) {
             obj = stack.removeFirst();
-            if (obj == null || visited.contains(obj)) {
+            if (obj == null || visited.containsKey(obj)) {
                 continue;
             }
 
-            visited.add(obj);
+            visited.put(obj, null);
 
             // Ensure array order matters to hash
             if (obj.getClass().isArray()) {

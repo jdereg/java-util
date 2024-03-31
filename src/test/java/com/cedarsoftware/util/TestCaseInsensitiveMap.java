@@ -1464,36 +1464,56 @@ public class TestCaseInsensitiveMap
         assert !ciString.equals(ciString2);
     }
 
-    @Disabled
-    @Test
-    public void testGenHash()
-    {
-        final String TEXT = "was stored earlier had the same hash as";
-        HashMap<Integer, CaseInsensitiveMap.CaseInsensitiveString> hs = new HashMap<>();
-        long t1 = System.currentTimeMillis();
-        long t2 = System.currentTimeMillis();
-        for (long l = 0; l < Long.MAX_VALUE; l++)
-        {
-            CaseInsensitiveMap.CaseInsensitiveString key = new CaseInsensitiveMap.CaseInsensitiveString("f" + l);
-            if (hs.containsKey(key.hashCode()))
-            {
-                System.out.println("'" + hs.get(key.hashCode()) + "' " + TEXT + " '" + key + "'");
-                break;
-            }
-            else
-            {
-                hs.put(key.hashCode(),key);
-            }
+    private String current = "0";
+    public String getNext() {
+        int length = current.length();
+        StringBuilder next = new StringBuilder(current);
+        boolean carry = true;
 
-            t2 = System.currentTimeMillis();
-
-            if (t2 - t1 > 10000)
-            {
-                t1 = System.currentTimeMillis();
-                System.out.println("10 seconds gone! size is:"+hs.size());
+        for (int i = length - 1; i >= 0 && carry; i--) {
+            char ch = next.charAt(i);
+            if (ch == 'j') {
+                next.setCharAt(i, '0');
+            } else {
+                if (ch == '9') {
+                    next.setCharAt(i, 'a');
+                } else {
+                    next.setCharAt(i, (char) (ch + 1));
+                }
+                carry = false;
             }
         }
-        System.out.println("Done");
+
+        // If carry is still true, all digits were 'f', append '1' at the beginning
+        if (carry) {
+            next.insert(0, '1');
+        }
+
+        current = next.toString();
+        return current;
+    }
+
+    @Test
+    public void testGenHash() {
+        HashMap<Integer, CaseInsensitiveMap.CaseInsensitiveString> hs = new HashMap<>();
+        long t1 = System.currentTimeMillis();
+        int dupe = 0;
+
+        while (true) {
+            String hash = getNext();
+            CaseInsensitiveMap.CaseInsensitiveString key = new CaseInsensitiveMap.CaseInsensitiveString(hash);
+            if (hs.containsKey(key.hashCode())) {
+                dupe++;
+                continue;
+            } else {
+                hs.put(key.hashCode(), key);
+            }
+
+            if (System.currentTimeMillis() - t1 > 250) {
+                break;
+            }
+        }
+        System.out.println("Done, ran " + (System.currentTimeMillis() - t1) + " ms, " + dupe + " dupes, CaseInsensitiveMap.size: " + hs.size());
     }
 
     @Test

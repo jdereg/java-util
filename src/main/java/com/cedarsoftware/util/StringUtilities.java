@@ -107,7 +107,7 @@ public final class StringUtilities {
     }
 
     /**
-     * @see StringUtilities@equalsIgnoreCase(CharSequence, CharSequence)
+     * @see StringUtilities#equalsIgnoreCase(CharSequence, CharSequence)
      */
     public static boolean equalsIgnoreCase(String s1, String s2) {
         return equalsIgnoreCase((CharSequence) s1, (CharSequence) s2);

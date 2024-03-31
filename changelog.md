@@ -1,6 +1,8 @@
 ### Revision History
-* 2.4.8-SNAPSHOT
-  * Using json-io 4.14.2 for cloning object in "test" scope, eliminates cycle depedencies 
+* 2.4.8
+  * Performance improvement: `DeepEquals.deepHashCode()` - now using `IdentityHashMap()` for cycle (visited) detection.
+  * Modernization: `UniqueIdGenerator` - updated to use `Lock.lock()` and `Lock.unlock()` instead of `synchronized` keyword.
+  * Using json-io 4.14.1 for cloning object in "test" scope, eliminates cycle depedencies when building both json-io and java-util.
 * 2.4.7
   * All 687 conversions supported are now 100% cross-product tested.  Converter test suite is complete.
 * 2.4.6

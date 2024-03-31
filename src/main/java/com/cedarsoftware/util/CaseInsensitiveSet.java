@@ -44,11 +44,11 @@ public class CaseInsensitiveSet<E> implements Set<E>
     {
         if (collection instanceof ConcurrentSkipListSet)
         {
-            map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap());
+            map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
         }
         else if (collection instanceof SortedSet)
         {
-            map = new CaseInsensitiveMap<>(new TreeMap());
+            map = new CaseInsensitiveMap<>(new TreeMap<>());
         }
         else
         {

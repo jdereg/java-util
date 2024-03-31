@@ -1,10 +1,14 @@
 package com.cedarsoftware.util;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestDeepEqualsUnordered
 {
@@ -16,7 +20,7 @@ public class TestDeepEqualsUnordered
     elementsA.add(new BadHashingValueWithParentLink(1, 0));
     Set<BadHashingValueWithParentLink> elementsB = new HashSet<>();
     elementsB.add(new BadHashingValueWithParentLink(0, 1));
-    elementsB.add( new BadHashingValueWithParentLink(1, 0));
+    elementsB.add(new BadHashingValueWithParentLink(1, 0));
 
     Parent parentA = new Parent();
     parentA.addElements(elementsA);
@@ -48,14 +52,13 @@ public class TestDeepEqualsUnordered
   }
   private static class BadHashingValueWithParentLink {
     private final int i;
+    private final int j;
     private Parent parent;
 
     public BadHashingValueWithParentLink(int i, int j) {
       this.i = i;
       this.j = j;
     }
-
-    private final int j;
 
     @Override
     public boolean equals(Object o) {

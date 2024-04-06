@@ -8,6 +8,7 @@ import java.lang.reflect.Modifier;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
@@ -75,7 +76,6 @@ public class ClassUtilities
         primitiveToWrapper.put(byte.class, Byte.class);
         primitiveToWrapper.put(short.class, Short.class);
         primitiveToWrapper.put(void.class, Void.class);
-
     }
 
     /**
@@ -112,9 +112,9 @@ public class ClassUtilities
         }
 
         Queue<Class<?>> queue = new LinkedList<>();
-        Set<Class<?>> visited = new HashSet<>();
+        Map<Class<?>, String> visited = new IdentityHashMap<>();
         queue.add(source);
-        visited.add(source);
+        visited.put(source, null);
 
         int distance = 0;
 
@@ -130,9 +130,9 @@ public class ClassUtilities
                     if (current.getSuperclass().equals(destination)) {
                         return distance;
                     }
-                    if (!visited.contains(current.getSuperclass())) {
+                    if (!visited.containsKey(current.getSuperclass())) {
                         queue.add(current.getSuperclass());
-                        visited.add(current.getSuperclass());
+                        visited.put(current.getSuperclass(), null);
                     }
                 }
 
@@ -141,9 +141,9 @@ public class ClassUtilities
                     if (interfaceClass.equals(destination)) {
                         return distance;
                     }
-                    if (!visited.contains(interfaceClass)) {
+                    if (!visited.containsKey(interfaceClass)) {
                         queue.add(interfaceClass);
-                        visited.add(interfaceClass);
+                        visited.put(interfaceClass, null);
                     }
                 }
             }

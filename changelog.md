@@ -1,4 +1,7 @@
 ### Revision History
+* 2.4.9
+  * Updated to allow the project to be compiled by versions of JDK > 1.8 yet still generate class file format 52 .class files so that they can be executed on JDK 1.8+ and up.
+  * Incorporated @AxataDarji GraphComparator changes that reduce cyclomatic code complexity (refactored to smaller methods)
 * 2.4.8
   * Performance improvement: `DeepEquals.deepHashCode()` - now using `IdentityHashMap()` for cycle (visited) detection.
   * Modernization: `UniqueIdGenerator` - updated to use `Lock.lock()` and `Lock.unlock()` instead of `synchronized` keyword.

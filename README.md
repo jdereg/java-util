@@ -13,7 +13,7 @@ The classes in the`.jar`file are version 52 (`JDK 1.8`).
 
 ---
 To include in your project:
-##### GradleF
+##### Gradle
 ```
 implementation 'com.cedarsoftware:java-util:2.4.9'
 ```

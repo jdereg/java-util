@@ -87,7 +87,7 @@ public final class Converter
     }
 
     /**
-     * @return Map<Class, Set < Class>> which contains all supported conversions. The key of the Map is a source class,
+     * @return {@code Map<Class, Set<Class>>} which contains all supported conversions. The key of the Map is a source class,
      * and the Set contains all the target types (classes) that the source can be converted to.
      */
     public static Map<Class<?>, Set<Class<?>>> allSupportedConversions() {

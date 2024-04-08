@@ -1,6 +1,7 @@
 ### Revision History
-* 2.5.0-SNAPSHOT
-  * Wanted: DateTimeFormatter added as a supported conversion (to/from String, to/from Map)  
+* 2.5.0
+  * pom.xml file updated to support both OSGi Bundle and JPMS Modules. 
+  * module-info.class resides in the root of the .jar but it is not referenced.
 * 2.4.9
   * Updated to allow the project to be compiled by versions of JDK > 1.8 yet still generate class file format 52 .class files so that they can be executed on JDK 1.8+ and up.
   * Incorporated @AxataDarji GraphComparator changes that reduce cyclomatic code complexity (refactored to smaller methods)

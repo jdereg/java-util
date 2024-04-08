@@ -4,8 +4,8 @@
     <name>java-util</name>
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
-    <packaging>jar</packaging>
-    <version>2.5.0-SNAPSHOT</version>
+    <packaging>bundle</packaging>
+    <version>2.5.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -24,6 +24,9 @@
 
     <properties>
         <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss.SSSZ</maven.build.timestamp.format>
+        <!-- remove source encoding warnings from maven output -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
         <!-- Java source, target, and release version -->
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -32,9 +35,9 @@
         <!-- testing only -->
         <version.junit-jupiter-api>5.10.2</version.junit-jupiter-api>
         <version.junit-jupiter-params>5.10.2</version.junit-jupiter-params>
+        <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>
         <version.assertj-core>3.25.3</version.assertj-core>
         <version.json-io>4.19.13</version.json-io>
-        <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>
         <version.agrona>1.21.1</version.agrona>
 
         <!-- Build maven-***-plugins -->
@@ -43,18 +46,18 @@
         <version.maven-compiler-plugin>3.13.0</version.maven-compiler-plugin>
         <version.maven-javadoc-plugin>3.6.3</version.maven-javadoc-plugin>
         <version.maven-surefire-plugin>3.2.5</version.maven-surefire-plugin>
-        <version.maven-source-plugin>3.3.0</version.maven-source-plugin>
+        <version.maven-source-plugin>3.3.1</version.maven-source-plugin>
         <version.maven-scr-plugin>1.26.4</version.maven-scr-plugin>
         <version.maven-bundle-plugin>5.1.9</version.maven-bundle-plugin>
         <version.moditect-maven-plugin>1.2.1.Final</version.moditect-maven-plugin>
 
-        <!-- release plugin -->
+        <!-- release to Maven Central via Sonatype Nexus -->
         <version.nexus-staging-maven-plugin>1.6.13</version.nexus-staging-maven-plugin>
 
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-    
+
     <profiles>
+
         <profile>
             <id>release-sign-artifacts</id>
             <activation>
@@ -65,6 +68,7 @@
             </activation>
             <build>
                 <plugins>
+
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
@@ -83,6 +87,7 @@
                             </execution>
                         </executions>
                     </plugin>
+
                 </plugins>
             </build>
         </profile>
@@ -91,7 +96,7 @@
     <licenses>
         <license>
             <name>The Apache Software License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
@@ -112,9 +117,10 @@
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
-    
+
     <build>
         <plugins>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -137,6 +143,7 @@
                     </archive>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-scr-plugin</artifactId>
@@ -150,7 +157,13 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
-                        <Export-Package>com.cedarsoftware.util</Export-Package>
+                        <Import-Package>
+                            java.sql,
+                            java.xml</Import-Package>
+                        <Export-Package>
+                            com.cedarsoftware.util
+                            com.cedarsoftware.util.convert
+                        </Export-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
                 </configuration>
@@ -239,25 +252,23 @@
                         </goals>
                         <phase>package</phase>
                         <configuration>
-                            <jvmVersion>9</jvmVersion>
+                            <jvmVersion>base</jvmVersion>
                             <module>
-                                <moduleInfo>
-                                    <name>com.cedarsoftware.util</name>
-                                    <requires>
-                                        java.sql;
-                                        java.xml;
-                                    </requires>
-                                    <exports>
-                                        com.cedarsoftware.util;
-                                        com.cedarsoftware.util.convert;
-                                    </exports>
-                                </moduleInfo>
+                                <moduleInfoSource>
+                                    module com.cedarsoftware.util {
+                                    requires java.sql;
+                                    requires java.xml;
+                                    exports com.cedarsoftware.util;
+                                    exports com.cedarsoftware.util.convert;
+                                    }
+                                </moduleInfoSource>
                             </module>
                             <overwriteExistingFiles>true</overwriteExistingFiles>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
     </build>
 

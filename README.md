@@ -9,7 +9,7 @@ Available on [Maven Central](https://central.sonatype.com/search?q=java-util&nam
 This library has <b>no dependencies</b> on other libraries for runtime.
 The`.jar`file is `250K.`
 Works with`JDK 1.8`through`JDK 21`.
-The classes in the`.jar`file are version 52 (`JDK 1.8`).
+The '.jar' file classes are version 52 (`JDK 1.8`).
 
 ---
 To include in your project:

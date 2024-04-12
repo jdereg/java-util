@@ -1,7 +1,7 @@
 java-util
 =========
 <!--[![Build Status](https://travis-ci.org/jdereg/java-util.svg?branch=master)](https://travis-ci.org/jdereg/java-util) -->
-![Maven Central](https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util)
+[![Maven Central](https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util)](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware)
 [![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
 
 Helpful utilities that are thoroughly tested (> 98% code coverage via JUnit tests).

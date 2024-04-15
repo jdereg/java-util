@@ -3205,8 +3205,8 @@ class ConverterTest
 
     private static Stream<Arguments> toChar_numberFormatException() {
         return Stream.of(
-                Arguments.of("45.number", "Unable to parse '45.number' as a Character"),
-                Arguments.of("AB", "Unable to parse 'AB' as a Character")
+                Arguments.of("45.number", "Unable to parse'45.number' as a char/Character. Invalid Unicode escape sequence.45.number"),
+                Arguments.of("AB", "Unable to parse'AB' as a char/Character. Invalid Unicode escape sequence.AB")
         );
     }
 

@@ -227,7 +227,7 @@ final class StringConversions {
 
     private static char parseUnicodeEscape(String unicodeStr) throws IllegalArgumentException {
         if (!unicodeStr.startsWith("\\u") || unicodeStr.length() != 6) {
-            throw new IllegalArgumentException("Invalid Unicode escape sequence: " + unicodeStr);
+            throw new IllegalArgumentException("Unable to parse'" + unicodeStr + "' as a char/Character. Invalid Unicode escape sequence." + unicodeStr);
         }
         int codePoint = Integer.parseInt(unicodeStr.substring(2), 16);
         return (char) codePoint;

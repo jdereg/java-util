@@ -2392,7 +2392,7 @@ class ConverterEverythingTest {
                 {"{", '{', true},
                 {"\uD83C", '\uD83C', true},
                 {"\uFFFF", '\uFFFF', true},
-                {"FFFZ", new IllegalArgumentException("Unable to parse 'FFFZ' as a Character")},
+                {"FFFZ", new IllegalArgumentException("Unable to parse'FFFZ' as a char/Character. Invalid Unicode escape sequence.FFFZ")},
         });
     }
 

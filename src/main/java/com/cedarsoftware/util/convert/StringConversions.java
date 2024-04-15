@@ -69,6 +69,7 @@ final class StringConversions {
     private static final BigDecimal bigDecimalMaxLong = BigDecimal.valueOf(Long.MAX_VALUE);
     private static final BigDecimal bigDecimalMinLong = BigDecimal.valueOf(Long.MIN_VALUE);
     private static final Pattern MM_DD = Pattern.compile("^(\\d{1,2}).(\\d{1,2})$");
+    private static final Pattern allDigits = Pattern.compile("^\\d+$");
 
     private StringConversions() {}
 
@@ -198,7 +199,7 @@ final class StringConversions {
         } else if ("false".equals(str)) {
             return false;
         }
-        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equals(str) || "y".equalsIgnoreCase(str);
+        return "true".equalsIgnoreCase(str) || "t".equalsIgnoreCase(str) || "1".equals(str) || "y".equalsIgnoreCase(str) || "\"true\"".equalsIgnoreCase(str);
     }
 
     static char toCharacter(Object from, Converter converter) {
@@ -209,12 +210,27 @@ final class StringConversions {
         if (str.length() == 1) {
             return str.charAt(0);
         }
-        // Treat as a String number, like "65" = 'A'
-        try {
-            return (char) Integer.parseInt(str.trim());
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to parse '" + from + "' as a Character.", e);
+
+        Matcher matcher = allDigits.matcher(str);
+        boolean isAllDigits = matcher.matches();
+        if (isAllDigits) {
+            try {  // Treat as a String number, like "65" = 'A'
+                return (char) Integer.parseInt(str.trim());
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Unable to parse '" + from + "' as a Character.", e);
+            }
         }
+
+        char result = parseUnicodeEscape(str);
+        return result;
+    }
+
+    private static char parseUnicodeEscape(String unicodeStr) throws IllegalArgumentException {
+        if (!unicodeStr.startsWith("\\u") || unicodeStr.length() != 6) {
+            throw new IllegalArgumentException("Invalid Unicode escape sequence: " + unicodeStr);
+        }
+        int codePoint = Integer.parseInt(unicodeStr.substring(2), 16);
+        return (char) codePoint;
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {

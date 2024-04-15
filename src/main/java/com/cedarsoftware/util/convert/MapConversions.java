@@ -667,7 +667,11 @@ final class MapConversions {
             builder.append(", ");
         }
 
-        builder.append("[value], or [_v] as keys with associated values.");
+        builder.append("[value]");
+        if (keySets.length > 0) {
+            builder.append(",");
+        }
+        builder.append(" or [_v] as keys with associated values.");
         throw new IllegalArgumentException(builder.toString());
     }
 }

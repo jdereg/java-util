@@ -2795,7 +2795,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicBoolean.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'AtomicBoolean' the map must include: [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'AtomicBoolean' the map must include: [value] or [_v] as keys with associated values");
     }
 
     @Test
@@ -2818,7 +2818,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicInteger.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'AtomicInteger' the map must include: [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'AtomicInteger' the map must include: [value] or [_v] as keys with associated values");
     }
 
     @Test
@@ -2841,7 +2841,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicLong.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'AtomicLong' the map must include: [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'AtomicLong' the map must include: [value] or [_v] as keys with associated values");
     }
     
     @ParameterizedTest

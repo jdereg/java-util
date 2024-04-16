@@ -24,6 +24,11 @@ import java.math.BigInteger;
  */
 public final class MathUtilities
 {
+    public static final BigInteger BIG_INT_LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
+    public static final BigInteger BIG_INT_LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
+    public static final BigDecimal BIG_DEC_DOUBLE_MIN = BigDecimal.valueOf(-Double.MAX_VALUE);
+    public static final BigDecimal BIG_DEC_DOUBLE_MAX = BigDecimal.valueOf(Double.MAX_VALUE);
+
     private MathUtilities()
     {
         super();
@@ -227,5 +232,63 @@ public final class MathUtilities
         }
 
         return current;
+    }
+
+    /**
+     * Parse the passed in String as a numeric value and return the minimal data type between Long, Double,
+     * BigDecimal, or BigInteger.  Useful for processing values from JSON files.
+     * @param numStr String to parse.
+     * @return Long, BigInteger, Double, or BigDecimal depending on the value.  If the value is and integer and
+     * between the range of Long min/max, a Long is returned.  If the value is an integer and outside this range, a
+     * BigInteger is returned.  If the value is a decimal but within the confines of a Double, then a Double is
+     * returned, otherwise a BigDecimal is returned.
+     */
+    public static Number parseToMinimalNumericType(String numStr) {
+        // Handle and preserve negative signs correctly while removing leading zeros
+        boolean isNegative = numStr.startsWith("-");
+        if (isNegative || numStr.startsWith("+")) {
+            char sign = numStr.charAt(0);
+            numStr = sign + numStr.substring(1).replaceFirst("^0+", "");
+        } else {
+            numStr = numStr.replaceFirst("^0+", "");
+        }
+
+        boolean hasDecimalPoint = false;
+        boolean hasExponent = false;
+        int mantissaSize = 0;
+        StringBuilder exponentValue = new StringBuilder();
+
+        for (int i = 0; i < numStr.length(); i++) {
+            char c = numStr.charAt(i);
+            if (c == '.') {
+                hasDecimalPoint = true;
+            } else if (c == 'e' || c == 'E') {
+                hasExponent = true;
+            } else if (c >= '0' && c <= '9') {
+                if (!hasExponent) {
+                    mantissaSize++; // Count digits in the mantissa only
+                } else {
+                    exponentValue.append(c);
+                }
+            }
+        }
+
+        if (hasDecimalPoint || hasExponent) {
+            if (mantissaSize < 17 && (exponentValue.length() == 0 || Math.abs(Integer.parseInt(exponentValue.toString())) < 308)) {
+                return Double.parseDouble(numStr);
+            } else {
+                return new BigDecimal(numStr);
+            }
+        } else {
+            if (numStr.length() < 19) {
+                return Long.parseLong(numStr);
+            }
+            BigInteger bigInt = new BigInteger(numStr);
+            if (bigInt.compareTo(BIG_INT_LONG_MIN) >= 0 && bigInt.compareTo(BIG_INT_LONG_MAX) <= 0) {
+                return bigInt.longValue(); // Correctly convert BigInteger back to Long if within range
+            } else {
+                return bigInt;
+            }
+        }
     }
 }

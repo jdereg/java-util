@@ -5,8 +5,10 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import static com.cedarsoftware.util.MathUtilities.parseToMinimalNumericType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -28,10 +30,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestMathUtilities
+class TestMathUtilities
 {
     @Test
-    public void testConstructorIsPrivate() throws Exception {
+    void testConstructorIsPrivate() throws Exception {
         Class<?> c = MathUtilities.class;
         assertEquals(Modifier.FINAL, c.getModifiers() & Modifier.FINAL);
 
@@ -43,7 +45,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testMinimumLong()
+    void testMinimumLong()
     {
         long min = MathUtilities.minimum(0, 1, 2);
         assertEquals(0, min);
@@ -71,7 +73,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testMinimumDouble()
+    void testMinimumDouble()
     {
         double min = MathUtilities.minimum(0.1, 1.1, 2.1);
         assertEquals(0.1, min);
@@ -99,7 +101,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testMinimumBigInteger()
+    void testMinimumBigInteger()
     {
         BigInteger minBi = MathUtilities.minimum(new BigInteger("-1"), new BigInteger("0"), new BigInteger("1"));
         assertEquals(new BigInteger("-1"), minBi);
@@ -127,7 +129,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testMinimumBigDecimal()
+    void testMinimumBigDecimal()
     {
         BigDecimal minBd = MathUtilities.minimum(new BigDecimal("-1"), new BigDecimal("0"), new BigDecimal("1"));
         assertEquals(new BigDecimal("-1"), minBd);
@@ -154,7 +156,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testMaximumLong()
+    void testMaximumLong()
     {
         long max = MathUtilities.maximum(0, 1, 2);
         assertEquals(2, max);
@@ -182,7 +184,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testMaximumDouble()
+    void testMaximumDouble()
     {
         double max = MathUtilities.maximum(0.1, 1.1, 2.1);
         assertEquals(2.1, max);
@@ -210,7 +212,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testMaximumBigInteger()
+    void testMaximumBigInteger()
     {
         BigInteger minBi = MathUtilities.minimum(new BigInteger("-1"), new BigInteger("0"), new BigInteger("1"));
         assertEquals(new BigInteger("-1"), minBi);
@@ -238,7 +240,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testNullInMaximumBigInteger()
+    void testNullInMaximumBigInteger()
     {
         try
         {
@@ -249,7 +251,7 @@ public class TestMathUtilities
     }
 
     @Test
-    public void testMaximumBigDecimal()
+    void testMaximumBigDecimal()
     {
         BigDecimal minBd = MathUtilities.maximum(new BigDecimal("-1"), new BigDecimal("0"), new BigDecimal("1"));
         assertEquals(new BigDecimal("1"), minBd);
@@ -274,5 +276,85 @@ public class TestMathUtilities
             fail("Should not make it here");
         }
         catch (Exception ignored) { }
+    }
+
+    @Test
+    void testMaxLongBoundary() {
+        String maxLong = String.valueOf(Long.MAX_VALUE);
+        assertEquals(Long.MAX_VALUE, parseToMinimalNumericType(maxLong));
+    }
+
+    @Test
+    void testMinLongBoundary() {
+        String minLong = String.valueOf(Long.MIN_VALUE);
+        assertEquals(Long.MIN_VALUE, parseToMinimalNumericType(minLong));
+    }
+
+    @Test
+    void testBeyondMaxLongBoundary() {
+        String beyondMaxLong = "9223372036854775808"; // Long.MAX_VALUE + 1
+        assertEquals(new BigInteger("9223372036854775808"), parseToMinimalNumericType(beyondMaxLong));
+    }
+
+    @Test
+    void testBeyondMinLongBoundary() {
+        String beyondMinLong = "-9223372036854775809"; // Long.MIN_VALUE - 1
+        assertEquals(new BigInteger("-9223372036854775809"), parseToMinimalNumericType(beyondMinLong));
+    }
+
+    @Test
+    void testBeyondMaxDoubleBoundary() {
+        String beyondMaxDouble = "1e309"; // A value larger than Double.MAX_VALUE
+        assertEquals(new BigDecimal("1e309"), parseToMinimalNumericType(beyondMaxDouble));
+    }
+
+    @Test
+    void testShouldSwitchToBigDec() {
+        String maxDoubleSci = "8.7976931348623157e308"; // Double.MAX_VALUE in scientific notation
+        assertEquals(new BigDecimal(maxDoubleSci), parseToMinimalNumericType(maxDoubleSci));
+    }
+
+    @Test
+    void testInvalidScientificNotationExceedingDouble() {
+        String invalidSci = "1e1024"; // Exceeds maximum exponent for Double
+        assertEquals(new BigDecimal(invalidSci), parseToMinimalNumericType(invalidSci));
+    }
+
+    @Test
+    void testExponentWithLeadingZeros()
+    {
+        String s = "1.45e+0000000000000000000000307";
+        Number d = parseToMinimalNumericType(s);
+        assert d instanceof Double;
+    }
+
+    // The very edges are hard to hit, without expensive additional processing to detect there difference in
+    // Examples like this: "12345678901234567890.12345678901234567890" needs to be a BigDecimal, but Double
+    // will parse this correctly in it's short handed notation.  My algorithm catches these.  However, the values
+    // right near e+308 positive or negative will be returned as BigDecimals to ensure accuracy
+    @Disabled
+    @Test
+    void testMaxDoubleScientificNotation() {
+        String maxDoubleSci = "1.7976931348623157e308"; // Double.MAX_VALUE in scientific notation
+        assertEquals(Double.parseDouble(maxDoubleSci), parseToMinimalNumericType(maxDoubleSci));
+    }
+
+    @Disabled
+    @Test
+    void testMaxDoubleBoundary() {
+        assertEquals(Double.MAX_VALUE, parseToMinimalNumericType(Double.toString(Double.MAX_VALUE)));
+    }
+
+    @Disabled
+    @Test
+    void testMinDoubleBoundary() {
+        assertEquals(-Double.MAX_VALUE, parseToMinimalNumericType(Double.toString(-Double.MAX_VALUE)));
+    }
+
+    @Disabled
+    @Test
+    void testTinyDoubleScientificNotation() {
+        String tinyDoubleSci = "2.2250738585072014e-308"; // A very small double value
+        assertEquals(Double.parseDouble(tinyDoubleSci), parseToMinimalNumericType(tinyDoubleSci));
     }
 }

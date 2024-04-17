@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -79,7 +80,7 @@ public final class Converter {
     private static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
     private static final Map<Class<?>, Set<ClassLevel>> cacheParentTypes = new ConcurrentHashMap<>();
-    private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> CONVERSION_DB = new ConcurrentHashMap<>(860, .8f);  // =~680/0.8
+    private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> CONVERSION_DB = new HashMap<>(860, .8f);  // =~680/0.8
     private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private final ConverterOptions options;
 

@@ -72,7 +72,7 @@ public interface ConverterOptions {
     default Character falseChar() { return CommonValues.CHARACTER_ZERO; }
 
     /**
-     * Overrides for converter conversions..
+     * Overrides for converter conversions.
      * @return The Map of overrides.
      */
     default Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> getConverterOverrides() { return new HashMap<>(); }

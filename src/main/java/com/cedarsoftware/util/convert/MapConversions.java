@@ -153,6 +153,14 @@ final class MapConversions {
         return fromMap(from, converter, String.class);
     }
 
+    static StringBuffer toStringBuffer(Object from, Converter converter) {
+        return fromMap(from, converter, StringBuffer.class);
+    }
+
+    static StringBuilder toStringBuilder(Object from, Converter converter) {
+        return fromMap(from, converter, StringBuilder.class);
+    }
+
     static Character toCharacter(Object from, Converter converter) {
         return fromMap(from, converter, char.class);
     }

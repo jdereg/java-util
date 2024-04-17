@@ -75,16 +75,13 @@ import com.cedarsoftware.util.ClassUtilities;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-
 public final class Converter {
     private static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
-
-    private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> factory;
-    private final ConverterOptions options;
-
     private static final Map<Class<?>, Set<ClassLevel>> cacheParentTypes = new ConcurrentHashMap<>();
-    private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> CONVERSION_DB = new ConcurrentHashMap<>(500, .8f);
+    private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> CONVERSION_DB = new ConcurrentHashMap<>(860, .8f);  // =~680/0.8
+    private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> USER_DB = new ConcurrentHashMap<>();
+    private final ConverterOptions options;
 
     // Create a Map.Entry (pair) of source class to target class.
     static Map.Entry<Class<?>, Class<?>> pair(Class<?> source, Class<?> target) {
@@ -758,6 +755,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character[].class, StringBuffer.class), CharacterArrayConversions::toStringBuffer);
         CONVERSION_DB.put(pair(char[].class, StringBuffer.class), CharArrayConversions::toStringBuffer);
         CONVERSION_DB.put(pair(byte[].class, StringBuffer.class), ByteArrayConversions::toStringBuffer);
+        CONVERSION_DB.put(pair(Map.class, StringBuffer.class), MapConversions::toStringBuffer);
 
         // toStringBuilder
         CONVERSION_DB.put(pair(Void.class, StringBuilder.class), VoidConversions::toNull);
@@ -769,6 +767,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character[].class, StringBuilder.class), CharacterArrayConversions::toStringBuilder);
         CONVERSION_DB.put(pair(char[].class, StringBuilder.class), CharArrayConversions::toStringBuilder);
         CONVERSION_DB.put(pair(byte[].class, StringBuilder.class), ByteArrayConversions::toStringBuilder);
+        CONVERSION_DB.put(pair(Map.class, StringBuilder.class), MapConversions::toStringBuilder);
 
         // toByteArray
         CONVERSION_DB.put(pair(Void.class, byte[].class), VoidConversions::toNull);
@@ -881,8 +880,7 @@ public final class Converter {
 
     public Converter(ConverterOptions options) {
         this.options = options;
-        this.factory = new ConcurrentHashMap<>(CONVERSION_DB);
-        this.factory.putAll(this.options.getConverterOverrides());
+        USER_DB.putAll(this.options.getConverterOverrides());
     }
 
     /**
@@ -929,8 +927,14 @@ public final class Converter {
             }
         }
 
-        // Direct Mapping
-        Convert<?> converter = factory.get(pair(sourceType, toType));
+        // Check user added conversions (allows overriding factory conversions)
+        Convert<?> converter = USER_DB.get(pair(sourceType, toType));
+        if (converter != null && converter != UNSUPPORTED) {
+            return (T) converter.convert(from, this);
+        }
+
+        // Check factory conversion database
+        converter = CONVERSION_DB.get(pair(sourceType, toType));
         if (converter != null && converter != UNSUPPORTED) {
             return (T) converter.convert(from, this);
         }
@@ -959,15 +963,24 @@ public final class Converter {
 
         Class<?> sourceClass = sourceType;
         Class<?> targetClass = toType;
+        Convert<?> converter = null;
 
         for (ClassLevel toClassLevel : targetTypes) {
             sourceClass = null;
             targetClass = null;
 
             for (ClassLevel fromClassLevel : sourceTypes) {
-                if (factory.containsKey(pair(fromClassLevel.clazz, toClassLevel.clazz))) {
+                // Check USER_DB first, to ensure that user added conversions override factory conversions.
+                if (USER_DB.containsKey(pair(fromClassLevel.clazz, toClassLevel.clazz))) {
                     sourceClass = fromClassLevel.clazz;
                     targetClass = toClassLevel.clazz;
+                    converter = USER_DB.get(pair(sourceClass, targetClass));
+                    break;
+                }
+                if (CONVERSION_DB.containsKey(pair(fromClassLevel.clazz, toClassLevel.clazz))) {
+                    sourceClass = fromClassLevel.clazz;
+                    targetClass = toClassLevel.clazz;
+                    converter = CONVERSION_DB.get(pair(sourceClass, targetClass));
                     break;
                 }
             }
@@ -977,7 +990,6 @@ public final class Converter {
             }
         }
 
-        Convert<?> converter = factory.get(pair(sourceClass, targetClass));
         return converter;
     }
 
@@ -1064,7 +1076,12 @@ public final class Converter {
     boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
         source =  ClassUtilities.toPrimitiveWrapperClass(source);
         target =  ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> method = factory.get(pair(source, target));
+        Convert<?> method = USER_DB.get(pair(source, target));
+        if (method != null && method != UNSUPPORTED) {
+            return true;
+        }
+
+        method = CONVERSION_DB.get(pair(source, target));
         return method != null && method != UNSUPPORTED;
     }
 
@@ -1078,7 +1095,12 @@ public final class Converter {
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
         source =  ClassUtilities.toPrimitiveWrapperClass(source);
         target =  ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> method = factory.get(pair(source, target));
+        Convert<?> method = USER_DB.get(pair(source, target));
+        if (method != null && method != UNSUPPORTED) {
+            return true;
+        }
+
+        method = CONVERSION_DB.get(pair(source, target));
         if (method != null && method != UNSUPPORTED) {
             return true;
         }
@@ -1093,14 +1115,18 @@ public final class Converter {
      */
     public Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
         Map<Class<?>, Set<Class<?>>> toFrom = new TreeMap<>((c1, c2) -> c1.getName().compareToIgnoreCase(c2.getName()));
+        addSupportedConversion(CONVERSION_DB, toFrom);
+        addSupportedConversion(USER_DB, toFrom);
+        return toFrom;
+    }
 
-        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : factory.entrySet()) {
+    private static void addSupportedConversion(Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> db, Map<Class<?>, Set<Class<?>>> toFrom) {
+        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : db.entrySet()) {
             if (entry.getValue() != UNSUPPORTED) {
                 Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
                 toFrom.computeIfAbsent(pair.getKey(), k -> new TreeSet<>((c1, c2) -> c1.getName().compareToIgnoreCase(c2.getName()))).add(pair.getValue());
             }
         }
-        return toFrom;
     }
 
     /**
@@ -1109,14 +1135,18 @@ public final class Converter {
      */
     public Map<String, Set<String>> getSupportedConversions() {
         Map<String, Set<String>> toFrom = new TreeMap<>(String::compareToIgnoreCase);
+        addSupportedConversionName(CONVERSION_DB, toFrom);
+        addSupportedConversionName(USER_DB, toFrom);
+        return toFrom;
+    }
 
-        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : factory.entrySet()) {
+    private static void addSupportedConversionName(Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> db, Map<String, Set<String>> toFrom) {
+        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : db.entrySet()) {
             if (entry.getValue() != UNSUPPORTED) {
                 Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
                 toFrom.computeIfAbsent(getShortName(pair.getKey()), k -> new TreeSet<>(String::compareToIgnoreCase)).add(getShortName(pair.getValue()));
             }
         }
-        return toFrom;
     }
 
     /**
@@ -1130,7 +1160,7 @@ public final class Converter {
     public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
-        return factory.put(pair(source, target), conversionFunction);
+        return USER_DB.put(pair(source, target), conversionFunction);
     }
 
     /**

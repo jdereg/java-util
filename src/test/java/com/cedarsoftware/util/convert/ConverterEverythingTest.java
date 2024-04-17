@@ -794,9 +794,6 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(String.class, String.class), new Object[][]{
                 {"same", "same"},
         });
-        TEST_DB.put(pair(String.class, StringBuffer.class), new Object[][]{
-                {"same", new StringBuffer("same")},
-        });
     }
 
     /**
@@ -3604,6 +3601,13 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Character[].class, StringBuffer.class), new Object[][]{
                 {new Character[] { 'H', 'i' }, new StringBuffer("Hi"), true},
         });
+        TEST_DB.put(pair(String.class, StringBuffer.class), new Object[][]{
+                {"same", new StringBuffer("same")},
+        });
+        TEST_DB.put(pair(Map.class, StringBuffer.class), new Object[][]{
+                {mapOf("_v", "alpha"), new StringBuffer("alpha")},
+                {mapOf("value", "beta"), new StringBuffer("beta")},
+        });
     }
 
     /**
@@ -3624,6 +3628,10 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(StringBuffer.class, StringBuilder.class), new Object[][]{
                 {new StringBuffer("Poker"), new StringBuilder("Poker"), true},
+        });
+        TEST_DB.put(pair(Map.class, StringBuilder.class), new Object[][]{
+                {mapOf("_v", "alpha"), new StringBuilder("alpha")},
+                {mapOf("value", "beta"), new StringBuilder("beta")},
         });
     }
 

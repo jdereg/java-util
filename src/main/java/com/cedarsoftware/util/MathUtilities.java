@@ -257,8 +257,9 @@ public final class MathUtilities
         boolean hasExponent = false;
         int mantissaSize = 0;
         StringBuilder exponentValue = new StringBuilder();
+        int len = numStr.length();
 
-        for (int i = 0; i < numStr.length(); i++) {
+        for (int i = 0; i < len; i++) {
             char c = numStr.charAt(i);
             if (c == '.') {
                 hasDecimalPoint = true;

@@ -1,4 +1,8 @@
 ### Revision History
+* 2.6.0
+  * Performance improvement: `Converter` instance creation is faster due to the code no longer copying the static default table.  Overrides are kept in separate variable.
+  * New capability added: `MathUtilities.parseToMinimalNumericType()` which will parse a String number into a Long, BigInteger, Double, or BigDecimal, choosing the "smallest" datatype to represent the number without loss of precision.
+  * New conversions added to convert from `Map` to `StringBuilder` and `StringBuffer.`
 * 2.5.0
   * pom.xml file updated to support both OSGi Bundle and JPMS Modules. 
   * module-info.class resides in the root of the .jar but it is not referenced.

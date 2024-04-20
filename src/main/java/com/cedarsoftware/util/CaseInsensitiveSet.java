@@ -42,7 +42,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public CaseInsensitiveSet(Collection<? extends E> collection)
     {
-        if (collection instanceof ConcurrentSkipListSet)
+        if (collection instanceof ConcurrentSkipListSet || collection instanceof ConcurrentHashSet)
         {
             map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
         }

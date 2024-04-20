@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -33,11 +32,11 @@ public class LRUCache<K, V> implements Map<K, V> {
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public LRUCache(int capacity) {
-        this.cache = Collections.synchronizedMap(new LinkedHashMap<K, V>(capacity, 0.75f, true) {
+        cache = new LinkedHashMap<K, V>(capacity, 0.75f, true) {
             protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
                 return size() > capacity;
             }
-        });
+        };
     }
 
     // Implement Map interface

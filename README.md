@@ -4,18 +4,29 @@ java-util
 [![Maven Central](https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util)](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware)
 [![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
 
-Helpful utilities that are thoroughly tested (> 98% code coverage via JUnit tests).
+Helpful utilities that are thoroughly tested.
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `250K.`
-Works with`JDK 1.8`through`JDK 21`.
+The`.jar`file is `260K` and works with`JDK 1.8`through`JDK 21`.
 The '.jar' file classes are version 52 (`JDK 1.8`).
+## Compatibility
+
+### JPMS (Java Platform Module System)
+
+This library is fully compatible with JPMS, commonly known as Java Modules. It includes a `module-info.class` file that 
+specifies module dependencies and exports. 
+
+### OSGi
+
+This library also supports OSGi environments. It comes with pre-configured OSGi metadata in the `MANIFEST.MF` file, ensuring easy integration into any OSGi-based application. 
+
+Both of these features ensure that our library can be seamlessly integrated into modular Java applications, providing robust dependency management and encapsulation.
 
 ---
 To include in your project:
 ##### Gradle
 ```
-implementation 'com.cedarsoftware:java-util:2.6.0'
+implementation 'com.cedarsoftware:java-util:2.7.0'
 ```
 
 ##### Maven
@@ -23,26 +34,10 @@ implementation 'com.cedarsoftware:java-util:2.6.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.6.0</version>
+  <version>2.7.0</version>
 </dependency>
 ```
 ---
-
-Since Java 1.5, you can statically import classes.  Using this technique with many of the classes below, it makes their methods directly accessible in your source code, keeping your source code smaller and easier to read.  For example:
-
-```
-import static com.cedarsoftware.util.Converter.*;
-```
-will permit you to write:
-```
-...
-Calendar cal = convertToCalendar("2019/11/17");
-Date date = convertToDate("November 17th, 2019 4:45pm");
-TimeStamp stamp = convertToTimeStamp(cal);
-AtomicLong atomicLong = convertToAtomicLong("123128300")
-String s = convertToString(atomicLong)
-...
-```
 
 Included in java-util:
 * **ArrayUtilities** - Useful utilities for working with Java's arrays `[]`
@@ -55,7 +50,8 @@ same class.
   * **CompactLinkedSet** - Small memory footprint `Set` that expands to a `LinkedHashSet` when `size() > compactSize()`.
   * **CompactCILinkedSet** - Small memory footprint `Set` that expands to a case-insensitive `LinkedHashSet` when `size() > compactSize()`.
   * **CompactCIHashSet** - Small memory footprint `Set` that expands to a case-insensitive `HashSet` when `size() > compactSize()`.
-  * **CaseInsensitiveSet** - `Set` that ignores case for `Strings` contained within.  
+  * **CaseInsensitiveSet** - `Set` that ignores case for `Strings` contained within.
+  * **ConcurrentHashSet** - A thread-safe `Set` which does not require each element to be `Comparable` like `ConcurrentSkipListSet` which is a `NavigableSet,` which is a `SortedSet.`
 * **Maps**  
   * **CompactMap** - Small memory footprint `Map` that expands to a `HashMap` when `size() > compactSize()` entries.
   * **CompactLinkedMap** - Small memory footprint `Map` that expands to a `LinkedHashMap` when `size() > compactSize()` entries.
@@ -64,6 +60,8 @@ same class.
   * **CaseInsensitiveMap** - `Map` that ignores case when `Strings` are used as keys.
   * **LRUCache** - Thread safe LRUCache that implements the full Map API and supports a maximum capacity.  Once max capacity is reached, placing another item in the cache will cause the eviction of the item that was the least recently used (LRU).
   * **TrackingMap** - `Map` class that tracks when the keys are accessed via `.get()` or `.containsKey()`. Provided by @seankellner
+* **Lists**
+  * **ConcurrentList** - Provides a thread-safe `List` with all API support except for `listIterator(),` however, it implements `iterator()` which returns an iterator to a snapshot copy of the `List.`  
 * **Converter** - Convert from one instance to another.  For example, `convert("45.3", BigDecimal.class)` will convert the `String` to a `BigDecimal`.  Works for all primitives, primitive wrappers, `Date`, `java.sql.Date`, `String`, `BigDecimal`, `BigInteger`, `AtomicBoolean`, `AtomicLong`, etc.  The method is very generous on what it allows to be converted.  For example, a `Calendar` instance can be input for a `Date` or `Long`. Call the method `Converter.getSupportedConversions()` or `Converter.allSupportedConversions()` to get a list of all source/target conversions.  Currently, there are 680+ conversions. 
 * **DateUtilities** - Robust date String parser that handles date/time, date, time, time/date, string name months or numeric months, skips comma, etc. English month names only (plus common month name abbreviations), time with/without seconds or milliseconds, `y/m/d` and `m/d/y` ordering as well.
 * **DeepEquals** - Compare two object graphs and return 'true' if they are equivalent, 'false' otherwise.  This will handle cycles in the graph, and will call an `equals()` method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.  Has options to turn on/off using `.equals()` methods that may exist on classes.

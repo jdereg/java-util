@@ -1,4 +1,8 @@
 ### Revision History
+* 2.7.0
+  * Added `ConcurrentHashList,` which implements a thread-safe `List.` Provides all API support except for `listIterator(),` however, it implements `iterator()` which returns an iterator to a snapshot copy of the `List.` 
+  * Added `ConcurrentHashSet,` a true `Set` which is a bit easier to use than `ConcurrentSkipListSet,` which as a `NaviableSet` and `SortedSet,` requires each element to be `Comparable.`
+  * Performance improvement: On `LRUCache,` removed unnecessary `Collections.SynchronizedMap` surrounding the internal `LinkedHashMap` as the concurrent protection offered by `ReentrantReadWriteLock` is all that is needed.
 * 2.6.0
   * Performance improvement: `Converter` instance creation is faster due to the code no longer copying the static default table.  Overrides are kept in separate variable.
   * New capability added: `MathUtilities.parseToMinimalNumericType()` which will parse a String number into a Long, BigInteger, Double, or BigDecimal, choosing the "smallest" datatype to represent the number without loss of precision.

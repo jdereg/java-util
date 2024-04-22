@@ -26,7 +26,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 To include in your project:
 ##### Gradle
 ```
-implementation 'com.cedarsoftware:java-util:2.7.0'
+implementation 'com.cedarsoftware:java-util:2.8.0'
 ```
 
 ##### Maven
@@ -34,7 +34,7 @@ implementation 'com.cedarsoftware:java-util:2.7.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.7.0</version>
+  <version>2.8.0</version>
 </dependency>
 ```
 ---

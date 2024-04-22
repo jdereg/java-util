@@ -658,7 +658,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(URL.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(URI.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(TimeZone.class, String.class), TimeZoneConversions::toString);
-        
+        CONVERSION_DB.put(pair(StringBuilder.class, String.class), StringBuilderConversions::toString);
+        CONVERSION_DB.put(pair(StringBuffer.class, String.class), StringBufferConversions::toString);
+
         // URL conversions
         CONVERSION_DB.put(pair(Void.class, URL.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(URL.class, URL.class), Converter::identity);

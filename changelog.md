@@ -1,4 +1,7 @@
 ### Revision History
+* 2.8.0
+  * Added `ClassUtilities.doesOneWrapTheOther()` API so that it is easy to test if one class is wrapping the other.
+  * Added `StringBuilder` and `StringBuffer`  to `Strings` to the `Converter.` Eliminates special cases for `.toString()` calls where generalized `convert(src, type)` is being used.
 * 2.7.0
   * Added `ConcurrentHashList,` which implements a thread-safe `List.` Provides all API support except for `listIterator(),` however, it implements `iterator()` which returns an iterator to a snapshot copy of the `List.` 
   * Added `ConcurrentHashSet,` a true `Set` which is a bit easier to use than `ConcurrentSkipListSet,` which as a `NaviableSet` and `SortedSet,` requires each element to be `Comparable.`

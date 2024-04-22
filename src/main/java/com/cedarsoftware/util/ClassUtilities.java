@@ -40,9 +40,9 @@ import java.util.Set;
 public class ClassUtilities
 {
     private static final Set<Class<?>> prims = new HashSet<>();
-
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<String, Class<?>> nameToClass = new HashMap<>();
+    private static final Map<Class<?>, Class<?>> wrapperMap = new HashMap<>();
 
     static
     {
@@ -76,6 +76,23 @@ public class ClassUtilities
         primitiveToWrapper.put(byte.class, Byte.class);
         primitiveToWrapper.put(short.class, Short.class);
         primitiveToWrapper.put(void.class, Void.class);
+
+        wrapperMap.put(int.class, Integer.class);
+        wrapperMap.put(Integer.class, int.class);
+        wrapperMap.put(char.class, Character.class);
+        wrapperMap.put(Character.class, char.class);
+        wrapperMap.put(byte.class, Byte.class);
+        wrapperMap.put(Byte.class, byte.class);
+        wrapperMap.put(short.class, Short.class);
+        wrapperMap.put(Short.class, short.class);
+        wrapperMap.put(long.class, Long.class);
+        wrapperMap.put(Long.class, long.class);
+        wrapperMap.put(float.class, Float.class);
+        wrapperMap.put(Float.class, float.class);
+        wrapperMap.put(double.class, Double.class);
+        wrapperMap.put(Double.class, double.class);
+        wrapperMap.put(boolean.class, Boolean.class);
+        wrapperMap.put(Boolean.class, boolean.class);
     }
 
     /**
@@ -177,7 +194,6 @@ public class ClassUtilities
             return -1;
         }
     }
-
 
     /**
      * Given the passed in String class name, return the named JVM class.
@@ -333,5 +349,7 @@ public class ClassUtilities
         return c;
     }
 
-
+    public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y) {
+        return wrapperMap.get(x) == y;
+    }
 }

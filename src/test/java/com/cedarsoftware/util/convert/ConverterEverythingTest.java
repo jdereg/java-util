@@ -794,6 +794,12 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(String.class, String.class), new Object[][]{
                 {"same", "same"},
         });
+        TEST_DB.put(pair(StringBuffer.class, String.class), new Object[][]{
+                {new StringBuffer("buffy"), "buffy"},
+        });
+        TEST_DB.put(pair(StringBuilder.class, String.class), new Object[][]{
+                {new StringBuilder("buildy"), "buildy"},
+        });
     }
 
     /**

@@ -9,6 +9,11 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
+ * ConcurrentList provides a List or List wrapper that is thread-safe, usable in highly concurrent
+ * environments. It provides a no-arg constructor that will directly return a ConcurrentList that is
+ * thread-safe.  It has a constructor that takes a List argument, which will wrap that List and make it
+ * thread-safe (no elements are duplicated).
+ * <br><br>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -26,8 +31,27 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  *         limitations under the License.
  */
 public class ConcurrentList<E> implements List<E> {
-    private final List<E> list = new ArrayList<>();
+    private final List<E> list;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    /**
+     * Use this no-arg constructor to create a ConcurrentList.
+     */
+    public ConcurrentList() {
+        this.list = new ArrayList<>();
+    }
+    
+    /**
+     * Use this constructor to wrap a List (any kind of List) and make it a ConcurrentList.
+     * No duplicate of the List is created and the original list is operated on directly.
+     * @param list List instance to protect.
+     */
+    public ConcurrentList(List<E> list) {
+        if (list == null) {
+            throw new IllegalArgumentException("list cannot be null");
+        }
+        this.list = list;
+    }
 
     public int size() {
         lock.readLock().lock();
@@ -42,6 +66,24 @@ public class ConcurrentList<E> implements List<E> {
         lock.readLock().lock();
         try {
             return list.isEmpty();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public boolean equals(Object obj) {
+        lock.readLock().lock();
+        try {
+            return list.equals(obj);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public int hashCode() {
+        lock.readLock().lock();
+        try {
+            return list.hashCode();
         } finally {
             lock.readLock().unlock();
         }
@@ -209,20 +251,90 @@ public class ConcurrentList<E> implements List<E> {
         }
     }
 
+    public List<E> subList(int fromIndex, int toIndex) { return new ConcurrentList<>(list.subList(fromIndex, toIndex)); }
+
     public ListIterator<E> listIterator() {
-        throw new UnsupportedOperationException("ListIterator is not supported with thread-safe iteration.");
+        return createLockHonoringListIterator(list.listIterator());
     }
 
     public ListIterator<E> listIterator(int index) {
-        throw new UnsupportedOperationException("ListIterator is not supported with thread-safe iteration.");
+        return createLockHonoringListIterator(list.listIterator(index));
     }
 
-    public List<E> subList(int fromIndex, int toIndex) {
-        lock.readLock().lock();
-        try {
-            return new ArrayList<>(list.subList(fromIndex, toIndex));  // Return a snapshot of the sublist
-        } finally {
-            lock.readLock().unlock();
-        }
+    private ListIterator<E> createLockHonoringListIterator(ListIterator<E> iterator) {
+        return new ListIterator<E>() {
+            public boolean hasNext() {
+                lock.readLock().lock();
+                try {
+                    return iterator.hasNext();
+                } finally {
+                    lock.readLock().unlock();
+                }
+            }
+            public E next() {
+                lock.readLock().lock();
+                try {
+                    return iterator.next();
+                } finally {
+                    lock.readLock().unlock();
+                }
+            }
+            public boolean hasPrevious() {
+                lock.readLock().lock();
+                try {
+                    return iterator.hasPrevious();
+                } finally {
+                    lock.readLock().unlock();
+                }
+            }
+            public E previous() {
+                lock.readLock().lock();
+                try {
+                    return iterator.previous();
+                } finally {
+                    lock.readLock().unlock();
+                }
+            }
+            public int nextIndex() {
+                lock.readLock().lock();
+                try {
+                    return iterator.nextIndex();
+                } finally {
+                    lock.readLock().unlock();
+                }
+            }
+            public int previousIndex() {
+                lock.readLock().lock();
+                try {
+                    return iterator.previousIndex();
+                } finally {
+                    lock.readLock().unlock();
+                }
+            }
+            public void remove() {
+                lock.writeLock().lock();
+                try {
+                    iterator.remove();
+                } finally {
+                    lock.writeLock().unlock();
+                }
+            }
+            public void set(E e) {
+                lock.writeLock().lock();
+                try {
+                    iterator.set(e);
+                } finally {
+                    lock.writeLock().unlock();
+                }
+            }
+            public void add(E e) {
+                lock.writeLock().lock();
+                try {
+                    iterator.add(e);
+                } finally {
+                    lock.writeLock().unlock();
+                }
+            }
+        };
     }
 }

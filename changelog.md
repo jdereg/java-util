@@ -1,4 +1,11 @@
 ### Revision History
+* 2.9.0
+  * Added `SealableList` which provides a `List` (or `List` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the list and ensures that all views on the `List` respect the sealed-ness.  One master supplier can control the immutability of many collections.
+  * Added `SealableSet` similar to SealableList but with `Set` nature.
+  * Added `SealableMap` similar to SealableList but with `Map` nature.
+  * Added `SealableNavigableSet` similar to SealableList but with `NavigableSet` nature.
+  * Added `SealableNavigableMap` similar to SealableList but with `NavigableMap` nature.
+  * Updated `ConcurrentList` to support wrapping any `List` and making it thread-safe, including all view APIs: `iterator(),` `listIterator(),` `listIterator(index).` The no-arg constructor creates a `ConcurrentList`  ready-to-go. The constructor that takes a `List` parameter constructor wraps the passed in list and makes it thread-safe.
 * 2.8.0
   * Added `ClassUtilities.doesOneWrapTheOther()` API so that it is easy to test if one class is wrapping the other.
   * Added `StringBuilder` and `StringBuffer`  to `Strings` to the `Converter.` Eliminates special cases for `.toString()` calls where generalized `convert(src, type)` is being used.

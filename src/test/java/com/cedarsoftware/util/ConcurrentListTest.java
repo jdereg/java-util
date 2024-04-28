@@ -13,7 +13,6 @@ import static com.cedarsoftware.util.DeepEquals.deepEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConcurrentListTest {
@@ -244,21 +243,5 @@ class ConcurrentListTest {
         // Add multiple elements at end
         list.addAll(7, Arrays.asList(6, 7));
         assert deepEquals(Arrays.asList(-1, 0, 2, 3, 4, 1, 5, 6, 7), list);
-    }
-
-    @Test
-    void testListIeratorBlows() {
-        List<Integer> list = new ConcurrentList<>();
-        list.addAll(Arrays.asList(1, 5));
-
-        assertThrows(UnsupportedOperationException.class, () -> list.listIterator());
-    }
-
-    @Test
-    void testListIerator2Blows() {
-        List<Integer> list = new ConcurrentList<>();
-        list.addAll(Arrays.asList(1, 5));
-
-        assertThrows(UnsupportedOperationException.class, () -> list.listIterator(1));
     }
 }

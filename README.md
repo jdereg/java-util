@@ -25,7 +25,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 To include in your project:
 ##### Gradle
 ```
-implementation 'com.cedarsoftware:java-util:2.8.0'
+implementation 'com.cedarsoftware:java-util:2.9.0'
 ```
 
 ##### Maven
@@ -33,7 +33,7 @@ implementation 'com.cedarsoftware:java-util:2.8.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.8.0</version>
+  <version>2.9.0</version>
 </dependency>
 ```
 ---
@@ -51,6 +51,8 @@ same class.
   * **CompactCIHashSet** - Small memory footprint `Set` that expands to a case-insensitive `HashSet` when `size() > compactSize()`.
   * **CaseInsensitiveSet** - `Set` that ignores case for `Strings` contained within.
   * **ConcurrentHashSet** - A thread-safe `Set` which does not require each element to be `Comparable` like `ConcurrentSkipListSet` which is a `NavigableSet,` which is a `SortedSet.`
+  * **SealableSet** - Provides a `Set` (or `Set` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the `Set` and ensures that all views on the `Set` respect the sealed-ness. One master supplier can control the immutability of many collections.
+  * **SealableNavigableSet** - Provides a `NavigableSet` (or `NavigableSet` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the `NavigableSet` and ensures that all views on the `NavigableSet` respect the sealed-ness. One master supplier can control the immutability of many collections.
 * **Maps**  
   * **CompactMap** - Small memory footprint `Map` that expands to a `HashMap` when `size() > compactSize()` entries.
   * **CompactLinkedMap** - Small memory footprint `Map` that expands to a `LinkedHashMap` when `size() > compactSize()` entries.
@@ -59,8 +61,12 @@ same class.
   * **CaseInsensitiveMap** - `Map` that ignores case when `Strings` are used as keys.
   * **LRUCache** - Thread safe LRUCache that implements the full Map API and supports a maximum capacity.  Once max capacity is reached, placing another item in the cache will cause the eviction of the item that was the least recently used (LRU).
   * **TrackingMap** - `Map` class that tracks when the keys are accessed via `.get()` or `.containsKey()`. Provided by @seankellner
+  * **SealableMap** - Provides a `Map` (or `Map` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the `Map` and ensures that all views on the `Map` respect the sealed-ness.  One master supplier can control the immutability of many collections.
+  * **SealableNavigbableMap** - Provides a `NavigableMap` (or `NavigableMap` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the `NavigableMap` and ensures that all views on the `NavigableMap` respect the sealed-ness.  One master supplier can control the immutability of many collections.
 * **Lists**
-  * **ConcurrentList** - Provides a thread-safe `List` with all API support except for `listIterator(),` however, it implements `iterator()` which returns an iterator to a snapshot copy of the `List.`  
+  * **ConcurrentList** - Provides a thread-safe `List` (or `List` wrapper).  Use the no-arg constructor for a thread-safe `List,` use the constructor that takes a `List` to wrap another `List` instance and make it thread-safe (no elements are copied).
+  * **SealableList** - Provides a `List` (or `List` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the `List` and ensures that all views on the `List` respect the sealed-ness.  One master supplier can control the immutability of many collections.
+
 * **Converter** - Convert from one instance to another.  For example, `convert("45.3", BigDecimal.class)` will convert the `String` to a `BigDecimal`.  Works for all primitives, primitive wrappers, `Date`, `java.sql.Date`, `String`, `BigDecimal`, `BigInteger`, `AtomicBoolean`, `AtomicLong`, etc.  The method is very generous on what it allows to be converted.  For example, a `Calendar` instance can be input for a `Date` or `Long`. Call the method `Converter.getSupportedConversions()` or `Converter.allSupportedConversions()` to get a list of all source/target conversions.  Currently, there are 680+ conversions. 
 * **DateUtilities** - Robust date String parser that handles date/time, date, time, time/date, string name months or numeric months, skips comma, etc. English month names only (plus common month name abbreviations), time with/without seconds or milliseconds, `y/m/d` and `m/d/y` ordering as well.
 * **DeepEquals** - Compare two object graphs and return 'true' if they are equivalent, 'false' otherwise.  This will handle cycles in the graph, and will call an `equals()` method on an object if it has one, otherwise it will do a field-by-field equivalency check for non-transient fields.  Has options to turn on/off using `.equals()` methods that may exist on classes.

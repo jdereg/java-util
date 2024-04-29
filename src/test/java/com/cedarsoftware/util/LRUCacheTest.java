@@ -1,14 +1,16 @@
 package com.cedarsoftware.util;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
+import java.security.SecureRandom;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -145,22 +147,45 @@ public class LRUCacheTest {
     @Test
     void testConcurrency() throws InterruptedException {
         ExecutorService service = Executors.newFixedThreadPool(3);
+        lruCache = new LRUCache<>(100000);
 
         // Perform a mix of put and get operations from multiple threads
-        for (int i = 0; i < 10000; i++) {
-            final int key = i % 3;  // Keys will be 0, 1, 2
-            final String value = "Value" + i;
+        int max = 10000;
+        int attempts = 0;
+        Random random = new SecureRandom();
+        while (attempts++ < max) {
+            final int key = random.nextInt(max);
+            final String value = "V" + key;
 
             service.submit(() -> lruCache.put(key, value));
             service.submit(() -> lruCache.get(key));
+            service.submit(() -> lruCache.size());
+            service.submit(() -> {
+                lruCache.keySet().remove(random.nextInt(max));
+            });
+            service.submit(() -> {
+                lruCache.values().remove("V" + random.nextInt(max));
+            });
+            final int attemptsCopy = attempts;
+            service.submit(() -> {
+                Iterator i = lruCache.entrySet().iterator();
+                int walk = random.nextInt(attemptsCopy);
+                while (i.hasNext() && walk-- > 0) {
+                    i.next();
+                }
+                int chunk = 10;
+                while (i.hasNext() && chunk-- > 0) {
+                    i.remove();
+                    i.next();
+                }
+            });
+            service.submit(() -> lruCache.remove(random.nextInt(max)));
         }
 
         service.shutdown();
         assertTrue(service.awaitTermination(1, TimeUnit.MINUTES));
-
-        // Assert the final state of the cache
-        assertEquals(3, lruCache.size());
-        Set<Integer> keys = lruCache.keySet();
-        assertTrue(keys.contains(0) || keys.contains(1) || keys.contains(2));
+//        System.out.println("lruCache = " + lruCache);
+//        System.out.println("lruCache = " + lruCache.size());
+//        System.out.println("attempts =" + attempts);
     }
 }

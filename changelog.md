@@ -6,12 +6,13 @@
   * Added `SealableNavigableSet` similar to SealableList but with `NavigableSet` nature.
   * Added `SealableNavigableMap` similar to SealableList but with `NavigableMap` nature.
   * Updated `ConcurrentList` to support wrapping any `List` and making it thread-safe, including all view APIs: `iterator(),` `listIterator(),` `listIterator(index).` The no-arg constructor creates a `ConcurrentList`  ready-to-go. The constructor that takes a `List` parameter constructor wraps the passed in list and makes it thread-safe.
+  * Renamed `ConcurrentHashSet` to `ConcurrentSet.`
 * 2.8.0
   * Added `ClassUtilities.doesOneWrapTheOther()` API so that it is easy to test if one class is wrapping the other.
   * Added `StringBuilder` and `StringBuffer`  to `Strings` to the `Converter.` Eliminates special cases for `.toString()` calls where generalized `convert(src, type)` is being used.
 * 2.7.0
-  * Added `ConcurrentHashList,` which implements a thread-safe `List.` Provides all API support except for `listIterator(),` however, it implements `iterator()` which returns an iterator to a snapshot copy of the `List.` 
-  * Added `ConcurrentHashSet,` a true `Set` which is a bit easier to use than `ConcurrentSkipListSet,` which as a `NaviableSet` and `SortedSet,` requires each element to be `Comparable.`
+  * Added `ConcurrentList,` which implements a thread-safe `List.` Provides all API support except for `listIterator(),` however, it implements `iterator()` which returns an iterator to a snapshot copy of the `List.` 
+  * Added `ConcurrentHashSet,` a true `Set` which is a bit easier to use than `ConcurrentSkipListSet,` which as a `NavigableSet` and `SortedSet,` requires each element to be `Comparable.`
   * Performance improvement: On `LRUCache,` removed unnecessary `Collections.SynchronizedMap` surrounding the internal `LinkedHashMap` as the concurrent protection offered by `ReentrantReadWriteLock` is all that is needed.
 * 2.6.0
   * Performance improvement: `Converter` instance creation is faster due to the code no longer copying the static default table.  Overrides are kept in separate variable.

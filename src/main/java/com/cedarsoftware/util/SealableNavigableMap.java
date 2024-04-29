@@ -37,7 +37,7 @@ import java.util.function.Supplier;
  */
 public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
     private final NavigableMap<K, V> navMap;
-    private final Supplier<Boolean> sealedSupplier;
+    private final transient Supplier<Boolean> sealedSupplier;
 
     /**
      * Create a SealableNavigableMap. Since a Map is not supplied, this will use a ConcurrentSkipListMap internally.

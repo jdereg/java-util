@@ -32,7 +32,7 @@ import java.util.function.Supplier;
  */
 public class SealableSet<T> implements Set<T> {
     private final Set<T> set;
-    private final Supplier<Boolean> sealedSupplier;
+    private final transient Supplier<Boolean> sealedSupplier;
 
     /**
      * Create a SealableSet. Since a Set is not supplied, this will use a ConcurrentHashMap.newKeySet internally.

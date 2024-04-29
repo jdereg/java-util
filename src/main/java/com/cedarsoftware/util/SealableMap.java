@@ -33,7 +33,7 @@ import java.util.function.Supplier;
  */
 public class SealableMap<K, V> implements Map<K, V> {
     private final Map<K, V> map;
-    private final Supplier<Boolean> sealedSupplier;
+    private final transient Supplier<Boolean> sealedSupplier;
 
     /**
      * Create a SealableMap. Since a Map is not supplied, this will use a ConcurrentHashMap internally. If you

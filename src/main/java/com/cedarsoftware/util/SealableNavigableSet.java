@@ -36,7 +36,7 @@ import java.util.function.Supplier;
  */
 public class SealableNavigableSet<T> implements NavigableSet<T> {
     private final NavigableSet<T> navSet;
-    private final Supplier<Boolean> sealedSupplier;
+    private final transient Supplier<Boolean> sealedSupplier;
 
     /**
      * Create a NavigableSealableSet. Since a NavigableSet is not supplied, this will use a ConcurrentSkipListSet

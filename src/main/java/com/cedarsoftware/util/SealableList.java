@@ -33,7 +33,7 @@ import java.util.function.Supplier;
  */
 public class SealableList<T> implements List<T> {
     private final List<T> list;
-    private final Supplier<Boolean> sealedSupplier;
+    private final transient Supplier<Boolean> sealedSupplier;
 
     /**
      * Create a SealableList. Since no List is being supplied, this will use an ConcurrentList internally. If you

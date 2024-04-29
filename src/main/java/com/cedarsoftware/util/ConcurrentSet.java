@@ -23,8 +23,17 @@ import java.util.concurrent.ConcurrentHashMap;
  *         limitations under the License.
  */
 public class ConcurrentSet<T> implements Set<T> {
-    private final Set<T> set = ConcurrentHashMap.newKeySet();
+    private final Set<T> set;
 
+    public ConcurrentSet() {
+        set = ConcurrentHashMap.newKeySet();
+    }
+
+    public ConcurrentSet(Collection<T> col) {
+        set = ConcurrentHashMap.newKeySet(col.size());
+        set.addAll(col);
+    }
+    
     // Immutable APIs
     public boolean equals(Object other) { return set.equals(other); }
     public int hashCode() { return set.hashCode(); }

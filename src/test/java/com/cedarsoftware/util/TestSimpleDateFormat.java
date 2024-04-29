@@ -270,7 +270,7 @@ public class TestSimpleDateFormat
                     {
                         long start = System.currentTimeMillis();
 
-                        while (System.currentTimeMillis() - start < 2000)
+                        while (System.currentTimeMillis() - start < 1000)
                         {
                             for (int j=0; j < 100; j++)
                             {

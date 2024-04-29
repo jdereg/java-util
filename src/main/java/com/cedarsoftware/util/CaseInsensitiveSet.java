@@ -42,7 +42,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public CaseInsensitiveSet(Collection<? extends E> collection)
     {
-        if (collection instanceof ConcurrentSkipListSet || collection instanceof ConcurrentHashSet)
+        if (collection instanceof ConcurrentSkipListSet || collection instanceof ConcurrentSet)
         {
             map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
         }
@@ -98,7 +98,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
         if (other == this) return true;
         if (!(other instanceof Set)) return false;
 
-        Set that = (Set) other;
+        Set<E> that = (Set<E>) other;
         return that.size()==size() && containsAll(that);
     }
 
@@ -176,7 +176,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
             other.put(o, null);
         }
 
-        Iterator i = map.keySet().iterator();
+        Iterator<?> i = map.keySet().iterator();
         int size = map.size();
         while (i.hasNext())
         {
@@ -204,7 +204,8 @@ public class CaseInsensitiveSet<E> implements Set<E>
         map.clear();
     }
 
-    public Set minus(Iterable removeMe)
+    @Deprecated
+    public Set<E> minus(Iterable<E> removeMe)
     {
         for (Object me : removeMe)
         {
@@ -213,22 +214,25 @@ public class CaseInsensitiveSet<E> implements Set<E>
         return this;
     }
 
-    public Set minus(Object removeMe)
+    @Deprecated
+    public Set<E> minus(E removeMe)
     {
         remove(removeMe);
         return this;
     }
-    
-    public Set plus(Iterable right)
+
+    @Deprecated
+    public Set<E> plus(Iterable<E> right)
     {
-        for (Object item : right)
+        for (E item : right)
         {
-            add((E)item);
+            add(item);
         }
         return this;
     }
 
-    public Set plus(Object right)
+    @Deprecated
+    public Set<E> plus(Object right)
     {
         add((E)right);
         return this;

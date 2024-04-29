@@ -36,7 +36,7 @@ import java.util.function.Supplier;
  *         limitations under the License.
  */
 public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
-    private final NavigableMap<K, V> map;
+    private final NavigableMap<K, V> navMap;
     private final Supplier<Boolean> sealedSupplier;
 
     /**
@@ -47,7 +47,7 @@ public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
      */
     public SealableNavigableMap(Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        this.map = new ConcurrentSkipListMap<>();
+        this.navMap = new ConcurrentSkipListMap<>();
     }
 
     /**
@@ -59,7 +59,7 @@ public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
      */
     public SealableNavigableMap(SortedMap<K, V> map, Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        this.map = new ConcurrentSkipListMap<>(map);
+        this.navMap = new ConcurrentSkipListMap<>(map);
     }
 
     /**
@@ -71,7 +71,7 @@ public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
      */
     public SealableNavigableMap(NavigableMap<K, V> map, Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        this.map = map;
+        this.navMap = map;
     }
 
     private void throwIfSealed() {
@@ -81,50 +81,51 @@ public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
     }
 
     // Immutable APIs
-    public boolean equals(Object o) { return map.equals(o); }
-    public int hashCode() { return map.hashCode(); }
-    public boolean isEmpty() { return map.isEmpty(); }
-    public boolean containsKey(Object key) { return map.containsKey(key); }
-    public boolean containsValue(Object value) { return map.containsValue(value); }
-    public int size() { return map.size(); }
-    public V get(Object key) { return map.get(key); }
-    public Comparator<? super K> comparator() { return map.comparator(); }
-    public K firstKey() { return map.firstKey(); }
-    public K lastKey() { return map.lastKey(); }
-    public Set<K> keySet() { return new SealableSet<>(map.keySet(), sealedSupplier); }
-    public Collection<V> values() { return new SealableList<>(new ArrayList<>(map.values()), sealedSupplier); }
-    public Set<Entry<K, V>> entrySet() { return new SealableSet<>(map.entrySet(), sealedSupplier); }
-    public Map.Entry<K, V> lowerEntry(K key) { return map.lowerEntry(key); }
-    public K lowerKey(K key) { return map.lowerKey(key); }
-    public Map.Entry<K, V> floorEntry(K key) { return map.floorEntry(key); }
-    public K floorKey(K key) { return map.floorKey(key); }
-    public Map.Entry<K, V> ceilingEntry(K key) { return map.ceilingEntry(key); }
-    public K ceilingKey(K key) { return map.ceilingKey(key); }
-    public Map.Entry<K, V> higherEntry(K key) { return map.higherEntry(key); }
-    public K higherKey(K key) { return map.higherKey(key); }
-    public Map.Entry<K, V> firstEntry() { return map.firstEntry(); }
-    public Map.Entry<K, V> lastEntry() { return map.lastEntry(); }
-    public NavigableMap<K, V> descendingMap() { return new SealableNavigableMap<>(map.descendingMap(), sealedSupplier); }
-    public NavigableSet<K> navigableKeySet() { return new SealableNavigableSet<>(map.navigableKeySet(), sealedSupplier); }
-    public NavigableSet<K> descendingKeySet() { return new SealableNavigableSet<>(map.descendingKeySet(), sealedSupplier); }
+    public boolean equals(Object o) { return navMap.equals(o); }
+    public int hashCode() { return navMap.hashCode(); }
+    public String toString() { return navMap.toString(); }
+    public boolean isEmpty() { return navMap.isEmpty(); }
+    public boolean containsKey(Object key) { return navMap.containsKey(key); }
+    public boolean containsValue(Object value) { return navMap.containsValue(value); }
+    public int size() { return navMap.size(); }
+    public V get(Object key) { return navMap.get(key); }
+    public Comparator<? super K> comparator() { return navMap.comparator(); }
+    public K firstKey() { return navMap.firstKey(); }
+    public K lastKey() { return navMap.lastKey(); }
+    public Set<K> keySet() { return new SealableSet<>(navMap.keySet(), sealedSupplier); }
+    public Collection<V> values() { return new SealableList<>(new ArrayList<>(navMap.values()), sealedSupplier); }
+    public Set<Entry<K, V>> entrySet() { return new SealableSet<>(navMap.entrySet(), sealedSupplier); }
+    public Map.Entry<K, V> lowerEntry(K key) { return navMap.lowerEntry(key); }
+    public K lowerKey(K key) { return navMap.lowerKey(key); }
+    public Map.Entry<K, V> floorEntry(K key) { return navMap.floorEntry(key); }
+    public K floorKey(K key) { return navMap.floorKey(key); }
+    public Map.Entry<K, V> ceilingEntry(K key) { return navMap.ceilingEntry(key); }
+    public K ceilingKey(K key) { return navMap.ceilingKey(key); }
+    public Map.Entry<K, V> higherEntry(K key) { return navMap.higherEntry(key); }
+    public K higherKey(K key) { return navMap.higherKey(key); }
+    public Map.Entry<K, V> firstEntry() { return navMap.firstEntry(); }
+    public Map.Entry<K, V> lastEntry() { return navMap.lastEntry(); }
+    public NavigableMap<K, V> descendingMap() { return new SealableNavigableMap<>(navMap.descendingMap(), sealedSupplier); }
+    public NavigableSet<K> navigableKeySet() { return new SealableNavigableSet<>(navMap.navigableKeySet(), sealedSupplier); }
+    public NavigableSet<K> descendingKeySet() { return new SealableNavigableSet<>(navMap.descendingKeySet(), sealedSupplier); }
     public SortedMap<K, V> subMap(K fromKey, K toKey) { return subMap(fromKey, true, toKey, false); }
     public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
-        return new SealableNavigableMap<>(map.subMap(fromKey, fromInclusive, toKey, toInclusive), sealedSupplier);
+        return new SealableNavigableMap<>(navMap.subMap(fromKey, fromInclusive, toKey, toInclusive), sealedSupplier);
     }
     public SortedMap<K, V> headMap(K toKey) { return headMap(toKey, false); }
     public NavigableMap<K, V> headMap(K toKey, boolean inclusive) {
-        return new SealableNavigableMap<>(map.headMap(toKey, inclusive), sealedSupplier);
+        return new SealableNavigableMap<>(navMap.headMap(toKey, inclusive), sealedSupplier);
     }
     public SortedMap<K, V> tailMap(K fromKey) { return tailMap(fromKey, true); }
     public NavigableMap<K, V> tailMap(K fromKey, boolean inclusive) {
-        return new SealableNavigableMap<>(map.tailMap(fromKey, inclusive), sealedSupplier);
+        return new SealableNavigableMap<>(navMap.tailMap(fromKey, inclusive), sealedSupplier);
     }
 
     // Mutable APIs
-    public Map.Entry<K, V> pollFirstEntry() { throwIfSealed(); return map.pollFirstEntry(); }
-    public Map.Entry<K, V> pollLastEntry() { throwIfSealed(); return map.pollLastEntry(); }
-    public V put(K key, V value) { throwIfSealed(); return map.put(key, value); }
-    public V remove(Object key) { throwIfSealed(); return map.remove(key); }
-    public void putAll(Map<? extends K, ? extends V> m) { throwIfSealed(); map.putAll(m); }
-    public void clear() { throwIfSealed(); map.clear(); }
+    public Map.Entry<K, V> pollFirstEntry() { throwIfSealed(); return navMap.pollFirstEntry(); }
+    public Map.Entry<K, V> pollLastEntry() { throwIfSealed(); return navMap.pollLastEntry(); }
+    public V put(K key, V value) { throwIfSealed(); return navMap.put(key, value); }
+    public V remove(Object key) { throwIfSealed(); return navMap.remove(key); }
+    public void putAll(Map<? extends K, ? extends V> m) { throwIfSealed(); navMap.putAll(m); }
+    public void clear() { throwIfSealed(); navMap.clear(); }
 }

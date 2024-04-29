@@ -80,6 +80,7 @@ public class SealableList<T> implements List<T> {
     // Immutable APIs
     public boolean equals(Object other) { return list.equals(other); }
     public int hashCode() { return list.hashCode(); }
+    public String toString() { return list.toString(); }
     public int size() { return list.size(); }
     public boolean isEmpty() { return list.isEmpty(); }
     public boolean contains(Object o) { return list.contains(o); }

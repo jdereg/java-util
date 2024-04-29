@@ -28,10 +28,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
  * entrySet() APIs return the original Strings, not the internally
  * wrapped CaseInsensitiveString.
  *
- * As an added benefit, .keySet() returns a case-insenstive
+ * As an added benefit, .keySet() returns a case-insensitive
  * Set, however, again, the contents of the entries are actual Strings.
  * Similarly, .entrySet() returns a case-insensitive entry set, such that
- * .getKey() on the entry is case insensitive when compared, but the
+ * .getKey() on the entry is case-insensitive when compared, but the
  * returned key is a String.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -314,11 +314,13 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         return map.values();
     }
 
+    @Deprecated
     public Map minus(Object removeMe)
     {
         throw new UnsupportedOperationException("Unsupported operation [minus] or [-] between Maps.  Use removeAll() or retainAll() instead.");
     }
 
+    @Deprecated
     public Map plus(Object right)
     {
         throw new UnsupportedOperationException("Unsupported operation [plus] or [+] between Maps.  Use putAll() instead.");

@@ -33,11 +33,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-class ConcurrentHashSetTest {
+class ConcurrentSetTest {
 
     @Test
     void testAddAndRemove() {
-        ConcurrentHashSet<Integer> set = new ConcurrentHashSet<>();
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
         assertTrue(set.add(1), "Should return true when adding a new element");
         assertTrue(set.contains(1), "Set should contain the element 1 after addition");
         assertEquals(1, set.size(), "Set size should be 1");
@@ -50,7 +50,7 @@ class ConcurrentHashSetTest {
 
     @Test
     void testAddAllAndRemoveAll() {
-        ConcurrentHashSet<Integer> set = new ConcurrentHashSet<>();
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
         set.addAll(Arrays.asList(1, 2, 3));
 
         assertEquals(3, set.size(), "Set should have 3 elements after addAll");
@@ -62,7 +62,7 @@ class ConcurrentHashSetTest {
 
     @Test
     void testRetainAll() {
-        ConcurrentHashSet<Integer> set = new ConcurrentHashSet<>();
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
         set.addAll(Arrays.asList(1, 2, 3, 4, 5));
         set.retainAll(Arrays.asList(2, 3, 5));
 
@@ -72,7 +72,7 @@ class ConcurrentHashSetTest {
 
     @Test
     void testClear() {
-        ConcurrentHashSet<Integer> set = new ConcurrentHashSet<>();
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
         set.addAll(Arrays.asList(1, 2, 3));
         set.clear();
 
@@ -82,7 +82,7 @@ class ConcurrentHashSetTest {
 
     @Test
     void testIterator() {
-        ConcurrentHashSet<Integer> set = new ConcurrentHashSet<>();
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
         set.addAll(Arrays.asList(1, 2, 3));
 
         int sum = 0;
@@ -94,7 +94,7 @@ class ConcurrentHashSetTest {
 
     @Test
     void testToArray() {
-        ConcurrentHashSet<Integer> set = new ConcurrentHashSet<>();
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
         set.addAll(Arrays.asList(1, 2, 3));
 
         Object[] array = set.toArray();
@@ -109,7 +109,7 @@ class ConcurrentHashSetTest {
 
     @Test
     void testIsEmptyAndSize() {
-        ConcurrentHashSet<Integer> set = new ConcurrentHashSet<>();
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
         assertTrue(set.isEmpty(), "New set should be empty");
 
         set.add(1);

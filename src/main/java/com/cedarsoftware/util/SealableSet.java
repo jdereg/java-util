@@ -76,14 +76,15 @@ public class SealableSet<T> implements Set<T> {
     }
 
     // Immutable APIs
+    public boolean equals(Object o) { return set.equals(o); }
+    public int hashCode() { return set.hashCode(); }
+    public String toString() { return set.toString(); }
     public int size() { return set.size(); }
     public boolean isEmpty() { return set.isEmpty(); }
     public boolean contains(Object o) { return set.contains(o); }
     public Object[] toArray() { return set.toArray(); }
     public <T1> T1[] toArray(T1[] a) { return set.toArray(a); }
     public boolean containsAll(Collection<?> col) { return set.containsAll(col); }
-    public boolean equals(Object o) { return set.equals(o); }
-    public int hashCode() { return set.hashCode(); }
 
     // Mutable APIs
     public boolean add(T t) { throwIfSealed(); return set.add(t); }

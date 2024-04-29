@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -42,7 +43,7 @@ class SealableListTest {
     @BeforeEach
     void setUp() {
         sealedState = false;
-        list = new SealableList<>(sealedSupplier);
+        list = new SealableList<>(new ArrayList<>(), sealedSupplier);
         list.add(10);
         list.add(20);
         list.add(30);

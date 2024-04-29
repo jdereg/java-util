@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -9,10 +10,15 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * ConcurrentList provides a List or List wrapper that is thread-safe, usable in highly concurrent
+ * ConcurrentList provides a List and List wrapper that is thread-safe, usable in highly concurrent
  * environments. It provides a no-arg constructor that will directly return a ConcurrentList that is
  * thread-safe.  It has a constructor that takes a List argument, which will wrap that List and make it
- * thread-safe (no elements are duplicated).
+ * thread-safe (no elements are duplicated).<br>
+ * <br>
+ * The iterator(), listIterator() return read-only views copied from the list.  The listIterator(index)
+ * is not implemented, as the inbound index could already be outside the lists position due to concurrent
+ * edits.  Similarly, subList(from, to) is not implemented because the boundaries may exceed the lists
+ * size due to concurrent edits.
  * <br><br>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -32,12 +38,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class ConcurrentList<E> implements List<E> {
     private final List<E> list;
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final ReadWriteLock lock;
 
     /**
      * Use this no-arg constructor to create a ConcurrentList.
      */
     public ConcurrentList() {
+        lock = new ReentrantReadWriteLock();
         this.list = new ArrayList<>();
     }
     
@@ -50,6 +57,7 @@ public class ConcurrentList<E> implements List<E> {
         if (list == null) {
             throw new IllegalArgumentException("list cannot be null");
         }
+        lock = new ReentrantReadWriteLock();
         this.list = list;
     }
 
@@ -89,6 +97,15 @@ public class ConcurrentList<E> implements List<E> {
         }
     }
 
+    public String toString() {
+        lock.readLock().lock();
+        try {
+            return list.toString();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     public boolean contains(Object o) {
         lock.readLock().lock();
         try {
@@ -101,7 +118,7 @@ public class ConcurrentList<E> implements List<E> {
     public Iterator<E> iterator() {
         lock.readLock().lock();
         try {
-            return new ArrayList<>(list).iterator();  // Create a snapshot for iterator
+            return new ArrayList<>(list).iterator();
         } finally {
             lock.readLock().unlock();
         }
@@ -146,7 +163,7 @@ public class ConcurrentList<E> implements List<E> {
     public boolean containsAll(Collection<?> c) {
         lock.readLock().lock();
         try {
-            return list.containsAll(c);
+            return new HashSet<>(list).containsAll(c);
         } finally {
             lock.readLock().unlock();
         }
@@ -251,90 +268,20 @@ public class ConcurrentList<E> implements List<E> {
         }
     }
 
-    public List<E> subList(int fromIndex, int toIndex) { return new ConcurrentList<>(list.subList(fromIndex, toIndex)); }
+    public List<E> subList(int fromIndex, int toIndex) {
+        throw new UnsupportedOperationException("subList not implemented for ConcurrentList");
+    }
 
     public ListIterator<E> listIterator() {
-        return createLockHonoringListIterator(list.listIterator());
+        lock.readLock().lock();
+        try {
+            return new ArrayList<E>(list).listIterator();
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public ListIterator<E> listIterator(int index) {
-        return createLockHonoringListIterator(list.listIterator(index));
-    }
-
-    private ListIterator<E> createLockHonoringListIterator(ListIterator<E> iterator) {
-        return new ListIterator<E>() {
-            public boolean hasNext() {
-                lock.readLock().lock();
-                try {
-                    return iterator.hasNext();
-                } finally {
-                    lock.readLock().unlock();
-                }
-            }
-            public E next() {
-                lock.readLock().lock();
-                try {
-                    return iterator.next();
-                } finally {
-                    lock.readLock().unlock();
-                }
-            }
-            public boolean hasPrevious() {
-                lock.readLock().lock();
-                try {
-                    return iterator.hasPrevious();
-                } finally {
-                    lock.readLock().unlock();
-                }
-            }
-            public E previous() {
-                lock.readLock().lock();
-                try {
-                    return iterator.previous();
-                } finally {
-                    lock.readLock().unlock();
-                }
-            }
-            public int nextIndex() {
-                lock.readLock().lock();
-                try {
-                    return iterator.nextIndex();
-                } finally {
-                    lock.readLock().unlock();
-                }
-            }
-            public int previousIndex() {
-                lock.readLock().lock();
-                try {
-                    return iterator.previousIndex();
-                } finally {
-                    lock.readLock().unlock();
-                }
-            }
-            public void remove() {
-                lock.writeLock().lock();
-                try {
-                    iterator.remove();
-                } finally {
-                    lock.writeLock().unlock();
-                }
-            }
-            public void set(E e) {
-                lock.writeLock().lock();
-                try {
-                    iterator.set(e);
-                } finally {
-                    lock.writeLock().unlock();
-                }
-            }
-            public void add(E e) {
-                lock.writeLock().lock();
-                try {
-                    iterator.add(e);
-                } finally {
-                    lock.writeLock().unlock();
-                }
-            }
-        };
+        throw new UnsupportedOperationException("listIterator(index) not implemented for ConcurrentList");
     }
 }

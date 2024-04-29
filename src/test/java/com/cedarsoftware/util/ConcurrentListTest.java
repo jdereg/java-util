@@ -13,6 +13,7 @@ import static com.cedarsoftware.util.DeepEquals.deepEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConcurrentListTest {
@@ -90,8 +91,8 @@ class ConcurrentListTest {
         List<Integer> list = new ConcurrentList<>();
         list.addAll(Arrays.asList(1, 2, 3, 4, 5));
 
-        List<Integer> subList = list.subList(1, 4);
-        assertEquals(Arrays.asList(2, 3, 4), subList, "SubList should return the correct portion of the list");
+        List<Integer> subList = null;
+        assertThrows(UnsupportedOperationException.class, () -> list.subList(1, 4));
     }
 
     @Test

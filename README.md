@@ -50,7 +50,7 @@ same class.
   * **CompactCILinkedSet** - Small memory footprint `Set` that expands to a case-insensitive `LinkedHashSet` when `size() > compactSize()`.
   * **CompactCIHashSet** - Small memory footprint `Set` that expands to a case-insensitive `HashSet` when `size() > compactSize()`.
   * **CaseInsensitiveSet** - `Set` that ignores case for `Strings` contained within.
-  * **ConcurrentHashSet** - A thread-safe `Set` which does not require each element to be `Comparable` like `ConcurrentSkipListSet` which is a `NavigableSet,` which is a `SortedSet.`
+  * **ConcurrentSet** - A thread-safe `Set` which does not require each element to be `Comparable` like `ConcurrentSkipListSet` which is a `NavigableSet,` which is a `SortedSet.`
   * **SealableSet** - Provides a `Set` (or `Set` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the `Set` and ensures that all views on the `Set` respect the sealed-ness. One master supplier can control the immutability of many collections.
   * **SealableNavigableSet** - Provides a `NavigableSet` (or `NavigableSet` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the `NavigableSet` and ensures that all views on the `NavigableSet` respect the sealed-ness. One master supplier can control the immutability of many collections.
 * **Maps**  

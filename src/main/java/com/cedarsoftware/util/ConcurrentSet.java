@@ -6,6 +6,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * ConcurrentSet provides a Set that is thread-safe, usable in highly concurrent environments. It provides
+ * a no-arg constructor that will directly return a ConcurrentSet that is thread-safe.  It has a constructor
+ * that takes a Collection argument and populates its internal Concurrent Set delegate implementation.
+ * <br>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -25,10 +29,18 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ConcurrentSet<T> implements Set<T> {
     private final Set<T> set;
 
+    /**
+     * Create a new empty ConcurrentSet.
+     */
     public ConcurrentSet() {
         set = ConcurrentHashMap.newKeySet();
     }
 
+    /**
+     * Create a new ConcurrentSet instance with data from the passed in Collection.  This data is populated into the
+     * internal set. 
+     * @param col
+     */
     public ConcurrentSet(Collection<T> col) {
         set = ConcurrentHashMap.newKeySet(col.size());
         set.addAll(col);

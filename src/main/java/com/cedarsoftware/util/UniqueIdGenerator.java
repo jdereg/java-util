@@ -132,7 +132,7 @@ public class UniqueIdGenerator
      * To set the unique machine index value, set the environment variable JAVA_UTIL_CLUSTERID to a unique two-digit
      * number on each machine in the cluster.  If the machines are in a managed container, the uniqueId will use the
      * hash of the hostname, first byte of hash, modulo 100 to provide unique machine ID.  If neither of these
-     * environment variables are set, will it resort to using a secure random number from 00 to 99 for the machine
+     * environment variables are set, it will resort to using a secure random number from 00 to 99 for the machine
      * instance number portion of the unique ID.<br>
      * <br>
      * This API is slower than the 19 digit API.  Grabbing a bunch of IDs in a tight loop for example, could cause
@@ -175,7 +175,7 @@ public class UniqueIdGenerator
     /**
      * ID format will be 1234567890123.9999.99 (no dots - only there for clarity - the number is a long).  There are
      * 13 digits for time - milliseconds since Jan 1, 1970. This is followed by a count that is 0000 through 9999.
-     * This is followed by a random 2 digit number. This number is chosen when the JVM is started and then stays fixed
+     * This is followed by a random 2-digit number. This number is chosen when the JVM is started and then stays fixed
      * until next restart.  This is to ensure uniqueness within cluster.<br>
      * <br>
      * Because there is the possibility two machines could choose the same random number and be at the same count, at the

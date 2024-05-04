@@ -24,12 +24,12 @@ Both of these features ensure that our library can be seamlessly integrated into
 ---
 To include in your project:
 ##### Gradle
-```
+```groovy
 implementation 'com.cedarsoftware:java-util:2.9.0'
 ```
 
 ##### Maven
-```
+```xml
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
@@ -41,9 +41,7 @@ implementation 'com.cedarsoftware:java-util:2.9.0'
 Included in java-util:
 ## Included in java-util:
 - **ArrayUtilities** - Provides utilities for working with Java arrays `[]`, enhancing array operations.
-
 - **ByteUtilities** - Offers routines for converting `byte[]` to hexadecimal character arrays and vice versa, facilitating byte manipulation.
-
 - **ClassUtilities** - Includes utilities for class-related operations. For example, the method `computeInheritanceDistance(source, destination)` calculates the number of superclass steps between two classes, returning it as an integer. If no inheritance relationship exists, it returns -1. Distances for primitives and their wrappers are considered as 0, indicating no separation.
 
 ### Sets

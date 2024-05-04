@@ -45,14 +45,14 @@ Included in java-util:
 - **[ClassUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Includes utilities for class-related operations. For example, the method `computeInheritanceDistance(source, destination)` calculates the number of superclass steps between two classes, returning it as an integer. If no inheritance relationship exists, it returns -1. Distances for primitives and their wrappers are considered as 0, indicating no separation.
 
 ### Sets
-- **CompactSet** - A memory-efficient `Set` that expands to a `HashSet` when `size() > compactSize()`.
-- **CompactLinkedSet** - A memory-efficient `Set` that transitions to a `LinkedHashSet` when `size() > compactSize()`.
-- **CompactCILinkedSet** - A compact, case-insensitive `Set` that becomes a `LinkedHashSet` when expanded.
-- **CompactCIHashSet** - A small-footprint, case-insensitive `Set` that expands to a `HashSet`.
-- **CaseInsensitiveSet** - A `Set` that ignores case sensitivity for `Strings`.
-- **ConcurrentSet** - A thread-safe `Set` not requiring elements to be comparable, unlike `ConcurrentSkipListSet`.
-- **SealableSet** - Allows toggling between read-only and writable states via a `Supplier<Boolean>`, managing immutability externally.
-- **SealableNavigableSet** - Similar to `SealableSet` but for `NavigableSet`, controlling immutability through an external supplier.
+- **[CompactSet](/src/main/java/com/cedarsoftware/util/CompactSet.java)** - A memory-efficient `Set` that expands to a `HashSet` when `size() > compactSize()`.
+- **[CompactLinkedSet](/src/main/java/com/cedarsoftware/util/CompactLinkedSet.java)** - A memory-efficient `Set` that transitions to a `LinkedHashSet` when `size() > compactSize()`.
+- **[CompactCILinkedSet](/src/main/java/com/cedarsoftware/util/CompactCILinkedSet.java)** - A compact, case-insensitive `Set` that becomes a `LinkedHashSet` when expanded.
+- **[CompactCIHashSet](/src/main/java/com/cedarsoftware/util/CompactCIHashSet.java)** - A small-footprint, case-insensitive `Set` that expands to a `HashSet`.
+- **[CaseInsensitiveSet](/src/main/java/com/cedarsoftware/util/CaseInsensitiveSet.java)** - A `Set` that ignores case sensitivity for `Strings`.
+- **[ConcurrentSet](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - A thread-safe `Set` not requiring elements to be comparable, unlike `ConcurrentSkipListSet`.
+- **[SealableSet](/src/main/java/com/cedarsoftware/util/SealableSet.java)** - Allows toggling between read-only and writable states via a `Supplier<Boolean>`, managing immutability externally.
+- **[SealableNavigableSet](/src/main/java/com/cedarsoftware/util/SealableNavigableSet.java)** - Similar to `SealableSet` but for `NavigableSet`, controlling immutability through an external supplier.
 
 ### Maps
 - **CompactMap** - A `Map` with a small memory footprint that scales to a `HashMap` as needed.

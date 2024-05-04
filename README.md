@@ -55,15 +55,15 @@ Included in java-util:
 - **[SealableNavigableSet](/src/main/java/com/cedarsoftware/util/SealableNavigableSet.java)** - Similar to `SealableSet` but for `NavigableSet`, controlling immutability through an external supplier.
 
 ### Maps
-- **CompactMap** - A `Map` with a small memory footprint that scales to a `HashMap` as needed.
-- **CompactLinkedMap** - A compact `Map` that extends to a `LinkedHashMap` for larger sizes.
-- **CompactCILinkedMap** - A small-footprint, case-insensitive `Map` that becomes a `LinkedHashMap`.
-- **CompactCIHashMap** - A compact, case-insensitive `Map` expanding to a `HashMap`.
-- **CaseInsensitiveMap** - Treats `String` keys in a case-insensitive manner.
-- **LRUCache** - A thread-safe LRU cache implementing the full Map API, managing items based on usage.
-- **TrackingMap** - Tracks access patterns to its keys, aiding in performance optimizations.
-- **SealableMap** - Allows toggling between sealed (read-only) and unsealed (writable) states, managed externally.
-- **SealableNavigableMap** - Extends `SealableMap` features to `NavigableMap`, managing state externally.
+- **[CompactMap](/src/main/java/com/cedarsoftware/util/CompactMap.java)** - A `Map` with a small memory footprint that scales to a `HashMap` as needed.
+- **[CompactLinkedMap](/src/main/java/com/cedarsoftware/util/CompactLinkedMap.java)** - A compact `Map` that extends to a `LinkedHashMap` for larger sizes.
+- **[CompactCILinkedMap](/src/main/java/com/cedarsoftware/util/CompactCILinkedMap.java)** - A small-footprint, case-insensitive `Map` that becomes a `LinkedHashMap`.
+- **[CompactCIHashMap](/src/main/java/com/cedarsoftware/util/CompactCIHashMap.java)** - A compact, case-insensitive `Map` expanding to a `HashMap`.
+- **[CaseInsensitiveMap](/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java)** - Treats `String` keys in a case-insensitive manner.
+- **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - A thread-safe LRU cache implementing the full Map API, managing items based on usage.
+- **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Tracks access patterns to its keys, aiding in performance optimizations.
+- **[SealableMap](/src/main/java/com/cedarsoftware/util/SealableMap.java)** - Allows toggling between sealed (read-only) and unsealed (writable) states, managed externally.
+- **[SealableNavigableMap](/src/main/java/com/cedarsoftware/util/SealableNavigableMap.java)** - Extends `SealableMap` features to `NavigableMap`, managing state externally.
 
 ### Lists
 - **ConcurrentList** - Provides a thread-safe `List` that can be either an independent or a wrapped instance.

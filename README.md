@@ -66,25 +66,25 @@ Included in java-util:
 - **[SealableNavigableMap](/src/main/java/com/cedarsoftware/util/SealableNavigableMap.java)** - Extends `SealableMap` features to `NavigableMap`, managing state externally.
 
 ### Lists
-- **ConcurrentList** - Provides a thread-safe `List` that can be either an independent or a wrapped instance.
-- **SealableList** - Enables switching between sealed and unsealed states for a `List`, managed via an external `Supplier<Boolean>`.
+- **[ConcurrentList](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)** - Provides a thread-safe `List` that can be either an independent or a wrapped instance.
+- **[SealableList](/src/main/java/com/cedarsoftware/util/SealableList.java)** - Enables switching between sealed and unsealed states for a `List`, managed via an external `Supplier<Boolean>`.
 
 ### Additional Utilities
-- **Converter** - Facilitates type conversions, e.g., converting `String` to `BigDecimal`. Supports a wide range of conversions.
-- **DateUtilities** - Robustly parses date strings with support for various formats and idioms.
-- **DeepEquals** - Deeply compares two object graphs for equivalence, handling cycles and using custom `equals()` methods where available.
+- **[Converter](/src/main/java/com/cedarsoftware/util/Converter.java)** - Facilitates type conversions, e.g., converting `String` to `BigDecimal`. Supports a wide range of conversions.
+- **[DateUtilities](/src/main/java/com/cedarsoftware/util/DateUtilities.java)** - Robustly parses date strings with support for various formats and idioms.
+- **[DeepEquals](/src/main/java/com/cedarsoftware/util/DeepEquals.java)** - Deeply compares two object graphs for equivalence, handling cycles and using custom `equals()` methods where available.
 - **IO Utilities**
-  - **FastReader** and **FastWriter** - Provide high-performance alternatives to standard IO classes without synchronization.
-  - **FastByteArrayInputStream** and **FastByteArrayOutputStream** - Non-synchronized versions of standard Java IO byte array streams.
-- **EncryptionUtilities** - Simplifies the computation of checksums and encryption using common algorithms.
-- **Executor** - Simplifies the execution of operating system commands with methods for output retrieval.
-- **GraphComparator** - Compares two object graphs and provides deltas, which can be applied to synchronize the graphs.
-- **MathUtilities** - Offers handy mathematical operations and algorithms.
-- **ReflectionUtils** - Provides efficient and simplified reflection operations.
-- **StringUtilities** - Contains helpful methods for common `String` manipulation tasks.
-- **SystemUtilities** - Offers utilities for interacting with the operating system and environment.
-- **Traverser** - Allows generalized actions on all objects within an object graph through a user-defined method.
-- **UniqueIdGenerator** - Generates unique identifiers with embedded timing information, suitable for use in clustered environments.
+  - **[FastReader](/src/main/java/com/cedarsoftware/util/FastReader.java)** and **[FastWriter](/src/main/java/com/cedarsoftware/util/FastWriter.java)** - Provide high-performance alternatives to standard IO classes without synchronization.
+  - **[FastByteArrayInputStream](/src/main/java/com/cedarsoftware/util/FastByteArrayInputStream.java)** and **[FastByteArrayOutputStream](/src/main/java/com/cedarsoftware/util/FastByteArrayOutputStream.java)** - Non-synchronized versions of standard Java IO byte array streams.
+- **[EncryptionUtilities](/src/main/java/com/cedarsoftware/util/EncryptionUtilities.java)** - Simplifies the computation of checksums and encryption using common algorithms.
+- **[Executor](/src/main/java/com/cedarsoftware/util/Executor.java)** - Simplifies the execution of operating system commands with methods for output retrieval.
+- **[GraphComparator](/src/main/java/com/cedarsoftware/util/GraphComparator.java)** - Compares two object graphs and provides deltas, which can be applied to synchronize the graphs.
+- **[MathUtilities](/src/main/java/com/cedarsoftware/util/GraphComparator.java)** - Offers handy mathematical operations and algorithms.
+- **[ReflectionUtils](/src/main/java/com/cedarsoftware/util/ReflectionUtils.java)** - Provides efficient and simplified reflection operations.
+- **[StringUtilities](/src/main/java/com/cedarsoftware/util/StringUtilities.java)** - Contains helpful methods for common `String` manipulation tasks.
+- **[SystemUtilities](/src/main/java/com/cedarsoftware/util/SystemUtilities.java)** - Offers utilities for interacting with the operating system and environment.
+- **[Traverser](/src/main/java/com/cedarsoftware/util/Traverser.java)** - Allows generalized actions on all objects within an object graph through a user-defined method.
+- **[UniqueIdGenerator](/src/main/java/com/cedarsoftware/util/UniqueIdGenerator.java)** - Generates unique identifiers with embedded timing information, suitable for use in clustered environments.
 
 See [changelog.md](/changelog.md) for revision history.
 

@@ -63,9 +63,15 @@ public class LRUCache<K, V> implements Map<K, V> {
 
     public Set<K> keySet() {
         return readOperation(() -> new Set<K>() {
+            // Immutable APIs
             public int size() { return readOperation(cache::size); }
             public boolean isEmpty() { return readOperation(cache::isEmpty); }
             public boolean contains(Object o) { return readOperation(() -> cache.containsKey(o)); }
+            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.keySet().containsAll(c)); }
+            public Object[] toArray() { return readOperation(() -> cache.keySet().toArray()); }
+            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.keySet().toArray(a)); }
+
+            // Mutable APIs
             public Iterator<K> iterator() {
                 return new Iterator<K>() {
                     private final Iterator<K> it = cache.keySet().iterator();
@@ -76,7 +82,7 @@ public class LRUCache<K, V> implements Map<K, V> {
                     public void remove() {
                         writeOperation(() -> {
                             if (current == NO_ENTRY) {
-                                throw new IllegalStateException("Next not called or already removed");
+                                throw new IllegalStateException("Next not called or key already removed");
                             }
                             it.remove(); // Remove from the underlying map
                             current = (K)NO_ENTRY;
@@ -85,11 +91,8 @@ public class LRUCache<K, V> implements Map<K, V> {
                     }
                 };
             }
-            public Object[] toArray() { return readOperation(() -> cache.keySet().toArray()); }
-            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.keySet().toArray(a)); }
             public boolean add(K k) { throw new UnsupportedOperationException("add() not supported on .keySet() of a Map"); }
             public boolean remove(Object o) { return writeOperation(() -> cache.remove(o) != null); }
-            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.keySet().containsAll(c)); }
             public boolean addAll(Collection<? extends K> c) { throw new UnsupportedOperationException("addAll() not supported on .keySet() of a Map"); }
             public boolean retainAll(Collection<?> c) { return writeOperation(() -> cache.keySet().retainAll(c)); }
             public boolean removeAll(Collection<?> c) { return writeOperation(() -> cache.keySet().removeAll(c)); }
@@ -99,9 +102,15 @@ public class LRUCache<K, V> implements Map<K, V> {
 
     public Collection<V> values() {
         return readOperation(() -> new Collection<V>() {
+            // Immutable APIs
             public int size() { return readOperation(cache::size); }
             public boolean isEmpty() { return readOperation(cache::isEmpty); }
             public boolean contains(Object o) { return readOperation(() -> cache.containsValue(o)); }
+            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.values().containsAll(c)); }
+            public Object[] toArray() { return readOperation(() -> cache.values().toArray()); }
+            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.values().toArray(a)); }
+
+            // Mutable APIs
             public Iterator<V> iterator() {
                 return new Iterator<V>() {
                     private final Iterator<V> it = cache.values().iterator();
@@ -112,7 +121,7 @@ public class LRUCache<K, V> implements Map<K, V> {
                     public void remove() {
                         writeOperation(() -> {
                             if (current == NO_ENTRY) {
-                                throw new IllegalStateException("Next not called or already removed");
+                                throw new IllegalStateException("Next not called or entry already removed");
                             }
                             it.remove(); // Remove from the underlying map
                             current = (V)NO_ENTRY;
@@ -121,11 +130,8 @@ public class LRUCache<K, V> implements Map<K, V> {
                     }
                 };
             }
-            public Object[] toArray() { return readOperation(() -> cache.values().toArray()); }
-            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.values().toArray(a)); }
             public boolean add(V value) { throw new UnsupportedOperationException("add() not supported on values() of a Map"); }
             public boolean remove(Object o) { return writeOperation(() -> cache.values().remove(o)); }
-            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.values().containsAll(c)); }
             public boolean addAll(Collection<? extends V> c) { throw new UnsupportedOperationException("addAll() not supported on values() of a Map"); }
             public boolean removeAll(Collection<?> c) { return writeOperation(() -> cache.values().removeAll(c)); }
             public boolean retainAll(Collection<?> c) { return writeOperation(() -> cache.values().retainAll(c)); }
@@ -135,9 +141,15 @@ public class LRUCache<K, V> implements Map<K, V> {
 
     public Set<Map.Entry<K, V>> entrySet() {
         return readOperation(() -> new Set<Entry<K, V>>() {
+            // Immutable APIs
             public int size() { return readOperation(cache::size); }
             public boolean isEmpty() { return readOperation(cache::isEmpty); }
             public boolean contains(Object o) { return readOperation(() -> cache.entrySet().contains(o)); }
+            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.entrySet().containsAll(c)); }
+            public Object[] toArray() { return readOperation(() -> cache.entrySet().toArray()); }
+            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.entrySet().toArray(a)); }
+
+            // Mutable APIs
             public Iterator<Entry<K, V>> iterator() {
                 return new Iterator<Entry<K, V>>() {
                     private final Iterator<Entry<K, V>> it = cache.entrySet().iterator();
@@ -148,7 +160,7 @@ public class LRUCache<K, V> implements Map<K, V> {
                     public void remove() {
                         writeOperation(() -> {
                             if (current == NO_ENTRY) {
-                                throw new IllegalStateException("Next not called or already removed");
+                                throw new IllegalStateException("Next not called or entry already removed");
                             }
                             it.remove();
                             current = (Entry<K, V>) NO_ENTRY;
@@ -158,11 +170,8 @@ public class LRUCache<K, V> implements Map<K, V> {
                 };
             }
 
-            public Object[] toArray() { return readOperation(() -> cache.entrySet().toArray()); }
-            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.entrySet().toArray(a)); }
             public boolean add(Entry<K, V> kvEntry) { throw new UnsupportedOperationException("add() not supported on entrySet() of a Map"); }
             public boolean remove(Object o) { return writeOperation(() -> cache.entrySet().remove(o)); }
-            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.entrySet().containsAll(c)); }
             public boolean addAll(Collection<? extends Entry<K, V>> c) { throw new UnsupportedOperationException("addAll() not supported on entrySet() of a Map"); }
             public boolean retainAll(Collection<?> c) { return writeOperation(() -> cache.entrySet().retainAll(c)); }
             public boolean removeAll(Collection<?> c) { return writeOperation(() -> cache.entrySet().removeAll(c)); }

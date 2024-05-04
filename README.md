@@ -73,7 +73,7 @@ Included in java-util:
 - **[Converter](/src/main/java/com/cedarsoftware/util/Converter.java)** - Facilitates type conversions, e.g., converting `String` to `BigDecimal`. Supports a wide range of conversions.
 - **[DateUtilities](/src/main/java/com/cedarsoftware/util/DateUtilities.java)** - Robustly parses date strings with support for various formats and idioms.
 - **[DeepEquals](/src/main/java/com/cedarsoftware/util/DeepEquals.java)** - Deeply compares two object graphs for equivalence, handling cycles and using custom `equals()` methods where available.
-- **IO Utilities**
+- **[IOUtilities](/src/main/java/com/cedarsoftware/util/IOUtilities.java)** - Transfer APIs, close/flush APIs, compress/uncompress APIs.
   - **[FastReader](/src/main/java/com/cedarsoftware/util/FastReader.java)** and **[FastWriter](/src/main/java/com/cedarsoftware/util/FastWriter.java)** - Provide high-performance alternatives to standard IO classes without synchronization.
   - **[FastByteArrayInputStream](/src/main/java/com/cedarsoftware/util/FastByteArrayInputStream.java)** and **[FastByteArrayOutputStream](/src/main/java/com/cedarsoftware/util/FastByteArrayOutputStream.java)** - Non-synchronized versions of standard Java IO byte array streams.
 - **[EncryptionUtilities](/src/main/java/com/cedarsoftware/util/EncryptionUtilities.java)** - Simplifies the computation of checksums and encryption using common algorithms.

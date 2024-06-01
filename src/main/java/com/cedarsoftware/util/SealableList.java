@@ -9,7 +9,7 @@ import java.util.function.Supplier;
 
 /**
  * SealableList provides a List or List wrapper that can be 'sealed' and 'unsealed.'  When
- * sealed, the List is mutable, when unsealed it is immutable (read-only). The iterator(),
+ * sealed, the List is immutable, when unsealed it is mutable. The iterator(),
  * listIterator(), and subList() return views that honor the Supplier's sealed state.
  * The sealed state can be changed as often as needed.
  * <br><br>

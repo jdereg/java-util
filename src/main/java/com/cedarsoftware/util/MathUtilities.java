@@ -2,6 +2,9 @@ package com.cedarsoftware.util;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
+
+import static java.util.Collections.swap;
 
 /**
  * Useful Math utilities
@@ -291,5 +294,31 @@ public final class MathUtilities
                 return bigInt;
             }
         }
+    }
+
+    /**
+     * Utility method for generating the "next" permutation.
+     * @param list List of integers, longs, etc.  Typically, something like [1, 2, 3, 4] and it
+     *             will generate the next permutation [1, 2, 4, 3].  It will override the passed in
+     *             list. This way, each call to nextPermutation(list) works, until it returns false,
+     *             much like an Iterator.
+     */
+    static <T extends Comparable<? super T>> boolean nextPermutation(List<T> list) {
+        int k = list.size() - 2;
+        while (k >= 0 && list.get(k).compareTo(list.get(k + 1)) >= 0) {
+            k--;
+        }
+        if (k < 0) {
+            return false;  // No more permutations
+        }
+        int l = list.size() - 1;
+        while (list.get(k).compareTo(list.get(l)) >= 0) {
+            l--;
+        }
+        swap(list, k, l);
+        for (int i = k + 1, j = list.size() - 1; i < j; i++, j--) {
+            swap(list, i, j);
+        }
+        return true;
     }
 }

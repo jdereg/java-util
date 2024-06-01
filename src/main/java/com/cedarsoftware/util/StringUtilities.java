@@ -4,6 +4,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.Optional;
 import java.util.Random;
 
+import static java.lang.Character.toLowerCase;
+
 /**
  * Useful String utilities for common tasks
  *
@@ -165,7 +167,7 @@ public final class StringUtilities {
             // The real same check as in String.regionMatches():
             char u1 = Character.toUpperCase(c1);
             char u2 = Character.toUpperCase(c2);
-            if (u1 != u2 && Character.toLowerCase(u1) != Character.toLowerCase(u2)) {
+            if (u1 != u2 && toLowerCase(u1) != toLowerCase(u2)) {
                 return false;
             }
         }
@@ -623,10 +625,10 @@ public final class StringUtilities {
         if (s == null) {
             return 0;
         }
-        int len = s.length();
+        final int len = s.length();
         int hash = 0;
         for (int i = 0; i < len; i++) {
-            hash = 31 * hash + Character.toLowerCase((int) s.charAt(i));
+            hash = 31 * hash + toLowerCase(s.charAt(i));
         }
         return hash;
     }

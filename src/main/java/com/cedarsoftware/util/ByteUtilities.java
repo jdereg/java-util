@@ -82,7 +82,7 @@ public final class ByteUtilities
 	 *
 	 * @param value
 	 *            to be converted
-	 * @return '0'..'F' in char format.
+	 * @return '0'...'F' in char format.
 	 */
 	private static char convertDigit(final int value)
 	{

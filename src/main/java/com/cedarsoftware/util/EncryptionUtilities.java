@@ -36,9 +36,7 @@ import java.security.spec.AlgorithmParameterSpec;
  */
 public class EncryptionUtilities
 {
-    private EncryptionUtilities()
-    {
-    }
+    private EncryptionUtilities() { }
 
     /**
      * Super-fast MD5 calculation from entire file. Uses FileChannel and

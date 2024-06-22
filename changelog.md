@@ -1,4 +1,8 @@
 ### Revision History
+* 2.10.0
+  * Fixed potential memory leak in `LRUCache.` 
+  * Added `nextPermutation` to `MathUtilities.`
+  * Added `size(),`, `isEmpty(),` and `hasContent` to `CollectionUtilities.`
 * 2.9.0
   * Added `SealableList` which provides a `List` (or `List` wrapper) that will make it read-only (sealed) or read-write (unsealed), controllable via a `Supplier<Boolean>.`  This moves the immutability control outside the list and ensures that all views on the `List` respect the sealed-ness.  One master supplier can control the immutability of many collections.
   * Added `SealableSet` similar to SealableList but with `Set` nature.

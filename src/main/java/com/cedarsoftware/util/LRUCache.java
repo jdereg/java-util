@@ -1,13 +1,15 @@
 package com.cedarsoftware.util;
 
+import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
@@ -31,169 +33,220 @@ import java.util.function.Supplier;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class LRUCache<K, V> implements Map<K, V> {
-    private final Map<K, V> cache;
-    private final transient ReadWriteLock lock = new ReentrantReadWriteLock();
-    private final static Object NO_ENTRY = new Object();
+public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
+    private final Map<K, Node> map;
+    private final Node head;
+    private final Node tail;
+    private final int capacity;
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
+    private class Node {
+        K key;
+        V value;
+        Node prev;
+        Node next;
+
+        Node(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Node node = (Node) o;
+            return Objects.equals(key, node.key) && Objects.equals(value, node.value);
+        }
+
+        public int hashCode() {
+            return Objects.hash(key, value);
+        }
+
+        public String toString() {
+            return "Node{" +
+                    "key=" + key +
+                    ", value=" + value +
+                    '}';
+        }
+    }
 
     public LRUCache(int capacity) {
-        cache = new LinkedHashMap<K, V>(capacity, 0.75f, true) {
-            protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-                return size() > capacity;
-            }
-        };
+        this.capacity = capacity;
+        this.map = new ConcurrentHashMap<>(capacity);
+        this.head = new Node(null, null);
+        this.tail = new Node(null, null);
+        head.next = tail;
+        tail.prev = head;
     }
 
-    // Immutable APIs
-    public boolean equals(Object obj) { return readOperation(() -> cache.equals(obj)); }
-    public int hashCode() { return readOperation(cache::hashCode); }
-    public String toString() { return readOperation(cache::toString); }
-    public int size() { return readOperation(cache::size); }
-    public boolean isEmpty() { return readOperation(cache::isEmpty); }
-    public boolean containsKey(Object key) { return readOperation(() -> cache.containsKey(key)); }
-    public boolean containsValue(Object value) { return readOperation(() -> cache.containsValue(value)); }
-    public V get(Object key) { return readOperation(() -> cache.get(key)); }
-
-    // Mutable APIs
-    public V put(K key, V value) { return writeOperation(() -> cache.put(key, value)); }
-    public void putAll(Map<? extends K, ? extends V> m) { writeOperation(() -> { cache.putAll(m); return null; }); }
-    public V putIfAbsent(K key, V value) { return writeOperation(() -> cache.putIfAbsent(key, value)); }
-    public V remove(Object key) { return writeOperation(() -> cache.remove(key)); }
-    public void clear() { writeOperation(() -> { cache.clear(); return null; }); }
-
-    public Set<K> keySet() {
-        return readOperation(() -> new Set<K>() {
-            // Immutable APIs
-            public int size() { return readOperation(cache::size); }
-            public boolean isEmpty() { return readOperation(cache::isEmpty); }
-            public boolean contains(Object o) { return readOperation(() -> cache.containsKey(o)); }
-            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.keySet().containsAll(c)); }
-            public Object[] toArray() { return readOperation(() -> cache.keySet().toArray()); }
-            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.keySet().toArray(a)); }
-
-            // Mutable APIs
-            public Iterator<K> iterator() {
-                return new Iterator<K>() {
-                    private final Iterator<K> it = cache.keySet().iterator();
-                    private K current = (K)NO_ENTRY;
-
-                    public boolean hasNext() { return readOperation(it::hasNext); }
-                    public K next() { return readOperation(() -> { current = it.next(); return current; }); }
-                    public void remove() {
-                        writeOperation(() -> {
-                            if (current == NO_ENTRY) {
-                                throw new IllegalStateException("Next not called or key already removed");
-                            }
-                            it.remove(); // Remove from the underlying map
-                            current = (K)NO_ENTRY;
-                            return null;
-                        });
-                    }
-                };
-            }
-            public boolean add(K k) { throw new UnsupportedOperationException("add() not supported on .keySet() of a Map"); }
-            public boolean remove(Object o) { return writeOperation(() -> cache.remove(o) != null); }
-            public boolean addAll(Collection<? extends K> c) { throw new UnsupportedOperationException("addAll() not supported on .keySet() of a Map"); }
-            public boolean retainAll(Collection<?> c) { return writeOperation(() -> cache.keySet().retainAll(c)); }
-            public boolean removeAll(Collection<?> c) { return writeOperation(() -> cache.keySet().removeAll(c)); }
-            public void clear() { writeOperation(() -> { cache.clear(); return null; }); }
-        });
-    }
-
-    public Collection<V> values() {
-        return readOperation(() -> new Collection<V>() {
-            // Immutable APIs
-            public int size() { return readOperation(cache::size); }
-            public boolean isEmpty() { return readOperation(cache::isEmpty); }
-            public boolean contains(Object o) { return readOperation(() -> cache.containsValue(o)); }
-            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.values().containsAll(c)); }
-            public Object[] toArray() { return readOperation(() -> cache.values().toArray()); }
-            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.values().toArray(a)); }
-
-            // Mutable APIs
-            public Iterator<V> iterator() {
-                return new Iterator<V>() {
-                    private final Iterator<V> it = cache.values().iterator();
-                    private V current = (V)NO_ENTRY;
-
-                    public boolean hasNext() { return readOperation(it::hasNext); }
-                    public V next() { return readOperation(() -> { current = it.next(); return current; }); }
-                    public void remove() {
-                        writeOperation(() -> {
-                            if (current == NO_ENTRY) {
-                                throw new IllegalStateException("Next not called or entry already removed");
-                            }
-                            it.remove(); // Remove from the underlying map
-                            current = (V)NO_ENTRY;
-                            return null;
-                        });
-                    }
-                };
-            }
-            public boolean add(V value) { throw new UnsupportedOperationException("add() not supported on values() of a Map"); }
-            public boolean remove(Object o) { return writeOperation(() -> cache.values().remove(o)); }
-            public boolean addAll(Collection<? extends V> c) { throw new UnsupportedOperationException("addAll() not supported on values() of a Map"); }
-            public boolean removeAll(Collection<?> c) { return writeOperation(() -> cache.values().removeAll(c)); }
-            public boolean retainAll(Collection<?> c) { return writeOperation(() -> cache.values().retainAll(c)); }
-            public void clear() { writeOperation(() -> { cache.clear(); return null; }); }
-        });
-    }
-
-    public Set<Map.Entry<K, V>> entrySet() {
-        return readOperation(() -> new Set<Entry<K, V>>() {
-            // Immutable APIs
-            public int size() { return readOperation(cache::size); }
-            public boolean isEmpty() { return readOperation(cache::isEmpty); }
-            public boolean contains(Object o) { return readOperation(() -> cache.entrySet().contains(o)); }
-            public boolean containsAll(Collection<?> c) { return readOperation(() -> cache.entrySet().containsAll(c)); }
-            public Object[] toArray() { return readOperation(() -> cache.entrySet().toArray()); }
-            public <T> T[] toArray(T[] a) { return readOperation(() -> cache.entrySet().toArray(a)); }
-
-            // Mutable APIs
-            public Iterator<Entry<K, V>> iterator() {
-                return new Iterator<Entry<K, V>>() {
-                    private final Iterator<Entry<K, V>> it = cache.entrySet().iterator();
-                    private Entry<K, V> current = (Entry<K, V>) NO_ENTRY;
-
-                    public boolean hasNext() { return readOperation(it::hasNext); }
-                    public Entry<K, V> next() { return readOperation(() -> { current = it.next(); return current; }); }
-                    public void remove() {
-                        writeOperation(() -> {
-                            if (current == NO_ENTRY) {
-                                throw new IllegalStateException("Next not called or entry already removed");
-                            }
-                            it.remove();
-                            current = (Entry<K, V>) NO_ENTRY;
-                            return null;
-                        });
-                    }
-                };
-            }
-
-            public boolean add(Entry<K, V> kvEntry) { throw new UnsupportedOperationException("add() not supported on entrySet() of a Map"); }
-            public boolean remove(Object o) { return writeOperation(() -> cache.entrySet().remove(o)); }
-            public boolean addAll(Collection<? extends Entry<K, V>> c) { throw new UnsupportedOperationException("addAll() not supported on entrySet() of a Map"); }
-            public boolean retainAll(Collection<?> c) { return writeOperation(() -> cache.entrySet().retainAll(c)); }
-            public boolean removeAll(Collection<?> c) { return writeOperation(() -> cache.entrySet().removeAll(c)); }
-            public void clear() { writeOperation(() -> { cache.clear(); return null; }); }
-        });
-    }
-    
-    private <T> T readOperation(Supplier<T> operation) {
+    public V get(Object key) {
         lock.readLock().lock();
         try {
-            return operation.get();
+            Node node = map.get(key);
+            if (node == null) {
+                return null;
+            }
+            moveToHead(node);
+            return node.value;
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    private <T> T writeOperation(Supplier<T> operation) {
+    public V put(K key, V value) {
         lock.writeLock().lock();
         try {
-            return operation.get();
+            Node newNode = new Node(key, value);
+            Node oldNode = map.put(key, newNode);
+
+            if (oldNode != null) {
+                removeNode(oldNode);
+            }
+
+            addToHead(newNode);
+
+            if (map.size() > capacity) {
+                Node oldestNode = removeTailNode();
+                if (oldestNode != null) {
+                    map.remove(oldestNode.key);
+                }
+            }
+
+            return oldNode != null ? oldNode.value : null;
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    public V remove(Object key) {
+        lock.writeLock().lock();
+        try {
+            Node node = map.remove(key);
+            if (node != null) {
+                removeNode(node);
+                return node.value;
+            }
+            return null;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    public void clear() {
+        lock.writeLock().lock();
+        try {
+            map.clear();
+            head.next = tail;
+            tail.prev = head;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    public int size() {
+        return map.size();
+    }
+
+    public boolean containsKey(Object key) {
+        return map.containsKey(key);
+    }
+
+    public boolean containsValue(Object value) {
+        for (Node node : map.values()) {
+            if (Objects.equals(node.value, value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Set<Map.Entry<K, V>> entrySet() {
+        Map<K, V> result = new LinkedHashMap<>();
+        for (Node node : map.values()) {
+            result.put(node.key, node.value);
+        }
+        return Collections.unmodifiableSet(result.entrySet());
+    }
+
+    public Set<K> keySet() {
+        return Collections.unmodifiableSet(map.keySet());
+    }
+
+    public Collection<V> values() {
+        Collection<V> values = new ArrayList<>();
+        for (Node node : map.values()) {
+            values.add(node.value);
+        }
+        return Collections.unmodifiableCollection(values);
+    }
+
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (o instanceof Map) {
+            Map<?, ?> other = (Map<?, ?>) o;
+            if (other.size() != this.size()) {
+                return false;
+            }
+            for (Map.Entry<?, ?> entry : other.entrySet()) {
+                V value = this.get(entry.getKey());
+                if (!Objects.equals(value, entry.getValue())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public int hashCode() {
+        int hashCode = 1;
+        for (Map.Entry<K, Node> entry : map.entrySet()) {
+            hashCode = 31 * hashCode + (entry.getKey() == null ? 0 : entry.getKey().hashCode());
+            hashCode = 31 * hashCode + (entry.getValue().value == null ? 0 : entry.getValue().value.hashCode());
+        }
+        return hashCode;
+    }
+    
+    public String toString() {
+        StringBuilder sb = new StringBuilder("{");
+        for (Map.Entry<K, Node> entry : map.entrySet()) {
+            sb.append(entry.getKey()).append("=").append(entry.getValue().value).append(", ");
+        }
+        if (sb.length() > 1) {
+            sb.setLength(sb.length() - 2);
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private void addToHead(Node node) {
+        Node nextNode = head.next;
+        node.next = nextNode;
+        node.prev = head;
+        head.next = node;
+        nextNode.prev = node;
+    }
+
+    private void removeNode(Node node) {
+        Node prevNode = node.prev;
+        Node nextNode = node.next;
+        prevNode.next = nextNode;
+        nextNode.prev = prevNode;
+    }
+
+    private void moveToHead(Node node) {
+        removeNode(node);
+        addToHead(node);
+    }
+
+    private Node removeTailNode() {
+        Node oldestNode = tail.prev;
+        if (oldestNode == head) {
+            return null;
+        }
+        removeNode(oldestNode);
+        return oldestNode;
     }
 }

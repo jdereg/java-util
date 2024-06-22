@@ -1,4 +1,6 @@
 ### Revision History
+* 2.11.0
+  * `LRUCache` re-written so that it operates in O(1) for `get(),` `put(),` and `remove()` methods without thread contention. When items are placed into (or removed from) the cache, it schedules a cleanup task to trim the cache to its capacity.  This means that it will operate as fast as a `ConcurrentHashMap,` yet shrink to capacity quickly after modifications.   
 * 2.10.0
   * Fixed potential memory leak in `LRUCache.` 
   * Added `nextPermutation` to `MathUtilities.`

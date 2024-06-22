@@ -63,10 +63,25 @@ public class LRUCacheTest {
         lruCache.get(1);
         lruCache.put(4, "D");
 
-        assertNull(lruCache.get(2));
-        assertEquals("A", lruCache.get(1));
-    }
+        // Wait for the background cleanup thread to perform the eviction
+        long startTime = System.currentTimeMillis();
+        long timeout = 5000; // 5 seconds timeout
+        while (System.currentTimeMillis() - startTime < timeout) {
+            if (!lruCache.containsKey(2) && lruCache.containsKey(1) && lruCache.containsKey(4)) {
+                break;
+            }
+            try {
+                Thread.sleep(100); // Check every 100ms
+            } catch (InterruptedException ignored) {
+            }
+        }
 
+        // Assert the expected cache state
+        assertNull(lruCache.get(2), "Entry for key 2 should be evicted");
+        assertEquals("A", lruCache.get(1), "Entry for key 1 should still be present");
+        assertEquals("D", lruCache.get(4), "Entry for key 4 should be present");
+    }
+    
     @Test
     void testSize() {
         lruCache.put(1, "A");
@@ -223,9 +238,6 @@ public class LRUCacheTest {
 
         service.shutdown();
         assertTrue(service.awaitTermination(1, TimeUnit.MINUTES));
-//        System.out.println("lruCache = " + lruCache);
-//        System.out.println("lruCache = " + lruCache.size());
-//        System.out.println("attempts =" + attempts);
     }
 
     @Test
@@ -309,8 +321,9 @@ public class LRUCacheTest {
         lruCache.put(2, "B");
         lruCache.put(3, "C");
 
-        String expected = "{1=A, 2=B, 3=C}";
-        assertEquals(expected, lruCache.toString());
+        assert lruCache.toString().contains("1=A");
+        assert lruCache.toString().contains("2=B");
+        assert lruCache.toString().contains("3=C");
     }
 
     @Test
@@ -322,41 +335,42 @@ public class LRUCacheTest {
         lruCache.put(5, "E");
         lruCache.put(6, "F");
 
-        String expected = "{4=D, 5=E, 6=F}";
-        assertEquals(expected, lruCache.toString());
+        long startTime = System.currentTimeMillis();
+        long timeout = 5000; // 5 seconds timeout
+        while (System.currentTimeMillis() - startTime < timeout) {
+            if (lruCache.size() == 3 &&
+                    lruCache.containsKey(4) &&
+                    lruCache.containsKey(5) &&
+                    lruCache.containsKey(6) &&
+                    !lruCache.containsKey(1) &&
+                    !lruCache.containsKey(2) &&
+                    !lruCache.containsKey(3)) {
+                break;
+            }
+            try {
+                Thread.sleep(100); // Check every 100ms
+            } catch (InterruptedException ignored) {
+            }
+        }
+
+        assertEquals(3, lruCache.size(), "Cache size should be 3 after eviction");
+        assertTrue(lruCache.containsKey(4));
+        assertTrue(lruCache.containsKey(5));
+        assertTrue(lruCache.containsKey(6));
+        assertEquals("D", lruCache.get(4));
+        assertEquals("E", lruCache.get(5));
+        assertEquals("F", lruCache.get(6));
 
         lruCache.remove(6);
         lruCache.remove(5);
         lruCache.remove(4);
-        assert lruCache.size() == 0;
+        assertEquals(0, lruCache.size(), "Cache should be empty after removing all elements");
     }
-
+    
     @Test
     void testCacheWhenEmpty() {
         // The cache is initially empty, so any get operation should return null
         assertNull(lruCache.get(1));
-    }
-
-    @Test
-    void testCacheEvictionWhenCapacityExceeded() {
-        // Add elements to the cache until it reaches its capacity
-        lruCache.put(1, "A");
-        lruCache.put(2, "B");
-        lruCache.put(3, "C");
-
-        // Access an element to change the LRU order
-        lruCache.get(1);
-
-        // Add another element to trigger eviction
-        lruCache.put(4, "D");
-
-        // Check that the least recently used element (2) was evicted
-        assertNull(lruCache.get(2));
-
-        // Check that the other elements are still in the cache
-        assertEquals("A", lruCache.get(1));
-        assertEquals("C", lruCache.get(3));
-        assertEquals("D", lruCache.get(4));
     }
 
     @Test
@@ -371,5 +385,31 @@ public class LRUCacheTest {
         // The cache should be empty, so any get operation should return null
         assertNull(lruCache.get(1));
         assertNull(lruCache.get(2));
+    }
+
+    @Test
+    void testCacheBlast() {
+        // Jam 10M items to the cache
+        lruCache = new LRUCache<>(1000);
+        for (int i = 0; i < 10000000; i++) {
+            lruCache.put(i, "" + i);
+        }
+
+        // Wait until the cache size stabilizes to 1000
+        int expectedSize = 1000;
+        long startTime = System.currentTimeMillis();
+        long timeout = 10000; // wait up to 10 seconds (will never take this long)
+        while (System.currentTimeMillis() - startTime < timeout) {
+            if (lruCache.size() <= expectedSize) {
+                break;
+            }
+            try {
+                Thread.sleep(100); // Check every 100ms
+                System.out.println("Cache size: " + lruCache.size());
+            } catch (InterruptedException ignored) {
+            }
+        }
+
+        assertEquals(1000, lruCache.size());
     }
 }

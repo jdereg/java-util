@@ -1,21 +1,28 @@
 package com.cedarsoftware.util;
 
+import java.lang.ref.WeakReference;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
  * once a threshold is met.  It implements the Map interface for convenience. It is thread-safe via usage of
- * ReentrantReadWriteLock() around read and write APIs, including delegating to keySet(), entrySet(), and
- * values() and each of their iterators.
+ * ConcurrentHashMap for internal storage.  The .get(), .remove(), and .put() APIs operate in O(1) without any
+ * blocking.  A background thread monitors and cleans up the internal Map if it exceeds capacity.  In addition, if
+ * .put() causes the background thread to be triggered to start immediately.  This will keep the size of the LRUCache
+ * close to capacity even with bursty loads without reducing insertion (put) performance.
  * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -34,219 +41,169 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  *         limitations under the License.
  */
 public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
-    private final Map<K, Node> map;
-    private final Node head;
-    private final Node tail;
+    private static final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private static final long DELAY = 10; // 1 second delay
     private final int capacity;
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private final ConcurrentHashMap<K, Node<K, V>> cache;
+    private volatile boolean cleanupScheduled = false;
 
-    private class Node {
-        K key;
-        V value;
-        Node prev;
-        Node next;
+    private static class Node<K, V> {
+        final K key;
+        volatile V value;
+        volatile long timestamp;
 
         Node(K key, V value) {
             this.key = key;
             this.value = value;
+            this.timestamp = System.nanoTime();
         }
 
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Node node = (Node) o;
-            return Objects.equals(key, node.key) && Objects.equals(value, node.value);
-        }
-
-        public int hashCode() {
-            return Objects.hash(key, value);
-        }
-
-        public String toString() {
-            return "Node{" +
-                    "key=" + key +
-                    ", value=" + value +
-                    '}';
+        void updateTimestamp() {
+            this.timestamp = System.nanoTime();
         }
     }
 
     public LRUCache(int capacity) {
         this.capacity = capacity;
-        this.map = new ConcurrentHashMap<>(capacity);
-        this.head = new Node(null, null);
-        this.tail = new Node(null, null);
-        head.next = tail;
-        tail.prev = head;
+        this.cache = new ConcurrentHashMap<>(capacity);
     }
 
+    private void dynamicCleanup() {
+        int size = cache.size();
+        if (size > capacity) {
+            List<Node<K, V>> nodes = new ArrayList<>(cache.values());
+            nodes.sort(Comparator.comparingLong(node -> node.timestamp));
+            int nodesToRemove = size - capacity;
+            for (int i = 0; i < nodesToRemove; i++) {
+                Node<K, V> node = nodes.get(i);
+                cache.remove(node.key, node);
+            }
+        }
+        cleanupScheduled = false; // Reset the flag after cleanup
+        // Check if another cleanup is needed after the current one
+        if (cache.size() > capacity) {
+            scheduleCleanup();
+        }
+    }
+
+    @Override
     public V get(Object key) {
-        lock.readLock().lock();
-        try {
-            Node node = map.get(key);
-            if (node == null) {
-                return null;
-            }
-            moveToHead(node);
+        Node<K, V> node = cache.get(key);
+        if (node != null) {
+            node.updateTimestamp();
             return node.value;
-        } finally {
-            lock.readLock().unlock();
         }
+        return null;
     }
 
+    @Override
     public V put(K key, V value) {
-        lock.writeLock().lock();
-        try {
-            Node newNode = new Node(key, value);
-            Node oldNode = map.put(key, newNode);
-
-            if (oldNode != null) {
-                removeNode(oldNode);
-            }
-
-            addToHead(newNode);
-
-            if (map.size() > capacity) {
-                Node oldestNode = removeTailNode();
-                if (oldestNode != null) {
-                    map.remove(oldestNode.key);
-                }
-            }
-
-            return oldNode != null ? oldNode.value : null;
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-
-    public V remove(Object key) {
-        lock.writeLock().lock();
-        try {
-            Node node = map.remove(key);
-            if (node != null) {
-                removeNode(node);
-                return node.value;
-            }
+        Node<K, V> newNode = new Node<>(key, value);
+        Node<K, V> oldNode = cache.put(key, newNode);
+        if (oldNode != null) {
+            newNode.updateTimestamp();
+            return oldNode.value;
+        } else {
+            scheduleCleanup();
             return null;
-        } finally {
-            lock.writeLock().unlock();
         }
     }
 
+    @Override
+    public V remove(Object key) {
+        Node<K, V> node = cache.remove(key);
+        if (node != null) {
+            scheduleCleanup();
+            return node.value;
+        }
+        return null;
+    }
+
+    @Override
     public void clear() {
-        lock.writeLock().lock();
-        try {
-            map.clear();
-            head.next = tail;
-            tail.prev = head;
-        } finally {
-            lock.writeLock().unlock();
-        }
+        cache.clear();
     }
 
+    @Override
     public int size() {
-        return map.size();
+        return cache.size();
     }
 
+    @Override
     public boolean containsKey(Object key) {
-        return map.containsKey(key);
+        return cache.containsKey(key);
     }
 
+    @Override
     public boolean containsValue(Object value) {
-        for (Node node : map.values()) {
-            if (Objects.equals(node.value, value)) {
+        for (Node<K, V> node : cache.values()) {
+            if (node.value.equals(value)) {
                 return true;
             }
         }
         return false;
     }
 
+    @Override
     public Set<Map.Entry<K, V>> entrySet() {
-        Map<K, V> result = new LinkedHashMap<>();
-        for (Node node : map.values()) {
-            result.put(node.key, node.value);
+        Set<Map.Entry<K, V>> entrySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        for (Node<K, V> node : cache.values()) {
+            entrySet.add(new AbstractMap.SimpleEntry<>(node.key, node.value));
         }
-        return Collections.unmodifiableSet(result.entrySet());
+        return entrySet;
     }
 
+    @Override
     public Set<K> keySet() {
-        return Collections.unmodifiableSet(map.keySet());
+        return Collections.unmodifiableSet(cache.keySet());
     }
 
+    @Override
     public Collection<V> values() {
         Collection<V> values = new ArrayList<>();
-        for (Node node : map.values()) {
+        for (Node<K, V> node : cache.values()) {
             values.add(node.value);
         }
         return Collections.unmodifiableCollection(values);
     }
 
+    @Override
     public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        }
-        if (o instanceof Map) {
-            Map<?, ?> other = (Map<?, ?>) o;
-            if (other.size() != this.size()) {
-                return false;
-            }
-            for (Map.Entry<?, ?> entry : other.entrySet()) {
-                V value = this.get(entry.getKey());
-                if (!Objects.equals(value, entry.getValue())) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
+        if (this == o) return true;
+        if (!(o instanceof Map)) return false;
+        Map<?, ?> other = (Map<?, ?>) o;
+        return this.entrySet().equals(other.entrySet());
     }
 
+    @Override
     public int hashCode() {
         int hashCode = 1;
-        for (Map.Entry<K, Node> entry : map.entrySet()) {
-            hashCode = 31 * hashCode + (entry.getKey() == null ? 0 : entry.getKey().hashCode());
-            hashCode = 31 * hashCode + (entry.getValue().value == null ? 0 : entry.getValue().value.hashCode());
+        for (Node<K, V> node : cache.values()) {
+            hashCode = 31 * hashCode + (node.key == null ? 0 : node.key.hashCode());
+            hashCode = 31 * hashCode + (node.value == null ? 0 : node.value.hashCode());
         }
         return hashCode;
     }
-    
+
+    @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("{");
-        for (Map.Entry<K, Node> entry : map.entrySet()) {
-            sb.append(entry.getKey()).append("=").append(entry.getValue().value).append(", ");
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        for (Node<K, V> node : cache.values()) {
+            sb.append(node.key).append("=").append(node.value).append(", ");
         }
         if (sb.length() > 1) {
-            sb.setLength(sb.length() - 2);
+            sb.setLength(sb.length() - 2); // Remove trailing comma and space
         }
         sb.append("}");
         return sb.toString();
     }
 
-    private void addToHead(Node node) {
-        Node nextNode = head.next;
-        node.next = nextNode;
-        node.prev = head;
-        head.next = node;
-        nextNode.prev = node;
-    }
-
-    private void removeNode(Node node) {
-        Node prevNode = node.prev;
-        Node nextNode = node.next;
-        prevNode.next = nextNode;
-        nextNode.prev = prevNode;
-    }
-
-    private void moveToHead(Node node) {
-        removeNode(node);
-        addToHead(node);
-    }
-
-    private Node removeTailNode() {
-        Node oldestNode = tail.prev;
-        if (oldestNode == head) {
-            return null;
+    // Schedule a delayed cleanup
+    private synchronized void scheduleCleanup() {
+        if (cache.size() > capacity && !cleanupScheduled) {
+            cleanupScheduled = true;
+            executorService.schedule(this::dynamicCleanup, DELAY, TimeUnit.MILLISECONDS);
         }
-        removeNode(oldestNode);
-        return oldestNode;
     }
 }

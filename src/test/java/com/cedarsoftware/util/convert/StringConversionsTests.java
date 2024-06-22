@@ -21,6 +21,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StringConversionsTests {
 
@@ -35,8 +38,8 @@ class StringConversionsTests {
     void testClassCompliance() throws Exception {
         Class<?> c = StringConversions.class;
 
-        assertThat(ClassUtilities.isClassFinal(c)).isTrue();
-        assertThat(ClassUtilities.areAllConstructorsPrivate(c)).isTrue();
+        assertTrue(ClassUtilities.isClassFinal(c));
+        assertTrue(ClassUtilities.areAllConstructorsPrivate(c));
     }
 
     private static Stream<Arguments> toYear_withParseableParams() {
@@ -66,7 +69,7 @@ class StringConversionsTests {
     @MethodSource("toYear_nullReturn")
     void toYear_withNullableStrings_returnsNull(String source) {
         Year year = this.converter.convert(source, Year.class);
-        assertThat(year).isNull();
+        assertNull(year);
     }
 
     private static Stream<Arguments> toYear_extremeParams() {
@@ -86,7 +89,7 @@ class StringConversionsTests {
     void toYear_withExtremeParams_returnsValue(String source, int value) {
         Year expected = Year.of(value);
         Year actual = this.converter.convert(source, Year.class);
-        assertThat(actual).isEqualTo(expected);
+        assertEquals(expected, actual);
     }
 
     private static Stream<Arguments> toCharParams() {

@@ -1,19 +1,16 @@
 package com.cedarsoftware.util;
 
-import java.lang.ref.WeakReference;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -68,7 +65,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
         this.cache = new ConcurrentHashMap<>(capacity);
     }
 
-    private void dynamicCleanup() {
+    private void cleanup() {
         int size = cache.size();
         if (size > capacity) {
             List<Node<K, V>> nodes = new ArrayList<>(cache.values());
@@ -203,7 +200,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     private synchronized void scheduleCleanup() {
         if (cache.size() > capacity && !cleanupScheduled) {
             cleanupScheduled = true;
-            executorService.schedule(this::dynamicCleanup, DELAY, TimeUnit.MILLISECONDS);
+            executorService.schedule(this::cleanup, DELAY, TimeUnit.MILLISECONDS);
         }
     }
 }

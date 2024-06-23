@@ -2,10 +2,10 @@ package com.cedarsoftware.util;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,8 +67,9 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Create a LRUCache with the maximum capacity of 'capacity.'  Note, the LRUCache could temporarily exceed the
-     * capacity, however, it will quickly reduce to that amount.  This time is configurable and defaults to 10ms.
+     * Create a LRUCache with the maximum capacity of 'capacity.' Note, the LRUCache could temporarily exceed the
+     * capacity, however, it will quickly reduce to that amount. This time is configurable and defaults to 10ms.
+     *
      * @param capacity int maximum size for the LRU cache.
      */
     public LRUCache(int capacity) {
@@ -76,9 +77,10 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Create a LRUCache with the maximum capacity of 'capacity.'  Note, the LRUCache could temporarily exceed the
-     * capacity, however, it will quickly reduce to that amount.  This time is configurable via the cleanupDelay
+     * Create a LRUCache with the maximum capacity of 'capacity.' Note, the LRUCache could temporarily exceed the
+     * capacity, however, it will quickly reduce to that amount. This time is configurable via the cleanupDelay
      * parameter.
+     *
      * @param capacity int maximum size for the LRU cache.
      * @param cleanupDelayMillis int milliseconds before scheduling a cleanup (reduction to capacity if the cache currently
      * exceeds it).
@@ -89,14 +91,15 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
         this.cleanupDelayMillis = cleanupDelayMillis;
     }
 
+    @SuppressWarnings("unchecked")
     private void cleanup() {
         int size = cache.size();
         if (size > capacity) {
-            List<Node<K>> nodes = new ArrayList<>(cache.values());
-            nodes.sort(Comparator.comparingLong(node -> node.timestamp));
+            Node<K>[] nodes = cache.values().toArray(new Node[0]);
+            Arrays.sort(nodes, Comparator.comparingLong(node -> node.timestamp));
             int nodesToRemove = size - capacity;
             for (int i = 0; i < nodesToRemove; i++) {
-                Node<K> node = nodes.get(i);
+                Node<K> node = nodes[i];
                 cache.remove(toCacheItem(node.key), node);
             }
         }
@@ -127,7 +130,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
         if (oldNode != null) {
             newNode.updateTimestamp();
             return fromCacheItem(oldNode.value);
-        } else if (size() > capacity) {
+        } else if (cache.size() > capacity) {
             scheduleCleanup();
         }
         return null;
@@ -198,8 +201,10 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Map)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof Map))
+            return false;
         Map<?, ?> other = (Map<?, ?>) o;
         return entrySet().equals(other.entrySet());
     }
@@ -222,7 +227,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
         StringBuilder sb = new StringBuilder();
         sb.append("{");
         for (Node<K> node : cache.values()) {
-            sb.append((K)fromCacheItem(node.key)).append("=").append((V)fromCacheItem(node.value)).append(", ");
+            sb.append((K) fromCacheItem(node.key)).append("=").append((V) fromCacheItem(node.value)).append(", ");
         }
         if (sb.length() > 1) {
             sb.setLength(sb.length() - 2); // Remove trailing comma and space
@@ -233,14 +238,8 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
 
     // Schedule a delayed cleanup
     private void scheduleCleanup() {
-        if (cache.size() > capacity && cleanupScheduled.compareAndSet(false, true)) {
-            executorService.schedule(() -> {
-                cleanup();
-                // Check if another cleanup is needed after the current one
-                if (cache.size() > capacity) {
-                    scheduleCleanup();
-                }
-            }, cleanupDelayMillis, TimeUnit.MILLISECONDS);
+        if (cleanupScheduled.compareAndSet(false, true)) {
+            executorService.schedule(this::cleanup, cleanupDelayMillis, TimeUnit.MILLISECONDS);
         }
     }
 

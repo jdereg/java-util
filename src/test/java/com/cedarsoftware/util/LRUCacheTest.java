@@ -1,4 +1,4 @@
-package com.cedarsoftware.util.cache;
+package com.cedarsoftware.util;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -11,7 +11,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import com.cedarsoftware.util.LRUCache;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;

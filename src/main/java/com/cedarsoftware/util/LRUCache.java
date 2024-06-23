@@ -18,9 +18,9 @@ import java.util.concurrent.TimeUnit;
  * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
  * once a threshold is met.  It implements the Map interface for convenience. It is thread-safe via usage of
  * ConcurrentHashMap for internal storage.  The .get(), .remove(), and .put() APIs operate in O(1) without any
- * blocking.  A background thread monitors and cleans up the internal Map if it exceeds capacity.  In addition, if
- * .put() causes the background thread to be triggered to start immediately.  This will keep the size of the LRUCache
- * close to capacity even with bursty loads without reducing insertion (put) performance.
+ * blocking.  When .put() or remove() queues a call to a background cleanup thead that ensures cache.size <= capacity.
+ * This maintains cache size to capacity, even during bursty loads. It is not immediate, the LRUCache can exceed the
+ * capacity during a rapid load, however, it will quickly reduce to max capacity.
  * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

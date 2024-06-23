@@ -32,12 +32,12 @@ import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
  * with cleaning up items above the capacity threshold. This means that the cache may temporarily exceed its capacity, but
  * it will soon be trimmed back to the capacity limit by the scheduled thread.
  * <p>
- * LRUCache supports <code>null</code> for both key or value.
+ * LRUCache supports <code>null</code> for both <b>key</b> or <b>value</b>.
  * <p>
+ * <b>Special Thanks:</b> This implementation was inspired by insights and suggestions from Ben Manes.
  * @see LockingLRUCacheStrategy
  * @see ThreadedLRUCacheStrategy
  * @see LRUCache.StrategyType
- * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC

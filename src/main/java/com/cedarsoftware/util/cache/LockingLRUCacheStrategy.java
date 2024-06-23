@@ -18,9 +18,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * perfectly maintained under heavy load.
  * <p>
  * LRUCache supports <code>null</code> for both key or value.
- * <p>
- * <b>Special Thanks:</b> This implementation was inspired by insights and suggestions from Ben Manes.
- * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC

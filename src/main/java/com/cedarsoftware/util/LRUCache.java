@@ -111,7 +111,6 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     public V remove(Object key) {
         Node<K, V> node = cache.remove(key);
         if (node != null) {
-            scheduleCleanup();
             return node.value;
         }
         return null;
@@ -170,7 +169,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
         if (this == o) return true;
         if (!(o instanceof Map)) return false;
         Map<?, ?> other = (Map<?, ?>) o;
-        return this.entrySet().equals(other.entrySet());
+        return entrySet().equals(other.entrySet());
     }
 
     @Override

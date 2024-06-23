@@ -11,12 +11,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import com.cedarsoftware.util.LRUCache;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
@@ -52,7 +49,6 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     private final ConcurrentMap<Object, Node<K>> cache;
     private final AtomicBoolean cleanupScheduled = new AtomicBoolean(false);
     private final ScheduledExecutorService scheduler;
-    private final ForkJoinPool cleanupPool;
     private final boolean isDefaultScheduler;
 
     private static class Node<K> {
@@ -83,13 +79,15 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
      *                           a default scheduler is created for you. Calling the .shutdown() method will shutdown
      *                           the schedule only if you passed in null (using default). If you pass one in, it is
      *                           your responsibility to terminate the scheduler.
-     * @param cleanupPool        ForkJoinPool for executing cleanup tasks. Can be null, in which case the common
-     *                           ForkJoinPool is used. When shutdown() is called, nothing is down to the ForkJoinPool.
      */
-    public ThreadedLRUCacheStrategy(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler, ForkJoinPool cleanupPool) {
-        this.isDefaultScheduler = scheduler == null;
-        this.scheduler = isDefaultScheduler ? Executors.newScheduledThreadPool(1) : scheduler;
-        this.cleanupPool = cleanupPool == null ? ForkJoinPool.commonPool() : cleanupPool;
+    public ThreadedLRUCacheStrategy(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler) {
+        if (scheduler == null) {
+            this.scheduler = Executors.newScheduledThreadPool(1);
+            isDefaultScheduler = true;
+        } else {
+            this.scheduler = scheduler;
+            isDefaultScheduler = false;
+        }
         this.capacity = capacity;
         this.cache = new ConcurrentHashMap<>(capacity);
         this.cleanupDelayMillis = cleanupDelayMillis;
@@ -108,6 +106,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
             }
         }
         cleanupScheduled.set(false); // Reset the flag after cleanup
+        
         // Check if another cleanup is needed after the current one
         if (cache.size() > capacity) {
             scheduleCleanup();
@@ -253,7 +252,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     // Schedule a delayed cleanup
     private void scheduleCleanup() {
         if (cleanupScheduled.compareAndSet(false, true)) {
-            scheduler.schedule(() -> cleanupPool.execute(this::cleanup), cleanupDelayMillis, TimeUnit.MILLISECONDS);
+            scheduler.schedule(this::cleanup, cleanupDelayMillis, TimeUnit.MILLISECONDS);
         }
     }
 

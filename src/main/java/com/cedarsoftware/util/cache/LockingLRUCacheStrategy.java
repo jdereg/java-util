@@ -64,6 +64,10 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     }
 
     private void moveToHead(Node<K, V> node) {
+        if (node.prev == null || node.next == null) {
+            // Node has been evicted; skip reordering
+            return;
+        }
         removeNode(node);
         addToHead(node);
     }
@@ -76,13 +80,19 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     }
 
     private void removeNode(Node<K, V> node) {
-        node.prev.next = node.next;
-        node.next.prev = node.prev;
+        if (node.prev != null && node.next != null) {
+            node.prev.next = node.next;
+            node.next.prev = node.prev;
+        }
     }
-
+    
     private Node<K, V> removeTail() {
         Node<K, V> node = tail.prev;
-        removeNode(node);
+        if (node != head) {
+            removeNode(node);
+            node.prev = null; // Null out links to avoid GC nepotism
+            node.next = null; // Null out links to avoid GC nepotism
+        }
         return node;
     }
 

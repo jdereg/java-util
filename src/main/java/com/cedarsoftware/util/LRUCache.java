@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 
 import com.cedarsoftware.util.cache.LockingLRUCacheStrategy;
@@ -83,7 +82,7 @@ public class LRUCache<K, V> implements Map<K, V> {
      */
     public LRUCache(int capacity, StrategyType strategyType) {
         if (strategyType == StrategyType.THREADED) {
-            strategy = new ThreadedLRUCacheStrategy<>(capacity, 10, null, null);
+            strategy = new ThreadedLRUCacheStrategy<>(capacity, 10, null);
         } else if (strategyType == StrategyType.LOCKING) {
             strategy = new LockingLRUCacheStrategy<>(capacity);
         } else {
@@ -101,15 +100,12 @@ public class LRUCache<K, V> implements Map<K, V> {
      * @param cleanupDelayMillis int number of milliseconds after a put() call when a scheduled task should run to
      *                           trim the cache to no more than capacity.  The default is 10ms.
      * @param scheduler ScheduledExecutorService which can be null, in which case one will be created for you, or you
-     *                  can supply your own.  If one is created for you, when shutdown() is called, it will be shuwdown
+     *                  can supply your own.  If one is created for you, when shutdown() is called, it will be shutdown
      *                  for you.
-     * @param cleanupPool ForkJoinPool can be null, in which case the common ForkJoinPool will be used, or you can
-     *                    supply your own.  It will not be terminated when shutdown() is called regardless of whether
-     *                    it was supplied or the common ForkJoinPool was used.
      * @see com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy
      */
-    public LRUCache(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler, ForkJoinPool cleanupPool) {
-        strategy = new ThreadedLRUCacheStrategy<>(capacity, cleanupDelayMillis, scheduler, cleanupPool);
+    public LRUCache(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler) {
+        strategy = new ThreadedLRUCacheStrategy<>(capacity, cleanupDelayMillis, scheduler);
     }
 
     @Override

@@ -294,6 +294,10 @@ public class LRUCacheTest {
         cache2.put(4, "D");
         assertFalse(cache1.equals(cache2));
         assertFalse(cache2.equals(cache1));
+
+        assertFalse(cache1.equals(Boolean.TRUE));
+
+        assertTrue(cache1.equals(cache1));
     }
 
     @Test
@@ -324,6 +328,10 @@ public class LRUCacheTest {
         assert lruCache.toString().contains("1=A");
         assert lruCache.toString().contains("2=B");
         assert lruCache.toString().contains("3=C");
+
+        Map<String, String> cache = new LRUCache(100);
+        assert cache.toString().equals("{}");
+        assert cache.size() == 0;
     }
 
     @Test
@@ -411,5 +419,44 @@ public class LRUCacheTest {
         }
 
         assertEquals(1000, lruCache.size());
+    }
+
+    @Test
+    void testNullValue()
+    {
+        lruCache = new LRUCache<>(100, 1);
+        lruCache.put(1, null);
+        assert lruCache.containsKey(1);
+        assert lruCache.containsValue(null);
+        assert lruCache.toString().contains("1=null");
+        assert lruCache.hashCode() != 0;
+    }
+
+    @Test
+    void testNullKey()
+    {
+        lruCache = new LRUCache<>(100, 1);
+        lruCache.put(null, "true");
+        assert lruCache.containsKey(null);
+        assert lruCache.containsValue("true");
+        assert lruCache.toString().contains("null=true");
+        assert lruCache.hashCode() != 0;
+    }
+
+    @Test
+    void testNullKeyValue()
+    {
+        lruCache = new LRUCache<>(100, 1);
+        lruCache.put(null, null);
+        assert lruCache.containsKey(null);
+        assert lruCache.containsValue(null);
+        assert lruCache.toString().contains("null=null");
+        assert lruCache.hashCode() != 0;
+
+        LRUCache<Integer, String> cache1 = new LRUCache<>(3);
+        cache1.put(null, null);
+        LRUCache<Integer, String> cache2 = new LRUCache<>(3);
+        cache2.put(null, null);
+        assert cache1.equals(cache2);
     }
 }

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -41,7 +42,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     private static final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private static final long DELAY = 10; // 10ms delay
     private final int capacity;
-    private final ConcurrentHashMap<K, Node<K, V>> cache;
+    private final ConcurrentMap<K, Node<K, V>> cache;
     private volatile boolean cleanupScheduled = false;
 
     private static class Node<K, V> {

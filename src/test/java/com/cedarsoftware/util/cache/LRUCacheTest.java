@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import com.cedarsoftware.util.LRUCache;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -34,6 +35,13 @@ public class LRUCacheTest {
 
     void setUp(LRUCache.StrategyType strategyType) {
         lruCache = new LRUCache<>(3, strategyType);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (lruCache != null) {
+            lruCache.shutdown();
+        }
     }
 
     @ParameterizedTest
@@ -429,7 +437,7 @@ public class LRUCacheTest {
             }
             try {
                 Thread.sleep(100);
-                System.out.println("Cache size: " + lruCache.size());
+                System.out.println(strategy + " cache size: " + lruCache.size());
             } catch (InterruptedException ignored) {
             }
         }
@@ -489,6 +497,6 @@ public class LRUCacheTest {
             cache.put(i, true);
         }
         long endTime = System.currentTimeMillis();
-        System.out.println("Speed: " + (endTime - startTime));
+        System.out.println(strategy + " speed: " + (endTime - startTime) + "ms");
     }
 }

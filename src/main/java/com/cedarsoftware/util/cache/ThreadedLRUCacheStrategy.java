@@ -79,8 +79,12 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
      * @param capacity           int maximum size for the LRU cache.
      * @param cleanupDelayMillis int milliseconds before scheduling a cleanup (reduction to capacity if the cache currently
      *                           exceeds it).
-     * @param scheduler          ScheduledExecutorService for scheduling cleanup tasks.
-     * @param cleanupPool        ForkJoinPool for executing cleanup tasks.
+     * @param scheduler          ScheduledExecutorService for scheduling cleanup tasks. Can be null. If none is supplied,
+     *                           a default scheduler is created for you. Calling the .shutdown() method will shutdown
+     *                           the schedule only if you passed in null (using default). If you pass one in, it is
+     *                           your responsibility to terminate the scheduler.
+     * @param cleanupPool        ForkJoinPool for executing cleanup tasks. Can be null, in which case the common
+     *                           ForkJoinPool is used. When shutdown() is called, nothing is down to the ForkJoinPool.
      */
     public ThreadedLRUCacheStrategy(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler, ForkJoinPool cleanupPool) {
         this.isDefaultScheduler = scheduler == null;

@@ -96,13 +96,16 @@ public class LRUCache<K, V> implements Map<K, V> {
      * <p>
      * Note: There is a "shutdown" method on LRUCache to ensure that the default scheduler that was created for you
      * is cleaned up, which is useful in a container environment.  If you supplied your own scheduler and cleanupPool,
-     * then it is up to you to manage there termination.  The shutdown() method will not manipulate them in anyway.
+     * then it is up to you to manage their termination.  The shutdown() method will not manipulate them in any way.
      * @param capacity int maximum number of entries in the cache.
      * @param cleanupDelayMillis int number of milliseconds after a put() call when a scheduled task should run to
      *                           trim the cache to no more than capacity.  The default is 10ms.
      * @param scheduler ScheduledExecutorService which can be null, in which case one will be created for you, or you
-     *                  can supply your own.
-     * @param cleanupPool ForkJoinPool can be null, in which case one will be created for you, you can supply your own.
+     *                  can supply your own.  If one is created for you, when shutdown() is called, it will be shuwdown
+     *                  for you.
+     * @param cleanupPool ForkJoinPool can be null, in which case the common ForkJoinPool will be used, or you can
+     *                    supply your own.  It will not be terminated when shutdown() is called regardless of whether
+     *                    it was supplied or the common ForkJoinPool was used.
      * @see com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy
      */
     public LRUCache(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler, ForkJoinPool cleanupPool) {

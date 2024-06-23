@@ -6,8 +6,8 @@ java-util
 
 Helpful Java utilities that are thoroughly tested and available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `260K` and works with`JDK 1.8`through`JDK 21`.
-The '.jar' file classes are version 52 (`JDK 1.8`).
+The`.jar`file is `290K` and works with `JDK 1.8` through `JDK 22`.
+The `.jar` file classes are version 52 `(JDK 1.8)`
 ## Compatibility
 
 ### JPMS (Java Platform Module System)
@@ -25,7 +25,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 To include in your project:
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:2.11.0'
+implementation 'com.cedarsoftware:java-util:2.12.0'
 ```
 
 ##### Maven
@@ -33,7 +33,7 @@ implementation 'com.cedarsoftware:java-util:2.11.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.11.0</version>
+  <version>2.12.0</version>
 </dependency>
 ```
 ---
@@ -60,7 +60,7 @@ Included in java-util:
 - **[CompactCILinkedMap](/src/main/java/com/cedarsoftware/util/CompactCILinkedMap.java)** - A small-footprint, case-insensitive `Map` that becomes a `LinkedHashMap`.
 - **[CompactCIHashMap](/src/main/java/com/cedarsoftware/util/CompactCIHashMap.java)** - A compact, case-insensitive `Map` expanding to a `HashMap`.
 - **[CaseInsensitiveMap](/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java)** - Treats `String` keys in a case-insensitive manner.
-- **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - A thread-safe LRU cache implementing the full Map API, managing items based on usage.
+- **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - Thread-safe LRU cache which implements the Map API.  Supports "locking" or "threaded" strategy (selectable).
 - **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Tracks access patterns to its keys, aiding in performance optimizations.
 - **[SealableMap](/src/main/java/com/cedarsoftware/util/SealableMap.java)** - Allows toggling between sealed (read-only) and unsealed (writable) states, managed externally.
 - **[SealableNavigableMap](/src/main/java/com/cedarsoftware/util/SealableNavigableMap.java)** - Extends `SealableMap` features to `NavigableMap`, managing state externally.

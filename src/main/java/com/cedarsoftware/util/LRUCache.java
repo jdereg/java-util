@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
@@ -44,12 +45,12 @@ import java.util.concurrent.TimeUnit;
 public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     private static final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private static final Object NULL_ITEM = new Object(); // Sentinel value for null keys and values
-    private final long cleanupDelayMillis; // 10ms delay
+    private final long cleanupDelayMillis;
     private final int capacity;
-    private final ConcurrentMap<Object, Node<K, V>> cache;
-    private volatile boolean cleanupScheduled = false;
+    private final ConcurrentMap<Object, Node<K>> cache;
+    private final AtomicBoolean cleanupScheduled = new AtomicBoolean(false);
 
-    private static class Node<K, V> {
+    private static class Node<K> {
         final K key;
         volatile Object value;
         volatile long timestamp;
@@ -91,15 +92,15 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     private void cleanup() {
         int size = cache.size();
         if (size > capacity) {
-            List<Node<K, V>> nodes = new ArrayList<>(cache.values());
+            List<Node<K>> nodes = new ArrayList<>(cache.values());
             nodes.sort(Comparator.comparingLong(node -> node.timestamp));
             int nodesToRemove = size - capacity;
             for (int i = 0; i < nodesToRemove; i++) {
-                Node<K, V> node = nodes.get(i);
+                Node<K> node = nodes.get(i);
                 cache.remove(toCacheItem(node.key), node);
             }
         }
-        cleanupScheduled = false; // Reset the flag after cleanup
+        cleanupScheduled.set(false); // Reset the flag after cleanup
         // Check if another cleanup is needed after the current one
         if (cache.size() > capacity) {
             scheduleCleanup();
@@ -109,7 +110,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     @Override
     public V get(Object key) {
         Object cacheKey = toCacheItem(key);
-        Node<K, V> node = cache.get(cacheKey);
+        Node<K> node = cache.get(cacheKey);
         if (node != null) {
             node.updateTimestamp();
             return fromCacheItem(node.value);
@@ -121,21 +122,21 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     public V put(K key, V value) {
         Object cacheKey = toCacheItem(key);
         Object cacheValue = toCacheItem(value);
-        Node<K, V> newNode = new Node<>(key, cacheValue);
-        Node<K, V> oldNode = cache.put(cacheKey, newNode);
+        Node<K> newNode = new Node<>(key, cacheValue);
+        Node<K> oldNode = cache.put(cacheKey, newNode);
         if (oldNode != null) {
             newNode.updateTimestamp();
             return fromCacheItem(oldNode.value);
-        } else {
+        } else if (size() > capacity) {
             scheduleCleanup();
-            return null;
         }
+        return null;
     }
 
     @Override
     public V remove(Object key) {
         Object cacheKey = toCacheItem(key);
-        Node<K, V> node = cache.remove(cacheKey);
+        Node<K> node = cache.remove(cacheKey);
         if (node != null) {
             return fromCacheItem(node.value);
         }
@@ -160,7 +161,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     @Override
     public boolean containsValue(Object value) {
         Object cacheValue = toCacheItem(value);
-        for (Node<K, V> node : cache.values()) {
+        for (Node<K> node : cache.values()) {
             if (node.value.equals(cacheValue)) {
                 return true;
             }
@@ -171,7 +172,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
         Set<Map.Entry<K, V>> entrySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        for (Node<K, V> node : cache.values()) {
+        for (Node<K> node : cache.values()) {
             entrySet.add(new AbstractMap.SimpleEntry<>(fromCacheItem(node.key), fromCacheItem(node.value)));
         }
         return entrySet;
@@ -180,7 +181,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     @Override
     public Set<K> keySet() {
         Set<K> keySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        for (Node<K, V> node : cache.values()) {
+        for (Node<K> node : cache.values()) {
             keySet.add(fromCacheItem(node.key));
         }
         return Collections.unmodifiableSet(keySet);
@@ -189,7 +190,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     @Override
     public Collection<V> values() {
         Collection<V> values = new ArrayList<>();
-        for (Node<K, V> node : cache.values()) {
+        for (Node<K> node : cache.values()) {
             values.add(fromCacheItem(node.value));
         }
         return Collections.unmodifiableCollection(values);
@@ -206,19 +207,22 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     @Override
     public int hashCode() {
         int hashCode = 1;
-        for (Node<K, V> node : cache.values()) {
-            hashCode = 31 * hashCode + (fromCacheItem(node.key) == null ? 0 : fromCacheItem(node.key).hashCode());
-            hashCode = 31 * hashCode + (fromCacheItem(node.value) == null ? 0 : fromCacheItem(node.value).hashCode());
+        for (Node<K> node : cache.values()) {
+            Object key = fromCacheItem(node.key);
+            Object value = fromCacheItem(node.value);
+            hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
+            hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
         }
         return hashCode;
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("{");
-        for (Node<K, V> node : cache.values()) {
-            sb.append((K) fromCacheItem(node.key)).append("=").append((V)fromCacheItem(node.value)).append(", ");
+        for (Node<K> node : cache.values()) {
+            sb.append((K)fromCacheItem(node.key)).append("=").append((V)fromCacheItem(node.value)).append(", ");
         }
         if (sb.length() > 1) {
             sb.setLength(sb.length() - 2); // Remove trailing comma and space
@@ -228,10 +232,15 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     }
 
     // Schedule a delayed cleanup
-    private synchronized void scheduleCleanup() {
-        if (cache.size() > capacity && !cleanupScheduled) {
-            cleanupScheduled = true;
-            executorService.schedule(this::cleanup, cleanupDelayMillis, TimeUnit.MILLISECONDS);
+    private void scheduleCleanup() {
+        if (cache.size() > capacity && cleanupScheduled.compareAndSet(false, true)) {
+            executorService.schedule(() -> {
+                cleanup();
+                // Check if another cleanup is needed after the current one
+                if (cache.size() > capacity) {
+                    scheduleCleanup();
+                }
+            }, cleanupDelayMillis, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -241,6 +250,7 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     }
 
     // Converts a cache-compatible item to the original key or value
+    @SuppressWarnings("unchecked")
     private <T> T fromCacheItem(Object cacheItem) {
         return cacheItem == NULL_ITEM ? null : (T) cacheItem;
     }

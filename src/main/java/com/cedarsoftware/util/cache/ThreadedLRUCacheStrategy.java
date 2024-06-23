@@ -16,16 +16,18 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.cedarsoftware.util.LRUCache;
+
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
- * once a threshold is met. It implements the Map interface for convenience.
+ * once a threshold is met. It implements the <code>Map</code> interface for convenience.
  * <p>
- * LRUCache is thread-safe via usage of ConcurrentHashMap for internal storage. The .get(), .remove(), and .put() APIs
- * operate in O(1) without blocking. When .put() is called, a background cleanup task is scheduled to ensure
- * {@code cache.size <= capacity}. This maintains cache size to capacity, even during bursty loads. It is not immediate;
- * the LRUCache can exceed the capacity during a rapid load; however, it will quickly reduce to max capacity.
+ * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking. It uses a <code>ConcurrentHashMap</code>
+ * internally. To ensure that the capacity is honored, whenever put() is called, a thread (from a thread pool) is tasked
+ * with cleaning up items above the capacity threshold. This means that the cache may temporarily exceed its capacity, but
+ * it will soon be trimmed back to the capacity limit by the scheduled thread.
  * <p>
- * LRUCache supports null for key or value.
+ * LRUCache supports <code>null</code> for both key or value.
  * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -73,7 +75,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
      * Create a LRUCache with the maximum capacity of 'capacity.' Note, the LRUCache could temporarily exceed the
      * capacity; however, it will quickly reduce to that amount. This time is configurable via the cleanupDelay
      * parameter and custom scheduler and executor services.
-     *
+     * 
      * @param capacity           int maximum size for the LRU cache.
      * @param cleanupDelayMillis int milliseconds before scheduling a cleanup (reduction to capacity if the cache currently
      *                           exceeds it).

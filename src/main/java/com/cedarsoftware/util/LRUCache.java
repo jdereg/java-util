@@ -9,6 +9,51 @@ import java.util.concurrent.ScheduledExecutorService;
 import com.cedarsoftware.util.cache.LockingLRUCacheStrategy;
 import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
 
+/**
+ * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
+ * once a threshold is met. It implements the <code>Map</code> interface for convenience.
+ * <p>
+ * This class provides two implementation strategies: a locking approach and a threaded approach.
+ * <ul>
+ *   <li>The Locking strategy can be selected by using the constructor that takes only an int for capacity, or by using
+ *       the constructor that takes an int and a StrategyType enum (StrategyType.LOCKING).</li>
+ *   <li>The Threaded strategy can be selected by using the constructor that takes an int and a StrategyType enum
+ *       (StrategyType.THREADED). Additionally, there is a constructor that takes a capacity, a cleanup delay time, a
+ *       ScheduledExecutorService, and a ForkJoinPool, which also selects the threaded strategy.</li>
+ * </ul>
+ * <p>
+ * The Locking strategy allows for O(1) access for get(), put(), and remove(). For put(), remove(), and many other
+ * methods, a write-lock is obtained. For get(), it attempts to lock but does not lock unless it can obtain it right away.
+ * This 'try-lock' approach ensures that the get() API is never blocking, but it also means that the LRU order is not
+ * perfectly maintained under heavy load.
+ * <p>
+ * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking. It uses a <code>ConcurrentHashMap</code>
+ * internally. To ensure that the capacity is honored, whenever put() is called, a thread (from a thread pool) is tasked
+ * with cleaning up items above the capacity threshold. This means that the cache may temporarily exceed its capacity, but
+ * it will soon be trimmed back to the capacity limit by the scheduled thread.
+ * <p>
+ * LRUCache supports <code>null</code> for both key or value.
+ * <p>
+ * @see LockingLRUCacheStrategy
+ * @see ThreadedLRUCacheStrategy
+ * @see LRUCache.StrategyType
+ * <p>
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
+ */
 public class LRUCache<K, V> implements Map<K, V> {
     private final Map<K, V> strategy;
 

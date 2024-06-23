@@ -10,9 +10,16 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
- * once a threshold is met.  It implements the Map interface for convenience.
+ * once a threshold is met. It implements the <code>Map</code> interface for convenience.
  * <p>
- * LRUCache supports null for key or value.
+ * The Locking strategy allows for O(1) access for get(), put(), and remove(). For put(), remove(), and many other
+ * methods, a write-lock is obtained. For get(), it attempts to lock but does not lock unless it can obtain it right away.
+ * This 'try-lock' approach ensures that the get() API is never blocking, but it also means that the LRU order is not
+ * perfectly maintained under heavy load.
+ * <p>
+ * LRUCache supports <code>null</code> for both key or value.
+ * <p>
+ * <b>Special Thanks:</b> This implementation was inspired by insights and suggestions from Ben Manes.
  * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -89,6 +96,8 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         if (node == null) {
             return null;
         }
+
+        // Ben Manes suggestion - use exclusive 'try-lock'
         if (lock.tryLock()) {
             try {
                 moveToHead(node);

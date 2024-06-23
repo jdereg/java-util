@@ -1,30 +1,16 @@
 package com.cedarsoftware.util;
 
 import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
  * once a threshold is met.  It implements the Map interface for convenience.
- * <p>
- * LRUCache is thread-safe via usage of ConcurrentHashMap for internal storage.  The .get(), .remove(), and .put() APIs
- * operate in O(1) without blocking.  When .put() is called, a background cleanup task is schedule to ensure
- * {@code cache.size <= capacity}.  This maintains cache size to capacity, even during bursty loads. It is not immediate,
- * the LRUCache can exceed the capacity during a rapid load, however, it will quickly reduce to max capacity.
  * <p>
  * LRUCache supports null for key or value.
  * <p>
@@ -45,132 +31,127 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *         limitations under the License.
  */
 public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
-    private static final ScheduledExecutorService defaultScheduler = Executors.newScheduledThreadPool(1);
     private static final Object NULL_ITEM = new Object(); // Sentinel value for null keys and values
-    private final long cleanupDelayMillis;
     private final int capacity;
-    private final ConcurrentMap<Object, Node<K>> cache;
-    private final AtomicBoolean cleanupScheduled = new AtomicBoolean(false);
-    private final ScheduledExecutorService scheduler;
-    private final ExecutorService cleanupExecutor;
-    private boolean isDefaultScheduler;
+    private final ConcurrentHashMap<Object, Node<K, V>> cache;
+    private final Node<K, V> head;
+    private final Node<K, V> tail;
+    private final Lock lock = new ReentrantLock();
 
-    private static class Node<K> {
-        final K key;
-        volatile Object value;
-        volatile long timestamp;
+    private static class Node<K, V> {
+        K key;
+        V value;
+        Node<K, V> prev;
+        Node<K, V> next;
 
-        Node(K key, Object value) {
+        Node(K key, V value) {
             this.key = key;
             this.value = value;
-            this.timestamp = System.nanoTime();
-        }
-
-        void updateTimestamp() {
-            this.timestamp = System.nanoTime();
         }
     }
 
-    /**
-     * Create a LRUCache with the maximum capacity of 'capacity.'  Note, the LRUCache could temporarily exceed the
-     * capacity, however, it will quickly reduce to that amount.  This time is configurable and defaults to 10ms.
-     * @param capacity int maximum size for the LRU cache.
-     */
     public LRUCache(int capacity) {
-        this(capacity, 10, defaultScheduler, ForkJoinPool.commonPool());
-        isDefaultScheduler = true;
-    }
-
-    /**
-     * Create a LRUCache with the maximum capacity of 'capacity.'  Note, the LRUCache could temporarily exceed the
-     * capacity, however, it will quickly reduce to that amount.  This time is configurable via the cleanupDelay
-     * parameter.
-     * @param capacity int maximum size for the LRU cache.
-     * @param cleanupDelayMillis int milliseconds before scheduling a cleanup (reduction to capacity if the cache currently
-     * exceeds it).
-     */
-    public LRUCache(int capacity, int cleanupDelayMillis) {
-        this(capacity, cleanupDelayMillis, defaultScheduler, ForkJoinPool.commonPool());
-        isDefaultScheduler = true;
-    }
-
-    /**
-     * Create a LRUCache with the maximum capacity of 'capacity.'  Note, the LRUCache could temporarily exceed the
-     * capacity, however, it will quickly reduce to that amount.  This time is configurable via the cleanupDelay
-     * parameter and custom scheduler and executor services.
-     * @param capacity int maximum size for the LRU cache.
-     * @param cleanupDelayMillis int milliseconds before scheduling a cleanup (reduction to capacity if the cache currently
-     * exceeds it).
-     * @param scheduler ScheduledExecutorService for scheduling cleanup tasks.
-     * @param cleanupExecutor ExecutorService for executing cleanup tasks.
-     */
-    public LRUCache(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler, ExecutorService cleanupExecutor) {
         this.capacity = capacity;
         this.cache = new ConcurrentHashMap<>(capacity);
-        this.cleanupDelayMillis = cleanupDelayMillis;
-        this.scheduler = scheduler;
-        this.cleanupExecutor = cleanupExecutor;
-        isDefaultScheduler = false;
+        this.head = new Node<>(null, null);
+        this.tail = new Node<>(null, null);
+        head.next = tail;
+        tail.prev = head;
     }
 
-    @SuppressWarnings("unchecked")
-    private void cleanup() {
-        int size = cache.size();
-        if (size > capacity) {
-            Node<K>[] nodes = cache.values().toArray(new Node[0]);
-            Arrays.sort(nodes, Comparator.comparingLong(node -> node.timestamp));
-            int nodesToRemove = size - capacity;
-            for (int i = 0; i < nodesToRemove; i++) {
-                Node<K> node = nodes[i];
-                cache.remove(toCacheItem(node.key), node);
-            }
-        }
-        cleanupScheduled.set(false); // Reset the flag after cleanup
-        // Check if another cleanup is needed after the current one
-        if (cache.size() > capacity) {
-            scheduleCleanup();
-        }
+    private void moveToHead(Node<K, V> node) {
+        removeNode(node);
+        addToHead(node);
+    }
+
+    private void addToHead(Node<K, V> node) {
+        node.next = head.next;
+        node.next.prev = node;
+        head.next = node;
+        node.prev = head;
+    }
+
+    private void removeNode(Node<K, V> node) {
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+
+    private Node<K, V> removeTail() {
+        Node<K, V> node = tail.prev;
+        removeNode(node);
+        return node;
     }
 
     @Override
     public V get(Object key) {
         Object cacheKey = toCacheItem(key);
-        Node<K> node = cache.get(cacheKey);
-        if (node != null) {
-            node.updateTimestamp();
-            return fromCacheItem(node.value);
+        Node<K, V> node = cache.get(cacheKey);
+        if (node == null) {
+            return null;
         }
-        return null;
+        if (lock.tryLock()) {
+            try {
+                moveToHead(node);
+            } finally {
+                lock.unlock();
+            }
+        }
+        return fromCacheItem(node.value);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
         Object cacheKey = toCacheItem(key);
         Object cacheValue = toCacheItem(value);
-        Node<K> newNode = new Node<>(key, cacheValue);
-        Node<K> oldNode = cache.put(cacheKey, newNode);
-        if (oldNode != null) {
-            newNode.updateTimestamp();
-            return fromCacheItem(oldNode.value);
-        } else if (size() > capacity) {
-            scheduleCleanup();
+        lock.lock();
+        try {
+            Node<K, V> node = cache.get(cacheKey);
+            if (node != null) {
+                node.value = (V)cacheValue;
+                moveToHead(node);
+                return fromCacheItem(node.value);
+            } else {
+                Node<K, V> newNode = new Node<>(key, (V)cacheValue);
+                cache.put(cacheKey, newNode);
+                addToHead(newNode);
+                if (cache.size() > capacity) {
+                    Node<K, V> tail = removeTail();
+                    cache.remove(toCacheItem(tail.key));
+                }
+                return null;
+            }
+        } finally {
+            lock.unlock();
         }
-        return null;
     }
 
     @Override
     public V remove(Object key) {
         Object cacheKey = toCacheItem(key);
-        Node<K> node = cache.remove(cacheKey);
-        if (node != null) {
-            return fromCacheItem(node.value);
+        lock.lock();
+        try {
+            Node<K, V> node = cache.remove(cacheKey);
+            if (node != null) {
+                removeNode(node);
+                return fromCacheItem(node.value);
+            }
+            return null;
+        } finally {
+            lock.unlock();
         }
-        return null;
     }
 
     @Override
     public void clear() {
-        cache.clear();
+        lock.lock();
+        try {
+            head.next = tail;
+            tail.prev = head;
+            cache.clear();
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
@@ -186,100 +167,76 @@ public class LRUCache<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     @Override
     public boolean containsValue(Object value) {
         Object cacheValue = toCacheItem(value);
-        for (Node<K> node : cache.values()) {
-            if (node.value.equals(cacheValue)) {
-                return true;
+        lock.lock();
+        try {
+            for (Node<K, V> node = head.next; node != tail; node = node.next) {
+                if (node.value.equals(cacheValue)) {
+                    return true;
+                }
             }
+            return false;
+        } finally {
+            lock.unlock();
         }
-        return false;
     }
 
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
-        Set<Map.Entry<K, V>> entrySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        for (Node<K> node : cache.values()) {
-            entrySet.add(new AbstractMap.SimpleEntry<>(fromCacheItem(node.key), fromCacheItem(node.value)));
+        lock.lock();
+        try {
+            Map<K, V> map = new LinkedHashMap<>();
+            for (Node<K, V> node = head.next; node != tail; node = node.next) {
+                map.put(node.key, fromCacheItem(node.value));
+            }
+            return map.entrySet();
+        } finally {
+            lock.unlock();
         }
-        return entrySet;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Set<K> keySet() {
-        Set<K> keySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        for (Node<K> node : cache.values()) {
-            keySet.add(fromCacheItem(node.key));
+    public String toString() {
+        lock.lock();
+        try {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{");
+            for (Node<K, V> node = head.next; node != tail; node = node.next) {
+                sb.append((K) fromCacheItem(node.key)).append("=").append((V) fromCacheItem(node.value)).append(", ");
+            }
+            if (sb.length() > 1) {
+                sb.setLength(sb.length() - 2); // Remove trailing comma and space
+            }
+            sb.append("}");
+            return sb.toString();
+        } finally {
+            lock.unlock();
         }
-        return Collections.unmodifiableSet(keySet);
-    }
-
-    @Override
-    public Collection<V> values() {
-        Collection<V> values = new ArrayList<>();
-        for (Node<K> node : cache.values()) {
-            values.add(fromCacheItem(node.value));
-        }
-        return Collections.unmodifiableCollection(values);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Map)) return false;
-        Map<?, ?> other = (Map<?, ?>) o;
-        return entrySet().equals(other.entrySet());
     }
 
     @Override
     public int hashCode() {
-        int hashCode = 1;
-        for (Node<K> node : cache.values()) {
-            Object key = fromCacheItem(node.key);
-            Object value = fromCacheItem(node.value);
-            hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
-            hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
-        }
-        return hashCode;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        for (Node<K> node : cache.values()) {
-            sb.append((K) fromCacheItem(node.key)).append("=").append((V) fromCacheItem(node.value)).append(", ");
-        }
-        if (sb.length() > 1) {
-            sb.setLength(sb.length() - 2); // Remove trailing comma and space
-        }
-        sb.append("}");
-        return sb.toString();
-    }
-
-    // Schedule a delayed cleanup
-    private void scheduleCleanup() {
-        if (cleanupScheduled.compareAndSet(false, true)) {
-            scheduler.schedule(() -> cleanupExecutor.execute(this::cleanup), cleanupDelayMillis, TimeUnit.MILLISECONDS);
+        lock.lock();
+        try {
+            int hashCode = 1;
+            for (Node<K, V> node = head.next; node != tail; node = node.next) {
+                Object key = fromCacheItem(node.key);
+                Object value = fromCacheItem(node.value);
+                hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
+                hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
+            }
+            return hashCode;
+        } finally {
+            lock.unlock();
         }
     }
 
-    // Converts a key or value to a cache-compatible item
     private Object toCacheItem(Object item) {
         return item == null ? NULL_ITEM : item;
     }
 
-    // Converts a cache-compatible item to the original key or value
     @SuppressWarnings("unchecked")
     private <T> T fromCacheItem(Object cacheItem) {
         return cacheItem == NULL_ITEM ? null : (T) cacheItem;
-    }
-
-    /**
-     * Shut down the scheduler if it is the default one.
-     */
-    public void shutdown() {
-        if (isDefaultScheduler) {
-            scheduler.shutdown();
-        }
     }
 }

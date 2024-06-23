@@ -1,4 +1,4 @@
-package com.cedarsoftware.util;
+package com.cedarsoftware.util.cache;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -44,15 +44,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class LRUCache2<K, V> extends AbstractMap<K, V> implements Map<K, V> {
-    private static final ScheduledExecutorService defaultScheduler = Executors.newScheduledThreadPool(1);
+public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     private static final Object NULL_ITEM = new Object(); // Sentinel value for null keys and values
     private final long cleanupDelayMillis;
     private final int capacity;
     private final ConcurrentMap<Object, Node<K>> cache;
     private final AtomicBoolean cleanupScheduled = new AtomicBoolean(false);
     private final ScheduledExecutorService scheduler;
-    private final ExecutorService cleanupExecutor;
+    private final ForkJoinPool cleanupPool;
     private boolean isDefaultScheduler;
 
     private static class Node<K> {
@@ -73,44 +72,33 @@ public class LRUCache2<K, V> extends AbstractMap<K, V> implements Map<K, V> {
 
     /**
      * Create a LRUCache with the maximum capacity of 'capacity.'  Note, the LRUCache could temporarily exceed the
-     * capacity, however, it will quickly reduce to that amount.  This time is configurable and defaults to 10ms.
-     * @param capacity int maximum size for the LRU cache.
-     */
-    public LRUCache2(int capacity) {
-        this(capacity, 10, defaultScheduler, ForkJoinPool.commonPool());
-        isDefaultScheduler = true;
-    }
-
-    /**
-     * Create a LRUCache with the maximum capacity of 'capacity.'  Note, the LRUCache could temporarily exceed the
-     * capacity, however, it will quickly reduce to that amount.  This time is configurable via the cleanupDelay
-     * parameter.
-     * @param capacity int maximum size for the LRU cache.
-     * @param cleanupDelayMillis int milliseconds before scheduling a cleanup (reduction to capacity if the cache currently
-     * exceeds it).
-     */
-    public LRUCache2(int capacity, int cleanupDelayMillis) {
-        this(capacity, cleanupDelayMillis, defaultScheduler, ForkJoinPool.commonPool());
-        isDefaultScheduler = true;
-    }
-
-    /**
-     * Create a LRUCache with the maximum capacity of 'capacity.'  Note, the LRUCache could temporarily exceed the
      * capacity, however, it will quickly reduce to that amount.  This time is configurable via the cleanupDelay
      * parameter and custom scheduler and executor services.
      * @param capacity int maximum size for the LRU cache.
      * @param cleanupDelayMillis int milliseconds before scheduling a cleanup (reduction to capacity if the cache currently
      * exceeds it).
      * @param scheduler ScheduledExecutorService for scheduling cleanup tasks.
-     * @param cleanupExecutor ExecutorService for executing cleanup tasks.
+     * @param cleanupPool ForkJoinPool for executing cleanup tasks.
      */
-    public LRUCache2(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler, ExecutorService cleanupExecutor) {
+    public ThreadedLRUCacheStrategy(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler, ForkJoinPool cleanupPool) {
+        isDefaultScheduler = false;
+        if (scheduler == null) {
+            this.scheduler = Executors.newScheduledThreadPool(1);
+            isDefaultScheduler = true;
+        } else {
+            this.scheduler = scheduler;
+            isDefaultScheduler = false;
+        }
+
+        if (cleanupPool == null) {
+            this.cleanupPool = ForkJoinPool.commonPool();
+        } else {
+            this.cleanupPool = cleanupPool;
+        }
+
         this.capacity = capacity;
         this.cache = new ConcurrentHashMap<>(capacity);
         this.cleanupDelayMillis = cleanupDelayMillis;
-        this.scheduler = scheduler;
-        this.cleanupExecutor = cleanupExecutor;
-        isDefaultScheduler = false;
     }
 
     @SuppressWarnings("unchecked")
@@ -156,6 +144,18 @@ public class LRUCache2<K, V> extends AbstractMap<K, V> implements Map<K, V> {
             scheduleCleanup();
         }
         return null;
+    }
+
+    @Override
+    public void putAll(Map<? extends K, ? extends V> m) {
+        for (Map.Entry<? extends K, ? extends V> entry : m.entrySet()) {
+            put(entry.getKey(), entry.getValue());
+        }
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return cache.isEmpty();
     }
 
     @Override
@@ -259,9 +259,10 @@ public class LRUCache2<K, V> extends AbstractMap<K, V> implements Map<K, V> {
     // Schedule a delayed cleanup
     private void scheduleCleanup() {
         if (cleanupScheduled.compareAndSet(false, true)) {
-            scheduler.schedule(() -> cleanupExecutor.execute(this::cleanup), cleanupDelayMillis, TimeUnit.MILLISECONDS);
+            scheduler.schedule(() -> ForkJoinPool.commonPool().execute(this::cleanup), cleanupDelayMillis, TimeUnit.MILLISECONDS);
         }
     }
+
 
     // Converts a key or value to a cache-compatible item
     private Object toCacheItem(Object item) {
@@ -278,8 +279,13 @@ public class LRUCache2<K, V> extends AbstractMap<K, V> implements Map<K, V> {
      * Shut down the scheduler if it is the default one.
      */
     public void shutdown() {
-        if (isDefaultScheduler) {
-            scheduler.shutdown();
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(1, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
         }
     }
 }

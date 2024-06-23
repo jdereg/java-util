@@ -1,6 +1,8 @@
-package com.cedarsoftware.util;
+package com.cedarsoftware.util.cache;
 
 import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,8 +11,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import com.cedarsoftware.util.LRUCache;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -18,34 +21,25 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * @author John DeRegnaucourt (jdereg@gmail.com)
- *         <br>
- *         Copyright (c) Cedar Software LLC
- *         <br><br>
- *         Licensed under the Apache License, Version 2.0 (the "License");
- *         you may not use this file except in compliance with the License.
- *         You may obtain a copy of the License at
- *         <br><br>
- *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
- *         <br><br>
- *         Unless required by applicable law or agreed to in writing, software
- *         distributed under the License is distributed on an "AS IS" BASIS,
- *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *         See the License for the specific language governing permissions and
- *         limitations under the License.
- */
 public class LRUCacheTest {
 
     private LRUCache<Integer, String> lruCache;
 
-    @BeforeEach
-    void setUp() {
-        lruCache = new LRUCache<>(3);
+    static Collection<LRUCache.StrategyType> strategies() {
+        return Arrays.asList(
+                LRUCache.StrategyType.LOCKING,
+                LRUCache.StrategyType.THREADED
+        );
     }
 
-    @Test
-    void testPutAndGet() {
+    void setUp(LRUCache.StrategyType strategyType) {
+        lruCache = new LRUCache<>(3, strategyType);
+    }
+
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testPutAndGet(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
         lruCache.put(3, "C");
@@ -55,43 +49,47 @@ public class LRUCacheTest {
         assertEquals("C", lruCache.get(3));
     }
 
-    @Test
-    void testEvictionPolicy() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testEvictionPolicy(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
         lruCache.put(3, "C");
         lruCache.get(1);
         lruCache.put(4, "D");
 
-        // Wait for the background cleanup thread to perform the eviction
         long startTime = System.currentTimeMillis();
-        long timeout = 5000; // 5 seconds timeout
+        long timeout = 5000;
         while (System.currentTimeMillis() - startTime < timeout) {
             if (!lruCache.containsKey(2) && lruCache.containsKey(1) && lruCache.containsKey(4)) {
                 break;
             }
             try {
-                Thread.sleep(100); // Check every 100ms
+                Thread.sleep(100);
             } catch (InterruptedException ignored) {
             }
         }
 
-        // Assert the expected cache state
         assertNull(lruCache.get(2), "Entry for key 2 should be evicted");
         assertEquals("A", lruCache.get(1), "Entry for key 1 should still be present");
         assertEquals("D", lruCache.get(4), "Entry for key 4 should be present");
     }
-    
-    @Test
-    void testSize() {
+
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testSize(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
 
         assertEquals(2, lruCache.size());
     }
 
-    @Test
-    void testIsEmpty() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testIsEmpty(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         assertTrue(lruCache.isEmpty());
 
         lruCache.put(1, "A");
@@ -99,32 +97,40 @@ public class LRUCacheTest {
         assertFalse(lruCache.isEmpty());
     }
 
-    @Test
-    void testRemove() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testRemove(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.remove(1);
 
         assertNull(lruCache.get(1));
     }
 
-    @Test
-    void testContainsKey() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testContainsKey(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
 
         assertTrue(lruCache.containsKey(1));
         assertFalse(lruCache.containsKey(2));
     }
 
-    @Test
-    void testContainsValue() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testContainsValue(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
 
         assertTrue(lruCache.containsValue("A"));
         assertFalse(lruCache.containsValue("B"));
     }
 
-    @Test
-    void testKeySet() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testKeySet(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
 
@@ -132,8 +138,10 @@ public class LRUCacheTest {
         assertTrue(lruCache.keySet().contains(2));
     }
 
-    @Test
-    void testValues() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testValues(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
 
@@ -141,8 +149,10 @@ public class LRUCacheTest {
         assertTrue(lruCache.values().contains("B"));
     }
 
-    @Test
-    void testClear() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testClear(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
         lruCache.clear();
@@ -150,8 +160,10 @@ public class LRUCacheTest {
         assertTrue(lruCache.isEmpty());
     }
 
-    @Test
-    void testPutAll() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testPutAll(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         Map<Integer, String> map = new LinkedHashMap<>();
         map.put(1, "A");
         map.put(2, "B");
@@ -161,28 +173,31 @@ public class LRUCacheTest {
         assertEquals("B", lruCache.get(2));
     }
 
-    @Test
-    void testEntrySet() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testEntrySet(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
 
         assertEquals(2, lruCache.entrySet().size());
     }
 
-    @Test
-    void testPutIfAbsent() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testPutIfAbsent(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.putIfAbsent(1, "A");
         lruCache.putIfAbsent(1, "B");
 
         assertEquals("A", lruCache.get(1));
     }
 
-    @Test
-    void testSmallSizes()
-    {
-        // Testing with different sizes
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testSmallSizes(LRUCache.StrategyType strategy) {
         for (int capacity : new int[]{1, 3, 5, 10}) {
-            LRUCache<Integer, String> cache = new LRUCache<>(capacity);
+            LRUCache<Integer, String> cache = new LRUCache<>(capacity, strategy);
             for (int i = 0; i < capacity; i++) {
                 cache.put(i, "Value" + i);
             }
@@ -193,17 +208,18 @@ public class LRUCacheTest {
                 cache.remove(i);
             }
 
-            assert cache.isEmpty();
+            assertTrue(cache.isEmpty());
             cache.clear();
         }
     }
-    
-    @Test
-    void testConcurrency() throws InterruptedException {
-        ExecutorService service = Executors.newFixedThreadPool(3);
-        lruCache = new LRUCache<>(10000);
 
-        // Perform a mix of put and get operations from multiple threads
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testConcurrency(LRUCache.StrategyType strategy) throws InterruptedException {
+        setUp(strategy);
+        ExecutorService service = Executors.newFixedThreadPool(3);
+        lruCache = new LRUCache<>(10000, strategy);
+
         int max = 10000;
         int attempts = 0;
         Random random = new SecureRandom();
@@ -214,15 +230,11 @@ public class LRUCacheTest {
             service.submit(() -> lruCache.put(key, value));
             service.submit(() -> lruCache.get(key));
             service.submit(() -> lruCache.size());
-            service.submit(() -> {
-                lruCache.keySet().remove(random.nextInt(max));
-            });
-            service.submit(() -> {
-                lruCache.values().remove("V" + random.nextInt(max));
-            });
+            service.submit(() -> lruCache.keySet().remove(random.nextInt(max)));
+            service.submit(() -> lruCache.values().remove("V" + random.nextInt(max)));
             final int attemptsCopy = attempts;
             service.submit(() -> {
-                Iterator i = lruCache.entrySet().iterator();
+                Iterator<Map.Entry<Integer, String>> i = lruCache.entrySet().iterator();
                 int walk = random.nextInt(attemptsCopy);
                 while (i.hasNext() && walk-- > 0) {
                     i.next();
@@ -240,45 +252,45 @@ public class LRUCacheTest {
         assertTrue(service.awaitTermination(1, TimeUnit.MINUTES));
     }
 
-    @Test
-    public void testConcurrency2() throws InterruptedException {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testConcurrency2(LRUCache.StrategyType strategy) throws InterruptedException {
+        setUp(strategy);
         int initialEntries = 100;
-        lruCache = new LRUCache<>(initialEntries);
+        lruCache = new LRUCache<>(initialEntries, strategy);
         ExecutorService executor = Executors.newFixedThreadPool(10);
 
-        // Add initial entries
         for (int i = 0; i < initialEntries; i++) {
             lruCache.put(i, "true");
         }
 
         SecureRandom random = new SecureRandom();
-        // Perform concurrent operations
         for (int i = 0; i < 100000; i++) {
             final int key = random.nextInt(100);
             executor.submit(() -> {
-                lruCache.put(key, "true"); // Add
-                lruCache.remove(key); // Remove
-                lruCache.put(key, "false"); // Update
+                lruCache.put(key, "true");
+                lruCache.remove(key);
+                lruCache.put(key, "false");
             });
         }
 
         executor.shutdown();
         assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
 
-        // Check some values to ensure correctness
         for (int i = 0; i < initialEntries; i++) {
             final int key = i;
             assertTrue(lruCache.containsKey(key));
         }
 
-        assert lruCache.size() == 100;
         assertEquals(initialEntries, lruCache.size());
     }
 
-    @Test
-    void testEquals() {
-        LRUCache<Integer, String> cache1 = new LRUCache<>(3);
-        LRUCache<Integer, String> cache2 = new LRUCache<>(3);
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testEquals(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        LRUCache<Integer, String> cache1 = new LRUCache<>(3, strategy);
+        LRUCache<Integer, String> cache2 = new LRUCache<>(3, strategy);
 
         cache1.put(1, "A");
         cache1.put(2, "B");
@@ -300,10 +312,12 @@ public class LRUCacheTest {
         assertTrue(cache1.equals(cache1));
     }
 
-    @Test
-    void testHashCode() {
-        LRUCache<Integer, String> cache1 = new LRUCache<>(3);
-        LRUCache<Integer, String> cache2 = new LRUCache<>(3);
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testHashCode(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        LRUCache<Integer, String> cache1 = new LRUCache<>(3, strategy);
+        LRUCache<Integer, String> cache2 = new LRUCache<>(3, strategy);
 
         cache1.put(1, "A");
         cache1.put(2, "B");
@@ -319,23 +333,27 @@ public class LRUCacheTest {
         assertNotEquals(cache1.hashCode(), cache2.hashCode());
     }
 
-    @Test
-    void testToString() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testToString(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
         lruCache.put(3, "C");
 
-        assert lruCache.toString().contains("1=A");
-        assert lruCache.toString().contains("2=B");
-        assert lruCache.toString().contains("3=C");
+        assertTrue(lruCache.toString().contains("1=A"));
+        assertTrue(lruCache.toString().contains("2=B"));
+        assertTrue(lruCache.toString().contains("3=C"));
 
-        Map<String, String> cache = new LRUCache(100);
-        assert cache.toString().equals("{}");
-        assert cache.size() == 0;
+        Map<String, String> cache = new LRUCache<>(100, strategy);
+        assertEquals("{}", cache.toString());
+        assertEquals(0, cache.size());
     }
 
-    @Test
-    void testFullCycle() {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testFullCycle(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
         lruCache.put(3, "C");
@@ -344,7 +362,7 @@ public class LRUCacheTest {
         lruCache.put(6, "F");
 
         long startTime = System.currentTimeMillis();
-        long timeout = 5000; // 5 seconds timeout
+        long timeout = 5000;
         while (System.currentTimeMillis() - startTime < timeout) {
             if (lruCache.size() == 3 &&
                     lruCache.containsKey(4) &&
@@ -356,7 +374,7 @@ public class LRUCacheTest {
                 break;
             }
             try {
-                Thread.sleep(100); // Check every 100ms
+                Thread.sleep(100);
             } catch (InterruptedException ignored) {
             }
         }
@@ -374,45 +392,43 @@ public class LRUCacheTest {
         lruCache.remove(4);
         assertEquals(0, lruCache.size(), "Cache should be empty after removing all elements");
     }
-    
-    @Test
-    void testCacheWhenEmpty() {
-        // The cache is initially empty, so any get operation should return null
+
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testCacheWhenEmpty(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         assertNull(lruCache.get(1));
     }
 
-    @Test
-    void testCacheClear() {
-        // Add elements to the cache
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testCacheClear(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         lruCache.put(1, "A");
         lruCache.put(2, "B");
-
-        // Clear the cache
         lruCache.clear();
 
-        // The cache should be empty, so any get operation should return null
         assertNull(lruCache.get(1));
         assertNull(lruCache.get(2));
     }
 
-    @Test
-    void testCacheBlast() {
-        // Jam 10M items to the cache
-        lruCache = new LRUCache<>(1000);
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testCacheBlast(LRUCache.StrategyType strategy) {
+        lruCache = new LRUCache<>(1000, strategy);
         for (int i = 0; i < 10000000; i++) {
             lruCache.put(i, "" + i);
         }
 
-        // Wait until the cache size stabilizes to 1000
         int expectedSize = 1000;
         long startTime = System.currentTimeMillis();
-        long timeout = 10000; // wait up to 10 seconds (will never take this long)
+        long timeout = 10000;
         while (System.currentTimeMillis() - startTime < timeout) {
             if (lruCache.size() <= expectedSize) {
                 break;
             }
             try {
-                Thread.sleep(100); // Check every 100ms
+                Thread.sleep(100);
                 System.out.println("Cache size: " + lruCache.size());
             } catch (InterruptedException ignored) {
             }
@@ -421,51 +437,55 @@ public class LRUCacheTest {
         assertEquals(1000, lruCache.size());
     }
 
-    @Test
-    void testNullValue()
-    {
-        lruCache = new LRUCache<>(100, 1);
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testNullValue(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        lruCache = new LRUCache<>(100, strategy);
         lruCache.put(1, null);
-        assert lruCache.containsKey(1);
-        assert lruCache.containsValue(null);
-        assert lruCache.toString().contains("1=null");
-        assert lruCache.hashCode() != 0;
+        assertTrue(lruCache.containsKey(1));
+        assertTrue(lruCache.containsValue(null));
+        assertTrue(lruCache.toString().contains("1=null"));
+        assertNotEquals(0, lruCache.hashCode());
     }
 
-    @Test
-    void testNullKey()
-    {
-        lruCache = new LRUCache<>(100, 1);
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testNullKey(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        lruCache = new LRUCache<>(100, strategy);
         lruCache.put(null, "true");
-        assert lruCache.containsKey(null);
-        assert lruCache.containsValue("true");
-        assert lruCache.toString().contains("null=true");
-        assert lruCache.hashCode() != 0;
+        assertTrue(lruCache.containsKey(null));
+        assertTrue(lruCache.containsValue("true"));
+        assertTrue(lruCache.toString().contains("null=true"));
+        assertNotEquals(0, lruCache.hashCode());
     }
 
-    @Test
-    void testNullKeyValue()
-    {
-        lruCache = new LRUCache<>(100, 1);
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testNullKeyValue(LRUCache.StrategyType strategy) {
+        setUp(strategy);
+        lruCache = new LRUCache<>(100, strategy);
         lruCache.put(null, null);
-        assert lruCache.containsKey(null);
-        assert lruCache.containsValue(null);
-        assert lruCache.toString().contains("null=null");
-        assert lruCache.hashCode() != 0;
+        assertTrue(lruCache.containsKey(null));
+        assertTrue(lruCache.containsValue(null));
+        assertTrue(lruCache.toString().contains("null=null"));
+        assertNotEquals(0, lruCache.hashCode());
 
-        LRUCache<Integer, String> cache1 = new LRUCache<>(3);
+        LRUCache<Integer, String> cache1 = new LRUCache<>(3, strategy);
         cache1.put(null, null);
-        LRUCache<Integer, String> cache2 = new LRUCache<>(3);
+        LRUCache<Integer, String> cache2 = new LRUCache<>(3, strategy);
         cache2.put(null, null);
-        assert cache1.equals(cache2);
+        assertTrue(cache1.equals(cache2));
     }
 
-    @Test
-    void testSpeed()
-    {
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testSpeed(LRUCache.StrategyType strategy) {
+        setUp(strategy);
         long startTime = System.currentTimeMillis();
-        LRUCache<Integer, Boolean> cache = new LRUCache<>(30000000);
-        for (int i = 0; i < 30000000; i++) {
+        LRUCache<Integer, Boolean> cache = new LRUCache<>(10000000, strategy);
+        for (int i = 0; i < 10000000; i++) {
             cache.put(i, true);
         }
         long endTime = System.currentTimeMillis();

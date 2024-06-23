@@ -459,4 +459,16 @@ public class LRUCacheTest {
         cache2.put(null, null);
         assert cache1.equals(cache2);
     }
+
+    @Test
+    void testSpeed()
+    {
+        long startTime = System.currentTimeMillis();
+        LRUCache<Integer, Boolean> cache = new LRUCache<>(30000000);
+        for (int i = 0; i < 30000000; i++) {
+            cache.put(i, true);
+        }
+        long endTime = System.currentTimeMillis();
+        System.out.println("Speed: " + (endTime - startTime));
+    }
 }

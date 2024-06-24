@@ -9,16 +9,16 @@ import com.cedarsoftware.util.cache.LockingLRUCacheStrategy;
 import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
 
 /**
- * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
- * once a threshold is met. It implements the <code>Map</code> interface for convenience.
+ * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items once
+ * a threshold is met. It implements the <code>Map</code> interface for convenience.
  * <p>
- * This class provides two implementation strategies: a locking approach and a threaded approach.
+ * This class offers two implementation strategies: a locking approach and a threaded approach.
  * <ul>
  *   <li>The Locking strategy can be selected by using the constructor that takes only an int for capacity, or by using
  *       the constructor that takes an int and a StrategyType enum (StrategyType.LOCKING).</li>
  *   <li>The Threaded strategy can be selected by using the constructor that takes an int and a StrategyType enum
- *       (StrategyType.THREADED). Additionally, there is a constructor that takes a capacity, a cleanup delay time, a
- *       ScheduledExecutorService, and a ForkJoinPool, which also selects the threaded strategy.</li>
+ *       (StrategyType.THREADED). Additionally, there is a constructor that takes a capacity, a cleanup delay time,
+ *       and a ScheduledExecutorService.</li>
  * </ul>
  * <p>
  * The Locking strategy allows for O(1) access for get(), put(), and remove(). For put(), remove(), and many other
@@ -31,7 +31,7 @@ import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
  * with cleaning up items above the capacity threshold. This means that the cache may temporarily exceed its capacity, but
  * it will soon be trimmed back to the capacity limit by the scheduled thread.
  * <p>
- * LRUCache supports <code>null</code> for both <b>key</b> or <b>value</b>.
+ * LRUCache supports <code>null</code> for both <b>key</b> and <b>value</b>.
  * <p>
  * <b>Special Thanks:</b> This implementation was inspired by insights and suggestions from Ben Manes.
  * @see LockingLRUCacheStrategy

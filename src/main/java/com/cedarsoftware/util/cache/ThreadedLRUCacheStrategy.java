@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * This class provides a thread-safe Least Recently Used (LRU) cache API that will evict the least recently used items,
+ * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
  * once a threshold is met. It implements the <code>Map</code> interface for convenience.
  * <p>
  * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking. It uses a <code>ConcurrentHashMap</code>
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * with cleaning up items above the capacity threshold. This means that the cache may temporarily exceed its capacity, but
  * it will soon be trimmed back to the capacity limit by the scheduled thread.
  * <p>
- * LRUCache supports <code>null</code> for both key or value.
+ * LRUCache supports <code>null</code> for both key and value.
  * <p>
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

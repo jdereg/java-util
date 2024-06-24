@@ -1,7 +1,7 @@
 ### Revision History
 #### 2.13.0
 > * `LRUCache` improved garbage collection handling to avoid [gc Nepotism](https://psy-lob-saw.blogspot.com/2016/03/gc-nepotism-and-linked-queues.html?lr=1719181314858) issues by nulling out node references upon eviction. Pointed out by [Ben Manes](https://github.com/ben-manes).
-> * Combined `ForkedJoinPool` and `ScheduledExecutorService` to use of only `ScheduledExecutorServive,` which is easier for user.  The user can supply `null` or their own scheduler. In the case of `null`, one will be created and the `shutdown()` method will terminate it.  If the user supplies a `ScheduledExecutorService` it will be *used*, but not shutdown when the `shutdown()` method is called. This allows `LRUCache` to work well in containerized environments.
+> * Combined `ForkedJoinPool` and `ScheduledExecutorService` into use of only `ScheduledExecutorServive,` which is easier for user.  The user can supply `null` or their own scheduler. In the case of `null`, one will be created and the `shutdown()` method will terminate it.  If the user supplies a `ScheduledExecutorService` it will be *used*, but not shutdown when the `shutdown()` method is called. This allows `LRUCache` to work well in containerized environments.
 #### 2.12.0
 > * `LRUCache` updated to support both "locking" and "threaded" implementation strategies. 
 #### 2.11.0

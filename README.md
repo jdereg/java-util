@@ -37,12 +37,7 @@ implementation 'com.cedarsoftware:java-util:2.13.0'
 </dependency>
 ```
 ---
-
-Included in java-util:
 ## Included in java-util:
-- **[ArrayUtilities](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)** - Provides utilities for working with Java arrays `[]`, enhancing array operations.
-- **[ByteUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Offers routines for converting `byte[]` to hexadecimal character arrays and vice versa, facilitating byte manipulation.
-- **[ClassUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Includes utilities for class-related operations. For example, the method `computeInheritanceDistance(source, destination)` calculates the number of superclass steps between two classes, returning it as an integer. If no inheritance relationship exists, it returns -1. Distances for primitives and their wrappers are considered as 0, indicating no separation.
 
 ### Sets
 - **[CompactSet](/src/main/java/com/cedarsoftware/util/CompactSet.java)** - A memory-efficient `Set` that expands to a `HashSet` when `size() > compactSize()`.
@@ -69,7 +64,10 @@ Included in java-util:
 - **[ConcurrentList](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)** - Provides a thread-safe `List` that can be either an independent or a wrapped instance.
 - **[SealableList](/src/main/java/com/cedarsoftware/util/SealableList.java)** - Enables switching between sealed and unsealed states for a `List`, managed via an external `Supplier<Boolean>`.
 
-### Additional Utilities
+### Utilities
+- **[ArrayUtilities](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)** - Provides utilities for working with Java arrays `[]`, enhancing array operations.
+- **[ByteUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Offers routines for converting `byte[]` to hexadecimal character arrays and vice versa, facilitating byte manipulation.
+- **[ClassUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Includes utilities for class-related operations. For example, the method `computeInheritanceDistance(source, destination)` calculates the number of superclass steps between two classes, returning it as an integer. If no inheritance relationship exists, it returns -1. Distances for primitives and their wrappers are considered as 0, indicating no separation.
 - **[Converter](/src/main/java/com/cedarsoftware/util/Converter.java)** - Facilitates type conversions, e.g., converting `String` to `BigDecimal`. Supports a wide range of conversions.
 - **[DateUtilities](/src/main/java/com/cedarsoftware/util/DateUtilities.java)** - Robustly parses date strings with support for various formats and idioms.
 - **[DeepEquals](/src/main/java/com/cedarsoftware/util/DeepEquals.java)** - Deeply compares two object graphs for equivalence, handling cycles and using custom `equals()` methods where available.

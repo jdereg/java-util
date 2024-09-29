@@ -1,5 +1,7 @@
 ### Revision History
 #### 2.14.0
+> * `ClassUtilities.addPermanentClassAlias()` - add an alias that `.forName()` can use to instantiate class (e.g. "date" for `java.util.Date`)
+> * `ClassUtilities.removePermanentClassAlias()` - remove an alias that `.forName()` can no longer use.
 > * Updated build plug-in dependencies.
 #### 2.13.0
 > * `LRUCache` improved garbage collection handling to avoid [gc Nepotism](https://psy-lob-saw.blogspot.com/2016/03/gc-nepotism-and-linked-queues.html?lr=1719181314858) issues by nulling out node references upon eviction. Pointed out by [Ben Manes](https://github.com/ben-manes).

@@ -96,6 +96,29 @@ public class ClassUtilities
     }
 
     /**
+     * Add alias names for classes to allow .forName() to bring the class (.class) back with the alias name.
+     * Because the alias to class name mappings are static, it is expected that these are set up during initialization
+     * and not changed later.
+     * @param clazz Class to add an alias for
+     * @param alias String alias name
+     */
+    public static void addPermanentClassAlias(Class<?> clazz, String alias)
+    {
+        nameToClass.put(alias, clazz);
+    }
+
+    /**
+     * Remove alias name for classes to prevent .forName() from fetching the class with the alias name.
+     * Because the alias to class name mappings are static, it is expected that these are set up during initialization
+     * and not changed later.
+     * @param alias String alias name
+     */
+    public static void removePermanentClassAlias(String alias)
+    {
+        nameToClass.remove(alias);
+    }
+
+    /**
      * Computes the inheritance distance between two classes/interfaces/primitive types.
      * @param source      The source class, interface, or primitive type.
      * @param destination The destination class, interface, or primitive type.
@@ -183,8 +206,7 @@ public class ClassUtilities
      * Compare two primitives.
      * @return 0 if they are the same, -1 if not.  Primitive wrapper classes are consider the same as primitive classes.
      */
-    private static int comparePrimitiveToWrapper(Class<?> source, Class<?> destination)
-    {
+    private static int comparePrimitiveToWrapper(Class<?> source, Class<?> destination) {
         try
         {
             return source.getField("TYPE").get(null).equals(destination) ? 0 : -1;
@@ -201,8 +223,7 @@ public class ClassUtilities
      * @param classLoader ClassLoader to use when searching for JVM classes.
      * @return Class instance of the named JVM class or null if not found.
      */
-    public static Class<?> forName(String name, ClassLoader classLoader)
-    {
+    public static Class<?> forName(String name, ClassLoader classLoader) {
         if (name == null || name.isEmpty()) {
             return null;
         }
@@ -246,8 +267,7 @@ public class ClassUtilities
     /**
      * loadClass() provided by: Thomas Margreiter
      */
-    private static Class<?> loadClass(String name, ClassLoader classLoader) throws ClassNotFoundException
-    {
+    private static Class<?> loadClass(String name, ClassLoader classLoader) throws ClassNotFoundException {
         String className = name;
         boolean arrayType = false;
         Class<?> primitiveArray = null;

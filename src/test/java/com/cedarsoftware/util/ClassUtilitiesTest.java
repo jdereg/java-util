@@ -188,6 +188,18 @@ class ClassUtilitiesTest {
         assert testObjectClass == null;
     }
 
+    @Test
+    public void testClassUtilitiesAliases()
+    {
+        ClassUtilities.addPermanentClassAlias(HashMap.class, "mapski");
+        Class<?> x = ClassUtilities.forName("mapski", ClassUtilities.class.getClassLoader());
+        assert HashMap.class == x;
+
+        ClassUtilities.removePermanentClassAlias("mapski");
+        x = ClassUtilities.forName("mapski", ClassUtilities.class.getClassLoader());
+        assert x == null;
+    }
+
     private static class AlternateNameClassLoader extends ClassLoader
     {
         AlternateNameClassLoader(String alternateName, Class<?> clazz)
@@ -222,5 +234,4 @@ class ClassUtilitiesTest {
         private final String alternateName;
         private final Class<?> clazz;
     }
-
 }

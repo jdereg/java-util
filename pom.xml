@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>bundle</packaging>
-    <version>2.13.0</version>
+    <version>2.14.0-SNAPSHOT</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -33,23 +33,23 @@
         <maven.compiler.release>8</maven.compiler.release>
 
         <!-- testing only -->
-        <version.junit-jupiter-api>5.10.2</version.junit-jupiter-api>
-        <version.junit-jupiter-params>5.10.2</version.junit-jupiter-params>
+        <version.junit-jupiter-api>5.11.1</version.junit-jupiter-api>
+        <version.junit-jupiter-params>5.11.1</version.junit-jupiter-params>
         <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>
-        <version.assertj-core>3.26.0</version.assertj-core>
-        <version.json-io>4.25.0</version.json-io>
-        <version.agrona>1.21.2</version.agrona>
+        <version.assertj-core>3.26.3</version.assertj-core>
+        <version.json-io>4.26.0</version.json-io>
+        <version.agrona>1.23.0</version.agrona>
 
         <!-- Build maven-***-plugins -->
         <version.maven-jar-plugin>3.4.2</version.maven-jar-plugin>
-        <version.maven-gpg-plugin>3.2.4</version.maven-gpg-plugin>
+        <version.maven-gpg-plugin>3.2.7</version.maven-gpg-plugin>
         <version.maven-compiler-plugin>3.13.0</version.maven-compiler-plugin>
-        <version.maven-javadoc-plugin>3.7.0</version.maven-javadoc-plugin>
-        <version.maven-surefire-plugin>3.3.0</version.maven-surefire-plugin>
+        <version.maven-javadoc-plugin>3.10.0</version.maven-javadoc-plugin>
+        <version.maven-surefire-plugin>3.5.0</version.maven-surefire-plugin>
         <version.maven-source-plugin>3.3.1</version.maven-source-plugin>
         <version.maven-scr-plugin>1.26.4</version.maven-scr-plugin>
         <version.maven-bundle-plugin>5.1.9</version.maven-bundle-plugin>
-        <version.moditect-maven-plugin>1.2.1.Final</version.moditect-maven-plugin>
+        <version.moditect-maven-plugin>1.2.2.Final</version.moditect-maven-plugin>
 
         <!-- release to Maven Central via Sonatype Nexus -->
         <version.nexus-staging-maven-plugin>1.7.0</version.nexus-staging-maven-plugin>

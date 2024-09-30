@@ -57,6 +57,7 @@ implementation 'com.cedarsoftware:java-util:2.14.0'
 - **[CompactCIHashMap](/src/main/java/com/cedarsoftware/util/CompactCIHashMap.java)** - A compact, case-insensitive `Map` expanding to a `HashMap`.
 - **[CaseInsensitiveMap](/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java)** - Treats `String` keys in a case-insensitive manner.
 - **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - Thread-safe LRU cache which implements the Map API.  Supports "locking" or "threaded" strategy (selectable).
+- **[TTLCache](/src/main/java/com/cedarsoftware/util/TTLCache.java)** - Thread-safe TTL cache which implements the Map API. Entries older than Time-To-Live will be evicted.  Also supports a `maxSize` (LRU capability).
 - **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Tracks access patterns to its keys, aiding in performance optimizations.
 - **[SealableMap](/src/main/java/com/cedarsoftware/util/SealableMap.java)** - Allows toggling between sealed (read-only) and unsealed (writable) states, managed externally.
 - **[SealableNavigableMap](/src/main/java/com/cedarsoftware/util/SealableNavigableMap.java)** - Extends `SealableMap` features to `NavigableMap`, managing state externally.

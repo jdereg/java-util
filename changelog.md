@@ -1,4 +1,7 @@
 ### Revision History
+#### 2.15.0-SNAPSHOT
+> * `TTLCache` is new. IT supports a minimum Time-To-Live (TTL) for cache entries. Entries older than TTL will be dropped.  Can also be limited to `maxSize` entries to support LRU capability. Each `TTLCache` can have its own TTL setting, yet, they share a single `ScheduledExecutorService` across all instances.  Call the static `shutdown()` method on `TTLCache` when your application or service is ending.
+> * `LRUCache` updated to use a single `ScheduledExecutorService` across all instances, regardless of the individual time settings. Call the static `shutdown()` method on `LRUCache` when your application or service is ending.
 #### 2.14.0
 > * `ClassUtilities.addPermanentClassAlias()` - add an alias that `.forName()` can use to instantiate class (e.g. "date" for `java.util.Date`)
 > * `ClassUtilities.removePermanentClassAlias()` - remove an alias that `.forName()` can no longer use.

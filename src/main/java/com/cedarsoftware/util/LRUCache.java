@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
 
 import com.cedarsoftware.util.cache.LockingLRUCacheStrategy;
 import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
@@ -82,7 +81,7 @@ public class LRUCache<K, V> implements Map<K, V> {
      */
     public LRUCache(int capacity, StrategyType strategyType) {
         if (strategyType == StrategyType.THREADED) {
-            strategy = new ThreadedLRUCacheStrategy<>(capacity, 10, null);
+            strategy = new ThreadedLRUCacheStrategy<>(capacity, 10);
         } else if (strategyType == StrategyType.LOCKING) {
             strategy = new LockingLRUCacheStrategy<>(capacity);
         } else {
@@ -99,13 +98,10 @@ public class LRUCache<K, V> implements Map<K, V> {
      * @param capacity int maximum number of entries in the cache.
      * @param cleanupDelayMillis int number of milliseconds after a put() call when a scheduled task should run to
      *                           trim the cache to no more than capacity.  The default is 10ms.
-     * @param scheduler ScheduledExecutorService which can be null, in which case one will be created for you, or you
-     *                  can supply your own.  If one is created for you, when shutdown() is called, it will be shutdown
-     *                  for you.
      * @see com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy
      */
-    public LRUCache(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler) {
-        strategy = new ThreadedLRUCacheStrategy<>(capacity, cleanupDelayMillis, scheduler);
+    public LRUCache(int capacity, int cleanupDelayMillis) {
+        strategy = new ThreadedLRUCacheStrategy<>(capacity, cleanupDelayMillis);
     }
 
     @Override
@@ -183,16 +179,16 @@ public class LRUCache<K, V> implements Map<K, V> {
         if (this == obj) {
             return true;
         }
-        if (obj == null || getClass() != obj.getClass()) {
+        if (!(obj instanceof Map)) {    // covers null check too
             return false;
         }
-        LRUCache<?, ?> other = (LRUCache<?, ?>) obj;
-        return strategy.equals(other.strategy);
+        Map<?, ?> other = (Map<?, ?>) obj;
+        return strategy.equals(other);
     }
 
     public void shutdown() {
         if (strategy instanceof ThreadedLRUCacheStrategy) {
-            ((ThreadedLRUCacheStrategy<K, V>) strategy).shutdown();
+            ThreadedLRUCacheStrategy.shutdown();
         }
     }
 }

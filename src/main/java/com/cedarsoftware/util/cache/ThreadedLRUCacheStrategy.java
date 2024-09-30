@@ -6,7 +6,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -14,18 +16,23 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.lang.ref.WeakReference;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
  * once a threshold is met. It implements the <code>Map</code> interface for convenience.
  * <p>
  * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking. It uses a <code>ConcurrentHashMap</code>
- * internally. To ensure that the capacity is honored, whenever put() is called, a thread (from a thread pool) is tasked
- * with cleaning up items above the capacity threshold. This means that the cache may temporarily exceed its capacity, but
- * it will soon be trimmed back to the capacity limit by the scheduled thread.
+ * internally. To ensure that the capacity is honored, whenever put() is called, a scheduled cleanup task is triggered
+ * to remove the least recently used items if the cache exceeds the capacity.
  * <p>
  * LRUCache supports <code>null</code> for both key and value.
  * <p>
+ * <b>Note:</b> This implementation uses a shared scheduler for all cache instances to optimize resource usage.
+ *
+ * @param <K> the type of keys maintained by this cache
+ * @param <V> the type of mapped values
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -48,9 +55,13 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     private final int capacity;
     private final ConcurrentMap<Object, Node<K>> cache;
     private final AtomicBoolean cleanupScheduled = new AtomicBoolean(false);
-    private final ScheduledExecutorService scheduler;
-    private final boolean isDefaultScheduler;
 
+    // Shared ScheduledExecutorService for all cache instances
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    /**
+     * Inner class representing a cache node with a key, value, and timestamp for LRU tracking.
+     */
     private static class Node<K> {
         final K key;
         volatile Object value;
@@ -68,48 +79,86 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     }
 
     /**
-     * Create a LRUCache with the maximum capacity of 'capacity.' Note, the LRUCache could temporarily exceed the
-     * capacity; however, it will quickly reduce to that amount. This time is configurable via the cleanupDelay
-     * parameter and custom scheduler and executor services.
-     * 
+     * Inner class for the purging task.
+     * Uses a WeakReference to avoid preventing garbage collection of cache instances.
+     */
+    private static class PurgeTask<K, V> implements Runnable {
+        private final WeakReference<ThreadedLRUCacheStrategy<K, V>> cacheRef;
+
+        PurgeTask(WeakReference<ThreadedLRUCacheStrategy<K, V>> cacheRef) {
+            this.cacheRef = cacheRef;
+        }
+
+        @Override
+        public void run() {
+            ThreadedLRUCacheStrategy<K, V> cache = cacheRef.get();
+            if (cache != null) {
+                cache.cleanup();
+            }
+            // If cache is null, it has been garbage collected; no action needed
+        }
+    }
+
+    /**
+     * Create an LRUCache with the maximum capacity of 'capacity.'
+     * The cleanup task is scheduled to run after 'cleanupDelayMillis' milliseconds.
+     *
      * @param capacity           int maximum size for the LRU cache.
      * @param cleanupDelayMillis int milliseconds before scheduling a cleanup (reduction to capacity if the cache currently
      *                           exceeds it).
-     * @param scheduler          ScheduledExecutorService for scheduling cleanup tasks. Can be null. If none is supplied,
-     *                           a default scheduler is created for you. Calling the .shutdown() method will shutdown
-     *                           the schedule only if you passed in null (using default). If you pass one in, it is
-     *                           your responsibility to terminate the scheduler.
      */
-    public ThreadedLRUCacheStrategy(int capacity, int cleanupDelayMillis, ScheduledExecutorService scheduler) {
-        if (scheduler == null) {
-            this.scheduler = Executors.newScheduledThreadPool(1);
-            isDefaultScheduler = true;
-        } else {
-            this.scheduler = scheduler;
-            isDefaultScheduler = false;
+    public ThreadedLRUCacheStrategy(int capacity, int cleanupDelayMillis) {
+        if (capacity < 1) {
+            throw new IllegalArgumentException("Capacity must be at least 1.");
+        }
+        if (cleanupDelayMillis < 10) {
+            throw new IllegalArgumentException("cleanupDelayMillis must be at least 10 milliseconds.");
         }
         this.capacity = capacity;
         this.cache = new ConcurrentHashMap<>(capacity);
         this.cleanupDelayMillis = cleanupDelayMillis;
+
+        // Schedule the purging task for this cache
+        schedulePurgeTask();
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * Schedules the purging task for this cache using the shared scheduler.
+     */
+    private void schedulePurgeTask() {
+        WeakReference<ThreadedLRUCacheStrategy<K, V>> cacheRef = new WeakReference<>(this);
+        PurgeTask<K, V> purgeTask = new PurgeTask<>(cacheRef);
+        scheduler.scheduleAtFixedRate(purgeTask, cleanupDelayMillis, cleanupDelayMillis, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Cleanup method that removes least recently used entries to maintain the capacity.
+     */
     private void cleanup() {
         int size = cache.size();
         if (size > capacity) {
+            int nodesToRemove = size - capacity;
             Node<K>[] nodes = cache.values().toArray(new Node[0]);
             Arrays.sort(nodes, Comparator.comparingLong(node -> node.timestamp));
-            int nodesToRemove = size - capacity;
             for (int i = 0; i < nodesToRemove; i++) {
                 Node<K> node = nodes[i];
                 cache.remove(toCacheItem(node.key), node);
             }
+            cleanupScheduled.set(false); // Reset the flag after cleanup
+
+            // Check if another cleanup is needed after the current one
+            if (cache.size() > capacity) {
+                scheduleImmediateCleanup();
+            }
         }
-        cleanupScheduled.set(false); // Reset the flag after cleanup
-        
-        // Check if another cleanup is needed after the current one
-        if (cache.size() > capacity) {
-            scheduleCleanup();
+    }
+
+    /**
+     * Schedules an immediate cleanup if not already scheduled.
+     */
+    private void scheduleImmediateCleanup() {
+        if (cleanupScheduled.compareAndSet(false, true)) {
+            scheduler.schedule(this::cleanup, cleanupDelayMillis, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -134,7 +183,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
             newNode.updateTimestamp();
             return fromCacheItem(oldNode.value);
         } else if (size() > capacity) {
-            scheduleCleanup();
+            scheduleImmediateCleanup();
         }
         return null;
     }
@@ -180,7 +229,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     public boolean containsValue(Object value) {
         Object cacheValue = toCacheItem(value);
         for (Node<K> node : cache.values()) {
-            if (node.value.equals(cacheValue)) {
+            if (Objects.equals(node.value, cacheValue)) {
                 return true;
             }
         }
@@ -189,16 +238,16 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
-        Set<Map.Entry<K, V>> entrySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        Set<Map.Entry<K, V>> entrySet = ConcurrentHashMap.newKeySet();
         for (Node<K> node : cache.values()) {
             entrySet.add(new AbstractMap.SimpleEntry<>(fromCacheItem(node.key), fromCacheItem(node.value)));
         }
-        return entrySet;
+        return Collections.unmodifiableSet(entrySet);
     }
 
     @Override
     public Set<K> keySet() {
-        Set<K> keySet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        Set<K> keySet = ConcurrentHashMap.newKeySet();
         for (Node<K> node : cache.values()) {
             keySet.add(fromCacheItem(node.key));
         }
@@ -235,51 +284,54 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("{");
-        for (Node<K> node : cache.values()) {
-            sb.append((K) fromCacheItem(node.key)).append("=").append((V) fromCacheItem(node.value)).append(", ");
-        }
-        if (sb.length() > 1) {
-            sb.setLength(sb.length() - 2); // Remove trailing comma and space
+        Iterator<Entry<K, V>> it = entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<K, V> entry = it.next();
+            sb.append(entry.getKey()).append("=").append(entry.getValue());
+            if (it.hasNext()) {
+                sb.append(", ");
+            }
         }
         sb.append("}");
         return sb.toString();
     }
 
-    // Schedule a delayed cleanup
-    private void scheduleCleanup() {
-        if (cleanupScheduled.compareAndSet(false, true)) {
-            scheduler.schedule(this::cleanup, cleanupDelayMillis, TimeUnit.MILLISECONDS);
-        }
-    }
-
-    // Converts a key or value to a cache-compatible item
+    /**
+     * Converts a user-provided key or value to a cache item, handling nulls.
+     *
+     * @param item the key or value to convert
+     * @return the cache item representation
+     */
     private Object toCacheItem(Object item) {
         return item == null ? NULL_ITEM : item;
     }
 
-    // Converts a cache-compatible item to the original key or value
+    /**
+     * Converts a cache item back to the user-provided key or value, handling nulls.
+     *
+     * @param <T>       the type of the returned item
+     * @param cacheItem the cache item to convert
+     * @return the original key or value
+     */
     @SuppressWarnings("unchecked")
     private <T> T fromCacheItem(Object cacheItem) {
         return cacheItem == NULL_ITEM ? null : (T) cacheItem;
     }
-
     /**
-     * Shut down the scheduler if it is the default one.
+     * Shuts down the shared scheduler. Call this method when your application is terminating.
      */
-    public void shutdown() {
-        if (isDefaultScheduler) {
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(1, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
-                }
-            } catch (InterruptedException e) {
+    public static void shutdown() {
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
                 scheduler.shutdownNow();
             }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 }

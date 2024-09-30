@@ -18,6 +18,7 @@ import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
 import static java.lang.System.out;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -65,8 +66,7 @@ public class TestUniqueIdGenerator
     @Test
     void testUniqueIdGeneration()
     {
-        int maxIdGen = 100000;
-        int testSize = maxIdGen;
+        int testSize = 100000;
         Long[] keep = new Long[testSize];
         Long[] keep19 = new Long[testSize];
 
@@ -90,25 +90,39 @@ public class TestUniqueIdGenerator
         assertMonotonicallyIncreasing(keep19);
     }
 
-    private void assertMonotonicallyIncreasing(Long[] ids)
-    {
-        final long len = ids.length;
-        long prevId = -1;
-        for (int i=0; i < len; i++)
-        {
-            long id = ids[i];
-            if (prevId != -1)
-            {
-                if (prevId >= id)
-                {
-                    out.println("index = " + i);
-                    out.println(prevId);
-                    out.println(id);
-                    out.flush();
-                    assert false : "ids are not monotonically increasing";
-                }
-            }
-            prevId = id;
+//    private void assertMonotonicallyIncreasing(Long[] ids)
+//    {
+//        final long len = ids.length;
+//        long prevId = -1;
+//        for (int i=0; i < len; i++)
+//        {
+//            long id = ids[i];
+//            if (prevId != -1)
+//            {
+//                if (prevId >= id)
+//                {
+//                    out.println("index = " + i);
+//                    out.println(prevId);
+//                    out.println(id);
+//                    out.flush();
+//                    assert false : "ids are not monotonically increasing";
+//                }
+//            }
+//            prevId = id;
+//        }
+//    }
+
+    /**
+     * Asserts that the provided array of Longs is monotonically increasing (non-decreasing).
+     * Assumes all elements in the array are non-null.
+     *
+     * @param ids the array of Longs to check
+     */
+    private void assertMonotonicallyIncreasing(Long[] ids) {
+        for (int i = 1; i < ids.length; i++) {
+            assertTrue(ids[i] >= ids[i - 1],
+                    String.format("Array is not monotonically increasing at index %d: %d < %d",
+                            i, ids[i], ids[i - 1]));
         }
     }
 

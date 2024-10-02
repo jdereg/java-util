@@ -25,7 +25,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 To include in your project:
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:2.14.0'
+implementation 'com.cedarsoftware:java-util:2.15.0'
 ```
 
 ##### Maven
@@ -33,7 +33,7 @@ implementation 'com.cedarsoftware:java-util:2.14.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.14.0</version>
+  <version>2.15.0</version>
 </dependency>
 ```
 ---
@@ -59,6 +59,7 @@ implementation 'com.cedarsoftware:java-util:2.14.0'
 - **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - Thread-safe LRU cache which implements the Map API.  Supports "locking" or "threaded" strategy (selectable).
 - **[TTLCache](/src/main/java/com/cedarsoftware/util/TTLCache.java)** - Thread-safe TTL cache which implements the Map API. Entries older than Time-To-Live will be evicted.  Also supports a `maxSize` (LRU capability).
 - **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Tracks access patterns to its keys, aiding in performance optimizations.
+- **[ConcurrentHashMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentHashMapNullSave.java)** - A thread-safe drop-in replacement for `ConcurrentHashMap` that allows null keys & values.
 - **[SealableMap](/src/main/java/com/cedarsoftware/util/SealableMap.java)** - Allows toggling between sealed (read-only) and unsealed (writable) states, managed externally.
 - **[SealableNavigableMap](/src/main/java/com/cedarsoftware/util/SealableNavigableMap.java)** - Extends `SealableMap` features to `NavigableMap`, managing state externally.
 

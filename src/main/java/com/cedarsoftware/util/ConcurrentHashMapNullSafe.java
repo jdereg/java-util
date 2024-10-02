@@ -5,10 +5,10 @@ import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * ConcurrentHashMapNullSafe is a thread-safe implementation of ConcurrentHashMap
@@ -35,8 +35,9 @@ import java.util.function.Function;
  */
 public class ConcurrentHashMapNullSafe<K, V> implements Map<K, V> {
     // Sentinel objects to represent null keys and values
-    private static final Object NULL_KEY = new Object();
-    private static final Object NULL_VALUE = new Object();
+    private enum NullSentinel {
+        NULL_KEY, NULL_VALUE
+    }
 
     // Internal ConcurrentHashMap storing Objects
     private final ConcurrentHashMap<Object, Object> internalMap;
@@ -53,15 +54,33 @@ public class ConcurrentHashMapNullSafe<K, V> implements Map<K, V> {
      *
      * @param initialCapacity the initial capacity. The implementation performs internal sizing
      *                        to accommodate this many elements.
+     * @throws IllegalArgumentException if the initial capacity is negative.
      */
     public ConcurrentHashMapNullSafe(int initialCapacity) {
         this.internalMap = new ConcurrentHashMap<>(initialCapacity);
     }
 
     /**
+     * Constructs a new, empty map with the specified initial capacity
+     * and load factor.
+     *
+     * @param initialCapacity the initial capacity. The implementation
+     * performs internal sizing to accommodate this many elements.
+     * @param loadFactor the load factor threshold, used to control resizing.
+     * Resizing may be performed when the average number of elements per
+     * bin exceeds this threshold.
+     * @throws IllegalArgumentException if the initial capacity is
+     * negative or the load factor is nonpositive
+     */
+    public ConcurrentHashMapNullSafe(int initialCapacity, float loadFactor) {
+        this.internalMap = new ConcurrentHashMap<>(initialCapacity, loadFactor);
+    }
+
+    /**
      * Constructs a new map with the same mappings as the specified map.
      *
      * @param m the map whose mappings are to be placed in this map
+     * @throws NullPointerException if the specified map is null
      */
     public ConcurrentHashMapNullSafe(Map<? extends K, ? extends V> m) {
         this.internalMap = new ConcurrentHashMap<>();
@@ -70,21 +89,21 @@ public class ConcurrentHashMapNullSafe<K, V> implements Map<K, V> {
 
     // Helper methods to handle nulls
     private Object maskNullKey(K key) {
-        return key == null ? NULL_KEY : key;
+        return key == null ? NullSentinel.NULL_KEY : key;
     }
 
     @SuppressWarnings("unchecked")
     private K unmaskNullKey(Object key) {
-        return key == NULL_KEY ? null : (K) key;
+        return key == NullSentinel.NULL_KEY ? null : (K) key;
     }
 
     private Object maskNullValue(V value) {
-        return value == null ? NULL_VALUE : value;
+        return value == null ? NullSentinel.NULL_VALUE: value;
     }
 
     @SuppressWarnings("unchecked")
     private V unmaskNullValue(Object value) {
-        return value == NULL_VALUE ? null : (V) value;
+        return value == NullSentinel.NULL_VALUE ? null : (V) value;
     }
 
     @Override
@@ -104,9 +123,12 @@ public class ConcurrentHashMapNullSafe<K, V> implements Map<K, V> {
 
     @Override
     public boolean containsValue(Object value) {
-        return internalMap.containsValue(maskNullValue((V) value));
+        if (value == null) {
+            return internalMap.containsValue(NullSentinel.NULL_VALUE);
+        }
+        return internalMap.containsValue(value);
     }
-
+    
     @Override
     public V get(Object key) {
         Object val = internalMap.get(maskNullKey((K) key));
@@ -326,26 +348,30 @@ public class ConcurrentHashMapNullSafe<K, V> implements Map<K, V> {
     }
 
     @Override
-    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+    public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
         Object maskedKey = maskNullKey(key);
-        Object oldValue = internalMap.get(maskedKey);
+        Object currentValue = internalMap.get(maskedKey);
 
-        if (oldValue != NULL_VALUE) {
-            Object result = internalMap.computeIfPresent(maskedKey, (k, v) -> {
-                V unmaskOldValue = unmaskNullValue(v);
-                V newValue = remappingFunction.apply(unmaskNullKey(k), unmaskOldValue);
-                return (newValue == null) ? null : maskNullValue(newValue);
-            });
-
-            if (result == null) {
-                internalMap.remove(maskedKey);
-                return null;
-            }
-
-            return unmaskNullValue(result);
+        if (currentValue != null && currentValue != NullSentinel.NULL_VALUE) {
+            // The key exists with a non-null value, so we don't compute
+            return unmaskNullValue(currentValue);
         }
 
-        return null;
+        // The key doesn't exist or is mapped to null, so we should compute
+        V newValue = mappingFunction.apply(unmaskNullKey(maskedKey));
+        if (newValue != null) {
+            Object result = internalMap.compute(maskedKey, (k, v) -> {
+                if (v != null && v != NullSentinel.NULL_VALUE) {
+                    return v;  // Another thread set a non-null value, so we keep it
+                }
+                return maskNullValue(newValue);
+            });
+            return unmaskNullValue(result);
+        } else {
+            // If the new computed value is null, ensure no mapping exists
+            internalMap.remove(maskedKey);
+            return null;
+        }
     }
 
     @Override
@@ -357,29 +383,21 @@ public class ConcurrentHashMapNullSafe<K, V> implements Map<K, V> {
             return (newValue == null) ? null : maskNullValue(newValue);
         });
 
-        // If the result is null, ensure the key is removed
-        if (result == null) {
-            internalMap.remove(maskedKey);
-            return null;
-        }
-
         return unmaskNullValue(result);
     }
 
     @Override
     public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(value);
         Object maskedKey = maskNullKey(key);
-        Object val = internalMap.merge(maskedKey, maskNullValue(value), (v1, v2) -> {
-            V result = remappingFunction.apply(unmaskNullValue(v1), unmaskNullValue(v2));
-            return (result == null) ? null : maskNullValue(result);
+        Object result = internalMap.merge(maskedKey, maskNullValue(value), (v1, v2) -> {
+            V unmaskV1 = unmaskNullValue(v1);
+            V unmaskV2 = unmaskNullValue(v2);
+            V newValue = remappingFunction.apply(unmaskV1, unmaskV2);
+            return (newValue == null) ? null : maskNullValue(newValue);
         });
 
-        // Check if the entry was removed
-        if (val == null && !internalMap.containsKey(maskedKey)) {
-            return null;
-        }
-
-        return unmaskNullValue(val);
+        return unmaskNullValue(result);
     }
     /**
      * Overrides the equals method to ensure proper comparison between two maps.

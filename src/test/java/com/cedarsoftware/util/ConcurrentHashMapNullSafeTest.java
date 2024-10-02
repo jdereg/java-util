@@ -236,23 +236,47 @@ class ConcurrentHashMapNullSafeTest {
 
     @Test
     void testComputeIfAbsent() {
-        // Compute if absent on new key
+        // Test with non-existent key
         assertEquals(1, map.computeIfAbsent("one", k -> 1));
         assertEquals(1, map.get("one"));
 
-        // Compute if absent on existing key
-        assertEquals(1, map.computeIfAbsent("one", k -> 10));
+        // Test with existing key (should not compute)
+        assertEquals(1, map.computeIfAbsent("one", k -> 2));
         assertEquals(1, map.get("one"));
 
-        // Compute if absent with null key
+        // Test with null key
         assertEquals(100, map.computeIfAbsent(null, k -> 100));
         assertEquals(100, map.get(null));
 
-        // Compute if absent with existing null key
-        assertEquals(100, map.computeIfAbsent(null, k -> 200));
-        assertEquals(100, map.get(null));
-    }
+        // Test where mapping function returns null for non-existent key
+        assertNull(map.computeIfAbsent("nullValue", k -> null));
+        assertFalse(map.containsKey("nullValue"));
 
+        // Ensure mapping function is not called for existing non-null values
+        AtomicInteger callCount = new AtomicInteger(0);
+        map.computeIfAbsent("one", k -> {
+            callCount.incrementAndGet();
+            return 5;
+        });
+        assertEquals(0, callCount.get());
+        assertEquals(1, map.get("one")); // Value should remain unchanged
+
+        // Test with existing key mapped to null value
+        map.put("existingNull", null);
+        assertEquals(10, map.computeIfAbsent("existingNull", k -> 10));
+        assertEquals(10, map.get("existingNull")); // New value should be computed and set
+
+        // Test with existing key mapped to non-null value
+        map.put("existingNonNull", 20);
+        assertEquals(20, map.computeIfAbsent("existingNonNull", k -> 30)); // Should return existing value
+        assertEquals(20, map.get("existingNonNull")); // Value should remain unchanged
+
+        // Test computing null for existing null value (should remove the entry)
+        map.put("removeMe", null);
+        assertNull(map.computeIfAbsent("removeMe", k -> null));
+        assertFalse(map.containsKey("removeMe"));
+    }
+    
     @Test
     void testCompute() {
         // Compute on new key
@@ -650,5 +674,253 @@ class ConcurrentHashMapNullSafeTest {
         assertEquals(81, result8);
         assertEquals(81, map.get("key8"));
         assertEquals(100, map.get("newKey"));
+    }
+
+    @Test
+    void testHighConcurrency() throws InterruptedException, ExecutionException {
+        int numThreads = 20;
+        int numOperationsPerThread = 5000;
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        List<Callable<Void>> tasks = new ArrayList<>();
+
+        for (int i = 0; i < numThreads; i++) {
+            final int threadNum = i;
+            tasks.add(() -> {
+                for (int j = 0; j < numOperationsPerThread; j++) {
+                    String key = "key-" + (threadNum * numOperationsPerThread + j);
+                    map.put(key, j);
+                    assertEquals(j, map.get(key));
+                    if (j % 100 == 0) {
+                        map.remove(key);
+                        assertNull(map.get(key));
+                    }
+                }
+                return null;
+            });
+        }
+
+        List<Future<Void>> futures = executor.invokeAll(tasks);
+        for (Future<Void> future : futures) {
+            future.get(); // Ensure all tasks completed successfully
+        }
+
+        executor.shutdown();
+
+        // Verify final size
+        int expectedSize = numThreads * numOperationsPerThread - (numThreads * (numOperationsPerThread / 100));
+        assertEquals(expectedSize, map.size());
+    }
+
+    @Test
+    void testConcurrentCompute() throws InterruptedException, ExecutionException {
+        int numThreads = 10;
+        int numIterations = 1000;
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        List<Callable<Void>> tasks = new ArrayList<>();
+
+        for (int i = 0; i < numThreads; i++) {
+            final int threadNum = i;
+            tasks.add(() -> {
+                for (int j = 0; j < numIterations; j++) {
+                    String key = "counter";
+                    map.compute(key, (k, v) -> (v == null) ? 1 : v + 1);
+                }
+                return null;
+            });
+        }
+
+        List<Future<Void>> futures = executor.invokeAll(tasks);
+        for (Future<Void> future : futures) {
+            future.get();
+        }
+
+        executor.shutdown();
+
+        // The expected value is numThreads * numIterations
+        assertEquals(numThreads * numIterations, map.get("counter"));
+    }
+
+    static class CustomKey {
+        private final String id;
+        private final int number;
+
+        CustomKey(String id, int number) {
+            this.id = id;
+            this.number = number;
+        }
+
+        // Getters, equals, and hashCode methods
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof CustomKey)) return false;
+            CustomKey that = (CustomKey) o;
+            return number == that.number && Objects.equals(id, that.id);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(id, number);
+        }
+    }
+
+    @Test
+    void testCustomKeyHandling() {
+        ConcurrentHashMapNullSafe<CustomKey, String> customMap = new ConcurrentHashMapNullSafe<>();
+        CustomKey key1 = new CustomKey("alpha", 1);
+        CustomKey key2 = new CustomKey("beta", 2);
+        CustomKey key3 = new CustomKey("alpha", 1); // Same as key1
+
+        customMap.put(key1, "First");
+        customMap.put(key2, "Second");
+
+        // Verify that key3, which is equal to key1, retrieves the same value
+        assertEquals("First", customMap.get(key3));
+
+        // Verify containsKey with key3
+        assertTrue(customMap.containsKey(key3));
+
+        // Remove using key3
+        customMap.remove(key3);
+        assertFalse(customMap.containsKey(key1));
+        assertFalse(customMap.containsKey(key3));
+        assertEquals(1, customMap.size());
+    }
+    
+    @Test
+    void testEqualsAndHashCode() {
+        ConcurrentHashMapNullSafe<String, Integer> map1 = new ConcurrentHashMapNullSafe<>();
+        ConcurrentHashMapNullSafe<String, Integer> map2 = new ConcurrentHashMapNullSafe<>();
+
+        map1.put("one", 1);
+        map1.put("two", 2);
+        map1.put(null, 100);
+
+        map2.put("one", 1);
+        map2.put("two", 2);
+        map2.put(null, 100);
+
+        // Test equality
+        assertEquals(map1, map2);
+        assertEquals(map1.hashCode(), map2.hashCode());
+
+        // Modify map2 and test inequality
+        map2.put("three", 3);
+        assertNotEquals(map1, map2);
+        assertNotEquals(map1.hashCode(), map2.hashCode());
+
+        // Remove "three" and test equality again
+        map2.remove("three");
+        assertEquals(map1, map2);
+        assertEquals(map1.hashCode(), map2.hashCode());
+
+        // Modify a value
+        map2.put("one", 10);
+        assertNotEquals(map1, map2);
+    }
+
+    @Test
+    void testLargeDataSet() {
+        int numEntries = 100_000;
+        for (int i = 0; i < numEntries; i++) {
+            String key = "key-" + i;
+            Integer value = i;
+            map.put(key, value);
+        }
+
+        assertEquals(numEntries, map.size());
+
+        // Verify random entries
+        assertEquals(500, map.get("key-500"));
+        assertEquals(99999, map.get("key-99999"));
+        assertNull(map.get("key-100000")); // Non-existent key
+    }
+
+    @Test
+    void testClearViaKeySet() {
+        map.put("one", 1);
+        map.put("two", 2);
+        map.put(null, 100);
+
+        Set<String> keys = map.keySet();
+        keys.clear();
+
+        assertTrue(map.isEmpty());
+    }
+
+    @Test
+    void testClearViaValues() {
+        map.put("one", 1);
+        map.put("two", 2);
+        map.put(null, 100);
+
+        Collection<Integer> values = map.values();
+        values.clear();
+
+        assertTrue(map.isEmpty());
+    }
+
+    @Test
+    void testClearViaVEntries() {
+        map.put("one", 1);
+        map.put("two", 2);
+        map.put(null, 100);
+
+        Set<Map.Entry<String, Integer>> set = map.entrySet();
+        set.clear();
+
+        assertTrue(map.isEmpty());
+    }
+
+    /**
+     * Tests for exception handling in ConcurrentHashMapNullSafe.
+     */
+    @Test
+    void testNullRemappingFunctionInComputeIfAbsent() {
+        ConcurrentHashMapNullSafe<String, Integer> map = new ConcurrentHashMapNullSafe<>();
+        map.put("one", 1);
+
+        // Attempt to pass a null remapping function
+        assertThrows(NullPointerException.class, () -> {
+            map.computeIfAbsent("two", null);
+        });
+    }
+
+    @Test
+    void testNullRemappingFunctionInCompute() {
+        ConcurrentHashMapNullSafe<String, Integer> map = new ConcurrentHashMapNullSafe<>();
+        map.put("one", 1);
+
+        // Attempt to pass a null remapping function
+        assertThrows(NullPointerException.class, () -> {
+            map.compute("one", null);
+        });
+    }
+
+    @Test
+    void testNullRemappingFunctionInMerge() {
+        ConcurrentHashMapNullSafe<String, Integer> map = new ConcurrentHashMapNullSafe<>();
+        map.put("one", 1);
+
+        // Attempt to pass a null remapping function
+        assertThrows(NullPointerException.class, () -> {
+            map.merge("one", 2, null);
+        });
+    }
+
+    @Test
+    void testGetOrDefault() {
+        ConcurrentHashMapNullSafe<String, Integer> map = new ConcurrentHashMapNullSafe<>();
+        map.put("one", 1);
+        map.put(null, null);
+
+        // Existing key with non-null value
+        assertEquals(1, map.getOrDefault("one", 10));
+
+        // Existing key with null value
+        assertNull(map.getOrDefault(null, 100));
+
+        // Non-existing key
+        assertEquals(20, map.getOrDefault("two", 20));
     }
 }

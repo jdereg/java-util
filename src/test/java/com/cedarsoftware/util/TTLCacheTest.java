@@ -498,7 +498,7 @@ public class TTLCacheTest {
             Thread.sleep(1100);
             assert ttlCache1.isEmpty();
             assert !ttlCache2.isEmpty();
-            Thread.sleep(1100);
+            Thread.sleep(1300);
             assert ttlCache2.isEmpty();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

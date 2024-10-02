@@ -26,7 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *         limitations under the License.
  */
 public class ConcurrentSet<T> implements Set<T> {
-    private static final Object NULL_ITEM = new Object();
+    private enum NullSentinel {
+        NULL_ITEM
+    }
     private final Set<Object> set;
 
     /**
@@ -62,7 +64,7 @@ public class ConcurrentSet<T> implements Set<T> {
      * @return The wrapped element.
      */
     private Object wrap(T item) {
-        return item == null ? NULL_ITEM : item;
+        return item == null ? NullSentinel.NULL_ITEM : item;
     }
 
     /**
@@ -72,7 +74,7 @@ public class ConcurrentSet<T> implements Set<T> {
      */
     @SuppressWarnings("unchecked")
     private T unwrap(Object item) {
-        return item == NULL_ITEM ? null : (T) item;
+        return item == NullSentinel.NULL_ITEM ? null : (T) item;
     }
 
     // --- Immutable APIs ---
@@ -149,7 +151,7 @@ public class ConcurrentSet<T> implements Set<T> {
     public Object[] toArray() {
         Object[] array = set.toArray();
         for (int i = 0; i < array.length; i++) {
-            if (array[i] == NULL_ITEM) {
+            if (array[i] == NullSentinel.NULL_ITEM) {
                 array[i] = null;
             }
         }
@@ -164,7 +166,7 @@ public class ConcurrentSet<T> implements Set<T> {
             a = (T1[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
         }
         for (int i = 0; i < size; i++) {
-            if (internalArray[i] == NULL_ITEM) {
+            if (internalArray[i] == NullSentinel.NULL_ITEM) {
                 a[i] = null;
             } else {
                 a[i] = (T1) internalArray[i];

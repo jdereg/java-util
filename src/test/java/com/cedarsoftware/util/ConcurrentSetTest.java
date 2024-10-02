@@ -3,6 +3,8 @@ package com.cedarsoftware.util;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
@@ -141,5 +143,132 @@ class ConcurrentSetTest {
         iterator.next();
         iterator.remove();
         assert !iterator.hasNext();
+    }
+
+    @Test
+    void testConcurrentModification() throws InterruptedException {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        int threadCount = 10;
+        int itemsPerThread = 1000;
+        CountDownLatch latch = new CountDownLatch(threadCount);
+
+        for (int i = 0; i < threadCount; i++) {
+            final int threadNum = i;
+            new Thread(() -> {
+                for (int j = 0; j < itemsPerThread; j++) {
+                    set.add(threadNum * itemsPerThread + j);
+                }
+                latch.countDown();
+            }).start();
+        }
+
+        latch.await();
+        assertEquals(threadCount * itemsPerThread, set.size(), "Set should contain all added elements");
+    }
+
+    @Test
+    void testConcurrentReads() throws InterruptedException {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        set.addAll(Arrays.asList(1, 2, 3, 4, 5));
+
+        int threadCount = 5;
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        AtomicInteger totalSum = new AtomicInteger(0);
+
+        for (int i = 0; i < threadCount; i++) {
+            new Thread(() -> {
+                int sum = set.stream().mapToInt(Integer::intValue).sum();
+                totalSum.addAndGet(sum);
+                latch.countDown();
+            }).start();
+        }
+
+        latch.await();
+        assertEquals(75, totalSum.get(), "Sum should be correct across all threads");
+    }
+
+    @Test
+    void testNullEquality() {
+        ConcurrentSet<String> set1 = new ConcurrentSet<>();
+        ConcurrentSet<String> set2 = new ConcurrentSet<>();
+
+        set1.add(null);
+        set2.add(null);
+
+        assertEquals(set1, set2, "Sets with null should be equal");
+        assertEquals(set1.hashCode(), set2.hashCode(), "Hash codes should be equal for sets with null");
+    }
+
+    @Test
+    void testMixedNullAndNonNull() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.add(null);
+        set.add("a");
+        set.add("b");
+
+        assertEquals(3, set.size(), "Set should contain null and non-null elements");
+        assertTrue(set.contains(null), "Set should contain null");
+        assertTrue(set.contains("a"), "Set should contain 'a'");
+        assertTrue(set.contains("b"), "Set should contain 'b'");
+
+        set.remove(null);
+        assertEquals(2, set.size(), "Set should have 2 elements after removing null");
+        assertFalse(set.contains(null), "Set should not contain null after removal");
+    }
+
+    @Test
+    void testRetainAllWithNull() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.addAll(Arrays.asList("a", null, "b", "c"));
+
+        set.retainAll(Arrays.asList(null, "b"));
+
+        assertEquals(2, set.size(), "Set should retain null and 'b'");
+        assertTrue(set.contains(null), "Set should contain null");
+        assertTrue(set.contains("b"), "Set should contain 'b'");
+        assertFalse(set.contains("a"), "Set should not contain 'a'");
+        assertFalse(set.contains("c"), "Set should not contain 'c'");
+    }
+
+    @Test
+    void testToArrayWithNull() {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.addAll(Arrays.asList("a", null, "b"));
+
+        Object[] array = set.toArray();
+        assertEquals(3, array.length, "Array should have 3 elements");
+        assertTrue(Arrays.asList(array).contains(null), "Array should contain null");
+
+        String[] strArray = set.toArray(new String[0]);
+        assertEquals(3, strArray.length, "String array should have 3 elements");
+        assertTrue(Arrays.asList(strArray).contains(null), "String array should contain null");
+    }
+
+    @Test
+    void testConcurrentAddAndRemove() throws InterruptedException {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        int threadCount = 5;
+        int operationsPerThread = 10000;
+        CountDownLatch latch = new CountDownLatch(threadCount * 2);
+
+        for (int i = 0; i < threadCount; i++) {
+            new Thread(() -> {
+                for (int j = 0; j < operationsPerThread; j++) {
+                    set.add(j);
+                }
+                latch.countDown();
+            }).start();
+
+            new Thread(() -> {
+                for (int j = 0; j < operationsPerThread; j++) {
+                    set.remove(j);
+                }
+                latch.countDown();
+            }).start();
+        }
+
+        latch.await();
+        assertTrue(set.size() >= 0 && set.size() <= operationsPerThread,
+                "Set size should be between 0 and " + operationsPerThread);
     }
 }

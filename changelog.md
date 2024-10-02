@@ -1,6 +1,7 @@
 ### Revision History
-#### 2.15.0-SNAPSHOT
-> * `TTLCache` is new. IT supports a minimum Time-To-Live (TTL) for cache entries. Entries older than TTL will be dropped.  Can also be limited to `maxSize` entries to support LRU capability. Each `TTLCache` can have its own TTL setting, yet, they share a single `ScheduledExecutorService` across all instances.  Call the static `shutdown()` method on `TTLCache` when your application or service is ending.
+#### 2.15.0
+> * Introducing `TTLCache`: a cache with a configurable minimum Time-To-Live (TTL). Entries expire and are automatically removed after the specified TTL. Optionally, set a `maxSize` to enable Least Recently Used (LRU) eviction. Each `TTLCache` instance can have its own TTL setting, leveraging a shared `ScheduledExecutorService` for efficient resource management. To ensure proper cleanup, call `TTLCache.shutdown()` when your application or service terminates.
+> * Introducing `ConcurrentHashMapNullSafe`: a drop-in replacement for `ConcurrentHashMap` that supports `null` keys and values. It uses internal sentinel values to manage `nulls,` providing a seamless experience. This frees users from `null` handling concerns, allowing unrestricted key-value insertion and retrieval. 
 > * `LRUCache` updated to use a single `ScheduledExecutorService` across all instances, regardless of the individual time settings. Call the static `shutdown()` method on `LRUCache` when your application or service is ending.
 #### 2.14.0
 > * `ClassUtilities.addPermanentClassAlias()` - add an alias that `.forName()` can use to instantiate class (e.g. "date" for `java.util.Date`)

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
@@ -43,7 +42,7 @@ public class SealableMap<K, V> implements Map<K, V> {
      */
     public SealableMap(Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        this.map = new ConcurrentHashMap<>();
+        this.map = new ConcurrentHashMapNullSafe<>();
     }
 
     /**

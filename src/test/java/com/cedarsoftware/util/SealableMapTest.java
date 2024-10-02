@@ -45,6 +45,7 @@ class SealableMapTest {
         map.put("one", 1);
         map.put("two", 2);
         map.put("three", 3);
+        map.put(null, null);
     }
 
     @Test
@@ -77,7 +78,7 @@ class SealableMapTest {
     void testModifyEntrySetWhenSealed() {
         Set<Map.Entry<String, Integer>> entries = map.entrySet();
         sealedState = true;
-        assertThrows(UnsupportedOperationException.class, () -> entries.removeIf(e -> e.getKey().equals("one")));
+        assertThrows(UnsupportedOperationException.class, () -> entries.removeIf(e -> null == e.getKey()));
         assertThrows(UnsupportedOperationException.class, () -> entries.iterator().remove());
     }
 
@@ -122,7 +123,8 @@ class SealableMapTest {
     void testEntrySetFunctionality() {
         Set<Map.Entry<String, Integer>> entries = map.entrySet();
         assertNotNull(entries);
-        assertTrue(entries.stream().anyMatch(e -> e.getKey().equals("one") && e.getValue().equals(1)));
+        assertTrue(entries.stream().anyMatch(e -> "one".equals(e.getKey()) && e.getValue().equals(1)));
+        assertTrue(entries.stream().anyMatch(e -> e.getKey() == null && e.getValue() == null));
 
         sealedState = true;
         Map.Entry<String, Integer> entry = new AbstractMap.SimpleImmutableEntry<>("five", 5);
@@ -155,7 +157,20 @@ class SealableMapTest {
         anotherMap.put("one", 1);
         anotherMap.put("two", 2);
         anotherMap.put("three", 3);
+        anotherMap.put(null, null);
 
         assertEquals(map, anotherMap);
+    }
+
+    @Test
+    void testNullKey() {
+        map.put(null, 99);
+        assert map.get(null) == 99;
+    }
+
+    @Test
+    void testNullValue() {
+        map.put("99", null);
+        assert map.get("99") == null;
     }
 }

@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 
 import org.junit.jupiter.api.Test;
 
@@ -115,5 +116,30 @@ class ConcurrentSetTest {
         set.add(1);
         assertFalse(set.isEmpty(), "Set should not be empty after adding an element");
         assertEquals(1, set.size(), "Size of set should be 1 after adding one element");
+    }
+
+    @Test
+    void testNullSupport() {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        set.add(null);
+        assert set.size() == 1;
+        set.add(null);
+        assert set.size() == 1;
+
+        Iterator<Integer> iterator = set.iterator();
+        Object x = iterator.next();
+        assert x == null;
+        assert !iterator.hasNext();
+    }
+
+    @Test
+    void testNullIteratorRemoveSupport() {
+        ConcurrentSet<Integer> set = new ConcurrentSet<>();
+        set.add(null);
+
+        Iterator<Integer> iterator = set.iterator();
+        iterator.next();
+        iterator.remove();
+        assert !iterator.hasNext();
     }
 }

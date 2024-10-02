@@ -44,6 +44,7 @@ class SealableSetTest {
         set = new SealableSet<>(sealedSupplier);
         set.add(10);
         set.add(20);
+        set.add(null);
     }
 
     @Test
@@ -90,9 +91,10 @@ class SealableSetTest {
         Iterator<Integer> iterator = set.iterator();
         assertTrue(iterator.hasNext());
         Integer value = iterator.next();
-        assert value == 10 || value == 20;
+        assert value == null || value == 10 || value == 20;
         value = iterator.next();
-        assert value == 10 || value == 20;
+        assert value == null || value == 10 || value == 20;
+        value = iterator.next();
         assertFalse(iterator.hasNext());
         assertThrows(NoSuchElementException.class, iterator::next);
     }
@@ -105,7 +107,13 @@ class SealableSetTest {
         assertThrows(UnsupportedOperationException.class, () -> iterator.remove());
         sealed = false;
         iterator.remove();
+        assertEquals(set.size(), 2);
+        iterator.next();
+        iterator.remove();
         assertEquals(set.size(), 1);
+        iterator.next();
+        iterator.remove();
+        assertEquals(set.size(), 0);
     }
 
     @Test
@@ -141,7 +149,7 @@ class SealableSetTest {
 
     @Test
     void testRemoveAll() {
-        set.removeAll(Arrays.asList(10, 20));
+        set.removeAll(Arrays.asList(10, 20, null));
         assertTrue(set.isEmpty());
     }
 
@@ -153,7 +161,7 @@ class SealableSetTest {
 
     @Test
     void testSize() {
-        assertEquals(2, set.size());
+        assertEquals(3, set.size());
     }
 
     @Test
@@ -165,7 +173,14 @@ class SealableSetTest {
 
     @Test
     void testToArray() {
-        assert deepEquals(setOf(10, 20), set);
+        assert deepEquals(setOf(10, 20, null), set);
+    }
+
+    @Test
+    void testNullValueSupport() {
+        int size = set.size();
+        set.add(null);
+        assert size == set.size();
     }
 
     @Test
@@ -173,7 +188,12 @@ class SealableSetTest {
         Integer[] arr = set.toArray(new Integer[0]);
         boolean found10 = false;
         boolean found20 = false;
+        boolean foundNull = false;
         for (int i = 0; i < arr.length; i++) {
+            if (arr[i] == null) {
+                foundNull = true;
+                continue;
+            }
             if (arr[i] == 10) {
                 found10 = true;
             }
@@ -181,9 +201,10 @@ class SealableSetTest {
                 found20 = true;
             }
         }
+        assertTrue(foundNull);
         assertTrue(found10);
         assertTrue(found20);
-        assert arr.length == 2;
+        assert arr.length == 3;
     }
 
     @Test
@@ -191,6 +212,7 @@ class SealableSetTest {
         SealableSet<Integer> other = new SealableSet<>(sealedSupplier);
         other.add(10);
         other.add(20);
+        other.add(null);
         assertEquals(set, other);
         other.add(30);
         assertNotEquals(set, other);

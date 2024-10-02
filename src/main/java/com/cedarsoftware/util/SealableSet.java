@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
@@ -35,14 +34,14 @@ public class SealableSet<T> implements Set<T> {
     private final transient Supplier<Boolean> sealedSupplier;
 
     /**
-     * Create a SealableSet. Since a Set is not supplied, this will use a ConcurrentHashMap.newKeySet internally.
+     * Create a SealableSet. Since a Set is not supplied, this will use a ConcurrentSet internally.
      * If you want a HashSet to be used internally, use SealableSet constructor that takes a Set and pass it the
      * instance you want it to wrap.
      * @param sealedSupplier {@code Supplier<Boolean>} that returns 'true' to indicate sealed, 'false' for mutable.
      */
     public SealableSet(Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        this.set = ConcurrentHashMap.newKeySet();
+        this.set = new ConcurrentSet<>();
     }
     
     /**
@@ -54,8 +53,7 @@ public class SealableSet<T> implements Set<T> {
      */
     public SealableSet(Collection<T> col, Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        this.set = ConcurrentHashMap.newKeySet(col.size());
-        this.set.addAll(col);
+        this.set = new ConcurrentSet<>(col);
     }
 
     /**

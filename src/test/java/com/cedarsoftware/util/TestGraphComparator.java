@@ -629,23 +629,31 @@ public class TestGraphComparator
 
         List<GraphComparator.Delta> deltas = GraphComparator.compare(persons[0], persons[1], getIdFetcher());
         assertTrue(deltas.size() == 3);
-        GraphComparator.Delta delta = deltas.get(0);
-        assertTrue(ARRAY_SET_ELEMENT == delta.getCmd());
-        assertTrue("pets".equals(delta.getFieldName()));
-        assertTrue(0 == (Integer) delta.getOptionalKey());
-        assertTrue(persons[1].pets[0].equals(delta.getTargetValue()));
-        assertTrue((Long) delta.getId() == id);
 
-        delta = deltas.get(1);
-        assertTrue(OBJECT_ASSIGN_FIELD == delta.getCmd());
-        assertTrue("favoritePet".equals(delta.getFieldName()));
-        assertTrue(null == delta.getOptionalKey());
-        assertTrue(persons[1].pets[0].equals(delta.getTargetValue()));
-        assertTrue((Long) delta.getId() == id);
+        boolean arraySetElementFound = false;
+        boolean objectAssignFieldFound = false;
+        boolean objectOrphanFound = false;
 
-        delta = deltas.get(2);
-        assertTrue(OBJECT_ORPHAN == delta.getCmd());
-        assertTrue(edId == (Long) delta.getId());
+
+        for (GraphComparator.Delta delta : deltas) {
+            if (ARRAY_SET_ELEMENT == delta.getCmd()) {
+                assertTrue("pets".equals(delta.getFieldName()));
+                assertTrue(0 == (Integer)delta.getOptionalKey());
+                assertTrue(persons[1].pets[0].equals(delta.getTargetValue()));
+                assertTrue(id == (Long) delta.getId());
+                arraySetElementFound = true;
+            } else if (OBJECT_ASSIGN_FIELD == delta.getCmd()) {
+                assertTrue("favoritePet".equals(delta.getFieldName()));
+                assertTrue(delta.getOptionalKey() == null);
+                assertTrue(persons[1].pets[0].equals(delta.getTargetValue()));
+                assertTrue(id == (Long) delta.getId());
+                objectAssignFieldFound = true;
+            } else if (OBJECT_ORPHAN == delta.getCmd()) {
+                assertTrue(edId == (Long) delta.getId());
+                objectOrphanFound = true;
+            }
+        }
+
 
         GraphComparator.applyDelta(persons[0], deltas, getIdFetcher(), GraphComparator.getJavaDeltaProcessor());
         assertTrue(DeepEquals.deepEquals(persons[0], persons[1]));

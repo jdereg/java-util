@@ -161,7 +161,7 @@
                             java.sql,
                             java.xml</Import-Package>
                         <Export-Package>
-                            com.cedarsoftware.util
+                            com.cedarsoftware.util,
                             com.cedarsoftware.util.convert
                         </Export-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>

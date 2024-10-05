@@ -4,9 +4,10 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
@@ -35,9 +36,8 @@ import java.util.concurrent.locks.ReentrantLock;
  *         limitations under the License.
  */
 public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
-    private static final Object NULL_ITEM = new Object(); // Sentinel value for null keys and values
     private final int capacity;
-    private final ConcurrentHashMap<Object, Node<K, V>> cache;
+    private final ConcurrentHashMapNullSafe<Object, Node<K, V>> cache;
     private final Node<K, V> head;
     private final Node<K, V> tail;
     private final Lock lock = new ReentrantLock();
@@ -56,7 +56,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
 
     public LockingLRUCacheStrategy(int capacity) {
         this.capacity = capacity;
-        this.cache = new ConcurrentHashMap<>(capacity);
+        this.cache = new ConcurrentHashMapNullSafe<>(capacity);
         this.head = new Node<>(null, null);
         this.tail = new Node<>(null, null);
         head.next = tail;
@@ -98,8 +98,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public V get(Object key) {
-        Object cacheKey = toCacheItem(key);
-        Node<K, V> node = cache.get(cacheKey);
+        Node<K, V> node = cache.get(key);
         if (node == null) {
             return null;
         }
@@ -112,28 +111,25 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
                 lock.unlock();
             }
         }
-        return fromCacheItem(node.value);
+        return node.value;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
-        Object cacheKey = toCacheItem(key);
-        Object cacheValue = toCacheItem(value);
         lock.lock();
         try {
-            Node<K, V> node = cache.get(cacheKey);
+            Node<K, V> node = cache.get(key);
             if (node != null) {
-                node.value = (V) cacheValue;
+                node.value = value;
                 moveToHead(node);
-                return fromCacheItem(node.value);
+                return node.value;
             } else {
-                Node<K, V> newNode = new Node<>(key, (V) cacheValue);
-                cache.put(cacheKey, newNode);
+                Node<K, V> newNode = new Node<>(key, value);
+                cache.put(key, newNode);
                 addToHead(newNode);
                 if (cache.size() > capacity) {
                     Node<K, V> tail = removeTail();
-                    cache.remove(toCacheItem(tail.key));
+                    cache.remove(tail.key);
                 }
                 return null;
             }
@@ -156,13 +152,12 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public V remove(Object key) {
-        Object cacheKey = toCacheItem(key);
         lock.lock();
         try {
-            Node<K, V> node = cache.remove(cacheKey);
+            Node<K, V> node = cache.remove(key);
             if (node != null) {
                 removeNode(node);
-                return fromCacheItem(node.value);
+                return node.value;
             }
             return null;
         } finally {
@@ -194,16 +189,15 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     
     @Override
     public boolean containsKey(Object key) {
-        return cache.containsKey(toCacheItem(key));
+        return cache.containsKey(key);
     }
 
     @Override
     public boolean containsValue(Object value) {
-        Object cacheValue = toCacheItem(value);
         lock.lock();
         try {
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                if (node.value.equals(cacheValue)) {
+                if (node.value.equals(value)) {
                     return true;
                 }
             }
@@ -219,7 +213,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         try {
             Map<K, V> map = new LinkedHashMap<>();
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                map.put(node.key, fromCacheItem(node.value));
+                map.put(node.key, node.value);
             }
             return map.entrySet();
         } finally {
@@ -233,7 +227,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         try {
             Map<K, V> map = new LinkedHashMap<>();
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                map.put(node.key, fromCacheItem(node.value));
+                map.put(node.key, node.value);
             }
             return map.keySet();
         } finally {
@@ -247,7 +241,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         try {
             Map<K, V> map = new LinkedHashMap<>();
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                map.put(node.key, fromCacheItem(node.value));
+                map.put(node.key, node.value);
             }
             return map.values();
         } finally {
@@ -263,7 +257,6 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         return entrySet().equals(other.entrySet());
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public String toString() {
         lock.lock();
@@ -271,7 +264,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             StringBuilder sb = new StringBuilder();
             sb.append("{");
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                sb.append((K) fromCacheItem(node.key)).append("=").append((V) fromCacheItem(node.value)).append(", ");
+                sb.append(node.key).append("=").append(node.value).append(", ");
             }
             if (sb.length() > 1) {
                 sb.setLength(sb.length() - 2); // Remove trailing comma and space
@@ -289,8 +282,8 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         try {
             int hashCode = 1;
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                Object key = fromCacheItem(node.key);
-                Object value = fromCacheItem(node.value);
+                Object key = node.key;
+                Object value = node.value;
                 hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
                 hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
             }
@@ -298,14 +291,5 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         } finally {
             lock.unlock();
         }
-    }
-
-    private Object toCacheItem(Object item) {
-        return item == null ? NULL_ITEM : item;
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T fromCacheItem(Object cacheItem) {
-        return cacheItem == NULL_ITEM ? null : (T) cacheItem;
     }
 }

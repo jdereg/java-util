@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiFunction;
 
 /**
@@ -33,7 +34,7 @@ import java.util.function.BiFunction;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ConcurrentHashMapNullSafe<K, V> implements Map<K, V> {
+public class ConcurrentHashMapNullSafe<K, V> implements ConcurrentMap<K, V> {
     // Sentinel objects to represent null keys and values
     private enum NullSentinel {
         NULL_KEY, NULL_VALUE

@@ -13,6 +13,7 @@ import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
@@ -106,7 +107,7 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
         {
             map = copy(m, new LinkedHashMap<>(m.size()));
         }
-        else if (m instanceof ConcurrentSkipListMap)
+        else if (m instanceof ConcurrentNavigableMap)
         {
             map = copy(m, new ConcurrentSkipListMap<>());
         }

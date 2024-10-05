@@ -18,11 +18,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.lang.ref.WeakReference;
 
+import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
+
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
  * once a threshold is met. It implements the <code>Map</code> interface for convenience.
  * <p>
- * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking. It uses a <code>ConcurrentHashMap</code>
+ * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking. It uses a <code>ConcurrentHashMapNullSafe</code>
  * internally. To ensure that the capacity is honored, whenever put() is called, a scheduled cleanup task is triggered
  * to remove the least recently used items if the cache exceeds the capacity.
  * <p>
@@ -50,10 +52,9 @@ import java.lang.ref.WeakReference;
  *         limitations under the License.
  */
 public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
-    private static final Object NULL_ITEM = new Object(); // Sentinel value for null keys and values
     private final long cleanupDelayMillis;
     private final int capacity;
-    private final ConcurrentMap<Object, Node<K>> cache;
+    private final ConcurrentMap<K, Node<K, V>> cache;
     private final AtomicBoolean cleanupScheduled = new AtomicBoolean(false);
 
     // Shared ScheduledExecutorService for all cache instances
@@ -62,12 +63,12 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     /**
      * Inner class representing a cache node with a key, value, and timestamp for LRU tracking.
      */
-    private static class Node<K> {
+    private static class Node<K, V> {
         final K key;
-        volatile Object value;
+        volatile V value;
         volatile long timestamp;
 
-        Node(K key, Object value) {
+        Node(K key, V value) {
             this.key = key;
             this.value = value;
             this.timestamp = System.nanoTime();
@@ -115,7 +116,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
             throw new IllegalArgumentException("cleanupDelayMillis must be at least 10 milliseconds.");
         }
         this.capacity = capacity;
-        this.cache = new ConcurrentHashMap<>(capacity);
+        this.cache = new ConcurrentHashMapNullSafe<>(capacity);
         this.cleanupDelayMillis = cleanupDelayMillis;
 
         // Schedule the purging task for this cache
@@ -138,11 +139,11 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
         int size = cache.size();
         if (size > capacity) {
             int nodesToRemove = size - capacity;
-            Node<K>[] nodes = cache.values().toArray(new Node[0]);
+            Node<K, V>[] nodes = cache.values().toArray(new Node[0]);
             Arrays.sort(nodes, Comparator.comparingLong(node -> node.timestamp));
             for (int i = 0; i < nodesToRemove; i++) {
-                Node<K> node = nodes[i];
-                cache.remove(toCacheItem(node.key), node);
+                Node<K, V> node = nodes[i];
+                cache.remove(node.key, node);
             }
             cleanupScheduled.set(false); // Reset the flag after cleanup
 
@@ -164,24 +165,21 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public V get(Object key) {
-        Object cacheKey = toCacheItem(key);
-        Node<K> node = cache.get(cacheKey);
+        Node<K, V> node = cache.get(key);
         if (node != null) {
             node.updateTimestamp();
-            return fromCacheItem(node.value);
+            return node.value;
         }
         return null;
     }
 
     @Override
     public V put(K key, V value) {
-        Object cacheKey = toCacheItem(key);
-        Object cacheValue = toCacheItem(value);
-        Node<K> newNode = new Node<>(key, cacheValue);
-        Node<K> oldNode = cache.put(cacheKey, newNode);
+        Node<K, V> newNode = new Node<>(key, value);
+        Node<K, V> oldNode = cache.put(key, newNode);
         if (oldNode != null) {
             newNode.updateTimestamp();
-            return fromCacheItem(oldNode.value);
+            return oldNode.value;
         } else if (size() > capacity) {
             scheduleImmediateCleanup();
         }
@@ -202,10 +200,9 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public V remove(Object key) {
-        Object cacheKey = toCacheItem(key);
-        Node<K> node = cache.remove(cacheKey);
+        Node<K, V> node = cache.remove(key);
         if (node != null) {
-            return fromCacheItem(node.value);
+            return node.value;
         }
         return null;
     }
@@ -222,14 +219,13 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public boolean containsKey(Object key) {
-        return cache.containsKey(toCacheItem(key));
+        return cache.containsKey(key);
     }
 
     @Override
     public boolean containsValue(Object value) {
-        Object cacheValue = toCacheItem(value);
-        for (Node<K> node : cache.values()) {
-            if (Objects.equals(node.value, cacheValue)) {
+        for (Node<K, V> node : cache.values()) {
+            if (Objects.equals(node.value, value)) {
                 return true;
             }
         }
@@ -239,8 +235,8 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
         Set<Map.Entry<K, V>> entrySet = ConcurrentHashMap.newKeySet();
-        for (Node<K> node : cache.values()) {
-            entrySet.add(new AbstractMap.SimpleEntry<>(fromCacheItem(node.key), fromCacheItem(node.value)));
+        for (Node<K, V> node : cache.values()) {
+            entrySet.add(new AbstractMap.SimpleEntry<>(node.key, node.value));
         }
         return Collections.unmodifiableSet(entrySet);
     }
@@ -248,8 +244,8 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     @Override
     public Set<K> keySet() {
         Set<K> keySet = ConcurrentHashMap.newKeySet();
-        for (Node<K> node : cache.values()) {
-            keySet.add(fromCacheItem(node.key));
+        for (Node<K, V> node : cache.values()) {
+            keySet.add(node.key);
         }
         return Collections.unmodifiableSet(keySet);
     }
@@ -257,8 +253,8 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     @Override
     public Collection<V> values() {
         Collection<V> values = new ArrayList<>();
-        for (Node<K> node : cache.values()) {
-            values.add(fromCacheItem(node.value));
+        for (Node<K, V> node : cache.values()) {
+            values.add(node.value);
         }
         return Collections.unmodifiableCollection(values);
     }
@@ -274,9 +270,9 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     @Override
     public int hashCode() {
         int hashCode = 1;
-        for (Node<K> node : cache.values()) {
-            Object key = fromCacheItem(node.key);
-            Object value = fromCacheItem(node.value);
+        for (Node<K, V> node : cache.values()) {
+            Object key = node.key;
+            Object value = node.value;
             hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
             hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
         }
@@ -299,27 +295,6 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
         return sb.toString();
     }
 
-    /**
-     * Converts a user-provided key or value to a cache item, handling nulls.
-     *
-     * @param item the key or value to convert
-     * @return the cache item representation
-     */
-    private Object toCacheItem(Object item) {
-        return item == null ? NULL_ITEM : item;
-    }
-
-    /**
-     * Converts a cache item back to the user-provided key or value, handling nulls.
-     *
-     * @param <T>       the type of the returned item
-     * @param cacheItem the cache item to convert
-     * @return the original key or value
-     */
-    @SuppressWarnings("unchecked")
-    private <T> T fromCacheItem(Object cacheItem) {
-        return cacheItem == NULL_ITEM ? null : (T) cacheItem;
-    }
     /**
      * Shuts down the shared scheduler. Call this method when your application is terminating.
      */

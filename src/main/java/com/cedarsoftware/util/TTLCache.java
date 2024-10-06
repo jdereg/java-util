@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -20,7 +20,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * A cache that holds items for a specified Time-To-Live (TTL) duration.
  * Optionally, it supports Least Recently Used (LRU) eviction when a maximum size is specified.
- * This implementation uses sentinel values to support null keys and values in a ConcurrentHashMap.
+ * This implementation uses sentinel values to support null keys and values in a ConcurrentHashMapNullSafe.
  * It utilizes a single background thread to manage purging of expired entries for all cache instances.
  *
  * @param <K> the type of keys maintained by this cache
@@ -46,13 +46,10 @@ public class TTLCache<K, V> implements Map<K, V> {
 
     private final long ttlMillis;
     private final int maxSize;
-    private final ConcurrentHashMap<Object, CacheEntry> cacheMap;
+    private final ConcurrentMap<K, CacheEntry<K, V>> cacheMap;
     private final ReentrantLock lock = new ReentrantLock();
-    private final Node head;
-    private final Node tail;
-
-    // Sentinel value for null keys and values
-    private static final Object NULL_ITEM = new Object();
+    private final Node<K, V> head;
+    private final Node<K, V> tail;
 
     // Static ScheduledExecutorService with a single thread
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -94,11 +91,11 @@ public class TTLCache<K, V> implements Map<K, V> {
         }
         this.ttlMillis = ttlMillis;
         this.maxSize = maxSize;
-        this.cacheMap = new ConcurrentHashMap<>();
+        this.cacheMap = new ConcurrentHashMapNullSafe<>();
 
         // Initialize the doubly-linked list for LRU tracking
-        this.head = new Node(null, null);
-        this.tail = new Node(null, null);
+        this.head = new Node<>(null, null);
+        this.tail = new Node<>(null, null);
         head.next = tail;
         tail.prev = head;
 
@@ -149,42 +146,27 @@ public class TTLCache<K, V> implements Map<K, V> {
     }
 
     // Inner class representing a node in the doubly-linked list.
-    private static class Node {
-        final Object key;
-        Object value;
-        Node prev;
-        Node next;
+    private static class Node<K, V> {
+        final K key;
+        V value;
+        Node<K, V> prev;
+        Node<K, V> next;
 
-        Node(Object key, Object value) {
+        Node(K key, V value) {
             this.key = key;
             this.value = value;
         }
     }
 
     // Inner class representing a cache entry with a value and expiration time.
-    private static class CacheEntry {
-        final Node node;
+    private static class CacheEntry<K, V> {
+        final Node<K, V> node;
         final long expiryTime;
 
-        CacheEntry(Node node, long expiryTime) {
+        CacheEntry(Node<K, V> node, long expiryTime) {
             this.node = node;
             this.expiryTime = expiryTime;
         }
-    }
-
-    /**
-     * Converts a user-provided key or value to a cache item, handling nulls.
-     */
-    private Object toCacheItem(Object item) {
-        return item == null ? NULL_ITEM : item;
-    }
-
-    /**
-     * Converts a cache item back to the user-provided key or value, handling nulls.
-     */
-    @SuppressWarnings("unchecked")
-    private <T> T fromCacheItem(Object cacheItem) {
-        return cacheItem == NULL_ITEM ? null : (T) cacheItem;
     }
 
     /**
@@ -192,8 +174,8 @@ public class TTLCache<K, V> implements Map<K, V> {
      */
     private void purgeExpiredEntries() {
         long currentTime = System.currentTimeMillis();
-        for (Iterator<Map.Entry<Object, CacheEntry>> it = cacheMap.entrySet().iterator(); it.hasNext(); ) {
-            Map.Entry<Object, CacheEntry> entry = it.next();
+        for (Iterator<Map.Entry<K, CacheEntry<K, V>>> it = cacheMap.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<K, CacheEntry<K, V>> entry = it.next();
             if (entry.getValue().expiryTime < currentTime) {
                 it.remove();
                 lock.lock();
@@ -211,10 +193,10 @@ public class TTLCache<K, V> implements Map<K, V> {
      *
      * @param cacheKey the cache key to remove
      */
-    private void removeEntry(Object cacheKey) {
-        CacheEntry entry = cacheMap.remove(cacheKey);
+    private void removeEntry(K cacheKey) {
+        CacheEntry<K, V> entry = cacheMap.remove(cacheKey);
         if (entry != null) {
-            Node node = entry.node;
+            Node<K, V> node = entry.node;
             lock.lock();
             try {
                 unlink(node);
@@ -229,7 +211,7 @@ public class TTLCache<K, V> implements Map<K, V> {
      *
      * @param node the node to unlink
      */
-    private void unlink(Node node) {
+    private void unlink(Node<K, V> node) {
         node.prev.next = node.next;
         node.next.prev = node.prev;
         node.prev = null;
@@ -242,7 +224,7 @@ public class TTLCache<K, V> implements Map<K, V> {
      *
      * @param node the node to move
      */
-    private void moveToTail(Node node) {
+    private void moveToTail(Node<K, V> node) {
         // Unlink the node
         node.prev.next = node.next;
         node.next.prev = node.prev;
@@ -259,7 +241,7 @@ public class TTLCache<K, V> implements Map<K, V> {
      *
      * @param node the node to insert
      */
-    private void insertAtTail(Node node) {
+    private void insertAtTail(Node<K, V> node) {
         node.prev = tail.prev;
         node.next = tail;
         tail.prev.next = node;
@@ -270,12 +252,10 @@ public class TTLCache<K, V> implements Map<K, V> {
 
     @Override
     public V put(K key, V value) {
-        Object cacheKey = toCacheItem(key);
-        Object cacheValue = toCacheItem(value);
         long expiryTime = System.currentTimeMillis() + ttlMillis;
-        Node node = new Node(cacheKey, cacheValue);
-        CacheEntry newEntry = new CacheEntry(node, expiryTime);
-        CacheEntry oldEntry = cacheMap.put(cacheKey, newEntry);
+        Node<K, V> node = new Node<>(key, value);
+        CacheEntry<K, V> newEntry = new CacheEntry<>(node, expiryTime);
+        CacheEntry<K, V> oldEntry = cacheMap.put(key, newEntry);
 
         boolean acquired = lock.tryLock();
         try {
@@ -284,7 +264,7 @@ public class TTLCache<K, V> implements Map<K, V> {
 
                 if (maxSize > -1 && cacheMap.size() > maxSize) {
                     // Evict the least recently used entry
-                    Node lruNode = head.next;
+                    Node<K, V> lruNode = head.next;
                     if (lruNode != tail) {
                         removeEntry(lruNode.key);
                     }
@@ -297,24 +277,23 @@ public class TTLCache<K, V> implements Map<K, V> {
             }
         }
 
-        return oldEntry != null ? fromCacheItem(oldEntry.node.value) : null;
+        return oldEntry != null ? oldEntry.node.value : null;
     }
 
     @Override
     public V get(Object key) {
-        Object cacheKey = toCacheItem(key);
-        CacheEntry entry = cacheMap.get(cacheKey);
+        CacheEntry<K, V> entry = cacheMap.get(key);
         if (entry == null) {
             return null;
         }
 
         long currentTime = System.currentTimeMillis();
         if (entry.expiryTime < currentTime) {
-            removeEntry(cacheKey);
+            removeEntry((K)key);
             return null;
         }
 
-        V value = fromCacheItem(entry.node.value);
+        V value = entry.node.value;
 
         boolean acquired = lock.tryLock();
         try {
@@ -333,10 +312,9 @@ public class TTLCache<K, V> implements Map<K, V> {
 
     @Override
     public V remove(Object key) {
-        Object cacheKey = toCacheItem(key);
-        CacheEntry entry = cacheMap.remove(cacheKey);
+        CacheEntry<K, V> entry = cacheMap.remove(key);
         if (entry != null) {
-            V value = fromCacheItem(entry.node.value);
+            V value = entry.node.value;
             lock.lock();
             try {
                 unlink(entry.node);
@@ -373,13 +351,12 @@ public class TTLCache<K, V> implements Map<K, V> {
 
     @Override
     public boolean containsKey(Object key) {
-        Object cacheKey = toCacheItem(key);
-        CacheEntry entry = cacheMap.get(cacheKey);
+        CacheEntry<K, V> entry = cacheMap.get(key);
         if (entry == null) {
             return false;
         }
         if (entry.expiryTime < System.currentTimeMillis()) {
-            removeEntry(cacheKey);
+            removeEntry((K)key);
             return false;
         }
         return true;
@@ -387,10 +364,9 @@ public class TTLCache<K, V> implements Map<K, V> {
 
     @Override
     public boolean containsValue(Object value) {
-        Object cacheValue = toCacheItem(value);
-        for (CacheEntry entry : cacheMap.values()) {
+        for (CacheEntry<K, V> entry : cacheMap.values()) {
             Object entryValue = entry.node.value;
-            if (Objects.equals(entryValue, cacheValue)) {
+            if (Objects.equals(entryValue, value)) {
                 return true;
             }
         }
@@ -407,8 +383,8 @@ public class TTLCache<K, V> implements Map<K, V> {
     @Override
     public Set<K> keySet() {
         Set<K> keys = new HashSet<>();
-        for (CacheEntry entry : cacheMap.values()) {
-            K key = fromCacheItem(entry.node.key);
+        for (CacheEntry<K, V> entry : cacheMap.values()) {
+            K key = entry.node.key;
             keys.add(key);
         }
         return keys;
@@ -417,8 +393,8 @@ public class TTLCache<K, V> implements Map<K, V> {
     @Override
     public Collection<V> values() {
         List<V> values = new ArrayList<>();
-        for (CacheEntry entry : cacheMap.values()) {
-            V value = fromCacheItem(entry.node.value);
+        for (CacheEntry<K, V> entry : cacheMap.values()) {
+            V value = entry.node.value;
             values.add(value);
         }
         return values;
@@ -453,8 +429,8 @@ public class TTLCache<K, V> implements Map<K, V> {
      * Custom Iterator for the EntrySet.
      */
     private class EntryIterator implements Iterator<Entry<K, V>> {
-        private final Iterator<Entry<Object, CacheEntry>> iterator;
-        private Entry<Object, CacheEntry> current;
+        private final Iterator<Entry<K, CacheEntry<K, V>>> iterator;
+        private Entry<K, CacheEntry<K, V>> current;
 
         EntryIterator() {
             this.iterator = cacheMap.entrySet().iterator();
@@ -468,8 +444,8 @@ public class TTLCache<K, V> implements Map<K, V> {
         @Override
         public Entry<K, V> next() {
             current = iterator.next();
-            K key = fromCacheItem(current.getValue().node.key);
-            V value = fromCacheItem(current.getValue().node.value);
+            K key = current.getValue().node.key;
+            V value = current.getValue().node.value;
             return new AbstractMap.SimpleEntry<>(key, value);
         }
 
@@ -478,7 +454,7 @@ public class TTLCache<K, V> implements Map<K, V> {
             if (current == null) {
                 throw new IllegalStateException();
             }
-            Object cacheKey = current.getKey();
+            K cacheKey = current.getKey();
             removeEntry(cacheKey);
             current = null;
         }
@@ -504,9 +480,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         lock.lock();
         try {
             int hashCode = 1;
-            for (Node node = head.next; node != tail; node = node.next) {
-                Object key = fromCacheItem(node.key);
-                Object value = fromCacheItem(node.value);
+            for (Node<K, V> node = head.next; node != tail; node = node.next) {
+                Object key = node.key;
+                Object value = node.value;
                 hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
                 hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
             }

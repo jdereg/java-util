@@ -25,7 +25,7 @@ import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
  * This 'try-lock' approach ensures that the get() API is never blocking, but it also means that the LRU order is not
  * perfectly maintained under heavy load.
  * <p>
- * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking. It uses a <code>ConcurrentHashMap</code>
+ * The Threaded strategy allows for O(1) access for get(), put(), and remove() without blocking. It uses a <code>ConcurrentHashMapNullSafe</code>
  * internally. To ensure that the capacity is honored, whenever put() is called, a thread (from a thread pool) is tasked
  * with cleaning up items above the capacity threshold. This means that the cache may temporarily exceed its capacity, but
  * it will soon be trimmed back to the capacity limit by the scheduled thread.

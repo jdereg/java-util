@@ -35,7 +35,7 @@ public class SealableMap<K, V> implements Map<K, V> {
     private final transient Supplier<Boolean> sealedSupplier;
 
     /**
-     * Create a SealableMap. Since a Map is not supplied, this will use a ConcurrentHashMap internally. If you
+     * Create a SealableMap. Since a Map is not supplied, this will use a ConcurrentHashMapNullSafe internally. If you
      * want a HashMap to be used internally, use the SealableMap constructor that takes a Map and pass it the
      * instance you want it to wrap.
      * @param sealedSupplier {@code Supplier<Boolean>} that returns 'true' to indicate sealed, 'false' for mutable.

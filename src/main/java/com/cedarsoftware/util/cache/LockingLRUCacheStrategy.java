@@ -3,6 +3,7 @@ package com.cedarsoftware.util.cache;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -197,7 +198,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         lock.lock();
         try {
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                if (node.value.equals(value)) {
+                if (Objects.equals(node.value, value)) {
                     return true;
                 }
             }
@@ -264,8 +265,12 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             StringBuilder sb = new StringBuilder();
             sb.append("{");
             for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                sb.append(node.key).append("=").append(node.value).append(", ");
+                sb.append(formatElement(node.key))
+                        .append("=")
+                        .append(formatElement(node.value))
+                        .append(", ");
             }
+
             if (sb.length() > 1) {
                 sb.setLength(sb.length() - 2); // Remove trailing comma and space
             }
@@ -274,6 +279,19 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * Helper method to format an element, replacing self-references with a placeholder.
+     *
+     * @param element The element to format.
+     * @return The string representation of the element, or a placeholder if it's a self-reference.
+     */
+    private String formatElement(Object element) {
+        if (element == this) {
+            return "(this Collection)";
+        }
+        return String.valueOf(element);
     }
 
     @Override

@@ -10,7 +10,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.lang.ref.WeakReference;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
+import com.cedarsoftware.util.ConcurrentSet;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
@@ -234,7 +234,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
-        Set<Map.Entry<K, V>> entrySet = ConcurrentHashMap.newKeySet();
+        Set<Map.Entry<K, V>> entrySet = new ConcurrentSet<>();
         for (Node<K, V> node : cache.values()) {
             entrySet.add(new AbstractMap.SimpleEntry<>(node.key, node.value));
         }
@@ -243,7 +243,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public Set<K> keySet() {
-        Set<K> keySet = ConcurrentHashMap.newKeySet();
+        Set<K> keySet = new ConcurrentSet<>();
         for (Node<K, V> node : cache.values()) {
             keySet.add(node.key);
         }
@@ -284,15 +284,38 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
         StringBuilder sb = new StringBuilder();
         sb.append("{");
         Iterator<Entry<K, V>> it = entrySet().iterator();
+
         while (it.hasNext()) {
             Map.Entry<K, V> entry = it.next();
-            sb.append(entry.getKey()).append("=").append(entry.getValue());
+
+            // Format and append the key
+            sb.append(formatElement(entry.getKey()));
+            sb.append("=");
+
+            // Format and append the value
+            sb.append(formatElement(entry.getValue()));
+
+            // Append comma and space if not the last entry
             if (it.hasNext()) {
                 sb.append(", ");
             }
         }
+
         sb.append("}");
         return sb.toString();
+    }
+
+    /**
+     * Helper method to format an element by checking for self-references.
+     *
+     * @param element The element to format.
+     * @return A string representation of the element, replacing self-references with a placeholder.
+     */
+    private String formatElement(Object element) {
+        if (element == this) {
+            return "(this Map)";
+        }
+        return String.valueOf(element);
     }
 
     /**

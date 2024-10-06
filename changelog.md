@@ -1,4 +1,9 @@
 ### Revision History
+#### 2.16.0
+> * `SealableMap, LRUCache,` and `TTLCache` updated to use `ConcurrentHashMapNullSafe` internally, to simplify their implementation, as they no longer have to implement the null-safe work, `ConcurrentHashMapNullSafe` does that for them. 
+> * Reverted back to agrona 1.22.0 (testing scope only) because it uses class file format 52, which still works with JDK 1.8
+> * Missing comma in OSGI support added in pom.xml file. Thank you @ozhelezniak.
+> * `TestGraphComparator.testNewArrayElement` updated to reliable compare results (not depdendent on a Map that could return items in differing order).  Thank you @wtrazs
 #### 2.15.0
 > * Introducing `TTLCache`: a cache with a configurable minimum Time-To-Live (TTL). Entries expire and are automatically removed after the specified TTL. Optionally, set a `maxSize` to enable Least Recently Used (LRU) eviction. Each `TTLCache` instance can have its own TTL setting, leveraging a shared `ScheduledExecutorService` for efficient resource management. To ensure proper cleanup, call `TTLCache.shutdown()` when your application or service terminates.
 > * Introducing `ConcurrentHashMapNullSafe`: a drop-in replacement for `ConcurrentHashMap` that supports `null` keys and values. It uses internal sentinel values to manage `nulls,` providing a seamless experience. This frees users from `null` handling concerns, allowing unrestricted key-value insertion and retrieval. 

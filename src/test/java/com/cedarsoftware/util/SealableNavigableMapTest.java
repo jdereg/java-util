@@ -3,7 +3,6 @@ package com.cedarsoftware.util;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.TreeMap;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -43,10 +42,11 @@ class SealableNavigableMapTest {
         sealed = false;
         sealedSupplier = () -> sealed;
 
-        map = new TreeMap<>();
+        map = new ConcurrentNavigableMapNullSafe<>();
+        map.put("three", 3);
+        map.put(null, null);
         map.put("one", 1);
         map.put("two", 2);
-        map.put("three", 3);
 
         unmodifiableMap = new SealableNavigableMap<>(map, sealedSupplier);
     }
@@ -54,7 +54,7 @@ class SealableNavigableMapTest {
     @Test
     void testMutationsWhenUnsealed() {
         assertFalse(sealedSupplier.get(), "Map should start unsealed.");
-        assertEquals(3, unmodifiableMap.size());
+        assertEquals(4, unmodifiableMap.size());
         unmodifiableMap.put("four", 4);
         assertEquals(Integer.valueOf(4), unmodifiableMap.get("four"));
         assertTrue(unmodifiableMap.containsKey("four"));

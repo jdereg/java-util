@@ -38,9 +38,10 @@ class SealableNavigableSetTest {
     @BeforeEach
     void setUp() {
         set = new SealableNavigableSet<>(sealedSupplier);
+        set.add(null);
+        set.add(30);
         set.add(10);
         set.add(20);
-        set.add(30);
     }
 
     @Test
@@ -110,7 +111,7 @@ class SealableNavigableSetTest {
         subset.add(25);
         assertEquals(subset.size(), 4);
         assertThrows(IllegalArgumentException.class, () -> subset.add(26));
-        assertEquals(set.size(), 5);
+        assertEquals(set.size(), 6);
     }
 
     @Test
@@ -122,6 +123,6 @@ class SealableNavigableSetTest {
         subset.add(5);
         assertEquals(subset.size(), 3);
         assertThrows(IllegalArgumentException.class, () -> subset.add(25));
-        assertEquals(4, set.size());
+        assertEquals(5, set.size());
     }
 }

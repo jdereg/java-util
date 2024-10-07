@@ -1,6 +1,9 @@
 ### Revision History
 #### 2.16.0
-> * `SealableMap, LRUCache,` and `TTLCache` updated to use `ConcurrentHashMapNullSafe` internally, to simplify their implementation, as they no longer have to implement the null-safe work, `ConcurrentHashMapNullSafe` does that for them. 
+> * `SealableMap, LRUCache,` and `TTLCache` updated to use `ConcurrentHashMapNullSafe` internally, to simplify their implementation, as they no longer have to implement the null-safe work, `ConcurrentHashMapNullSafe` does that for them.
+> * Added `ConcurrentNavigableMapNullSafe` and `ConcurrentNavigableSetNullSafe`
+> * Allow for `SealableNavigableMap` and `SealableNavigableSet` to handle null
+> * Added support for more old timezone names (EDT, PDT, ...)
 > * Reverted back to agrona 1.22.0 (testing scope only) because it uses class file format 52, which still works with JDK 1.8
 > * Missing comma in OSGI support added in pom.xml file. Thank you @ozhelezniak.
 > * `TestGraphComparator.testNewArrayElement` updated to reliable compare results (not depdendent on a Map that could return items in differing order).  Thank you @wtrazs

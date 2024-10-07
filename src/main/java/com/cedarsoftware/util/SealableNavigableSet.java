@@ -6,7 +6,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.SortedSet;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Supplier;
 
 /**
@@ -34,8 +33,8 @@ import java.util.function.Supplier;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class SealableNavigableSet<T> implements NavigableSet<T> {
-    private final NavigableSet<T> navSet;
+public class SealableNavigableSet<E> implements NavigableSet<E> {
+    private final NavigableSet<E> navSet;
     private final transient Supplier<Boolean> sealedSupplier;
 
     /**
@@ -46,7 +45,7 @@ public class SealableNavigableSet<T> implements NavigableSet<T> {
      */
     public SealableNavigableSet(Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        navSet = new ConcurrentSkipListSet<>();
+        navSet = new ConcurrentNavigableSetNullSafe<>();
     }
 
     /**
@@ -57,9 +56,9 @@ public class SealableNavigableSet<T> implements NavigableSet<T> {
      * collection of objects.
      * @param sealedSupplier {@code Supplier<Boolean>} that returns 'true' to indicate sealed, 'false' for mutable.
      */
-    public SealableNavigableSet(Comparator<? super T> comparator, Supplier<Boolean> sealedSupplier) {
+    public SealableNavigableSet(Comparator<? super E> comparator, Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        navSet = new ConcurrentSkipListSet<>(comparator);
+        navSet = new ConcurrentNavigableSetNullSafe<>(comparator);
     }
 
     /**
@@ -69,7 +68,7 @@ public class SealableNavigableSet<T> implements NavigableSet<T> {
      * @param col Collection to supply initial elements.  These are copied to an internal ConcurrentSkipListSet.
      * @param sealedSupplier {@code Supplier<Boolean>} that returns 'true' to indicate sealed, 'false' for mutable.
      */
-    public SealableNavigableSet(Collection<? extends T> col, Supplier<Boolean> sealedSupplier) {
+    public SealableNavigableSet(Collection<? extends E> col, Supplier<Boolean> sealedSupplier) {
         this(sealedSupplier);
         addAll(col);
     }
@@ -81,9 +80,9 @@ public class SealableNavigableSet<T> implements NavigableSet<T> {
      * @param set SortedSet to supply initial elements.  These are copied to an internal ConcurrentSkipListSet.
      * @param sealedSupplier {@code Supplier<Boolean>} that returns 'true' to indicate sealed, 'false' for mutable.
      */
-    public SealableNavigableSet(SortedSet<T> set, Supplier<Boolean> sealedSupplier) {
+    public SealableNavigableSet(SortedSet<E> set, Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        navSet = new ConcurrentSkipListSet<>(set);
+        navSet = new ConcurrentNavigableSetNullSafe<>(set);
     }
 
     /**
@@ -93,7 +92,7 @@ public class SealableNavigableSet<T> implements NavigableSet<T> {
      * @param set NavigableSet instance to protect.
      * @param sealedSupplier {@code Supplier<Boolean>} that returns 'true' to indicate sealed, 'false' for mutable.
      */
-    public SealableNavigableSet(NavigableSet<T> set, Supplier<Boolean> sealedSupplier) {
+    public SealableNavigableSet(NavigableSet<E> set, Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
         navSet = set;
     }
@@ -112,61 +111,61 @@ public class SealableNavigableSet<T> implements NavigableSet<T> {
     public boolean isEmpty() { return navSet.isEmpty(); }
     public boolean contains(Object o) { return navSet.contains(o); }
     public boolean containsAll(Collection<?> col) { return navSet.containsAll(col);}
-    public Comparator<? super T> comparator() { return navSet.comparator(); }
-    public T first() { return navSet.first(); }
-    public T last() { return navSet.last(); }
+    public Comparator<? super E> comparator() { return navSet.comparator(); }
+    public E first() { return navSet.first(); }
+    public E last() { return navSet.last(); }
     public Object[] toArray() { return navSet.toArray(); }
-    public <T> T[] toArray(T[] a) { return navSet.toArray(a); }
-    public T lower(T e) { return navSet.lower(e); }
-    public T floor(T e) { return navSet.floor(e); }
-    public T ceiling(T e) { return navSet.ceiling(e); }
-    public T higher(T e) { return navSet.higher(e); }
-    public Iterator<T> iterator() {
+    public <T1> T1[] toArray(T1[] a) { return navSet.toArray(a); }
+    public E lower(E e) { return navSet.lower(e); }
+    public E floor(E e) { return navSet.floor(e); }
+    public E ceiling(E e) { return navSet.ceiling(e); }
+    public E higher(E e) { return navSet.higher(e); }
+    public Iterator<E> iterator() {
         return createSealHonoringIterator(navSet.iterator());
     }
-    public Iterator<T> descendingIterator() {
+    public Iterator<E> descendingIterator() {
         return createSealHonoringIterator(navSet.descendingIterator());
     }
-    public NavigableSet<T> descendingSet() {
+    public NavigableSet<E> descendingSet() {
         return new SealableNavigableSet<>(navSet.descendingSet(), sealedSupplier);
     }
-    public SortedSet<T> subSet(T fromElement, T toElement) {
+    public SortedSet<E> subSet(E fromElement, E toElement) {
         return subSet(fromElement, true, toElement, false);
     }
-    public NavigableSet<T> subSet(T fromElement, boolean fromInclusive, T toElement, boolean toInclusive) {
+    public NavigableSet<E> subSet(E fromElement, boolean fromInclusive, E toElement, boolean toInclusive) {
         return new SealableNavigableSet<>(navSet.subSet(fromElement, fromInclusive, toElement, toInclusive), sealedSupplier);
     }
-    public SortedSet<T> headSet(T toElement) {
+    public SortedSet<E> headSet(E toElement) {
         return headSet(toElement, false);
     }
-    public NavigableSet<T> headSet(T toElement, boolean inclusive) {
+    public NavigableSet<E> headSet(E toElement, boolean inclusive) {
         return new SealableNavigableSet<>(navSet.headSet(toElement, inclusive), sealedSupplier);
     }
-    public SortedSet<T> tailSet(T fromElement) {
+    public SortedSet<E> tailSet(E fromElement) {
         return tailSet(fromElement, false);
     }
-    public NavigableSet<T> tailSet(T fromElement, boolean inclusive) {
+    public NavigableSet<E> tailSet(E fromElement, boolean inclusive) {
         return new SealableNavigableSet<>(navSet.tailSet(fromElement, inclusive), sealedSupplier);
     }
 
     // Mutable APIs
-    public boolean add(T e) { throwIfSealed(); return navSet.add(e); }
-    public boolean addAll(Collection<? extends T> col) { throwIfSealed(); return navSet.addAll(col); }
+    public boolean add(E e) { throwIfSealed(); return navSet.add(e); }
+    public boolean addAll(Collection<? extends E> col) { throwIfSealed(); return navSet.addAll(col); }
     public void clear() { throwIfSealed(); navSet.clear(); }
     public boolean remove(Object o) { throwIfSealed(); return navSet.remove(o); }
     public boolean removeAll(Collection<?> col) { throwIfSealed(); return navSet.removeAll(col); }
     public boolean retainAll(Collection<?> col) { throwIfSealed(); return navSet.retainAll(col); }
-    public T pollFirst() { throwIfSealed(); return navSet.pollFirst(); }
-    public T pollLast() { throwIfSealed(); return navSet.pollLast(); }
+    public E pollFirst() { throwIfSealed(); return navSet.pollFirst(); }
+    public E pollLast() { throwIfSealed(); return navSet.pollLast(); }
 
-    private Iterator<T> createSealHonoringIterator(Iterator<T> iterator) {
-        return new Iterator<T>() {
+    private Iterator<E> createSealHonoringIterator(Iterator<E> iterator) {
+        return new Iterator<E>() {
             public boolean hasNext() { return iterator.hasNext(); }
-            public T next() {
-                T item = iterator.next();
+            public E next() {
+                E item = iterator.next();
                 if (item instanceof Map.Entry) {
                     Map.Entry<?, ?> entry = (Map.Entry<?, ?>) item;
-                    return (T) new SealableSet.SealAwareEntry<>(entry, sealedSupplier);
+                    return (E) new SealableSet.SealAwareEntry<>(entry, sealedSupplier);
                 }
                 return item;
             }

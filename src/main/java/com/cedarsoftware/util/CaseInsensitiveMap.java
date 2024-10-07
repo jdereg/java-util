@@ -97,64 +97,46 @@ public class CaseInsensitiveMap<K, V> implements Map<K, V>
      * TreeMap, ConcurrentHashMap, etc. to be case insensitive.
      * @param m Map to wrap.
      */
-    public CaseInsensitiveMap(Map<K, V> m)
-    {
-        if (m instanceof TreeMap)
-        {
+    public CaseInsensitiveMap(Map<K, V> m) {
+        if (m instanceof TreeMap) {
             map = copy(m, new TreeMap<>());
-        }
-        else if (m instanceof LinkedHashMap)
-        {
+        } else if (m instanceof LinkedHashMap) {
             map = copy(m, new LinkedHashMap<>(m.size()));
-        }
-        else if (m instanceof ConcurrentNavigableMap)
-        {
+        } else if (m instanceof ConcurrentNavigableMapNullSafe) {
+            map = copy(m, new ConcurrentNavigableMapNullSafe<>());
+        } else if (m instanceof ConcurrentNavigableMap) {
             map = copy(m, new ConcurrentSkipListMap<>());
-        }
-        else if (m instanceof ConcurrentMap)
-        {
+        } else if (m instanceof ConcurrentHashMapNullSafe) {
+            map = copy(m, new ConcurrentHashMapNullSafe<>(m.size()));
+        } else if (m instanceof ConcurrentMap) {
             map = copy(m, new ConcurrentHashMap<>(m.size()));
-        }
-        else if (m instanceof WeakHashMap)
-        {
+        } else if (m instanceof WeakHashMap) {
             map = copy(m, new WeakHashMap<>(m.size()));
-        }
-        else if (m instanceof HashMap)
-        {
+        } else if (m instanceof HashMap) {
             map = copy(m, new HashMap<>(m.size()));
-        }
-        else
-        {
+        } else {
             map = copy(m, new LinkedHashMap<>(m.size()));
         }
     }
 
     @SuppressWarnings("unchecked")
-    protected Map<K, V> copy(Map<K, V> source, Map<K, V> dest)
-    {
-        for (Entry<K, V> entry : source.entrySet())
-        {
+    protected Map<K, V> copy(Map<K, V> source, Map<K, V> dest) {
+        for (Entry<K, V> entry : source.entrySet()) {
             // Get key from Entry, leaving it in it's original state (in case the key is a CaseInsensitiveString)
             Object key;
-            if (isCaseInsenstiveEntry(entry))
-            {
-                key = ((CaseInsensitiveEntry)entry).getOriginalKey();
-            }
-            else
-            {
+            if (isCaseInsenstiveEntry(entry)) {
+                key = ((CaseInsensitiveEntry) entry).getOriginalKey();
+            } else {
                 key = entry.getKey();
             }
 
             // Wrap any String keys with a CaseInsensitiveString.  Keys that were already CaseInsensitiveStrings will
             // remain as such.
             K altKey;
-            if (key instanceof String)
-            {
-                altKey = (K) new CaseInsensitiveString((String)key);
-            }
-            else
-            {
-                altKey = (K)key;
+            if (key instanceof String) {
+                altKey = (K) new CaseInsensitiveString((String) key);
+            } else {
+                altKey = (K) key;
             }
 
             dest.put(altKey, entry.getValue());

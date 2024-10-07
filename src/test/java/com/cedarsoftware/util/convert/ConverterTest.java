@@ -4370,6 +4370,13 @@ class ConverterTest
                 .hasMessageContaining("Unable to reconstruct exception instance from map");
     }
 
+    @Test
+    void testEdt()
+    {
+        Date date = converter.convert("Mon Jun 01 00:00:00 EDT 2015", Date.class);
+        assert "Mon Jun 01 00:00:00 EDT 2015".equals(date.toString());
+    }
+
     private ConverterOptions createCharsetOptions(final Charset charset) {
         return new ConverterOptions() {
             @Override

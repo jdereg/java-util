@@ -8,7 +8,6 @@ import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Supplier;
 
 /**
@@ -47,7 +46,7 @@ public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
      */
     public SealableNavigableMap(Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        this.navMap = new ConcurrentSkipListMap<>();
+        this.navMap = new ConcurrentNavigableMapNullSafe<>();
     }
 
     /**
@@ -59,7 +58,8 @@ public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
      */
     public SealableNavigableMap(SortedMap<K, V> map, Supplier<Boolean> sealedSupplier) {
         this.sealedSupplier = sealedSupplier;
-        this.navMap = new ConcurrentSkipListMap<>(map);
+        this.navMap = new ConcurrentNavigableMapNullSafe<>();
+        this.navMap.putAll(map);
     }
 
     /**

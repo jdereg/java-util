@@ -6,7 +6,7 @@ java-util
 
 Helpful Java utilities that are thoroughly tested and available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `318K` and works with `JDK 1.8` through `JDK 23`.
+The`.jar`file is `328K` and works with `JDK 1.8` through `JDK 23`.
 The `.jar` file classes are version 52 `(JDK 1.8)`
 ## Compatibility
 
@@ -47,7 +47,7 @@ implementation 'com.cedarsoftware:java-util:2.16.0'
 - **[CompactCIHashSet](/src/main/java/com/cedarsoftware/util/CompactCIHashSet.java)** - A small-footprint, case-insensitive `Set` that expands to a `HashSet`.
 - **[CaseInsensitiveSet](/src/main/java/com/cedarsoftware/util/CaseInsensitiveSet.java)** - A `Set` that ignores case sensitivity for `Strings`.
 - **[ConcurrentSet](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - A thread-safe `Set` that allows `null` elements.
-- **[ConcurrentNavigableSetNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - A thread-safe drop-in replacement for `ConcurrentSkipListSet` that allows `null` values. 
+- **[ConcurrentNavigableSetNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableSetNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentSkipListSet` that allows `null` values. 
 - **[SealableSet](/src/main/java/com/cedarsoftware/util/SealableSet.java)** - Allows toggling between read-only and writable states via a `Supplier<Boolean>`, managing immutability externally.
 - **[SealableNavigableSet](/src/main/java/com/cedarsoftware/util/SealableNavigableSet.java)** - Similar to `SealableSet` but for `NavigableSet`, controlling immutability through an external supplier.
 
@@ -61,6 +61,7 @@ implementation 'com.cedarsoftware:java-util:2.16.0'
 - **[TTLCache](/src/main/java/com/cedarsoftware/util/TTLCache.java)** - Thread-safe TTL cache which implements the Map API. Entries older than Time-To-Live will be evicted.  Also supports a `maxSize` (LRU capability).
 - **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Tracks access patterns to its keys, aiding in performance optimizations.
 - **[ConcurrentHashMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentHashMapNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentHashMap` that allows `null` keys & values.
+- **[ConcurrentNavigableMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableMapNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentSkipListMap` that allows `null` keys & values.
 - **[SealableMap](/src/main/java/com/cedarsoftware/util/SealableMap.java)** - Allows toggling between sealed (read-only) and unsealed (writable) states, managed externally.
 - **[SealableNavigableMap](/src/main/java/com/cedarsoftware/util/SealableNavigableMap.java)** - Extends `SealableMap` features to `NavigableMap`, managing state externally.
 

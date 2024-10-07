@@ -40,18 +40,16 @@ public class CaseInsensitiveSet<E> implements Set<E>
 
     public CaseInsensitiveSet() { map = new CaseInsensitiveMap<>(); }
 
-    public CaseInsensitiveSet(Collection<? extends E> collection)
-    {
-        if (collection instanceof ConcurrentSkipListSet || collection instanceof ConcurrentSet)
-        {
+    public CaseInsensitiveSet(Collection<? extends E> collection) {
+        if (collection instanceof ConcurrentNavigableSetNullSafe) {
+            map = new CaseInsensitiveMap<>(new ConcurrentNavigableMapNullSafe<>());
+        } else if (collection instanceof ConcurrentSkipListSet) {
             map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
-        }
-        else if (collection instanceof SortedSet)
-        {
-            map = new CaseInsensitiveMap<>(new TreeMap<>());
-        }
-        else
-        {
+        } else if (collection instanceof ConcurrentSet) {
+            map = new CaseInsensitiveMap<>(new ConcurrentHashMapNullSafe<>());
+        } else if (collection instanceof SortedSet) {
+            map = new CaseInsensitiveMap<>(new TreeMap<>());  // covers SortedSet or NavigableSet
+        } else {
             map = new CaseInsensitiveMap<>(collection.size());
         }
         addAll(collection);
@@ -73,19 +71,13 @@ public class CaseInsensitiveSet<E> implements Set<E>
         map = new CaseInsensitiveMap<>(initialCapacity, loadFactor);
     }
 
-    public int hashCode()
-    {
+    public int hashCode() {
         int hash = 0;
-        for (Object item : map.keySet())
-        {
-            if (item != null)
-            {
-                if (item instanceof String)
-                {
-                    hash += hashCodeIgnoreCase((String)item);
-                }
-                else
-                {
+        for (Object item : map.keySet()) {
+            if (item != null) {
+                if (item instanceof String) {
+                    hash += hashCodeIgnoreCase((String) item);
+                } else {
                     hash += item.hashCode();
                 }
             }

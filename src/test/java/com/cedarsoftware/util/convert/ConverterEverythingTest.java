@@ -1748,6 +1748,7 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.999Z"), new java.sql.Date(999), true},
         });
         TEST_DB.put(pair(Map.class, java.sql.Date.class), new Object[][] {
+                { mapOf(TIME, 1703043551033L), new java.sql.Date(1703043551033L), false},
                 { mapOf(EPOCH_MILLIS, -1L, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), new java.sql.Date(-1L), true},
                 { mapOf(EPOCH_MILLIS, 0L, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), new java.sql.Date(0L), true},
                 { mapOf(EPOCH_MILLIS, 1L, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), new java.sql.Date(1L), true},

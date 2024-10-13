@@ -182,7 +182,7 @@ final class MapConversions {
         if (epochTime == null) {
             return fromMap(from, converter, java.sql.Date.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
         }
-        return new java.sql.Date(epochTime.getKey());
+        return new java.sql.Date(epochTime.getKey() + epochTime.getValue() / 1_000_000);
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -190,7 +190,7 @@ final class MapConversions {
         if (epochTime == null) {
             return fromMap(from, converter, Date.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
         }
-        return new Date(epochTime.getKey());
+        return new Date(epochTime.getKey() + epochTime.getValue() / 1_000_000);
     }
 
     /**
@@ -220,9 +220,7 @@ final class MapConversions {
         }
 
         Timestamp timestamp = new Timestamp(epochTime.getKey());
-        if (timestamp.getTime() % 1000 == 0) {  // Add nanoseconds *if* Timestamp time was only to second resolution
-            timestamp.setNanos(epochTime.getValue());
-        }
+        timestamp.setNanos(epochTime.getValue());
         return timestamp;
     }
 

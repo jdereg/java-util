@@ -43,9 +43,11 @@ public class ClassUtilities
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<String, Class<?>> nameToClass = new HashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap = new HashMap<>();
+    // Cache for OSGi ClassLoader to avoid repeated reflection calls
+    private static volatile ClassLoader osgiClassLoader;
+    private static volatile boolean osgiChecked = false;
 
-    static
-    {
+    static {
         prims.add(Byte.class);
         prims.add(Short.class);
         prims.add(Integer.class);
@@ -99,11 +101,11 @@ public class ClassUtilities
      * Add alias names for classes to allow .forName() to bring the class (.class) back with the alias name.
      * Because the alias to class name mappings are static, it is expected that these are set up during initialization
      * and not changed later.
+     *
      * @param clazz Class to add an alias for
      * @param alias String alias name
      */
-    public static void addPermanentClassAlias(Class<?> clazz, String alias)
-    {
+    public static void addPermanentClassAlias(Class<?> clazz, String alias) {
         nameToClass.put(alias, clazz);
     }
 
@@ -111,15 +113,16 @@ public class ClassUtilities
      * Remove alias name for classes to prevent .forName() from fetching the class with the alias name.
      * Because the alias to class name mappings are static, it is expected that these are set up during initialization
      * and not changed later.
+     *
      * @param alias String alias name
      */
-    public static void removePermanentClassAlias(String alias)
-    {
+    public static void removePermanentClassAlias(String alias) {
         nameToClass.remove(alias);
     }
 
     /**
      * Computes the inheritance distance between two classes/interfaces/primitive types.
+     *
      * @param source      The source class, interface, or primitive type.
      * @param destination The destination class, interface, or primitive type.
      * @return The number of steps from the source to the destination, or -1 if no path exists.
@@ -197,29 +200,27 @@ public class ClassUtilities
      * @return boolean true if the passed in class is a Java primitive, false otherwise.  The Wrapper classes
      * Integer, Long, Boolean, etc. are considered primitives by this method.
      */
-    public static boolean isPrimitive(Class<?> c)
-    {
+    public static boolean isPrimitive(Class<?> c) {
         return c.isPrimitive() || prims.contains(c);
     }
 
     /**
      * Compare two primitives.
+     *
      * @return 0 if they are the same, -1 if not.  Primitive wrapper classes are consider the same as primitive classes.
      */
     private static int comparePrimitiveToWrapper(Class<?> source, Class<?> destination) {
-        try
-        {
+        try {
             return source.getField("TYPE").get(null).equals(destination) ? 0 : -1;
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             return -1;
         }
     }
 
     /**
      * Given the passed in String class name, return the named JVM class.
-     * @param name String name of a JVM class.
+     *
+     * @param name        String name of a JVM class.
      * @param classLoader ClassLoader to use when searching for JVM classes.
      * @return Class instance of the named JVM class or null if not found.
      */
@@ -230,7 +231,7 @@ public class ClassUtilities
 
         try {
             return internalClassForName(name, classLoader);
-        } catch(SecurityException e) {
+        } catch (SecurityException e) {
             throw new IllegalArgumentException("Security exception, classForName() call on: " + name, e);
         } catch (Exception e) {
             return null;
@@ -272,66 +273,43 @@ public class ClassUtilities
         boolean arrayType = false;
         Class<?> primitiveArray = null;
 
-        while (className.startsWith("["))
-        {
+        while (className.startsWith("[")) {
             arrayType = true;
-            if (className.endsWith(";"))
-            {
+            if (className.endsWith(";")) {
                 className = className.substring(0, className.length() - 1);
             }
-            if (className.equals("[B"))
-            {
+            if (className.equals("[B")) {
                 primitiveArray = byte[].class;
-            }
-            else if (className.equals("[S"))
-            {
+            } else if (className.equals("[S")) {
                 primitiveArray = short[].class;
-            }
-            else if (className.equals("[I"))
-            {
+            } else if (className.equals("[I")) {
                 primitiveArray = int[].class;
-            }
-            else if (className.equals("[J"))
-            {
+            } else if (className.equals("[J")) {
                 primitiveArray = long[].class;
-            }
-            else if (className.equals("[F"))
-            {
+            } else if (className.equals("[F")) {
                 primitiveArray = float[].class;
-            }
-            else if (className.equals("[D"))
-            {
+            } else if (className.equals("[D")) {
                 primitiveArray = double[].class;
-            }
-            else if (className.equals("[Z"))
-            {
+            } else if (className.equals("[Z")) {
                 primitiveArray = boolean[].class;
-            }
-            else if (className.equals("[C"))
-            {
+            } else if (className.equals("[C")) {
                 primitiveArray = char[].class;
             }
             int startpos = className.startsWith("[L") ? 2 : 1;
             className = className.substring(startpos);
         }
         Class<?> currentClass = null;
-        if (null == primitiveArray)
-        {
-            try
-            {
+        if (null == primitiveArray) {
+            try {
                 currentClass = classLoader.loadClass(className);
-            }
-            catch (ClassNotFoundException e)
-            {
+            } catch (ClassNotFoundException e) {
                 currentClass = Thread.currentThread().getContextClassLoader().loadClass(className);
             }
         }
 
-        if (arrayType)
-        {
+        if (arrayType) {
             currentClass = (null != primitiveArray) ? primitiveArray : Array.newInstance(currentClass, 0).getClass();
-            while (name.startsWith("[["))
-            {
+            while (name.startsWith("[[")) {
                 currentClass = Array.newInstance(currentClass, 0).getClass();
                 name = name.substring(1);
             }
@@ -371,5 +349,90 @@ public class ClassUtilities
 
     public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y) {
         return wrapperMap.get(x) == y;
+    }
+
+    /**
+     * Obtains the appropriate ClassLoader depending on whether the environment is OSGi, JPMS, or neither.
+     *
+     * @return the appropriate ClassLoader
+     */
+    public static ClassLoader getClassLoader() {
+        // Attempt to detect and handle OSGi environment
+        ClassLoader cl = getOSGiClassLoader();
+        if (cl != null) {
+            return cl;
+        }
+
+        // Use the thread's context ClassLoader if available
+        cl = Thread.currentThread().getContextClassLoader();
+        if (cl != null) {
+            return cl;
+        }
+
+        // Fallback to the ClassLoader that loaded this utility class
+        cl = ClassUtilities.class.getClassLoader();
+        if (cl != null) {
+            return cl;
+        }
+
+        // As a last resort, use the system ClassLoader
+        return ClassLoader.getSystemClassLoader();
+    }
+
+    /**
+     * Attempts to retrieve the OSGi Bundle's ClassLoader using FrameworkUtil.
+     *
+     * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
+     */
+    private static ClassLoader getOSGiClassLoader() {
+        if (osgiChecked) {
+            return osgiClassLoader;
+        }
+
+        synchronized (ClassUtilities.class) {
+            if (osgiChecked) {
+                return osgiClassLoader;
+            }
+
+            try {
+                // Load the FrameworkUtil class from OSGi
+                Class<?> frameworkUtilClass = Class.forName("org.osgi.framework.FrameworkUtil");
+
+                // Get the getBundle(Class<?>) method
+                Method getBundleMethod = frameworkUtilClass.getMethod("getBundle", Class.class);
+
+                // Invoke FrameworkUtil.getBundle(thisClass) to get the Bundle instance
+                Object bundle = getBundleMethod.invoke(null, ClassUtilities.class);
+
+                if (bundle != null) {
+                    // Get BundleWiring class
+                    Class<?> bundleWiringClass = Class.forName("org.osgi.framework.wiring.BundleWiring");
+
+                    // Get the adapt(Class) method
+                    Method adaptMethod = bundle.getClass().getMethod("adapt", Class.class);
+
+                    // Invoke bundle.adapt(BundleWiring.class) to get the BundleWiring instance
+                    Object bundleWiring = adaptMethod.invoke(bundle, bundleWiringClass);
+
+                    if (bundleWiring != null) {
+                        // Get the getClassLoader() method from BundleWiring
+                        Method getClassLoaderMethod = bundleWiringClass.getMethod("getClassLoader");
+
+                        // Invoke getClassLoader() to obtain the ClassLoader
+                        Object classLoader = getClassLoaderMethod.invoke(bundleWiring);
+
+                        if (classLoader instanceof ClassLoader) {
+                            osgiClassLoader = (ClassLoader) classLoader;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // OSGi FrameworkUtil is not present; not in an OSGi environment
+            } finally {
+                osgiChecked = true;
+            }
+        }
+
+        return osgiClassLoader;
     }
 }

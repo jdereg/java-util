@@ -100,6 +100,44 @@ public final class ArrayUtilities
     }
 
     /**
+     * Creates and returns an array containing the provided elements.
+     *
+     * <p>This method accepts a variable number of arguments and returns them as an array of type {@code T[]}.
+     * It is primarily used to facilitate array creation in generic contexts, where type inference is necessary.
+     *
+     * <p><strong>Example Usage:</strong>
+     * <pre>{@code
+     * String[] stringArray = createArray("Apple", "Banana", "Cherry");
+     * Integer[] integerArray = createArray(1, 2, 3, 4);
+     * Person[] personArray = createArray(new Person("Alice"), new Person("Bob"));
+     * }</pre>
+     *
+     * <p><strong>Important Considerations:</strong>
+     * <ul>
+     *     <li><strong>Type Safety:</strong> Due to type erasure in Java generics, this method does not perform any type checks
+     *     beyond what is already enforced by the compiler. Ensure that all elements are of the expected type {@code T} to avoid
+     *     {@code ClassCastException} at runtime.</li>
+     *     <li><strong>Heap Pollution:</strong> The method is annotated with {@link SafeVarargs} to suppress warnings related to heap
+     *     pollution when using generics with varargs. It is safe to use because the method does not perform any unsafe operations
+     *     on the varargs parameter.</li>
+     *     <li><strong>Null Elements:</strong> The method does not explicitly handle {@code null} elements. If {@code null} values
+     *     are passed, they will be included in the returned array.</li>
+     *     <li><strong>Immutable Arrays:</strong> The returned array is mutable. To create an immutable array, consider wrapping it
+     *     using {@link java.util.Collections#unmodifiableList(List)} or using third-party libraries like Guava's
+     *     {@link com.google.common.collect.ImmutableList}.</li>
+     * </ul>
+     *
+     * @param <T>      the component type of the array
+     * @param elements the elements to be stored in the array
+     * @return an array containing the provided elements
+     * @throws NullPointerException if the {@code elements} array is {@code null}
+     */
+    @SafeVarargs
+    public static <T> T[] createArray(T... elements) {
+        return elements;
+    }
+    
+    /**
      * <p>Adds all the elements of the given arrays into a new array.
      * </p>
      * <p>The new array contains all of the element of <code>array1</code> followed

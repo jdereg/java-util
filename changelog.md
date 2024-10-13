@@ -1,4 +1,8 @@
 ### Revision History
+#### 2.17.0
+> * `ClassUtilities.getClassLoader()` added. This will safely return the correct class loader when running in OSGi, JPMS, or neither.
+> * `ArrayUtilities.createArray()` added. This method accepts a variable number of arguments and returns them as an array of type `T[].` 
+> * Fixed bug when converting `Map` containing "time" key (and no `date` nor `zone` keys) with value to `java.sql.Date.`  The millisecond portion was set to 0.
 #### 2.16.0
 > * `SealableMap, LRUCache,` and `TTLCache` updated to use `ConcurrentHashMapNullSafe` internally, to simplify their implementation, as they no longer have to implement the null-safe work, `ConcurrentHashMapNullSafe` does that for them.
 > * Added `ConcurrentNavigableMapNullSafe` and `ConcurrentNavigableSetNullSafe`

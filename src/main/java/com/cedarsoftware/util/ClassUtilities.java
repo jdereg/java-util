@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Useful utilities for Class work. For example, call computeInheritanceDistance(source, destination)
@@ -44,8 +45,8 @@ public class ClassUtilities
     private static final Map<String, Class<?>> nameToClass = new HashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap = new HashMap<>();
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
-    private static volatile ClassLoader osgiClassLoader;
-    private static volatile boolean osgiChecked = false;
+    private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ConcurrentHashMap<>();
+    private static final Set<Class<?>> osgiChecked = new ConcurrentSet<>();
 
     static {
         prims.add(Byte.class);
@@ -357,8 +358,17 @@ public class ClassUtilities
      * @return the appropriate ClassLoader
      */
     public static ClassLoader getClassLoader() {
+        return getClassLoader(ClassUtilities.class);
+    }
+
+    /**
+     * Obtains the appropriate ClassLoader depending on whether the environment is OSGi, JPMS, or neither.
+     *
+     * @return the appropriate ClassLoader
+     */
+    public static ClassLoader getClassLoader(final Class<?> anchorClass) {
         // Attempt to detect and handle OSGi environment
-        ClassLoader cl = getOSGiClassLoader();
+        ClassLoader cl = getOSGiClassLoader(anchorClass);
         if (cl != null) {
             return cl;
         }
@@ -370,7 +380,7 @@ public class ClassUtilities
         }
 
         // Fallback to the ClassLoader that loaded this utility class
-        cl = ClassUtilities.class.getClassLoader();
+        cl = anchorClass.getClassLoader();
         if (cl != null) {
             return cl;
         }
@@ -384,58 +394,68 @@ public class ClassUtilities
      *
      * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
      */
-    private static ClassLoader getOSGiClassLoader() {
-        if (osgiChecked) {
-            return osgiClassLoader;
+    private static ClassLoader getOSGiClassLoader(final Class<?> classFromBundle) {
+        if (osgiChecked.contains(classFromBundle)) {
+            return osgiClassLoaders.get(classFromBundle);
         }
 
         synchronized (ClassUtilities.class) {
-            if (osgiChecked) {
-                return osgiClassLoader;
+            if (osgiChecked.contains(classFromBundle)) {
+                return osgiClassLoaders.get(classFromBundle);
             }
 
-            try {
-                // Load the FrameworkUtil class from OSGi
-                Class<?> frameworkUtilClass = Class.forName("org.osgi.framework.FrameworkUtil");
-
-                // Get the getBundle(Class<?>) method
-                Method getBundleMethod = frameworkUtilClass.getMethod("getBundle", Class.class);
-
-                // Invoke FrameworkUtil.getBundle(thisClass) to get the Bundle instance
-                Object bundle = getBundleMethod.invoke(null, ClassUtilities.class);
-
-                if (bundle != null) {
-                    // Get BundleWiring class
-                    Class<?> bundleWiringClass = Class.forName("org.osgi.framework.wiring.BundleWiring");
-
-                    // Get the adapt(Class) method
-                    Method adaptMethod = bundle.getClass().getMethod("adapt", Class.class);
-
-                    // method is inside not a public class, so we need to make it accessible
-                    adaptMethod.setAccessible(true);
-
-                    // Invoke bundle.adapt(BundleWiring.class) to get the BundleWiring instance
-                    Object bundleWiring = adaptMethod.invoke(bundle, bundleWiringClass);
-
-                    if (bundleWiring != null) {
-                        // Get the getClassLoader() method from BundleWiring
-                        Method getClassLoaderMethod = bundleWiringClass.getMethod("getClassLoader");
-
-                        // Invoke getClassLoader() to obtain the ClassLoader
-                        Object classLoader = getClassLoaderMethod.invoke(bundleWiring);
-
-                        if (classLoader instanceof ClassLoader) {
-                            osgiClassLoader = (ClassLoader) classLoader;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // OSGi FrameworkUtil is not present; not in an OSGi environment
-            } finally {
-                osgiChecked = true;
-            }
+            osgiClassLoaders.computeIfAbsent(classFromBundle, k -> getOSGiClassLoader0(k));
+            osgiChecked.add(classFromBundle);
         }
 
-        return osgiClassLoader;
+        return osgiClassLoaders.get(classFromBundle);
+    }
+
+    /**
+     * Attempts to retrieve the OSGi Bundle's ClassLoader using FrameworkUtil.
+     *
+     * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
+     */
+    private static ClassLoader getOSGiClassLoader0(final Class<?> classFromBundle) {
+        try {
+            // Load the FrameworkUtil class from OSGi
+            Class<?> frameworkUtilClass = Class.forName("org.osgi.framework.FrameworkUtil");
+
+            // Get the getBundle(Class<?>) method
+            Method getBundleMethod = frameworkUtilClass.getMethod("getBundle", Class.class);
+
+            // Invoke FrameworkUtil.getBundle(thisClass) to get the Bundle instance
+            Object bundle = getBundleMethod.invoke(null, classFromBundle);
+
+            if (bundle != null) {
+                // Get BundleWiring class
+                Class<?> bundleWiringClass = Class.forName("org.osgi.framework.wiring.BundleWiring");
+
+                // Get the adapt(Class) method
+                Method adaptMethod = bundle.getClass().getMethod("adapt", Class.class);
+
+                // method is inside not a public class, so we need to make it accessible
+                adaptMethod.setAccessible(true);
+
+                // Invoke bundle.adapt(BundleWiring.class) to get the BundleWiring instance
+                Object bundleWiring = adaptMethod.invoke(bundle, bundleWiringClass);
+
+                if (bundleWiring != null) {
+                    // Get the getClassLoader() method from BundleWiring
+                    Method getClassLoaderMethod = bundleWiringClass.getMethod("getClassLoader");
+
+                    // Invoke getClassLoader() to obtain the ClassLoader
+                    Object classLoader = getClassLoaderMethod.invoke(bundleWiring);
+
+                    if (classLoader instanceof ClassLoader) {
+                        return (ClassLoader) classLoader;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // OSGi FrameworkUtil is not present; not in an OSGi environment
+        }
+
+        return null;
     }
 }

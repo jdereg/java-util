@@ -411,6 +411,9 @@ public class ClassUtilities
                     // Get the adapt(Class) method
                     Method adaptMethod = bundle.getClass().getMethod("adapt", Class.class);
 
+                    // method is inside not a public class, so we need to make it accessible
+                    adaptMethod.setAccessible(true);
+
                     // Invoke bundle.adapt(BundleWiring.class) to get the BundleWiring instance
                     Object bundleWiring = adaptMethod.invoke(bundle, bundleWiringClass);
 

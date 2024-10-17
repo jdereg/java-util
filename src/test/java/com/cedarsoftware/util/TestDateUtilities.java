@@ -555,8 +555,9 @@ class TestDateUtilities
         boolean okToTest = false;
 
         for (String zoneName : timeZoneOldSchoolNames) {
-            if (dateToString.contains(zoneName)) {
+            if (dateToString.contains(" " + zoneName)) {
                 okToTest = true;
+                break;
             }
         }
 
@@ -874,7 +875,7 @@ class TestDateUtilities
     @Test
     void testTimeBetterThanMilliResolution()
     {
-        ZonedDateTime zonedDateTime = (ZonedDateTime) DateUtilities.parseDate("Jan 22nd, 2024 21:52:05.123456789-05:00", ZoneId.systemDefault(), true);
+        ZonedDateTime zonedDateTime = DateUtilities.parseDate("Jan 22nd, 2024 21:52:05.123456789-05:00", ZoneId.systemDefault(), true);
         assertEquals(123456789, zonedDateTime.getNano());
         assertEquals(2024, zonedDateTime.getYear());
         assertEquals(1, zonedDateTime.getMonthValue());

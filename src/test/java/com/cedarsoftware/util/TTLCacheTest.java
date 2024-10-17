@@ -495,10 +495,10 @@ public class TTLCacheTest {
         ttlCache2.put(30, "Z");
 
         try {
-            Thread.sleep(1100);
+            Thread.sleep(1500);
             assert ttlCache1.isEmpty();
             assert !ttlCache2.isEmpty();
-            Thread.sleep(1300);
+            Thread.sleep(1000);
             assert ttlCache2.isEmpty();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);

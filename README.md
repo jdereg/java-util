@@ -6,7 +6,7 @@ java-util
 
 Helpful Java utilities that are thoroughly tested and available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `328K` and works with `JDK 1.8` through `JDK 23`.
+The`.jar`file is `336K` and works with `JDK 1.8` through `JDK 23`.
 The `.jar` file classes are version 52 `(JDK 1.8)`
 ## Compatibility
 
@@ -25,7 +25,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 To include in your project:
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:2.17.0'
+implementation 'com.cedarsoftware:java-util:2.18.0'
 ```
 
 ##### Maven
@@ -33,7 +33,7 @@ implementation 'com.cedarsoftware:java-util:2.17.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>2.17.0</version>
+  <version>2.18.0</version>
 </dependency>
 ```
 ---

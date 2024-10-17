@@ -1,4 +1,7 @@
 ### Revision History
+#### 2.18.0
+> * Fix issue with field access `ClassUtilities.getClassLoader()` when in OSGi environment.  Thank you @ozhelezniak-talend.
+> * Added `ClassUtilities.getClassLoader(Class<?> c)` so that class loading was not confined to java-util classloader bundle. Thank you @ozhelezniak-talend.
 #### 2.17.0
 > * `ClassUtilities.getClassLoader()` added. This will safely return the correct class loader when running in OSGi, JPMS, or neither.
 > * `ArrayUtilities.createArray()` added. This method accepts a variable number of arguments and returns them as an array of type `T[].` 

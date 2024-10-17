@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>bundle</packaging>
-    <version>2.17.0</version>
+    <version>2.18.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -266,6 +266,15 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${version.maven-surefire-plugin}</version>
+                <configuration>
+                    <argLine>
+                        -Duser.timezone=America/New_York
+                        -Duser.language=en
+                        -Duser.region=US
+                        -Duser.country=US
+                        -Xmx1024m
+                    </argLine>
+                </configuration>
             </plugin>
 
             <plugin>

@@ -272,7 +272,7 @@
                         -Duser.language=en
                         -Duser.region=US
                         -Duser.country=US
-                        -Xmx1024m
+                        -Xmx1500m
                     </argLine>
                 </configuration>
             </plugin>

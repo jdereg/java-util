@@ -126,6 +126,7 @@ class ConverterEverythingTest {
 
     static {
         // List classes that should be checked for immutability
+        immutable.add(Number.class);
         immutable.add(byte.class);
         immutable.add(Byte.class);
         immutable.add(short.class);
@@ -160,6 +161,7 @@ class ConverterEverythingTest {
         immutable.add(Locale.class);
         immutable.add(TimeZone.class);
 
+        loadNumberTest();
         loadByteTest();
         loadByteArrayTest();
         loadByteBufferTest();
@@ -3305,6 +3307,60 @@ class ConverterEverythingTest {
                 {Year.of(2000), (short) 2000},
                 {Year.of(2024), (short) 2024},
                 {Year.of(9999), (short) 9999},
+        });
+    }
+
+    /**
+     * Number
+     */
+    private static void loadNumberTest() {
+        TEST_DB.put(pair(byte.class, Number.class), new Object[][]{
+                {(byte) 1, (byte) 1, true},
+        });
+        TEST_DB.put(pair(Byte.class, Number.class), new Object[][]{
+                {Byte.MAX_VALUE, Byte.MAX_VALUE, true},
+        });
+        TEST_DB.put(pair(short.class, Number.class), new Object[][]{
+                {(short) -1, (short) -1, true},
+        });
+        TEST_DB.put(pair(Short.class, Number.class), new Object[][]{
+                {Short.MIN_VALUE, Short.MIN_VALUE, true},
+        });
+        TEST_DB.put(pair(int.class, Number.class), new Object[][]{
+                {-1, -1, true},
+        });
+        TEST_DB.put(pair(Integer.class, Number.class), new Object[][]{
+                {Integer.MAX_VALUE, Integer.MAX_VALUE, true},
+        });
+        TEST_DB.put(pair(long.class, Number.class), new Object[][]{
+                {(long) -1, (long) -1, true},
+        });
+        TEST_DB.put(pair(Long.class, Number.class), new Object[][]{
+                {Long.MIN_VALUE, Long.MIN_VALUE, true},
+        });
+        TEST_DB.put(pair(float.class, Number.class), new Object[][]{
+                {-1.1f, -1.1f, true},
+        });
+        TEST_DB.put(pair(Float.class, Number.class), new Object[][]{
+                {Float.MAX_VALUE, Float.MAX_VALUE, true},
+        });
+        TEST_DB.put(pair(double.class, Number.class), new Object[][]{
+                {-1.1d, -1.1d, true},
+        });
+        TEST_DB.put(pair(Double.class, Number.class), new Object[][]{
+                {Double.MAX_VALUE, Double.MAX_VALUE, true},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, Number.class), new Object[][]{
+                {new AtomicInteger(16), new AtomicInteger(16), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, Number.class), new Object[][]{
+                {new AtomicLong(-16), new AtomicLong(-16), true},
+        });
+        TEST_DB.put(pair(BigInteger.class, Number.class), new Object[][]{
+                {new BigInteger("7"), new BigInteger("7"), true},
+        });
+        TEST_DB.put(pair(BigDecimal.class, Number.class), new Object[][]{
+                {new BigDecimal("3.14159"), new BigDecimal("3.14159"), true},
         });
     }
 

@@ -15,57 +15,52 @@ import java.util.Set;
 import java.util.SortedMap;
 
 /**
- * Many developers do not realize than they may have thousands or hundreds of thousands of Maps in memory, often
- * representing small JSON objects.  These maps (often HashMaps) usually have a table of 16/32/64... elements in them,
- * with many empty elements.  HashMap doubles it's internal storage each time it expands, so often these Maps have
- * barely 50% of these arrays filled.<p></p>
+ * A memory-efficient Map implementation that optimizes storage based on size.
+ * CompactMap uses only one instance variable of type Object and changes its internal
+ * representation as the map grows, achieving memory savings while maintaining
+ * performance comparable to HashMap.
  *
- * CompactMap is a Map that strives to reduce memory at all costs while retaining speed that is close to HashMap's speed.
- * It does this by using only one (1) member variable (of type Object) and changing it as the Map grows.  It goes from
- * single value, to a single MapEntry, to an Object[], and finally it uses a Map (user defined).  CompactMap is
- * especially small when 0 and 1 entries are stored in it.  When size() is from `2` to compactSize(), then entries
- * are stored internally in single Object[].  If the size() is {@literal >} compactSize() then the entries are stored in a
- * regular `Map`.<pre>
+ * <h2>Storage Strategy</h2>
+ * The map uses different internal representations based on size:
+ * <ul>
+ *   <li><b>Empty (size=0):</b> Single sentinel value</li>
+ *   <li><b>Single Entry (size=1):</b>
+ *     <ul>
+ *       <li>If key matches {@link #getSingleValueKey()}: Stores only the value</li>
+ *       <li>Otherwise: Uses a compact CompactMapEntry containing key and value</li>
+ *     </ul>
+ *   </li>
+ *   <li><b>Multiple Entries (2 ≤ size ≤ compactSize()):</b> Single Object[] storing
+ *       alternating keys and values at even/odd indices</li>
+ *   <li><b>Large Maps (size > compactSize()):</b> Delegates to standard Map implementation</li>
+ * </ul>
  *
- *     Methods you may want to override:
+ * <h2>Customization Points</h2>
+ * The following methods can be overridden to customize behavior:
  *
- *     // If this key is used and only 1 element then only the value is stored
- *     protected K getSingleValueKey() { return "someKey"; }
+ * <pre>{@code
+ * // Key used for optimized single-entry storage
+ * protected K getSingleValueKey() { return "someKey"; }
  *
- *     // Map you would like it to use when size() {@literal >} compactSize().  HashMap is default
- *     protected abstract Map{@literal <}K, V{@literal >} getNewMap();
+ * // Map implementation for large maps (size > compactSize)
+ * protected Map<K,V> getNewMap() { return new HashMap<>(); }
  *
- *     // If you want case insensitivity, return true and return new CaseInsensitiveMap or TreeMap(String.CASE_INSENSITIVE_ORDER) from getNewMap()
- *     protected boolean isCaseInsensitive() { return false; }
+ * // Enable case-insensitive key comparison
+ * protected boolean isCaseInsensitive() { return false; }
  *
- *     // When size() {@literal >} than this amount, the Map returned from getNewMap() is used to store elements.
- *     protected int compactSize() { return 80; }
+ * // Threshold at which to switch to standard Map implementation
+ * protected int compactSize() { return 80; }
+ * }</pre>
  *
- * </pre>
- * **Empty**
- * This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that
- * member variable takes on a pointer (points to sentinel value.)<p></p>
+ * <h2>Additional Notes</h2>
+ * <ul>
+ *   <li>Supports null keys and values if the backing Map implementation does</li>
+ *   <li>Thread safety depends on the backing Map implementation</li>
+ *   <li>Particularly memory efficient for maps of size 0-1</li>
+ * </ul>
  *
- * **One entry**
- * If the entry has a key that matches the value returned from `getSingleValueKey()` then there is no key stored
- * and the internal single member points to the value only.<p></p>
- *
- * If the single entry's key does not match the value returned from `getSingleValueKey()` then the internal field points
- * to an internal `Class` `CompactMapEntry` which contains the key and the value (nothing else).  Again, all APIs still operate
- * the same.<p></p>
- *
- * **Two thru compactSize() entries**
- * In this case, the single member variable points to a single Object[] that contains all the keys and values.  The
- * keys are in the even positions, the values are in the odd positions (1 up from the key).  [0] = key, [1] = value,
- * [2] = next key, [3] = next value, and so on.  The Object[] is dynamically expanded until size() {@literal >} compactSize(). In
- * addition, it is dynamically shrunk until the size becomes 1, and then it switches to a single Map Entry or a single
- * value.<p></p>
- *
- * **size() greater than compactSize()**
- * In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
- * This allows `CompactMap` to work with nearly all `Map` types.<p></p>
- *
- * This Map supports null for the key and values, as long as the Map returned by getNewMap() supports null keys-values.
+ * @param <K> The type of keys maintained by this map
+ * @param <V> The type of mapped values
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -82,6 +77,7 @@ import java.util.SortedMap;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ * @see HashMap
  */
 @SuppressWarnings("unchecked")
 public class CompactMap<K, V> implements Map<K, V>

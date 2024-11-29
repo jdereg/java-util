@@ -49,6 +49,13 @@ public class ConcurrentList<E> implements List<E> {
     }
 
     /**
+     * Initial capacity support
+     */
+    public ConcurrentList(int size) {
+        this.list = new ArrayList<>(size);
+    }
+
+    /**
      * Use this constructor to wrap a List (any kind of List) and make it a ConcurrentList.
      * No duplicate of the List is created and the original list is operated on directly.
      * @param list List instance to protect.

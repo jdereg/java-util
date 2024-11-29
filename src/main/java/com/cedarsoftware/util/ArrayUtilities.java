@@ -34,7 +34,7 @@ public final class ArrayUtilities
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     public static final char[] EMPTY_CHAR_ARRAY = new char[0];
     public static final Character[] EMPTY_CHARACTER_ARRAY = new Character[0];
-    public static final Class[] EMPTY_CLASS_ARRAY = new Class[0];
+    public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class[0];
 
     /**
      * Private constructor to promote using as static class.
@@ -92,8 +92,7 @@ public final class ArrayUtilities
      */
     public static <T> T[] shallowCopy(final T[] array)
     {
-        if (array == null)
-        {
+        if (array == null) {
             return null;
         }
         return array.clone();
@@ -122,9 +121,6 @@ public final class ArrayUtilities
      *     on the varargs parameter.</li>
      *     <li><strong>Null Elements:</strong> The method does not explicitly handle {@code null} elements. If {@code null} values
      *     are passed, they will be included in the returned array.</li>
-     *     <li><strong>Immutable Arrays:</strong> The returned array is mutable. To create an immutable array, consider wrapping it
-     *     using {@link java.util.Collections#unmodifiableList(List)} or using third-party libraries like Guava's
-     *     {@link com.google.common.collect.ImmutableList}.</li>
      * </ul>
      *
      * @param <T>      the component type of the array
@@ -203,7 +199,7 @@ public final class ArrayUtilities
     public static <T> T[] toArray(Class<T> classToCastTo, Collection<?> c)
     {
         T[] array = c.toArray((T[]) Array.newInstance(classToCastTo, c.size()));
-        Iterator i = c.iterator();
+        Iterator<?> i = c.iterator();
         int idx = 0;
         while (i.hasNext())
         {

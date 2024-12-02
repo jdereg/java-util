@@ -1,5 +1,6 @@
 ### Revision History
 #### 2.19.0
+> * Added Collection, Array, and EnumSet support to `Converter.` All of the prior supported types are now supported in within Collection, array, and EnumSet, including multiple dimensions.
 > * Added `Number` as a destination type for `Converter.`  This is useful when using converter as a casting tool - casting to `Number` returns the same value back (if instance of `Number`) or throws conversion exception.  This covers all primitives, primitive wrappers, `AtomicInteger`, `AtomicLong`, `BigInteger`, and `BigDecimal`.
 #### 2.18.0
 > * Fix issue with field access `ClassUtilities.getClassLoader()` when in OSGi environment.  Thank you @ozhelezniak-talend.

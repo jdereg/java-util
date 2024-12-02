@@ -2,14 +2,20 @@ package com.cedarsoftware.util;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -19,30 +25,103 @@ import com.cedarsoftware.util.convert.Convert;
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
 
 /**
- * Useful conversion utilities.  Convert from primitive to other primitives, primitives to java.time and the older
- * java.util.Date, TimeStamp SQL Date, and Calendar classes.  Support is there for the Atomics, BigInteger, BigDecimal,
- * String, Map, all the Java temporal (java.time) classes, and Object[] to Collection types. In addition, you can add
- * your own source/target pairings, and supply the lambda that performs the conversion.<br>
- * <br>
- * Use the 'getSupportedConversions()' API to see all conversion supported - from all sources
- * to all destinations per each source.  Close to 500 "out-of-the-box" conversions ship with the library.<br>
- * <br>
- * The Converter can be used as statically or as an instance.  See the public static methods on this Converter class
- * to use statically.  Any added conversions are added to a singleton instance maintained inside this class.
- * Alternatively, you can instantiate the Converter class to get an instance, and the conversions you add, remove, or
- * change will be scoped to just that instance. <br>
- * <br>
- * On this static Convert class:<br>
- * `Converter.convert2*()` methods: If `null` passed in, primitive 'logical zero' is returned.
- *      Example: `Converter.convert(null, boolean.class)` returns `false`.<br>
- * <br>
- * `Converter.convertTo*()` methods: if `null` passed in, `null` is returned.  Allows "tri-state" Boolean, for example.
- *      Example: `Converter.convert(null, Boolean.class)` returns `null`.<br>
- * <br>
- * `Converter.convert()` converts using `convertTo*()` methods for primitive wrappers, and
- *      `convert2*()` methods for primitives. <br>
- * <br>
- * @author John DeRegnaucourt (jdereg@gmail.com)
+ * Instance conversion utility for converting objects between various types.
+ * <p>
+ * Supports conversion from primitive types to their corresponding wrapper classes, Number classes,
+ * Date and Time classes (e.g., {@link Date}, {@link Timestamp}, {@link LocalDate}, {@link LocalDateTime},
+ * {@link ZonedDateTime}, {@link Calendar}), {@link BigInteger}, {@link BigDecimal}, Atomic classes
+ * (e.g., {@link AtomicBoolean}, {@link AtomicInteger}, {@link AtomicLong}), {@link Class}, {@link UUID},
+ * {@link String}, Collection classes (e.g., {@link List}, {@link Set}, {@link Map}), ByteBuffer, CharBuffer,
+ * and other related classes.
+ * </p>
+ * <p>
+ * The Converter includes thousands of built-in conversions. Use the {@link #getSupportedConversions()}
+ * API to view all source-to-target conversion mappings.
+ * </p>
+ * <p>
+ * The primary API is {@link #convert(Object, Class)}. For example:
+ * <pre>{@code
+ *     Long x = convert("35", Long.class);
+ *     Date d = convert("2015/01/01", Date.class);
+ *     int y = convert(45.0, int.class);
+ *     String dateStr = convert(date, String.class);
+ *     String dateStr = convert(calendar, String.class);
+ *     Short t = convert(true, short.class);     // returns (short) 1 or 0
+ *     Long time = convert(calendar, long.class); // retrieves calendar's time as long
+ *     Map<String, Object> map = Map.of("_v", "75.0");
+ *     Double value = convert(map, double.class); // Extracts "_v" key and converts it
+ * }</pre>
+ * </p>
+ * <p>
+ * <strong>Null Handling:</strong> If a null value is passed as the source, the Converter returns:
+ * <ul>
+ *     <li>null for object types</li>
+ *     <li>0 for numeric primitive types</li>
+ *     <li>false for boolean primitives</li>
+ *     <li>'\u0000' for char primitives</li>
+ * </ul>
+ * </p>
+ * <p>
+ * <strong>Map Conversions:</strong> A {@code Map} can be converted to almost all supported JDK data classes.
+ * For example, {@link UUID} can be converted to/from a {@code Map} with keys like "mostSigBits" and "leastSigBits".
+ * Date/Time classes expect specific keys such as "time" or "nanos". For other classes, the Converter typically
+ * looks for a "value" key to source the conversion.
+ * </p>
+ * <p>
+ * <strong>Extensibility:</strong> Additional conversions can be added by specifying the source class, target class,
+ * and a conversion function (e.g., a lambda). Use the {@link #addConversion(Class, Class, Convert)} method to register
+ * custom converters. This allows for the inclusion of new Collection types and other custom types as needed.
+ * </p>
+ *
+ * <p>
+ * <strong>Supported Collection Conversions:</strong>
+ * The Converter supports conversions involving various Collection types, including but not limited to:
+ * <ul>
+ *     <li>{@link List}</li>
+ *     <li>{@link Set}</li>
+ *     <li>{@link Map}</li>
+ *     <li>{@link Collection}</li>
+ *     <li>Arrays (e.g., {@code byte[]}, {@code char[]}, {@code ByteBuffer}, {@code CharBuffer})</li>
+ * </ul>
+ * These conversions facilitate seamless transformation between different Collection types and other supported classes.
+ * </p>
+ *
+ * <p>
+ * <strong>Usage Example:</strong>
+ * <pre>{@code
+ *     ConverterOptions options = new ConverterOptions();
+ *     Converter converter = new Converter(options);
+ *
+ *     // Convert String to Integer
+ *     Integer number = converter.convert("123", Integer.class);
+ *
+ *     // Convert Enum to String
+ *     Day day = Day.MONDAY;
+ *     String dayStr = converter.convert(day, String.class);
+ *
+ *     // Convert Object[], String[], Collection, and primitive Arrays to EnumSet
+ *     Object[] array = {Day.MONDAY, Day.WEDNESDAY, "FRIDAY", 4};
+ *     EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);
+ *
+ *     Enum, String, and Number value in the source collection/array is properly converted
+ *     to the correct Enum type and added to the returned EnumSet. Null values inside the
+ *     source (Object[], Collection) are skipped.
+ *
+ *     When converting arrays or collections to EnumSet, you must use a double cast due to Java's
+ *     type system and generic type erasure. The cast is safe as the converter guarantees return of
+ *     an EnumSet when converting arrays/collections to enum types.
+ *
+ *     // Add a custom conversion from String to CustomType
+ *     converter.addConversion(String.class, CustomType.class, (from, conv) -> new CustomType(from));
+ *
+ *     // Convert using the custom converter
+ *     CustomType custom = converter.convert("customValue", CustomType.class);
+ * }</pre>
+ * </p>
+ *
+ * @author
+ *         <br>
+ *         John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -69,46 +148,223 @@ public final class Converter
     private Converter() { }
 
     /**
-     * Uses the default configuration options for your system.
-     */
-    public static <T> T convert(Object fromInstance, Class<T> toType) {
-        return instance.convert(fromInstance, toType);
-    }
-    
-    /**
-     * Check to see if a conversion from type to another type is supported (may use inheritance via super classes/interfaces).
+     * Converts the given source object to the specified target type.
+     * <p>
+     * The {@code convert} method serves as the primary API for transforming objects between various types.
+     * It supports a wide range of conversions, including primitive types, wrapper classes, numeric types,
+     * date and time classes, collections, and custom objects. Additionally, it allows for extensibility
+     * by enabling the registration of custom converters.
+     * </p>
+     * <p>
+     * <strong>Key Features:</strong>
+     * <ul>
+     *     <li><b>Wide Range of Supported Types:</b> Supports conversion between Java primitives, their corresponding
+     *         wrapper classes, {@link Number} subclasses, date and time classes (e.g., {@link Date}, {@link LocalDateTime}),
+     *         collections (e.g., {@link List}, {@link Set}, {@link Map}), {@link UUID}, and more.</li>
+     *     <li><b>Null Handling:</b> Gracefully handles {@code null} inputs by returning {@code null} for object types,
+     *         default primitive values (e.g., 0 for numeric types, {@code false} for boolean), and default characters.</li>
+     *     <li><b>Inheritance-Based Conversions:</b> Automatically considers superclass and interface hierarchies
+     *         to find the most suitable converter when a direct conversion is not available.</li>
+     *     <li><b>Custom Converters:</b> Allows users to register custom conversion logic for specific source-target type pairs
+     *         using the {@link #addConversion(Class, Class, Convert)} method.</li>
+     *     <li><b>Thread-Safe:</b> Designed to be thread-safe, allowing concurrent conversions without compromising data integrity.</li>
+     * </ul>
+     * </p>
      *
-     * @param source Class of source type.
-     * @param target Class of target type.
-     * @return boolean true if the Converter converts from the source type to the destination type, false otherwise.
+     * <h3>Usage Examples:</h3>
+     * <pre>{@code
+     *     ConverterOptions options = new ConverterOptions();
+     *     Converter converter = new Converter(options);
+     *
+     *     // Example 1: Convert String to Integer
+     *     String numberStr = "123";
+     *     Integer number = converter.convert(numberStr, Integer.class);
+     *     System.out.println("Converted Integer: " + number); // Output: Converted Integer: 123
+     *
+     *     // Example 2: Convert String to Date
+     *     String dateStr = "2024-04-27";
+     *     LocalDate date = converter.convert(dateStr, LocalDate.class);
+     *     System.out.println("Converted Date: " + date); // Output: Converted Date: 2024-04-27
+     *
+     *     // Example 3: Convert Enum to String
+     *     Day day = Day.MONDAY;
+     *     String dayStr = converter.convert(day, String.class);
+     *     System.out.println("Converted Day: " + dayStr); // Output: Converted Day: MONDAY
+     *
+     *     // Example 4: Convert Array to List
+     *     String[] stringArray = {"apple", "banana", "cherry"};
+     *     List<String> stringList = converter.convert(stringArray, List.class);
+     *     System.out.println("Converted List: " + stringList); // Output: Converted List: [apple, banana, cherry]
+     *
+     *     // Example 5: Convert Map to UUID
+     *     Map<String, Object> uuidMap = Map.of("mostSigBits", 123456789L, "leastSigBits", 987654321L);
+     *     UUID uuid = converter.convert(uuidMap, UUID.class);
+     *     System.out.println("Converted UUID: " + uuid); // Output: Converted UUID: 00000000-075b-cd15-0000-0000003ade68
+     *
+     *     // Example 6: Convert Object[], String[], Collection, and primitive Arrays to EnumSet
+     *     Object[] array = {Day.MONDAY, Day.WEDNESDAY, "FRIDAY", 4};
+     *     EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);
+     *
+     *     Enum, String, and Number value in the source collection/array is properly converted
+     *     to the correct Enum type and added to the returned EnumSet. Null values inside the
+     *     source (Object[], Collection) are skipped.
+     *
+     *     When converting arrays or collections to EnumSet, you must use a double cast due to Java's
+     *     type system and generic type erasure. The cast is safe as the converter guarantees return of
+     *     an EnumSet when converting arrays/collections to enum types.
+     *
+     *     // Example 7: Register and Use a Custom Converter
+     *     // Custom converter to convert String to CustomType
+     *     converter.addConversion(String.class, CustomType.class, (from, conv) -> new CustomType(from));
+     *
+     *     String customStr = "customValue";
+     *     CustomType custom = converter.convert(customStr, CustomType.class);
+     *     System.out.println("Converted CustomType: " + custom); // Output: Converted CustomType: CustomType{value='customValue'}
+     * }
+     * </pre>
+     *
+     * <h3>Parameter Descriptions:</h3>
+     * <ul>
+     *     <li><b>from:</b> The source object to be converted. This can be any object, including {@code null}.
+     *         The actual type of {@code from} does not need to match the target type; the Converter will attempt to
+     *         perform the necessary transformation.</li>
+     *     <li><b>toType:</b> The target class to which the source object should be converted. This parameter
+     *         specifies the desired output type. It can be a primitive type (e.g., {@code int.class}), a wrapper class
+     *         (e.g., {@link Integer}.class), or any other supported class.</li>
+     * </ul>
+     *
+     * <h3>Return Value:</h3>
+     * <p>
+     * Returns an instance of the specified target type {@code toType}, representing the converted value of the source object {@code from}.
+     * If {@code from} is {@code null}, the method returns:
+     * <ul>
+     *     <li>{@code null} for non-primitive target types.</li>
+     *     <li>Default primitive values for primitive target types (e.g., 0 for numeric types, {@code false} for {@code boolean}, '\u0000' for {@code char}).</li>
+     * </ul>
+     * </p>
+     *
+     * <h3>Exceptions:</h3>
+     * <ul>
+     *     <li><b>IllegalArgumentException:</b> Thrown if the conversion from the source type to the target type is not supported,
+     *         or if the target type {@code toType} is {@code null}.</li>
+     *     <li><b>RuntimeException:</b> Any underlying exception thrown during the conversion process is propagated as a {@code RuntimeException}.</li>
+     * </ul>
+     *
+     * <h3>Supported Conversions:</h3>
+     * <p>
+     * The Converter supports a vast array of conversions, including but not limited to:
+     * <ul>
+     *     <li><b>Primitives and Wrappers:</b> Convert between Java primitive types (e.g., {@code int}, {@code boolean}) and their corresponding wrapper classes (e.g., {@link Integer}, {@link Boolean}).</li>
+     *     <li><b>Numbers:</b> Convert between different numeric types (e.g., {@link Integer} to {@link Double}, {@link BigInteger} to {@link BigDecimal}).</li>
+     *     <li><b>Date and Time:</b> Convert between various date and time classes (e.g., {@link String} to {@link LocalDate}, {@link Date} to {@link Instant}, {@link Calendar} to {@link ZonedDateTime}).</li>
+     *     <li><b>Collections:</b> Convert between different collection types (e.g., arrays to {@link List}, {@link Set} to {@link Map}, {@link StringBuilder} to {@link String}).</li>
+     *     <li><b>Custom Objects:</b> Convert between complex objects (e.g., {@link UUID} to {@link Map}, {@link Class} to {@link String}, custom types via user-defined converters).</li>
+     *     <li><b>Buffer Types:</b> Convert between buffer types (e.g., {@link ByteBuffer} to {@link String}, {@link CharBuffer} to {@link byte}[]).</li>
+     * </ul>
+     * </p>
+     *
+     * <h3>Extensibility:</h3>
+     * <p>
+     * Users can extend the Converter's capabilities by registering custom converters for specific type pairs.
+     * This is accomplished using the {@link #addConversion(Class, Class, Convert)} method, which accepts the source type,
+     * target type, and a {@link Convert} functional interface implementation that defines the conversion logic.
+     * </p>
+     *
+     * <h3>Performance Considerations:</h3>
+     * <p>
+     * The Converter utilizes caching mechanisms to store and retrieve converters, ensuring efficient performance
+     * even with a large number of conversion operations. However, registering an excessive number of custom converters
+     * may impact memory usage. It is recommended to register only necessary converters to maintain optimal performance.
+     * </p>
+     *
+     * @param from   The source object to be converted. Can be any object, including {@code null}.
+     * @param toType The target class to which the source object should be converted. Must not be {@code null}.
+     * @param <T>    The type of the target object.
+     * @return An instance of {@code toType} representing the converted value of {@code from}.
+     * @throws IllegalArgumentException if {@code toType} is {@code null} or if the conversion is not supported.
+     * @see #getSupportedConversions()
+     * @see #addConversion(Class, Class, Convert)
+     */
+    public static <T> T convert(Object from, Class<T> toType) {
+        return instance.convert(from, toType);
+    }
+
+    /**
+     * Determines whether a direct conversion from the specified source type to the target type is supported.
+     * <p>
+     * This method checks both user-defined conversions and built-in conversions without considering inheritance hierarchies.
+     * </p>
+     *
+     * @param source The source class type.
+     * @param target The target class type.
+     * @return {@code true} if a direct conversion exists; {@code false} otherwise.
      */
     public static boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
         return instance.isConversionSupportedFor(source, target);
     }
 
     /**
-     * @return {@code Map<Class, Set<Class>>} which contains all supported conversions. The key of the Map is a source class,
-     * and the Set contains all the target types (classes) that the source can be converted to.
+     * Determines whether a direct conversion from the specified source type to the target type is supported.
+     * <p>
+     * This method checks both user-defined conversions and built-in conversions without considering inheritance hierarchies.
+     * </p>
+     *
+     * @param source The source class type.
+     * @param target The target class type.
+     * @return {@code true} if a direct conversion exists; {@code false} otherwise.
+     */
+    public boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
+        return instance.isDirectConversionSupportedFor(source, target);
+    }
+
+    /**
+     * Retrieves a map of all supported conversions, categorized by source and target classes.
+     * <p>
+     * The returned map's keys are source classes, and each key maps to a {@code Set} of target classes
+     * that the source can be converted to.
+     * </p>
+     *
+     * @return A {@code Map<Class<?>, Set<Class<?>>>} representing all supported conversions.
      */
     public static Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
         return instance.allSupportedConversions();
     }
 
     /**
-     * @return {@code Map<String, Set<String>>} which contains all supported conversions. The key of the Map is a source class
-     * name, and the Set contains all the target class names that the source can be converted to.
+     * Retrieves a map of all supported conversions with class names instead of class objects.
+     * <p>
+     * The returned map's keys are source class names, and each key maps to a {@code Set} of target class names
+     * that the source can be converted to.
+     * </p>
+     *
+     * @return A {@code Map<String, Set<String>>} representing all supported conversions by class names.
      */
     public static Map<String, Set<String>> getSupportedConversions() {
         return instance.getSupportedConversions();
     }
 
     /**
-     * Add a new conversion.
+     * Adds a new conversion function for converting from one type to another. If a conversion already exists
+     * for the specified source and target types, the existing conversion will be overwritten.
      *
-     * @param source             Class to convert from.
-     * @param target             Class to convert to.
-     * @param conversionFunction Convert function that converts from the source type to the destination type.
-     * @return prior conversion function if one existed.
+     * <p>When {@code convert(source, target)} is called, the conversion function is located by matching the class
+     * of the source instance and the target class. If an exact match is found, that conversion function is used.
+     * If no exact match is found, the method attempts to find the most appropriate conversion by traversing
+     * the class hierarchy of the source and target types (including interfaces), excluding common marker
+     * interfaces such as {@link java.io.Serializable}, {@link java.lang.Comparable}, and {@link java.lang.Cloneable}.
+     * The nearest match based on class inheritance and interface implementation is used.
+     *
+     * <p>This method allows you to explicitly define custom conversions between types. It also supports the automatic
+     * handling of primitive types by converting them to their corresponding wrapper types (e.g., {@code int} to {@code Integer}).
+     *
+     * <p><strong>Note:</strong> This method utilizes the {@link ClassUtilities#toPrimitiveWrapperClass(Class)} utility
+     * to ensure that primitive types are mapped to their respective wrapper classes before attempting to locate
+     * or store the conversion.
+     *
+     * @param source             The source class (type) to convert from.
+     * @param target             The target class (type) to convert to.
+     * @param conversionFunction A function that converts an instance of the source type to an instance of the target type.
+     * @return The previous conversion function associated with the source and target types, or {@code null} if no conversion existed.
      */
     public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
         return instance.addConversion(source, target, conversionFunction);

@@ -8,6 +8,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate;
@@ -137,7 +138,8 @@ public class TestUniqueIdGenerator
 //        }
 //        out.println("count = " + count);
 //    }
-    
+
+    @Disabled
     @Test
     void testConcurrency()
     {

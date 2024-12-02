@@ -1,5 +1,8 @@
 package com.cedarsoftware.util.convert;
 
+import java.lang.reflect.Array;
+import java.util.Collection;
+import java.util.EnumSet;
 import java.util.Map;
 
 import com.cedarsoftware.util.CompactLinkedMap;
@@ -25,10 +28,79 @@ final class EnumConversions {
 
     private EnumConversions() {}
 
-    static Map toMap(Object from, Converter converter) {
-        Enum enumInstance = (Enum) from;
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        Enum<?> enumInstance = (Enum<?>) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put("name", enumInstance.name());
         return target;
+    }
+
+    @SuppressWarnings("unchecked")
+    static <T extends Enum<T>> EnumSet<T> toEnumSet(Object from, Converter converter, Class<?> target) {
+        if (!target.isEnum()) {
+            throw new IllegalArgumentException("target type " + target.getName() + " must be an Enum, which instructs the EnumSet type to create.");
+        }
+
+        Class<T> enumClass = (Class<T>) target;
+        EnumSet<T> enumSet = EnumSet.noneOf(enumClass);
+
+        if (from instanceof Collection) {
+            processElements((Collection<?>) from, enumSet, enumClass);
+        } else if (from.getClass().isArray()) {
+            processArrayElements(from, enumSet, enumClass);
+        } else {
+            throw new IllegalArgumentException("Source must be a Collection or Array, found: " + from.getClass().getName());
+        }
+
+        return enumSet;
+    }
+
+    private static <T extends Enum<T>> void processArrayElements(Object array, EnumSet<T> enumSet, Class<T> enumClass) {
+        int length = Array.getLength(array);
+        T[] enumConstants = null;  // Lazy initialization
+
+        for (int i = 0; i < length; i++) {
+            Object element = Array.get(array, i);
+            if (element != null) {
+                enumConstants = processElement(element, enumSet, enumClass, enumConstants);
+            }
+        }
+    }
+
+    private static <T extends Enum<T>> void processElements(Collection<?> collection, EnumSet<T> enumSet, Class<T> enumClass) {
+        T[] enumConstants = null;  // Lazy initialization
+
+        for (Object element : collection) {
+            if (element != null) {
+                enumConstants = processElement(element, enumSet, enumClass, enumConstants);
+            }
+        }
+    }
+
+    private static <T extends Enum<T>> T[] processElement(Object element, EnumSet<T> enumSet, Class<T> enumClass, T[] enumConstants) {
+        if (enumClass.isInstance(element)) {
+            enumSet.add(enumClass.cast(element));
+        } else if (element instanceof String) {
+            enumSet.add(Enum.valueOf(enumClass, (String) element));
+        } else if (element instanceof Number) {
+            // Lazy load enum constants when first numeric value is encountered
+            if (enumConstants == null) {
+                enumConstants = enumClass.getEnumConstants();
+            }
+
+            int ordinal = ((Number) element).intValue();
+
+            if (ordinal < 0 || ordinal >= enumConstants.length) {
+                throw new IllegalArgumentException(
+                        String.format("Invalid ordinal value %d for enum %s. Must be between 0 and %d",
+                                ordinal, enumClass.getName(), enumConstants.length - 1));
+            }
+            enumSet.add(enumConstants[ordinal]);
+        } else {
+            throw new IllegalArgumentException(element.getClass().getName() +
+                    " found in source collection/array is not convertible to " + enumClass.getName());
+        }
+
+        return enumConstants;
     }
 }

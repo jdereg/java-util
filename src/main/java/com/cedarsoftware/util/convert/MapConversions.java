@@ -591,7 +591,7 @@ final class MapConversions {
         return fromMap(from, converter, URL.class, new String[] {URL_KEY});
     }
 
-    static Throwable toThrowable(Object from, Converter converter) {
+    static Throwable toThrowable(Object from, Converter converter, Class<?> target) {
         Map<String, Object> map = (Map<String, Object>) from;
         try {
             String className = (String) map.get(CLASS);
@@ -599,7 +599,10 @@ final class MapConversions {
             String causeClassName = (String) map.get(CAUSE);
             String causeMessage = (String) map.get(CAUSE_MESSAGE);
 
-            Class<?> clazz = Class.forName(className);
+            Class<?> clazz = className != null ?
+                    Class.forName(className) :
+                    target;
+
             Throwable cause = null;
 
             if (causeClassName != null && !causeClassName.isEmpty()) {
@@ -626,7 +629,7 @@ final class MapConversions {
             throw new IllegalArgumentException("Unable to reconstruct exception instance from map: " + map);
         }
     }
-
+    
     static URI toURI(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
         String uri = (String) map.get(URI_KEY);

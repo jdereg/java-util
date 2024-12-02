@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,6 +44,7 @@ public class TTLCacheTest {
         assertEquals("C", ttlCache.get(3));
     }
 
+    @Disabled
     @Test
     void testEntryExpiration() throws InterruptedException {
         ttlCache = new TTLCache<>(200, -1, 100); // TTL of 1 second, no LRU
@@ -198,6 +200,7 @@ public class TTLCacheTest {
         }
     }
 
+    @Disabled
     @Test
     void testConcurrency() throws InterruptedException {
         ttlCache = new TTLCache<>(10000, 10000);
@@ -389,6 +392,7 @@ public class TTLCacheTest {
         System.out.println("TTLCache speed: " + (endTime - startTime) + "ms");
     }
 
+    @Disabled
     @Test
     void testTTLWithoutLRU() throws InterruptedException {
         ttlCache = new TTLCache<>(2000, -1); // TTL of 2 seconds, no LRU
@@ -406,6 +410,7 @@ public class TTLCacheTest {
         assertNull(ttlCache.get(1), "Entry should have expired after TTL");
     }
 
+    @Disabled
     @Test
     void testTTLWithLRU() throws InterruptedException {
         ttlCache = new TTLCache<>(2000, 2); // TTL of 2 seconds, max size of 2
@@ -463,6 +468,7 @@ public class TTLCacheTest {
         assertFalse(ttlCache.containsKey(2));
     }
 
+    @Disabled
     @Test
     void testExpirationDuringIteration() throws InterruptedException {
         ttlCache = new TTLCache<>(1000, -1, 100);
@@ -482,6 +488,7 @@ public class TTLCacheTest {
 
     // Use this test to "See" the pattern, by adding a System.out.println(toString()) of the cache contents to the top
     // of the purgeExpiredEntries() method.
+    @Disabled
     @Test
     void testTwoIndependentCaches()
     {

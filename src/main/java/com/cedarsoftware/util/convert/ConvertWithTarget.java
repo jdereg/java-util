@@ -19,12 +19,18 @@ package com.cedarsoftware.util.convert;
  *         limitations under the License.
  */
 @FunctionalInterface
-public interface Convert<T> {
-    T convert(Object from, Converter converter);
+public interface ConvertWithTarget<T> extends Convert<T> {
+    T convertWithTarget(Object from, Converter converter, Class<?> target);
 
-    // Add a default method that delegates to the two-parameter version
+    // Implement the Convert interface method to delegate to the three-parameter version
+    @Override
+    default T convert(Object from, Converter converter) {
+        return convertWithTarget(from, converter, null);
+    }
+
+    // Override the default three-parameter version to use our new method
+    @Override
     default T convert(Object from, Converter converter, Class<?> target) {
-        return convert(from, converter);
+        return convertWithTarget(from, converter, target);
     }
 }
-

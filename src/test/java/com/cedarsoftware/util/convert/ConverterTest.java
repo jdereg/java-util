@@ -3205,8 +3205,8 @@ class ConverterTest
 
     private static Stream<Arguments> toChar_numberFormatException() {
         return Stream.of(
-                Arguments.of("45.number", "Unable to parse'45.number' as a char/Character. Invalid Unicode escape sequence.45.number"),
-                Arguments.of("AB", "Unable to parse'AB' as a char/Character. Invalid Unicode escape sequence.AB")
+                Arguments.of("45.number", "Unable to parse '45.number' as a char/Character. Invalid Unicode escape sequence.45.number"),
+                Arguments.of("AB", "Unable to parse 'AB' as a char/Character. Invalid Unicode escape sequence.AB")
         );
     }
 
@@ -4359,6 +4359,17 @@ class ConverterTest
         assertEquals(expected.getClass(), actual.getClass());
         assertEquals(expected.getCause().getClass(), actual.getCause().getClass());
         assertEquals(expected.getCause().getMessage(), actual.getCause().getMessage());
+    }
+
+    @Test
+    void testMapToThrowable2() {
+        Map<String, Object> errorMap = new HashMap<>();
+        errorMap.put("message", "Test error");
+        errorMap.put("cause", null);
+
+        Throwable result = converter.convert(errorMap, Throwable.class);
+        assertEquals("Test error", result.getMessage());
+        assertNull(result.getCause());
     }
 
     @Test

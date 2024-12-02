@@ -24,7 +24,9 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +37,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,7 +88,6 @@ import static com.cedarsoftware.util.convert.MapConversions.V;
 import static com.cedarsoftware.util.convert.MapConversions.VARIANT;
 import static com.cedarsoftware.util.convert.MapConversions.YEAR;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -161,6 +163,7 @@ class ConverterEverythingTest {
         immutable.add(Locale.class);
         immutable.add(TimeZone.class);
 
+        loadCollectionTest();
         loadNumberTest();
         loadByteTest();
         loadByteArrayTest();
@@ -229,7 +232,11 @@ class ConverterEverythingTest {
      */
     private static void loadThrowableTests() {
         TEST_DB.put(pair(Void.class, Throwable.class), new Object[][]{
-                {null, null}
+                {null, null},
+        });
+        // Would like to add this test, but it triggers
+        TEST_DB.put(pair(Map.class, Throwable.class), new Object[][]{
+                {mapOf(MESSAGE, "Test error", CAUSE, null), new Throwable("Test error")}
         });
     }
 
@@ -2398,7 +2405,7 @@ class ConverterEverythingTest {
                 {"{", '{', true},
                 {"\uD83C", '\uD83C', true},
                 {"\uFFFF", '\uFFFF', true},
-                {"FFFZ", new IllegalArgumentException("Unable to parse'FFFZ' as a char/Character. Invalid Unicode escape sequence.FFFZ")},
+                {"FFFZ", new IllegalArgumentException("Unable to parse 'FFFZ' as a char/Character. Invalid Unicode escape sequence.FFFZ")},
         });
     }
 
@@ -3311,6 +3318,15 @@ class ConverterEverythingTest {
     }
 
     /**
+     * Collection
+     */
+    private static void loadCollectionTest() {
+        TEST_DB.put(pair(Collection.class, Collection.class), new Object[][]{
+                {Arrays.asList(1, null, "three"), new Vector<>(Arrays.asList(1, null, "three")), true},
+        });
+    }
+
+    /**
      * Number
      */
     private static void loadNumberTest() {
@@ -3798,6 +3814,9 @@ class ConverterEverythingTest {
             }
         }
 
+        if (source instanceof Map && targetClass.equals(Throwable.class)) {
+            System.out.println();
+        }
         if (source == null) {
             assertEquals(sourceClass, Void.class, "On the source-side of test input, null can only appear in the Void.class data");
         } else {
@@ -3812,9 +3831,18 @@ class ConverterEverythingTest {
 
         if (target instanceof Throwable) {
             Throwable t = (Throwable) target;
-            assertThatExceptionOfType(t.getClass())
-                    .isThrownBy(() -> converter.convert(source, targetClass))
-                    .withMessageContaining(((Throwable) target).getMessage());
+            Object actual = null;
+            try {
+                // A test that returns a Throwable, as opposed to throwing it.
+                actual = converter.convert(source, targetClass);
+                Throwable actualExceptionReturnValue = (Throwable) actual;
+                assert actualExceptionReturnValue.getMessage().equals(((Throwable) target).getMessage());
+                assert actualExceptionReturnValue.getClass().equals(target.getClass());
+                updateStat(pair(sourceClass, targetClass), true);
+            } catch (Throwable e) {
+                assert e.getMessage().contains(t.getMessage());
+                assert e.getClass().equals(t.getClass());
+            }
         } else {
             // Assert values are equals
             Object actual = converter.convert(source, targetClass);

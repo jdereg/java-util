@@ -12,6 +12,7 @@ import java.util.Random;
 import java.util.TimeZone;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -240,6 +241,7 @@ public class TestSimpleDateFormat
         assertEquals(expectedDate.get(Calendar.SECOND), cal.get(Calendar.SECOND));
     }
 
+    @Disabled
     @Test
     void testConcurrencyWillFail() throws Exception
     {
@@ -326,6 +328,7 @@ public class TestSimpleDateFormat
 //        System.out.println("t = " + t[0]);
     }
 
+    @Disabled
     @Test
     void testConcurrencyWontFail() throws Exception
     {

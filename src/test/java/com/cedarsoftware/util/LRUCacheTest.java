@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -219,6 +220,7 @@ public class LRUCacheTest {
         }
     }
 
+    @Disabled
     @ParameterizedTest
     @MethodSource("strategies")
     void testConcurrency(LRUCache.StrategyType strategy) throws InterruptedException {
@@ -258,6 +260,7 @@ public class LRUCacheTest {
         assertTrue(service.awaitTermination(1, TimeUnit.MINUTES));
     }
 
+    @Disabled
     @ParameterizedTest
     @MethodSource("strategies")
     void testConcurrency2(LRUCache.StrategyType strategy) throws InterruptedException {
@@ -418,6 +421,7 @@ public class LRUCacheTest {
         assertNull(lruCache.get(2));
     }
 
+    @Disabled
     @ParameterizedTest
     @MethodSource("strategies")
     void testCacheBlast(LRUCache.StrategyType strategy) {

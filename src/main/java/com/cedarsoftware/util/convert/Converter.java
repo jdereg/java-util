@@ -25,7 +25,9 @@ import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -42,6 +44,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ClassUtilities;
+
+import static com.cedarsoftware.util.convert.CollectionConversions.CollectionFactory.createCollection;
 
 
 /**
@@ -119,9 +123,17 @@ import com.cedarsoftware.util.ClassUtilities;
  *     Day day = Day.MONDAY;
  *     String dayStr = converter.convert(day, String.class);
  *
- *     // Convert Enum Array to EnumSet
- *     Object[] enumArray = {Day.MONDAY, Day.WEDNESDAY, Day.FRIDAY};
- *     EnumSet<Day> enumSet = converter.convert(enumArray, EnumSet.class);
+ *     // Convert Object[], String[], Collection, and primitive Arrays to EnumSet
+ *     Object[] array = {Day.MONDAY, Day.WEDNESDAY, "FRIDAY", 4};
+ *     EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);
+ *
+ *     Enum, String, and Number value in the source collection/array is properly converted
+ *     to the correct Enum type and added to the returned EnumSet. Null values inside the
+ *     source (Object[], Collection) are skipped.
+ *
+ *     When converting arrays or collections to EnumSet, you must use a double cast due to Java's
+ *     type system and generic type erasure. The cast is safe as the converter guarantees return of
+ *     an EnumSet when converting arrays/collections to enum types.
  *
  *     // Add a custom conversion from String to CustomType
  *     converter.addConversion(String.class, CustomType.class, (from, conv) -> new CustomType(from));
@@ -156,20 +168,46 @@ public final class Converter {
     private static final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> CONVERSION_DB = new HashMap<>(860, .8f);  // =~680/0.8
     private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private final ConverterOptions options;
+    private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new HashMap<>();
 
-    // Create a Map.Entry (pair) of source class to target class.
+    /**
+     * Creates a key pair consisting of source and target classes for conversion mapping.
+     *
+     * @param source The source class to convert from.
+     * @param target The target class to convert to.
+     * @return A {@code Map.Entry} representing the source-target class pair.
+     */
     static Map.Entry<Class<?>, Class<?>> pair(Class<?> source, Class<?> target) {
         return new AbstractMap.SimpleImmutableEntry<>(source, target);
     }
 
     static {
+        CUSTOM_ARRAY_NAMES.put(java.sql.Date[].class, "java.sql.Date[]");
         buildFactoryConversions();
     }
 
+    /**
+     * Retrieves the converter options associated with this Converter instance.
+     *
+     * @return The {@link ConverterOptions} used by this Converter.
+     */
     public ConverterOptions getOptions() {
         return options;
     }
 
+    /**
+     * Initializes the built-in conversion mappings within the Converter.
+     * <p>
+     * This method populates the {@link #CONVERSION_DB} with a comprehensive set of predefined conversion functions
+     * that handle a wide range of type transformations, including primitives, wrappers, numbers, dates, times,
+     * collections, and more.
+     * </p>
+     * <p>
+     * These conversions serve as the foundational capabilities of the Converter, enabling it to perform most
+     * common type transformations out-of-the-box. Users can extend or override these conversions using the
+     * {@link #addConversion(Class, Class, Convert)} method as needed.
+     * </p>
+     */
     private static void buildFactoryConversions() {
         // toNumber
         CONVERSION_DB.put(pair(Byte.class, Number.class), Converter::identity);
@@ -920,7 +958,7 @@ public final class Converter {
 
         // Throwable conversions supported
         CONVERSION_DB.put(pair(Void.class, Throwable.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Map.class, Throwable.class), MapConversions::toThrowable);
+        CONVERSION_DB.put(pair(Map.class, Throwable.class), (ConvertWithTarget<Throwable>) MapConversions::toThrowable);
 
         // Map conversions supported
         CONVERSION_DB.put(pair(Void.class, Map.class), VoidConversions::toNull);
@@ -964,11 +1002,36 @@ public final class Converter {
         CONVERSION_DB.put(pair(URI.class, Map.class), UriConversions::toMap);
         CONVERSION_DB.put(pair(URL.class, Map.class), UrlConversions::toMap);
         CONVERSION_DB.put(pair(Throwable.class, Map.class), ThrowableConversions::toMap);
+
+        // For Collection Support:
+        CONVERSION_DB.put(pair(Collection.class, Collection.class),
+                (ConvertWithTarget<Collection<?>>) (Object from, Converter converter, Class<?> target) -> {
+                    Collection<?> source = (Collection<?>) from;
+                    Collection<Object> result = (Collection<Object>) createCollection(target, source.size());
+                    result.addAll(source);
+                    return result;
+                });
     }
 
+    /**
+     * Constructs a new Converter instance with the specified options.
+     * <p>
+     * The Converter initializes its internal conversion databases by merging the predefined
+     * {@link #CONVERSION_DB} with any user-specified overrides provided in {@code options}.
+     * </p>
+     *
+     * @param options The {@link ConverterOptions} that configure this Converter's behavior and conversions.
+     * @throws NullPointerException if {@code options} is {@code null}.
+     */
     public Converter(ConverterOptions options) {
         this.options = options;
         USER_DB.putAll(this.options.getConverterOverrides());
+
+        // Thinking: Can ArrayFactory take advantage of Converter processing arrays now
+        // Thinking: Should Converter have a recursive usage of itself to support n-dimensional arrays int[][] to long[][], etc. or int[][] to ArrayList of ArrayList.
+        // Thinking: Get AI to write a bunch of collection tests for me, including (done)
+        //           If we add multiple dimension support, then int[][] to long[][] and int[][] to ArrayList of ArrayList.
+        // Thinking: What about an EnumSet of length 0 now breaking json-io?
     }
 
     /**
@@ -1025,7 +1088,19 @@ public final class Converter {
      *     UUID uuid = converter.convert(uuidMap, UUID.class);
      *     System.out.println("Converted UUID: " + uuid); // Output: Converted UUID: 00000000-075b-cd15-0000-0000003ade68
      *
-     *     // Example 6: Register and Use a Custom Converter
+     *     // Example 6: Convert Object[], String[], Collection, and primitive Arrays to EnumSet
+     *     Object[] array = {Day.MONDAY, Day.WEDNESDAY, "FRIDAY", 4};
+     *     EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);
+     *
+     *     Enum, String, and Number value in the source collection/array is properly converted
+     *     to the correct Enum type and added to the returned EnumSet. Null values inside the
+     *     source (Object[], Collection) are skipped.
+     *
+     *     When converting arrays or collections to EnumSet, you must use a double cast due to Java's
+     *     type system and generic type erasure. The cast is safe as the converter guarantees return of
+     *     an EnumSet when converting arrays/collections to enum types.
+     *
+     *     // Example 7: Register and Use a Custom Converter
      *     // Custom converter to convert String to CustomType
      *     converter.addConversion(String.class, CustomType.class, (from, conv) -> new CustomType(from));
      *
@@ -1104,26 +1179,59 @@ public final class Converter {
         }
         Class<?> sourceType;
         if (from == null) {
-            // Do not promote primitive to primitive wrapper - allows for different 'from NULL' type for each.
             sourceType = Void.class;
         } else {
-            // Promote primitive to primitive wrapper, so we don't have to define so many duplicates in the factory map.
             sourceType = from.getClass();
             if (toType.isPrimitive()) {
                 toType = (Class<T>) ClassUtilities.toPrimitiveWrapperClass(toType);
             }
-        }
 
+            // Check for EnumSet target first
+            if (EnumSet.class.isAssignableFrom(toType)) {
+                throw new IllegalArgumentException("To convert to EnumSet, specify the Enum class to convert to. See convert() Javadoc for example.");
+            }
+
+            // Special handling for Collection/Array/EnumSet conversions
+            if (toType.isEnum()) {
+                // When target is something like Day.class, we're actually creating an EnumSet<Day>
+                if (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType)) {
+                    return (T) EnumConversions.toEnumSet(from, this, toType);
+                }
+            } else if (EnumSet.class.isAssignableFrom(sourceType)) {
+                if (Collection.class.isAssignableFrom(toType)) {
+                    Collection<Object> target = (Collection<Object>) createCollection(toType, ((Collection<?>) from).size());
+                    target.addAll((Collection<?>) from);
+                    return (T) target;
+                }
+                if (toType.isArray()) {
+                    return (T) ArrayConversions.enumSetToArray((EnumSet<?>) from, toType);
+                }
+            } else if (Collection.class.isAssignableFrom(sourceType)) {
+                if (toType.isArray()) {
+                    return (T) ArrayConversions.collectionToArray((Collection<?>) from, toType, this);
+                }
+            } else if (sourceType.isArray() && Collection.class.isAssignableFrom(toType)) {
+                // Array -> Collection
+                return (T) CollectionConversions.arrayToCollection(from, toType);
+            } else if (sourceType.isArray() && toType.isArray() && !sourceType.getComponentType().equals(toType.getComponentType())) {
+                // Handle array-to-array conversion when component types differ
+                return (T) ArrayConversions.arrayToArray(from, toType, this);
+            }
+        }
         // Check user added conversions (allows overriding factory conversions)
         Convert<?> converter = USER_DB.get(pair(sourceType, toType));
         if (converter != null && converter != UNSUPPORTED) {
-            return (T) converter.convert(from, this);
+            return (T) converter.convert(from, this, toType);
         }
 
         // Check factory conversion database
         converter = CONVERSION_DB.get(pair(sourceType, toType));
         if (converter != null && converter != UNSUPPORTED) {
-            return (T) converter.convert(from, this);
+            return (T) converter.convert(from, this, toType);
+        }
+
+        if (EnumSet.class.isAssignableFrom(toType)) {
+            throw new IllegalArgumentException("To convert to EnumSet, specify the Enum class to convert to. See convert() Javadoc for example.");
         }
 
         // Always attempt inheritance-based conversion
@@ -1133,7 +1241,7 @@ public final class Converter {
             if (!isDirectConversionSupportedFor(sourceType, toType)) {
                 addConversion(sourceType, toType, converter);
             }
-            return (T) converter.convert(from, this);
+            return (T) converter.convert(from, this, toType);
         }
 
         throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) + "] target type '" + getShortName(toType) + "'");
@@ -1141,10 +1249,15 @@ public final class Converter {
 
     /**
      * Retrieves the most suitable converter for converting from the specified source type to the desired target type.
+     * <p>
+     * This method traverses the class hierarchy of both the source and target types to find the nearest applicable
+     * conversion function. It prioritizes user-defined conversions over factory-provided conversions.
+     * </p>
      *
-     * @param sourceType The source type.
-     * @param toType The desired target type.
-     * @return A converter capable of converting from the source type to the target type, or null if none found.
+     * @param sourceType The source type from which to convert.
+     * @param toType     The target type to which to convert.
+     * @return A {@link Convert} instance capable of performing the conversion, or {@code null} if no suitable
+     * converter is found.
      */
     private Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
         Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
@@ -1169,7 +1282,16 @@ public final class Converter {
 
         return null;
     }
-
+    
+    /**
+     * Retrieves all superclasses and interfaces of the specified class, excluding general marker interfaces.
+     * <p>
+     * This method utilizes caching to improve performance by storing previously computed class hierarchies.
+     * </p>
+     *
+     * @param clazz The class for which to retrieve superclasses and interfaces.
+     * @return A {@link Set} of {@link ClassLevel} instances representing the superclasses and interfaces of the specified class.
+     */
     private static Set<ClassLevel> getSuperClassesAndInterfaces(Class<?> clazz) {
         Set<ClassLevel> parentTypes = cacheParentTypes.get(clazz);
         if (parentTypes != null) {
@@ -1181,6 +1303,12 @@ public final class Converter {
         return parentTypes;
     }
 
+    /**
+     * Represents a class along with its hierarchy level for ordering purposes.
+     * <p>
+     * This class is used internally to manage and compare classes based on their position within the class hierarchy.
+     * </p>
+     */
     static class ClassLevel implements Comparable<ClassLevel> {
         private final Class<?> clazz;
         private final int level;
@@ -1225,6 +1353,17 @@ public final class Converter {
         }
     }
 
+    /**
+     * Recursively adds all superclasses and interfaces of the specified class to the result set.
+     * <p>
+     * This method excludes general marker interfaces such as {@link Serializable}, {@link Cloneable}, and {@link Comparable}
+     * to prevent unnecessary or irrelevant conversions.
+     * </p>
+     *
+     * @param clazz  The class whose superclasses and interfaces are to be added.
+     * @param result The set where the superclasses and interfaces are collected.
+     * @param level  The current hierarchy level, used for ordering purposes.
+     */
     private static void addSuperClassesAndInterfaces(Class<?> clazz, Set<ClassLevel> result, int level) {
         // Add all superinterfaces
         for (Class<?> iface : clazz.getInterfaces()) {
@@ -1243,10 +1382,47 @@ public final class Converter {
         }
     }
 
+    /**
+     * Returns a short name for the given class.
+     * <ul>
+     * <li>For specific array types, returns the custom name</li>
+     * <li>For other array types, returns the component's simple name + "[]"</li>
+     * <li>For java.sql.Date, returns the fully qualified name</li>
+     * <li>For all other classes, returns the simple name</li>
+     * </ul>
+     *
+     * @param type  The class to get the short name for
+     * @return      The short name of the class
+     */
     static String getShortName(Class<?> type) {
-        return java.sql.Date.class.equals(type) ? type.getName() : type.getSimpleName();
+        if (type.isArray()) {
+            // Check if the array type has a custom short name
+            String customName = CUSTOM_ARRAY_NAMES.get(type);
+            if (customName != null) {
+                return customName;
+            }
+            // For other arrays, use component's simple name + "[]"
+            Class<?> componentType = type.getComponentType();
+            return componentType.getSimpleName() + "[]";
+        }
+        // Special handling for java.sql.Date
+        if (java.sql.Date.class.equals(type)) {
+            return type.getName();
+        }
+        // Default: use simple name
+        return type.getSimpleName();
     }
 
+    /**
+     * Generates a descriptive name for the given object.
+     * <p>
+     * If the object is {@code null}, returns "null". Otherwise, returns a string combining the short name
+     * of the object's class and its {@code toString()} representation.
+     * </p>
+     *
+     * @param from The object for which to generate a name.
+     * @return A descriptive name of the object.
+     */
     static private String name(Object from) {
         if (from == null) {
             return "null";
@@ -1255,22 +1431,28 @@ public final class Converter {
     }
 
     /**
-     * Check to see if a direct-conversion from type to another type is supported.
+     * Determines whether a direct conversion from the specified source type to the target type is supported.
+     * <p>
+     * This method checks both user-defined conversions and built-in conversions without considering inheritance hierarchies.
+     * </p>
      *
-     * @param source Class of source type.
-     * @param target Class of target type.
-     * @return boolean true if the Converter converts from the source type to the destination type, false otherwise.
+     * @param source The source class type.
+     * @param target The target class type.
+     * @return {@code true} if a direct conversion exists; {@code false} otherwise.
      */
-    boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
+    public boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
         return isConversionInMap(source, target);
     }
 
     /**
-     * Check to see if a conversion from type to another type is supported (may use inheritance via super classes/interfaces).
+     * Determines whether a conversion from the specified source type to the target type is supported.
+     * <p>
+     * This method checks both direct conversions and inheritance-based conversions, considering superclass and interface hierarchies.
+     * </p>
      *
-     * @param source Class of source type.
-     * @param target Class of target type.
-     * @return boolean true if the Converter converts from the source type to the destination type, false otherwise.
+     * @param source The source class type.
+     * @param target The target class type.
+     * @return {@code true} if the conversion is supported; {@code false} otherwise.
      */
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
         // Check direct conversions
@@ -1303,66 +1485,116 @@ public final class Converter {
     }
 
     /**
-     * @return {@code Map<Class, Set<Class>>} which contains all supported conversions. The key of the Map is a source class,
-     * and the Set contains all the target types (classes) that the source can be converted to.
+     * Retrieves a map of all supported conversions, categorized by source and target classes.
+     * <p>
+     * The returned map's keys are source classes, and each key maps to a {@code Set} of target classes
+     * that the source can be converted to.
+     * </p>
+     *
+     * @return A {@code Map<Class<?>, Set<Class<?>>>} representing all supported conversions.
      */
     public Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
-        Map<Class<?>, Set<Class<?>>> toFrom = new TreeMap<>((c1, c2) -> c1.getName().compareToIgnoreCase(c2.getName()));
+        Map<Class<?>, Set<Class<?>>> toFrom = new TreeMap<>(Comparator.comparing(Class::getName));
         addSupportedConversion(CONVERSION_DB, toFrom);
         addSupportedConversion(USER_DB, toFrom);
         return toFrom;
     }
 
-    private static void addSupportedConversion(Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> db, Map<Class<?>, Set<Class<?>>> toFrom) {
-        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : db.entrySet()) {
-            if (entry.getValue() != UNSUPPORTED) {
-                Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
-                toFrom.computeIfAbsent(pair.getKey(), k -> new TreeSet<>((c1, c2) -> c1.getName().compareToIgnoreCase(c2.getName()))).add(pair.getValue());
-            }
-        }
-    }
-
     /**
-     * @return {@code Map<String, Set<String>>} which contains all supported conversions. The key of the Map is a source class
-     * name, and the Set contains all the target class names that the source can be converted to.
+     * Retrieves a map of all supported conversions with class names instead of class objects.
+     * <p>
+     * The returned map's keys are source class names, and each key maps to a {@code Set} of target class names
+     * that the source can be converted to.
+     * </p>
+     *
+     * @return A {@code Map<String, Set<String>>} representing all supported conversions by class names.
      */
     public Map<String, Set<String>> getSupportedConversions() {
-        Map<String, Set<String>> toFrom = new TreeMap<>(String::compareToIgnoreCase);
+        Map<String, Set<String>> toFrom = new TreeMap<>(String::compareTo);
         addSupportedConversionName(CONVERSION_DB, toFrom);
         addSupportedConversionName(USER_DB, toFrom);
         return toFrom;
     }
 
-    private static void addSupportedConversionName(Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> db, Map<String, Set<String>> toFrom) {
+    /**
+     * Populates the provided map with supported conversions from the specified conversion database.
+     *
+     * @param db      The conversion database containing conversion mappings.
+     * @param toFrom  The map to populate with supported conversions.
+     */
+    private static void addSupportedConversion(Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> db, Map<Class<?>, Set<Class<?>>> toFrom) {
         for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : db.entrySet()) {
             if (entry.getValue() != UNSUPPORTED) {
                 Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
-                toFrom.computeIfAbsent(getShortName(pair.getKey()), k -> new TreeSet<>(String::compareToIgnoreCase)).add(getShortName(pair.getValue()));
+                toFrom.computeIfAbsent(pair.getKey(), k -> new TreeSet<>(Comparator.comparing((Class<?> c) -> c.getName()))).add(pair.getValue());
             }
         }
     }
 
     /**
-     * Add a new conversion.
+     * Populates the provided map with supported conversions from the specified conversion database, using class names.
      *
-     * @param source             Class to convert from.
-     * @param target             Class to convert to.
-     * @param conversionFunction Convert function that converts from the source type to the destination type.
-     * @return prior conversion function if one existed.
+     * @param db      The conversion database containing conversion mappings.
+     * @param toFrom  The map to populate with supported conversions by class names.
+     */
+    private static void addSupportedConversionName(Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> db, Map<String, Set<String>> toFrom) {
+        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Convert<?>> entry : db.entrySet()) {
+            if (entry.getValue() != UNSUPPORTED) {
+                Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
+                toFrom.computeIfAbsent(getShortName(pair.getKey()), k -> new TreeSet<>(String::compareTo)).add(getShortName(pair.getValue()));
+            }
+        }
+    }
+
+    /**
+     * Adds a new conversion function for converting from one type to another. If a conversion already exists
+     * for the specified source and target types, the existing conversion will be overwritten.
+     *
+     * <p>When {@code convert(source, target)} is called, the conversion function is located by matching the class
+     * of the source instance and the target class. If an exact match is found, that conversion function is used.
+     * If no exact match is found, the method attempts to find the most appropriate conversion by traversing
+     * the class hierarchy of the source and target types (including interfaces), excluding common marker
+     * interfaces such as {@link java.io.Serializable}, {@link java.lang.Comparable}, and {@link java.lang.Cloneable}.
+     * The nearest match based on class inheritance and interface implementation is used.
+     *
+     * <p>This method allows you to explicitly define custom conversions between types. It also supports the automatic
+     * handling of primitive types by converting them to their corresponding wrapper types (e.g., {@code int} to {@code Integer}).
+     *
+     * <p><strong>Note:</strong> This method utilizes the {@link ClassUtilities#toPrimitiveWrapperClass(Class)} utility
+     * to ensure that primitive types are mapped to their respective wrapper classes before attempting to locate
+     * or store the conversion.
+     *
+     * @param source             The source class (type) to convert from.
+     * @param target             The target class (type) to convert to.
+     * @param conversionFunction A function that converts an instance of the source type to an instance of the target type.
+     * @return The previous conversion function associated with the source and target types, or {@code null} if no conversion existed.
      */
     public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
         return USER_DB.put(pair(source, target), conversionFunction);
     }
-
+    
     /**
-     * Given a primitive class, return the Wrapper class equivalent.
+     * Performs an identity conversion, returning the source object as-is.
+     *
+     * @param from      The source object.
+     * @param converter The Converter instance performing the conversion.
+     * @param <T>       The type of the source and target object.
+     * @return The source object unchanged.
      */
-    private static <T> T identity(T from, Converter converter) {
+    public static <T> T identity(T from, Converter converter) {
         return from;
     }
 
+    /**
+     * Handles unsupported conversions by returning {@code null}.
+     *
+     * @param from      The source object.
+     * @param converter The Converter instance performing the conversion.
+     * @param <T>       The type of the source and target object.
+     * @return {@code null} indicating the conversion is unsupported.
+     */
     private static <T> T unsupported(T from, Converter converter) {
         return null;
     }

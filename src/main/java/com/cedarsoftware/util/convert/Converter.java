@@ -22,6 +22,7 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Comparator;
@@ -32,12 +33,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -142,10 +143,7 @@ import static com.cedarsoftware.util.convert.CollectionConversions.CollectionFac
  * }</pre>
  * </p>
  *
- * @author
- *         <br>
- *         John DeRegnaucourt (jdereg@gmail.com)
- *         <br>
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
  *         Licensed under the Apache License, Version 2.0 (the "License");
@@ -163,11 +161,16 @@ import static com.cedarsoftware.util.convert.CollectionConversions.CollectionFac
 public final class Converter {
     private static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
-    private static final Map<Class<?>, Set<ClassLevel>> cacheParentTypes = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ConcurrentHashMap<>();
     private static final Map<ConversionPair, Convert<?>> CONVERSION_DB = new HashMap<>(860, 0.8f);
     private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private final ConverterOptions options;
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new HashMap<>();
+    
+    // Thread-local cache for frequently used conversion keys
+    private static final ThreadLocal<Map<Long, ConversionPair>> KEY_CACHE = ThreadLocal.withInitial(
+            () -> new HashMap<>(32)
+    );
 
     // Efficient key that combines two Class instances for fast creation and lookup
     public static final class ConversionPair {
@@ -202,11 +205,6 @@ public final class Converter {
             return hash;
         }
     }
-    
-    // Thread-local cache for frequently used conversion keys
-    private static final ThreadLocal<Map<Long, ConversionPair>> KEY_CACHE = ThreadLocal.withInitial(
-            () -> new ConcurrentHashMap<>(32)
-    );
 
     // Helper method to get or create a cached key
     private static ConversionPair pair(Class<?> source, Class<?> target) {
@@ -1301,18 +1299,28 @@ public final class Converter {
 
         return null;
     }
-    
+
     /**
      * Retrieves the most suitable converter for converting from the specified source type to the desired target type.
-     * <p>
-     * This method traverses the class hierarchy of both the source and target types to find the nearest applicable
-     * conversion function. It prioritizes user-defined conversions over factory-provided conversions.
-     * </p>
+     * This method searches through the class hierarchies of both source and target types to find the best matching
+     * conversion, prioritizing matches in the following order:
      *
-     * @param sourceType The source type from which to convert.
-     * @param toType     The target type to which to convert.
-     * @return A {@link Convert} instance capable of performing the conversion, or {@code null} if no suitable
-     * converter is found.
+     * <ol>
+     *   <li>Exact match to requested target type</li>
+     *   <li>Most specific target type when considering inheritance (e.g., java.sql.Date over java.util.Date)</li>
+     *   <li>Shortest combined inheritance distance from source and target types</li>
+     *   <li>Concrete classes over interfaces at the same inheritance level</li>
+     * </ol>
+     *
+     * <p>The method first checks user-defined conversions ({@code USER_DB}) before falling back to built-in
+     * conversions ({@code CONVERSION_DB}). Class hierarchies are cached to improve performance of repeated lookups.</p>
+     *
+     * <p>For example, when converting to java.sql.Date, a converter to java.sql.Date will be chosen over a converter
+     * to its parent class java.util.Date, even if the java.util.Date converter is closer in the source type's hierarchy.</p>
+     *
+     * @param sourceType The source type to convert from
+     * @param toType The target type to convert to
+     * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
     private Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
         Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
@@ -1320,18 +1328,76 @@ public final class Converter {
         Set<ClassLevel> targetTypes = new TreeSet<>(getSuperClassesAndInterfaces(toType));
         targetTypes.add(new ClassLevel(toType, 0));
 
-        for (ClassLevel toClassLevel : targetTypes) {
-            for (ClassLevel fromClassLevel : sourceTypes) {
-                // Check USER_DB first, to ensure that user added conversions override factory conversions.
-                Convert<?> tempConverter = USER_DB.get(pair(fromClassLevel.clazz, toClassLevel.clazz));
-                if (tempConverter != null) {
-                    return tempConverter;
-                }
+        // Create pairs of source/target types with their levels
+        final class ConversionPairWithLevel {
+            private final ConversionPair pair;
+            private final int sourceLevel;
+            private final int targetLevel;
 
-                tempConverter = CONVERSION_DB.get(pair(fromClassLevel.clazz, toClassLevel.clazz));
-                if (tempConverter != null) {
-                    return tempConverter;
+            private ConversionPairWithLevel(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
+                this.pair = new ConversionPair(source, target);
+                this.sourceLevel = sourceLevel;
+                this.targetLevel = targetLevel;
+            }
+        }
+
+        List<ConversionPairWithLevel> pairs = new ArrayList<>();
+        for (ClassLevel source : sourceTypes) {
+            for (ClassLevel target : targetTypes) {
+                pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, source.level, target.level));
+            }
+        }
+
+        // Sort pairs by combined inheritance distance with type safety priority
+        pairs.sort((p1, p2) -> {
+            // First prioritize exact target type matches
+            boolean p1ExactTarget = p1.pair.getTarget() == toType;
+            boolean p2ExactTarget = p2.pair.getTarget() == toType;
+            if (p1ExactTarget != p2ExactTarget) {
+                return p1ExactTarget ? -1 : 1;
+            }
+
+            // Then check assignability to target type if different
+            if (p1.pair.getTarget() != p2.pair.getTarget()) {
+                boolean p1AssignableToP2 = p2.pair.getTarget().isAssignableFrom(p1.pair.getTarget());
+                boolean p2AssignableToP1 = p1.pair.getTarget().isAssignableFrom(p2.pair.getTarget());
+                if (p1AssignableToP2 != p2AssignableToP1) {
+                    return p1AssignableToP2 ? -1 : 1;
                 }
+            }
+
+            // Then consider inheritance distance
+            int dist1 = p1.sourceLevel + p1.targetLevel;
+            int dist2 = p2.sourceLevel + p2.targetLevel;
+            if (dist1 != dist2) {
+                return dist1 - dist2;
+            }
+
+            // Finally prefer concrete classes over interfaces
+            boolean p1FromInterface = p1.pair.getSource().isInterface();
+            boolean p2FromInterface = p2.pair.getSource().isInterface();
+            if (p1FromInterface != p2FromInterface) {
+                return p1FromInterface ? 1 : -1;
+            }
+            boolean p1ToInterface = p1.pair.getTarget().isInterface();
+            boolean p2ToInterface = p2.pair.getTarget().isInterface();
+            if (p1ToInterface != p2ToInterface) {
+                return p1ToInterface ? 1 : -1;
+            }
+            return 0;
+        });
+
+        // Check pairs in sorted order
+        for (ConversionPairWithLevel pairWithLevel : pairs) {
+            // Check USER_DB first
+            Convert<?> tempConverter = USER_DB.get(pairWithLevel.pair);
+            if (tempConverter != null) {
+                return tempConverter;
+            }
+
+            tempConverter = CONVERSION_DB.get(pairWithLevel.pair);
+            if (tempConverter != null) {
+                return tempConverter;
             }
         }
 
@@ -1348,11 +1414,11 @@ public final class Converter {
      * @return A {@link Set} of {@link ClassLevel} instances representing the superclasses and interfaces of the specified class.
      */
     private static Set<ClassLevel> getSuperClassesAndInterfaces(Class<?> clazz) {
-        Set<ClassLevel> parentTypes = cacheParentTypes.get(clazz);
+        SortedSet<ClassLevel> parentTypes = cacheParentTypes.get(clazz);
         if (parentTypes != null) {
             return parentTypes;
         }
-        parentTypes = new ConcurrentSkipListSet<>();
+        parentTypes = new TreeSet<>();
         addSuperClassesAndInterfaces(clazz, parentTypes, 1);
         cacheParentTypes.put(clazz, parentTypes);
         return parentTypes;
@@ -1367,10 +1433,12 @@ public final class Converter {
     static class ClassLevel implements Comparable<ClassLevel> {
         private final Class<?> clazz;
         private final int level;
+        private final boolean isInterface;
 
         ClassLevel(Class<?> c, int level) {
             clazz = c;
             this.level = level;
+            isInterface = c.isInterface();
         }
 
         @Override
@@ -1382,12 +1450,10 @@ public final class Converter {
             }
 
             // Secondary sort key: concrete class before interface
-            boolean thisIsInterface = this.clazz.isInterface();
-            boolean otherIsInterface = other.clazz.isInterface();
-            if (thisIsInterface && !otherIsInterface) {
+            if (isInterface && !other.isInterface) {
                 return 1;
             }
-            if (!thisIsInterface && otherIsInterface) {
+            if (!isInterface && other.isInterface) {
                 return -1;
             }
 
@@ -1419,7 +1485,7 @@ public final class Converter {
      * @param result The set where the superclasses and interfaces are collected.
      * @param level  The current hierarchy level, used for ordering purposes.
      */
-    private static void addSuperClassesAndInterfaces(Class<?> clazz, Set<ClassLevel> result, int level) {
+    private static void addSuperClassesAndInterfaces(Class<?> clazz, SortedSet<ClassLevel> result, int level) {
         // Add all superinterfaces
         for (Class<?> iface : clazz.getInterfaces()) {
             // Performance speed up, skip interfaces that are too general

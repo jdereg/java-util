@@ -32,8 +32,7 @@ public final class SystemUtilities
     public static String getExternalVariable(String var)
     {
         String value = System.getProperty(var);
-        if (StringUtilities.isEmpty(value))
-        {
+        if (StringUtilities.isEmpty(value)) {
             value = System.getenv(var);
         }
         return StringUtilities.isEmpty(value) ? null : value;

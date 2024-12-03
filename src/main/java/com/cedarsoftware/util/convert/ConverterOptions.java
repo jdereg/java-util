@@ -75,5 +75,5 @@ public interface ConverterOptions {
      * Overrides for converter conversions.
      * @return The Map of overrides.
      */
-    default Map<Converter.ConversionKey, Convert<?>> getConverterOverrides() { return new HashMap<>(); }
+    default Map<Converter.ConversionPair, Convert<?>> getConverterOverrides() { return new HashMap<>(); }
 }

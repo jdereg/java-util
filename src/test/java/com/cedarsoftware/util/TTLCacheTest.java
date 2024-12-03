@@ -45,7 +45,7 @@ public class TTLCacheTest {
         assertEquals("C", ttlCache.get(3));
     }
 
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testEntryExpiration() throws InterruptedException {
         ttlCache = new TTLCache<>(200, -1, 100); // TTL of 1 second, no LRU
@@ -393,7 +393,7 @@ public class TTLCacheTest {
         System.out.println("TTLCache speed: " + (endTime - startTime) + "ms");
     }
 
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testTTLWithoutLRU() throws InterruptedException {
         ttlCache = new TTLCache<>(2000, -1); // TTL of 2 seconds, no LRU
@@ -411,7 +411,7 @@ public class TTLCacheTest {
         assertNull(ttlCache.get(1), "Entry should have expired after TTL");
     }
 
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testTTLWithLRU() throws InterruptedException {
         ttlCache = new TTLCache<>(2000, 2); // TTL of 2 seconds, max size of 2
@@ -469,7 +469,7 @@ public class TTLCacheTest {
         assertFalse(ttlCache.containsKey(2));
     }
 
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testExpirationDuringIteration() throws InterruptedException {
         ttlCache = new TTLCache<>(1000, -1, 100);
@@ -489,7 +489,7 @@ public class TTLCacheTest {
 
     // Use this test to "See" the pattern, by adding a System.out.println(toString()) of the cache contents to the top
     // of the purgeExpiredEntries() method.
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testTwoIndependentCaches()
     {

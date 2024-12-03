@@ -23,6 +23,7 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -56,7 +57,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import static com.cedarsoftware.util.MapUtilities.mapOf;
 import static com.cedarsoftware.util.convert.Converter.VALUE;
-import static com.cedarsoftware.util.convert.Converter.pair;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.CLASS;
@@ -213,6 +213,17 @@ class ConverterEverythingTest {
         loadUuidTests();
         loadEnumTests();
         loadThrowableTests();
+    }
+
+    /**
+     * Creates a key pair consisting of source and target classes for conversion mapping.
+     *
+     * @param source The source class to convert from.
+     * @param target The target class to convert to.
+     * @return A {@code Map.Entry} representing the source-target class pair.
+     */
+    static Map.Entry<Class<?>, Class<?>> pair(Class<?> source, Class<?> target) {
+        return new AbstractMap.SimpleImmutableEntry<>(source, target);
     }
 
     /**

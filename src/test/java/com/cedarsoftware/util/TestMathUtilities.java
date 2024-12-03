@@ -330,7 +330,7 @@ class TestMathUtilities
 
     // The very edges are hard to hit, without expensive additional processing to detect there difference in
     // Examples like this: "12345678901234567890.12345678901234567890" needs to be a BigDecimal, but Double
-    // will parse this correctly in it's short handed notation.  My algorithm catches these.  However, the values
+    // will parse this correctly in it's short-handed notation.  My algorithm catches these.  However, the values
     // right near e+308 positive or negative will be returned as BigDecimals to ensure accuracy
     @Disabled
     @Test

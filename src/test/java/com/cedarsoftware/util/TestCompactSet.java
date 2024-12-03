@@ -5,8 +5,8 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -361,8 +361,8 @@ public class TestCompactSet
         clearViaIterator(set);
         clearViaIterator(copy);
     }
-    
-    @Disabled
+
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     public void testPerformance()
     {

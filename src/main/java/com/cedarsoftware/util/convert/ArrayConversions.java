@@ -56,18 +56,29 @@ final class ArrayConversions {
     }
 
     /**
-     * Converts a collection to an array.
+     * Converts a collection to an array, handling nested collections recursively.
+     *
+     * @param collection The source collection to convert
+     * @param arrayType The target array type
+     * @param converter The converter instance for type conversions
+     * @return An array of the specified type containing the collection elements
      */
     static Object collectionToArray(Collection<?> collection, Class<?> arrayType, Converter converter) {
         Class<?> componentType = arrayType.getComponentType();
         Object array = Array.newInstance(componentType, collection.size());
         int index = 0;
+
         for (Object item : collection) {
-            if (item == null || componentType.isAssignableFrom(item.getClass())) {
-                Array.set(array, index++, item);
+            Object convertedValue;
+            if (item instanceof Collection && componentType.isArray()) {
+                // Handle nested collections recursively
+                convertedValue = collectionToArray((Collection<?>) item, componentType, converter);
+            } else if (item == null || componentType.isAssignableFrom(item.getClass())) {
+                convertedValue = item;
             } else {
-                Array.set(array, index++, converter.convert(item, componentType));
+                convertedValue = converter.convert(item, componentType);
             }
+            Array.set(array, index++, convertedValue);
         }
         return array;
     }

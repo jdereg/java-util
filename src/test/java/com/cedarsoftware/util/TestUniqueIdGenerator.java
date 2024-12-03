@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -8,12 +9,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate;
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate19;
+import static com.cedarsoftware.util.UniqueIdGenerator.getInstant;
+import static com.cedarsoftware.util.UniqueIdGenerator.getInstant19;
 import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId;
 import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId19;
 import static java.lang.Math.abs;
@@ -63,6 +65,18 @@ public class TestUniqueIdGenerator
         id = getUniqueId19();
         date = getDate19(id);
         assert abs(date.getTime() - currentTimeMillis()) < 2;
+    }
+
+    @Test
+    void testIDtoInstant()
+    {
+        long id = getUniqueId();
+        Instant instant = getInstant(id);
+        assert abs(instant.toEpochMilli() - currentTimeMillis()) < 2;
+
+        id = getUniqueId19();
+        instant = getInstant19(id);
+        assert abs(instant.toEpochMilli() - currentTimeMillis()) < 2;
     }
 
     @Test

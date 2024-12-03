@@ -28,6 +28,7 @@ import org.junit.jupiter.api.function.Executable;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -666,5 +667,188 @@ class ConverterArrayCollectionTest {
             Executable conversion = () -> converter.convert(stringArray, char[].class);
             assertThrows(IllegalArgumentException.class, conversion, "Converting String[] to char[] should throw IllegalArgumentException if any Strings have more than 1 character");
         }
+    }
+
+    @Test
+    public void testMultiDimensionalCollectionToArray() {
+        // Create a nested List structure: List<List<Integer>>
+        List<List<Integer>> nested = Arrays.asList(
+                Arrays.asList(1, 2, 3),
+                Arrays.asList(4, 5, 6),
+                Arrays.asList(7, 8, 9)
+        );
+
+        // Convert to int[][]
+        int[][] result = converter.convert(nested, int[][].class);
+
+        // Verify the conversion
+        assertEquals(3, result.length);
+        assertEquals(3, result[0].length);
+        assertEquals(1, result[0][0]);
+        assertEquals(5, result[1][1]);
+        assertEquals(9, result[2][2]);
+
+        // Test with mixed collection types (List<Set<String>>)
+        List<Set<String>> mixedNested = Arrays.asList(
+                new HashSet<>(Arrays.asList("a", "b", "c")),
+                new HashSet<>(Arrays.asList("d", "e", "f")),
+                new HashSet<>(Arrays.asList("g", "h", "i"))
+        );
+
+        String[][] stringResult = converter.convert(mixedNested, String[][].class);
+        assertEquals(3, stringResult.length);
+        assertEquals(3, stringResult[0].length);
+
+        // Sort the arrays to ensure consistent comparison since Sets don't maintain order
+        for (String[] arr : stringResult) {
+            Arrays.sort(arr);
+        }
+
+        assertArrayEquals(new String[]{"a", "b", "c"}, stringResult[0]);
+        assertArrayEquals(new String[]{"d", "e", "f"}, stringResult[1]);
+        assertArrayEquals(new String[]{"g", "h", "i"}, stringResult[2]);
+    }
+
+    @Test
+    public void testMultiDimensionalArrayToArray() {
+        // Test conversion from int[][] to long[][]
+        int[][] source = {
+                {1, 2, 3},
+                {4, 5, 6},
+                {7, 8, 9}
+        };
+
+        long[][] result = converter.convert(source, long[][].class);
+
+        assertEquals(3, result.length);
+        assertEquals(3, result[0].length);
+        assertEquals(1L, result[0][0]);
+        assertEquals(5L, result[1][1]);
+        assertEquals(9L, result[2][2]);
+
+        // Test conversion from Integer[][] to String[][]
+        Integer[][] sourceIntegers = {
+                {1, 2, 3},
+                {4, 5, 6},
+                {7, 8, 9}
+        };
+
+        String[][] stringResult = converter.convert(sourceIntegers, String[][].class);
+
+        assertEquals(3, stringResult.length);
+        assertEquals(3, stringResult[0].length);
+        assertEquals("1", stringResult[0][0]);
+        assertEquals("5", stringResult[1][1]);
+        assertEquals("9", stringResult[2][2]);
+    }
+
+    @Test
+    public void testMultiDimensionalArrayToCollection() {
+        // Create a source array
+        String[][] source = {
+                {"a", "b", "c"},
+                {"d", "e", "f"},
+                {"g", "h", "i"}
+        };
+
+        // Convert to List<List<String>>
+        List<List<String>> result = (List<List<String>>) converter.convert(source, List.class);
+
+        assertEquals(3, result.size());
+        assertEquals(3, result.get(0).size());
+        assertEquals("a", result.get(0).get(0));
+        assertEquals("e", result.get(1).get(1));
+        assertEquals("i", result.get(2).get(2));
+
+        // Test with primitive array to List<List<Long>>
+        int[][] primitiveSource = {
+                {1, 2, 3},
+                {4, 5, 6},
+                {7, 8, 9}
+        };
+
+        List<List<Integer>> intResult = (List<List<Integer>>) converter.convert(primitiveSource, List.class);
+
+        assertEquals(3, intResult.size());
+        assertEquals(3, intResult.get(0).size());
+        assertEquals(Integer.valueOf(1), intResult.get(0).get(0));
+        assertEquals(Integer.valueOf(5), intResult.get(1).get(1));
+        assertEquals(Integer.valueOf(9), intResult.get(2).get(2));
+    }
+
+    @Test
+    public void testThreeDimensionalConversions() {
+        // Test 3D array conversion
+        int[][][] source = {
+                {{1, 2}, {3, 4}},
+                {{5, 6}, {7, 8}}
+        };
+
+        // Convert to long[][][]
+        long[][][] result = converter.convert(source, long[][][].class);
+
+        assertEquals(2, result.length);
+        assertEquals(2, result[0].length);
+        assertEquals(2, result[0][0].length);
+        assertEquals(1L, result[0][0][0]);
+        assertEquals(8L, result[1][1][1]);
+
+        // Create 3D collection
+        List<List<List<Integer>>> nested3D = Arrays.asList(
+                Arrays.asList(
+                        Arrays.asList(1, 2),
+                        Arrays.asList(3, 4)
+                ),
+                Arrays.asList(
+                        Arrays.asList(5, 6),
+                        Arrays.asList(7, 8)
+                )
+        );
+
+        // Convert to 3D array
+        int[][][] arrayResult = converter.convert(nested3D, int[][][].class);
+
+        assertEquals(2, arrayResult.length);
+        assertEquals(2, arrayResult[0].length);
+        assertEquals(2, arrayResult[0][0].length);
+        assertEquals(1, arrayResult[0][0][0]);
+        assertEquals(8, arrayResult[1][1][1]);
+    }
+
+    @Test
+    public void testNullHandling() {
+        List<List<String>> nestedWithNulls = Arrays.asList(
+                Arrays.asList("a", null, "c"),
+                null,
+                Arrays.asList("d", "e", "f")
+        );
+
+        String[][] result = converter.convert(nestedWithNulls, String[][].class);
+
+        assertEquals(3, result.length);
+        assertEquals("a", result[0][0]);
+        assertNull(result[0][1]);
+        assertEquals("c", result[0][2]);
+        assertNull(result[1]);
+        assertEquals("f", result[2][2]);
+    }
+
+    @Test
+    public void testMixedDimensionalCollections() {
+        // Test converting a collection where some elements are single dimension
+        // and others are multi-dimensional
+        List<Object> mixedDimensions = Arrays.asList(
+                Arrays.asList(1, 2, 3),
+                4,
+                Arrays.asList(5, 6, 7)
+        );
+
+        Object[] result = converter.convert(mixedDimensions, Object[].class);
+
+        assertTrue(result[0] instanceof List);
+        assertEquals(3, ((List<?>) result[0]).size());
+        assertEquals(4, result[1]);
+        assertTrue(result[2] instanceof List);
+        assertEquals(3, ((List<?>) result[2]).size());
     }
 }

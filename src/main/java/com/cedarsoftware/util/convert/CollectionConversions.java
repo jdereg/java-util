@@ -34,7 +34,13 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 import java.util.function.Function;
 
+import com.cedarsoftware.util.CaseInsensitiveSet;
+import com.cedarsoftware.util.CompactCIHashSet;
+import com.cedarsoftware.util.CompactCILinkedSet;
+import com.cedarsoftware.util.CompactLinkedSet;
+import com.cedarsoftware.util.CompactSet;
 import com.cedarsoftware.util.ConcurrentList;
+import com.cedarsoftware.util.ConcurrentNavigableSetNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
 
 /**
@@ -64,8 +70,14 @@ final class CollectionConversions {
 
         static {
             // Set implementations (most specific to most general)
+            COLLECTION_FACTORIES.put(CaseInsensitiveSet.class, size -> new CaseInsensitiveSet<>());
+            COLLECTION_FACTORIES.put(CompactLinkedSet.class, size -> new CompactLinkedSet<>());
+            COLLECTION_FACTORIES.put(CompactCIHashSet.class, size -> new CompactCIHashSet<>());
+            COLLECTION_FACTORIES.put(CompactCILinkedSet.class, size -> new CompactCILinkedSet<>());
+            COLLECTION_FACTORIES.put(CompactSet.class, size -> new CompactSet<>());
             COLLECTION_FACTORIES.put(ConcurrentSkipListSet.class, size -> new ConcurrentSkipListSet<>());
             COLLECTION_FACTORIES.put(ConcurrentSet.class, size -> new ConcurrentSet<>());
+            COLLECTION_FACTORIES.put(ConcurrentNavigableSetNullSafe.class, size -> new ConcurrentNavigableSetNullSafe<>());
             COLLECTION_FACTORIES.put(CopyOnWriteArraySet.class, size -> new CopyOnWriteArraySet<>());
             COLLECTION_FACTORIES.put(TreeSet.class, size -> new TreeSet<>());
             COLLECTION_FACTORIES.put(LinkedHashSet.class, size -> new LinkedHashSet<>(size)); // Do not replace with Method::reference

@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate;
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate19;
@@ -90,29 +91,7 @@ public class TestUniqueIdGenerator
         assertMonotonicallyIncreasing(keep);
         assertMonotonicallyIncreasing(keep19);
     }
-
-//    private void assertMonotonicallyIncreasing(Long[] ids)
-//    {
-//        final long len = ids.length;
-//        long prevId = -1;
-//        for (int i=0; i < len; i++)
-//        {
-//            long id = ids[i];
-//            if (prevId != -1)
-//            {
-//                if (prevId >= id)
-//                {
-//                    out.println("index = " + i);
-//                    out.println(prevId);
-//                    out.println(id);
-//                    out.flush();
-//                    assert false : "ids are not monotonically increasing";
-//                }
-//            }
-//            prevId = id;
-//        }
-//    }
-
+    
     /**
      * Asserts that the provided array of Longs is monotonically increasing (non-decreasing).
      * Assumes all elements in the array are non-null.
@@ -127,19 +106,20 @@ public class TestUniqueIdGenerator
         }
     }
 
-//    @Test
-//    void speedTest()
-//    {
-//        long start = System.currentTimeMillis();
-//        int count = 0;
-//        while (System.currentTimeMillis() < start + 1000) {
-//            UniqueIdGenerator.getUniqueId19();
-//            count++;
-//        }
-//        out.println("count = " + count);
-//    }
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @Test
+    void speedTest()
+    {
+        long start = System.currentTimeMillis();
+        int count = 0;
+        while (System.currentTimeMillis() < start + 1000) {
+            UniqueIdGenerator.getUniqueId19();
+            count++;
+        }
+        out.println("count = " + count);
+    }
 
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testConcurrency()
     {

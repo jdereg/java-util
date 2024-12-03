@@ -17,6 +17,7 @@ import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -676,6 +677,7 @@ class ConcurrentHashMapNullSafeTest {
         assertEquals(100, map.get("newKey"));
     }
 
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testHighConcurrency() throws InterruptedException, ExecutionException {
         int numThreads = 20;

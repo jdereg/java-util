@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -632,6 +633,7 @@ class ConcurrentNavigableMapNullSafeTest {
         assertEquals(expectedSize, map.size());
     }
 
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testHighConcurrency() throws InterruptedException, ExecutionException {
         int numThreads = 20;

@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -241,7 +242,7 @@ public class TestSimpleDateFormat
         assertEquals(expectedDate.get(Calendar.SECOND), cal.get(Calendar.SECOND));
     }
 
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testConcurrencyWillFail() throws Exception
     {
@@ -328,7 +329,7 @@ public class TestSimpleDateFormat
 //        System.out.println("t = " + t[0]);
     }
 
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testConcurrencyWontFail() throws Exception
     {

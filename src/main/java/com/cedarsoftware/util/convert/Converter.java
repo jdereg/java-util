@@ -1186,38 +1186,13 @@ public final class Converter {
                 toType = (Class<T>) ClassUtilities.toPrimitiveWrapperClass(toType);
             }
 
-            // Check for EnumSet target first
-            if (EnumSet.class.isAssignableFrom(toType)) {
-                throw new IllegalArgumentException("To convert to EnumSet, specify the Enum class to convert to. See convert() Javadoc for example.");
-            }
-
-            // Special handling for Collection/Array/EnumSet conversions
-            if (toType.isEnum()) {
-                // When target is something like Day.class, we're actually creating an EnumSet<Day>
-                if (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType)) {
-                    return (T) EnumConversions.toEnumSet(from, this, toType);
-                }
-            } else if (EnumSet.class.isAssignableFrom(sourceType)) {
-                if (Collection.class.isAssignableFrom(toType)) {
-                    Collection<Object> target = (Collection<Object>) createCollection(toType, ((Collection<?>) from).size());
-                    target.addAll((Collection<?>) from);
-                    return (T) target;
-                }
-                if (toType.isArray()) {
-                    return (T) ArrayConversions.enumSetToArray((EnumSet<?>) from, toType);
-                }
-            } else if (Collection.class.isAssignableFrom(sourceType)) {
-                if (toType.isArray()) {
-                    return (T) ArrayConversions.collectionToArray((Collection<?>) from, toType, this);
-                }
-            } else if (sourceType.isArray() && Collection.class.isAssignableFrom(toType)) {
-                // Array -> Collection
-                return (T) CollectionConversions.arrayToCollection(from, toType);
-            } else if (sourceType.isArray() && toType.isArray() && !sourceType.getComponentType().equals(toType.getComponentType())) {
-                // Handle array-to-array conversion when component types differ
-                return (T) ArrayConversions.arrayToArray(from, toType, this);
+            // Try collection conversion first (These are not specified in CONVERSION_DB, rather by the attempt* method)
+            T result = attemptCollectionConversion(from, sourceType, toType);
+            if (result != null) {
+                return result;
             }
         }
+
         // Check user added conversions (allows overriding factory conversions)
         Convert<?> converter = USER_DB.get(pair(sourceType, toType));
         if (converter != null && converter != UNSUPPORTED) {
@@ -1247,6 +1222,43 @@ public final class Converter {
         throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) + "] target type '" + getShortName(toType) + "'");
     }
 
+    @SuppressWarnings("unchecked")
+    private <T> T attemptCollectionConversion(Object from, Class<?> sourceType, Class<T> toType) {
+        // Check for EnumSet target first
+        if (EnumSet.class.isAssignableFrom(toType)) {
+            throw new IllegalArgumentException("To convert to EnumSet, specify the Enum class to convert to as the 'toType.' Example: EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);");
+        }
+
+        // Special handling for Collection/Array/EnumSet conversions
+        if (toType.isEnum()) {
+            // When target is something like Day.class, we're actually creating an EnumSet<Day>
+            if (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType)) {
+                return (T) EnumConversions.toEnumSet(from, this, toType);
+            }
+        } else if (EnumSet.class.isAssignableFrom(sourceType)) {
+            if (Collection.class.isAssignableFrom(toType)) {
+                Collection<Object> target = (Collection<Object>) createCollection(toType, ((Collection<?>) from).size());
+                target.addAll((Collection<?>) from);
+                return (T) target;
+            }
+            if (toType.isArray()) {
+                return (T) ArrayConversions.enumSetToArray((EnumSet<?>) from, toType);
+            }
+        } else if (Collection.class.isAssignableFrom(sourceType)) {
+            if (toType.isArray()) {
+                return (T) ArrayConversions.collectionToArray((Collection<?>) from, toType, this);
+            }
+        } else if (sourceType.isArray() && Collection.class.isAssignableFrom(toType)) {
+            // Array -> Collection
+            return (T) CollectionConversions.arrayToCollection(from, toType);
+        } else if (sourceType.isArray() && toType.isArray() && !sourceType.getComponentType().equals(toType.getComponentType())) {
+            // Handle array-to-array conversion when component types differ
+            return (T) ArrayConversions.arrayToArray(from, toType, this);
+        }
+
+        return null;
+    }
+    
     /**
      * Retrieves the most suitable converter for converting from the specified source type to the desired target type.
      * <p>

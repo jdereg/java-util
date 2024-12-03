@@ -89,4 +89,8 @@ public class TestUtil
             throw new RuntimeException(e);
         }
     }
+    
+    public static boolean isReleaseMode() {
+        return Boolean.parseBoolean(System.getProperty("performRelease", "false"));
+    }
 }

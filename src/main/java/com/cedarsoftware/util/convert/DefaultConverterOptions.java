@@ -3,6 +3,8 @@ package com.cedarsoftware.util.convert;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.cedarsoftware.util.convert.Converter.ConversionKey;
+
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
  *         <br>
@@ -24,7 +26,7 @@ public class DefaultConverterOptions implements ConverterOptions {
 
     private final Map<String, Object> customOptions;
 
-    private final Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> converterOverrides;
+    private final Map<ConversionKey, Convert<?>> converterOverrides;
 
     public DefaultConverterOptions() {
         this.customOptions = new ConcurrentHashMap<>();
@@ -38,5 +40,5 @@ public class DefaultConverterOptions implements ConverterOptions {
     }
 
     @Override
-    public Map<Map.Entry<Class<?>, Class<?>>, Convert<?>> getConverterOverrides() { return this.converterOverrides; }
+    public Map<ConversionKey, Convert<?>> getConverterOverrides() { return this.converterOverrides; }
 }

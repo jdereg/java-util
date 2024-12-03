@@ -422,7 +422,7 @@ public class LRUCacheTest {
         assertNull(lruCache.get(2));
     }
 
-    @Disabled
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @ParameterizedTest
     @MethodSource("strategies")
     void testCacheBlast(LRUCache.StrategyType strategy) {
@@ -490,6 +490,7 @@ public class LRUCacheTest {
         assertTrue(cache1.equals(cache2));
     }
 
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @ParameterizedTest
     @MethodSource("strategies")
     void testSpeed(LRUCache.StrategyType strategy) {

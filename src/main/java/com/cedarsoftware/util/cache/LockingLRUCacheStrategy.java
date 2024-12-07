@@ -20,6 +20,8 @@ import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
  * perfectly maintained under heavy load.
  * <p>
  * LRUCache supports <code>null</code> for both key and value.
+ * @param <K> the type of keys maintained by this cache
+ * @param <V> the type of mapped values
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -55,6 +57,12 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Constructs a new LRU cache with the specified maximum capacity.
+     *
+     * @param capacity the maximum number of entries the cache can hold
+     * @throws IllegalArgumentException if capacity is negative
+     */
     public LockingLRUCacheStrategy(int capacity) {
         this.capacity = capacity;
         this.cache = new ConcurrentHashMapNullSafe<>(capacity);
@@ -64,6 +72,12 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         tail.prev = head;
     }
 
+    /**
+     * Moves the specified node to the head of the doubly linked list.
+     * This operation must be performed under a lock.
+     *
+     * @param node the node to be moved to the head
+     */
     private void moveToHead(Node<K, V> node) {
         if (node.prev == null || node.next == null) {
             // Node has been evicted; skip reordering
@@ -73,6 +87,12 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         addToHead(node);
     }
 
+    /**
+     * Adds a node to the head of the doubly linked list.
+     * This operation must be performed under a lock.
+     *
+     * @param node the node to be added to the head
+     */
     private void addToHead(Node<K, V> node) {
         node.next = head.next;
         node.next.prev = node;
@@ -80,13 +100,25 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         node.prev = head;
     }
 
+    /**
+     * Removes a node from the doubly linked list.
+     * This operation must be performed under a lock.
+     *
+     * @param node the node to be removed
+     */
     private void removeNode(Node<K, V> node) {
         if (node.prev != null && node.next != null) {
             node.prev.next = node.next;
             node.next.prev = node.prev;
         }
     }
-    
+
+    /**
+     * Removes and returns the least recently used node from the tail of the list.
+     * This operation must be performed under a lock.
+     *
+     * @return the removed node, or null if the list is empty
+     */
     private Node<K, V> removeTail() {
         Node<K, V> node = tail.prev;
         if (node != head) {
@@ -97,6 +129,14 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         return node;
     }
 
+    /**
+     * Returns the value associated with the specified key in this cache.
+     * If the key exists, attempts to move it to the front of the LRU list
+     * using a non-blocking try-lock approach.
+     *
+     * @param key the key whose associated value is to be returned
+     * @return the value associated with the specified key, or null if no mapping exists
+     */
     @Override
     public V get(Object key) {
         Node<K, V> node = cache.get(key);
@@ -115,7 +155,16 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         return node.value;
     }
 
-    @Override
+    /**
+     * Associates the specified value with the specified key in this cache.
+     * If the cache previously contained a mapping for the key, the old value
+     * is replaced and moved to the front of the LRU list. If the cache is at
+     * capacity, removes the least recently used item before adding the new item.
+     *
+     * @param key the key with which the specified value is to be associated
+     * @param value the value to be associated with the specified key
+     * @return the previous value associated with key, or null if there was no mapping
+     */
     public V put(K key, V value) {
         lock.lock();
         try {
@@ -139,7 +188,13 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
-    @Override
+    /**
+     * Copies all mappings from the specified map to this cache.
+     * These operations will be performed atomically under a single lock.
+     *
+     * @param m mappings to be stored in this cache
+     * @throws NullPointerException if the specified map is null
+     */
     public void putAll(Map<? extends K, ? extends V> m) {
         lock.lock();
         try {
@@ -151,6 +206,12 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Removes the mapping for the specified key from this cache if present.
+     *
+     * @param key key whose mapping is to be removed from the cache
+     * @return the previous value associated with key, or null if there was no mapping
+     */
     @Override
     public V remove(Object key) {
         lock.lock();
@@ -165,7 +226,11 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
             lock.unlock();
         }
     }
-    
+
+    /**
+     * Removes all mappings from this cache.
+     * The cache will be empty after this call returns.
+     */
     @Override
     public void clear() {
         lock.lock();
@@ -178,21 +243,44 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Returns the number of key-value mappings in this cache.
+     *
+     * @return the number of key-value mappings in this cache
+     */
     @Override
     public int size() {
         return cache.size();
     }
 
+    /**
+     * Returns true if this cache contains no key-value mappings.
+     *
+     * @return true if this cache contains no key-value mappings
+     */
     @Override
     public boolean isEmpty() {
         return size() == 0;
     }
-    
+
+    /**
+     * Returns true if this cache contains a mapping for the specified key.
+     *
+     * @param key key whose presence in this cache is to be tested
+     * @return true if this cache contains a mapping for the specified key
+     */
     @Override
     public boolean containsKey(Object key) {
         return cache.containsKey(key);
     }
 
+    /**
+     * Returns true if this cache maps one or more keys to the specified value.
+     * This operation requires a full traversal of the cache under a lock.
+     *
+     * @param value value whose presence in this cache is to be tested
+     * @return true if this cache maps one or more keys to the specified value
+     */
     @Override
     public boolean containsValue(Object value) {
         lock.lock();
@@ -208,6 +296,13 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Returns a Set view of the mappings contained in this cache.
+     * The set is backed by a new LinkedHashMap to maintain the LRU order.
+     * This operation requires a full traversal under a lock.
+     *
+     * @return a set view of the mappings contained in this cache
+     */
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
         lock.lock();
@@ -222,6 +317,13 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Returns a Set view of the keys contained in this cache.
+     * The set maintains the LRU order of the cache.
+     * This operation requires a full traversal under a lock.
+     *
+     * @return a set view of the keys contained in this cache
+     */
     @Override
     public Set<K> keySet() {
         lock.lock();
@@ -236,6 +338,13 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Returns a Collection view of the values contained in this cache.
+     * The collection maintains the LRU order of the cache.
+     * This operation requires a full traversal under a lock.
+     *
+     * @return a collection view of the values contained in this cache
+     */
     @Override
     public Collection<V> values() {
         lock.lock();
@@ -250,6 +359,14 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Compares the specified object with this cache for equality.
+     * Returns true if the given object is also a map and the two maps
+     * represent the same mappings.
+     *
+     * @param o object to be compared for equality with this cache
+     * @return true if the specified object is equal to this cache
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -258,6 +375,14 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         return entrySet().equals(other.entrySet());
     }
 
+    /**
+     * Returns a string representation of this cache.
+     * The string representation consists of a list of key-value mappings
+     * in LRU order (most recently used first) enclosed in braces ("{}").
+     * Adjacent mappings are separated by the characters ", ".
+     *
+     * @return a string representation of this cache
+     */
     @Override
     public String toString() {
         lock.lock();
@@ -294,6 +419,13 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         return String.valueOf(element);
     }
 
+    /**
+     * Returns the hash code value for this cache.
+     * The hash code is computed by iterating over all entries in LRU order
+     * and combining their hash codes.
+     *
+     * @return the hash code value for this cache
+     */
     @Override
     public int hashCode() {
         lock.lock();

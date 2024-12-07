@@ -136,10 +136,6 @@ final class CollectionConversions {
          * Validates that collection type mappings are ordered correctly (most specific to most general).
          * Throws IllegalStateException if mappings are incorrectly ordered.
          */
-        /**
-         * Validates that collection type mappings are ordered correctly (most specific to most general).
-         * Throws IllegalStateException if mappings are incorrectly ordered.
-         */
         static void validateMappings() {
             List<Class<?>> interfaces = new ArrayList<>(COLLECTION_FACTORIES.keySet());
 

@@ -1337,51 +1337,19 @@ public class TestCaseInsensitiveMap
         Set<Map.Entry<String, Object>> entries = map.entrySet();
         assert !entries.isEmpty();
     }
-
-    @Test
-    public void testPlus()
-    {
-        CaseInsensitiveMap<Object, Object> x = new CaseInsensitiveMap<>();
-        Map<Object, Object> y = new HashMap<>();
-
-        try
-        {
-            x.plus(y);
-            fail();
-        }
-        catch (UnsupportedOperationException ignored)
-        {
-        }
-    }
-
-    @Test
-    public void testMinus()
-    {
-        CaseInsensitiveMap<Object, Object> x = new CaseInsensitiveMap<>();
-        Map<Object, Object> y = new HashMap<>();
-
-        try
-        {
-            x.minus(y);
-            fail();
-        }
-        catch (UnsupportedOperationException ignored)
-        {
-        }
-    }
-
+    
     @Test
     public void testPutObject()
     {
         CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
-        map.putObject(1L, 1L);
-        map.putObject("hi", "ho");
-        Object x = map.putObject("hi", "hi");
+        map.put(1L, 1L);
+        map.put("hi", "ho");
+        Object x = map.put("hi", "hi");
         assert x == "ho";
-        map.putObject(Boolean.TRUE, Boolean.TRUE);
+        map.put(Boolean.TRUE, Boolean.TRUE);
         String str = "hello";
         CaseInsensitiveMap.CaseInsensitiveString ciStr = new CaseInsensitiveMap.CaseInsensitiveString(str);
-        map.putObject(ciStr, str);
+        map.put(ciStr, str);
         assert map.get(str) == str;
         assert 1L == ((Number)map.get(1L)).longValue();
         assert Boolean.TRUE == map.get(true);

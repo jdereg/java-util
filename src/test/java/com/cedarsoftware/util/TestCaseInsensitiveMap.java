@@ -1,16 +1,23 @@
 package com.cedarsoftware.util;
 
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,12 +27,14 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -46,10 +55,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestCaseInsensitiveMap
+class TestCaseInsensitiveMap
 {
     @Test
-    public void testMapStraightUp()
+    void testMapStraightUp()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -68,7 +77,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWithNonStringKeys()
+    void testWithNonStringKeys()
     {
         CaseInsensitiveMap<Object, Object> stringMap = new CaseInsensitiveMap<>();
         assert stringMap.isEmpty();
@@ -87,7 +96,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testOverwrite()
+    void testOverwrite()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -101,7 +110,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetWithOverwriteAttempt()
+    void testKeySetWithOverwriteAttempt()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -133,7 +142,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetWithOverwriteAttempt()
+    void testEntrySetWithOverwriteAttempt()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -167,7 +176,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testPutAll()
+    void testPutAll()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
         CaseInsensitiveMap<String, Object> newMap = new CaseInsensitiveMap<>(2);
@@ -186,8 +195,59 @@ public class TestCaseInsensitiveMap
         a.putAll(null);     // Ensure NPE not happening
     }
 
+    /**
+     * Test putting all entries from an empty map into the CaseInsensitiveMap.
+     * Verifies that no exception is thrown and the map remains unchanged.
+     */
     @Test
-    public void testContainsKey()
+    void testPutAllWithEmptyMap() {
+        // Initialize the CaseInsensitiveMap with some entries
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>();
+        ciMap.put("One", "1");
+        ciMap.put("Two", "2");
+
+        // Capture the initial state of the map
+        int initialSize = ciMap.size();
+        Map<String, String> initialEntries = new HashMap<>(ciMap);
+
+        // Create an empty map
+        Map<String, String> emptyMap = new HashMap<>();
+
+        // Call putAll with the empty map and ensure no exception is thrown
+        assertDoesNotThrow(() -> ciMap.putAll(emptyMap), "putAll with empty map should not throw an exception");
+
+        // Verify that the map remains unchanged
+        assertEquals(initialSize, ciMap.size(), "Map size should remain unchanged after putAll with empty map");
+        assertEquals(initialEntries, ciMap, "Map entries should remain unchanged after putAll with empty map");
+    }
+
+    /**
+     * Additional Test: Test putting all entries from a non-empty map into the CaseInsensitiveMap.
+     * Verifies that the entries are added correctly.
+     */
+    @Test
+    void testPutAllWithNonEmptyMap() {
+        // Initialize the CaseInsensitiveMap with some entries
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>();
+        ciMap.put("One", "1");
+
+        // Create a map with entries to add
+        Map<String, String> additionalEntries = new HashMap<>();
+        additionalEntries.put("Two", "2");
+        additionalEntries.put("Three", "3");
+
+        // Call putAll with the additional entries
+        assertDoesNotThrow(() -> ciMap.putAll(additionalEntries), "putAll with non-empty map should not throw an exception");
+
+        // Verify that the new entries are added
+        assertEquals(3, ciMap.size(), "Map size should be 3 after putAll");
+        assertEquals("1", ciMap.get("one"));
+        assertEquals("2", ciMap.get("TWO"));
+        assertEquals("3", ciMap.get("three"));
+    }
+    
+    @Test
+    void testContainsKey()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -201,7 +261,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testRemove()
+    void testRemove()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -210,7 +270,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testNulls()
+    void testNulls()
     {
         CaseInsensitiveMap<String, Object> stringMap = createSimpleMap();
 
@@ -219,7 +279,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testRemoveIterator()
+    void testRemoveIterator()
     {
         Map<String, Object> map = new CaseInsensitiveMap<>();
         map.put("One", null);
@@ -253,7 +313,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEquals()
+    void testEquals()
     {
         Map<String, Object> a = createSimpleMap();
         Map<String, Object> b = createSimpleMap();
@@ -293,7 +353,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEquals1()
+    void testEquals1()
     {
         Map<String, Object> map1 = new CaseInsensitiveMap<>();
         Map<String, Object> map2 = new CaseInsensitiveMap<>();
@@ -301,7 +361,21 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testHashCode()
+    void testEqualsShortCircuits() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "1");
+        map.put("Two", "2");
+
+        // Test the first short-circuit: (other == this)
+        assertTrue(map.equals(map), "equals() should return true when comparing the map to itself");
+
+        // Test the second short-circuit: (!(other instanceof Map))
+        String notAMap = "This is not a map";
+        assertFalse(map.equals(notAMap), "equals() should return false when 'other' is not a Map");
+    }
+    
+    @Test
+    void testHashCode()
     {
         Map<String, Object> a = createSimpleMap();
         Map<String, Object> b = new CaseInsensitiveMap<>(a);
@@ -321,7 +395,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testHashcodeWithNullInKeys()
+    void testHashcodeWithNullInKeys()
     {
         Map<String, String> map = new CaseInsensitiveMap<>();
         map.put("foo", "bar");
@@ -332,13 +406,13 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testToString()
+    void testToString()
     {
         assertNotNull(createSimpleMap().toString());
     }
 
     @Test
-    public void testClear()
+    void testClear()
     {
         Map<String, Object> a = createSimpleMap();
         a.clear();
@@ -346,7 +420,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testContainsValue()
+    void testContainsValue()
     {
         Map<String, Object> a = createSimpleMap();
         assertTrue(a.containsValue("Two"));
@@ -354,7 +428,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testValues()
+    void testValues()
     {
         Map<String, Object> a = createSimpleMap();
         Collection<Object> col = a.values();
@@ -369,7 +443,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testNullKey()
+    void testNullKey()
     {
         Map<String, Object> a = createSimpleMap();
         a.put(null, "foo");
@@ -379,7 +453,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testConstructors()
+    void testConstructors()
     {
         Map<String, Object> map = new CaseInsensitiveMap<>();
         map.put("BTC", "Bitcoin");
@@ -416,7 +490,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEqualsAndHashCode()
+    void testEqualsAndHashCode()
     {
         Map<Object, Object> map1 = new HashMap<>();
         map1.put("BTC", "Bitcoin");
@@ -449,7 +523,7 @@ public class TestCaseInsensitiveMap
     // --------- Test returned keySet() operations ---------
 
     @Test
-    public void testKeySetContains()
+    void testKeySetContains()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -460,7 +534,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetContainsAll()
+    void testKeySetContainsAll()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -473,7 +547,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetRemove()
+    void testKeySetRemove()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -490,7 +564,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetRemoveAll()
+    void testKeySetRemoveAll()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -513,7 +587,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetRetainAll()
+    void testKeySetRetainAll()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -538,7 +612,63 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetToObjectArray()
+    void testEntrySetRetainAllEmpty() {
+        CaseInsensitiveMap<String, Object> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+        map.put("Five", "Six");
+
+        Set<Map.Entry<String, Object>> entries = map.entrySet();
+        assertEquals(3, entries.size());
+        assertEquals(3, map.size());
+
+        // Retain nothing (empty collection)
+        boolean changed = entries.retainAll(Collections.emptySet());
+
+        assertTrue(changed, "Map should report it was changed");
+        assertTrue(entries.isEmpty(), "EntrySet should be empty");
+        assertTrue(map.isEmpty(), "Map should be empty");
+
+        // Test retainAll with empty collection on already empty map
+        changed = entries.retainAll(Collections.emptySet());
+        assertFalse(changed, "Empty map should report no change");
+        assertTrue(entries.isEmpty(), "EntrySet should still be empty");
+        assertTrue(map.isEmpty(), "Map should still be empty");
+    }
+
+    @Test
+    void testEntrySetRetainAllEntryChecking() {
+        CaseInsensitiveMap<String, Object> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+        map.put("Five", "Six");
+
+        Set<Map.Entry<String, Object>> entries = map.entrySet();
+        assertEquals(3, entries.size());
+
+        // Create a collection with both Map.Entry objects and non-Entry objects
+        Collection<Object> mixedCollection = new ArrayList<>();
+        // Add a real entry that exists in the map
+        mixedCollection.add(new AbstractMap.SimpleEntry<>("ONE", "Two"));
+        // Add a non-Entry object (should be ignored)
+        mixedCollection.add("Not an entry");
+        // Add another entry with different case but wrong value (should not be retained)
+        mixedCollection.add(new AbstractMap.SimpleEntry<>("three", "Wrong Value"));
+        // Add a non-existent entry
+        mixedCollection.add(new AbstractMap.SimpleEntry<>("NonExistent", "Value"));
+
+        boolean changed = entries.retainAll(mixedCollection);
+
+        assertTrue(changed, "Map should be changed");
+        assertEquals(1, map.size(), "Should retain only the matching entry");
+        assertTrue(map.containsKey("One"), "Should retain entry with case-insensitive match and matching value");
+        assertEquals("Two", map.get("One"), "Should retain correct value");
+        assertFalse(map.containsKey("Three"), "Should not retain entry with non-matching value");
+        assertFalse(map.containsKey("NonExistent"), "Should not retain non-existent entry");
+    }
+    
+    @Test
+    void testKeySetToObjectArray()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -549,7 +679,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetToTypedArray()
+    void testKeySetToTypedArray()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -573,7 +703,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetToArrayDifferentKeyTypes()
+    void testKeySetToArrayDifferentKeyTypes()
     {
         Map<Object, Object> map = new CaseInsensitiveMap<>();
         map.put("foo", "bar");
@@ -591,7 +721,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetClear()
+    void testKeySetClear()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -601,7 +731,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetHashCode()
+    void testKeySetHashCode()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -620,7 +750,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetIteratorActions()
+    void testKeySetIteratorActions()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -645,7 +775,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetEquals()
+    void testKeySetEquals()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -673,7 +803,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testKeySetAddNotSupported()
+    void testKeySetAddNotSupported()
     {
         Map<String, Object> m = createSimpleMap();
         Set<String> s = m.keySet();
@@ -701,7 +831,7 @@ public class TestCaseInsensitiveMap
     // ---------------- returned Entry Set tests ---------
 
     @Test
-    public void testEntrySetContains()
+    void testEntrySetContains()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -713,7 +843,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetContainsAll()
+    void testEntrySetContainsAll()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -729,7 +859,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetRemove()
+    void testEntrySetRemove()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -751,7 +881,46 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetRemoveAll()
+    void testEntrySetRemoveAllPaths() {
+        CaseInsensitiveMap<String, Object> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+        map.put("Five", "Six");
+
+        Set<Map.Entry<String, Object>> entries = map.entrySet();
+        assertEquals(3, entries.size());
+
+        // Create collection with mixed content to test both paths
+        Collection<Object> mixedCollection = new ArrayList<>();
+        // Entry object matching a map entry
+        mixedCollection.add(new AbstractMap.SimpleEntry<>("ONE", "Two"));
+        // Non-Entry object (should hit else branch)
+        mixedCollection.add("Not an entry");
+        // Add an Entry that will cause ClassCastException when cast to Entry<K,V>
+        mixedCollection.add(new AbstractMap.SimpleEntry<Integer, Integer>(1, 1));
+        // Entry object matching another map entry (different case)
+        mixedCollection.add(new AbstractMap.SimpleEntry<>("three", "Four"));
+
+        boolean changed = entries.removeAll(mixedCollection);
+
+        assertTrue(changed, "Map should be changed");
+        assertEquals(1, map.size(), "Should have removed matching entries");
+        assertTrue(map.containsKey("Five"), "Should retain non-matching entry");
+        assertFalse(map.containsKey("One"), "Should remove case-insensitive match");
+        assertFalse(map.containsKey("Three"), "Should remove case-insensitive match");
+
+        // Test removeAll with non-matching collection
+        Collection<Object> nonMatching = new ArrayList<>();
+        nonMatching.add("Still not an entry");
+        nonMatching.add(new AbstractMap.SimpleEntry<>("NonExistent", "Value"));
+
+        changed = entries.removeAll(nonMatching);
+        assertFalse(changed, "Map should not be changed when no entries match");
+        assertEquals(1, map.size(), "Map size should remain the same");
+    }
+    
+    @Test
+    void testEntrySetRemoveAll()
     {
         // Pure JDK test that fails
 //        LinkedHashMap<String, Object> mm = new LinkedHashMap<>();
@@ -806,7 +975,29 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetRetainAll()
+    void testEntrySetRemovePaths() {
+        CaseInsensitiveMap<String, Object> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+
+        Set<Map.Entry<String, Object>> entries = map.entrySet();
+        assertEquals(2, entries.size());
+
+        // Test non-Entry path (should hit if-statement and return false)
+        boolean result = entries.remove("Not an entry object");
+        assertFalse(result, "Remove should return false for non-Entry object");
+        assertEquals(2, map.size(), "Map size should not change");
+
+        // Test Entry path
+        result = entries.remove(new AbstractMap.SimpleEntry<>("ONE", "Two"));
+        assertTrue(result, "Remove should return true when entry was removed");
+        assertEquals(1, map.size(), "Map size should decrease");
+        assertFalse(map.containsKey("One"), "Entry should be removed");
+        assertTrue(map.containsKey("Three"), "Other entry should remain");
+    }
+    
+    @Test
+    void testEntrySetRetainAll()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -826,7 +1017,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetRetainAll2()
+    void testEntrySetRetainAll2()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -846,7 +1037,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetRetainAll3()
+    void testEntrySetRetainAll3()
     {
         Map<String, Object> map1 = new CaseInsensitiveMap<>();
         Map<String, Object> map2 = new CaseInsensitiveMap<>();
@@ -861,7 +1052,7 @@ public class TestCaseInsensitiveMap
 
     @SuppressWarnings("unchecked")
     @Test
-    public void testEntrySetToObjectArray()
+    void testEntrySetToObjectArray()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -882,7 +1073,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetToTypedArray()
+    void testEntrySetToTypedArray()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -899,16 +1090,16 @@ public class TestCaseInsensitiveMap
         assertNull(array[3]);
         assertEquals(4, array.length);
 
-//        s = m.entrySet();
-//        array = (Map.Entry<String, Object>[]) s.toArray(new Object[]{getEntry("1", 1), getEntry("2", 2), getEntry("3", 3)});
-//        assertEquals(array[0], getEntry("One", "Two"));
-//        assertEquals(array[1], getEntry("Three", "Four"));
-//        assertEquals(array[2], getEntry("Five", "Six"));
-//        assertEquals(3, array.length);
+        s = m.entrySet();
+        array = s.toArray(new Object[]{getEntry("1", 1), getEntry("2", 2), getEntry("3", 3)});
+        assertEquals(array[0], getEntry("One", "Two"));
+        assertEquals(array[1], getEntry("Three", "Four"));
+        assertEquals(array[2], getEntry("Five", "Six"));
+        assertEquals(3, array.length);
     }
 
     @Test
-    public void testEntrySetClear()
+    void testEntrySetClear()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -918,7 +1109,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetHashCode()
+    void testEntrySetHashCode()
     {
         Map<String, Object> m = createSimpleMap();
         Map<String, Object> m2 = new CaseInsensitiveMap<>();
@@ -935,7 +1126,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetIteratorActions()
+    void testEntrySetIteratorActions()
     {
         Map<String, Object> m = createSimpleMap();
         Set s = m.entrySet();
@@ -960,7 +1151,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetEquals()
+    void testEntrySetEquals()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -1015,7 +1206,7 @@ public class TestCaseInsensitiveMap
 
     @SuppressWarnings("unchecked")
     @Test
-    public void testEntrySetAddNotSupport()
+    void testEntrySetAddNotSupport()
     {
         Map<String, Object> m = createSimpleMap();
         Set<Map.Entry<String, Object>> s = m.entrySet();
@@ -1042,7 +1233,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetKeyInsensitive()
+    void testEntrySetKeyInsensitive()
     {
         Map<String, Object> m = createSimpleMap();
         int one = 0;
@@ -1070,7 +1261,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testRetainAll2()
+    void testRetainAll2()
     {
         Map<String, String> oldMap = new CaseInsensitiveMap<>();
         Map<String, String> newMap = new CaseInsensitiveMap<>();
@@ -1086,7 +1277,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testRetainAll3()
+    void testRetainAll3()
     {
         Map<String, String> oldMap = new CaseInsensitiveMap<>();
         Map<String, String> newMap = new CaseInsensitiveMap<>();
@@ -1101,7 +1292,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testRemoveAll2()
+    void testRemoveAll2()
     {
         Map<String, String> oldMap = new CaseInsensitiveMap<>();
         Map<String, String> newMap = new CaseInsensitiveMap<>();
@@ -1118,7 +1309,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testAgainstUnmodifiableMap()
+    void testAgainstUnmodifiableMap()
     {
         Map<String, String> oldMeta = new CaseInsensitiveMap<>();
         oldMeta.put("foo", "baz");
@@ -1135,7 +1326,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testSetValueApiOnEntrySet()
+    void testSetValueApiOnEntrySet()
     {
         Map<String, String> map = new CaseInsensitiveMap<>();
         map.put("One", "Two");
@@ -1152,7 +1343,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWrappedTreeMap()
+    void testWrappedTreeMap()
     {
         CaseInsensitiveMap<String, Object> map = new CaseInsensitiveMap<>(new TreeMap<>());
         map.put("z", "zulu");
@@ -1171,7 +1362,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWrappedTreeMapNotAllowsNull()
+    void testWrappedTreeMapNotAllowsNull()
     {
         try
         {
@@ -1184,7 +1375,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWrappedConcurrentHashMap()
+    void testWrappedConcurrentHashMap()
     {
         Map<String, Object> map = new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
         map.put("z", "zulu");
@@ -1199,7 +1390,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWrappedConcurrentMapNotAllowsNull()
+    void testWrappedConcurrentMapNotAllowsNull()
     {
         try
         {
@@ -1212,7 +1403,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWrappedMapKeyTypes()
+    void testWrappedMapKeyTypes()
     {
         CaseInsensitiveMap<String, Object> map = new CaseInsensitiveMap<>();
         map.put("Alpha", 1);
@@ -1230,7 +1421,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testUnmodifiableMap()
+    void testUnmodifiableMap()
     {
         Map<String, Object> junkMap = new ConcurrentHashMap<>();
         junkMap.put("z", "zulu");
@@ -1245,7 +1436,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWeakHashMap()
+    void testWeakHashMap()
     {
         Map<String, Object> map = new CaseInsensitiveMap<>(new WeakHashMap<>());
         map.put("z", "zulu");
@@ -1260,7 +1451,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testWrappedMap()
+    void testWrappedMap()
     {
         Map<String, Object> linked = new LinkedHashMap<>();
         linked.put("key1", 1);
@@ -1286,7 +1477,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testNotRecreatingCaseInsensitiveStrings()
+    void testNotRecreatingCaseInsensitiveStrings()
     {
         Map<String, Object> map = new CaseInsensitiveMap<>();
         map.put("dog", "eddie");
@@ -1301,7 +1492,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testPutAllOfNonCaseInsensitiveMap()
+    void testPutAllOfNonCaseInsensitiveMap()
     {
         Map<String, Object> nonCi = new HashMap<>();
         nonCi.put("Foo", "bar");
@@ -1315,7 +1506,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testNotRecreatingCaseInsensitiveStringsUsingTrackingMap()
+    void testNotRecreatingCaseInsensitiveStringsUsingTrackingMap()
     {
         Map<String, Object> map = new CaseInsensitiveMap<>();
         map.put("dog", "eddie");
@@ -1331,7 +1522,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testEntrySetIsEmpty()
+    void testEntrySetIsEmpty()
     {
         Map<String, Object> map = createSimpleMap();
         Set<Map.Entry<String, Object>> entries = map.entrySet();
@@ -1339,7 +1530,7 @@ public class TestCaseInsensitiveMap
     }
     
     @Test
-    public void testPutObject()
+    void testPutObject()
     {
         CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
         map.put(1L, 1L);
@@ -1356,7 +1547,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testTwoMapConstructor()
+    void testTwoMapConstructor()
     {
         Map<String, Object> real = new HashMap<>();
         real.put("z", 26);
@@ -1377,7 +1568,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testCaseInsensitiveStringConstructor()
+    void testCaseInsensitiveStringConstructor()
     {
         CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("John");
         assert ciString.equals("JOHN");
@@ -1393,7 +1584,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testHeterogeneousMap()
+    void testHeterogeneousMap()
     {
         Map<Object, Object> ciMap = new CaseInsensitiveMap<>();
         ciMap.put(1.0d, "foo");
@@ -1413,7 +1604,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testCaseInsensitiveString()
+    void testCaseInsensitiveString()
     {
         CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("foo");
         assert ciString.equals(ciString);
@@ -1424,7 +1615,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testCaseInsensitiveStringHashcodeCollision()
+    void testCaseInsensitiveStringHashcodeCollision()
     {
         CaseInsensitiveMap.CaseInsensitiveString ciString = new CaseInsensitiveMap.CaseInsensitiveString("f608607");
         CaseInsensitiveMap.CaseInsensitiveString ciString2 = new CaseInsensitiveMap.CaseInsensitiveString("f16010070");
@@ -1433,7 +1624,7 @@ public class TestCaseInsensitiveMap
     }
 
     private String current = "0";
-    public String getNext() {
+    String getNext() {
         int length = current.length();
         StringBuilder next = new StringBuilder(current);
         boolean carry = true;
@@ -1462,7 +1653,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testGenHash() {
+    void testGenHash() {
         HashMap<Integer, CaseInsensitiveMap.CaseInsensitiveString> hs = new HashMap<>();
         long t1 = System.currentTimeMillis();
         int dupe = 0;
@@ -1485,7 +1676,7 @@ public class TestCaseInsensitiveMap
     }
 
     @Test
-    public void testConcurrentSkipListMap()
+    void testConcurrentSkipListMap()
     {
         ConcurrentMap<String, Object> map = new ConcurrentSkipListMap<>();
         map.put("key1", "foo");
@@ -1502,7 +1693,7 @@ public class TestCaseInsensitiveMap
     // Used only during development right now
     @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
-    public void testPerformance()
+    void testPerformance()
     {
         Map<String, String> map = new CaseInsensitiveMap<>();
         Random random = new Random();
@@ -1531,9 +1722,670 @@ public class TestCaseInsensitiveMap
         System.out.println((stop - start) / 1000000);
     }
 
+    @Test
+void testComputeIfAbsent() {
+    CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+    map.put("One", "Two");
+    map.put("Three", "Four");
+
+    // Key present, should not overwrite
+    map.computeIfAbsent("oNe", k -> "NotUsed");
+    assertEquals("Two", map.get("one"));
+
+    // Key absent, should add
+    map.computeIfAbsent("fIvE", k -> "Six");
+    assertEquals("Six", map.get("five"));
+}
+
+    @Test
+    void testComputeIfPresent() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+
+        // Key present, apply function
+        map.computeIfPresent("thRee", (k, v) -> v.toUpperCase());
+        assertEquals("FOUR", map.get("Three"));
+
+        // Key absent, no change
+        map.computeIfPresent("sEvEn", (k, v) -> "???");
+        assertNull(map.get("SEVEN"));
+    }
+
+    @Test
+    void testCompute() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+
+        // Key present, modify value
+        map.compute("oNe", (k, v) -> v + "-Modified");
+        assertEquals("Two-Modified", map.get("ONE"));
+
+        // Key absent, insert new value
+        map.compute("EiGhT", (k, v) -> v == null ? "8" : v);
+        assertEquals("8", map.get("eight"));
+    }
+
+    @Test
+    void testMerge() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("Five", "Six");
+
+        // Key present, merge values
+        map.merge("fIvE", "SIX", (oldVal, newVal) -> oldVal + "-" + newVal);
+        assertEquals("Six-SIX", map.get("five"));
+
+        // Key absent, insert new
+        map.merge("NINE", "9", (oldVal, newVal) -> oldVal + "-" + newVal);
+        assertEquals("9", map.get("nine"));
+    }
+
+    @Test
+    void testPutIfAbsent() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two-Modified");
+
+        // Key present, should not overwrite
+        map.putIfAbsent("oNe", "NewTwo");
+        assertEquals("Two-Modified", map.get("ONE"));
+
+        // Key absent, add new entry
+        map.putIfAbsent("Ten", "10");
+        assertEquals("10", map.get("tEn"));
+    }
+
+    @Test
+    void testRemoveKeyValue() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+
+        // Wrong value, should not remove
+        assertFalse(map.remove("one", "NotTwo"));
+        assertEquals("Two", map.get("ONE"));
+
+        // Correct value, remove entry
+        assertTrue(map.remove("oNe", "Two"));
+        assertNull(map.get("ONE"));
+    }
+
+    @Test
+    void testReplaceKeyOldValueNewValue() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("Three", "Four");
+
+        // Old value doesn't match, no replace
+        assertFalse(map.replace("three", "NoMatch", "NomatchValue"));
+        assertEquals("Four", map.get("THREE"));
+
+        // Old value matches, do replace
+        // Use the exact same case as originally stored: "Four" instead of "FOUR"
+        assertTrue(map.replace("thRee", "Four", "4"));
+        assertEquals("4", map.get("THREE"));
+    }
+
+    @Test
+    void testReplaceKeyValue() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("Five", "Six-SIX");
+
+        // Replace unconditionally if key present
+        map.replace("FiVe", "ReplacedFive");
+        assertEquals("ReplacedFive", map.get("five"));
+    }
+
+    @Test
+    void testAllNewApisTogether() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+
+        // computeIfAbsent
+        map.computeIfAbsent("fIvE", k -> "Six");
+        // computeIfPresent
+        map.computeIfPresent("ThReE", (k, v) -> v + "-Modified");
+        // compute
+        map.compute("oNe", (k, v) -> v + "-Changed");
+        // merge
+        map.merge("fIvE", "SIX", (oldVal, newVal) -> oldVal + "-" + newVal);
+        // putIfAbsent
+        map.putIfAbsent("Ten", "10");
+        // remove(key,value)
+        map.remove("one", "Two-Changed");   // matches after compute("one",...)
+        // replace(key,oldValue,newValue)
+        map.replace("three", "Four-Modified", "4");
+        // replace(key,value)
+        map.replace("fIvE", "ReplacedFive");
+
+        // Verify all changes
+        assertNull(map.get("One"), "Should have been removed by remove(key,value) after compute changed the value");
+        assertEquals("4", map.get("THREE"), "Should have replaced after matching old value");
+        assertEquals("ReplacedFive", map.get("FIVE"), "Should have replaced the value");
+        assertEquals("10", map.get("tEn"), "Should have put if absent");
+    }
+
+    @Test
+    void testForEachSimple() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("Three", "Four");
+        map.put("Five", "Six");
+
+        // We will collect the entries visited by forEach
+        Map<String, String> visited = new HashMap<>();
+        map.forEach((k, v) -> visited.put(k, v));
+
+        // Check that all entries were visited with keys in original case
+        assertEquals(3, visited.size());
+        assertEquals("Two", visited.get("One"));
+        assertEquals("Four", visited.get("Three"));
+        assertEquals("Six", visited.get("Five"));
+
+        // Ensure that calling forEach on an empty map visits nothing
+        CaseInsensitiveMap<String, String> empty = new CaseInsensitiveMap<>();
+        empty.forEach((k, v) -> fail("No entries should be visited"));
+    }
+
+    @Test
+    void testForEachNonStringKeys() {
+        CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
+        map.put(42, "Answer");
+        map.put(true, "Boolean");
+        map.put("Hello", "World");
+
+        Map<Object, Object> visited = new HashMap<>();
+        map.forEach((k, v) -> visited.put(k, v));
+
+        // Confirm all entries are visited
+        assertEquals(3, visited.size());
+        // Non-String keys should be unchanged
+        assertEquals("Answer", visited.get(42));
+        assertEquals("Boolean", visited.get(true));
+        // String key should appear in original form ("Hello")
+        assertEquals("World", visited.get("Hello"));
+    }
+
+    @Test
+    void testForEachWithNullValues() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("NullKey", null);
+        map.put("NormalKey", "NormalValue");
+
+        Map<String, String> visited = new HashMap<>();
+        map.forEach((k, v) -> visited.put(k, v));
+
+        assertEquals(2, visited.size());
+        assertTrue(visited.containsKey("NullKey"));
+        assertNull(visited.get("NullKey"));
+        assertEquals("NormalValue", visited.get("NormalKey"));
+    }
+
+    @Test
+    void testReplaceAllSimple() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("Alpha", "a");
+        map.put("Bravo", "b");
+        map.put("Charlie", "c");
+
+        // Convert all values to uppercase
+        map.replaceAll((k, v) -> v.toUpperCase());
+
+        assertEquals("A", map.get("alpha"));
+        assertEquals("B", map.get("bravo"));
+        assertEquals("C", map.get("CHARLIE"));
+        // Keys should remain in original form within the map
+        // Keys: "Alpha", "Bravo", "Charlie" unchanged
+        Set<String> keys = map.keySet();
+        assertTrue(keys.contains("Alpha"));
+        assertTrue(keys.contains("Bravo"));
+        assertTrue(keys.contains("Charlie"));
+    }
+
+    @Test
+    void testReplaceAllCaseInsensitivityOnKeys() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");
+        map.put("THREE", "Four");
+        map.put("FiVe", "Six");
+
+        // Replace all values with their length as a string
+        map.replaceAll((k, v) -> String.valueOf(v.length()));
+
+        assertEquals("3", map.get("one"));   // "Two" length is 3
+        assertEquals("4", map.get("three")); // "Four" length is 4
+        assertEquals("3", map.get("five"));  // "Six" length is 3
+
+        // Ensure keys are still their original form
+        assertTrue(map.keySet().contains("One"));
+        assertTrue(map.keySet().contains("THREE"));
+        assertTrue(map.keySet().contains("FiVe"));
+    }
+
+    @Test
+    void testReplaceAllNonStringKeys() {
+        CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
+        map.put("Key", "Value");
+        map.put(100, 200);
+        map.put(true, false);
+
+        // Transform all values to strings prefixed with "X-"
+        map.replaceAll((k, v) -> "X-" + String.valueOf(v));
+
+        assertEquals("X-Value", map.get("key"));
+        assertEquals("X-200", map.get(100));
+        assertEquals("X-false", map.get(true));
+    }
+
+    @Test
+    void testReplaceAllEmptyMap() {
+        CaseInsensitiveMap<String, String> empty = new CaseInsensitiveMap<>();
+        // Should not fail or modify anything
+        empty.replaceAll((k, v) -> v + "-Modified");
+        assertTrue(empty.isEmpty());
+    }
+
+    @Test
+    void testReplaceAllWithNullValues() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("NullValKey", null);
+        map.put("NormalKey", "Value");
+
+        map.replaceAll((k, v) -> v == null ? "wasNull" : v + "-Appended");
+
+        assertEquals("wasNull", map.get("NullValKey"));
+        assertEquals("Value-Appended", map.get("NormalKey"));
+    }
+
+    @Test
+    void testForEachAndReplaceAllTogether() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("Apple", "red");
+        map.put("Banana", "yellow");
+        map.put("Grape", "purple");
+
+        // First, replaceAll colors with their uppercase form
+        map.replaceAll((k, v) -> v.toUpperCase());
+
+        // Now forEach to verify changes
+        Map<String, String> visited = new HashMap<>();
+        map.forEach(visited::put);
+
+        assertEquals("RED", visited.get("Apple"));
+        assertEquals("YELLOW", visited.get("Banana"));
+        assertEquals("PURPLE", visited.get("Grape"));
+    }
+
+    @Test
+    void testRemoveKeyValueNonStringKey() {
+        // Create a map and put a non-string key
+        CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
+        map.put(42, "Answer");
+        map.put("One", "Two");  // A string key for comparison
+
+        // Removing with a non-string key should hit the last statement of remove()
+        // because key instanceof String will fail.
+        assertTrue(map.remove(42, "Answer"), "Expected to remove entry by non-string key");
+
+        // Verify that the entry was indeed removed
+        assertFalse(map.containsKey(42));
+        assertEquals("Two", map.get("one"));  // Ensure other entries are unaffected
+    }
+
+    @Test
+    void testNormalizeKeyWithNonStringKey() {
+        CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
+        // putIfAbsent calls normalizeKey internally
+        // Because 42 is not a String, normalizeKey() should hit the 'return key;' line.
+        map.putIfAbsent(42, "The Answer");
+
+        // Verify that the entry is there and the key is intact.
+        assertTrue(map.containsKey(42));
+        assertEquals("The Answer", map.get(42));
+    }
+
+    @Test
+    void testWrapperFunctionBothBranches() {
+        CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
+        map.put("One", "Two");    // Will be wrapped as CaseInsensitiveString
+        map.put(42, "Answer");    // Will remain as Integer
+
+        // Test computeIfPresent which uses wrapBiFunctionForKey
+        // First with String key (hits instanceof CaseInsensitiveString branch)
+        map.computeIfPresent("oNe", (k, v) -> {
+            assertTrue(k instanceof String);
+            assertEquals("oNe", k);  // Should get original string, not CaseInsensitiveString
+            assertEquals("Two", v);
+            return "Two-Modified";
+        });
+
+        // Then with non-String key (hits else branch)
+        map.computeIfPresent(42, (k, v) -> {
+            assertTrue(k instanceof Integer);
+            assertEquals(42, k);
+            assertEquals("Answer", v);
+            return "Answer-Modified";
+        });
+
+        // Test computeIfAbsent which uses wrapFunctionForKey
+        // First with String key (hits instanceof CaseInsensitiveString branch)
+        map.computeIfAbsent("New", k -> {
+            assertTrue(k instanceof String);
+            assertEquals("New", k);  // Should get original string
+            return "Value";
+        });
+
+        // Then with non-String key (hits else branch)
+        map.computeIfAbsent(99, k -> {
+            assertTrue(k instanceof Integer);
+            assertEquals(99, k);
+            return "Ninety-Nine";
+        });
+
+        // Verify all operations worked correctly
+        assertEquals("Two-Modified", map.get("ONE"));
+        assertEquals("Answer-Modified", map.get(42));
+        assertEquals("Value", map.get("NEW"));
+        assertEquals("Ninety-Nine", map.get(99));
+    }
+
+    @Test
+    void testComputeMethods() {
+        CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
+
+        // Put initial values with specific case
+        map.put("One", "Original");
+        map.put(42, "Answer");
+
+        // Track if lambdas are called
+        boolean[] lambdaCalled = new boolean[1];
+
+        // Test 1: computeIfAbsent when key exists (case-insensitive)
+        Object result = map.computeIfAbsent("oNe", k -> {
+            lambdaCalled[0] = true;
+            return "Should Not Be Used";
+        });
+        assertFalse(lambdaCalled[0], "Lambda should not be called when key exists");
+        assertEquals("Original", result, "Should return existing value");
+        assertEquals("Original", map.get("one"), "Value should be unchanged");
+        assertTrue(map.keySet().contains("One"), "Original case should be retained");
+
+        // Test 2: computeIfAbsent for new key
+        lambdaCalled[0] = false;
+        String newKey = "NeW_KeY";
+        result = map.computeIfAbsent(newKey, k -> {
+            lambdaCalled[0] = true;
+            assertEquals(newKey, k, "Lambda should receive key as provided");
+            return "New Value";
+        });
+        assertTrue(lambdaCalled[0], "Lambda should be called for new key");
+        assertEquals("New Value", result);
+        assertEquals("New Value", map.get("new_key"));
+        assertTrue(map.keySet().contains(newKey), "Should retain case of new key");
+
+        // Test 3: computeIfAbsent with non-String key
+        lambdaCalled[0] = false;
+        Integer intKey = 99;
+        result = map.computeIfAbsent(intKey, k -> {
+            lambdaCalled[0] = true;
+            assertEquals(intKey, k, "Lambda should receive non-String key unchanged");
+            return "Int Value";
+        });
+        assertTrue(lambdaCalled[0], "Lambda should be called for new integer key");
+        assertEquals("Int Value", result);
+        assertEquals("Int Value", map.get(intKey));
+
+        // Test 4: computeIfPresent when key exists
+        lambdaCalled[0] = false;
+        result = map.computeIfPresent("OnE", (k, v) -> {
+            lambdaCalled[0] = true;
+            assertEquals("OnE", k, "Should receive key as provided to method");
+            assertEquals("Original", v, "Should receive existing value");
+            return "Updated Value";
+        });
+        assertTrue(lambdaCalled[0], "Lambda should be called for existing key");
+        assertEquals("Updated Value", result);
+        assertEquals("Updated Value", map.get("one"));
+        assertTrue(map.keySet().contains("One"), "Original case should be retained");
+
+        // Test 5: computeIfPresent when key doesn't exist
+        lambdaCalled[0] = false;
+        result = map.computeIfPresent("NonExistent", (k, v) -> {
+            lambdaCalled[0] = true;
+            return "Should Not Be Used";
+        });
+        assertFalse(lambdaCalled[0], "Lambda should not be called for non-existent key");
+        assertNull(result, "Should return null for non-existent key");
+
+        // Test 6: compute (unconditional) on existing key
+        lambdaCalled[0] = false;
+        result = map.compute("oNe", (k, v) -> {
+            lambdaCalled[0] = true;
+            assertEquals("oNe", k, "Should receive key as provided");
+            assertEquals("Updated Value", v, "Should receive current value");
+            return "Computed Value";
+        });
+        assertTrue(lambdaCalled[0], "Lambda should be called");
+        assertEquals("Computed Value", result);
+        assertEquals("Computed Value", map.get("one"));
+        assertTrue(map.keySet().contains("One"), "Original case should be retained");
+
+        // Test 7: compute (unconditional) on non-existent key
+        String newComputeKey = "CoMpUtE_KeY";
+        lambdaCalled[0] = false;
+        result = map.compute(newComputeKey, (k, v) -> {
+            lambdaCalled[0] = true;
+            assertEquals(newComputeKey, k, "Should receive key as provided");
+            assertNull(v, "Should receive null for non-existent key");
+            return "Brand New";
+        });
+        assertTrue(lambdaCalled[0], "Lambda should be called for new key");
+        assertEquals("Brand New", result);
+        assertEquals("Brand New", map.get("compute_key"));
+        assertTrue(map.keySet().contains(newComputeKey), "Should retain case of new key");
+    }
+
+    @Test
+    void testToArrayTArrayBothBranchesInsideForLoop() {
+        CaseInsensitiveMap<Object, Object> map = new CaseInsensitiveMap<>();
+        // Add a String key, which will be wrapped as CaseInsensitiveString internally
+        map.put("One", 1);
+        // Add a non-String key, which will remain as is
+        map.put(42, "FortyTwo");
+
+        // Now, when toArray() runs, we'll have one key that is a CaseInsensitiveString
+        // ("One") and one key that is not (42), causing both sides of the ternary operator
+        // to be executed inside the for-loop.
+
+        Object[] result = map.keySet().toArray(new Object[0]);
+
+        assertEquals(2, result.length);
+        // We don't need a strict assertion on which keys appear first,
+        // but we do know that "One" should appear as a String and 42 as an Integer.
+        // The key "One" was inserted as a String, so it should come out as the original String "One".
+        // The key 42 is a non-string key and should appear as-is.
+        assertTrue(contains(result, "One"));
+        assertTrue(contains(result, 42));
+    }
+
+    private boolean contains(Object[] arr, Object value) {
+        for (Object o : arr) {
+            if (o.equals(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    void testConstructFromHashtable() {
+        Hashtable<String, String> source = new Hashtable<>();
+        source.put("One", "1");
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(source);
+        assertEquals("1", ciMap.get("one"));
+    }
+
+    @Test
+    void testConstructFromIdentityHashMap() {
+        IdentityHashMap<String, String> source = new IdentityHashMap<>();
+        source.put("One", "1");
+
+        // Now that the constructor throws an exception for IdentityHashMap,
+        // we test that behavior using assertThrows.
+        assertThrows(IllegalArgumentException.class, () -> {
+            new CaseInsensitiveMap<>(source);
+        });
+    }
+
+    @Test
+    void testConstructFromConcurrentNavigableMapNullSafe() {
+        // Assuming ConcurrentNavigableMapNullSafe is available and works similarly to a ConcurrentSkipListMap
+        ConcurrentNavigableMapNullSafe<String, String> source = new ConcurrentNavigableMapNullSafe<>();
+        source.put("One", "1");
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(source);
+        assertEquals("1", ciMap.get("one"));
+    }
+
+    @Test
+    void testConstructFromConcurrentHashMapNullSafe() {
+        // Assuming ConcurrentHashMapNullSafe is available
+        ConcurrentHashMapNullSafe<String, String> source = new ConcurrentHashMapNullSafe<>();
+        source.put("One", "1");
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(source);
+        assertEquals("1", ciMap.get("one"));
+    }
+
+    @Test
+    void testConstructFromConcurrentSkipListMap() {
+        ConcurrentSkipListMap<String, String> source = new ConcurrentSkipListMap<>();
+        source.put("One", "1");
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(source);
+        assertEquals("1", ciMap.get("one"));
+    }
+
+    @Test
+    void testConstructFromNavigableMapInterface() {
+        // NavigableMap is an interface; use a known implementation that is not a TreeMap or ConcurrentSkipListMap
+        // But if we want to ensure just that it hits the NavigableMap branch before SortedMap:
+        // If source is just a ConcurrentSkipListMap, that will match the ConcurrentNavigableMap branch first.
+        // Let's use an anonymous NavigableMap wrapping a ConcurrentSkipListMap:
+        NavigableMap<String, String> source = new ConcurrentSkipListMap<>();
+        source.put("One", "1");
+        // If we've already tested ConcurrentSkipListMap above, consider a different approach:
+        // Use a NavigableMap that isn't caught by earlier conditions:
+        // However, by code structure, NavigableMap check comes after ConcurrentNavigableMap checks.
+        // Let's rely on the order of checks:
+        // - The code checks if (source instanceof ConcurrentNavigableMapNullSafe)
+        //   then if (source instanceof ConcurrentHashMapNullSafe)
+        //   then if (source instanceof ConcurrentNavigableMap)
+        //   then if (source instanceof ConcurrentMap)
+        //   then if (source instanceof NavigableMap)
+        // Since ConcurrentSkipListMap is a ConcurrentNavigableMap, it might get caught earlier.
+        // To ensure we hit the NavigableMap branch, we can use a wrapper:
+        NavigableMap<String, String> navigableMap = new NavigableMapWrapper<>(source);
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(navigableMap);
+        assertEquals("1", ciMap.get("one"));
+    }
+
+    @Test
+    void testConstructFromSortedMapInterface() {
+        // Create and populate a TreeMap first
+        SortedMap<String, String> temp = new TreeMap<>();
+        temp.put("One", "1");
+
+        // Now wrap the populated TreeMap
+        SortedMap<String, String> source = Collections.unmodifiableSortedMap(temp);
+
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(source);
+        assertEquals("1", ciMap.get("one"));
+    }
+
+
+    // A wrapper class to ensure we test just the NavigableMap interface branch.
+    static class NavigableMapWrapper<K,V> extends AbstractMap<K,V> implements NavigableMap<K,V> {
+        private final NavigableMap<K,V> delegate;
+
+        NavigableMapWrapper(NavigableMap<K,V> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Entry<K, V> lowerEntry(K key) { return delegate.lowerEntry(key); }
+        @Override
+        public K lowerKey(K key) { return delegate.lowerKey(key); }
+        @Override
+        public Entry<K, V> floorEntry(K key) { return delegate.floorEntry(key); }
+        @Override
+        public K floorKey(K key) { return delegate.floorKey(key); }
+        @Override
+        public Entry<K, V> ceilingEntry(K key) { return delegate.ceilingEntry(key); }
+        @Override
+        public K ceilingKey(K key) { return delegate.ceilingKey(key); }
+        @Override
+        public Entry<K, V> higherEntry(K key) { return delegate.higherEntry(key); }
+        @Override
+        public K higherKey(K key) { return delegate.higherKey(key); }
+        @Override
+        public Entry<K, V> firstEntry() { return delegate.firstEntry(); }
+        @Override
+        public Entry<K, V> lastEntry() { return delegate.lastEntry(); }
+        @Override
+        public Entry<K, V> pollFirstEntry() { return delegate.pollFirstEntry(); }
+        @Override
+        public Entry<K, V> pollLastEntry() { return delegate.pollLastEntry(); }
+        @Override
+        public NavigableMap<K, V> descendingMap() { return delegate.descendingMap(); }
+        @Override
+        public NavigableSet<K> navigableKeySet() { return delegate.navigableKeySet(); }
+        @Override
+        public NavigableSet<K> descendingKeySet() { return delegate.descendingKeySet(); }
+        @Override
+        public NavigableMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+            return delegate.subMap(fromKey, fromInclusive, toKey, toInclusive);
+        }
+        @Override
+        public NavigableMap<K, V> headMap(K toKey, boolean inclusive) {
+            return delegate.headMap(toKey, inclusive);
+        }
+        @Override
+        public NavigableMap<K, V> tailMap(K fromKey, boolean inclusive) {
+            return delegate.tailMap(fromKey, inclusive);
+        }
+        @Override
+        public Comparator<? super K> comparator() { return delegate.comparator(); }
+        @Override
+        public SortedMap<K, V> subMap(K fromKey, K toKey) { return delegate.subMap(fromKey, toKey); }
+        @Override
+        public SortedMap<K, V> headMap(K toKey) { return delegate.headMap(toKey); }
+        @Override
+        public SortedMap<K, V> tailMap(K fromKey) { return delegate.tailMap(fromKey); }
+        @Override
+        public K firstKey() { return delegate.firstKey(); }
+        @Override
+        public K lastKey() { return delegate.lastKey(); }
+        @Override
+        public Set<Entry<K, V>> entrySet() { return delegate.entrySet(); }
+    }
+
+    @Test
+    void testCopyMethodKeyInstanceofStringBothOutcomes() {
+        // Create a source map with both a String key and a non-String key
+        Map<Object, Object> source = new HashMap<>();
+        source.put("One", 1);    // key is a String, will test 'key instanceof String' == true
+        source.put(42, "FortyTwo"); // key is an Integer, will test 'key instanceof String' == false
+
+        // Constructing a CaseInsensitiveMap from this source triggers copy()
+        CaseInsensitiveMap<Object, Object> ciMap = new CaseInsensitiveMap<>(source);
+
+        // Verify that the entries were copied correctly
+        // For the String key "One", it should be case-insensitive now
+        assertEquals(1, ciMap.get("one"));
+
+        // For the non-String key 42, it should remain as is
+        assertEquals("FortyTwo", ciMap.get(42));
+    }
+
     // ---------------------------------------------------
-
-
+    
     private CaseInsensitiveMap<String, Object> createSimpleMap()
     {
         CaseInsensitiveMap<String, Object> stringMap = new CaseInsensitiveMap<>();

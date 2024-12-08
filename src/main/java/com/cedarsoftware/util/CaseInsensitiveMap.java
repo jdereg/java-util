@@ -62,9 +62,10 @@ import java.util.function.Function;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
+public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
     private final Map<K, V> map;
-
+    private final static LRUCache<String, CaseInsensitiveString> ciStringCache = new LRUCache<>(1000);
+    
     /**
      * Registry of known source map types to their corresponding factory functions.
      * Uses CopyOnWriteArrayList to maintain thread safety and preserve insertion order.
@@ -251,7 +252,7 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
             if (isCaseInsensitiveEntry(entry)) {
                 key = ((CaseInsensitiveEntry) entry).getOriginalKey();
             } else if (key instanceof String) {
-                key = (K) new CaseInsensitiveString((String) key);
+                key = (K) newCIString((String) key);
             }
             dest.put(key, entry.getValue());
         }
@@ -275,7 +276,7 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
     @Override
     public V get(Object key) {
         if (key instanceof String) {
-            return map.get(new CaseInsensitiveString((String) key));
+            return map.get(newCIString((String) key));
         }
         return map.get(key);
     }
@@ -287,7 +288,7 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
     @Override
     public boolean containsKey(Object key) {
         if (key instanceof String) {
-            return map.containsKey(new CaseInsensitiveString((String) key));
+            return map.containsKey(newCIString((String) key));
         }
         return map.containsKey(key);
     }
@@ -300,32 +301,11 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
     @SuppressWarnings("unchecked")
     public V put(K key, V value) {
         if (key instanceof String) {
-            return map.put((K) new CaseInsensitiveString((String) key), value);
+            return map.put((K) newCIString((String) key), value);
         }
         return map.put(key, value);
     }
-
-    /**
-     * {@inheritDoc}
-     * <p>Copies all mappings from the specified map to this map. String keys will be converted to
-     * case-insensitive form if necessary.</p>
-     */
-    @Override
-    @SuppressWarnings("unchecked")
-    public void putAll(Map<? extends K, ? extends V> m) {
-        if (m == null || m.isEmpty()) {
-            return;
-        }
-        for (Entry<? extends K, ? extends V> entry : m.entrySet()) {
-            if (isCaseInsensitiveEntry(entry)) {
-                CaseInsensitiveEntry ciEntry = (CaseInsensitiveEntry) entry;
-                put(ciEntry.getOriginalKey(), entry.getValue());
-            } else {
-                put(entry.getKey(), entry.getValue());
-            }
-        }
-    }
-
+    
     /**
      * {@inheritDoc}
      * <p>String keys are handled case-insensitively.</p>
@@ -333,25 +313,9 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
     @Override
     public V remove(Object key) {
         if (key instanceof String) {
-            return map.remove(new CaseInsensitiveString((String) key));
+            return map.remove(newCIString((String) key));
         }
         return map.remove(key);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int size() {
-        return map.size();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isEmpty() {
-        return map.isEmpty();
     }
 
     /**
@@ -386,60 +350,7 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
         }
         return true;
     }
-
-    /**
-     * {@inheritDoc}
-     * <p>The hash code is computed in a manner consistent with equals(), ensuring
-     * case-insensitive treatment of String keys.</p>
-     */
-    @Override
-    public int hashCode() {
-        int h = 0;
-        for (Entry<K, V> entry : map.entrySet()) {
-            Object key = entry.getKey();
-            int hKey = key == null ? 0 : key.hashCode();
-            Object value = entry.getValue();
-            int hValue = value == null ? 0 : value.hashCode();
-            h += hKey ^ hValue;
-        }
-        return h;
-    }
-
-    /**
-     * Returns a string representation of this map.
-     *
-     * @return a string representation of the map
-     */
-    @Override
-    public String toString() {
-        return map.toString();
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>Removes all mappings from this map.</p>
-     */
-    @Override
-    public void clear() {
-        map.clear();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean containsValue(Object value) {
-        return map.containsValue(value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Collection<V> values() {
-        return map.values();
-    }
-
+    
     /**
      * Returns the underlying wrapped map instance. This map contains the keys in their
      * case-insensitive form (i.e., {@link CaseInsensitiveString} for String keys).
@@ -451,52 +362,176 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
     }
 
     /**
-     * {@inheritDoc}
-     * <p>Returns a Set view of the keys contained in this map. String keys are returned in their
-     * original form rather than their case-insensitive representation. Operations on this set
-     * affect the underlying map.</p>
+     * Returns a {@link Set} view of the keys contained in this map. The set is backed by the
+     * map, so changes to the map are reflected in the set, and vice-versa. For String keys,
+     * the set contains the original Strings rather than their case-insensitive representations.
+     *
+     * @return a set view of the keys contained in this map
      */
     @Override
     public Set<K> keySet() {
         return new AbstractSet<K>() {
             /**
-             * {@inheritDoc}
-             * <p>Checks if the specified object is a key in this set. String keys are matched case-insensitively.</p>
+             * Returns an iterator over the keys in this set. For String keys, the iterator
+             * returns the original Strings rather than their case-insensitive representations.
+             *
+             * @return an iterator over the keys in this set
              */
             @Override
-            public boolean contains(Object o) {
-                return CaseInsensitiveMap.this.containsKey(o);
+            public Iterator<K> iterator() {
+                return new Iterator<K>() {
+                    private final Iterator<K> iter = map.keySet().iterator();
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    @Override
+                    public boolean hasNext() {
+                        return iter.hasNext();
+                    }
+
+                    /**
+                     * Returns the next key in the iteration. For String keys, returns the
+                     * original String rather than its case-insensitive representation.
+                     *
+                     * @return the next key in the iteration
+                     * @throws java.util.NoSuchElementException if the iteration has no more elements
+                     */
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public K next() {
+                        K next = iter.next();
+                        return (K) (next instanceof CaseInsensitiveString ? next.toString() : next);
+                    }
+
+                    /**
+                     * {@inheritDoc}
+                     */
+                    @Override
+                    public void remove() {
+                        iter.remove();
+                    }
+                };
             }
 
             /**
-             * {@inheritDoc}
-             * <p>Removes the specified key from the underlying map if present.</p>
+             * Computes a hash code for this set. The hash code of a set is defined as the
+             * sum of the hash codes of its elements. For null elements, no value is added
+             * to the sum. The hash code computation is case-insensitive, as it relies on
+             * the case-insensitive hash code implementation of the underlying keys.
+             *
+             * @return the hash code value for this set
+             */
+            @Override
+            public int hashCode() {
+                int h = 0;
+                for (Object key : map.keySet()) {
+                    if (key != null) {
+                        h += key.hashCode();  // CaseInsensitiveString's hashCode() is already case-insensitive
+                    }
+                }
+                return h;
+            }
+
+            /**
+             * Returns the number of elements in this set (its cardinality).
+             * This method delegates to the size of the underlying map.
+             *
+             * @return the number of elements in this set
+             */
+            @Override
+            public int size() {
+                return map.size();
+            }
+
+            /**
+             * Returns true if this set contains the specified element.
+             * This operation is equivalent to checking if the specified object
+             * exists as a key in the map, using case-insensitive comparison.
+             *
+             * @param o element whose presence in this set is to be tested
+             * @return true if this set contains the specified element
+             */
+            @Override
+            public boolean contains(Object o) {
+                return containsKey(o);
+            }
+
+            /**
+             * Removes the specified element from this set if it is present.
+             * This operation removes the corresponding entry from the underlying map.
+             * The item to be removed is located case-insensitively if the element is a String.
+             * The method returns true if the set contained the specified element
+             * (or equivalently, if the map was modified as a result of the call).
+             *
+             * @param o object to be removed from this set, if present
+             * @return true if the set contained the specified element
              */
             @Override
             public boolean remove(Object o) {
-                final int size = map.size();
+                int size = map.size();
                 CaseInsensitiveMap.this.remove(o);
                 return map.size() != size;
             }
 
             /**
-             * {@inheritDoc}
-             * <p>Removes all keys contained in the specified collection from this set.
-             * String comparisons are case-insensitive.</p>
+             * Returns an array containing all the keys in this set; the runtime type of the returned
+             * array is that of the specified array. If the set fits in the specified array, it is
+             * returned therein. Otherwise, a new array is allocated with the runtime type of the
+             * specified array and the size of this set.
+             *
+             * <p>If the set fits in the specified array with room to spare (i.e., the array has more
+             * elements than the set), the element in the array immediately following the end of the set
+             * is set to null. This is useful in determining the length of the set only if the caller
+             * knows that the set does not contain any null elements.
+             *
+             * <p>String keys are returned in their original form rather than their case-insensitive
+             * representation used internally by the map.
+             *
+             * <p>This method could be remove and the parent class method would work, however, it's more efficient:
+             * It works directly with the backing map's keyset instead of using an iterator.
+             *
+             * @param a the array into which the elements of this set are to be stored,
+             *          if it is big enough; otherwise, a new array of the same runtime
+             *          type is allocated for this purpose
+             * @return an array containing the elements of this set
+             * @throws ArrayStoreException if the runtime type of the specified array
+             *         is not a supertype of the runtime type of every element in this set
+             * @throws NullPointerException if the specified array is null
              */
             @Override
-            public boolean removeAll(Collection<?> c) {
-                int size = map.size();
-                for (Object o : c) {
-                    CaseInsensitiveMap.this.remove(o);
+            @SuppressWarnings("unchecked")
+            public <T> T[] toArray(T[] a) {
+                int size = size();
+                T[] result = a.length >= size ? a :
+                        (T[]) Array.newInstance(a.getClass().getComponentType(), size);
+
+                int i = 0;
+                for (K key : map.keySet()) {
+                    result[i++] = (T) (key instanceof CaseInsensitiveString ? key.toString() : key);
                 }
-                return map.size() != size;
+
+                if (result.length > size) {
+                    result[size] = null;
+                }
+                return result;
             }
 
             /**
-             * {@inheritDoc}
-             * <p>Retains only the keys in this set that are contained in the specified collection.
-             * String comparisons are case-insensitive.</p>
+             * <p>Retains only the elements in this set that are contained in the specified collection.
+             * In other words, removes from this set all of its elements that are not contained
+             * in the specified collection. The comparison is case-insensitive.
+             *
+             * <p>This operation creates a temporary CaseInsensitiveMap to perform case-insensitive
+             * comparison of elements, then removes all keys from the underlying map that are not
+             * present in the specified collection.
+             *
+             * @param c collection containing elements to be retained in this set
+             * @return true if this set changed as a result of the call
+             * @throws ClassCastException if the types of one or more elements in this set
+             *         are incompatible with the specified collection
+             * @SuppressWarnings("unchecked") suppresses unchecked cast warnings as elements
+             *         are assumed to be of type K
              */
             @Override
             @SuppressWarnings("unchecked")
@@ -510,120 +545,9 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
                 map.keySet().removeIf(key -> !other.containsKey(key));
                 return map.size() != size;
             }
-
-            /**
-             * {@inheritDoc}
-             * <p>Returns an array containing all the keys in this set. String keys are returned in their original form.</p>
-             */
-            @Override
-            public Object[] toArray() {
-                int size = size();
-                Object[] result = new Object[size];
-                int i = 0;
-                for (Object key : map.keySet()) {
-                    result[i++] = (key instanceof CaseInsensitiveString ? key.toString() : key);
-                }
-                return result;
-            }
-
-            /**
-             * {@inheritDoc}
-             * <p>Returns an array containing all the keys in this set; the runtime type of the returned
-             * array is that of the specified array. If the set fits in the specified array, it is returned therein.</p>
-             */
-            @Override
-            @SuppressWarnings("unchecked")
-            public <T> T[] toArray(T[] a) {
-                int size = size();
-                T[] result = a.length >= size ? a :
-                        (T[]) Array.newInstance(a.getClass().getComponentType(), size);
-
-                int i = 0;
-                for (Object key : map.keySet()) {
-                    result[i++] = (T) (key instanceof CaseInsensitiveString ? key.toString() : key);
-                }
-
-                if (result.length > size) {
-                    result[size] = null;
-                }
-                return result;
-            }
-
-            /**
-             * {@inheritDoc}
-             * <p>Returns the number of keys in the underlying map.</p>
-             */
-            @Override
-            public int size() {
-                return map.size();
-            }
-
-            /**
-             * {@inheritDoc}
-             * <p>Clears all keys from the underlying map.</p>
-             */
-            @Override
-            public void clear() {
-                map.clear();
-            }
-
-            /**
-             * {@inheritDoc}
-             * <p>Returns the hash code for this set. The hash code is consistent with the underlying map.</p>
-             */
-            @Override
-            public int hashCode() {
-                int h = 0;
-                for (Object key : map.keySet()) {
-                    if (key != null) {
-                        h += key.hashCode();
-                    }
-                }
-                return h;
-            }
-
-            /**
-             * {@inheritDoc}
-             * <p>Returns an iterator over the keys in this set. String keys are returned in their original form.</p>
-             */
-            @Override
-            @SuppressWarnings("unchecked")
-            public Iterator<K> iterator() {
-                return new Iterator<K>() {
-                    private final Iterator<?> iter = map.keySet().iterator();
-
-                    /**
-                     * {@inheritDoc}
-                     * <p>Removes the last element returned by this iterator from the underlying map.</p>
-                     */
-                    @Override
-                    public void remove() {
-                        iter.remove();
-                    }
-
-                    /**
-                     * {@inheritDoc}
-                     * <p>Returns true if there are more keys to iterate over.</p>
-                     */
-                    @Override
-                    public boolean hasNext() {
-                        return iter.hasNext();
-                    }
-
-                    /**
-                     * {@inheritDoc}
-                     * <p>Returns the next key in the iteration. String keys are returned in original form.</p>
-                     */
-                    @Override
-                    public K next() {
-                        Object next = iter.next();
-                        return (K) (next instanceof CaseInsensitiveString ? next.toString() : next);
-                    }
-                };
-            }
         };
     }
-
+    
     /**
      * {@inheritDoc}
      * <p>Returns a Set view of the entries contained in this map. Each entry returns its key in the
@@ -643,24 +567,6 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
 
             /**
              * {@inheritDoc}
-             * <p>Returns true if there are no entries in the map.</p>
-             */
-            @Override
-            public boolean isEmpty() {
-                return map.isEmpty();
-            }
-
-            /**
-             * {@inheritDoc}
-             * <p>Removes all entries from the underlying map.</p>
-             */
-            @Override
-            public void clear() {
-                map.clear();
-            }
-
-            /**
-             * {@inheritDoc}
              * <p>Determines if the specified object is an entry present in the map. String keys are
              * matched case-insensitively.</p>
              */
@@ -671,9 +577,9 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
                     return false;
                 }
                 Entry<K, V> that = (Entry<K, V>) o;
-                Object value = CaseInsensitiveMap.this.get(that.getKey());
+                Object value = get(that.getKey());
                 return value != null ? value.equals(that.getValue())
-                        : that.getValue() == null && CaseInsensitiveMap.this.containsKey(that.getKey());
+                        : that.getValue() == null && containsKey(that.getKey());
             }
 
             /**
@@ -821,7 +727,7 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
             }
         };
     }
-
+    
     /**
      * Entry implementation that returns a String key rather than a CaseInsensitiveString
      * when {@link #getKey()} is called.
@@ -867,12 +773,60 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
          */
         @Override
         public V setValue(V value) {
-            return map.put(super.getKey(), value);
+            return put(getOriginalKey(), value);
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * For String keys, equality is based on the original String value rather than
+         * the case-insensitive representation. This ensures that entries with the same
+         * case-insensitive key but different original strings are considered distinct.
+         *
+         * @param o object to be compared for equality with this map entry
+         * @return true if the specified object is equal to this map entry
+         * @see Map.Entry#equals(Object)
+         */
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof Entry)) return false;
+            Entry<?, ?> e = (Entry<?, ?>) o;
+            return Objects.equals(getOriginalKey(), e.getKey()) &&
+                    Objects.equals(getValue(), e.getValue());
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * For String keys, the hash code is computed using the original String value
+         * rather than the case-insensitive representation.
+         *
+         * @return the hash code value for this map entry
+         * @see Map.Entry#hashCode()
+         */
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(getOriginalKey()) ^ Objects.hashCode(getValue());
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * Returns a string representation of this map entry. The string representation
+         * consists of this entry's key followed by the equals character ("=") followed
+         * by this entry's value. For String keys, the original string value is used.
+         *
+         * @return a string representation of this map entry
+         */
+        @Override
+        public String toString() {
+            return getKey() + "=" + getValue();
         }
     }
 
     /**
      * Wrapper class for String keys to enforce case-insensitive comparison.
+     * Note: Do not use this class directly, as it will eventually be made private.
      */
     public static final class CaseInsensitiveString implements Comparable<Object> {
         private final String original;
@@ -961,7 +915,7 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
     @SuppressWarnings("unchecked")
     private K normalizeKey(K key) {
         if (key instanceof String) {
-            return (K) new CaseInsensitiveString((String) key);
+            return (K) newCIString((String) key);
         }
         return key;
     }
@@ -1014,6 +968,15 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
         };
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the mapping is performed in a case-insensitive manner. If the mapping
+     * function receives a String key, it will be passed the original String rather than the
+     * internal case-insensitive representation.
+     *
+     * @see Map#computeIfAbsent(Object, Function)
+     */
     @Override
     public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
         K actualKey = normalizeKey(key);
@@ -1021,6 +984,15 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
         return map.computeIfAbsent(actualKey, wrapFunctionForKey(mappingFunction));
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the mapping is performed in a case-insensitive manner. If the remapping
+     * function receives a String key, it will be passed the original String rather than the
+     * internal case-insensitive representation.
+     *
+     * @see Map#computeIfPresent(Object, BiFunction)
+     */
     @Override
     public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         // Normalize input key to ensure case-insensitive lookup for Strings
@@ -1029,6 +1001,15 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
         return map.computeIfPresent(actualKey, wrapBiFunctionForKey(remappingFunction));
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the computation is performed in a case-insensitive manner. If the remapping
+     * function receives a String key, it will be passed the original String rather than the
+     * internal case-insensitive representation.
+     *
+     * @see Map#compute(Object, BiFunction)
+     */
     @Override
     public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         K actualKey = normalizeKey(key);
@@ -1036,6 +1017,14 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
         return map.compute(actualKey, wrapBiFunctionForKey(remappingFunction));
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the merge is performed in a case-insensitive manner. The remapping
+     * function operates only on values and is not affected by case sensitivity.
+     *
+     * @see Map#merge(Object, Object, BiFunction)
+     */
     @Override
     public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         K actualKey = normalizeKey(key);
@@ -1044,32 +1033,68 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
         return map.merge(actualKey, value, remappingFunction);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the operation is performed in a case-insensitive manner.
+     *
+     * @see Map#putIfAbsent(Object, Object)
+     */
     @Override
     public V putIfAbsent(K key, V value) {
         K actualKey = normalizeKey(key);
         return map.putIfAbsent(actualKey, value);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the removal is performed in a case-insensitive manner.
+     *
+     * @see Map#remove(Object, Object)
+     */
     @Override
     public boolean remove(Object key, Object value) {
         if (key instanceof String) {
-            return map.remove(new CaseInsensitiveString((String) key), value);
+            return map.remove(newCIString((String) key), value);
         }
         return map.remove(key, value);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the replacement is performed in a case-insensitive manner.
+     *
+     * @see Map#replace(Object, Object, Object)
+     */
     @Override
     public boolean replace(K key, V oldValue, V newValue) {
         K actualKey = normalizeKey(key);
         return map.replace(actualKey, oldValue, newValue);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the replacement is performed in a case-insensitive manner.
+     *
+     * @see Map#replace(Object, Object)
+     */
     @Override
     public V replace(K key, V value) {
         K actualKey = normalizeKey(key);
         return map.replace(actualKey, value);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the action receives the original String key rather than the
+     * internal case-insensitive representation.
+     *
+     * @see Map#forEach(BiConsumer)
+     */
     @Override
     public void forEach(BiConsumer<? super K, ? super V> action) {
         // Unwrap keys before calling action
@@ -1079,6 +1104,15 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
         });
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * For String keys, the function receives the original String key rather than the
+     * internal case-insensitive representation. The replacement is performed in a
+     * case-insensitive manner.
+     *
+     * @see Map#replaceAll(BiFunction)
+     */
     @Override
     public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
         // Unwrap keys before applying the function to values
@@ -1086,5 +1120,35 @@ public class CaseInsensitiveMap<K extends Object, V> implements Map<K, V> {
             K originalKey = (k instanceof CaseInsensitiveString) ? (K) ((CaseInsensitiveString) k).original : k;
             return function.apply(originalKey, v);
         });
+    }
+
+    /**
+     * Creates a new CaseInsensitiveString instance. If the input string's length is greater than 100,
+     * a new instance is always created. Otherwise, the method checks the cache:
+     * - If a cached instance exists, it returns the cached instance.
+     * - If not, it creates a new instance, caches it, and then returns it.
+     *
+     * @param string the original string to wrap
+     * @return a CaseInsensitiveString instance corresponding to the input string
+     * @throws NullPointerException if the input string is null
+     */
+    private CaseInsensitiveString newCIString(String string) {
+        Objects.requireNonNull(string, "Input string cannot be null");
+
+        if (string.length() > 100) {
+            // For long strings, always create a new instance to save cache space
+            return new CaseInsensitiveString(string);
+        } else {
+            // Attempt to retrieve from cache
+            CaseInsensitiveString cachedCIString = ciStringCache.get(string);
+            if (cachedCIString != null) {
+                return cachedCIString;
+            } else {
+                // Create a new instance, cache it, and return
+                CaseInsensitiveString newCIString = new CaseInsensitiveString(string);
+                ciStringCache.put(string, newCIString);
+                return newCIString;
+            }
+        }
     }
 }

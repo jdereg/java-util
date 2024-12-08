@@ -192,7 +192,7 @@ class TestCaseInsensitiveMap
         assertEquals("Eight", stringMap.get("seven"));
 
         Map<String, Object> a = createSimpleMap();
-        a.putAll(null);     // Ensure NPE not happening
+        assertThrows(NullPointerException.class, () -> a.putAll(null));     // Ensure NPE happening per Map contract
     }
 
     /**
@@ -1690,7 +1690,6 @@ class TestCaseInsensitiveMap
         assert ciMap.get("KEY4") == "qux";
     }
 
-    // Used only during development right now
     @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testPerformance()
@@ -1708,7 +1707,7 @@ class TestCaseInsensitiveMap
         }
 
         long stop = System.nanoTime();
-        System.out.println((stop - start) / 1000000);
+        System.out.println("load CI map with 10,000: " + (stop - start) / 1000000);
 
         start = System.nanoTime();
 
@@ -1719,7 +1718,38 @@ class TestCaseInsensitiveMap
 
         stop = System.nanoTime();
 
-        System.out.println((stop - start) / 1000000);
+        System.out.println("dupe CI map 100,000 times: " + (stop - start) / 1000000);
+    }
+
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @Test
+    void testPerformance2()
+    {
+        Map<String, String> map = new LinkedHashMap<>();
+        Random random = new Random();
+
+        long start = System.nanoTime();
+
+        for (int i=0; i < 10000; i++)
+        {
+            String key = StringUtilities.getRandomString(random, 1, 10);
+            String value = StringUtilities.getRandomString(random, 1, 10);
+            map.put(key, value);
+        }
+
+        long stop = System.nanoTime();
+        System.out.println("load linked map with 10,000: " + (stop - start) / 1000000);
+
+        start = System.nanoTime();
+
+        for (int i=0; i < 100000; i++)
+        {
+            Map<String, String> copy = new LinkedHashMap<>(map);
+        }
+
+        stop = System.nanoTime();
+
+        System.out.println("dupe linked map 100,000 times: " + (stop - start) / 1000000);
     }
 
     @Test
@@ -2383,6 +2413,72 @@ void testComputeIfAbsent() {
         // For the non-String key 42, it should remain as is
         assertEquals("FortyTwo", ciMap.get(42));
     }
+
+    /**
+     * Test to verify the symmetry of the equals method.
+     * CaseInsensitiveString.equals(String) returns true,
+     * but String.equals(CaseInsensitiveString) returns false,
+     * violating the equals contract.
+     */
+    @Test
+    public void testEqualsSymmetry() {
+        CaseInsensitiveMap.CaseInsensitiveString cis = new CaseInsensitiveMap.CaseInsensitiveString("Apple");
+        String str = "apple";
+
+        // cis.equals(str) should be true
+        assertTrue(cis.equals(str), "CaseInsensitiveString should be equal to a String with same letters ignoring case");
+
+        // str.equals(cis) should be false, violating symmetry
+        assertFalse(str.equals(cis), "String should not be equal to CaseInsensitiveString, violating symmetry");
+    }
+
+    /**
+     * Test to check if compareTo is consistent with equals.
+     * According to Comparable contract, compareTo should return 0 if and only if equals returns true.
+     */
+    @Test
+    public void testCompareToConsistencyWithEquals() {
+        CaseInsensitiveMap.CaseInsensitiveString cis1 = new CaseInsensitiveMap.CaseInsensitiveString("Banana");
+        CaseInsensitiveMap.CaseInsensitiveString cis2 = new CaseInsensitiveMap.CaseInsensitiveString("banana");
+        String str = "BANANA";
+
+        // cis1.equals(cis2) should be true
+        assertTrue(cis1.equals(cis2), "Both CaseInsensitiveString instances should be equal ignoring case");
+
+        // cis1.compareTo(cis2) should be 0
+        assertEquals(0, cis1.compareTo(cis2), "compareTo should return 0 for equal CaseInsensitiveString instances");
+
+        // cis1.equals(str) should be true
+        assertTrue(cis1.equals(str), "CaseInsensitiveString should be equal to String ignoring case");
+
+        // cis1.compareTo(str) should be 0
+        assertEquals(0, cis1.compareTo(str), "compareTo should return 0 when comparing with equal String ignoring case");
+    }
+
+    /**
+     * Test to demonstrate how CaseInsensitiveString behaves in a HashSet.
+     * Since hashCode and equals are overridden, duplicates based on case-insensitive equality should not be added.
+     */
+    @Test
+    public void testHashSetBehavior() {
+        Set<CaseInsensitiveMap.CaseInsensitiveString> set = new HashSet<>();
+        CaseInsensitiveMap.CaseInsensitiveString cis1 = new CaseInsensitiveMap.CaseInsensitiveString("Cherry");
+        CaseInsensitiveMap.CaseInsensitiveString cis2 = new CaseInsensitiveMap.CaseInsensitiveString("cherry");
+        String str = "CHERRY";
+
+        set.add(cis1);
+        set.add(cis2); // Should not be added as duplicate
+        assert set.size() == 1;
+        set.add(new CaseInsensitiveMap.CaseInsensitiveString("Cherry")); // Should not be added as duplicate
+
+        // The size should be 1
+        assertEquals(1, set.size(), "HashSet should contain only one unique CaseInsensitiveString entry");
+
+        // Even adding a String with same content should not affect the set
+        set.add(new CaseInsensitiveMap.CaseInsensitiveString(str));
+        assertEquals(1, set.size(), "Adding equivalent CaseInsensitiveString should not increase HashSet size");
+    }
+
 
     // ---------------------------------------------------
     

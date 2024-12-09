@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * @author John DeRegnaucourt
  */
-public class TestGraphComparator
+public class GraphComparatorTest
 {
     private static final int SET_TYPE_HASH = 1;
     private static final int SET_TYPE_TREE = 2;

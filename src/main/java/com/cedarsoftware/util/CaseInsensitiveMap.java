@@ -64,26 +64,21 @@ import java.util.function.Function;
  */
 public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
     private final Map<K, V> map;
-    private final static LRUCache<String, CaseInsensitiveString> ciStringCache = new LRUCache<>(1000);
-    
-    /**
-     * Registry of known source map types to their corresponding factory functions.
-     * Uses CopyOnWriteArrayList to maintain thread safety and preserve insertion order.
-     * More specific types should be registered before more general ones.
-     */
+    private static volatile LRUCache<String, CaseInsensitiveString> ciStringCache = new LRUCache<>(1000);
+    private static volatile int maxCacheLengthString = 100;
     private static volatile List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> mapRegistry;
 
     static {
         // Initialize the registry with default map types
-        List<Map.Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> tempList = new ArrayList<>();
+        List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> tempList = new ArrayList<>();
         tempList.add(new AbstractMap.SimpleEntry<>(Hashtable.class, size -> new Hashtable<>()));
         tempList.add(new AbstractMap.SimpleEntry<>(TreeMap.class, size -> new TreeMap<>()));
         tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentSkipListMap.class, size -> new ConcurrentSkipListMap<>()));
+        tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentNavigableMapNullSafe.class, size -> new ConcurrentNavigableMapNullSafe<>()));
+        tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentHashMapNullSafe.class, size -> new ConcurrentHashMapNullSafe<>(size)));
         tempList.add(new AbstractMap.SimpleEntry<>(WeakHashMap.class, size -> new WeakHashMap<>(size)));
         tempList.add(new AbstractMap.SimpleEntry<>(LinkedHashMap.class, size -> new LinkedHashMap<>(size)));
         tempList.add(new AbstractMap.SimpleEntry<>(HashMap.class, size -> new HashMap<>(size)));
-        tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentNavigableMapNullSafe.class, size -> new ConcurrentNavigableMapNullSafe<>()));
-        tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentHashMapNullSafe.class, size -> new ConcurrentHashMapNullSafe<>(size)));
         tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentNavigableMap.class, size -> new ConcurrentSkipListMap<>()));
         tempList.add(new AbstractMap.SimpleEntry<>(ConcurrentMap.class, size -> new ConcurrentHashMap<>(size)));
         tempList.add(new AbstractMap.SimpleEntry<>(NavigableMap.class, size -> new TreeMap<>()));
@@ -101,7 +96,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      *
      * @param registry the registry list to validate
      */
-    private static void validateMappings(List<Map.Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> registry) {
+    private static void validateMappings(List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> registry) {
         for (int i = 0; i < registry.size(); i++) {
             Class<?> current = registry.get(i).getKey();
 
@@ -127,9 +122,9 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      * @throws NullPointerException     if newRegistry is null or contains null elements
      * @throws IllegalArgumentException if newRegistry contains duplicate Class types or is incorrectly ordered
      */
-    public static void replaceRegistry(List<Map.Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> newRegistry) {
+    public static void replaceRegistry(List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> newRegistry) {
         Objects.requireNonNull(newRegistry, "New registry list cannot be null");
-        for (Map.Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : newRegistry) {
+        for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : newRegistry) {
             Objects.requireNonNull(entry, "Registry entries cannot be null");
             Objects.requireNonNull(entry.getKey(), "Registry entry key (Class) cannot be null");
             Objects.requireNonNull(entry.getValue(), "Registry entry value (Function) cannot be null");
@@ -137,7 +132,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
 
         // Check for duplicate Class types
         Set<Class<?>> seen = new HashSet<>();
-        for (Map.Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : newRegistry) {
+        for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : newRegistry) {
             if (!seen.add(entry.getKey())) {
                 throw new IllegalArgumentException("Duplicate map type in registry: " + entry.getKey());
             }
@@ -148,6 +143,36 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
 
         // Replace the registry atomically with an unmodifiable copy
         mapRegistry = Collections.unmodifiableList(new ArrayList<>(newRegistry));
+    }
+
+    /**
+     * Replaces the current cache used for CaseInsensitiveString instances with a new cache.
+     * This operation is thread-safe due to the volatile nature of the cache field.
+     * When replacing the cache:
+     * - Existing CaseInsensitiveString instances in maps remain valid
+     * - The new cache will begin populating with strings as they are accessed
+     * - There may be temporary duplicate CaseInsensitiveString instances during transition
+     *
+     * @param lruCache the new LRUCache instance to use for caching CaseInsensitiveString objects
+     * @throws NullPointerException if the provided cache is null
+     */
+    public static void replaceCache(LRUCache lruCache) {
+        ciStringCache = lruCache;
+    }
+
+    /**
+     * Sets the maximum string length for which CaseInsensitiveString instances will be cached.
+     * Strings longer than this length will not be cached but instead create new instances
+     * each time they are needed. This helps prevent memory exhaustion from very long strings.
+     *
+     * @param length the maximum length of strings to cache. Must be non-negative.
+     * @throws IllegalArgumentException if length is < 10.
+     */
+    public static void setMaxCacheLengthString(int length) {
+        if (length < 10) {
+            throw new IllegalArgumentException("Max cache String length must be at least 10.");
+        }
+        maxCacheLengthString = length;
     }
 
     /**
@@ -167,7 +192,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
         int size = source.size();
 
         // Iterate through the registry and pick the first matching type
-        for (Map.Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : mapRegistry) {
+        for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : mapRegistry) {
             if (entry.getKey().isInstance(source)) {
                 @SuppressWarnings("unchecked")
                 Function<Integer, Map<K, V>> factory = (Function<Integer, Map<K, V>>) entry.getValue();
@@ -785,7 +810,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
          *
          * @param o object to be compared for equality with this map entry
          * @return true if the specified object is equal to this map entry
-         * @see Map.Entry#equals(Object)
+         * @see Entry#equals(Object)
          */
         @Override
         public boolean equals(Object o) {
@@ -802,7 +827,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
          * rather than the case-insensitive representation.
          *
          * @return the hash code value for this map entry
-         * @see Map.Entry#hashCode()
+         * @see Entry#hashCode()
          */
         @Override
         public int hashCode() {
@@ -1121,7 +1146,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
             return function.apply(originalKey, v);
         });
     }
-
+    
     /**
      * Creates a new CaseInsensitiveString instance. If the input string's length is greater than 100,
      * a new instance is always created. Otherwise, the method checks the cache:
@@ -1135,7 +1160,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
     private CaseInsensitiveString newCIString(String string) {
         Objects.requireNonNull(string, "Input string cannot be null");
 
-        if (string.length() > 100) {
+        if (string.length() > maxCacheLengthString) {
             // For long strings, always create a new instance to save cache space
             return new CaseInsensitiveString(string);
         } else {

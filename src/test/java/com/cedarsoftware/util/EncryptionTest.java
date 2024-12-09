@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestEncryption
+public class EncryptionTest
 {
     public static final String QUICK_FOX = "The quick brown fox jumps over the lazy dog";
 
@@ -144,7 +144,7 @@ public class TestEncryption
     @Test
     public void testFastMd5()
     {
-        URL u = TestEncryption.class.getClassLoader().getResource("fast-md5-test.txt");
+        URL u = EncryptionTest.class.getClassLoader().getResource("fast-md5-test.txt");
         assertEquals("188F47B5181320E590A6C3C34AD2EE75", EncryptionUtilities.fastMD5(new File(u.getFile())));
     }
 

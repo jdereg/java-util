@@ -12,7 +12,6 @@ import java.util.Random;
 import java.util.TimeZone;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestSimpleDateFormat
+public class SimpleDateFormatTest
 {
     @ParameterizedTest
     @MethodSource("testDates")

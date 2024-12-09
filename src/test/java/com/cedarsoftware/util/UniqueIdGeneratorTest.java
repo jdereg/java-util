@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestUniqueIdGenerator
+public class UniqueIdGeneratorTest
 {
     private static final int bucketSize = 200000;
 

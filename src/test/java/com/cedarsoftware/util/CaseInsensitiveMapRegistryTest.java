@@ -25,12 +25,27 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * JUnit test cases for the CaseInsensitiveMap registry replacement functionality.
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 class CaseInsensitiveMapRegistryTest {
     // Define the default registry as per the CaseInsensitiveMap's static initialization
@@ -180,7 +195,7 @@ class CaseInsensitiveMapRegistryTest {
 
         // Create a CaseInsensitiveMap with LinkedHashMap source
         CaseInsensitiveMap<String, String> ciMapLinked = new CaseInsensitiveMap<>(linkedSource);
-        assertTrue(ciMapLinked.getWrappedMap() instanceof LinkedHashMap, "Backing map should be LinkedHashMap");
+        assertInstanceOf(LinkedHashMap.class, ciMapLinked.getWrappedMap(), "Backing map should be LinkedHashMap");
         assertEquals("5", ciMapLinked.get("five"));
         assertEquals("6", ciMapLinked.get("SIX"));
 
@@ -191,7 +206,7 @@ class CaseInsensitiveMapRegistryTest {
 
         // Create a CaseInsensitiveMap with HashMap source
         CaseInsensitiveMap<String, String> ciMapHash = new CaseInsensitiveMap<>(hashSource);
-        assertTrue(ciMapHash.getWrappedMap() instanceof HashMap, "Backing map should be HashMap");
+        assertInstanceOf(HashMap.class, ciMapHash.getWrappedMap(), "Backing map should be HashMap");
         assertEquals("7", ciMapHash.get("seven"));
         assertEquals("8", ciMapHash.get("EIGHT"));
     }

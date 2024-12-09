@@ -1558,8 +1558,6 @@ class ConverterEverythingTest {
      * OffsetDateTime
      */
     private static void loadOffsetDateTimeTests() {
-        ZoneOffset tokyoOffset = ZonedDateTime.now(TOKYO_Z).getOffset();
-
         TEST_DB.put(pair(Void.class, OffsetDateTime.class), new Object[][]{
                 {null, null}
         });
@@ -3830,7 +3828,7 @@ class ConverterEverythingTest {
             System.out.println();
         }
         if (source == null) {
-            assertEquals(sourceClass, Void.class, "On the source-side of test input, null can only appear in the Void.class data");
+            assertEquals(Void.class, sourceClass, "On the source-side of test input, null can only appear in the Void.class data");
         } else {
             assert ClassUtilities.toPrimitiveWrapperClass(sourceClass).isInstance(source) : "source type mismatch ==> Expected: " + shortNameSource + ", Actual: " + Converter.getShortName(source.getClass());
         }
@@ -3843,7 +3841,7 @@ class ConverterEverythingTest {
 
         if (target instanceof Throwable) {
             Throwable t = (Throwable) target;
-            Object actual = null;
+            Object actual;
             try {
                 // A test that returns a Throwable, as opposed to throwing it.
                 actual = converter.convert(source, targetClass);

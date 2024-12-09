@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestProxyFactory
+public class ProxyFactoryTest
 {
     @Test
     public void testClassCompliance() throws Exception {

@@ -1,20 +1,16 @@
 package com.cedarsoftware.util;
 
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.util.Date;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * @author Ken Partlow
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -30,42 +26,24 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestExceptionUtilities
+public class SystemUtilitiesTest
 {
     @Test
     public void testConstructorIsPrivate() throws Exception {
-        Constructor con = ExceptionUtilities.class.getDeclaredConstructor();
+        Constructor con = SystemUtilities.class.getDeclaredConstructor();
         assertEquals(Modifier.PRIVATE, con.getModifiers() & Modifier.PRIVATE);
         con.setAccessible(true);
 
         assertNotNull(con.newInstance());
     }
 
-    
     @Test
-    void testOutOfMemoryErrorThrown() {
-        assertThatExceptionOfType(OutOfMemoryError.class)
-                .isThrownBy(() -> ExceptionUtilities.safelyIgnoreException(new OutOfMemoryError()));
-    }
-
-    @Test
-    void testIgnoredExceptions() {
-        assertThatNoException()
-                .isThrownBy(() -> ExceptionUtilities.safelyIgnoreException(new IllegalArgumentException()));
-    }
-
-    @Test
-    void testGetDeepestException()
+    public void testGetExternalVariable()
     {
-        try
-        {
-            throw new Exception(new IllegalArgumentException("Unable to parse: foo"));
-        }
-        catch (Exception e)
-        {
-            Throwable t = ExceptionUtilities.getDeepestException(e);
-            assert t != e;
-            assert t.getMessage().contains("Unable to parse: foo");
-        }
+        String win = SystemUtilities.getExternalVariable("Path");
+        String nix = SystemUtilities.getExternalVariable("PATH");
+        assertTrue(nix != null || win != null);
+        long x = UniqueIdGenerator.getUniqueId();
+        assertTrue(x > 0);
     }
 }

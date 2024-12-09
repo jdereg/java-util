@@ -54,7 +54,7 @@ import static org.mockito.Mockito.when;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestIOUtilities
+public class IOUtilitiesTest
 {
     private final String _expected = "This is for an IO test!";
     
@@ -75,7 +75,7 @@ public class TestIOUtilities
         ByteArrayOutputStream s = new ByteArrayOutputStream(4096);
         URLConnection c = mock(URLConnection.class);
         when(c.getOutputStream()).thenReturn(s);
-        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
+        URL u = IOUtilitiesTest.class.getClassLoader().getResource("io-test.txt");
         IOUtilities.transfer(new File(u.getFile()), c, null);
         assertEquals(_expected, new String(s.toByteArray(), "UTF-8"));
     }
@@ -85,7 +85,7 @@ public class TestIOUtilities
         File f = File.createTempFile("test", "test");
 
         // perform test
-        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.inflate");
+        URL inUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.inflate");
         FileInputStream in = new FileInputStream(new File(inUrl.getFile()));
         URLConnection c = mock(URLConnection.class);
         when(c.getInputStream()).thenReturn(in);
@@ -121,7 +121,7 @@ public class TestIOUtilities
         File f = File.createTempFile("test", "test");
 
         // perform test
-        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
+        URL inUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.gzip");
         FileInputStream in = new FileInputStream(new File(inUrl.getFile()));
         URLConnection c = mock(URLConnection.class);
         when(c.getInputStream()).thenReturn(in);
@@ -209,7 +209,7 @@ public class TestIOUtilities
 
     private ByteArrayOutputStream getUncompressedByteArray() throws IOException
     {
-        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        URL inUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.txt");
         ByteArrayOutputStream start = new ByteArrayOutputStream(8192);
         FileInputStream in = new FileInputStream(inUrl.getFile());
         IOUtilities.transfer(in, start);
@@ -219,7 +219,7 @@ public class TestIOUtilities
 
     private FastByteArrayOutputStream getFastUncompressedByteArray() throws IOException
     {
-        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        URL inUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.txt");
         FastByteArrayOutputStream start = new FastByteArrayOutputStream(8192);
         FileInputStream in = new FileInputStream(inUrl.getFile());
         IOUtilities.transfer(in, start);
@@ -244,7 +244,7 @@ public class TestIOUtilities
     private ByteArrayOutputStream getCompressedByteArray() throws IOException
     {
         // load expected result
-        URL expectedUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
+        URL expectedUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.gzip");
         ByteArrayOutputStream expectedResult = new ByteArrayOutputStream(8192);
         FileInputStream expected = new FileInputStream(expectedUrl.getFile());
         IOUtilities.transfer(expected, expectedResult);
@@ -256,7 +256,7 @@ public class TestIOUtilities
     public void testTransferInputStreamToFile() throws Exception
     {
         File f = File.createTempFile("test", "test");
-        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
+        URL u = IOUtilitiesTest.class.getClassLoader().getResource("io-test.txt");
         IOUtilities.transfer(u.openConnection(), f, null);
 
 
@@ -270,7 +270,7 @@ public class TestIOUtilities
 
     @Test
     public void transferInputStreamToBytes() throws Exception {
-        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
+        URL u = IOUtilitiesTest.class.getClassLoader().getResource("io-test.txt");
         FileInputStream in = new FileInputStream(new File(u.getFile()));
         byte[] bytes = new byte[23];
         IOUtilities.transfer(in, bytes);
@@ -278,7 +278,7 @@ public class TestIOUtilities
     }
 
     public void transferInputStreamToBytesWithNotEnoughBytes() throws Exception {
-        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
+        URL u = IOUtilitiesTest.class.getClassLoader().getResource("io-test.txt");
         FileInputStream in = new FileInputStream(new File(u.getFile()));
         byte[] bytes = new byte[24];
         try
@@ -293,7 +293,7 @@ public class TestIOUtilities
 
     @Test
     public void transferInputStreamWithFileAndOutputStream() throws Exception {
-        URL u = TestIOUtilities.class.getClassLoader().getResource("io-test.txt");
+        URL u = IOUtilitiesTest.class.getClassLoader().getResource("io-test.txt");
         ByteArrayOutputStream out = new ByteArrayOutputStream(8192);
         IOUtilities.transfer(new File(u.getFile()), out);
         assertEquals(_expected, new String(out.toByteArray()));
@@ -340,8 +340,8 @@ public class TestIOUtilities
     @Test
     public void testGzipInputStream() throws Exception
     {
-        URL outUrl = TestIOUtilities.class.getClassLoader().getResource("test.gzip");
-        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        URL outUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.gzip");
+        URL inUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.txt");
 
         OutputStream out = new GZIPOutputStream(new FileOutputStream(outUrl.getFile()));
         InputStream in = new FileInputStream(inUrl.getFile());
@@ -354,8 +354,8 @@ public class TestIOUtilities
     @Test
     public void testInflateInputStream() throws Exception
     {
-        URL outUrl = TestIOUtilities.class.getClassLoader().getResource("test.inflate");
-        URL inUrl = TestIOUtilities.class.getClassLoader().getResource("test.txt");
+        URL outUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.inflate");
+        URL inUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.txt");
 
         OutputStream out = new DeflaterOutputStream(new FileOutputStream(outUrl.getFile()));
         InputStream in = new FileInputStream(new File(inUrl.getFile()));

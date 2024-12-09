@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestMapUtilities
+public class MapUtilitiesTest
 {
     @Test
     public void testMapUtilitiesConstructor() throws Exception

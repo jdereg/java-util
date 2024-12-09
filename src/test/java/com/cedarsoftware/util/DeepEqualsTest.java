@@ -59,7 +59,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *         implied. See the License for the specific language governing
  *         permissions and limitations under the License.
  */
-public class TestDeepEquals
+public class DeepEqualsTest
 {
     @Test
     public void testSameObjectEquals()

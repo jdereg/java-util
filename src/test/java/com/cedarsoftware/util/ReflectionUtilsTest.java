@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestReflectionUtils
+public class ReflectionUtilsTest
 {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
@@ -234,8 +234,8 @@ public class TestReflectionUtils
 
         Map<String, Field> test2 = ReflectionUtils.getDeepDeclaredFieldMap(Child.class);
         assertEquals(2, test2.size());
-        assertTrue(test2.containsKey("com.cedarsoftware.util.TestReflectionUtils$Parent.foo"));
-        assertFalse(test2.containsKey("com.cedarsoftware.util.TestReflectionUtils$Child.foo"));
+        assertTrue(test2.containsKey("com.cedarsoftware.util.ReflectionUtilsTest$Parent.foo"));
+        assertFalse(test2.containsKey("com.cedarsoftware.util.ReflectionUtilsTest$Child.foo"));
     }
 
     @Test
@@ -256,19 +256,19 @@ public class TestReflectionUtils
     @Test
     public void testCachingGetMethod()
     {
-        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "methodWithNoArgs");
         assert m1 != null;
         assert m1 instanceof Method;
         assert m1.getName() == "methodWithNoArgs";
 
-        Method m2 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        Method m2 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "methodWithNoArgs");
         assert m1 == m2;
     }
 
     @Test
     public void testGetMethod1Arg()
     {
-        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithOneArg", Integer.TYPE);
+        Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "methodWithOneArg", Integer.TYPE);
         assert m1 != null;
         assert m1 instanceof Method;
         assert m1.getName() == "methodWithOneArg";
@@ -277,7 +277,7 @@ public class TestReflectionUtils
     @Test
     public void testGetMethod2Args()
     {
-        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithTwoArgs", Integer.TYPE, String.class);
+        Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "methodWithTwoArgs", Integer.TYPE, String.class);
         assert m1 != null;
         assert m1 instanceof Method;
         assert m1.getName() == "methodWithTwoArgs";
@@ -286,8 +286,8 @@ public class TestReflectionUtils
     @Test
     public void testCallWithNoArgs()
     {
-        TestReflectionUtils gross = new TestReflectionUtils();
-        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        ReflectionUtilsTest gross = new ReflectionUtilsTest();
+        Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "methodWithNoArgs");
         assert "0".equals(ReflectionUtils.call(gross, m1));
 
         // Ensuring that methods from both reflection approaches are different
@@ -302,8 +302,8 @@ public class TestReflectionUtils
     @Test
     public void testCallWith1Arg()
     {
-        TestReflectionUtils gross = new TestReflectionUtils();
-        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithOneArg", int.class);
+        ReflectionUtilsTest gross = new ReflectionUtilsTest();
+        Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "methodWithOneArg", int.class);
         assert "1".equals(ReflectionUtils.call(gross, m1, 5));
 
         Method m2 = ReflectionUtils.getMethod(gross, "methodWithOneArg", 1);
@@ -316,8 +316,8 @@ public class TestReflectionUtils
     @Test
     public void testCallWithTwoArgs()
     {
-        TestReflectionUtils gross = new TestReflectionUtils();
-        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithTwoArgs", Integer.TYPE, String.class);
+        ReflectionUtilsTest gross = new ReflectionUtilsTest();
+        Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "methodWithTwoArgs", Integer.TYPE, String.class);
         assert "2".equals(ReflectionUtils.call(gross, m1, 9, "foo"));
 
         Method m2 = ReflectionUtils.getMethod(gross, "methodWithTwoArgs", 2);
@@ -346,7 +346,7 @@ public class TestReflectionUtils
     {
         try
         {
-            Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "methodWithNoArgs");
+            Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "methodWithNoArgs");
             ReflectionUtils.call(null, m1, 1);
             fail("should not make it here");
         }
@@ -401,8 +401,8 @@ public class TestReflectionUtils
     @Test
     public void testInvocationException()
     {
-        TestReflectionUtils gross = new TestReflectionUtils();
-        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "pitaMethod");
+        ReflectionUtilsTest gross = new ReflectionUtilsTest();
+        Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "pitaMethod");
         try
         {
             ReflectionUtils.call(gross, m1);
@@ -418,7 +418,7 @@ public class TestReflectionUtils
     @Test
     public void testInvocationException2()
     {
-        TestReflectionUtils gross = new TestReflectionUtils();
+        ReflectionUtilsTest gross = new ReflectionUtilsTest();
         try
         {
             ReflectionUtils.call(gross, "pitaMethod");
@@ -434,12 +434,12 @@ public class TestReflectionUtils
     @Test
     public void testCantAccessNonPublic()
     {
-        Method m1 = ReflectionUtils.getMethod(TestReflectionUtils.class, "notAllowed");
+        Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "notAllowed");
         assert m1 == null;
 
         try
         {
-            ReflectionUtils.getMethod(new TestReflectionUtils(), "notAllowed", 0);
+            ReflectionUtils.getMethod(new ReflectionUtilsTest(), "notAllowed", 0);
             fail("should not make it here");
         }
         catch (IllegalArgumentException e)
@@ -451,8 +451,8 @@ public class TestReflectionUtils
     @Test
     public void testGetMethodWithNoArgs()
     {
-        Method m1 = ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWithNoArgs");
-        Method m2 = ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWithNoArgs");
+        Method m1 = ReflectionUtils.getNonOverloadedMethod(ReflectionUtilsTest.class, "methodWithNoArgs");
+        Method m2 = ReflectionUtils.getNonOverloadedMethod(ReflectionUtilsTest.class, "methodWithNoArgs");
         assert m1 == m2;
     }
 
@@ -468,7 +468,7 @@ public class TestReflectionUtils
 
         try
         {
-            ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, null);
+            ReflectionUtils.getNonOverloadedMethod(ReflectionUtilsTest.class, null);
             fail();
         }
         catch (Exception e) { }
@@ -479,7 +479,7 @@ public class TestReflectionUtils
     {
         try
         {
-            ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWith0Args");
+            ReflectionUtils.getNonOverloadedMethod(ReflectionUtilsTest.class, "methodWith0Args");
             fail("shant be here");
         }
         catch (Exception e)
@@ -493,7 +493,7 @@ public class TestReflectionUtils
     {
         try
         {
-            ReflectionUtils.getNonOverloadedMethod(TestReflectionUtils.class, "methodWithNoArgz");
+            ReflectionUtils.getNonOverloadedMethod(ReflectionUtilsTest.class, "methodWithNoArgz");
             fail("shant be here");
         }
         catch (Exception e)
@@ -505,7 +505,7 @@ public class TestReflectionUtils
     @Test
     public void testGetClassNameFromByteCode()
     {
-        Class<?> c = TestReflectionUtils.class;
+        Class<?> c = ReflectionUtilsTest.class;
         String className = c.getName();
         String classAsPath = className.replace('.', '/') + ".class";
         InputStream stream = c.getClassLoader().getResourceAsStream(classAsPath);
@@ -514,7 +514,7 @@ public class TestReflectionUtils
         try
         {
             className = ReflectionUtils.getClassNameFromByteCode(byteCode);
-            assert "com.cedarsoftware.util.TestReflectionUtils".equals(className);
+            assert "com.cedarsoftware.util.ReflectionUtilsTest".equals(className);
         }
         catch (Exception e)
         {
@@ -657,7 +657,7 @@ public class TestReflectionUtils
 //            URL[] urls = ((URLClassLoader)getSystemClassLoader()).getURLs();
             try
             {
-                URL url = TestReflectionUtils.class.getClassLoader().getResource("test.txt");
+                URL url = ReflectionUtilsTest.class.getClassLoader().getResource("test.txt");
                 String path = url.getPath();
                 path = path.substring(0,path.length() - 8);
 

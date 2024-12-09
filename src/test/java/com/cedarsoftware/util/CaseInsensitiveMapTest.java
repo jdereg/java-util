@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -55,8 +57,14 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-class TestCaseInsensitiveMap
+class CaseInsensitiveMapTest
 {
+    @AfterEach
+    public void cleanup() {
+        // Reset to default for other tests
+        CaseInsensitiveMap.setMaxCacheLengthString(100);
+    }
+
     @Test
     void testMapStraightUp()
     {
@@ -2479,6 +2487,136 @@ void testComputeIfAbsent() {
         assertEquals(1, set.size(), "Adding equivalent CaseInsensitiveString should not increase HashSet size");
     }
 
+    @Test
+    public void testCacheReplacement() {
+        // Create initial strings and verify they're cached
+        CaseInsensitiveMap<String, String> map1 = new CaseInsensitiveMap<>();
+        map1.put("test1", "value1");
+        map1.put("test2", "value2");
+
+        // Create a new cache with different capacity
+        LRUCache<String, CaseInsensitiveMap.CaseInsensitiveString> newCache = new LRUCache<>(500);
+
+        // Replace the cache
+        CaseInsensitiveMap.replaceCache(newCache);
+
+        // Create new map after cache replacement
+        CaseInsensitiveMap<String, String> map2 = new CaseInsensitiveMap<>();
+        map2.put("test3", "value3");
+        map2.put("test4", "value4");
+
+        // Verify all maps still work correctly
+        assertTrue(map1.containsKey("TEST1")); // Case-insensitive check
+        assertTrue(map1.containsKey("TEST2"));
+        assertTrue(map2.containsKey("TEST3"));
+        assertTrue(map2.containsKey("TEST4"));
+
+        // Verify values are preserved
+        assertEquals("value1", map1.get("TEST1"));
+        assertEquals("value2", map1.get("TEST2"));
+        assertEquals("value3", map2.get("TEST3"));
+        assertEquals("value4", map2.get("TEST4"));
+    }
+
+    @Test
+    public void testStringCachingBasedOnLength() {
+        // Test string shorter than max length (should be cached)
+        CaseInsensitiveMap.setMaxCacheLengthString(10);
+        String shortString = "short";
+        Map<String, String> map = new CaseInsensitiveMap<>();
+        map.put(shortString, "value1");
+        map.put(shortString.toUpperCase(), "value2");
+
+        // Since the string is cached, both keys should reference the same CaseInsensitiveString instance
+        assertTrue(map.containsKey(shortString) && map.containsKey(shortString.toUpperCase()),
+                "Same short string should use cached instance");
+
+        // Test string longer than max length (should not be cached)
+        String longString = "this_is_a_very_long_string_that_exceeds_max_length";
+        map.put(longString, "value3");
+        map.put(longString.toUpperCase(), "value4");
+
+        // Even though not cached, the map should still work correctly
+        assertTrue(map.containsKey(longString) && map.containsKey(longString.toUpperCase()),
+                "Long string should work despite not being cached");
+        CaseInsensitiveMap.setMaxCacheLengthString(100);
+    }
+
+    @Test
+    public void testMaxCacheLengthStringBehavior() {
+        try {
+            CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+
+            // Add a key < 100 chars
+            String originalKey = "TestString12";
+            map.put(originalKey, "value1");
+
+            // Get the CaseInsensitiveString wrapper
+            Map<String, String> wrapped = map.getWrappedMap();
+            Object originalWrapper = wrapped.keySet().iterator().next();
+
+            // Remove using different case
+            map.remove("TESTSTRING12");
+
+            // Put back with different value
+            map.put(originalKey, "value2");
+
+            // Get new wrapper
+            wrapped = map.getWrappedMap();
+            Object newWrapper = wrapped.keySet().iterator().next();
+
+            // Assert same wrapper was reused from cache
+            assertSame(originalWrapper, newWrapper, "Cached CaseInsensitiveString instance should be reused");
+
+            // Now set max length to 10 (our test string is longer than 10)
+            CaseInsensitiveMap.setMaxCacheLengthString(10);
+
+            // Clear map and repeat process
+            map.clear();
+            map.put(originalKey, "value3");
+
+            Object firstWrapper = map.getWrappedMap().keySet().iterator().next();
+
+            map.remove("TESTstring12");
+            map.put(originalKey, "value4");
+
+            Object secondWrapper = map.getWrappedMap().keySet().iterator().next();
+
+            // Should be different instances now as string is > 10 chars
+            assertNotSame(firstWrapper, secondWrapper, "Strings exceeding max length should use different instances");
+        } finally {
+            // Reset to default
+            CaseInsensitiveMap.setMaxCacheLengthString(100);
+        }
+    }
+
+    @Test
+    public void testCaseInsensitiveEntryToString() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("TestKey", "TestValue");
+
+        Set<Map.Entry<String, String>> entrySet = map.entrySet();
+        Map.Entry<String, String> entry = entrySet.iterator().next();
+
+        assertEquals("TestKey=TestValue", entry.toString(), "Entry toString() should match 'key=value' format");
+    }
+
+    @Test
+    public void testCaseInsensitiveEntryEqualsWithNonEntry() {
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        map.put("TestKey", "TestValue");
+
+        Map.Entry<String, String> entry = map.entrySet().iterator().next();
+
+        // Test equals with a non-Entry object
+        String notAnEntry = "not an entry";
+        assertFalse(entry.equals(notAnEntry), "Entry should not be equal to non-Entry object");
+    }
+    
+    @Test
+    public void testInvalidMaxLength() {
+        assertThrows(IllegalArgumentException.class, () -> CaseInsensitiveMap.setMaxCacheLengthString(9));
+    }
 
     // ---------------------------------------------------
     

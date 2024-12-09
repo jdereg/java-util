@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TestExecutor
+public class ExecutorTest
 {
     private static final String THIS_IS_HANDY = "This is handy";
     private static final String ECHO_THIS_IS_HANDY = "echo " + THIS_IS_HANDY;

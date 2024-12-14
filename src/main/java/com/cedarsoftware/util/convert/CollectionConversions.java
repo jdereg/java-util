@@ -1,49 +1,26 @@
 package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Array;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.util.NavigableSet;
 import java.util.Set;
-import java.util.Stack;
-import java.util.TreeSet;
-import java.util.Vector;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.DelayQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.LinkedTransferQueue;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.SynchronousQueue;
-import java.util.function.Function;
-
-import com.cedarsoftware.util.CaseInsensitiveSet;
-import com.cedarsoftware.util.CompactCIHashSet;
-import com.cedarsoftware.util.CompactCILinkedSet;
-import com.cedarsoftware.util.CompactLinkedSet;
-import com.cedarsoftware.util.CompactSet;
-import com.cedarsoftware.util.ConcurrentList;
-import com.cedarsoftware.util.ConcurrentNavigableSetNullSafe;
-import com.cedarsoftware.util.ConcurrentSet;
+import java.util.SortedSet;
 
 /**
+ * Converts between arrays and collections while preserving collection characteristics.
+ * Handles conversion from arrays to various collection types including:
+ * <ul>
+ *     <li>JDK collections (ArrayList, HashSet, etc.)</li>
+ *     <li>Concurrent collections (ConcurrentSet, etc.)</li>
+ *     <li>Special collections (Unmodifiable, Synchronized, etc.)</li>
+ *     <li>Cedar Software collections (CaseInsensitiveSet, CompactSet, etc.)</li>
+ * </ul>
+ * The most specific matching collection type is used when converting, and collection
+ * characteristics are preserved. For example, converting to a Set from a source that
+ * maintains order will result in an ordered Set implementation.
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -61,109 +38,84 @@ import com.cedarsoftware.util.ConcurrentSet;
  *         limitations under the License.
  */
 final class CollectionConversions {
-    private CollectionConversions() { }
+    private static final Class<?> unmodifiableCollectionClass = WrappedCollections.getUnmodifiableCollection();
 
-    // Static helper class for creating collections
-    static final class CollectionFactory {
-        static final Map<Class<?>, Function<Integer, Collection<?>>> COLLECTION_FACTORIES = new LinkedHashMap<>();
-        private static final Map<Class<?>, Function<Integer, Collection<?>>> FACTORY_CACHE = new ConcurrentHashMap<>();
-
-        static {
-            // Set implementations (most specific to most general)
-            COLLECTION_FACTORIES.put(CaseInsensitiveSet.class, size -> new CaseInsensitiveSet<>());
-            COLLECTION_FACTORIES.put(CompactLinkedSet.class, size -> new CompactLinkedSet<>());
-            COLLECTION_FACTORIES.put(CompactCIHashSet.class, size -> new CompactCIHashSet<>());
-            COLLECTION_FACTORIES.put(CompactCILinkedSet.class, size -> new CompactCILinkedSet<>());
-            COLLECTION_FACTORIES.put(CompactSet.class, size -> new CompactSet<>());
-            COLLECTION_FACTORIES.put(ConcurrentSkipListSet.class, size -> new ConcurrentSkipListSet<>());
-            COLLECTION_FACTORIES.put(ConcurrentSet.class, size -> new ConcurrentSet<>());
-            COLLECTION_FACTORIES.put(ConcurrentNavigableSetNullSafe.class, size -> new ConcurrentNavigableSetNullSafe<>());
-            COLLECTION_FACTORIES.put(CopyOnWriteArraySet.class, size -> new CopyOnWriteArraySet<>());
-            COLLECTION_FACTORIES.put(TreeSet.class, size -> new TreeSet<>());
-            COLLECTION_FACTORIES.put(LinkedHashSet.class, size -> new LinkedHashSet<>(size)); // Do not replace with Method::reference
-            COLLECTION_FACTORIES.put(HashSet.class, size -> new HashSet<>(size));
-            COLLECTION_FACTORIES.put(Set.class, size -> new LinkedHashSet<>(Math.max(size, 16)));
-
-            // Deque implementations
-            COLLECTION_FACTORIES.put(LinkedBlockingDeque.class, size -> new LinkedBlockingDeque<>(size));
-            COLLECTION_FACTORIES.put(BlockingDeque.class, size -> new LinkedBlockingDeque<>(size));
-            COLLECTION_FACTORIES.put(ConcurrentLinkedDeque.class, size -> new ConcurrentLinkedDeque<>());
-            COLLECTION_FACTORIES.put(ArrayDeque.class, size -> new ArrayDeque<>());
-            COLLECTION_FACTORIES.put(LinkedList.class, size -> new LinkedList<>());
-            COLLECTION_FACTORIES.put(Deque.class, size -> new ArrayDeque<>(size));
-
-            // Queue implementations
-            COLLECTION_FACTORIES.put(PriorityBlockingQueue.class, size -> new PriorityBlockingQueue<>(size));
-            COLLECTION_FACTORIES.put(ArrayBlockingQueue.class, size -> new ArrayBlockingQueue<>(size));
-            COLLECTION_FACTORIES.put(LinkedBlockingQueue.class, size -> new LinkedBlockingQueue<>());
-            COLLECTION_FACTORIES.put(SynchronousQueue.class, size -> new SynchronousQueue<>());
-            COLLECTION_FACTORIES.put(DelayQueue.class, size -> new DelayQueue<>());
-            COLLECTION_FACTORIES.put(LinkedTransferQueue.class, size -> new LinkedTransferQueue<>());
-            COLLECTION_FACTORIES.put(BlockingQueue.class, size -> new LinkedBlockingQueue<>(size));
-            COLLECTION_FACTORIES.put(PriorityQueue.class, size -> new PriorityQueue<>(size));
-            COLLECTION_FACTORIES.put(ConcurrentLinkedQueue.class, size -> new ConcurrentLinkedQueue<>());
-            COLLECTION_FACTORIES.put(Queue.class, size -> new LinkedList<>());
-
-            // List implementations
-            COLLECTION_FACTORIES.put(CopyOnWriteArrayList.class, size -> new CopyOnWriteArrayList<>());
-            COLLECTION_FACTORIES.put(ConcurrentList.class, size -> new ConcurrentList<>(size));
-            COLLECTION_FACTORIES.put(Stack.class, size -> new Stack<>());
-            COLLECTION_FACTORIES.put(Vector.class, size -> new Vector<>(size));
-            COLLECTION_FACTORIES.put(List.class, size -> new ArrayList<>(size));
-            COLLECTION_FACTORIES.put(Collection.class, size -> new ArrayList<>(size));
-
-            validateMappings();
-        }
-
-        static Collection<?> createCollection(Class<?> targetType, int size) {
-            Function<Integer, Collection<?>> factory = FACTORY_CACHE.get(targetType);
-            if (factory == null) {
-                // Look up the factory and cache it
-                factory = FACTORY_CACHE.computeIfAbsent(targetType, type -> {
-                    for (Map.Entry<Class<?>, Function<Integer, Collection<?>>> entry : COLLECTION_FACTORIES.entrySet()) {
-                        if (entry.getKey().isAssignableFrom(type)) {
-                            return entry.getValue();
-                        }
-                    }
-                    return ArrayList::new; // Default factory
-                });
-            }
-            return factory.apply(size);
-        }
-
-
-        /**
-         * Validates that collection type mappings are ordered correctly (most specific to most general).
-         * Throws IllegalStateException if mappings are incorrectly ordered.
-         */
-        static void validateMappings() {
-            List<Class<?>> interfaces = new ArrayList<>(COLLECTION_FACTORIES.keySet());
-
-            for (int i = 0; i < interfaces.size(); i++) {
-                Class<?> current = interfaces.get(i);
-                for (int j = i + 1; j < interfaces.size(); j++) {
-                    Class<?> next = interfaces.get(j);
-                    if (current != next && current.isAssignableFrom(next)) {
-                        throw new IllegalStateException("Mapping order error: " + next.getName() + " should come before " + current.getName());
-                    }
-                }
-            }
-        }
+    private CollectionConversions() {
+        // Private constructor to prevent instantiation
     }
 
     /**
-     * Converts an array to a collection.
+     * Converts an array to a collection, supporting special collection types
+     * and nested arrays.
+     *
+     * @param array      The source array to convert
+     * @param targetType The target collection type
+     * @return A collection of the specified target type
      */
+    @SuppressWarnings("unchecked")
     static Object arrayToCollection(Object array, Class<?> targetType) {
         int length = Array.getLength(array);
-        Collection<Object> collection = (Collection<Object>) CollectionFactory.createCollection(targetType, length);
+
+        // Create the appropriate collection using CollectionHandling
+        Collection<Object> collection = (Collection<Object>) CollectionHandling.createCollection(array, targetType);
+
+        // Populate the collection with array elements
         for (int i = 0; i < length; i++) {
             Object element = Array.get(array, i);
+
             if (element != null && element.getClass().isArray()) {
+                // Recursively handle nested arrays
                 element = arrayToCollection(element, targetType);
             }
+
             collection.add(element);
         }
+
         return collection;
+    }
+
+    /**
+     * Converts a collection to another collection type, preserving characteristics.
+     *
+     * @param source     The source collection to convert
+     * @param targetType The target collection type
+     * @return A collection of the specified target type
+     */
+    @SuppressWarnings("unchecked")
+    static Object collectionToCollection(Collection<?> source, Class<?> targetType) {
+        // Determine if the target type requires unmodifiable behavior
+        boolean requiresUnmodifiable = isUnmodifiable(targetType);
+
+        // Create a modifiable or pre-wrapped collection
+        Collection<Object> targetCollection = (Collection<Object>) CollectionHandling.createCollection(source, targetType);
+
+        targetCollection.addAll(source);
+
+        // If wrapping is required, return the wrapped version
+        if (requiresUnmodifiable) {
+            if (targetCollection instanceof NavigableSet) {
+                return Collections.unmodifiableNavigableSet((NavigableSet<?>)targetCollection);
+            } else if (targetCollection instanceof SortedSet) {
+                return Collections.unmodifiableSortedSet((SortedSet<?>) targetCollection);
+            } else if (targetCollection instanceof Set) {
+                return Collections.unmodifiableSet((Set<?>) targetCollection);
+            } else if (targetCollection instanceof List) {
+                return Collections.unmodifiableList((List<?>) targetCollection);
+            } else {
+                return Collections.unmodifiableCollection(targetCollection);
+            }
+        }
+
+        return targetCollection;
+    }
+
+    /**
+     * Checks if the target type indicates an unmodifiable collection.
+     *
+     * @param targetType The target type to check.
+     * @return True if the target type indicates unmodifiable, false otherwise.
+     */
+    private static boolean isUnmodifiable(Class<?> targetType) {
+        return unmodifiableCollectionClass.isAssignableFrom(targetType);
     }
 }

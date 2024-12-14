@@ -11,7 +11,44 @@ import java.util.Map;
 import java.util.TimeZone;
 
 /**
- * @author Kenny Partlow (kpartlow@gmail.com)
+ * Configuration options for the Converter class, providing customization of type conversion behavior.
+ * This interface defines default settings and allows overriding of conversion parameters like timezone,
+ * locale, and character encoding.
+ *
+ * <p>The interface provides default implementations for all methods, allowing implementations to
+ * override only the settings they need to customize.</p>
+ *
+ * <p>Key features include:</p>
+ * <ul>
+ *   <li>Time zone and locale settings for date/time conversions</li>
+ *   <li>Character encoding configuration</li>
+ *   <li>Custom ClassLoader specification</li>
+ *   <li>Boolean-to-Character conversion mapping</li>
+ *   <li>Custom conversion override capabilities</li>
+ * </ul>
+ *
+ * <p>Example usage:</p>
+ * <pre>{@code
+ * ConverterOptions options = new ConverterOptions() {
+ *     @Override
+ *     public ZoneId getZoneId() {
+ *         return ZoneId.of("UTC");
+ *     }
+ *
+ *     @Override
+ *     public Locale getLocale() {
+ *         return Locale.US;
+ *     }
+ * };
+ * }</pre>
+ *
+ * @see java.time.ZoneId
+ * @see java.util.Locale
+ * @see java.nio.charset.Charset
+ * @see java.util.TimeZone
+ *
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         Kenny Partlow (kpartlow@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -30,7 +67,7 @@ import java.util.TimeZone;
 public interface ConverterOptions {
     /**
      * @return {@link ZoneId} to use for source conversion when one is not provided and is required on the target
-     * type. ie. {@link LocalDateTime}, {@link LocalDate}, or {@link String} when no zone is provided.
+     * type. i.e. {@link LocalDateTime}, {@link LocalDate}, or {@link String} when no zone is provided.
      */
     default ZoneId getZoneId() { return ZoneId.systemDefault(); }
 
@@ -40,34 +77,34 @@ public interface ConverterOptions {
     default Locale getLocale() { return Locale.getDefault(); }
 
     /**
-     * @return Charset to use os target Charset on types that require a Charset during conversion (if required).
+     * @return Charset to use as target Charset on types that require a Charset during conversion (if required).
      */
     default Charset getCharset() { return StandardCharsets.UTF_8; }
-    
+
     /**
-     * @return Classloader for loading and initializing classes.
+     * @return ClassLoader for loading and initializing classes.
      */
     default ClassLoader getClassLoader() { return ConverterOptions.class.getClassLoader(); }
 
     /**
-     * @return custom option
+     * @return Custom option
      */
     default <T> T getCustomOption(String name) { return null; }
 
     /**
-     * @return TimeZone expected on the target when finished (only for types that support ZoneId or TimeZone)
+     * @return TimeZone expected on the target when finished (only for types that support ZoneId or TimeZone).
      */
     default TimeZone getTimeZone() { return TimeZone.getTimeZone(this.getZoneId()); }
 
     /**
      * Character to return for boolean to Character conversion when the boolean is true.
-     * @return the Character representing true
+     * @return the Character representing true.
      */
     default Character trueChar() { return CommonValues.CHARACTER_ONE; }
 
     /**
      * Character to return for boolean to Character conversion when the boolean is false.
-     * @return the Character representing false
+     * @return the Character representing false.
      */
     default Character falseChar() { return CommonValues.CHARACTER_ZERO; }
 

@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 
+import static com.cedarsoftware.util.StringUtilities.removeLeadingAndTrailingQuotes;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -42,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class StringUtilitiesString
+public class StringUtilitiesTest
 {
     @Test
     void testConstructorIsPrivate() throws Exception {
@@ -748,4 +749,31 @@ public class StringUtilitiesString
                 .withMessageContaining(exText);
     }
 
+    @Test
+    void testCleanString()
+    {
+        String s = removeLeadingAndTrailingQuotes("\"Foo\"");
+        assert "Foo".equals(s);
+        s = removeLeadingAndTrailingQuotes("Foo");
+        assert "Foo".equals(s);
+        s = removeLeadingAndTrailingQuotes("\"Foo");
+        assert "Foo".equals(s);
+        s = removeLeadingAndTrailingQuotes("Foo\"");
+        assert "Foo".equals(s);
+        s = removeLeadingAndTrailingQuotes("\"\"Foo\"\"");
+        assert "Foo".equals(s);
+        s = removeLeadingAndTrailingQuotes("\"");
+        assert "".equals(s);
+        s = removeLeadingAndTrailingQuotes(null);
+        assert s == null;
+        s = removeLeadingAndTrailingQuotes("");
+        assert "".equals(s);
+    }
+
+    @Test
+    void convertTrimQuotes() {
+        String s = "\"\"\"This is \"really\" weird.\"\"\"";
+        String x = StringUtilities.removeLeadingAndTrailingQuotes(s);
+        assert "This is \"really\" weird.".equals(x);
+    }
 }

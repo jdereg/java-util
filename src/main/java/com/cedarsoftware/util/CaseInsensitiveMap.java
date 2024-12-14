@@ -166,7 +166,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      * each time they are needed. This helps prevent memory exhaustion from very long strings.
      *
      * @param length the maximum length of strings to cache. Must be non-negative.
-     * @throws IllegalArgumentException if length is < 10.
+     * @throws IllegalArgumentException if length is &lt; 10.
      */
     public static void setMaxCacheLengthString(int length) {
         if (length < 10) {

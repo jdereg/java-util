@@ -254,8 +254,11 @@ public final class StringUtilities {
     }
 
     /**
-     * @param s a String or {@code null}
-     * @return the trimmed length of the String or 0 if the string is null.
+     * Returns the length of the trimmed string.  If the length is
+     * null then it returns 0.
+     *
+     * @param s the string to get the trimmed length of
+     * @return the length of the trimmed string, or 0 if the input is null
      */
     public static int trimLength(String s) {
         return trimToEmpty(s).length();
@@ -678,5 +681,37 @@ public final class StringUtilities {
      */
     public static String trimEmptyToDefault(String value, String defaultValue) {
         return Optional.ofNullable(value).map(StringUtilities::trimToNull).orElse(defaultValue);
+    }
+
+    /**
+     * Removes all leading and trailing double quotes from a String. Multiple consecutive quotes
+     * at the beginning or end of the string will all be removed.
+     * <p>
+     * Examples:
+     * <ul>
+     *     <li>"text" → text</li>
+     *     <li>""text"" → text</li>
+     *     <li>"""text""" → text</li>
+     *     <li>"text with "quotes" inside" → text with "quotes" inside</li>
+     * </ul>
+     *
+     * @param input the String from which to remove quotes (may be null)
+     * @return the String with all leading and trailing quotes removed, or null if input was null
+     */
+    public static String removeLeadingAndTrailingQuotes(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+        int start = 0;
+        int end = input.length();
+
+        while (start < end && input.charAt(start) == '"') {
+            start++;
+        }
+        while (end > start && input.charAt(end - 1) == '"') {
+            end--;
+        }
+
+        return input.substring(start, end);
     }
 }

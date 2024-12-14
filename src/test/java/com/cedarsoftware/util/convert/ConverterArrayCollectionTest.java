@@ -27,6 +27,7 @@ import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -303,7 +304,7 @@ class ConverterArrayCollectionTest {
                 convertedBackBooleans.add(ab.get());
             }
 
-            assertTrue(uniqueBooleans.equals(convertedBackBooleans), "Converted back array should contain the same boolean values as the set");
+            assertEquals(uniqueBooleans, convertedBackBooleans, "Converted back array should contain the same boolean values as the set");
         }
 
         @Test
@@ -428,7 +429,7 @@ class ConverterArrayCollectionTest {
             assertEquals(daySet.size(), objectArray.length, "Object array size should match EnumSet size");
 
             for (Object obj : objectArray) {
-                assertTrue(obj instanceof Day, "Object array should contain Day enums");
+                assertInstanceOf(Day.class, obj, "Object array should contain Day enums");
                 assertTrue(daySet.contains(obj), "Object array should contain the same Enums as the source EnumSet");
             }
         }
@@ -534,6 +535,27 @@ class ConverterArrayCollectionTest {
             assertNotNull(enumSet, "Converted EnumSet should not be null");
             assertEquals(daySet.size(), enumSet.size(), "EnumSet size should match Set size");
             assertTrue(enumSet.containsAll(daySet), "EnumSet should contain all Enums from the source Set");
+        }
+
+        @Test
+        @DisplayName("Convert Set to UnmodifiableSet and verify contents")
+        void testSetToUnmodifiableSet() {
+            // Arrange: Create a modifiable set with sample elements
+            Set<String> strings = new HashSet<>(Arrays.asList("foo", "bar", "baz"));
+
+            // Act: Convert the set to an unmodifiable set
+            Set<String> unmodSet = converter.convert(strings, WrappedCollections.getUnmodifiableSet());
+
+            // Assert: Verify the set is an instance of the expected unmodifiable set class
+            assertInstanceOf(WrappedCollections.getUnmodifiableSet(), unmodSet);
+
+            // Assert: Verify the contents of the set remain the same
+            assertTrue(unmodSet.containsAll(strings));
+            assertEquals(strings.size(), unmodSet.size());
+
+            // Assert: Verify modification attempts throw UnsupportedOperationException
+            assertThrows(UnsupportedOperationException.class, () -> unmodSet.add("newElement"));
+            assertThrows(UnsupportedOperationException.class, () -> unmodSet.remove("foo"));
         }
     }
 
@@ -666,7 +688,7 @@ class ConverterArrayCollectionTest {
     class UnsupportedConversionTests {
 
         @Test
-        @DisplayName("Convert String[] to char[] works if String is one character or is unicode digits that conver to a character")
+        @DisplayName("Convert String[] to char[] works if String is one character or is unicode digits that convert to a character")
         void testStringArrayToCharArrayWorksIfOneChar() {
             String[] stringArray = {"a", "b", "c"};
             char[] chars = converter.convert(stringArray, char[].class);
@@ -686,7 +708,7 @@ class ConverterArrayCollectionTest {
     }
 
     @Test
-    public void testMultiDimensionalCollectionToArray() {
+    void testMultiDimensionalCollectionToArray() {
         // Create a nested List structure: List<List<Integer>>
         List<List<Integer>> nested = Arrays.asList(
                 Arrays.asList(1, 2, 3),
@@ -726,7 +748,7 @@ class ConverterArrayCollectionTest {
     }
 
     @Test
-    public void testMultiDimensionalArrayToArray() {
+    void testMultiDimensionalArrayToArray() {
         // Test conversion from int[][] to long[][]
         int[][] source = {
                 {1, 2, 3},
@@ -759,7 +781,7 @@ class ConverterArrayCollectionTest {
     }
 
     @Test
-    public void testMultiDimensionalArrayToCollection() {
+    void testMultiDimensionalArrayToCollection() {
         // Create a source array
         String[][] source = {
                 {"a", "b", "c"},
@@ -793,7 +815,7 @@ class ConverterArrayCollectionTest {
     }
 
     @Test
-    public void testThreeDimensionalConversions() {
+    void testThreeDimensionalConversions() {
         // Test 3D array conversion
         int[][][] source = {
                 {{1, 2}, {3, 4}},
@@ -832,7 +854,7 @@ class ConverterArrayCollectionTest {
     }
 
     @Test
-    public void testNullHandling() {
+    void testNullHandling() {
         List<List<String>> nestedWithNulls = Arrays.asList(
                 Arrays.asList("a", null, "c"),
                 null,
@@ -850,9 +872,9 @@ class ConverterArrayCollectionTest {
     }
 
     @Test
-    public void testMixedDimensionalCollections() {
+    void testMixedDimensionalCollections() {
         // Test converting a collection where some elements are single dimension
-        // and others are multi-dimensional
+        // and others are multidimensional
         List<Object> mixedDimensions = Arrays.asList(
                 Arrays.asList(1, 2, 3),
                 4,
@@ -861,10 +883,10 @@ class ConverterArrayCollectionTest {
 
         Object[] result = converter.convert(mixedDimensions, Object[].class);
 
-        assertTrue(result[0] instanceof List);
+        assertInstanceOf(List.class, result[0]);
         assertEquals(3, ((List<?>) result[0]).size());
         assertEquals(4, result[1]);
-        assertTrue(result[2] instanceof List);
+        assertInstanceOf(List.class, result[2]);
         assertEquals(3, ((List<?>) result[2]).size());
     }
 }

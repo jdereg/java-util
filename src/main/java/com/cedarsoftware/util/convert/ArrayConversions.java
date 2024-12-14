@@ -28,9 +28,9 @@ final class ArrayConversions {
      * Converts an array to another array of the specified target array type.
      * Handles multidimensional arrays recursively.
      *
-     * @param sourceArray The source array to convert
+     * @param sourceArray     The source array to convert
      * @param targetArrayType The desired target array type
-     * @param converter The converter for element conversion
+     * @param converter       The converter for element conversion
      * @return A new array of the specified target type
      */
     static Object arrayToArray(Object sourceArray, Class<?> targetArrayType, Converter converter) {
@@ -41,15 +41,18 @@ final class ArrayConversions {
         for (int i = 0; i < length; i++) {
             Object value = Array.get(sourceArray, i);
             Object convertedValue;
+
             if (value != null && value.getClass().isArray()) {
+                // Recursively handle nested arrays
                 convertedValue = arrayToArray(value, targetComponentType, converter);
+            } else if (value == null || targetComponentType.isAssignableFrom(value.getClass())) {
+                // Direct assignment if types are compatible or value is null
+                convertedValue = value;
             } else {
-                if (value == null || targetComponentType.isAssignableFrom(value.getClass())) {
-                    convertedValue = value;
-                } else {
-                    convertedValue = converter.convert(value, targetComponentType);
-                }
+                // Convert the value to the target component type
+                convertedValue = converter.convert(value, targetComponentType);
             }
+
             Array.set(targetArray, i, convertedValue);
         }
         return targetArray;
@@ -59,8 +62,8 @@ final class ArrayConversions {
      * Converts a collection to an array, handling nested collections recursively.
      *
      * @param collection The source collection to convert
-     * @param arrayType The target array type
-     * @param converter The converter instance for type conversions
+     * @param arrayType  The target array type
+     * @param converter  The converter instance for type conversions
      * @return An array of the specified type containing the collection elements
      */
     static Object collectionToArray(Collection<?> collection, Class<?> arrayType, Converter converter) {
@@ -70,21 +73,29 @@ final class ArrayConversions {
 
         for (Object item : collection) {
             Object convertedValue;
+
             if (item instanceof Collection && componentType.isArray()) {
-                // Handle nested collections recursively
+                // Recursively handle nested collections
                 convertedValue = collectionToArray((Collection<?>) item, componentType, converter);
             } else if (item == null || componentType.isAssignableFrom(item.getClass())) {
+                // Direct assignment if types are compatible or item is null
                 convertedValue = item;
             } else {
+                // Convert the item to the target component type
                 convertedValue = converter.convert(item, componentType);
             }
+
             Array.set(array, index++, convertedValue);
         }
         return array;
     }
-    
+
     /**
-     * Converts an EnumSet to an array.
+     * Converts an EnumSet to an array of the specified target array type.
+     *
+     * @param enumSet        The EnumSet to convert
+     * @param targetArrayType The target array type
+     * @return An array of the specified type containing the EnumSet elements
      */
     static Object enumSetToArray(EnumSet<?> enumSet, Class<?> targetArrayType) {
         Class<?> componentType = targetArrayType.getComponentType();
@@ -121,6 +132,7 @@ final class ArrayConversions {
                 Array.set(array, i++, value.getDeclaringClass());
             }
         } else {
+            // Default case for other types
             for (Enum<?> value : enumSet) {
                 Array.set(array, i++, value);
             }

@@ -1,23 +1,29 @@
 package com.cedarsoftware.util;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Useful utilities for Class work. For example, call computeInheritanceDistance(source, destination)
- * to get the inheritance distance (number of super class steps to make it from source to destination.
+ * to get the inheritance distance (number of super class steps to make it from source to destination.)
  * It will return the distance as an integer.  If there is no inheritance relationship between the two,
  * then -1 is returned.  The primitives and primitive wrappers return 0 distance as if they are the
  * same class.
@@ -139,7 +145,7 @@ public class ClassUtilities
         // Check for primitive types
         if (source.isPrimitive()) {
             if (destination.isPrimitive()) {
-                // Not equal because source.equals(destination) already chceked.
+                // Not equal because source.equals(destination) already checked.
                 return -1;
             }
             if (!isPrimitive(destination)) {
@@ -279,22 +285,31 @@ public class ClassUtilities
             if (className.endsWith(";")) {
                 className = className.substring(0, className.length() - 1);
             }
-            if (className.equals("[B")) {
-                primitiveArray = byte[].class;
-            } else if (className.equals("[S")) {
-                primitiveArray = short[].class;
-            } else if (className.equals("[I")) {
-                primitiveArray = int[].class;
-            } else if (className.equals("[J")) {
-                primitiveArray = long[].class;
-            } else if (className.equals("[F")) {
-                primitiveArray = float[].class;
-            } else if (className.equals("[D")) {
-                primitiveArray = double[].class;
-            } else if (className.equals("[Z")) {
-                primitiveArray = boolean[].class;
-            } else if (className.equals("[C")) {
-                primitiveArray = char[].class;
+            switch (className) {
+                case "[B":
+                    primitiveArray = byte[].class;
+                    break;
+                case "[S":
+                    primitiveArray = short[].class;
+                    break;
+                case "[I":
+                    primitiveArray = int[].class;
+                    break;
+                case "[J":
+                    primitiveArray = long[].class;
+                    break;
+                case "[F":
+                    primitiveArray = float[].class;
+                    break;
+                case "[D":
+                    primitiveArray = double[].class;
+                    break;
+                case "[Z":
+                    primitiveArray = boolean[].class;
+                    break;
+                case "[C":
+                    primitiveArray = char[].class;
+                    break;
             }
             int startpos = className.startsWith("[L") ? 2 : 1;
             className = className.substring(startpos);
@@ -404,7 +419,7 @@ public class ClassUtilities
                 return osgiClassLoaders.get(classFromBundle);
             }
 
-            osgiClassLoaders.computeIfAbsent(classFromBundle, k -> getOSGiClassLoader0(k));
+            osgiClassLoaders.computeIfAbsent(classFromBundle, ClassUtilities::getOSGiClassLoader0);
             osgiChecked.add(classFromBundle);
         }
 
@@ -457,5 +472,128 @@ public class ClassUtilities
         }
 
         return null;
+    }
+
+    /**
+     * Finds the closest matching class in an inheritance hierarchy from a map of candidate classes.
+     * <p>
+     * This method searches through a map of candidate classes to find the one that is most closely
+     * related to the input class in terms of inheritance distance. The search prioritizes:
+     * <ul>
+     *     <li>Exact class match (returns immediately)</li>
+     *     <li>Closest superclass/interface in the inheritance hierarchy</li>
+     * </ul>
+     * <p>
+     * This method is typically used for cache misses when looking up class-specific handlers
+     * or processors.
+     *
+     * @param <T> The type of value stored in the candidateClasses map
+     * @param clazz The class to find a match for (must not be null)
+     * @param candidateClasses Map of candidate classes and their associated values (must not be null)
+     * @param defaultClass Default value to return if no suitable match is found
+     * @return The value associated with the closest matching class, or defaultClass if no match found
+     * @throws NullPointerException if clazz or candidateClasses is null
+     *
+     * @see ClassUtilities#computeInheritanceDistance(Class, Class)
+     */
+    public static <T> T findClosest(Class<?> clazz, Map<Class<?>, T> candidateClasses, T defaultClass) {
+        Objects.requireNonNull(clazz, "Class cannot be null");
+        Objects.requireNonNull(candidateClasses, "CandidateClasses classes map cannot be null");
+
+        T closest = defaultClass;
+        int minDistance = Integer.MAX_VALUE;
+        Class<?> closestClass = null;  // Track the actual class for tiebreaking
+
+        for (Map.Entry<Class<?>, T> entry : candidateClasses.entrySet()) {
+            Class<?> candidateClass = entry.getKey();
+            // Direct match - return immediately
+            if (candidateClass == clazz) {
+                return entry.getValue();
+            }
+
+            int distance = ClassUtilities.computeInheritanceDistance(clazz, candidateClass);
+            if (distance != -1 && (distance < minDistance ||
+                    (distance == minDistance && shouldPreferNewCandidate(candidateClass, closestClass)))) {
+                minDistance = distance;
+                closest = entry.getValue();
+                closestClass = candidateClass;
+            }
+        }
+        return closest;
+    }
+
+    /**
+     * Determines if a new candidate class should be preferred over the current closest class when
+     * they have equal inheritance distances.
+     * <p>
+     * The selection logic follows these rules in order:
+     * <ol>
+     *     <li>If there is no current class (null), the new candidate is preferred</li>
+     *     <li>Classes are preferred over interfaces</li>
+     *     <li>When both are classes or both are interfaces, the more specific type is preferred</li>
+     * </ol>
+     *
+     * @param newClass the candidate class being evaluated (must not be null)
+     * @param currentClass the current closest matching class (may be null)
+     * @return true if newClass should be preferred over currentClass, false otherwise
+     */
+    private static boolean shouldPreferNewCandidate(Class<?> newClass, Class<?> currentClass) {
+        if (currentClass == null) return true;
+        // Prefer classes over interfaces
+        if (newClass.isInterface() != currentClass.isInterface()) {
+            return !newClass.isInterface();
+        }
+        // If both are classes or both are interfaces, prefer the more specific one
+        return newClass.isAssignableFrom(currentClass);
+    }
+
+    /**
+     * Loads resource content as a String.
+     * @param resourceName Name of the resource file.
+     * @return Content of the resource file as a String.
+     */
+    public static String loadResourceAsString(String resourceName) {
+        byte[] resourceBytes = loadResourceAsBytes(resourceName);
+        return new String(resourceBytes, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Loads resource content as a byte[].
+     * @param resourceName Name of the resource file.
+     * @return Content of the resource file as a byte[].
+     * @throws IllegalArgumentException if the resource cannot be found
+     * @throws UncheckedIOException if there is an error reading the resource
+     * @throws NullPointerException if resourceName is null
+     */
+    public static byte[] loadResourceAsBytes(String resourceName) {
+        Objects.requireNonNull(resourceName, "resourceName cannot be null");
+        try (InputStream inputStream = ClassUtilities.getClassLoader(ClassUtilities.class).getResourceAsStream(resourceName)) {
+            if (inputStream == null) {
+                throw new IllegalArgumentException("Resource not found: " + resourceName);
+            }
+            return readInputStreamFully(inputStream);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Error reading resource: " + resourceName, e);
+        }
+    }
+
+    private static final int BUFFER_SIZE = 8192;
+
+    /**
+     * Reads an InputStream fully and returns its content as a byte array.
+     *
+     * @param inputStream InputStream to read.
+     * @return Content of the InputStream as byte array.
+     * @throws IOException if an I/O error occurs.
+     */
+    private static byte[] readInputStreamFully(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream(8192);
+        byte[] data = new byte[BUFFER_SIZE];
+        int nRead;
+        while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        buffer.flush();
+        return buffer.toByteArray();
     }
 }

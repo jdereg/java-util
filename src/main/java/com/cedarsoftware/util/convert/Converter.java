@@ -45,8 +45,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ClassUtilities;
 
-import static com.cedarsoftware.util.convert.CollectionConversions.CollectionFactory.createCollection;
-
 
 /**
  * Instance conversion utility for converting objects between various types.
@@ -246,6 +244,7 @@ public final class Converter {
      * {@link #addConversion(Class, Class, Convert)} method as needed.
      * </p>
      */
+    @SuppressWarnings("unchecked")
     private static void buildFactoryConversions() {
         // toNumber
         CONVERSION_DB.put(pair(Byte.class, Number.class), Converter::identity);
@@ -1044,10 +1043,8 @@ public final class Converter {
         // For Collection Support:
         CONVERSION_DB.put(pair(Collection.class, Collection.class),
                 (ConvertWithTarget<Collection<?>>) (Object from, Converter converter, Class<?> target) -> {
-                    Collection<?> source = (Collection<?>) from;
-                    Collection<Object> result = (Collection<Object>) createCollection(target, source.size());
-                    result.addAll(source);
-                    return result;
+                    // Delegate to CollectionConversions.collectionToCollection()
+                    return (Collection<Object>) CollectionConversions.collectionToCollection((Collection<?>) from, target);
                 });
     }
 
@@ -1064,12 +1061,6 @@ public final class Converter {
     public Converter(ConverterOptions options) {
         this.options = options;
         USER_DB.putAll(this.options.getConverterOverrides());
-
-        // Thinking: Can ArrayFactory take advantage of Converter processing arrays now
-        // Thinking: Should Converter have a recursive usage of itself to support n-dimensional arrays int[][] to long[][], etc. or int[][] to ArrayList of ArrayList.
-        // Thinking: Get AI to write a bunch of collection tests for me, including (done)
-        //           If we add multiple dimension support, then int[][] to long[][] and int[][] to ArrayList of ArrayList.
-        // Thinking: What about an EnumSet of length 0 now breaking json-io?
     }
 
     /**
@@ -1226,7 +1217,7 @@ public final class Converter {
                 toType = (Class<T>) ClassUtilities.toPrimitiveWrapperClass(toType);
             }
 
-            // Try collection conversion first (These are not specified in CONVERSION_DB, rather by the attempt* method)
+            // Try collection conversion first
             T result = attemptCollectionConversion(from, sourceType, toType);
             if (result != null) {
                 return result;
@@ -1278,7 +1269,7 @@ public final class Converter {
             }
         } else if (EnumSet.class.isAssignableFrom(sourceType)) {
             if (Collection.class.isAssignableFrom(toType)) {
-                Collection<Object> target = (Collection<Object>) createCollection(toType, ((Collection<?>) from).size());
+                Collection<Object> target = (Collection<Object>) CollectionHandling.createCollection(from, toType);
                 target.addAll((Collection<?>) from);
                 return (T) target;
             }
@@ -1289,12 +1280,13 @@ public final class Converter {
             if (toType.isArray()) {
                 return (T) ArrayConversions.collectionToArray((Collection<?>) from, toType, this);
             }
-        } else if (sourceType.isArray() && Collection.class.isAssignableFrom(toType)) {
-            // Array -> Collection
-            return (T) CollectionConversions.arrayToCollection(from, toType);
-        } else if (sourceType.isArray() && toType.isArray() && !sourceType.getComponentType().equals(toType.getComponentType())) {
-            // Handle array-to-array conversion when component types differ
-            return (T) ArrayConversions.arrayToArray(from, toType, this);
+        } else if (sourceType.isArray()) {
+            if (Collection.class.isAssignableFrom(toType)) {
+                return (T) CollectionConversions.arrayToCollection(from, toType);
+            } else if (toType.isArray() && !sourceType.getComponentType().equals(toType.getComponentType())) {
+                // Handle array-to-array conversion when component types differ
+                return (T) ArrayConversions.arrayToArray(from, toType, this);
+            }
         }
 
         return null;

@@ -48,8 +48,6 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[CaseInsensitiveSet](/src/main/java/com/cedarsoftware/util/CaseInsensitiveSet.java)** - A `Set` that ignores case sensitivity for `Strings`.
 - **[ConcurrentSet](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - A thread-safe `Set` that allows `null` elements.
 - **[ConcurrentNavigableSetNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableSetNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentSkipListSet` that allows `null` values. 
-- **[SealableSet](/src/main/java/com/cedarsoftware/util/SealableSet.java)** - Allows toggling between read-only and writable states via a `Supplier<Boolean>`, managing immutability externally.
-- **[SealableNavigableSet](/src/main/java/com/cedarsoftware/util/SealableNavigableSet.java)** - Similar to `SealableSet` but for `NavigableSet`, controlling immutability through an external supplier.
 
 ### Maps
 - **[CompactMap](/src/main/java/com/cedarsoftware/util/CompactMap.java)** - A `Map` with a small memory footprint that scales to a `HashMap` as needed.
@@ -62,12 +60,9 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Tracks access patterns to its keys, aiding in performance optimizations.
 - **[ConcurrentHashMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentHashMapNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentHashMap` that allows `null` keys & values.
 - **[ConcurrentNavigableMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableMapNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentSkipListMap` that allows `null` keys & values.
-- **[SealableMap](/src/main/java/com/cedarsoftware/util/SealableMap.java)** - Allows toggling between sealed (read-only) and unsealed (writable) states, managed externally.
-- **[SealableNavigableMap](/src/main/java/com/cedarsoftware/util/SealableNavigableMap.java)** - Extends `SealableMap` features to `NavigableMap`, managing state externally.
 
 ### Lists
 - **[ConcurrentList](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)** - Provides a thread-safe `List` that can be either an independent or a wrapped instance.
-- **[SealableList](/src/main/java/com/cedarsoftware/util/SealableList.java)** - Enables switching between sealed and unsealed states for a `List`, managed via an external `Supplier<Boolean>`.
 
 ### Utilities
 - **[ArrayUtilities](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)** - Provides utilities for working with Java arrays `[]`, enhancing array operations.

@@ -33,7 +33,10 @@ import java.util.function.Supplier;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ *         
+ * @deprecated This class is no longer supported.
  */
+@Deprecated
 public class SealableNavigableMap<K, V> implements NavigableMap<K, V> {
     private final NavigableMap<K, V> navMap;
     private final transient Supplier<Boolean> sealedSupplier;

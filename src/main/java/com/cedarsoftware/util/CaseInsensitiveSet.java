@@ -9,8 +9,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
-
 /**
  * Implements a java.util.Set that will not utilize 'case' when comparing Strings
  * contained within the Set.  The set can be homogeneous or heterogeneous.
@@ -37,7 +35,8 @@ import static com.cedarsoftware.util.StringUtilities.hashCodeIgnoreCase;
 public class CaseInsensitiveSet<E> implements Set<E>
 {
     private final Map<E, Object> map;
-
+    private static final Object PRESENT = new Object();
+    
     public CaseInsensitiveSet() { map = new CaseInsensitiveMap<>(); }
 
     public CaseInsensitiveSet(Collection<? extends E> collection) {
@@ -72,17 +71,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
     }
 
     public int hashCode() {
-        int hash = 0;
-        for (Object item : map.keySet()) {
-            if (item != null) {
-                if (item instanceof String) {
-                    hash += hashCodeIgnoreCase((String) item);
-                } else {
-                    hash += item.hashCode();
-                }
-            }
-        }
-        return hash;
+        return map.keySet().hashCode();
     }
 
     public boolean equals(Object other)
@@ -127,7 +116,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
     public boolean add(E e)
     {
         int size = map.size();
-        map.put(e, e);
+        map.put(e, PRESENT);
         return map.size() != size;
     }
 
@@ -155,7 +144,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
         int size = map.size();
         for (E elem : c)
         {
-            map.put(elem, elem);
+            map.put(elem, PRESENT);
         }
         return map.size() != size;
     }
@@ -165,7 +154,7 @@ public class CaseInsensitiveSet<E> implements Set<E>
         Map other = new CaseInsensitiveMap();
         for (Object o : c)
         {
-            other.put(o, null);
+            other.put(o, PRESENT);
         }
 
         Iterator<?> i = map.keySet().iterator();

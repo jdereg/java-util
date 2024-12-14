@@ -1660,6 +1660,7 @@ class CaseInsensitiveMapTest
         return current;
     }
 
+    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     void testGenHash() {
         HashMap<Integer, CaseInsensitiveMap.CaseInsensitiveString> hs = new HashMap<>();

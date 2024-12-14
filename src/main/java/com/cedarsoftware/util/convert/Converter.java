@@ -1683,7 +1683,7 @@ public final class Converter {
      *         false otherwise
      */
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
-        // Check direct conversions (in conversion map)
+        // Direct conversion check first (fastest)
         if (isConversionInMap(source, target)) {
             return true;
         }
@@ -1691,10 +1691,46 @@ public final class Converter {
         // For collection/array conversions, only return true if we can handle ALL aspects
         // of the conversion including the component types
         if (isCollectionConversionSupported(source, target)) {
-            // For array-to-array conversions, verify we can convert the component types
+            // For array-to-array conversions
             if (source.isArray() && target.isArray()) {
+                // Special case: Object[] as target can take anything
+                if (target.getComponentType() == Object.class) {
+                    return true;
+                }
                 return isConversionSupportedFor(source.getComponentType(), target.getComponentType());
             }
+
+            // For collection-to-collection conversions
+            if (isCollection(source) && isCollection(target)) {
+                // We can't reliably determine collection element types at this point
+                // Let the actual conversion handle type checking
+                return true;
+            }
+
+            // For array-to-collection conversions
+            if (source.isArray() && isCollection(target)) {
+                // We know the source component type but not collection target type
+                // Let actual conversion handle it
+                return true;
+            }
+
+            // For collection-to-array conversions
+            if (isCollection(source) && target.isArray()) {
+                // Special case: converting to Object[]
+                if (target.getComponentType() == Object.class) {
+                    return true;
+                }
+                // Otherwise we can't verify the source collection's element type
+                // until conversion time
+                return true;
+            }
+
+            // Special case: EnumSet conversions
+            if (EnumSet.class.isAssignableFrom(source)) {
+                // EnumSet can convert to any collection or array
+                return true;
+            }
+
             return true;
         }
 
@@ -1703,6 +1739,10 @@ public final class Converter {
         return method != null && method != UNSUPPORTED;
     }
 
+    private boolean isCollection(Class<?> clazz) {
+        return Collection.class.isAssignableFrom(clazz);
+    }
+    
     /**
      * Private helper method to check if a conversion exists directly in USER_DB or CONVERSION_DB.
      *
@@ -1721,7 +1761,7 @@ public final class Converter {
         method = CONVERSION_DB.get(key);
         return method != null && method != UNSUPPORTED;
     }
-    
+
     /**
      * Retrieves a map of all supported conversions, categorized by source and target classes.
      * <p>

@@ -1,12 +1,12 @@
 package com.cedarsoftware.util.cache;
 
+import java.lang.ref.WeakReference;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -15,10 +15,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.lang.ref.WeakReference;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
+import com.cedarsoftware.util.MapUtilities;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
@@ -281,41 +281,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        Iterator<Entry<K, V>> it = entrySet().iterator();
-
-        while (it.hasNext()) {
-            Map.Entry<K, V> entry = it.next();
-
-            // Format and append the key
-            sb.append(formatElement(entry.getKey()));
-            sb.append("=");
-
-            // Format and append the value
-            sb.append(formatElement(entry.getValue()));
-
-            // Append comma and space if not the last entry
-            if (it.hasNext()) {
-                sb.append(", ");
-            }
-        }
-
-        sb.append("}");
-        return sb.toString();
-    }
-
-    /**
-     * Helper method to format an element by checking for self-references.
-     *
-     * @param element The element to format.
-     * @return A string representation of the element, replacing self-references with a placeholder.
-     */
-    private String formatElement(Object element) {
-        if (element == this) {
-            return "(this Map)";
-        }
-        return String.valueOf(element);
+        return MapUtilities.mapToString(this);
     }
 
     /**

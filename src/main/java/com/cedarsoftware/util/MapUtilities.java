@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -11,8 +12,8 @@ import java.util.Set;
 /**
  * Usefule utilities for Maps
  *
- * @author Kenneth Partlow
- * @author John DeRegnaucourt
+ * @author Ken Partlow (kpartlow@gmail.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -28,13 +29,10 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class MapUtilities
-{
-    /**
-     * <p>Constructor is declared private since all methods are static.</p>
-     */
-    private MapUtilities()
-    {
+public class MapUtilities {
+    private static final int MAX_ENTRIES = 10;
+
+    private MapUtilities() {
     }
 
     /**
@@ -47,8 +45,7 @@ public class MapUtilities
      * If the item is null then the def value is sent back.
      * If the item is not the expected type, an exception is thrown.
      */
-    public static <T> T get(Map<?, T> map, Object key, T def)
-    {
+    public static <T> T get(Map<?, T> map, Object key, T def) {
         T val = map.get(key);
         return val == null ? def : val;
     }
@@ -58,26 +55,23 @@ public class MapUtilities
      * This version allows the value associated to the key to be null, and it still works.  In other words,
      * if the passed in key is within the map, this method will return whatever is associated to the key, including
      * null.
-     * @param map Map to retrieve item from
-     * @param key the key whose associated value is to be returned
+     *
+     * @param map       Map to retrieve item from
+     * @param key       the key whose associated value is to be returned
      * @param throwable
-     * @param <T> Throwable passed in to be thrown *if* the passed in key is not within the passed in map.
+     * @param <T>       Throwable passed in to be thrown *if* the passed in key is not within the passed in map.
      * @return the value associated to the passed in key from the passed in map, otherwise throw the passed in exception.
      */
-    public static <T extends Throwable> Object getOrThrow(Map<?, ?> map, Object key, T throwable) throws T
-    {
-        if (map == null)
-        {
+    public static <T extends Throwable> Object getOrThrow(Map<?, ?> map, Object key, T throwable) throws T {
+        if (map == null) {
             throw new NullPointerException("Map parameter cannot be null");
         }
 
-        if (throwable == null)
-        {
+        if (throwable == null) {
             throw new NullPointerException("Throwable object cannot be null");
         }
 
-        if (map.containsKey(key))
-        {
+        if (map.containsKey(key)) {
             return map.get(key);
         }
         throw throwable;
@@ -153,67 +147,110 @@ public class MapUtilities
     }
 
     /**
+     * Returns a string representation of the provided map.
+     * <p>
+     * The string representation consists of a list of key-value mappings in the order returned by the map's
+     * {@code entrySet} iterator, enclosed in braces ({@code "{}"}). Adjacent mappings are separated by the characters
+     * {@code ", "} (comma and space). Each key-value mapping is rendered as the key followed by an equals sign
+     * ({@code "="}) followed by the associated value.
+     * </p>
+     *
+     * @param map the map to represent as a string
+     * @param <K> the type of keys in the map
+     * @param <V> the type of values in the map
+     * @return a string representation of the provided map
+     */
+    public static <K, V> String mapToString(Map<K, V> map) {
+        Iterator<Map.Entry<K, V>> i = map.entrySet().iterator();
+        if (!i.hasNext()) {
+            return "{}";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        for (; ; ) {
+            Map.Entry<K, V> e = i.next();
+            K key = e.getKey();
+            V value = e.getValue();
+            sb.append(key == map ? "(this Map)" : key);
+            sb.append('=');
+            sb.append(value == map ? "(this Map)" : value);
+            if (!i.hasNext()) {
+                return sb.append('}').toString();
+            }
+            sb.append(',').append(' ');
+        }
+    }
+
+    /**
      * For JDK1.8 support.  Remove this and change to Map.of() for JDK11+
      */
-    public static <K, V> Map<K, V> mapOf()
-    {
-        return Collections.unmodifiableMap(new LinkedHashMap<>());
-    }
+    /**
+     * Creates an immutable map with the specified key-value pairs, limited to 10 entries.
+     * <p>
+     * If more than 10 key-value pairs are provided, an {@link IllegalArgumentException} is thrown.
+     * </p>
+     *
+     * @param <K> the type of keys in the map
+     * @param <V> the type of values in the map
+     * @param keyValues an even number of key-value pairs
+     * @return an immutable map containing the specified key-value pairs
+     * @throws IllegalArgumentException if the number of arguments is odd or exceeds 10 entries
+     * @throws NullPointerException if any key or value in the map is {@code null}
+     */
+    @SafeVarargs
+    public static <K, V> Map<K, V> mapOf(Object... keyValues) {
+        if (keyValues == null || keyValues.length == 0) {
+            return Collections.unmodifiableMap(new LinkedHashMap<>());
+        }
 
-    public static <K, V> Map<K, V> mapOf(K k, V v)
-    {
-        Map<K, V> map = new LinkedHashMap<>();
-        map.put(k, v);
+        if (keyValues.length % 2 != 0) {
+            throw new IllegalArgumentException("Invalid number of arguments; keys and values must be paired.");
+        }
+
+        if (keyValues.length / 2 > MAX_ENTRIES) {
+            throw new IllegalArgumentException("Too many entries; maximum is " + MAX_ENTRIES);
+        }
+
+        Map<K, V> map = new LinkedHashMap<>(keyValues.length / 2);
+        for (int i = 0; i < keyValues.length; i += 2) {
+            @SuppressWarnings("unchecked")
+            K key = (K) keyValues[i];
+            @SuppressWarnings("unchecked")
+            V value = (V) keyValues[i + 1];
+            
+            map.put(key, value);
+        }
+
         return Collections.unmodifiableMap(map);
     }
 
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2)
-    {
-        Map<K, V> map = new LinkedHashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        return Collections.unmodifiableMap(map);
-    }
+    /**
+     * Creates an immutable map from a series of {@link Map.Entry} objects.
+     * <p>
+     * This method is intended for use with larger maps where more than 10 entries are needed.
+     * </p>
+     *
+     * @param <K> the type of keys in the map
+     * @param <V> the type of values in the map
+     * @param entries the entries to be included in the map
+     * @return an immutable map containing the specified entries
+     * @throws NullPointerException if any entry, key, or value is {@code null}
+     */
+    @SafeVarargs
+    public static <K, V> Map<K, V> mapOfEntries(Map.Entry<K, V>... entries) {
+        if (entries == null || entries.length == 0) {
+            return Collections.unmodifiableMap(new LinkedHashMap<>());
+        }
 
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3)
-    {
-        Map<K, V> map = new LinkedHashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        return Collections.unmodifiableMap(map);
-    }
+        Map<K, V> map = new LinkedHashMap<>(entries.length);
+        for (Map.Entry<K, V> entry : entries) {
+            if (entry == null) {
+                throw new NullPointerException("Entries must not be null.");
+            }
+            map.put(entry.getKey(), entry.getValue());
+        }
 
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4)
-    {
-        Map<K, V> map = new LinkedHashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        map.put(k4, v4);
-        return Collections.unmodifiableMap(map);
-    }
-
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5)
-    {
-        Map<K, V> map = new LinkedHashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        map.put(k4, v4);
-        map.put(k5, v5);
-        return Collections.unmodifiableMap(map);
-    }
-
-    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3, K k4, V v4, K k5, V v5, K k6, V v6)
-    {
-        Map<K, V> map = new LinkedHashMap<>();
-        map.put(k1, v1);
-        map.put(k2, v2);
-        map.put(k3, v3);
-        map.put(k4, v4);
-        map.put(k5, v5);
-        map.put(k6, v6);
         return Collections.unmodifiableMap(map);
     }
 }

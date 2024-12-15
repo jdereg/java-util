@@ -92,67 +92,67 @@ final class CollectionHandling {
     @SuppressWarnings({"unchecked"})
     private static void initializeSpecialHandlers() {
         // Empty collections
-        SPECIAL_HANDLERS.put(WrappedCollections.getEmptyNavigableSet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getEmptyNavigableSetClass(), (size, source) ->
                 Collections.emptyNavigableSet());
-        SPECIAL_HANDLERS.put(WrappedCollections.getEmptySortedSet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getEmptySortedSetClass(), (size, source) ->
                 Collections.emptySortedSet());
-        SPECIAL_HANDLERS.put(WrappedCollections.getEmptySet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getEmptySetClass(), (size, source) ->
                 Collections.emptySet());
-        SPECIAL_HANDLERS.put(WrappedCollections.getEmptyList(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getEmptyListClass(), (size, source) ->
                 Collections.emptyList());
-        SPECIAL_HANDLERS.put(WrappedCollections.getEmptyCollection(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getEmptyCollectionClass(), (size, source) ->
                 Collections.emptyList());
 
         // Unmodifiable collections
-        SPECIAL_HANDLERS.put(WrappedCollections.getUnmodifiableNavigableSet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getUnmodifiableNavigableSetClass(), (size, source) ->
                 createOptimalNavigableSet(source, size));
-        SPECIAL_HANDLERS.put(WrappedCollections.getUnmodifiableSortedSet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getUnmodifiableSortedSetClass(), (size, source) ->
                 createOptimalSortedSet(source, size));
-        SPECIAL_HANDLERS.put(WrappedCollections.getUnmodifiableSet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getUnmodifiableSetClass(), (size, source) ->
                 createOptimalSet(source, size));
-        SPECIAL_HANDLERS.put(WrappedCollections.getUnmodifiableList(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getUnmodifiableListClass(), (size, source) ->
                 createOptimalList(source, size));
-        SPECIAL_HANDLERS.put(WrappedCollections.getUnmodifiableCollection(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getUnmodifiableCollectionClass(), (size, source) ->
                 createOptimalCollection(source, size));
         
         // Synchronized collections
-        SPECIAL_HANDLERS.put(WrappedCollections.getSynchronizedNavigableSet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getSynchronizedNavigableSetClass(), (size, source) ->
                 Collections.synchronizedNavigableSet(createOptimalNavigableSet(source, size)));
-        SPECIAL_HANDLERS.put(WrappedCollections.getSynchronizedSortedSet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getSynchronizedSortedSetClass(), (size, source) ->
                 Collections.synchronizedSortedSet(createOptimalSortedSet(source, size)));
-        SPECIAL_HANDLERS.put(WrappedCollections.getSynchronizedSet(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getSynchronizedSetClass(), (size, source) ->
                 Collections.synchronizedSet(createOptimalSet(source, size)));
-        SPECIAL_HANDLERS.put(WrappedCollections.getSynchronizedList(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getSynchronizedListClass(), (size, source) ->
                 Collections.synchronizedList(createOptimalList(source, size)));
-        SPECIAL_HANDLERS.put(WrappedCollections.getSynchronizedCollection(), (size, source) ->
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getSynchronizedCollectionClass(), (size, source) ->
                 Collections.synchronizedCollection(createOptimalCollection(source, size)));
 
         // Checked collections
-        SPECIAL_HANDLERS.put(WrappedCollections.getCheckedNavigableSet(), (size, source) -> {
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getCheckedNavigableSetClass(), (size, source) -> {
             NavigableSet<?> navigableSet = createOptimalNavigableSet(source, size);
             Class<Object> elementType = (Class<Object>) getElementTypeFromSource(source);
             return Collections.checkedNavigableSet((NavigableSet<Object>) navigableSet, elementType);
         });
 
-        SPECIAL_HANDLERS.put(WrappedCollections.getCheckedSortedSet(), (size, source) -> {
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getCheckedSortedSetClass(), (size, source) -> {
             SortedSet<?> sortedSet = createOptimalSortedSet(source, size);
             Class<Object> elementType = (Class<Object>) getElementTypeFromSource(source);
             return Collections.checkedSortedSet((SortedSet<Object>) sortedSet, elementType);
         });
 
-        SPECIAL_HANDLERS.put(WrappedCollections.getCheckedSet(), (size, source) -> {
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getCheckedSetClass(), (size, source) -> {
             Set<?> set = createOptimalSet(source, size);
             Class<Object> elementType = (Class<Object>) getElementTypeFromSource(source);
             return Collections.checkedSet((Set<Object>) set, elementType);
         });
 
-        SPECIAL_HANDLERS.put(WrappedCollections.getCheckedList(), (size, source) -> {
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getCheckedListClass(), (size, source) -> {
             List<?> list = createOptimalList(source, size);
             Class<Object> elementType = (Class<Object>) getElementTypeFromSource(source);
             return Collections.checkedList((List<Object>) list, elementType);
         });
 
-        SPECIAL_HANDLERS.put(WrappedCollections.getCheckedCollection(), (size, source) -> {
+        SPECIAL_HANDLERS.put(CollectionsWrappers.getCheckedCollectionClass(), (size, source) -> {
             Collection<?> collection = createOptimalCollection(source, size);
             Class<Object> elementType = (Class<Object>) getElementTypeFromSource(source);
             return Collections.checkedCollection((Collection<Object>) collection, elementType);

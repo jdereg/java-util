@@ -29,23 +29,74 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * A Map implementation that provides case-insensitive key comparison when the keys are Strings,
- * while preserving the original case of the keys. Non-String keys behave as they would in a normal Map.
+ * A Map implementation that provides case-insensitive key comparison for {@link String} keys, while preserving
+ * the original case of the keys. Non-String keys are treated as they would be in a regular {@link Map}.
  *
- * <p>This class attempts to preserve the behavior of the source map implementation when constructed
- * from another map. For example, if constructed from a TreeMap, the internal map will be a TreeMap.</p>
+ * <h2>Key Features</h2>
+ * <ul>
+ *   <li><b>Case-Insensitive String Keys:</b> {@link String} keys are internally stored as {@code CaseInsensitiveString}
+ *       objects, enabling case-insensitive equality and hash code behavior.</li>
+ *   <li><b>Preserves Original Case:</b> The original casing of String keys is maintained for retrieval and iteration.</li>
+ *   <li><b>Compatible with All Map Operations:</b> Supports Java 8+ map methods such as {@code computeIfAbsent()},
+ *       {@code computeIfPresent()}, {@code merge()}, and {@code forEach()}, with case-insensitive handling of String keys.</li>
+ *   <li><b>Customizable Backing Map:</b> Allows developers to specify the backing map implementation or automatically
+ *       chooses one based on the provided source map.</li>
+ *   <li><b>Thread-Safe Case-Insensitive String Cache:</b> Efficiently reuses {@code CaseInsensitiveString} instances
+ *       to minimize memory usage and improve performance.</li>
+ * </ul>
  *
- * <p>All String keys are internally stored as {@link CaseInsensitiveString}, which provides
- * case-insensitive equals/hashCode. Retrieval and access methods convert to/from this form,
- * ensuring that String keys are matched case-insensitively.</p>
+ * <h2>Usage Examples</h2>
+ * <pre>{@code
+ * // Create a case-insensitive map with default LinkedHashMap backing
+ * CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+ * map.put("Key", "Value");
+ * System.out.println(map.get("key"));  // Outputs: Value
+ * System.out.println(map.get("KEY"));  // Outputs: Value
  *
- * <p>This class also provides overrides for Java 8+ map methods such as {@code computeIfAbsent()},
- * {@code computeIfPresent()}, {@code merge()}, etc., ensuring that keys are treated
- * case-insensitively for these operations as well.</p>
+ * // Create a case-insensitive map from an existing map
+ * Map<String, String> source = Map.of("Key1", "Value1", "Key2", "Value2");
+ * CaseInsensitiveMap<String, String> copiedMap = new CaseInsensitiveMap<>(source);
  *
- * @param <K> the type of keys maintained by this map (usually String for case-insensitive behavior)
+ * // Use with non-String keys
+ * CaseInsensitiveMap<Integer, String> intKeyMap = new CaseInsensitiveMap<>();
+ * intKeyMap.put(1, "One");
+ * System.out.println(intKeyMap.get(1));  // Outputs: One
+ * }</pre>
+ *
+ * <h2>Backing Map Selection</h2>
+ * <p>
+ * The backing map implementation is automatically chosen based on the type of the source map or can be explicitly
+ * specified. For example:
+ * </p>
+ * <ul>
+ *   <li>If the source map is a {@link TreeMap}, the backing map will also be a {@link TreeMap}.</li>
+ *   <li>If no match is found, the default backing map is a {@link LinkedHashMap}.</li>
+ *   <li>Unsupported map types, such as {@link IdentityHashMap}, will throw an {@link IllegalArgumentException}.</li>
+ * </ul>
+ *
+ * <h2>Performance Considerations</h2>
+ * <ul>
+ *   <li>The {@code CaseInsensitiveString} cache reduces object creation overhead for frequently used keys.</li>
+ *   <li>For extremely long keys, caching is bypassed to avoid memory exhaustion.</li>
+ *   <li>Performance is comparable to the backing map implementation used.</li>
+ * </ul>
+ *
+ * <h2>Additional Notes</h2>
+ * <ul>
+ *   <li>Thread safety depends on the thread safety of the chosen backing map. The default backing map
+ *       ({@link LinkedHashMap}) is not thread-safe.</li>
+ *   <li>String keys longer than 100 characters are not cached by default. This limit can be adjusted using
+ *       {@link #setMaxCacheLengthString(int)}.</li>
+ * </ul>
+ *
+ * @param <K> the type of keys maintained by this map (String keys are case-insensitive)
  * @param <V> the type of mapped values
- *           
+ * @see Map
+ * @see AbstractMap
+ * @see LinkedHashMap
+ * @see TreeMap
+ * @see CaseInsensitiveString
+ * 
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -388,7 +439,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
 
     /**
      * Returns a {@link Set} view of the keys contained in this map. The set is backed by the
-     * map, so changes to the map are reflected in the set, and vice-versa. For String keys,
+     * map, so changes to the map are reflected in the set, and vice versa. For String keys,
      * the set contains the original Strings rather than their case-insensitive representations.
      *
      * @return a set view of the keys contained in this map
@@ -513,8 +564,8 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
              * <p>String keys are returned in their original form rather than their case-insensitive
              * representation used internally by the map.
              *
-             * <p>This method could be remove and the parent class method would work, however, it's more efficient:
-             * It works directly with the backing map's keyset instead of using an iterator.
+             * <p>This method could be removed and the parent class method would work, however, it's more efficient:
+             * It works directly with the backing map's keySet instead of using an iterator.
              *
              * @param a the array into which the elements of this set are to be stored,
              *          if it is big enough; otherwise, a new array of the same runtime

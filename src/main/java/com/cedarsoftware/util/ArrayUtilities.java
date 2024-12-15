@@ -6,9 +6,60 @@ import java.util.Collection;
 import java.util.Iterator;
 
 /**
- * Handy utilities for working with Java arrays.
+ * A utility class that provides various static methods for working with Java arrays.
+ * <p>
+ * {@code ArrayUtilities} simplifies common array operations, such as checking for emptiness,
+ * combining arrays, creating subsets, and converting collections to arrays. It includes
+ * methods that are null-safe and type-generic, making it a flexible and robust tool
+ * for array manipulation in Java.
+ * </p>
  *
- * @author Ken Partlow
+ * <h2>Key Features</h2>
+ * <ul>
+ *   <li>Immutable common arrays for common use cases, such as {@link #EMPTY_OBJECT_ARRAY} and {@link #EMPTY_BYTE_ARRAY}.</li>
+ *   <li>Null-safe utility methods for checking array emptiness, size, and performing operations like shallow copying.</li>
+ *   <li>Support for generic array creation and manipulation, including:
+ *     <ul>
+ *       <li>Combining multiple arrays into a new array ({@link #addAll}).</li>
+ *       <li>Removing an item from an array by index ({@link #removeItem}).</li>
+ *       <li>Creating subsets of an array ({@link #getArraySubset}).</li>
+ *     </ul>
+ *   </li>
+ *   <li>Conversion utilities for working with arrays and collections, such as converting a {@link Collection} to an array
+ *       of a specified type ({@link #toArray}).</li>
+ * </ul>
+ *
+ * <h2>Usage Examples</h2>
+ * <pre>{@code
+ * // Check if an array is empty
+ * boolean isEmpty = ArrayUtilities.isEmpty(new String[] {});
+ *
+ * // Combine two arrays
+ * String[] combined = ArrayUtilities.addAll(new String[] {"a", "b"}, new String[] {"c", "d"});
+ *
+ * // Create a subset of an array
+ * int[] subset = ArrayUtilities.getArraySubset(new int[] {1, 2, 3, 4, 5}, 1, 4); // {2, 3, 4}
+ *
+ * // Convert a collection to a typed array
+ * List<String> list = List.of("x", "y", "z");
+ * String[] array = ArrayUtilities.toArray(String.class, list);
+ * }</pre>
+ *
+ * <h2>Performance Notes</h2>
+ * <ul>
+ *   <li>Methods like {@link #isEmpty} and {@link #size} are optimized for performance but remain null-safe.</li>
+ *   <li>Some methods, such as {@link #toArray} and {@link #addAll}, involve array copying and may incur performance
+ *       costs for very large arrays.</li>
+ * </ul>
+ *
+ * <h2>Design Philosophy</h2>
+ * <p>
+ * This utility class is designed to simplify array operations in a type-safe and null-safe manner.
+ * It avoids duplicating functionality already present in the JDK while extending support for
+ * generic and collection-based workflows.
+ * </p>
+ *
+ * @author Ken Partlow (kpartlow@gmail.com)
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -25,8 +76,7 @@ import java.util.Iterator;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class ArrayUtilities
-{
+public final class ArrayUtilities {
     /**
      * Immutable common arrays.
      */
@@ -39,8 +89,7 @@ public final class ArrayUtilities
     /**
      * Private constructor to promote using as static class.
      */
-    private ArrayUtilities()
-    {
+    private ArrayUtilities() {
         super();
     }
 
@@ -57,41 +106,45 @@ public final class ArrayUtilities
      * @param array array to check
      * @return true if empty or null
      */
-    public static boolean isEmpty(final Object array)
-    {
+    public static boolean isEmpty(final Object array) {
         return array == null || Array.getLength(array) == 0;
     }
 
     /**
-     * This is a null-safe size check.  It uses the Array
-     * static class for doing a length check.  This check is actually
-     * .0001 ms slower than the following typed check:
+     * Returns the size (length) of the specified array in a null-safe manner.
      * <p>
-     * <code>return (array == null) ? 0 : array.length;</code>
+     * If the provided array is {@code null}, this method returns {@code 0}.
+     * Otherwise, it returns the length of the array using {@link Array#getLength(Object)}.
      * </p>
-     * @param array array to check
-     * @return true if empty or null
+     *
+     * <h2>Usage Example</h2>
+     * <pre>{@code
+     * int[] numbers = {1, 2, 3};
+     * int size = ArrayUtilities.size(numbers); // size == 3
+     *
+     * int sizeOfNull = ArrayUtilities.size(null); // sizeOfNull == 0
+     * }</pre>
+     *
+     * @param array the array whose size is to be determined, may be {@code null}
+     * @return the size of the array, or {@code 0} if the array is {@code null}
      */
-    public static int size(final Object array)
-    {
+    public static int size(final Object array) {
         return array == null ? 0 : Array.getLength(array);
     }
-
 
     /**
      * <p>Shallow copies an array of Objects
      * </p>
      * <p>The objects in the array are not cloned, thus there is no special
-     * handling for multi-dimensional arrays.
+     * handling for multidimensional arrays.
      * </p>
      * <p>This method returns <code>null</code> if <code>null</code> array input.</p>
      *
      * @param array the array to shallow clone, may be <code>null</code>
-     * @param <T> the array type
+     * @param <T>   the array type
      * @return the cloned array, <code>null</code> if <code>null</code> input
      */
-    public static <T> T[] shallowCopy(final T[] array)
-    {
+    public static <T> T[] shallowCopy(final T[] array) {
         if (array == null) {
             return null;
         }
@@ -132,12 +185,12 @@ public final class ArrayUtilities
     public static <T> T[] createArray(T... elements) {
         return elements;
     }
-    
+
     /**
      * <p>Adds all the elements of the given arrays into a new array.
      * </p>
-     * <p>The new array contains all of the element of <code>array1</code> followed
-     * by all of the elements <code>array2</code>. When an array is returned, it is always
+     * <p>The new array contains all the element of <code>array1</code> followed
+     * by all the elements <code>array2</code>. When an array is returned, it is always
      * a new array.
      * </p>
      * <pre>
@@ -151,19 +204,15 @@ public final class ArrayUtilities
      *
      * @param array1 the first array whose elements are added to the new array, may be <code>null</code>
      * @param array2 the second array whose elements are added to the new array, may be <code>null</code>
-     * @param <T> the array type
+     * @param <T>    the array type
      * @return The new array, <code>null</code> if <code>null</code> array inputs.
-     *         The type of the new array is the type of the first array.
+     * The type of the new array is the type of the first array.
      */
     @SuppressWarnings("unchecked")
-    public static <T> T[] addAll(final T[] array1, final T[] array2)
-    {
-        if (array1 == null)
-        {
+    public static <T> T[] addAll(final T[] array1, final T[] array2) {
+        if (array1 == null) {
             return shallowCopy(array2);
-        }
-        else if (array2 == null)
-        {
+        } else if (array2 == null) {
             return shallowCopy(array1);
         }
         final T[] newArray = (T[]) Array.newInstance(array1.getClass().getComponentType(), array1.length + array2.length);
@@ -173,8 +222,7 @@ public final class ArrayUtilities
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T[] removeItem(T[] array, int pos)
-    {
+    public static <T> T[] removeItem(T[] array, int pos) {
         final int len = Array.getLength(array);
         T[] dest = (T[]) Array.newInstance(array.getClass().getComponentType(), len - 1);
 
@@ -183,26 +231,24 @@ public final class ArrayUtilities
         return dest;
     }
 
-    public static <T> T[] getArraySubset(T[] array, int start, int end)
-    {
+    public static <T> T[] getArraySubset(T[] array, int start, int end) {
         return Arrays.copyOfRange(array, start, end);
     }
 
     /**
      * Convert Collection to a Java (typed) array [].
+     *
      * @param classToCastTo array type (Object[], Person[], etc.)
-     * @param c Collection containing items to be placed into the array.
-     * @param <T> Type of the array
+     * @param c             Collection containing items to be placed into the array.
+     * @param <T>           Type of the array
      * @return Array of the type (T) containing the items from collection 'c'.
      */
     @SuppressWarnings("unchecked")
-    public static <T> T[] toArray(Class<T> classToCastTo, Collection<?> c)
-    {
+    public static <T> T[] toArray(Class<T> classToCastTo, Collection<?> c) {
         T[] array = c.toArray((T[]) Array.newInstance(classToCastTo, c.size()));
         Iterator<?> i = c.iterator();
         int idx = 0;
-        while (i.hasNext())
-        {
+        while (i.hasNext()) {
             Array.set(array, idx++, i.next());
         }
         return array;

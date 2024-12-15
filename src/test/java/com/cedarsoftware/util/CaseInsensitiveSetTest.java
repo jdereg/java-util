@@ -493,60 +493,6 @@ public class CaseInsensitiveSetTest
     }
 
     @Test
-    public void testMinus()
-    {
-        CaseInsensitiveSet<Object> ciSet = new CaseInsensitiveSet<>();
-        ciSet.add("aaa");
-        ciSet.add("bbb");
-        ciSet.add("ccc");
-        ciSet.add('d'); // Character
-
-        Set<Object> things = new HashSet<>();
-        things.add(1L);
-        things.add("aAa");
-        things.add('c');
-        ciSet.minus(things);
-        assert ciSet.size() == 3;
-        assert ciSet.contains("BbB");
-        assert ciSet.contains("cCC");
-
-        ciSet.minus(7);
-        assert ciSet.size() == 3;
-
-        ciSet.minus('d');
-        assert ciSet.size() == 2;
-
-        Set<Object> theRest = new HashSet<>();
-        theRest.add("BBb");
-        theRest.add("CCc");
-        ciSet.minus(theRest);
-        assert ciSet.isEmpty();
-    }
-
-    @Test
-    public void testPlus()
-    {
-        CaseInsensitiveSet<Object> ciSet = new CaseInsensitiveSet<>();
-        ciSet.add("aaa");
-        ciSet.add("bbb");
-        ciSet.add("ccc");
-        ciSet.add('d'); // Character
-
-        Set<Object> things = new HashSet<>();
-        things.add(1L);
-        things.add("aAa");  // no duplicate added
-        things.add('c');
-        ciSet.plus(things);
-        assert ciSet.size() == 6;
-        assert ciSet.contains(1L);
-        assert ciSet.contains('c');
-
-        ciSet.plus(7);
-        assert ciSet.size() == 7;
-        assert ciSet.contains(7);
-    }
-
-    @Test
     public void testHashMapBacked()
     {
         String[] strings = new String[] { "foo", "bar", "baz", "qux", "quux", "garpley"};

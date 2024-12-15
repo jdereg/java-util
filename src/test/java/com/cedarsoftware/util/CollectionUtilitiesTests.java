@@ -1,13 +1,21 @@
 package com.cedarsoftware.util;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 
+import static com.cedarsoftware.util.CollectionUtilities.getCheckedCollection;
+import static com.cedarsoftware.util.CollectionUtilities.getEmptyCollection;
+import static com.cedarsoftware.util.CollectionUtilities.getSynchronizedCollection;
+import static com.cedarsoftware.util.CollectionUtilities.getUnmodifiableCollection;
 import static com.cedarsoftware.util.CollectionUtilities.hasContent;
 import static com.cedarsoftware.util.CollectionUtilities.isEmpty;
 import static com.cedarsoftware.util.CollectionUtilities.listOf;
@@ -153,5 +161,103 @@ class CollectionUtilitiesTests {
         assertEquals(1, size(listOf("one")));
         assertEquals(2, size(setOf("one", "two")));
         assertEquals(2, size(listOf("one", "two")));
+    }
+
+    @Test
+    void testGetUnmodifiableCollection() {
+        List<String> list = new ArrayList<>(listOf("one", "two"));
+        Collection<String> unmodifiableList = getUnmodifiableCollection(list);
+
+        assertEquals(2, unmodifiableList.size());
+        assertTrue(unmodifiableList.contains("one"));
+        assertTrue(unmodifiableList.contains("two"));
+
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+                .isThrownBy(() -> unmodifiableList.add("three"));
+    }
+
+    @Test
+    void testGetCheckedCollection() {
+        List<Object> list = new ArrayList<>(listOf("one", "two"));
+        Collection<String> checkedCollection = getCheckedCollection(list, String.class);
+
+        assertEquals(2, checkedCollection.size());
+        assertTrue(checkedCollection.contains("one"));
+        assertTrue(checkedCollection.contains("two"));
+
+        assertThatExceptionOfType(ClassCastException.class)
+                .isThrownBy(() -> (checkedCollection).add((String)(Object)1));
+    }
+
+    @Test
+    void testGetSynchronizedCollection() {
+        List<String> list = new ArrayList<>(listOf("one", "two"));
+        Collection<String> synchronizedCollection = getSynchronizedCollection(list);
+
+        assertEquals(2, synchronizedCollection.size());
+        assertTrue(synchronizedCollection.contains("one"));
+        assertTrue(synchronizedCollection.contains("two"));
+
+        synchronized (synchronizedCollection) {
+            synchronizedCollection.add("three");
+        }
+        assertTrue(synchronizedCollection.contains("three"));
+    }
+
+    @Test
+    void testGetEmptyCollection() {
+        List<String> list = new ArrayList<>();
+        Collection<String> emptyList = getEmptyCollection(list);
+        assertEquals(0, emptyList.size());
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+                .isThrownBy(() -> emptyList.add("one"));
+
+        Set<String> set = new HashSet<>();
+        Collection<String> emptySet = getEmptyCollection(set);
+        assertEquals(0, emptySet.size());
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+                .isThrownBy(() -> emptySet.add("one"));
+    }
+
+    @Test
+    void testGetUnmodifiableCollectionSpecificTypes() {
+        NavigableSet<String> navigableSet = new TreeSet<>(setOf("one", "two"));
+        Collection<String> unmodifiableNavigableSet = getUnmodifiableCollection(navigableSet);
+        assertEquals(2, unmodifiableNavigableSet.size());
+        assertTrue(unmodifiableNavigableSet.contains("one"));
+
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+                .isThrownBy(() -> unmodifiableNavigableSet.add("three"));
+    }
+
+    @Test
+    void testGetCheckedCollectionSpecificTypes() {
+        NavigableSet<Object> navigableSet = new TreeSet<>(setOf("one", "two"));
+        Collection<String> checkedNavigableSet = getCheckedCollection(navigableSet, String.class);
+        assertEquals(2, checkedNavigableSet.size());
+        assertTrue(checkedNavigableSet.contains("one"));
+
+        assertThatExceptionOfType(ClassCastException.class)
+                .isThrownBy(() -> checkedNavigableSet.add((String)(Object)1));
+    }
+
+    @Test
+    void testGetSynchronizedCollectionSpecificTypes() {
+        SortedSet<String> sortedSet = new TreeSet<>(setOf("one", "two"));
+        Collection<String> synchronizedSortedSet = getSynchronizedCollection(sortedSet);
+        assertEquals(2, synchronizedSortedSet.size());
+        assertTrue(synchronizedSortedSet.contains("one"));
+
+        synchronizedSortedSet.add("three");
+        assertTrue(synchronizedSortedSet.contains("three"));
+    }
+
+    @Test
+    void testGetEmptyCollectionSpecificTypes() {
+        SortedSet<String> sortedSet = new TreeSet<>();
+        Collection<String> emptySortedSet = getEmptyCollection(sortedSet);
+        assertEquals(0, emptySortedSet.size());
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+                .isThrownBy(() -> emptySortedSet.add("one"));
     }
 }

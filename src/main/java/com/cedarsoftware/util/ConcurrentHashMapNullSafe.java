@@ -4,13 +4,43 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * ConcurrentHashMapNullSafe is a thread-safe implementation of ConcurrentMap
- * that allows null keys and null values by using sentinel objects internally.
- * <br>
- * @param <K> The type of keys maintained by this map
- * @param <V> The type of mapped values
- * <br>
- * @author John DeRegnaucourt (jdereg@gmail.com)
+ * A thread-safe implementation of {@link java.util.concurrent.ConcurrentMap} that supports
+ * {@code null} keys and {@code null} values by using internal sentinel objects.
+ * <p>
+ * {@code ConcurrentHashMapNullSafe} extends {@link AbstractConcurrentNullSafeMap} and uses a
+ * {@link ConcurrentHashMap} as its backing implementation. This class retains all the advantages
+ * of {@code ConcurrentHashMap} (e.g., high concurrency, thread safety, and performance) while
+ * enabling safe handling of {@code null} keys and values.
+ * </p>
+ *
+ * <h2>Key Features</h2>
+ * <ul>
+ *   <li>Thread-safe and highly concurrent.</li>
+ *   <li>Supports {@code null} keys and {@code null} values through internal sentinel objects.</li>
+ *   <li>Adheres to the {@link java.util.Map} and {@link java.util.concurrent.ConcurrentMap} contracts.</li>
+ *   <li>Provides multiple constructors to control initial capacity, load factor, and populate from another map.</li>
+ * </ul>
+ *
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * // Create an empty ConcurrentHashMapNullSafe
+ * ConcurrentHashMapNullSafe<String, String> map = new ConcurrentHashMapNullSafe<>();
+ * map.put(null, "nullKey");
+ * map.put("key", null);
+ *
+ * // Populate from another map
+ * Map<String, String> existingMap = Map.of("a", "b", "c", "d");
+ * ConcurrentHashMapNullSafe<String, String> populatedMap = new ConcurrentHashMapNullSafe<>(existingMap);
+ *
+ * System.out.println(map.get(null));  // Outputs: nullKey
+ * System.out.println(map.get("key")); // Outputs: null
+ * System.out.println(populatedMap);  // Outputs: {a=b, c=d}
+ * }</pre>
+ *
+ * @param <K> the type of keys maintained by this map
+ * @param <V> the type of mapped values
+ *
+ * @author John DeRegnaucourt
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -25,34 +55,42 @@ import java.util.concurrent.ConcurrentHashMap;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ * @see ConcurrentHashMap
+ * @see AbstractConcurrentNullSafeMap
  */
 public class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNullSafeMap<K, V> {
     /**
-     * Constructs a new, empty ConcurrentHashMapNullSafe with default initial capacity (16) and load factor (0.75).
+     * Constructs a new, empty {@code ConcurrentHashMapNullSafe} with the default initial capacity (16)
+     * and load factor (0.75).
+     * <p>
+     * This constructor creates a thread-safe map suitable for general-purpose use, retaining the
+     * concurrency properties of {@link ConcurrentHashMap} while supporting {@code null} keys and values.
+     * </p>
      */
     public ConcurrentHashMapNullSafe() {
         super(new ConcurrentHashMap<>());
     }
 
     /**
-     * Constructs a new, empty ConcurrentHashMapNullSafe with the specified initial capacity and default load factor (0.75).
+     * Constructs a new, empty {@code ConcurrentHashMapNullSafe} with the specified initial capacity
+     * and default load factor (0.75).
      *
      * @param initialCapacity the initial capacity. The implementation performs internal sizing
      *                        to accommodate this many elements.
-     * @throws IllegalArgumentException if the initial capacity is negative.
+     * @throws IllegalArgumentException if the initial capacity is negative
      */
     public ConcurrentHashMapNullSafe(int initialCapacity) {
         super(new ConcurrentHashMap<>(initialCapacity));
     }
 
     /**
-     * Constructs a new, empty ConcurrentHashMapNullSafe with the specified initial capacity and load factor.
+     * Constructs a new, empty {@code ConcurrentHashMapNullSafe} with the specified initial capacity
+     * and load factor.
      *
-     * @param initialCapacity the initial capacity. The implementation
-     *                        performs internal sizing to accommodate this many elements.
-     * @param loadFactor      the load factor threshold, used to control resizing.
-     *                        Resizing may be performed when the average number of elements per
-     *                        bin exceeds this threshold.
+     * @param initialCapacity the initial capacity. The implementation performs internal sizing
+     *                        to accommodate this many elements.
+     * @param loadFactor      the load factor threshold, used to control resizing. Resizing may be
+     *                        performed when the average number of elements per bin exceeds this threshold.
      * @throws IllegalArgumentException if the initial capacity is negative or the load factor is nonpositive
      */
     public ConcurrentHashMapNullSafe(int initialCapacity, float loadFactor) {
@@ -60,10 +98,14 @@ public class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNullSafeM
     }
 
     /**
-     * Constructs a new ConcurrentHashMapNullSafe with the same mappings as the specified map.
+     * Constructs a new {@code ConcurrentHashMapNullSafe} with the same mappings as the specified map.
+     * <p>
+     * This constructor copies all mappings from the given map into the new {@code ConcurrentHashMapNullSafe}.
+     * The mappings are inserted in the order returned by the source map's {@code entrySet} iterator.
+     * </p>
      *
      * @param m the map whose mappings are to be placed in this map
-     * @throws NullPointerException if the specified map is null
+     * @throws NullPointerException if the specified map is {@code null}
      */
     public ConcurrentHashMapNullSafe(Map<? extends K, ? extends V> m) {
         super(new ConcurrentHashMap<>());

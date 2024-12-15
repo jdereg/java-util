@@ -11,16 +11,64 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
 /**
- * ConcurrentList provides a List and List wrapper that is thread-safe, usable in highly concurrent
- * environments. It provides a no-arg constructor that will directly return a ConcurrentList that is
- * thread-safe.  It has a constructor that takes a List argument, which will wrap that List and make it
- * thread-safe (no elements are duplicated).<br>
- * <br>
- * The iterator(), listIterator() return read-only views copied from the list.  The listIterator(index)
- * is not implemented, as the inbound index could already be outside the lists position due to concurrent
- * edits.  Similarly, subList(from, to) is not implemented because the boundaries may exceed the lists
- * size due to concurrent edits.
- * <br><br>
+ * A thread-safe implementation of the {@link List} interface, designed for use in highly concurrent environments.
+ * <p>
+ * The {@code ConcurrentList} can be used either as a standalone thread-safe list or as a wrapper to make an existing
+ * list thread-safe. It ensures thread safety without duplicating elements, making it suitable for applications
+ * requiring synchronized access to list data.
+ * </p>
+ *
+ * <h2>Features</h2>
+ * <ul>
+ *   <li><b>Standalone Mode:</b> Use the no-argument constructor to create a new thread-safe {@code ConcurrentList}.</li>
+ *   <li><b>Wrapper Mode:</b> Pass an existing {@link List} to the constructor to wrap it with thread-safe behavior.</li>
+ *   <li><b>Read-Only Iterators:</b> The {@link #iterator()} and {@link #listIterator()} methods return a read-only
+ *       snapshot of the list at the time of the call, ensuring safe iteration in concurrent environments.</li>
+ *   <li><b>Unsupported Operations:</b> Due to the dynamic nature of concurrent edits, the following operations are
+ *       not implemented:
+ *       <ul>
+ *         <li>{@link #listIterator(int)}: The starting index may no longer be valid due to concurrent modifications.</li>
+ *         <li>{@link #subList(int, int)}: The range may exceed the current list size in a concurrent context.</li>
+ *       </ul>
+ *   </li>
+ * </ul>
+ *
+ * <h2>Thread Safety</h2>
+ * <p>
+ * All public methods of {@code ConcurrentList} are thread-safe, ensuring that modifications and access
+ * operations can safely occur concurrently. However, thread safety depends on the correctness of the provided
+ * backing list in wrapper mode.
+ * </p>
+ *
+ * <h2>Usage</h2>
+ * <pre>{@code
+ * // Standalone thread-safe list
+ * ConcurrentList<String> standaloneList = new ConcurrentList<>();
+ * standaloneList.add("Hello");
+ * standaloneList.add("World");
+ *
+ * // Wrapping an existing list
+ * List<String> existingList = new ArrayList<>();
+ * existingList.add("Java");
+ * existingList.add("Concurrency");
+ * ConcurrentList<String> wrappedList = new ConcurrentList<>(existingList);
+ * }</pre>
+ *
+ * <h2>Performance Considerations</h2>
+ * <p>
+ * The {@link #iterator()} and {@link #listIterator()} methods return read-only views created by copying
+ * the list contents, which ensures thread safety but may incur a performance cost for very large lists.
+ * Modifications to the list during iteration will not be reflected in the iterators.
+ * </p>
+ *
+ * <h2>Additional Notes</h2>
+ * <ul>
+ *   <li>{@code ConcurrentList} supports {@code null} elements if the underlying list does.</li>
+ *   <li>{@link #listIterator(int)} and {@link #subList(int, int)} throw {@link UnsupportedOperationException}.</li>
+ * </ul>
+ *
+ * @param <E> The type of elements in this list
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -36,6 +84,7 @@ import java.util.function.Supplier;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ * @see List
  */
 public class ConcurrentList<E> implements List<E> {
     private final List<E> list;

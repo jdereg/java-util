@@ -30,7 +30,7 @@ final class ThrowableConversions {
 
     private ThrowableConversions() {}
 
-    static Map toMap(Object from, Converter converter) {
+    static Map<String, Object> toMap(Object from, Converter converter) {
         Throwable throwable = (Throwable) from;
         Map<String, Object> target = new CompactLinkedMap<>();
         target.put(CLASS, throwable.getClass().getName());

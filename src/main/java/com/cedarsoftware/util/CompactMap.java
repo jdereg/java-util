@@ -85,6 +85,14 @@ public class CompactMap<K, V> implements Map<K, V>
     private static final String EMPTY_MAP = "_︿_ψ_☼";
     private Object val = EMPTY_MAP;
 
+    /**
+     * Constructs an empty CompactMap with the default configuration.
+     * <p>
+     * This constructor ensures that the `compactSize()` method returns a value greater than or equal to 2.
+     * </p>
+     *
+     * @throws IllegalStateException if {@link #compactSize()} returns a value less than 2
+     */
     public CompactMap()
     {
         if (compactSize() < 2)
@@ -93,12 +101,30 @@ public class CompactMap<K, V> implements Map<K, V>
         }
     }
 
+    /**
+     * Constructs a CompactMap initialized with the entries from the provided map.
+     * <p>
+     * The entries are copied from the provided map, and the internal representation
+     * is determined based on the number of entries and the {@link #compactSize()} threshold.
+     * </p>
+     *
+     * @param other the map whose entries are to be placed in this map
+     * @throws NullPointerException if {@code other} is null
+     */
     public CompactMap(Map<K, V> other)
     {
         this();
         putAll(other);
     }
 
+    /**
+     * Returns the number of key-value mappings in this map.
+     * <p>
+     * If the map contains more than {@link Integer#MAX_VALUE} elements, returns {@link Integer#MAX_VALUE}.
+     * </p>
+     *
+     * @return the number of key-value mappings in this map
+     */
     public int size()
     {
         if (val instanceof Object[])
@@ -118,6 +144,11 @@ public class CompactMap<K, V> implements Map<K, V>
         return 1;
     }
 
+    /**
+     * Returns {@code true} if this map contains no key-value mappings.
+     *
+     * @return {@code true} if this map contains no key-value mappings; {@code false} otherwise
+     */
     public boolean isEmpty()
     {
         return val == EMPTY_MAP;
@@ -144,6 +175,12 @@ public class CompactMap<K, V> implements Map<K, V>
         return Objects.equals(key, aKey);
     }
 
+    /**
+     * Returns {@code true} if this map contains a mapping for the specified key.
+     *
+     * @param key the key whose presence in this map is to be tested
+     * @return {@code true} if this map contains a mapping for the specified key; {@code false} otherwise
+     */
     public boolean containsKey(Object key)
     {
         if (val instanceof Object[])

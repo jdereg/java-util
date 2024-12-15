@@ -9,29 +9,44 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Often, memory may be consumed by lots of Maps or Sets (HashSet uses a HashMap to implement it's set).  HashMaps
- * and other similar Maps often have a lot of blank entries in their internal structures.  If you have a lot of Maps
- * in memory, perhaps representing JSON objects, large amounts of memory can be consumed by these empty Map entries.<p></p>
+ * A memory-efficient Set implementation that optimizes storage based on size.
+ * <p>
+ * CompactSet strives to minimize memory usage while maintaining performance close to that of a {@link HashSet}.
+ * It uses a single instance variable of type Object and dynamically changes its internal representation as the set grows,
+ * achieving memory savings without sacrificing speed for typical use cases.
+ * </p>
  *
- * CompactSet is a Set that strives to reduce memory at all costs while retaining speed that is close to HashSet's speed.
- * It does this by using only one (1) member variable (of type Object) and changing it as the Set grows.  It goes from
- * an Object[] to a Set when the size() of the Set crosses the threshold defined by the method compactSize() (defaults
- * to 80).  After the Set crosses compactSize() size, then it uses a Set (defined by the user) to hold the items.  This
- * Set is defined by a method that can be overridden, which returns a new empty Set() for use in the {@literal >} compactSize()
- * state.<pre>
+ * <h2>Storage Strategy</h2>
+ * The set uses different internal representations based on size:
+ * <ul>
+ *   <li><b>Empty (size=0):</b> Single sentinel value</li>
+ *   <li><b>Single Entry (size=1):</b> Directly stores the single element</li>
+ *   <li><b>Multiple Entries (2 ≤ size ≤ compactSize()):</b> Single Object[] to store elements</li>
+ *   <li><b>Large Sets (size > compactSize()):</b> Delegates to a standard Set implementation</li>
+ * </ul>
  *
- *     Methods you may want to override:
+ * <h2>Customization Points</h2>
+ * The following methods can be overridden to customize behavior:
  *
- *     // Map you would like it to use when size() {@literal >} compactSize().  HashSet is default
- *     protected abstract Map{@literal <}K, V{@literal >} getNewMap();
+ * <pre>{@code
+ * // Set implementation for large sets (size > compactSize)
+ * protected Set<E> getNewSet() { return new HashSet<>(); }
  *
- *     // If you want case insensitivity, return true and return new CaseInsensitiveSet or TreeSet(String.CASE_INSENSITIVE_PRDER) from getNewSet()
- *     protected boolean isCaseInsensitive() { return false; }
+ * // Enable case-insensitive element comparison
+ * protected boolean isCaseInsensitive() { return false; }
  *
- *     // When size() {@literal >} than this amount, the Set returned from getNewSet() is used to store elements.
- *     protected int compactSize() { return 80; }
- * </pre>
- * This Set supports holding a null element.
+ * // Threshold at which to switch to standard Set implementation
+ * protected int compactSize() { return 80; }
+ * }</pre>
+ *
+ * <h2>Additional Notes</h2>
+ * <ul>
+ *   <li>Supports null elements if the backing Set implementation does</li>
+ *   <li>Thread safety depends on the backing Set implementation</li>
+ *   <li>Particularly memory efficient for sets of size 0-1</li>
+ * </ul>
+ *
+ * @param <E> The type of elements maintained by this set
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -48,6 +63,7 @@ import java.util.Set;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ * @see HashSet
  */
 public class CompactSet<E> extends AbstractSet<E>
 {

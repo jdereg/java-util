@@ -22,12 +22,69 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Useful utilities for Class work. For example, call computeInheritanceDistance(source, destination)
- * to get the inheritance distance (number of super class steps to make it from source to destination.)
- * It will return the distance as an integer.  If there is no inheritance relationship between the two,
- * then -1 is returned.  The primitives and primitive wrappers return 0 distance as if they are the
- * same class.
+ * A utility class providing various methods for working with Java {@link Class} objects and related operations.
  * <p>
+ * {@code ClassUtilities} includes functionalities such as:
+ * </p>
+ * <ul>
+ *     <li>Determining inheritance distance between two classes or interfaces ({@link #computeInheritanceDistance}).</li>
+ *     <li>Checking if a class is primitive or a primitive wrapper ({@link #isPrimitive}).</li>
+ *     <li>Converting between primitive types and their wrapper classes ({@link #toPrimitiveWrapperClass}).</li>
+ *     <li>Loading resources from the classpath as strings or byte arrays ({@link #loadResourceAsString} and {@link #loadResourceAsBytes}).</li>
+ *     <li>Providing custom mappings for class aliases ({@link #addPermanentClassAlias} and {@link #removePermanentClassAlias}).</li>
+ *     <li>Identifying whether all constructors in a class are private ({@link #areAllConstructorsPrivate}).</li>
+ *     <li>Finding the most specific matching class in an inheritance hierarchy ({@link #findClosest}).</li>
+ * </ul>
+ *
+ * <h2>Inheritance Distance</h2>
+ * <p>
+ * The {@link #computeInheritanceDistance(Class, Class)} method calculates the number of inheritance steps
+ * between two classes or interfaces. If there is no relationship, it returns {@code -1}.
+ * </p>
+ *
+ * <h2>Primitive and Wrapper Handling</h2>
+ * <ul>
+ *     <li>Supports identification of primitive types and their wrappers.</li>
+ *     <li>Handles conversions between primitive types and their wrapper classes.</li>
+ *     <li>Considers primitive types and their wrappers interchangeable for certain operations.</li>
+ * </ul>
+ *
+ * <h2>Resource Loading</h2>
+ * <p>
+ * Includes methods for loading resources from the classpath as strings or byte arrays, throwing appropriate
+ * exceptions if the resource cannot be found or read.
+ * </p>
+ *
+ * <h2>OSGi and JPMS ClassLoader Support</h2>
+ * <p>
+ * Detects and supports environments such as OSGi or JPMS for proper class loading. Uses caching
+ * for efficient retrieval of class loaders in these environments.
+ * </p>
+ *
+ * <h2>Design Notes</h2>
+ * <ul>
+ *     <li>This class is designed to be a static utility class and should not be instantiated.</li>
+ *     <li>It uses internal caching for operations like class aliasing and OSGi class loading to optimize performance.</li>
+ * </ul>
+ *
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * // Compute inheritance distance
+ * int distance = ClassUtilities.computeInheritanceDistance(ArrayList.class, List.class); // Outputs 1
+ *
+ * // Check if a class is primitive
+ * boolean isPrimitive = ClassUtilities.isPrimitive(int.class); // Outputs true
+ *
+ * // Load a resource as a string
+ * String resourceContent = ClassUtilities.loadResourceAsString("example.txt");
+ * }</pre>
+ *
+ * @see Class
+ * @see ClassLoader
+ * @see Modifier
+ * @see Primitive
+ * @see OSGi
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC

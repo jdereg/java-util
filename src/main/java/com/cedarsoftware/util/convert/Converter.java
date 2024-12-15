@@ -1039,13 +1039,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(URI.class, Map.class), UriConversions::toMap);
         CONVERSION_DB.put(pair(URL.class, Map.class), UrlConversions::toMap);
         CONVERSION_DB.put(pair(Throwable.class, Map.class), ThrowableConversions::toMap);
-
-        // For Collection Support:
-        CONVERSION_DB.put(pair(Collection.class, Collection.class),
-                (ConvertWithTarget<Collection<?>>) (Object from, Converter converter, Class<?> target) -> {
-                    // Delegate to CollectionConversions.collectionToCollection()
-                    return (Collection<Object>) CollectionConversions.collectionToCollection((Collection<?>) from, target);
-                });
     }
 
     /**
@@ -1245,7 +1238,7 @@ public final class Converter {
         converter = getInheritedConverter(sourceType, toType);
         if (converter != null && converter != UNSUPPORTED) {
             // Fast lookup next time.
-            if (!isDirectConversionSupportedFor(sourceType, toType)) {
+            if (!isDirectConversionSupported(sourceType, toType)) {
                 addConversion(sourceType, toType, converter);
             }
             return (T) converter.convert(from, this, toType);
@@ -1284,6 +1277,8 @@ public final class Converter {
         } else if (Collection.class.isAssignableFrom(sourceType)) {
             if (toType.isArray()) {
                 return (T) ArrayConversions.collectionToArray((Collection<?>) from, toType, this);
+            } else if (Collection.class.isAssignableFrom(toType)) {
+                return (T) CollectionConversions.collectionToCollection((Collection<?>) from, toType);
             }
         } else if (sourceType.isArray()) {
             if (Collection.class.isAssignableFrom(toType)) {
@@ -1296,74 +1291,7 @@ public final class Converter {
 
         return null;
     }
-    
-    /**
-     * Determines if a collection-based conversion is supported between the specified source and target types.
-     * This method checks for valid conversions between arrays, collections, and EnumSets without actually
-     * performing the conversion.
-     *
-     * <p>Supported conversions include:
-     * <ul>
-     *   <li>Array to Collection</li>
-     *   <li>Collection to Array</li>
-     *   <li>Array to Array (when component types differ)</li>
-     *   <li>Array or Collection to EnumSet (when target is an Enum type)</li>
-     *   <li>EnumSet to Array or Collection</li>
-     * </ul>
-     * </p>
-     *
-     * @param sourceType The source type to convert from
-     * @param target The target type to convert to
-     * @return true if a collection-based conversion is supported between the types, false otherwise
-     * @throws IllegalArgumentException if target is EnumSet.class (caller should specify specific Enum type instead)
-     */
-    private boolean isCollectionConversionSupported(Class<?> sourceType, Class<?> target) {
-        // Quick check: If the source is not an array, a Collection, or an EnumSet, no conversion is supported here.
-        if (!(sourceType.isArray() || Collection.class.isAssignableFrom(sourceType) || EnumSet.class.isAssignableFrom(sourceType))) {
-            return false;
-        }
 
-        // Target is EnumSet: We cannot directly determine the target Enum type here.
-        // The caller should specify the Enum type (e.g. "Day.class") instead of EnumSet.
-        if (EnumSet.class.isAssignableFrom(target)) {
-            throw new IllegalArgumentException(
-                    "To convert to EnumSet, specify the Enum class to convert to as the 'toType.' " +
-                            "Example: EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);"
-            );
-        }
-
-        // If the target type is an Enum, then we're essentially looking to create an EnumSet<EnumType>.
-        // For that, the source must be either an array or a collection from which we can build the EnumSet.
-        if (target.isEnum()) {
-            return (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType));
-        }
-
-        // If the source is an EnumSet, it can be converted to either an array or another collection.
-        if (EnumSet.class.isAssignableFrom(sourceType)) {
-            return target.isArray() || Collection.class.isAssignableFrom(target);
-        }
-
-        // If the source is a generic Collection, we only support converting it to an array type.
-        if (Collection.class.isAssignableFrom(sourceType)) {
-            return target.isArray();
-        }
-
-        // If the source is an array:
-        // 1. If the target is a Collection, we can always convert.
-        // 2. If the target is another array, we must verify that component types differ,
-        //    otherwise it's just a no-op (the caller might be expecting a conversion).
-        if (sourceType.isArray()) {
-            if (Collection.class.isAssignableFrom(target)) {
-                return true;
-            } else {
-                return target.isArray() && !sourceType.getComponentType().equals(target.getComponentType());
-            }
-        }
-
-        // Fallback: Shouldn't reach here given the initial conditions.
-        return false;
-    }
-    
     /**
      * Retrieves the most suitable converter for converting from the specified source type to the desired target type.
      * This method searches through the class hierarchies of both source and target types to find the best matching
@@ -1616,6 +1544,123 @@ public final class Converter {
     }
 
     /**
+     * Determines if a collection-based conversion is supported between the specified source and target types.
+     * This method checks for valid conversions between arrays, collections, and EnumSets without actually
+     * performing the conversion.
+     *
+     * <p>Supported conversions include:
+     * <ul>
+     *   <li>Array to Collection</li>
+     *   <li>Collection to Array</li>
+     *   <li>Array to Array (when component types differ)</li>
+     *   <li>Array or Collection to EnumSet (when target is an Enum type)</li>
+     *   <li>EnumSet to Array or Collection</li>
+     * </ul>
+     * </p>
+     *
+     * @param sourceType The source type to convert from
+     * @param target The target type to convert to
+     * @return true if a collection-based conversion is supported between the types, false otherwise
+     * @throws IllegalArgumentException if target is EnumSet.class (caller should specify specific Enum type instead)
+     */
+    public boolean isCollectionConversionSupported(Class<?> sourceType, Class<?> target) {
+        // Quick check: If the source is not an array, a Collection, or an EnumSet, no conversion is supported here.
+        if (!(sourceType.isArray() || Collection.class.isAssignableFrom(sourceType) || EnumSet.class.isAssignableFrom(sourceType))) {
+            return false;
+        }
+
+        // Target is EnumSet: We cannot directly determine the target Enum type here.
+        // The caller should specify the Enum type (e.g. "Day.class") instead of EnumSet.
+        if (EnumSet.class.isAssignableFrom(target)) {
+            throw new IllegalArgumentException(
+                    "To convert to EnumSet, specify the Enum class to convert to as the 'toType.' " +
+                            "Example: EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);"
+            );
+        }
+
+        // If the target type is an Enum, then we're essentially looking to create an EnumSet<EnumType>.
+        // For that, the source must be either an array or a collection from which we can build the EnumSet.
+        if (target.isEnum()) {
+            return (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType));
+        }
+
+        // If the source is an EnumSet, it can be converted to either an array or another collection.
+        if (EnumSet.class.isAssignableFrom(sourceType)) {
+            return target.isArray() || Collection.class.isAssignableFrom(target);
+        }
+
+        // If the source is a generic Collection, we only support converting it to an array type.
+        if (Collection.class.isAssignableFrom(sourceType)) {
+            return target.isArray();
+        }
+
+        // If the source is an array:
+        // 1. If the target is a Collection, we can always convert.
+        // 2. If the target is another array, we must verify that component types differ,
+        //    otherwise it's just a no-op (the caller might be expecting a conversion).
+        if (sourceType.isArray()) {
+            if (Collection.class.isAssignableFrom(target)) {
+                return true;
+            } else {
+                return target.isArray() && !sourceType.getComponentType().equals(target.getComponentType());
+            }
+        }
+
+        // Fallback: Shouldn't reach here given the initial conditions.
+        return false;
+    }
+
+    /**
+     * Determines whether a conversion from the specified source type to the target type is supported,
+     * excluding any conversions involving arrays or collections.
+     *
+     * <p>The method is particularly useful when you need to verify that a conversion is possible
+     * between simple types without considering array or collection conversions. This can be helpful
+     * in scenarios where you need to validate component type conversions separately from their
+     * container types.</p>
+     *
+     * <p><strong>Example usage:</strong></p>
+     * <pre>{@code
+     * Converter converter = new Converter(options);
+     *
+     * // Check if String can be converted to Integer
+     * boolean canConvert = converter.isNonCollectionConversionSupportedFor(
+     *     String.class, Integer.class);  // returns true
+     *
+     * // Check array conversion (always returns false)
+     * boolean arrayConvert = converter.isNonCollectionConversionSupportedFor(
+     *     String[].class, Integer[].class);  // returns false
+     *
+     * // Check collection conversion (always returns false)
+     * boolean listConvert = converter.isNonCollectionConversionSupportedFor(
+     *     List.class, Set.class);  // returns false
+     * }</pre>
+     *
+     * @param source The source class type to check
+     * @param target The target class type to check
+     * @return {@code true} if a non-collection conversion exists between the types,
+     *         {@code false} if either type is an array/collection or no conversion exists
+     * @see #isConversionSupportedFor(Class, Class)
+     * @see #isDirectConversionSupported(Class, Class)
+     */
+    public boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
+        // Check both source and target for array/collection types
+        if (source.isArray() || Collection.class.isAssignableFrom(source) ||
+                target.isArray() || Collection.class.isAssignableFrom(target)) {
+            return false;
+        }
+
+        // Direct conversion check first (fastest)
+        if (isConversionInMap(source, target)) {
+            return true;
+        }
+
+        // Check inheritance-based conversions
+        Convert<?> method = getInheritedConverter(source, target);
+        return method != null && method != UNSUPPORTED;
+    }
+    
+    /**
      * Determines whether a direct conversion from the specified source type to the target type is supported,
      * without considering inheritance hierarchies. For array-to-array conversions, verifies that both array
      * conversion and component type conversions are directly supported.
@@ -1640,7 +1685,7 @@ public final class Converter {
      * @return {@code true} if a direct conversion exists (including component type conversions for arrays),
      *         {@code false} otherwise
      */
-    public boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
+    public boolean isDirectConversionSupported(Class<?> source, Class<?> target) {
         // First check if there's a direct conversion defined in the maps
         if (isConversionInMap(source, target)) {
             return true;
@@ -1649,7 +1694,7 @@ public final class Converter {
         if (isCollectionConversionSupported(source, target)) {
             // For array-to-array conversions, verify we can convert the component types
             if (source.isArray() && target.isArray()) {
-                return isDirectConversionSupportedFor(source.getComponentType(), target.getComponentType());
+                return isDirectConversionSupported(source.getComponentType(), target.getComponentType());
             }
             return true;
         }
@@ -1683,64 +1728,24 @@ public final class Converter {
      *         false otherwise
      */
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
-        // Direct conversion check first (fastest)
+        // Try simple type conversion first
         if (isConversionInMap(source, target)) {
             return true;
         }
 
-        // For collection/array conversions, only return true if we can handle ALL aspects
-        // of the conversion including the component types
+        // Handle collection/array conversions
         if (isCollectionConversionSupported(source, target)) {
-            // For array-to-array conversions
+            // Only need special handling for array-to-array conversions
             if (source.isArray() && target.isArray()) {
-                // Special case: Object[] as target can take anything
-                if (target.getComponentType() == Object.class) {
-                    return true;
-                }
-                return isConversionSupportedFor(source.getComponentType(), target.getComponentType());
+                return target.getComponentType() == Object.class ||
+                        isConversionSupportedFor(source.getComponentType(), target.getComponentType());
             }
-
-            // For collection-to-collection conversions
-            if (isCollection(source) && isCollection(target)) {
-                // We can't reliably determine collection element types at this point
-                // Let the actual conversion handle type checking
-                return true;
-            }
-
-            // For array-to-collection conversions
-            if (source.isArray() && isCollection(target)) {
-                // We know the source component type but not collection target type
-                // Let actual conversion handle it
-                return true;
-            }
-
-            // For collection-to-array conversions
-            if (isCollection(source) && target.isArray()) {
-                // Special case: converting to Object[]
-                if (target.getComponentType() == Object.class) {
-                    return true;
-                }
-                // Otherwise we can't verify the source collection's element type
-                // until conversion time
-                return true;
-            }
-
-            // Special case: EnumSet conversions
-            if (EnumSet.class.isAssignableFrom(source)) {
-                // EnumSet can convert to any collection or array
-                return true;
-            }
-
-            return true;
+            return true;  // All other collection conversions are supported
         }
 
-        // Check inheritance-based conversions
+        // Try inheritance-based conversion as last resort
         Convert<?> method = getInheritedConverter(source, target);
         return method != null && method != UNSUPPORTED;
-    }
-
-    private boolean isCollection(Class<?> clazz) {
-        return Collection.class.isAssignableFrom(clazz);
     }
     
     /**

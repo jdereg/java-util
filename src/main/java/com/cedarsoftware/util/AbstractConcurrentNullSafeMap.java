@@ -11,11 +11,64 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiFunction;
 
 /**
- * AbstractConcurrentNullSafeMap is an abstract class that provides a thread-safe implementation
- * of ConcurrentMap and Map interfaces, allowing null keys and null values by using sentinel objects internally.
+ * An abstract thread-safe implementation of the {@link ConcurrentMap} interface that allows {@code null} keys
+ * and {@code null} values. Internally, {@code AbstractConcurrentNullSafeMap} uses sentinel objects to
+ * represent {@code null} keys and values, enabling safe handling of {@code null} while maintaining
+ * compatibility with {@link ConcurrentMap} behavior.
  *
- * @param <K> The type of keys maintained by this map
- * @param <V> The type of mapped values
+ * <h2>Key Features</h2>
+ * <ul>
+ *   <li><b>Thread-Safe:</b> Implements {@link ConcurrentMap} with thread-safe operations.</li>
+ *   <li><b>Null Handling:</b> Supports {@code null} keys and {@code null} values using sentinel objects
+ *       ({@link NullSentinel}).</li>
+ *   <li><b>Customizable:</b> Allows customization of the underlying {@link ConcurrentMap} through its
+ *       constructor.</li>
+ *   <li><b>Standard Map Behavior:</b> Adheres to the {@link Map} and {@link ConcurrentMap} contract,
+ *       supporting operations like {@link #putIfAbsent}, {@link #computeIfAbsent}, {@link #merge}, and more.</li>
+ * </ul>
+ *
+ * <h2>Null Key and Value Handling</h2>
+ * <p>
+ * The {@code AbstractConcurrentNullSafeMap} uses internal sentinel objects ({@link NullSentinel}) to distinguish
+ * {@code null} keys and values from actual entries. This ensures that {@code null} keys and values can coexist
+ * with regular entries without ambiguity.
+ * </p>
+ *
+ * <h2>Customization</h2>
+ * <p>
+ * This abstract class requires a concrete implementation of the backing {@link ConcurrentMap}.
+ * To customize the behavior, subclasses can provide a specific implementation of the internal map.
+ * </p>
+ *
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * // Example subclass using ConcurrentHashMap as the backing map
+ * public class MyConcurrentNullSafeMap<K, V> extends AbstractConcurrentNullSafeMap<K, V> {
+ *     public MyConcurrentNullSafeMap() {
+ *         super(new ConcurrentHashMap<>());
+ *     }
+ * }
+ *
+ * // Using the map
+ * MyConcurrentNullSafeMap<String, String> map = new MyConcurrentNullSafeMap<>();
+ * map.put(null, "nullKey");
+ * map.put("key", null);
+ * System.out.println(map.get(null));  // Outputs: nullKey
+ * System.out.println(map.get("key")); // Outputs: null
+ * }</pre>
+ *
+ * <h2>Additional Notes</h2>
+ * <ul>
+ *   <li><b>Equality and HashCode:</b> Ensures consistent behavior for equality and hash code computation
+ *       in compliance with the {@link Map} contract.</li>
+ *   <li><b>Thread Safety:</b> The thread safety of this class is determined by the thread safety of the
+ *       underlying {@link ConcurrentMap} implementation.</li>
+ *   <li><b>Sentinel Objects:</b> The {@link NullSentinel#NULL_KEY} and {@link NullSentinel#NULL_VALUE} are used
+ *       internally to mask {@code null} keys and values.</li>
+ * </ul>
+ *
+ * @param <K> the type of keys maintained by this map
+ * @param <V> the type of mapped values
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -32,6 +85,8 @@ import java.util.function.BiFunction;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ * @see ConcurrentMap
+ * @see java.util.concurrent.ConcurrentHashMap
  */
 public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentMap<K, V> {
     // Sentinel objects to represent null keys and values

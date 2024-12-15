@@ -2,11 +2,10 @@ package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Array;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.SortedSet;
+
+import static com.cedarsoftware.util.CollectionUtilities.getUnmodifiableCollection;
+import static com.cedarsoftware.util.CollectionUtilities.isUnmodifiable;
+import static com.cedarsoftware.util.convert.CollectionHandling.createCollection;
 
 /**
  * Converts between arrays and collections while preserving collection characteristics.
@@ -37,12 +36,9 @@ import java.util.SortedSet;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-final class CollectionConversions {
-    private static final Class<?> unmodifiableCollectionClass = WrappedCollections.getUnmodifiableCollection();
+public final class CollectionConversions {
 
-    private CollectionConversions() {
-        // Private constructor to prevent instantiation
-    }
+    private CollectionConversions() { }
 
     /**
      * Converts an array to a collection, supporting special collection types
@@ -53,11 +49,14 @@ final class CollectionConversions {
      * @return A collection of the specified target type
      */
     @SuppressWarnings("unchecked")
-    static Object arrayToCollection(Object array, Class<?> targetType) {
+    public static Object arrayToCollection(Object array, Class<?> targetType) {
         int length = Array.getLength(array);
 
+        // Determine if the target type requires unmodifiable behavior
+        boolean requiresUnmodifiable = isUnmodifiable(targetType);
+
         // Create the appropriate collection using CollectionHandling
-        Collection<Object> collection = (Collection<Object>) CollectionHandling.createCollection(array, targetType);
+        Collection<Object> collection = (Collection<Object>) createCollection(array, targetType);
 
         // Populate the collection with array elements
         for (int i = 0; i < length; i++) {
@@ -71,7 +70,8 @@ final class CollectionConversions {
             collection.add(element);
         }
 
-        return collection;
+        // If wrapping is required, return the wrapped version
+        return requiresUnmodifiable ? getUnmodifiableCollection(collection) : collection;
     }
 
     /**
@@ -82,40 +82,23 @@ final class CollectionConversions {
      * @return A collection of the specified target type
      */
     @SuppressWarnings("unchecked")
-    static Object collectionToCollection(Collection<?> source, Class<?> targetType) {
+    public static Object collectionToCollection(Collection<?> source, Class<?> targetType) {
         // Determine if the target type requires unmodifiable behavior
         boolean requiresUnmodifiable = isUnmodifiable(targetType);
 
-        // Create a modifiable or pre-wrapped collection
-        Collection<Object> targetCollection = (Collection<Object>) CollectionHandling.createCollection(source, targetType);
+        // Create a modifiable collection of the specified target type
+        Collection<Object> targetCollection = (Collection<Object>) createCollection(source, targetType);
 
-        targetCollection.addAll(source);
-
-        // If wrapping is required, return the wrapped version
-        if (requiresUnmodifiable) {
-            if (targetCollection instanceof NavigableSet) {
-                return Collections.unmodifiableNavigableSet((NavigableSet<?>)targetCollection);
-            } else if (targetCollection instanceof SortedSet) {
-                return Collections.unmodifiableSortedSet((SortedSet<?>) targetCollection);
-            } else if (targetCollection instanceof Set) {
-                return Collections.unmodifiableSet((Set<?>) targetCollection);
-            } else if (targetCollection instanceof List) {
-                return Collections.unmodifiableList((List<?>) targetCollection);
-            } else {
-                return Collections.unmodifiableCollection(targetCollection);
+        // Populate the target collection, handling nested collections recursively
+        for (Object element : source) {
+            if (element instanceof Collection) {
+                // Recursively convert nested collections
+                element = collectionToCollection((Collection<?>) element, targetType);
             }
+            targetCollection.add(element);
         }
 
-        return targetCollection;
-    }
-
-    /**
-     * Checks if the target type indicates an unmodifiable collection.
-     *
-     * @param targetType The target type to check.
-     * @return True if the target type indicates unmodifiable, false otherwise.
-     */
-    private static boolean isUnmodifiable(Class<?> targetType) {
-        return unmodifiableCollectionClass.isAssignableFrom(targetType);
+        // If wrapping is required, return the wrapped version
+        return requiresUnmodifiable ? getUnmodifiableCollection(targetCollection) : targetCollection;
     }
 }

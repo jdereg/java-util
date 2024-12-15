@@ -88,6 +88,7 @@ final class MapConversions {
     static final String UUID = "UUID";
     static final String CLASS = "class";
     static final String MESSAGE = "message";
+    static final String DETAIL_MESSAGE = "detailMessage";
     static final String CAUSE = "cause";
     static final String CAUSE_MESSAGE = "causeMessage";
     static final String OPTIONAL = " (optional)";
@@ -596,6 +597,9 @@ final class MapConversions {
         try {
             String className = (String) map.get(CLASS);
             String message = (String) map.get(MESSAGE);
+            if (StringUtilities.isEmpty((message))) {
+                message = (String) map.get(DETAIL_MESSAGE);
+            }
             String causeClassName = (String) map.get(CAUSE);
             String causeMessage = (String) map.get(CAUSE_MESSAGE);
 

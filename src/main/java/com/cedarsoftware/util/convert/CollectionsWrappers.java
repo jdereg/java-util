@@ -45,11 +45,11 @@ import java.util.TreeSet;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class WrappedCollections {
+public final class CollectionsWrappers {
 
     private static final Map<CollectionType, Class<?>> CACHE = new HashMap<>();
 
-    private WrappedCollections() {}
+    private CollectionsWrappers() {}
 
     /**
      * Collection wrapper types available in the cache
@@ -109,104 +109,104 @@ public final class WrappedCollections {
 
     // Unmodifiable collection getters
     @SuppressWarnings("unchecked")
-    public static <E> Class<Collection<E>> getUnmodifiableCollection() {
+    public static <E> Class<Collection<E>> getUnmodifiableCollectionClass() {
         return (Class<Collection<E>>) CACHE.get(CollectionType.UNMODIFIABLE_COLLECTION);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<List<E>> getUnmodifiableList() {
+    public static <E> Class<List<E>> getUnmodifiableListClass() {
         return (Class<List<E>>) CACHE.get(CollectionType.UNMODIFIABLE_LIST);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<Set<E>> getUnmodifiableSet() {
+    public static <E> Class<Set<E>> getUnmodifiableSetClass() {
         return (Class<Set<E>>) CACHE.get(CollectionType.UNMODIFIABLE_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<SortedSet<E>> getUnmodifiableSortedSet() {
+    public static <E> Class<SortedSet<E>> getUnmodifiableSortedSetClass() {
         return (Class<SortedSet<E>>) CACHE.get(CollectionType.UNMODIFIABLE_SORTED_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<NavigableSet<E>> getUnmodifiableNavigableSet() {
+    public static <E> Class<NavigableSet<E>> getUnmodifiableNavigableSetClass() {
         return (Class<NavigableSet<E>>) CACHE.get(CollectionType.UNMODIFIABLE_NAVIGABLE_SET);
     }
 
     // Synchronized collection getters
     @SuppressWarnings("unchecked")
-    public static <E> Class<Collection<E>> getSynchronizedCollection() {
+    public static <E> Class<Collection<E>> getSynchronizedCollectionClass() {
         return (Class<Collection<E>>) CACHE.get(CollectionType.SYNCHRONIZED_COLLECTION);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<List<E>> getSynchronizedList() {
+    public static <E> Class<List<E>> getSynchronizedListClass() {
         return (Class<List<E>>) CACHE.get(CollectionType.SYNCHRONIZED_LIST);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<Set<E>> getSynchronizedSet() {
+    public static <E> Class<Set<E>> getSynchronizedSetClass() {
         return (Class<Set<E>>) CACHE.get(CollectionType.SYNCHRONIZED_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<SortedSet<E>> getSynchronizedSortedSet() {
+    public static <E> Class<SortedSet<E>> getSynchronizedSortedSetClass() {
         return (Class<SortedSet<E>>) CACHE.get(CollectionType.SYNCHRONIZED_SORTED_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<NavigableSet<E>> getSynchronizedNavigableSet() {
+    public static <E> Class<NavigableSet<E>> getSynchronizedNavigableSetClass() {
         return (Class<NavigableSet<E>>) CACHE.get(CollectionType.SYNCHRONIZED_NAVIGABLE_SET);
     }
 
     // Empty collection getters
     @SuppressWarnings("unchecked")
-    public static <E> Class<Collection<E>> getEmptyCollection() {
+    public static <E> Class<Collection<E>> getEmptyCollectionClass() {
         return (Class<Collection<E>>) CACHE.get(CollectionType.EMPTY_COLLECTION);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<List<E>> getEmptyList() {
+    public static <E> Class<List<E>> getEmptyListClass() {
         return (Class<List<E>>) CACHE.get(CollectionType.EMPTY_LIST);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<Set<E>> getEmptySet() {
+    public static <E> Class<Set<E>> getEmptySetClass() {
         return (Class<Set<E>>) CACHE.get(CollectionType.EMPTY_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<SortedSet<E>> getEmptySortedSet() {
+    public static <E> Class<SortedSet<E>> getEmptySortedSetClass() {
         return (Class<SortedSet<E>>) CACHE.get(CollectionType.EMPTY_SORTED_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<NavigableSet<E>> getEmptyNavigableSet() {
+    public static <E> Class<NavigableSet<E>> getEmptyNavigableSetClass() {
         return (Class<NavigableSet<E>>) CACHE.get(CollectionType.EMPTY_NAVIGABLE_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<Collection<E>> getCheckedCollection() {
+    public static <E> Class<Collection<E>> getCheckedCollectionClass() {
         return (Class<Collection<E>>) CACHE.get(CollectionType.CHECKED_COLLECTION);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<List<E>> getCheckedList() {
+    public static <E> Class<List<E>> getCheckedListClass() {
         return (Class<List<E>>) CACHE.get(CollectionType.CHECKED_LIST);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<Set<E>> getCheckedSet() {
+    public static <E> Class<Set<E>> getCheckedSetClass() {
         return (Class<Set<E>>) CACHE.get(CollectionType.CHECKED_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<SortedSet<E>> getCheckedSortedSet() {
+    public static <E> Class<SortedSet<E>> getCheckedSortedSetClass() {
         return (Class<SortedSet<E>>) CACHE.get(CollectionType.CHECKED_SORTED_SET);
     }
 
     @SuppressWarnings("unchecked")
-    public static <E> Class<NavigableSet<E>> getCheckedNavigableSet() {
+    public static <E> Class<NavigableSet<E>> getCheckedNavigableSetClass() {
         return (Class<NavigableSet<E>>) CACHE.get(CollectionType.CHECKED_NAVIGABLE_SET);
     }
 }

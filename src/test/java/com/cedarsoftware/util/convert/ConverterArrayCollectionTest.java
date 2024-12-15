@@ -544,10 +544,10 @@ class ConverterArrayCollectionTest {
             Set<String> strings = new HashSet<>(Arrays.asList("foo", "bar", "baz"));
 
             // Act: Convert the set to an unmodifiable set
-            Set<String> unmodSet = converter.convert(strings, WrappedCollections.getUnmodifiableSet());
+            Set<String> unmodSet = converter.convert(strings, CollectionsWrappers.getUnmodifiableSetClass());
 
             // Assert: Verify the set is an instance of the expected unmodifiable set class
-            assertInstanceOf(WrappedCollections.getUnmodifiableSet(), unmodSet);
+            assertInstanceOf(CollectionsWrappers.getUnmodifiableSetClass(), unmodSet);
 
             // Assert: Verify the contents of the set remain the same
             assertTrue(unmodSet.containsAll(strings));

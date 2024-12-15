@@ -139,7 +139,7 @@ import com.cedarsoftware.util.convert.DefaultConverterOptions;
  */
 public final class Converter
 {
-    public static com.cedarsoftware.util.convert.Converter instance =
+    private static final com.cedarsoftware.util.convert.Converter instance =
             new com.cedarsoftware.util.convert.Converter(new DefaultConverterOptions());
 
     /**
@@ -290,31 +290,99 @@ public final class Converter
     }
 
     /**
-     * Determines whether a direct conversion from the specified source type to the target type is supported.
-     * <p>
-     * This method checks both user-defined conversions and built-in conversions without considering inheritance hierarchies.
-     * </p>
+     * Determines whether a conversion from the specified source type to the target type is supported.
+     * For array-to-array conversions, this method verifies that both array conversion and component type
+     * conversions are supported.
      *
-     * @param source The source class type.
-     * @param target The target class type.
-     * @return {@code true} if a direct conversion exists; {@code false} otherwise.
+     * <p>The method checks three paths for conversion support:</p>
+     * <ol>
+     *   <li>Direct conversions as defined in the conversion maps</li>
+     *   <li>Collection/Array/EnumSet conversions - for array-to-array conversions, also verifies
+     *       that component type conversions are supported</li>
+     *   <li>Inherited conversions (via superclasses and implemented interfaces)</li>
+     * </ol>
+     *
+     * <p>For array conversions, this method performs a deep check to ensure both the array types
+     * and their component types can be converted. For example, when checking if a String[] can be
+     * converted to Integer[], it verifies both:</p>
+     * <ul>
+     *   <li>That array-to-array conversion is supported</li>
+     *   <li>That String-to-Integer conversion is supported for the components</li>
+     * </ul>
+     *
+     * @param source The source class type
+     * @param target The target class type
+     * @return true if the conversion is fully supported (including component type conversions for arrays),
+     *         false otherwise
      */
     public static boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
         return instance.isConversionSupportedFor(source, target);
     }
 
     /**
-     * Determines whether a direct conversion from the specified source type to the target type is supported.
-     * <p>
-     * This method checks both user-defined conversions and built-in conversions without considering inheritance hierarchies.
-     * </p>
+     * Determines whether a direct conversion from the specified source type to the target type is supported,
+     * without considering inheritance hierarchies. For array-to-array conversions, verifies that both array
+     * conversion and component type conversions are directly supported.
      *
-     * @param source The source class type.
-     * @param target The target class type.
-     * @return {@code true} if a direct conversion exists; {@code false} otherwise.
+     * <p>The method checks:</p>
+     * <ol>
+     *   <li>User-defined and built-in direct conversions</li>
+     *   <li>Collection/Array/EnumSet conversions - for array-to-array conversions, also verifies
+     *       that component type conversions are directly supported</li>
+     * </ol>
+     *
+     * <p>For array conversions, performs a deep check to ensure both the array types and their
+     * component types can be converted directly. For example, when checking if a String[] can be
+     * converted to Integer[], verifies both:</p>
+     * <ul>
+     *   <li>That array-to-array conversion is supported</li>
+     *   <li>That String-to-Integer conversion is directly supported</li>
+     * </ul>
+     *
+     * @param source The source class type
+     * @param target The target class type
+     * @return {@code true} if a direct conversion exists (including component type conversions for arrays),
+     *         {@code false} otherwise
      */
-    public boolean isDirectConversionSupportedFor(Class<?> source, Class<?> target) {
-        return instance.isDirectConversionSupportedFor(source, target);
+    public boolean isDirectConversionSupported(Class<?> source, Class<?> target) {
+        return instance.isDirectConversionSupported(source, target);
+    }
+
+    /**
+     * Determines whether a conversion from the specified source type to the target type is supported,
+     * excluding any conversions involving arrays or collections.
+     *
+     * <p>The method is particularly useful when you need to verify that a conversion is possible
+     * between simple types without considering array or collection conversions. This can be helpful
+     * in scenarios where you need to validate component type conversions separately from their
+     * container types.</p>
+     *
+     * <p><strong>Example usage:</strong></p>
+     * <pre>{@code
+     * Converter converter = new Converter(options);
+     *
+     * // Check if String can be converted to Integer
+     * boolean canConvert = converter.isNonCollectionConversionSupportedFor(
+     *     String.class, Integer.class);  // returns true
+     *
+     * // Check array conversion (always returns false)
+     * boolean arrayConvert = converter.isNonCollectionConversionSupportedFor(
+     *     String[].class, Integer[].class);  // returns false
+     *
+     * // Check collection conversion (always returns false)
+     * boolean listConvert = converter.isNonCollectionConversionSupportedFor(
+     *     List.class, Set.class);  // returns false
+     * }</pre>
+     *
+     * @param source The source class type to check
+     * @param target The target class type to check
+     * @return {@code true} if a non-collection conversion exists between the types,
+     *         {@code false} if either type is an array/collection or no conversion exists
+     * @see #isConversionSupportedFor(Class, Class)
+     * @see #isDirectConversionSupported(Class, Class)
+     */
+    public boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
+        return instance.isSimpleTypeConversionSupported(source, target);
     }
 
     /**

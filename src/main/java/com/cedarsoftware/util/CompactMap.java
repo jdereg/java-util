@@ -18,68 +18,150 @@ import java.util.Set;
 import java.util.SortedMap;
 
 /**
- * A memory-efficient Map implementation that optimizes storage based on size.
- * CompactMap uses only one instance variable of type Object and changes its internal
- * representation as the map grows, achieving memory savings while maintaining
- * performance comparable to HashMap.
+ * A memory-efficient {@code Map} implementation that adapts its internal storage structure
+ * to minimize memory usage while maintaining acceptable performance. {@code CompactMap}
+ * uses only one instance variable ({@code val}) to store all its entries in different
+ * forms depending on the current size.
  *
- * <h2>Storage Strategy</h2>
- * The map uses different internal representations based on size:
+ * <h2>Motivation</h2>
+ * Traditional {@code Map} implementations (like {@link java.util.HashMap}) allocate internal
+ * structures upfront, even for empty or very small maps. {@code CompactMap} aims to reduce
+ * memory overhead by starting in a minimalistic representation and evolving into more
+ * complex internal structures only as the map grows.
+ *
+ * <h2>Internal States</h2>
+ * As the map size changes, the internal {@code val} field transitions through distinct states:
+ *
+ * <table border="1" cellpadding="5" summary="Internal States">
+ *   <tr>
+ *     <th>State</th>
+ *     <th>Condition</th>
+ *     <th>Representation</th>
+ *     <th>Size Range</th>
+ *   </tr>
+ *   <tr>
+ *     <td>Empty</td>
+ *     <td>{@code val == EMPTY_MAP}</td>
+ *     <td>A sentinel empty value, indicating no entries are present.</td>
+ *     <td>0</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Single Entry (Key = getSingleValueKey())</td>
+ *     <td>{@code val} is a direct reference to the single value.</td>
+ *     <td>When the inserted key matches {@link #getSingleValueKey()}, the map stores
+ *         only the value directly (no {@code Map.Entry} overhead).</td>
+ *     <td>1</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Single Entry (Key != getSingleValueKey())</td>
+ *     <td>{@code val} is a {@link CompactMapEntry}</td>
+ *     <td>For a single entry whose key does not match {@code getSingleValueKey()}, the map holds
+ *         a single {@link java.util.Map.Entry} containing both key and value.</td>
+ *     <td>1</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Compact Array</td>
+ *     <td>{@code val} is an {@code Object[]}</td>
+ *     <td>For maps with multiple entries (from 2 up to {@code compactSize()}),
+ *         keys and values are stored in a single {@code Object[]} array, with keys in even
+ *         indices and corresponding values in odd indices. When sorting is requested (e.g.,
+ *         {@code ORDERING = SORTED} or {@code REVERSE}), the keys are sorted according to
+ *         the chosen comparator or the default logic.</td>
+ *     <td>2 to {@code compactSize()}</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Backing Map</td>
+ *     <td>{@code val} is a standard {@code Map}</td>
+ *     <td>Once the map grows beyond {@code compactSize()}, it delegates storage to a standard
+ *         {@code Map} implementation (e.g., {@link java.util.HashMap} by default).
+ *         This ensures good performance for larger data sets.</td>
+ *     <td>> {@code compactSize()}</td>
+ *   </tr>
+ * </table>
+ *
+ * <h2>Case Sensitivity and Sorting</h2>
+ * {@code CompactMap} allows you to specify whether string key comparisons are case-sensitive or not,
+ * controlled by the {@link #isCaseInsensitive()} method. By default, string key equality checks are
+ * case-sensitive. If you configure the map to be case-insensitive (e.g., by passing an option to
+ * {@code newMap(...)}), then:
  * <ul>
- *   <li><b>Empty (size=0):</b> Single sentinel value</li>
- *   <li><b>Single Entry (size=1):</b>
- *     <ul>
- *       <li>If key matches {@link #getSingleValueKey()}: Stores only the value</li>
- *       <li>Otherwise: Uses a compact CompactMapEntry containing key and value</li>
- *     </ul>
- *   </li>
- *   <li><b>Multiple Entries (2 ≤ size ≤ compactSize()):</b> Single Object[] storing
- *       alternating keys and values at even/odd indices</li>
- *   <li><b>Large Maps (size > compactSize()):</b> Delegates to standard Map implementation</li>
+ *   <li>Key equality checks will ignore case for {@code String} keys.</li>
+ *   <li>If sorting is requested (when in the {@code Object[]} compact state and no custom comparator
+ *       is provided), string keys will be sorted using a case-insensitive order. Non-string keys
+ *       will use natural ordering if possible.</li>
  * </ul>
  *
- * <h2>Customization Points</h2>
- * The following methods can be overridden to customize behavior:
+ * If a custom comparator is provided, that comparator takes precedence over case-insensitivity settings.
+ *
+ * <h2>Behavior and Configuration</h2>
+ * {@code CompactMap} allows customization of:
+ * <ul>
+ *   <li>The compact size threshold (override {@link #compactSize()}).</li>
+ *   <li>Case sensitivity for string keys (override {@link #isCaseInsensitive()} or specify via factory options).</li>
+ *   <li>The special single-value key optimization (override {@link #getSingleValueKey()}).</li>
+ *   <li>The backing map type, comparator, and ordering via provided factory methods.</li>
+ * </ul>
+ *
+ * While subclassing {@code CompactMap} is possible, it is generally not necessary. Use the static
+ * factory methods and configuration options to change behavior. This design ensures the core
+ * {@code CompactMap} remains minimal with only one member variable.
+ *
+ * <h2>Factory Methods and Configuration Options</h2>
+ * Instead of subclassing, you can configure a {@code CompactMap} through the static factory methods
+ * like {@link #newMap(Map)}, which accept a configuration options map. For example, to enable
+ * case-insensitivity:
  *
  * <pre>{@code
- * // Key used for optimized single-entry storage
- * protected K getSingleValueKey() { return "someKey"; }
- *
- * // Map implementation for large maps (size > compactSize)
- * protected Map<K,V> getNewMap() { return new HashMap<>(); }
- *
- * // Enable case-insensitive key comparison
- * protected boolean isCaseInsensitive() { return false; }
- *
- * // Threshold at which to switch to standard Map implementation
- * protected int compactSize() { return 80; }
+ * Map<String, Object> options = new HashMap<>();
+ * options.put(CompactMap.CASE_SENSITIVE, false); // case-insensitive
+ * CompactMap<String, Integer> caseInsensitiveMap = CompactMap.newMap(options);
  * }</pre>
  *
- * <h2>Additional Notes</h2>
- * <ul>
- *   <li>Supports null keys and values if the backing Map implementation does</li>
- *   <li>Thread safety depends on the backing Map implementation</li>
- *   <li>Particularly memory efficient for maps of size 0-1</li>
- * </ul>
+ * If you then request sorted or reverse ordering without providing a custom comparator, string keys
+ * will be sorted case-insensitively.
  *
- * @param <K> The type of keys maintained by this map
- * @param <V> The type of mapped values
+ * <h3>Additional Examples</h3>
+ * <pre>{@code
+ * // Default CompactMap:
+ * CompactMap<String, Integer> defaultMap = CompactMap.newMap();
+ *
+ * // Case-insensitive and sorted using natural case-insensitive order:
+ * Map<String, Object> sortedOptions = new HashMap<>();
+ * sortedOptions.put(CompactMap.ORDERING, CompactMap.SORTED);
+ * sortedOptions.put(CompactMap.CASE_SENSITIVE, false);
+ * sortedOptions.put(CompactMap.MAP_TYPE, TreeMap.class);
+ * CompactMap<String, Integer> ciSortedMap = CompactMap.newMap(sortedOptions);
+ *
+ * // Use a custom comparator to override case-insensitive checks:
+ * sortedOptions.put(CompactMap.COMPARATOR, String.CASE_INSENSITIVE_ORDER);
+ * // Now sorting uses the provided comparator.
+ * CompactMap<String, Integer> customSortedMap = CompactMap.newMap(sortedOptions);
+ * }</pre>
+ *
+ * <h2>Thread Safety</h2>
+ * Thread safety depends on the chosen backing map implementation. If you require thread safety,
+ * consider using a concurrent map type or external synchronization.
+ *
+ * <h2>Conclusion</h2>
+ * {@code CompactMap} is a flexible, memory-efficient map suitable for scenarios where map sizes vary.
+ * Its flexible configuration and factory methods allow you to tailor its behavior—such as case sensitivity
+ * and ordering—without subclassing.
+ * 
  * @author John DeRegnaucourt (jdereg@gmail.com)
- * <br>
- * Copyright (c) Cedar Software LLC
- * <br><br>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <br><br>
- * <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
- * <br><br>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * @see HashMap
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 @SuppressWarnings("unchecked")
 public class CompactMap<K, V> implements Map<K, V> {
@@ -374,8 +456,8 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     private void sortCompactArray(Object[] array) {
         // Determine if sorting is required
-        if (getOrdering().equals(UNORDERED)) {
-            return; // No sorting needed for unordered maps
+        if (getOrdering().equals(UNORDERED) || getOrdering().equals(INSERTION)) {
+            return; // No sorting needed for unordered or insertion-ordered maps
         }
 
         int size = array.length / 2;
@@ -388,25 +470,60 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // Fetch the comparator to use
-        final Comparator<? super K> comparatorToUse;
+        final Comparator<? super K> baseComparator;
         if (getOrdering().equals(REVERSE)) {
-            comparatorToUse = getReverseComparator((Comparator<? super K>) getComparator());
+            baseComparator = getReverseComparator((Comparator<? super K>) getComparator());
         } else {
-            comparatorToUse = getComparator();
+            baseComparator = getComparator();
         }
 
-        // Sort keys using the determined comparator
-        Arrays.sort(keys, (o1, o2) -> {
-            if (comparatorToUse != null) {
-                return comparatorToUse.compare((K) o1, (K) o2);
-            }
-            return 0;
-        });
+        final Comparator<Object> comparatorToUse = (baseComparator != null)
+                ? (o1, o2) -> baseComparator.compare((K) o1, (K) o2)
+                : this::defaultCompareKeys;
+
+        Arrays.sort(keys, comparatorToUse);
 
         for (int i = 0; i < size; i++) {
             array[i * 2] = keys[i];
             array[(i * 2) + 1] = values[i];
         }
+    }
+
+    /**
+     * Default comparison logic for keys when no comparator is provided.
+     * This method:
+     * 1. Checks if keys are equal via compareKeys().
+     * 2. If equal, returns 0.
+     * 3. If both keys are strings:
+     *    - If isCaseInsensitive() is true, use CASE_INSENSITIVE_ORDER.
+     *    - Otherwise, use String's natural order.
+     * 4. If non-string, try Comparable if both keys are Comparable and of the same type.
+     *    Otherwise, consider them equal (0) to maintain stable order.
+     */
+    private int defaultCompareKeys(Object k1, Object k2) {
+        if (compareKeys(k1, k2)) {
+            return 0; // Keys are considered equal
+        }
+
+        // Both are not equal per compareKeys(), so we need ordering
+        // Handle strings with/without case-insensitivity
+        if (k1 instanceof String && k2 instanceof String) {
+            String s1 = (String) k1;
+            String s2 = (String) k2;
+            if (isCaseInsensitive()) {
+                return String.CASE_INSENSITIVE_ORDER.compare(s1, s2);
+            } else {
+                return s1.compareTo(s2);
+            }
+        }
+
+        // For non-String keys, try natural ordering if possible
+        if (k1 instanceof Comparable && k2 instanceof Comparable && k1.getClass().equals(k2.getClass())) {
+            return ((Comparable) k1).compareTo(k2);
+        }
+
+        // If we cannot determine an order, treat them as equal to preserve insertion stability
+        return 0;
     }
 
     private void switchToMap(Object[] entries, K key, V value) {
@@ -1220,24 +1337,123 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Creates a new CompactMap with advanced configuration options.
+     * Creates a new {@code CompactMap} with advanced configuration options.
+     * <p>
+     * This method provides fine-grained control over various aspects of the resulting {@code CompactMap},
+     * including size thresholds, ordering strategies, case sensitivity, comparator usage, backing map type,
+     * and source initialization. All options are validated and finalized via {@link #validateAndFinalizeOptions(Map)}
+     * before the map is constructed.
+     * </p>
      *
-     * @param <K> the type of keys maintained by this map
-     * @param <V> the type of mapped values
-     * @param options a map of configuration options
-     *                <ul>
-     *                    <li>{@link #COMPACT_SIZE}: (Integer) Compact size threshold.</li>
-     *                    <li>{@link #CAPACITY}: (Integer) Initial capacity of the map.</li>
-     *                    <li>{@link #CASE_SENSITIVE}: (Boolean) Whether the map is case-sensitive.</li>
-     *                    <li>{@link #MAP_TYPE}: (Class<? extends Map<K, V>>) Backing map type for large maps.</li>
-     *                    <li>{@link #USE_COPY_ITERATOR}: (Boolean) Whether to use a copy-based iterator.</li>
-     *                    <li>{@link #SINGLE_KEY}: (K) Key to optimize single-entry storage.</li>
-     *                    <li>{@link #SOURCE_MAP}: (Map<K, V>) Source map to initialize entries.</li>
-     *                </ul>
-     * @return a new CompactMap instance with the specified options
+     * <h3>Available Options</h3>
+     * <table border="1" cellpadding="5" summary="Configuration Options">
+     *   <tr>
+     *     <th>Key</th>
+     *     <th>Type</th>
+     *     <th>Description</th>
+     *     <th>Default Value</th>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #COMPACT_SIZE}</td>
+     *     <td>Integer</td>
+     *     <td>Specifies the threshold at which the map transitions from compact array-based storage
+     *         to a standard {@link Map} implementation. A value of N means that once the map size
+     *         exceeds N, it uses a backing map. Conversely, if the map size shrinks to N or below,
+     *         it transitions back to compact storage.</td>
+     *     <td>{@code 80}</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #CAPACITY}</td>
+     *     <td>Integer</td>
+     *     <td>Defines the initial capacity of the backing map when size exceeds {@code compactSize()}.
+     *         Adjusted automatically if a {@link #SOURCE_MAP} is provided.</td>
+     *     <td>{@code 16}</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #CASE_SENSITIVE}</td>
+     *     <td>Boolean</td>
+     *     <td>Determines whether {@code String} keys are compared in a case-sensitive manner.
+     *         If {@code false}, string keys are treated case-insensitively for equality checks and,
+     *         if sorting is enabled (and no custom comparator is provided), they are sorted
+     *         case-insensitively in the {@code Object[]} compact state.</td>
+     *     <td>{@code true}</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #MAP_TYPE}</td>
+     *     <td>Class&lt;? extends Map&gt;</td>
+     *     <td>The type of map to use once the size exceeds {@code compactSize()}. For example,
+     *         {@link java.util.HashMap}, {@link java.util.LinkedHashMap}, or a {@link java.util.SortedMap}
+     *         implementation like {@link java.util.TreeMap}. Certain orderings require specific map types
+     *         (e.g., {@code SORTED} requires a {@code SortedMap}).</td>
+     *     <td>{@code HashMap.class}</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #USE_COPY_ITERATOR}</td>
+     *     <td>Boolean</td>
+     *     <td>If {@code true}, iterators returned by this map operate on a copy of its entries,
+     *         allowing safe iteration during modifications. Otherwise, iteration may throw
+     *         {@link java.util.ConcurrentModificationException} if the map is modified during iteration.</td>
+     *     <td>{@code false}</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #SINGLE_KEY}</td>
+     *     <td>K</td>
+     *     <td>Specifies a special key that, if present as the sole entry in the map, allows the map
+     *         to store just the value without a {@code Map.Entry}, saving memory for single-entry maps.</td>
+     *     <td>{@code "key"}</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #SOURCE_MAP}</td>
+     *     <td>Map&lt;K,V&gt;</td>
+     *     <td>If provided, the new map is initialized with all entries from this source. The capacity
+     *         may be adjusted accordingly for efficiency.</td>
+     *     <td>{@code null}</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #ORDERING}</td>
+     *     <td>String</td>
+     *     <td>Determines the ordering of entries. Valid values:
+     *         <ul>
+     *           <li>{@link #UNORDERED}</li>
+     *           <li>{@link #SORTED}</li>
+     *           <li>{@link #REVERSE}</li>
+     *           <li>{@link #INSERTION}</li>
+     *         </ul>
+     *         If {@code SORTED} or {@code REVERSE} is chosen and no custom comparator is provided,
+     *         sorting relies on either natural ordering or case-insensitive ordering for strings if
+     *         {@code CASE_SENSITIVE=false}.</td>
+     *     <td>{@code UNORDERED}</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #COMPARATOR}</td>
+     *     <td>Comparator&lt;? super K&gt;</td>
+     *     <td>A custom comparator to determine key order when {@code ORDERING = SORTED} or
+     *         {@code ORDERING = REVERSE}. If {@code CASE_SENSITIVE=false} and no comparator is provided,
+     *         string keys are sorted case-insensitively by default. If a comparator is provided,
+     *         it overrides any case-insensitive logic.</td>
+     *     <td>{@code null}</td>
+     *   </tr>
+     * </table>
+     *
+     * <h3>Behavior and Validation</h3>
+     * <ul>
+     *   <li>{@link #validateAndFinalizeOptions(Map)} is called first to verify and adjust the options.</li>
+     *   <li>If {@code CASE_SENSITIVE} is {@code false} and no comparator is provided, string keys are
+     *       handled case-insensitively during equality checks and sorting in the compact array state.</li>
+     *   <li>If constraints are violated (e.g., {@code SORTED} ordering with a non-{@code SortedMap} type),
+     *       an {@link IllegalArgumentException} is thrown.</li>
+     *   <li>Providing a {@code SOURCE_MAP} initializes this map with its entries.</li>
+     * </ul>
+     *
+     * @param <K> the type of keys maintained by the resulting map
+     * @param <V> the type of values associated with the keys
+     * @param options a map of configuration options (see table above)
+     * @return a new {@code CompactMap} instance configured according to the provided options
+     * @throws IllegalArgumentException if the provided options are invalid or incompatible
+     * @see #validateAndFinalizeOptions(Map)
      */
     public static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
-        options = validateOptions(options); // Validate and resolve conflicts
+        validateAndFinalizeOptions(options); // Validate and resolve conflicts
         int compactSize = (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
         boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
         boolean useCopyIterator = (boolean) options.getOrDefault(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
@@ -1246,10 +1462,8 @@ public class CompactMap<K, V> implements Map<K, V> {
         K singleKey = (K) options.get(SINGLE_KEY);
         Map<K, V> source = (Map<K, V>) options.get(SOURCE_MAP);
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
-
-        // Dynamically adjust capacity if a source map is provided
-        int capacity = (source != null) ? source.size() : (int) options.getOrDefault(CAPACITY, DEFAULT_CAPACITY);
-
+        int capacity = (int) options.getOrDefault(CAPACITY, DEFAULT_CAPACITY);
+        
         CompactMap<K, V> map = new CompactMap<K, V>() {
             @Override
             protected Map<K, V> getNewMap() {
@@ -1440,9 +1654,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Throws an {@link IllegalArgumentException} if the configuration is invalid.
      *
      * @param options a map of user-provided options
-     * @return the resolved options map
      */
-    private static Map<String, Object> validateOptions(Map<String, Object> options) {
+    private static void validateAndFinalizeOptions(Map<String, Object> options) {
         // Extract and set default values
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         Class<? extends Map> mapType = (Class<? extends Map>) options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
@@ -1494,7 +1707,5 @@ public class CompactMap<K, V> implements Map<K, V> {
         options.putIfAbsent(MAP_TYPE, DEFAULT_MAP_TYPE);
         options.putIfAbsent(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
         options.putIfAbsent(ORDERING, UNORDERED);
-
-        return options; // Return the validated and resolved options
     }
 }

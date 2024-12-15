@@ -324,9 +324,6 @@ public class CompactMap<K, V> implements Map<K, V> {
         return handleSingleEntryRemove(key);
     }
 
-    /**
-     * Inserts a key-value pair into the compact array while maintaining order.
-     */
     private V putInCompactArray(Object[] entries, K key, V value) {
         final int len = entries.length;
         for (int i = 0; i < len; i += 2) {
@@ -343,7 +340,8 @@ public class CompactMap<K, V> implements Map<K, V> {
             System.arraycopy(entries, 0, expand, 0, len);
             expand[len] = key;
             expand[len + 1] = value;
-            Arrays.sort(expand, 0, expand.length / 2, createEntryComparator());
+
+            sortCompactArray(expand); // Delegate sorting
             val = expand;
         } else {
             switchToMap(entries, key, value);
@@ -355,24 +353,60 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Removes a key-value pair from the compact array while preserving order.
      */
     private V removeFromCompactArray(Object[] entries, Object key) {
-        if (size() == 2) {
+        if (size() == 2) {   // Transition back to single entry
             return handleTransitionToSingleEntry(entries, key);
         }
 
         final int len = entries.length;
         for (int i = 0; i < len; i += 2) {
-            Object aKey = entries[i];
-            if (compareKeys(key, aKey)) {
+            if (compareKeys(key, entries[i])) {
                 V oldValue = (V) entries[i + 1];
                 Object[] shrink = new Object[len - 2];
                 System.arraycopy(entries, 0, shrink, 0, i);
                 System.arraycopy(entries, i + 2, shrink, i, shrink.length - i);
-                Arrays.sort(shrink, 0, shrink.length / 2, createEntryComparator());
+                sortCompactArray(shrink); // Centralized sorting logic
                 val = shrink;
                 return oldValue;
             }
         }
         return null;
+    }
+
+    private void sortCompactArray(Object[] array) {
+        // Determine if sorting is required
+        if (getOrdering().equals(UNORDERED)) {
+            return; // No sorting needed for unordered maps
+        }
+
+        int size = array.length / 2;
+        Object[] keys = new Object[size];
+        Object[] values = new Object[size];
+
+        for (int i = 0; i < size; i++) {
+            keys[i] = array[i * 2];
+            values[i] = array[(i * 2) + 1];
+        }
+
+        // Fetch the comparator to use
+        final Comparator<? super K> comparatorToUse;
+        if (getOrdering().equals(REVERSE)) {
+            comparatorToUse = getReverseComparator((Comparator<? super K>) getComparator());
+        } else {
+            comparatorToUse = getComparator();
+        }
+
+        // Sort keys using the determined comparator
+        Arrays.sort(keys, (o1, o2) -> {
+            if (comparatorToUse != null) {
+                return comparatorToUse.compare((K) o1, (K) o2);
+            }
+            return 0;
+        });
+
+        for (int i = 0; i < size; i++) {
+            array[i * 2] = keys[i];
+            array[(i * 2) + 1] = values[i];
+        }
     }
 
     private void switchToMap(Object[] entries, K key, V value) {
@@ -384,12 +418,24 @@ public class CompactMap<K, V> implements Map<K, V> {
         val = map;
     }
 
-    private Comparator<Object> createEntryComparator() {
+    /**
+     * Returns a comparator that reverses the order of the given comparator.
+     * <p>
+     * If the provided comparator is {@code null}, the resulting comparator
+     * uses the natural reverse order of the keys.
+     * </p>
+     *
+     * @param <T> the type of elements compared by the comparator
+     * @param original the original comparator to be reversed, or {@code null} for natural reverse order
+     * @return a comparator that reverses the given comparator, or natural reverse order if {@code original} is {@code null}
+     */
+    private static <T> Comparator<? super T> getReverseComparator(Comparator<T> original) {
         return (o1, o2) -> {
-            if (orderingComparator != null) {
-                return orderingComparator.compare((K) o1, (K) o2);
+            if (original != null) {
+                return original.compare(o2, o1); // Reverse the order using the provided comparator
             }
-            return 0;
+            Comparable<T> c1 = (Comparable<T>) o1;
+            return c1.compareTo(o2); // Default to reverse natural order
         };
     }
     
@@ -1397,6 +1443,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the resolved options map
      */
     private static Map<String, Object> validateOptions(Map<String, Object> options) {
+        // Extract and set default values
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         Class<? extends Map> mapType = (Class<? extends Map>) options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
         Comparator<?> comparator = (Comparator<?>) options.get(COMPARATOR);
@@ -1405,20 +1452,49 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (ordering.equals(SORTED) && !SortedMap.class.isAssignableFrom(mapType)) {
             throw new IllegalArgumentException("Ordering 'sorted' requires a SortedMap type.");
         }
+
         if (ordering.equals(INSERTION) && !LinkedHashMap.class.isAssignableFrom(mapType)) {
             throw new IllegalArgumentException("Ordering 'insertion' requires a LinkedHashMap type.");
         }
 
-        // Validate comparator usage
+        if (ordering.equals(REVERSE) && !SortedMap.class.isAssignableFrom(mapType)) {
+            throw new IllegalArgumentException("Ordering 'reverse' requires a SortedMap type.");
+        }
+
+        // Handle reverse ordering with or without comparator
+        if (ordering.equals(REVERSE)) {
+            if (comparator == null) {
+                comparator = getReverseComparator(null); // Default to reverse natural ordering
+            } else {
+                comparator = getReverseComparator((Comparator) comparator); // Reverse user-provided comparator
+            }
+            options.put(COMPARATOR, comparator);
+        }
+
+        // Ensure the comparator is compatible with the map type
         if (comparator != null && !SortedMap.class.isAssignableFrom(mapType)) {
             throw new IllegalArgumentException("Comparator can only be used with a SortedMap type.");
         }
 
-        // Validate reverse ordering
-        if (ordering.equals(REVERSE) && comparator == null && !SortedMap.class.isAssignableFrom(mapType)) {
-            throw new IllegalArgumentException("Reverse ordering requires a SortedMap with a valid Comparator.");
+        // Resolve any conflicts or set missing defaults
+        if (ordering.equals(UNORDERED)) {
+            options.put(COMPARATOR, null); // Unordered maps don't need a comparator
         }
 
-        return options; // Return resolved options
+        // Additional validation: Ensure SOURCE_MAP overrides capacity if provided
+        Map<?, ?> sourceMap = (Map<?, ?>) options.get(SOURCE_MAP);
+        if (sourceMap != null) {
+            options.put(CAPACITY, sourceMap.size());
+        }
+
+        // Final default resolution
+        options.putIfAbsent(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
+        options.putIfAbsent(CAPACITY, DEFAULT_CAPACITY);
+        options.putIfAbsent(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+        options.putIfAbsent(MAP_TYPE, DEFAULT_MAP_TYPE);
+        options.putIfAbsent(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
+        options.putIfAbsent(ORDERING, UNORDERED);
+
+        return options; // Return the validated and resolved options
     }
 }

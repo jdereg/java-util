@@ -1,9 +1,11 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -70,27 +72,81 @@ class CompactOrderingTest {
         }
     }
 
+    /**
+     * Parameterized test that verifies reverse case-insensitive ordering after each insertion.
+     *
+     * @param itemCount      the number of items to insert
+     * @param inputs         the keys to insert
+     * @param expectedOrder  the expected order of keys after all insertions
+     */
     @ParameterizedTest
     @MethodSource("reverseSortedScenarios")
     void testCaseInsensitiveReverseSorted(int itemCount, String[] inputs, String[] expectedOrder) {
+        // Configure CompactMap with reverse case-insensitive ordering
         Map<String, Object> options = new HashMap<>();
         options.put(CompactMap.COMPACT_SIZE, COMPACT_SIZE);
         options.put(CompactMap.ORDERING, CompactMap.REVERSE);
         options.put(CompactMap.CASE_SENSITIVE, false);
         options.put(CompactMap.MAP_TYPE, TreeMap.class);
-        Map<String, Integer> map = CompactMap.newMap(options); // Ensure a new map per test scenario
+        Map<String, Integer> map = CompactMap.newMap(options);
 
-        // Add items and verify order after each addition
+        // List to keep track of inserted keys
+        List<String> insertedKeys = new ArrayList<>();
+
+        // Insert keys one by one and assert the order after each insertion
         for (int i = 0; i < itemCount; i++) {
-            map.put(inputs[i], i);
-            String[] expectedSubset = Arrays.copyOfRange(expectedOrder, 0, i + 1);
-            System.out.println("After inserting '" + inputs[i] + "': " + map.keySet());
-            System.out.println("Expected order: " + Arrays.toString(expectedSubset));
-            assertArrayEquals(expectedSubset, map.keySet().toArray(new String[0]),
-                    String.format("Order mismatch with %d items", i + 1));
+            String key = inputs[i];
+            Integer value = i;
+            map.put(key, value);
+            insertedKeys.add(key);
+
+            // Determine the expected subset based on inserted keys
+            String[] currentInsertedKeys = insertedKeys.toArray(new String[0]);
+
+            // Sort the expected subset using the same comparator as CompactMap
+            Comparator<String> expectedComparator = String.CASE_INSENSITIVE_ORDER.reversed();
+            String[] expectedSubset = Arrays.copyOf(currentInsertedKeys, currentInsertedKeys.length);
+            Arrays.sort(expectedSubset, expectedComparator);
+
+            // Extract the actual subset from the map's keySet
+            String[] actualSubset = map.keySet().toArray(new String[0]);
+
+            // Assert that the actual keySet matches the expected order
+            assertArrayEquals(expectedSubset, actualSubset,
+                    String.format("Order mismatch after inserting %d items", i + 1));
         }
     }
+    
+    @Test
+    void testCaseInsensitiveReverseSorted() {
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.COMPACT_SIZE, COMPACT_SIZE);
+        options.put(CompactMap.ORDERING, CompactMap.REVERSE);
+        options.put(CompactMap.CASE_SENSITIVE, false);
+        options.put(CompactMap.MAP_TYPE, TreeMap.class);
+        Map<String, Integer> map = CompactMap.newMap(options);
 
+        // Add first item
+        map.put("aaa", 0);
+        assertEquals("[aaa]", map.keySet().toString(),
+                "Single entry should just contain 'aaa'");
+
+        // Add second item - should reorder to reverse alphabetical
+        map.put("BBB", 1);
+        assertEquals("[BBB, aaa]", map.keySet().toString(),
+                "BBB should come first in reverse order");
+
+        // Add third item
+        map.put("ccc", 2);
+        assertEquals("[ccc, BBB, aaa]", map.keySet().toString(),
+                "ccc should be first in reverse order");
+
+        // Add fourth item
+        map.put("DDD", 3);
+        assertEquals("[DDD, ccc, BBB, aaa]", map.keySet().toString(),
+                "DDD should be first in reverse order");
+    }
+    
     @Test
     void testRemovalsBetweenStorageTypes() {
         Map<String, Object> options = new HashMap<>();
@@ -240,7 +296,6 @@ class CompactOrderingTest {
 
         // Insert "DDD"
         map.put("DDD", 0);
-        System.out.println("After inserting 'DDD': " + map.keySet());
         assertArrayEquals(new String[]{"DDD"}, map.keySet().toArray(new String[0]),
                 "Order mismatch after inserting 'DDD'");
     }
@@ -256,13 +311,9 @@ class CompactOrderingTest {
 
         // Insert multiple keys
         map.put("aaa", 0);
-        System.out.println("After inserting 'aaa': " + map.keySet());
         map.put("BBB", 1);
-        System.out.println("After inserting 'BBB': " + map.keySet());
         map.put("ccc", 2);
-        System.out.println("After inserting 'ccc': " + map.keySet());
         map.put("DDD", 3);
-        System.out.println("After inserting 'DDD': " + map.keySet());
 
         // Expected Order: DDD, ccc, BBB, aaa
         String[] expectedOrder = {"DDD", "ccc", "BBB", "aaa"};

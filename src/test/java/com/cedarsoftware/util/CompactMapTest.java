@@ -23,6 +23,11 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
+import static com.cedarsoftware.util.CompactMap.CASE_SENSITIVE;
+import static com.cedarsoftware.util.CompactMap.COMPACT_SIZE;
+import static com.cedarsoftware.util.CompactMap.MAP_TYPE;
+import static com.cedarsoftware.util.CompactMap.ORDERING;
+import static com.cedarsoftware.util.CompactMap.SORTED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -3483,6 +3488,34 @@ public class CompactMapTest
         assert map.getLogicalValueType() == CompactMap.LogicalValueType.MAP;    // ensure switch over
     }
 
+    /**
+     * Test to demonstrate that if sortCompactArray is flawed and sorts keys without rearranging values,
+     * key-value pairs become mismatched.
+     */
+    @Test
+    void testSortCompactArrayMismatchesKeysAndValues() throws Exception {
+        // Create a CompactMap with a specific singleValueKey and compactSize
+        Map<String, Object> options = new HashMap<>();
+
+        options.put(COMPACT_SIZE, 40);
+        options.put(CASE_SENSITIVE, true);
+        options.put(MAP_TYPE, TreeMap.class);
+        options.put(ORDERING, SORTED);
+        CompactMap<String, Integer> compactMap = CompactMap.newMap(options);
+
+        // Insert multiple entries
+        compactMap.put("banana", 2);
+        compactMap.put("apple", 1);
+        compactMap.put("cherry", 3);
+        compactMap.put("zed", 4);
+
+        // Verify initial entries
+        assertEquals(2, compactMap.get("banana"), "Initial value for 'banana' should be 2.");
+        assertEquals(1, compactMap.get("apple"), "Initial value for 'apple' should be 1.");
+        assertEquals(3, compactMap.get("cherry"), "Initial value for 'cherry' should be 3.");
+        assertEquals(4, compactMap.get("zed"), "Initial value for 'zed' should be 4.");
+    }
+    
     @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     public void testPerformance()

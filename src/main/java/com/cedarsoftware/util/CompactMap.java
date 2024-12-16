@@ -245,33 +245,101 @@ public class CompactMap<K, V> implements Map<K, V> {
         } else if (val == EMPTY_MAP) {   // empty
             return 0;
         }
-
         // size == 1
         return 1;
     }
 
     /**
-     * Returns {@code true} if this map contains no key-value mappings.
-     *
      * @return {@code true} if this map contains no key-value mappings; {@code false} otherwise
      */
     public boolean isEmpty() {
         return val == EMPTY_MAP;
     }
 
-    private boolean compareKeys(Object key, Object aKey) {
-        if (key instanceof String) {
-            if (aKey instanceof String) {
-                if (isCaseInsensitive()) {
-                    return ((String) aKey).equalsIgnoreCase((String) key);
-                } else {
-                    return aKey.equals(key);
-                }
-            }
-            return false;
+    /**
+     * Determines whether two keys are equal, considering case sensitivity for String keys.
+     *
+     * @param key  the first key to compare
+     * @param aKey the second key to compare
+     * @return {@code true} if the keys are equal based on the comparison rules; {@code false} otherwise
+     */
+    private boolean areKeysEqual(Object key, Object aKey) {
+        if (key instanceof String && aKey instanceof String) {
+            return isCaseInsensitive()
+                    ? ((String) key).equalsIgnoreCase((String) aKey)
+                    : key.equals(aKey);
+        }
+        return Objects.equals(key, aKey);
+    }
+
+    /**
+     * Compares two keys for ordering based on the map's ordering and case sensitivity settings.
+     *
+     * <p>
+     * The comparison follows these rules:
+     * <ul>
+     *   <li>If both keys are equal (as determined by {@link #areKeysEqual}), returns {@code 0}.</li>
+     *   <li>If both keys are instances of {@link String}:
+     *     <ul>
+     *       <li>Uses a case-insensitive comparator if {@link #isCaseInsensitive()} is {@code true}; otherwise, uses case-sensitive comparison.</li>
+     *       <li>Reverses the comparator if the map's ordering is set to {@code REVERSE}.</li>
+     *     </ul>
+     *   </li>
+     *   <li>If both keys implement {@link Comparable} and are of the same class:
+     *     <ul>
+     *       <li>Compares them using their natural ordering.</li>
+     *       <li>Reverses the result if the map's ordering is set to {@code REVERSE}.</li>
+     *     </ul>
+     *   </li>
+     *   <li>For all other cases, treats the keys as equal and returns {@code 0}.</li>
+     * </ul>
+     * </p>
+     *
+     * @param key1 the first key to compare
+     * @param key2 the second key to compare
+     * @return a negative integer, zero, or a positive integer as {@code key1} is less than, equal to,
+     *         or greater than {@code key2}
+     */
+    private int compareKeysForOrder(Object key1, Object key2) {
+        // Early exit if keys are equal
+        if (areKeysEqual(key1, key2)) {
+            return 0;
         }
 
-        return Objects.equals(key, aKey);
+        String ordering = getOrdering();
+
+        // Compare if both keys are Strings
+        if (key1 instanceof String && key2 instanceof String) {
+            String str1 = (String) key1;
+            String str2 = (String) key2;
+
+            // Determine the appropriate comparator based on case sensitivity
+            Comparator<String> comparator = isCaseInsensitive()
+                    ? String.CASE_INSENSITIVE_ORDER
+                    : Comparator.naturalOrder();
+
+            // Reverse the comparator if ordering is set to REVERSE
+            if (REVERSE.equals(ordering)) {
+                comparator = comparator.reversed();
+            }
+
+            return comparator.compare(str1, str2);
+        }
+
+        // Compare if both keys are Comparable and of the same class
+        if (key1 instanceof Comparable && key2 instanceof Comparable &&
+                key1.getClass().equals(key2.getClass())) {
+            Comparable<Object> comp1 = (Comparable<Object>) key1;
+            Comparable<Object> comp2 = (Comparable<Object>) key2;
+
+            int comparisonResult = comp1.compareTo(comp2);
+
+            // Reverse the comparison result if ordering is set to REVERSE
+            return REVERSE.equals(ordering) ? -comparisonResult : comparisonResult;
+        }
+
+        // For all other cases, consider keys as equal in ordering
+        return 0;
     }
 
     /**
@@ -285,7 +353,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             Object[] entries = (Object[]) val;
             final int len = entries.length;
             for (int i = 0; i < len; i += 2) {
-                if (compareKeys(key, entries[i])) {
+                if (areKeysEqual(key, entries[i])) {
                     return true;
                 }
             }
@@ -298,7 +366,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // size == 1
-        return compareKeys(key, getLogicalSingleKey());
+        return areKeysEqual(key, getLogicalSingleKey());
     }
 
     /**
@@ -311,7 +379,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     public boolean containsValue(Object value) {
         if (val instanceof Object[]) {   // 2 to Compactsize
             Object[] entries = (Object[]) val;
-            final int len = entries.length;
+            int len = entries.length;
             for (int i = 0; i < len; i += 2) {
                 Object aValue = entries[i + 1];
                 if (Objects.equals(value, aValue)) {
@@ -327,7 +395,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // size == 1
-        return getLogicalSingleValue() == value;
+        return Objects.equals(getLogicalSingleValue(), value);
     }
 
     /**
@@ -343,8 +411,9 @@ public class CompactMap<K, V> implements Map<K, V> {
     public V get(Object key) {
         if (val instanceof Object[]) {   // 2 to compactSize
             Object[] entries = (Object[]) val;
-            for (int i = 0; i < entries.length; i += 2) {
-                if (compareKeys(key, entries[i])) {
+            int len = entries.length;
+            for (int i = 0; i < len; i += 2) {
+                if (areKeysEqual(key, entries[i])) {
                     return (V) entries[i + 1];
                 }
             }
@@ -357,7 +426,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // size == 1
-        if (compareKeys(key, getLogicalSingleKey())) {
+        if (areKeysEqual(key, getLogicalSingleKey())) {
             return getLogicalSingleValue();
         }
         return null;
@@ -365,25 +434,35 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     /**
      * Associates the specified value with the specified key in this map.
+     * If the map previously contained a mapping for the key, the old value is replaced.
+     *
+     * @param key   key with which the specified value is to be associated
+     * @param value value to be associated with the specified key
+     * @return the previous value associated with key, or {@code null} if there was no mapping for key.
+     * @throws NullPointerException if the specified key is null and this map does not permit null keys
+     * @throws ClassCastException   if the key is of an inappropriate type for this map
      */
     @Override
     public V put(K key, V value) {
-        if (val instanceof Object[]) {   // 2 to compactSize
-            Object[] entries = (Object[]) val;
-            return putInCompactArray(entries, key, value);
-        } else if (val instanceof Map) {   // > compactSize
-            Map<K, V> map = (Map<K, V>) val;
-            return map.put(key, value);
-        } else if (val == EMPTY_MAP) {   // empty
-            if (compareKeys(key, getLogicalSingleKey()) && !(value instanceof Map || value instanceof Object[])) {
+        if (val == EMPTY_MAP) {   // Empty map
+            if (areKeysEqual(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
+                // Store the value directly for optimized single-entry storage
+                // (can't allow Map or Object[] because that would throw off the 'state')
                 val = value;
             } else {
+                // Create a CompactMapEntry for the first entry
                 val = new CompactMapEntry(key, value);
             }
             return null;
+        } else if (val instanceof Object[]) {   // Compact array storage (2 to compactSize)
+            Object[] entries = (Object[]) val;
+            return putInCompactArray(entries, key, value);
+        } else if (val instanceof Map) {   // Backing map storage (&gt; compactSize)
+            Map<K, V> map = (Map<K, V>) val;
+            return map.put(key, value);
         }
 
-        // size == 1
+        // Single entry state, handle overwrite, or insertion which transitions the Map to Object[4]
         return handleSingleEntryPut(key, value);
     }
 
@@ -393,8 +472,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     @Override
     public V remove(Object key) {
         if (val instanceof Object[]) {   // 2 to compactSize
-            Object[] entries = (Object[]) val;
-            return removeFromCompactArray(entries, key);
+            return removeFromCompactArray(key);
         } else if (val instanceof Map) {   // > compactSize
             Map<K, V> map = (Map<K, V>) val;
             return removeFromMap(map, key);
@@ -410,9 +488,10 @@ public class CompactMap<K, V> implements Map<K, V> {
         final int len = entries.length;
         for (int i = 0; i < len; i += 2) {
             Object aKey = entries[i];
-            if (compareKeys(key, aKey)) {
-                V oldValue = (V) entries[i + 1];
-                entries[i + 1] = value;
+            if (areKeysEqual(key, aKey)) {
+                int i1 = i + 1;
+                V oldValue = (V) entries[i1];
+                entries[i1] = value;
                 return oldValue;
             }
         }
@@ -422,8 +501,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             System.arraycopy(entries, 0, expand, 0, len);
             expand[len] = key;
             expand[len + 1] = value;
-
-            sortCompactArray(expand); // Delegate sorting
+            sortCompactArray(expand);  // Make sure sorting happens
             val = expand;
         } else {
             switchToMap(entries, key, value);
@@ -434,14 +512,15 @@ public class CompactMap<K, V> implements Map<K, V> {
     /**
      * Removes a key-value pair from the compact array while preserving order.
      */
-    private V removeFromCompactArray(Object[] entries, Object key) {
+    private V removeFromCompactArray(Object key) {
+        Object[] entries = (Object[]) val;
         if (size() == 2) {   // Transition back to single entry
             return handleTransitionToSingleEntry(entries, key);
         }
 
-        final int len = entries.length;
+        int len = entries.length;
         for (int i = 0; i < len; i += 2) {
-            if (compareKeys(key, entries[i])) {
+            if (areKeysEqual(key, entries[i])) {
                 V oldValue = (V) entries[i + 1];
                 Object[] shrink = new Object[len - 2];
                 System.arraycopy(entries, 0, shrink, 0, i);
@@ -454,76 +533,64 @@ public class CompactMap<K, V> implements Map<K, V> {
         return null;
     }
 
-    private void sortCompactArray(Object[] array) {
-        // Determine if sorting is required
-        if (getOrdering().equals(UNORDERED) || getOrdering().equals(INSERTION)) {
-            return; // No sorting needed for unordered or insertion-ordered maps
-        }
-
-        int size = array.length / 2;
-        Object[] keys = new Object[size];
-        Object[] values = new Object[size];
-
-        for (int i = 0; i < size; i++) {
-            keys[i] = array[i * 2];
-            values[i] = array[(i * 2) + 1];
-        }
-
-        // Fetch the comparator to use
-        final Comparator<? super K> baseComparator;
-        if (getOrdering().equals(REVERSE)) {
-            baseComparator = getReverseComparator((Comparator<? super K>) getComparator());
-        } else {
-            baseComparator = getComparator();
-        }
-
-        final Comparator<Object> comparatorToUse = (baseComparator != null)
-                ? (o1, o2) -> baseComparator.compare((K) o1, (K) o2)
-                : this::defaultCompareKeys;
-
-        Arrays.sort(keys, comparatorToUse);
-
-        for (int i = 0; i < size; i++) {
-            array[i * 2] = keys[i];
-            array[(i * 2) + 1] = values[i];
-        }
-    }
-
     /**
-     * Default comparison logic for keys when no comparator is provided.
-     * This method:
-     * 1. Checks if keys are equal via compareKeys().
-     * 2. If equal, returns 0.
-     * 3. If both keys are strings:
-     *    - If isCaseInsensitive() is true, use CASE_INSENSITIVE_ORDER.
-     *    - Otherwise, use String's natural order.
-     * 4. If non-string, try Comparable if both keys are Comparable and of the same type.
-     *    Otherwise, consider them equal (0) to maintain stable order.
+     * Sorts the internal compact array of the {@code CompactMap} based on the defined ordering.
+     *
+     * <p>
+     * The compact array is a flat array where keys and values are stored in alternating positions:
+     * <pre>
+     * [key1, value1, key2, value2, ..., keyN, valueN]
+     * </pre>
+     * This method reorders the key-value pairs in the array according to the map's ordering rules.
+     * If the ordering is set to {@code UNORDERED} or {@code INSERTION}, the method returns without performing any sorting.
+     * Otherwise, it sorts the key-value pairs based on the keys using the appropriate comparator.
+     * </p>
+     *
+     * <p>
+     * This implementation ensures that each key remains correctly associated with its corresponding value
+     * after sorting, maintaining the integrity of the map.
+     * </p>
+     *
+     * @param array the internal flat array containing key-value pairs to be sorted
      */
-    private int defaultCompareKeys(Object k1, Object k2) {
-        if (compareKeys(k1, k2)) {
-            return 0; // Keys are considered equal
+    private void sortCompactArray(Object[] array) {
+        String ordering = getOrdering();
+
+        // No sorting needed for UNORDERED or INSERTION ordering
+        if (ordering.equals(UNORDERED) || ordering.equals(INSERTION)) {
+            return;
         }
 
-        // Both are not equal per compareKeys(), so we need ordering
-        // Handle strings with/without case-insensitivity
-        if (k1 instanceof String && k2 instanceof String) {
-            String s1 = (String) k1;
-            String s2 = (String) k2;
-            if (isCaseInsensitive()) {
-                return String.CASE_INSENSITIVE_ORDER.compare(s1, s2);
-            } else {
-                return s1.compareTo(s2);
-            }
+        int pairCount = array.length / 2;
+
+        // Create a list of indices representing each key-value pair
+        Integer[] indices = new Integer[pairCount];
+        for (int i = 0; i < pairCount; i++) {
+            indices[i] = i;
         }
 
-        // For non-String keys, try natural ordering if possible
-        if (k1 instanceof Comparable && k2 instanceof Comparable && k1.getClass().equals(k2.getClass())) {
-            return ((Comparable) k1).compareTo(k2);
+        // Define the comparator based on the map's comparator or custom compareKeysForOrder method
+        Comparator<Integer> comparator = (i1, i2) -> {
+            K key1 = (K) array[i1 * 2];
+            K key2 = (K) array[i2 * 2];
+            return compareKeysForOrder(key1, key2);
+        };
+
+        // Sort the indices based on the comparator
+        Arrays.sort(indices, comparator);
+
+        // Create a temporary array to hold the sorted key-value pairs
+        Object[] sortedArray = new Object[array.length];
+
+        // Populate the sortedArray based on the sorted indices
+        for (int i = 0; i < pairCount; i++) {
+            int sortedIndex = indices[i];
+            sortedArray[i * 2] = array[sortedIndex * 2];       // Key
+            sortedArray[i * 2 + 1] = array[sortedIndex * 2 + 1]; // Value
         }
 
-        // If we cannot determine an order, treat them as equal to preserve insertion stability
-        return 0;
+        // Replace the original array with the sorted array
+        System.arraycopy(sortedArray, 0, array, 0, array.length);
     }
 
     private void switchToMap(Object[] entries, K key, V value) {
@@ -546,26 +613,23 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @param original the original comparator to be reversed, or {@code null} for natural reverse order
      * @return a comparator that reverses the given comparator, or natural reverse order if {@code original} is {@code null}
      */
-    private static <T> Comparator<? super T> getReverseComparator(Comparator<T> original) {
-        return (o1, o2) -> {
-            if (original != null) {
-                return original.compare(o2, o1); // Reverse the order using the provided comparator
-            }
-            Comparable<T> c1 = (Comparable<T>) o1;
-            return c1.compareTo(o2); // Default to reverse natural order
-        };
+    private static <T extends Comparable<? super T>> Comparator<? super T> getReverseComparator(Comparator<T> original) {
+        if (original != null) {
+            return original.reversed(); // Reverse the provided comparator
+        }
+        return Comparator.<T>naturalOrder().reversed(); // Reverse natural order
     }
-    
+
     /**
      * Handles the case where the array is reduced to a single entry during removal.
      */
     private V handleTransitionToSingleEntry(Object[] entries, Object key) {
-        if (compareKeys(key, entries[0])) {
+        if (areKeysEqual(key, entries[0])) {
             Object prevValue = entries[1];
             clear();
             put((K) entries[2], (V) entries[3]);
             return (V) prevValue;
-        } else if (compareKeys(key, entries[2])) {
+        } else if (areKeysEqual(key, entries[2])) {
             Object prevValue = entries[3];
             clear();
             put((K) entries[0], (V) entries[1]);
@@ -578,9 +642,9 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Handles a put operation when the map has a single entry.
      */
     private V handleSingleEntryPut(K key, V value) {
-        if (compareKeys(key, getLogicalSingleKey())) {   // Overwrite
+        if (areKeysEqual(key, getLogicalSingleKey())) {   // Overwrite
             V save = getLogicalSingleValue();
-            if (compareKeys(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
+            if (areKeysEqual(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
                 val = value;
             } else {
                 val = new CompactMapEntry(key, value);
@@ -592,6 +656,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             entries[1] = getLogicalSingleValue();
             entries[2] = key;
             entries[3] = value;
+            sortCompactArray(entries);  // This will handle the reverse ordering
             val = entries;
             return null;
         }
@@ -601,7 +666,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Handles a remove operation when the map has a single entry.
      */
     private V handleSingleEntryRemove(Object key) {
-        if (compareKeys(key, getLogicalSingleKey())) {   // Found
+        if (areKeysEqual(key, getLogicalSingleKey())) {   // Found
             V save = getLogicalSingleValue();
             val = EMPTY_MAP;
             return save;
@@ -1061,7 +1126,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
 
             Map.Entry<?, ?> e = (Map.Entry<?, ?>) o;
-            return compareKeys(getKey(), e.getKey()) && Objects.equals(getValue(), e.getValue());
+            return areKeysEqual(getKey(), e.getKey()) && Objects.equals(getValue(), e.getValue());
         }
 
         public int hashCode() {
@@ -1117,7 +1182,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     protected K getSingleValueKey() {
         return (K) "key";
     }
-    
+
     /**
      * @return new empty Map instance to use when size() becomes {@literal >} compactSize().
      */
@@ -1125,7 +1190,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         Map<K, V> map = new HashMap<>(compactSize() + 1); // Default behavior
         return map;
     }
-    
+
     protected Map<K, V> getNewMap(int size) {
         Map<K, V> map = getNewMap();
         try {
@@ -1180,7 +1245,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the comparator used for sorting, or {@code null} for natural ordering
      */
     protected Comparator<? super K> getComparator() {
-        return null; // Default: natural ordering
+        return orderingComparator; // Return the provided comparator
     }
 
     /* ------------------------------------------------------------ */
@@ -1453,7 +1518,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @see #validateAndFinalizeOptions(Map)
      */
     public static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
-        validateAndFinalizeOptions(options); // Validate and resolve conflicts
+        validateAndFinalizeOptions(options);
+
         int compactSize = (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
         boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
         boolean useCopyIterator = (boolean) options.getOrDefault(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
@@ -1463,7 +1529,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         Map<K, V> source = (Map<K, V>) options.get(SOURCE_MAP);
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         int capacity = (int) options.getOrDefault(CAPACITY, DEFAULT_CAPACITY);
-        
+
         CompactMap<K, V> map = new CompactMap<K, V>() {
             @Override
             protected Map<K, V> getNewMap() {
@@ -1505,6 +1571,11 @@ public class CompactMap<K, V> implements Map<K, V> {
             @Override
             protected String getOrdering() {
                 return ordering;
+            }
+
+            @Override
+            protected Comparator<? super K> getComparator() {
+                return comparator; // Return the custom comparator from options
             }
         };
 
@@ -1591,7 +1662,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             int compactSize,
             int capacity,
             boolean caseSensitive,
-            Class<? extends Map<K, V>> mapType) {
+            Class<? extends Map> mapType) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
         options.put(CAPACITY, capacity);
@@ -1660,6 +1731,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         Class<? extends Map> mapType = (Class<? extends Map>) options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
         Comparator<?> comparator = (Comparator<?>) options.get(COMPARATOR);
+        boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
 
         // Validate ordering and mapType compatibility
         if (ordering.equals(SORTED) && !SortedMap.class.isAssignableFrom(mapType)) {
@@ -1674,12 +1746,25 @@ public class CompactMap<K, V> implements Map<K, V> {
             throw new IllegalArgumentException("Ordering 'reverse' requires a SortedMap type.");
         }
 
+        // Handle case sensitivity for sorted maps when no comparator is provided
+        if ((ordering.equals(SORTED) || ordering.equals(REVERSE)) &&
+                !caseSensitive &&
+                comparator == null) {
+            comparator = String.CASE_INSENSITIVE_ORDER;
+            options.put(COMPARATOR, comparator);
+        }
+
         // Handle reverse ordering with or without comparator
         if (ordering.equals(REVERSE)) {
-            if (comparator == null) {
-                comparator = getReverseComparator(null); // Default to reverse natural ordering
+            if (comparator == null && !caseSensitive) {
+                // First set up case-insensitive comparison, then reverse it
+                comparator = String.CASE_INSENSITIVE_ORDER.reversed();
+            } else if (comparator == null) {
+                // Just reverse natural ordering
+                comparator = Comparator.naturalOrder().reversed();
             } else {
-                comparator = getReverseComparator((Comparator) comparator); // Reverse user-provided comparator
+                // Reverse the provided comparator
+                comparator = ((Comparator) comparator).reversed();
             }
             options.put(COMPARATOR, comparator);
         }

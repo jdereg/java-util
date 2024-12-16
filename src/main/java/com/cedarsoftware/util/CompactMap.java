@@ -5,6 +5,7 @@ import java.util.AbstractCollection;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
@@ -599,9 +600,12 @@ public class CompactMap<K, V> implements Map<K, V> {
         array[(j + 1) * 2] = keyToInsert;
         array[(j + 1) * 2 + 1] = valueToInsert;
     }
-    
+
     private void switchToMap(Object[] entries, K key, V value) {
-        Map<K, V> map = getNewMap(size() + 1);
+        // Get the correct map type with initial capacity
+        Map<K, V> map = getNewMap();  // This respects subclass overrides
+
+        // Copy existing entries preserving order
         int len = entries.length;
         for (int i = 0; i < len; i += 2) {
             map.put((K) entries[i], (V) entries[i + 1]);
@@ -609,7 +613,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         map.put(key, value);
         val = map;
     }
-
+    
     /**
      * Handles the case where the array is reduced to a single entry during removal.
      */
@@ -642,16 +646,36 @@ public class CompactMap<K, V> implements Map<K, V> {
             return save;
         } else {   // CompactMapEntry to []
             Object[] entries = new Object[4];
-            entries[0] = getLogicalSingleKey();
-            entries[1] = getLogicalSingleValue();
-            entries[2] = key;
-            entries[3] = value;
-            sortCompactArray(entries);  // This will handle the reverse ordering
+            K existingKey = getLogicalSingleKey();
+            V existingValue = getLogicalSingleValue();
+
+            // Determine order based on comparison
+            if (SORTED.equals(getOrdering()) || REVERSE.equals(getOrdering())) {
+                int comparison = compareKeysForOrder(existingKey, key);
+                if (comparison <= 0) {
+                    entries[0] = existingKey;
+                    entries[1] = existingValue;
+                    entries[2] = key;
+                    entries[3] = value;
+                } else {
+                    entries[0] = key;
+                    entries[1] = value;
+                    entries[2] = existingKey;
+                    entries[3] = existingValue;
+                }
+            } else {
+                // For INSERTION or UNORDERED, maintain insertion order
+                entries[0] = existingKey;
+                entries[1] = existingValue;
+                entries[2] = key;
+                entries[3] = value;
+            }
+
             val = entries;
             return null;
         }
     }
-
+    
     /**
      * Handles a remove operation when the map has a single entry.
      */
@@ -1190,6 +1214,16 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Returns the initial capacity to use when creating a new backing map.
+     * This defaults to 16 unless overridden.
+     *
+     * @return the initial capacity for the backing map
+     */
+    protected int capacity() {
+        return DEFAULT_CAPACITY;
+    }
+
     protected boolean isCaseInsensitive() {
         return false;
     }
@@ -1506,6 +1540,9 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @throws IllegalArgumentException if the provided options are invalid or incompatible
      * @see #validateAndFinalizeOptions(Map)
      */
+    /**
+     * Creates a new CompactMap with the specified options.
+     */
     public static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
         validateAndFinalizeOptions(options);
 
@@ -1523,11 +1560,29 @@ public class CompactMap<K, V> implements Map<K, V> {
             @Override
             protected Map<K, V> getNewMap() {
                 try {
-                    if (comparator != null && SortedMap.class.isAssignableFrom(mapType)) {
-                        return mapType.getConstructor(Comparator.class).newInstance(comparator);
+                    if (!caseSensitive) {
+                        // For case-insensitive maps, create the appropriate inner map first
+                        Class<? extends Map<K, V>> innerMapType =
+                                (Class<? extends Map<K, V>>) options.get("INNER_MAP_TYPE");
+                        Map<K, V> innerMap;
+
+                        if (comparator != null && SortedMap.class.isAssignableFrom(innerMapType)) {
+                            innerMap = innerMapType.getConstructor(Comparator.class).newInstance(comparator);
+                        } else {
+                            Constructor<? extends Map<K, V>> constructor =
+                                    innerMapType.getConstructor(int.class);
+                            innerMap = constructor.newInstance(capacity);
+                        }
+                        // Wrap in CaseInsensitiveMap
+                        return new CaseInsensitiveMap<>(Collections.emptyMap(), innerMap);
+                    } else {
+                        // Case-sensitive map creation
+                        if (comparator != null && SortedMap.class.isAssignableFrom(mapType)) {
+                            return mapType.getConstructor(Comparator.class).newInstance(comparator);
+                        }
+                        Constructor<? extends Map<K, V>> constructor = mapType.getConstructor(int.class);
+                        return constructor.newInstance(capacity);
                     }
-                    Constructor<? extends Map<K, V>> constructor = mapType.getConstructor(int.class);
-                    return constructor.newInstance(capacity);
                 } catch (Exception e) {
                     try {
                         return mapType.getDeclaredConstructor().newInstance();
@@ -1548,6 +1603,11 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
 
             @Override
+            protected int capacity() {
+                return capacity;
+            }
+
+            @Override
             protected boolean useCopyIterator() {
                 return useCopyIterator;
             }
@@ -1564,7 +1624,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             @Override
             protected Comparator<? super K> getComparator() {
-                return comparator; // Return the custom comparator from options
+                return comparator;
             }
         };
 
@@ -1575,15 +1635,16 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         return map;
     }
-
+    
     /**
-     * Creates a new CompactMap with default configuration:
+     * Creates a new CompactMap with base configuration:
      * - compactSize = 80
      * - caseSensitive = true
      * - capacity = 16
-     * - ordering = "unordered"
+     * - ordering = UNORDERED
      * - useCopyIterator = false
      * - singleKey = "key"
+     * - sourceMap = null
      * - mapType = HashMap.class
      *
      * @param <K> the type of keys maintained by this map
@@ -1598,126 +1659,87 @@ public class CompactMap<K, V> implements Map<K, V> {
         options.put(ORDERING, UNORDERED);
         options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
         options.put(SINGLE_KEY, "key");
+        options.put(SOURCE_MAP, null);
         options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
     /**
      * Creates a new CompactMap with specified compact size and default values for other options.
-     *
-     * @param <K> the type of keys maintained by this map
-     * @param <V> the type of mapped values
-     * @param compactSize the compact size threshold
-     * @return a new CompactMap instance
      */
     public static <K, V> CompactMap<K, V> newMap(int compactSize) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
-        options.put(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
-        options.put(CAPACITY, DEFAULT_CAPACITY);
-        options.put(ORDERING, UNORDERED);
-        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
-        options.put(SINGLE_KEY, "key");
-        options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
     /**
      * Creates a new CompactMap with specified compact size and case sensitivity.
-     *
-     * @param <K> the type of keys maintained by this map
-     * @param <V> the type of mapped values
-     * @param compactSize the compact size threshold
-     * @param caseSensitive whether the map is case-sensitive
-     * @return a new CompactMap instance
      */
     public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
         options.put(CASE_SENSITIVE, caseSensitive);
-        options.put(CAPACITY, DEFAULT_CAPACITY);
-        options.put(ORDERING, UNORDERED);
-        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
-        options.put(SINGLE_KEY, "key");
-        options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
     /**
      * Creates a new CompactMap with specified compact size, case sensitivity, and capacity.
-     *
-     * @param <K> the type of keys maintained by this map
-     * @param <V> the type of mapped values
-     * @param compactSize the compact size threshold
-     * @param caseSensitive whether the map is case-sensitive
-     * @param capacity the initial capacity of the map
-     * @return a new CompactMap instance
      */
     public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
         options.put(CASE_SENSITIVE, caseSensitive);
         options.put(CAPACITY, capacity);
-        options.put(ORDERING, UNORDERED);
-        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
-        options.put(SINGLE_KEY, "key");
-        options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
     /**
      * Creates a new CompactMap with specified compact size, case sensitivity, capacity, and ordering.
-     *
-     * @param <K> the type of keys maintained by this map
-     * @param <V> the type of mapped values
-     * @param compactSize the compact size threshold
-     * @param caseSensitive whether the map is case-sensitive
-     * @param capacity the initial capacity of the map
-     * @param ordering the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
-     * @return a new CompactMap instance
      */
-    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive,
-                                                 int capacity, String ordering) {
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity,
+                                                 String ordering) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
         options.put(CASE_SENSITIVE, caseSensitive);
         options.put(CAPACITY, capacity);
         options.put(ORDERING, ordering);
-        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
-        options.put(SINGLE_KEY, "key");
-        options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
     /**
      * Creates a new CompactMap with specified compact size, case sensitivity, capacity,
      * ordering, and copy iterator setting.
-     *
-     * @param <K> the type of keys maintained by this map
-     * @param <V> the type of mapped values
-     * @param compactSize the compact size threshold
-     * @param caseSensitive whether the map is case-sensitive
-     * @param capacity the initial capacity of the map
-     * @param ordering the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
-     * @param useCopyIterator whether to use copy iterator
-     * @return a new CompactMap instance
      */
-    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive,
-                                                 int capacity, String ordering, boolean useCopyIterator) {
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity,
+                                                 String ordering, boolean useCopyIterator) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
         options.put(CASE_SENSITIVE, caseSensitive);
         options.put(CAPACITY, capacity);
         options.put(ORDERING, ordering);
         options.put(USE_COPY_ITERATOR, useCopyIterator);
-        options.put(SINGLE_KEY, "key");
-        options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
     /**
      * Creates a new CompactMap with specified compact size, case sensitivity, capacity,
      * ordering, copy iterator setting, and single key value.
+     */
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity,
+                                                 String ordering, boolean useCopyIterator, String singleKey) {
+        Map<String, Object> options = new HashMap<>();
+        options.put(COMPACT_SIZE, compactSize);
+        options.put(CASE_SENSITIVE, caseSensitive);
+        options.put(CAPACITY, capacity);
+        options.put(ORDERING, ordering);
+        options.put(USE_COPY_ITERATOR, useCopyIterator);
+        options.put(SINGLE_KEY, singleKey);
+        return newMap(options);
+    }
+
+    /**
+     * Creates a new CompactMap with all configuration options and a source map.
      *
      * @param <K> the type of keys maintained by this map
      * @param <V> the type of mapped values
@@ -1727,10 +1749,12 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @param ordering the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
      * @param useCopyIterator whether to use copy iterator
      * @param singleKey the key to use for single-entry optimization
+     * @param sourceMap the source map to initialize entries from
      * @return a new CompactMap instance
      */
-    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive,
-                                                 int capacity, String ordering, boolean useCopyIterator, String singleKey) {
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity,
+                                                 String ordering, boolean useCopyIterator, String singleKey,
+                                                 Map<K, V> sourceMap) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
         options.put(CASE_SENSITIVE, caseSensitive);
@@ -1738,6 +1762,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         options.put(ORDERING, ordering);
         options.put(USE_COPY_ITERATOR, useCopyIterator);
         options.put(SINGLE_KEY, singleKey);
+        options.put(SOURCE_MAP, sourceMap);
         options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
@@ -1753,12 +1778,13 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @param ordering the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
      * @param useCopyIterator whether to use copy iterator
      * @param singleKey the key to use for single-entry optimization
+     * @param sourceMap the source map to initialize entries from
      * @param mapType the type of map to use for backing storage
      * @return a new CompactMap instance
      */
-    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive,
-                                                 int capacity, String ordering, boolean useCopyIterator, String singleKey,
-                                                 Class<? extends Map> mapType) {
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity,
+                                                 String ordering, boolean useCopyIterator, String singleKey,
+                                                 Map<K, V> sourceMap, Class<? extends Map> mapType) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
         options.put(CASE_SENSITIVE, caseSensitive);
@@ -1766,6 +1792,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         options.put(ORDERING, ordering);
         options.put(USE_COPY_ITERATOR, useCopyIterator);
         options.put(SINGLE_KEY, singleKey);
+        options.put(SOURCE_MAP, sourceMap);
         options.put(MAP_TYPE, mapType);
         return newMap(options);
     }
@@ -1783,16 +1810,40 @@ public class CompactMap<K, V> implements Map<K, V> {
         Comparator<?> comparator = (Comparator<?>) options.get(COMPARATOR);
         boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
 
-        // Validate ordering and mapType compatibility
-        if (ordering.equals(SORTED) && !SortedMap.class.isAssignableFrom(mapType)) {
+        // If case-insensitive, store inner map type and set outer type to CaseInsensitiveMap
+        if (!caseSensitive) {
+            // Don't wrap CaseInsensitiveMap in another CaseInsensitiveMap
+            if (mapType != CaseInsensitiveMap.class) {
+                options.put("INNER_MAP_TYPE", mapType);
+                options.put(MAP_TYPE, CaseInsensitiveMap.class);
+            }
+        }
+
+        // Add this code here to wrap the comparator if one exists
+        if (comparator != null) {
+            Comparator<?> originalComparator = comparator;
+            comparator = (a, b) -> {
+                Object key1 = (a instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                        a.toString() : a;
+                Object key2 = (b instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                        b.toString() : b;
+                return ((Comparator<Object>)originalComparator).compare(key1, key2);
+            };
+            options.put(COMPARATOR, comparator);
+        }
+        
+        // Validate ordering and mapType compatibility for the actual backing map
+        Class<?> effectiveMapType = !caseSensitive ? (Class<?>) options.get("INNER_MAP_TYPE") : mapType;
+
+        if (ordering.equals(SORTED) && !SortedMap.class.isAssignableFrom(effectiveMapType)) {
             throw new IllegalArgumentException("Ordering 'sorted' requires a SortedMap type.");
         }
 
-        if (ordering.equals(INSERTION) && !LinkedHashMap.class.isAssignableFrom(mapType)) {
+        if (ordering.equals(INSERTION) && !LinkedHashMap.class.isAssignableFrom(effectiveMapType)) {
             throw new IllegalArgumentException("Ordering 'insertion' requires a LinkedHashMap type.");
         }
 
-        if (ordering.equals(REVERSE) && !SortedMap.class.isAssignableFrom(mapType)) {
+        if (ordering.equals(REVERSE) && !SortedMap.class.isAssignableFrom(effectiveMapType)) {
             throw new IllegalArgumentException("Ordering 'reverse' requires a SortedMap type.");
         }
 
@@ -1800,35 +1851,53 @@ public class CompactMap<K, V> implements Map<K, V> {
         if ((ordering.equals(SORTED) || ordering.equals(REVERSE)) &&
                 !caseSensitive &&
                 comparator == null) {
-            comparator = String.CASE_INSENSITIVE_ORDER;
+            // Create a wrapped case-insensitive comparator that handles CaseInsensitiveString
+            comparator = (o1, o2) -> {
+                String s1 = (o1 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                        o1.toString() : (String)o1;
+                String s2 = (o2 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                        o2.toString() : (String)o2;
+                return String.CASE_INSENSITIVE_ORDER.compare(s1, s2);
+            };
             options.put(COMPARATOR, comparator);
         }
-
+        
         // Handle reverse ordering with or without comparator
         if (ordering.equals(REVERSE)) {
             if (comparator == null && !caseSensitive) {
                 // For case-insensitive reverse ordering
                 comparator = (o1, o2) -> {
-                    String s1 = (String)o1;
-                    String s2 = (String)o2;
+                    String s1 = (o1 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                            o1.toString() : (String)o1;
+                    String s2 = (o2 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                            o2.toString() : (String)o2;
                     return String.CASE_INSENSITIVE_ORDER.compare(s2, s1);
                 };
             } else if (comparator == null) {
                 // For case-sensitive reverse ordering
                 comparator = (o1, o2) -> {
-                    String s1 = (String)o1;
-                    String s2 = (String)o2;
+                    String s1 = (o1 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                            o1.toString() : (String)o1;
+                    String s2 = (o2 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                            o2.toString() : (String)o2;
                     return s2.compareTo(s1);
                 };
             } else {
                 // Reverse an existing comparator
-                comparator = ((Comparator<Object>)comparator).reversed();
+                Comparator<Object> existing = (Comparator<Object>)comparator;
+                comparator = (o1, o2) -> {
+                    Object k1 = (o1 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                            o1.toString() : o1;
+                    Object k2 = (o2 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                            o2.toString() : o2;
+                    return existing.compare(k2, k1);
+                };
             }
             options.put(COMPARATOR, comparator);
         }
-
+        
         // Ensure the comparator is compatible with the map type
-        if (comparator != null && !SortedMap.class.isAssignableFrom(mapType)) {
+        if (comparator != null && !SortedMap.class.isAssignableFrom(effectiveMapType)) {
             throw new IllegalArgumentException("Comparator can only be used with a SortedMap type.");
         }
 

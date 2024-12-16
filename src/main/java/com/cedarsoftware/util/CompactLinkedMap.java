@@ -4,9 +4,28 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * This Map uses very little memory (See CompactMap).  When the Map
- * has more than 'compactSize()' elements in it, the 'delegate' Map
- * is a LinkedHashMap.
+ * A Map implementation that maintains insertion order and uses a compact internal representation
+ * for small maps.
+ *
+ * @deprecated As of Cedar Software java-util 2.19.0, replaced by {@link CompactMap#newMap} with insertion ordering.
+ * Use {@code CompactMap.newMap(80, true, 16, CompactMap.INSERTION)} instead of this class.
+ * <p>
+ * Example replacement:<br>
+ * Instead of: {@code Map<String, String> map = new CompactLinkedMap<>();}<br>
+ * Use: {@code Map<String, String> map = CompactMap.newMap(80, true, 16, CompactMap.INSERTION);}
+ * </p>
+ * <p>
+ * This creates a CompactMap with:
+ * <ul>
+ *   <li>compactSize = 80 (same as CompactLinkedMap)</li>
+ *   <li>caseSensitive = true (default behavior)</li>
+ *   <li>capacity = 16 (default initial capacity)</li>
+ *   <li>ordering = INSERTION (maintains insertion order)</li>
+ * </ul>
+ * </p>
+ *
+ * @param <K> the type of keys maintained by this map
+ * @param <V> the type of mapped values
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -24,6 +43,7 @@ import java.util.Map;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
+@Deprecated
 public class CompactLinkedMap<K, V> extends CompactMap<K, V>
 {
     public CompactLinkedMap() { }

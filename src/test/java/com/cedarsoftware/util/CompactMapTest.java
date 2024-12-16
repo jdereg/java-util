@@ -2453,7 +2453,7 @@ public class CompactMapTest
 
     public void testRetainOrderHelper(final String singleKey, final int size)
     {
-        CompactMap<String, String> map= new CompactMap()
+        CompactMap<String, String> map = new CompactMap()
         {
             protected String getSingleValueKey() { return singleKey; }
             protected Map<String, String> getNewMap() { return new TreeMap<>(); }
@@ -2495,7 +2495,7 @@ public class CompactMapTest
     @Test
     public void testBadNoArgConstructor()
     {
-        CompactMap<String, Object> map= new CompactMap();
+        CompactMap<String, Object> map = new CompactMap();
         assert "key".equals(map.getSingleValueKey());
         assert map.getNewMap() instanceof HashMap;
         
@@ -2640,10 +2640,10 @@ public class CompactMapTest
     }
 
     @Test
-    public void testCompactCIHashMap()
+    void testCompactCIHashMap()
     {
-        // Ensure CompactLinkedMap is minimally exercised.
-        CompactMap<String, Integer> ciHashMap = new CompactCIHashMap<>();
+        // Ensure CompactCIHashMap equivalent is minimally exercised.
+        CompactMap<String, Integer> ciHashMap = CompactMap.newMap(80, false, 16, CompactMap.UNORDERED);
 
         for (int i=0; i < ciHashMap.compactSize() + 5; i++)
         {
@@ -2656,8 +2656,15 @@ public class CompactMapTest
         assert ciHashMap.containsKey("foo1");
         assert ciHashMap.containsKey("FoO" + (ciHashMap.compactSize() + 3));
         assert ciHashMap.containsKey("foo" + (ciHashMap.compactSize() + 3));
-
-        CompactMap<String, Integer> copy = new CompactCIHashMap<>(ciHashMap);
+                                                 
+        CompactMap<String, Integer> copy = CompactMap.newMap(
+                80,
+                false,
+                16,
+                CompactMap.UNORDERED,
+                false,
+                "x",
+                ciHashMap);
         assert copy.equals(ciHashMap);
 
         assert copy.containsKey("FoO0");

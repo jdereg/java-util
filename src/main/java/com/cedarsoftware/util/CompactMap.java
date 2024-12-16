@@ -285,15 +285,22 @@ public class CompactMap<K, V> implements Map<K, V> {
      *       <li>Reverses the comparator if the map's ordering is set to {@code REVERSE}.</li>
      *     </ul>
      *   </li>
-     *   <li>If both keys implement {@link Comparable} and are of the same class:
+     *   <li>If both keys implement {@link Comparable} and are of the exact same class:
      *     <ul>
      *       <li>Compares them using their natural ordering.</li>
      *       <li>Reverses the result if the map's ordering is set to {@code REVERSE}.</li>
      *     </ul>
      *   </li>
-     *   <li>For all other cases, treats the keys as equal and returns {@code 0}.</li>
+     *   <li>If keys are of different classes or do not implement {@link Comparable}:
+     *     <ul>
+     *       <li>Handles {@code null} values: {@code null} is considered less than any non-null key.</li>
+     *       <li>Compares class names lexicographically to establish a consistent order.</li>
+     *     </ul>
+     *   </li>
      * </ul>
      * </p>
+     *
+     * <p><b>Note:</b> This method ensures a durable and consistent ordering, even for keys of differing types or non-comparable keys, by falling back to class name comparison.</p>
      *
      * @param key1 the first key to compare
      * @param key2 the second key to compare
@@ -301,47 +308,61 @@ public class CompactMap<K, V> implements Map<K, V> {
      *         or greater than {@code key2}
      */
     private int compareKeysForOrder(Object key1, Object key2) {
-        // Early exit if keys are equal
+        // Handle nulls explicitly
+        if (key1 == null && key2 == null) {
+            return 0;
+        }
+        if (key1 == null) {
+            return 1;  // Nulls go last in reverse order
+        }
+        if (key2 == null) {
+            return -1; // Nulls go last in reverse order
+        }
+
+        // Early exit if keys are equal based on case sensitivity
         if (areKeysEqual(key1, key2)) {
             return 0;
         }
 
-        String ordering = getOrdering();
+        // Get any custom comparator
+        Comparator<? super K> customComparator = getComparator();
 
-        // Compare if both keys are Strings
+        // If we have a custom comparator, use it directly
+        if (customComparator != null) {
+            try {
+                return customComparator.compare((K)key1, (K)key2);
+            } catch (ClassCastException e) {
+                // Fall through to default comparison if cast fails
+            }
+        }
+
+        // For string comparisons, handle case sensitivity and reverse order
         if (key1 instanceof String && key2 instanceof String) {
             String str1 = (String) key1;
             String str2 = (String) key2;
 
-            // Determine the appropriate comparator based on case sensitivity
-            Comparator<String> comparator = isCaseInsensitive()
-                    ? String.CASE_INSENSITIVE_ORDER
-                    : Comparator.naturalOrder();
+            int cmp = isCaseInsensitive()
+                    ? String.CASE_INSENSITIVE_ORDER.compare(str1, str2)
+                    : str1.compareTo(str2);
 
-            // Reverse the comparator if ordering is set to REVERSE
-            if (REVERSE.equals(ordering)) {
-                comparator = comparator.reversed();
-            }
-
-            return comparator.compare(str1, str2);
+            // Apply reverse ordering if needed
+            return REVERSE.equals(getOrdering()) ? -cmp : cmp;
         }
 
-        // Compare if both keys are Comparable and of the same class
+        // For comparable objects of the same type
         if (key1 instanceof Comparable && key2 instanceof Comparable &&
                 key1.getClass().equals(key2.getClass())) {
+            @SuppressWarnings("unchecked")
             Comparable<Object> comp1 = (Comparable<Object>) key1;
-            Comparable<Object> comp2 = (Comparable<Object>) key2;
-
-            int comparisonResult = comp1.compareTo(comp2);
-
-            // Reverse the comparison result if ordering is set to REVERSE
-            return REVERSE.equals(ordering) ? -comparisonResult : comparisonResult;
+            int cmp = comp1.compareTo(key2);
+            return REVERSE.equals(getOrdering()) ? -cmp : cmp;
         }
 
-        // For all other cases, consider keys as equal in ordering
-        return 0;
+        // Fall back to class name comparison
+        int cmp = key1.getClass().getName().compareTo(key2.getClass().getName());
+        return REVERSE.equals(getOrdering()) ? -cmp : cmp;
     }
-
+    
     /**
      * Returns {@code true} if this map contains a mapping for the specified key.
      *
@@ -556,43 +577,42 @@ public class CompactMap<K, V> implements Map<K, V> {
     private void sortCompactArray(Object[] array) {
         String ordering = getOrdering();
 
-        // No sorting needed for UNORDERED or INSERTION ordering
         if (ordering.equals(UNORDERED) || ordering.equals(INSERTION)) {
             return;
         }
 
         int pairCount = array.length / 2;
 
-        // Create a list of indices representing each key-value pair
+        // Create indices array for sorting
         Integer[] indices = new Integer[pairCount];
         for (int i = 0; i < pairCount; i++) {
             indices[i] = i;
         }
 
-        // Define the comparator based on the map's comparator or custom compareKeysForOrder method
+        // Sort the indices based on the keys
         Comparator<Integer> comparator = (i1, i2) -> {
-            K key1 = (K) array[i1 * 2];
-            K key2 = (K) array[i2 * 2];
+            K key1 = (K) array[i1 * 2];     // Get key at even index
+            K key2 = (K) array[i2 * 2];     // Get key at even index
             return compareKeysForOrder(key1, key2);
         };
 
-        // Sort the indices based on the comparator
         Arrays.sort(indices, comparator);
 
-        // Create a temporary array to hold the sorted key-value pairs
+        // Create temporary array for sorted result
         Object[] sortedArray = new Object[array.length];
 
-        // Populate the sortedArray based on the sorted indices
+        // Reconstruct the array maintaining key-value pairing
         for (int i = 0; i < pairCount; i++) {
-            int sortedIndex = indices[i];
-            sortedArray[i * 2] = array[sortedIndex * 2];       // Key
-            sortedArray[i * 2 + 1] = array[sortedIndex * 2 + 1]; // Value
+            int oldIndex = indices[i];
+            // Copy key-value pair: key at 2*i, value at 2*i+1
+            sortedArray[2*i] = array[2*oldIndex];        // Copy key to even position
+            sortedArray[2*i + 1] = array[2*oldIndex + 1];  // Copy value to following odd position
         }
 
-        // Replace the original array with the sorted array
+        // Copy sorted pairs back to original array
         System.arraycopy(sortedArray, 0, array, 0, array.length);
     }
-
+    
     private void switchToMap(Object[] entries, K key, V value) {
         Map<K, V> map = getNewMap(size() + 1);
         for (int i = 0; i < entries.length; i += 2) {
@@ -1757,14 +1777,26 @@ public class CompactMap<K, V> implements Map<K, V> {
         // Handle reverse ordering with or without comparator
         if (ordering.equals(REVERSE)) {
             if (comparator == null && !caseSensitive) {
-                // First set up case-insensitive comparison, then reverse it
-                comparator = String.CASE_INSENSITIVE_ORDER.reversed();
+                // For case-insensitive reverse ordering
+                @SuppressWarnings("unchecked")
+                Comparator<Object> revComp = (o1, o2) -> {
+                    String s1 = (String)o1;
+                    String s2 = (String)o2;
+                    return String.CASE_INSENSITIVE_ORDER.compare(s2, s1);
+                };
+                comparator = revComp;
             } else if (comparator == null) {
-                // Just reverse natural ordering
-                comparator = Comparator.naturalOrder().reversed();
+                // For case-sensitive reverse ordering
+                @SuppressWarnings("unchecked")
+                Comparator<Object> revComp = (o1, o2) -> {
+                    String s1 = (String)o1;
+                    String s2 = (String)o2;
+                    return s2.compareTo(s1);
+                };
+                comparator = revComp;
             } else {
-                // Reverse the provided comparator
-                comparator = ((Comparator) comparator).reversed();
+                // Reverse an existing comparator
+                comparator = ((Comparator<Object>)comparator).reversed();
             }
             options.put(COMPARATOR, comparator);
         }

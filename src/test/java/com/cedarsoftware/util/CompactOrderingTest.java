@@ -50,7 +50,7 @@ class CompactOrderingTest {
 
     @ParameterizedTest
     @MethodSource("customComparatorScenarios")
-    void testCaseSensitivityIgnoredWithCustomComparator(int itemCount, String[] inputs, String[] expectedOrder) {
+    void testCaseSensitivityIgnoredWithCustomComparator2(int itemCount, String[] inputs, String[] expectedOrder) {
         Comparator<String> lengthThenAlpha = Comparator
                 .comparingInt(String::length)
                 .thenComparing(String::compareTo);
@@ -71,7 +71,7 @@ class CompactOrderingTest {
                     String.format("Order mismatch with %d items", i + 1));
         }
     }
-
+    
     /**
      * Parameterized test that verifies reverse case-insensitive ordering after each insertion.
      *
@@ -319,6 +319,57 @@ class CompactOrderingTest {
         String[] expectedOrder = {"DDD", "ccc", "BBB", "aaa"};
         assertArrayEquals(expectedOrder, map.keySet().toArray(new String[0]),
                 "Order mismatch after multiple insertions");
+    }
+
+    @Test
+    void testCustomComparatorLengthThenAlpha() {
+        // Custom comparator - sorts by length first, then alphabetically
+        Comparator<String> lengthThenAlpha = Comparator
+                .comparingInt(String::length)
+                .thenComparing(String::compareTo);
+
+        // Configure CompactMap with custom comparator
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.COMPACT_SIZE, 3);  // Small size to test array-based storage
+        options.put(CompactMap.ORDERING, CompactMap.SORTED);
+        options.put(CompactMap.CASE_SENSITIVE, false);  // Should be ignored due to custom comparator
+        options.put(CompactMap.COMPARATOR, lengthThenAlpha);
+        options.put(CompactMap.MAP_TYPE, TreeMap.class);
+        Map<String, Integer> map = CompactMap.newMap(options);
+
+        // Add items one by one and verify order after each addition
+        // Add "D" (length 1)
+        map.put("D", 1);
+        assertArrayEquals(new String[]{"D"},
+                map.keySet().toArray(new String[0]),
+                "After adding 'D'");
+
+        // Add "BB" (length 2)
+        map.put("BB", 2);
+        assertArrayEquals(new String[]{"D", "BB"},
+                map.keySet().toArray(new String[0]),
+                "After adding 'BB'");
+
+        // Add "aaa" (length 3)
+        map.put("aaa", 3);
+        assertArrayEquals(new String[]{"D", "BB", "aaa"},
+                map.keySet().toArray(new String[0]),
+                "After adding 'aaa'");
+
+        // Add "cccc" (length 4)
+        map.put("cccc", 4);
+        assertArrayEquals(new String[]{"D", "BB", "aaa", "cccc"},
+                map.keySet().toArray(new String[0]),
+                "After adding 'cccc'");
+
+        // Verify values are correctly associated with their keys
+        assertEquals(1, map.get("D"));
+        assertEquals(2, map.get("BB"));
+        assertEquals(3, map.get("aaa"));
+        assertEquals(4, map.get("cccc"));
+
+        // Verify size
+        assertEquals(4, map.size());
     }
 
     private static Stream<Arguments> sizeThresholdScenarios() {

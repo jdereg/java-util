@@ -2019,31 +2019,6 @@ public class CompactMapTest
     }
 
     @Test
-    public void testMinus()
-    {
-        CompactMap<String, Integer> map= new CompactMap()
-        {
-            protected String getSingleValueKey() { return "key1"; }
-            protected int compactSize() { return 3; }
-            protected Map<String, Integer> getNewMap() { return new LinkedHashMap<>(); }
-        };
-
-        try
-        {
-            map.minus(null);
-            fail();
-        }
-        catch (UnsupportedOperationException e) {  }
-
-        try
-        {
-            map.plus(null);
-            fail();
-        }
-        catch (UnsupportedOperationException e) { }
-    }
-
-    @Test
     public void testHashCodeAndEquals()
     {
         testHashCodeAndEqualsHelper("key1");

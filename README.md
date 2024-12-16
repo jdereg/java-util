@@ -41,19 +41,43 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 ## Included in java-util:
 
 ### Sets
-- **[CompactSet](/src/main/java/com/cedarsoftware/util/CompactSet.java)** - A memory-efficient `Set` that expands to a `HashSet` when `size() > compactSize()`.
-- **[CompactLinkedSet](/src/main/java/com/cedarsoftware/util/CompactLinkedSet.java)** - A memory-efficient `Set` that transitions to a `LinkedHashSet` when `size() > compactSize()`.
-- **[CompactCILinkedSet](/src/main/java/com/cedarsoftware/util/CompactCILinkedSet.java)** - A compact, case-insensitive `Set` that becomes a `LinkedHashSet` when expanded.
-- **[CompactCIHashSet](/src/main/java/com/cedarsoftware/util/CompactCIHashSet.java)** - A small-footprint, case-insensitive `Set` that expands to a `HashSet`.
+- **[CompactSet](/src/main/java/com/cedarsoftware/util/CompactSet.java)** - A memory-efficient `Set` implementation that dynamically adapts its internal storage structure based on size:
+  - Starts with minimal memory usage for small sets (0-1 elements)
+  - Uses a compact array-based storage for medium-sized sets (2 to N elements, where N is configurable)
+  - Automatically transitions to a full Set implementation of your choice (HashSet, TreeSet, etc.) for larger sizes
+  - Features:
+    - Configurable size thresholds for storage transitions
+    - Support for ordered (sorted, reverse, insertion) and unordered sets
+    - Optional case-insensitive string element comparisons
+    - Custom comparator support
+    - Memory optimization for single-element sets
+    - Compatible with all standard Set operations
+  - Ideal for:
+    - Applications with many small sets
+    - Sets that start small but may grow
+    - Scenarios where memory efficiency is crucial
+    - Systems needing dynamic set behavior based on size
 - **[CaseInsensitiveSet](/src/main/java/com/cedarsoftware/util/CaseInsensitiveSet.java)** - A `Set` that ignores case sensitivity for `Strings`.
 - **[ConcurrentSet](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - A thread-safe `Set` that allows `null` elements.
 - **[ConcurrentNavigableSetNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableSetNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentSkipListSet` that allows `null` values. 
 
 ### Maps
-- **[CompactMap](/src/main/java/com/cedarsoftware/util/CompactMap.java)** - A `Map` with a small memory footprint that scales to a `HashMap` as needed.
-- **[CompactLinkedMap](/src/main/java/com/cedarsoftware/util/CompactLinkedMap.java)** - A compact `Map` that extends to a `LinkedHashMap` for larger sizes.
-- **[CompactCILinkedMap](/src/main/java/com/cedarsoftware/util/CompactCILinkedMap.java)** - A small-footprint, case-insensitive `Map` that becomes a `LinkedHashMap`.
-- **[CompactCIHashMap](/src/main/java/com/cedarsoftware/util/CompactCIHashMap.java)** - A compact, case-insensitive `Map` expanding to a `HashMap`.
+- **[CompactMap](/src/main/java/com/cedarsoftware/util/CompactMap.java)** - A memory-efficient `Map` implementation that dynamically adapts its internal storage structure based on size:
+  - Starts with minimal memory usage for small maps (0-1 entries)
+  - Uses a compact array-based storage for medium-sized maps (2 to N entries, where N is configurable)
+  - Automatically transitions to a full Map implementation of your choice (HashMap, TreeMap, etc.) for larger sizes
+  - Features:
+    - Configurable size thresholds for storage transitions
+    - Support for ordered (sorted, reverse, insertion) and unordered maps
+    - Optional case-insensitive string key comparisons
+    - Custom comparator support
+    - Memory optimization for single-entry maps
+    - Compatible with all standard Map operations
+  - Ideal for:
+    - Applications with many small maps
+    - Maps that start small but may grow
+    - Scenarios where memory efficiency is crucial
+    - Systems needing dynamic map behavior based on size
 - **[CaseInsensitiveMap](/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java)** - Treats `String` keys in a case-insensitive manner.
 - **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - Thread-safe LRU cache which implements the Map API.  Supports "locking" or "threaded" strategy (selectable).
 - **[TTLCache](/src/main/java/com/cedarsoftware/util/TTLCache.java)** - Thread-safe TTL cache which implements the Map API. Entries older than Time-To-Live will be evicted.  Also supports a `maxSize` (LRU capability).

@@ -1577,18 +1577,33 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Creates a new CompactMap with default configuration.
+     * Creates a new CompactMap with default configuration:
+     * - compactSize = 80
+     * - caseSensitive = true
+     * - capacity = 16
+     * - ordering = "unordered"
+     * - useCopyIterator = false
+     * - singleKey = "key"
+     * - mapType = HashMap.class
      *
      * @param <K> the type of keys maintained by this map
      * @param <V> the type of mapped values
      * @return a new CompactMap instance
      */
     public static <K, V> CompactMap<K, V> newMap() {
-        return newMap(DEFAULT_COMPACT_SIZE, DEFAULT_CASE_SENSITIVE);
+        Map<String, Object> options = new HashMap<>();
+        options.put(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
+        options.put(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+        options.put(CAPACITY, DEFAULT_CAPACITY);
+        options.put(ORDERING, UNORDERED);
+        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
+        options.put(SINGLE_KEY, "key");
+        options.put(MAP_TYPE, HashMap.class);
+        return newMap(options);
     }
 
     /**
-     * Creates a new CompactMap with a specified compact size.
+     * Creates a new CompactMap with specified compact size and default values for other options.
      *
      * @param <K> the type of keys maintained by this map
      * @param <V> the type of mapped values
@@ -1598,6 +1613,12 @@ public class CompactMap<K, V> implements Map<K, V> {
     public static <K, V> CompactMap<K, V> newMap(int compactSize) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
+        options.put(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+        options.put(CAPACITY, DEFAULT_CAPACITY);
+        options.put(ORDERING, UNORDERED);
+        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
+        options.put(SINGLE_KEY, "key");
+        options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
@@ -1614,101 +1635,141 @@ public class CompactMap<K, V> implements Map<K, V> {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
         options.put(CASE_SENSITIVE, caseSensitive);
+        options.put(CAPACITY, DEFAULT_CAPACITY);
+        options.put(ORDERING, UNORDERED);
+        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
+        options.put(SINGLE_KEY, "key");
+        options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
     /**
-     * Creates a new CompactMap with specified compact size, initial capacity, and case sensitivity.
+     * Creates a new CompactMap with specified compact size, case sensitivity, and capacity.
      *
      * @param <K> the type of keys maintained by this map
      * @param <V> the type of mapped values
      * @param compactSize the compact size threshold
-     * @param capacity the initial capacity of the map
      * @param caseSensitive whether the map is case-sensitive
+     * @param capacity the initial capacity of the map
      * @return a new CompactMap instance
      */
-    public static <K, V> CompactMap<K, V> newMap(int compactSize, int capacity, boolean caseSensitive) {
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
-        options.put(CAPACITY, capacity);
         options.put(CASE_SENSITIVE, caseSensitive);
+        options.put(CAPACITY, capacity);
+        options.put(ORDERING, UNORDERED);
+        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
+        options.put(SINGLE_KEY, "key");
+        options.put(MAP_TYPE, HashMap.class);
         return newMap(options);
     }
 
     /**
-     * Creates a new CompactMap with specified compact size, initial capacity, case sensitivity,
-     * and backing map type.
+     * Creates a new CompactMap with specified compact size, case sensitivity, capacity, and ordering.
      *
      * @param <K> the type of keys maintained by this map
      * @param <V> the type of mapped values
      * @param compactSize the compact size threshold
-     * @param capacity the initial capacity of the map
      * @param caseSensitive whether the map is case-sensitive
-     * @param mapType the type of backing map for large sizes
+     * @param capacity the initial capacity of the map
+     * @param ordering the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
      * @return a new CompactMap instance
      */
-    public static <K, V> CompactMap<K, V> newMap(
-            int compactSize,
-            int capacity,
-            boolean caseSensitive,
-            Class<? extends Map> mapType) {
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive,
+                                                 int capacity, String ordering) {
         Map<String, Object> options = new HashMap<>();
         options.put(COMPACT_SIZE, compactSize);
-        options.put(CAPACITY, capacity);
         options.put(CASE_SENSITIVE, caseSensitive);
+        options.put(CAPACITY, capacity);
+        options.put(ORDERING, ordering);
+        options.put(USE_COPY_ITERATOR, DEFAULT_USE_COPY_ITERATOR);
+        options.put(SINGLE_KEY, "key");
+        options.put(MAP_TYPE, HashMap.class);
+        return newMap(options);
+    }
+
+    /**
+     * Creates a new CompactMap with specified compact size, case sensitivity, capacity,
+     * ordering, and copy iterator setting.
+     *
+     * @param <K> the type of keys maintained by this map
+     * @param <V> the type of mapped values
+     * @param compactSize the compact size threshold
+     * @param caseSensitive whether the map is case-sensitive
+     * @param capacity the initial capacity of the map
+     * @param ordering the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
+     * @param useCopyIterator whether to use copy iterator
+     * @return a new CompactMap instance
+     */
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive,
+                                                 int capacity, String ordering, boolean useCopyIterator) {
+        Map<String, Object> options = new HashMap<>();
+        options.put(COMPACT_SIZE, compactSize);
+        options.put(CASE_SENSITIVE, caseSensitive);
+        options.put(CAPACITY, capacity);
+        options.put(ORDERING, ordering);
+        options.put(USE_COPY_ITERATOR, useCopyIterator);
+        options.put(SINGLE_KEY, "key");
+        options.put(MAP_TYPE, HashMap.class);
+        return newMap(options);
+    }
+
+    /**
+     * Creates a new CompactMap with specified compact size, case sensitivity, capacity,
+     * ordering, copy iterator setting, and single key value.
+     *
+     * @param <K> the type of keys maintained by this map
+     * @param <V> the type of mapped values
+     * @param compactSize the compact size threshold
+     * @param caseSensitive whether the map is case-sensitive
+     * @param capacity the initial capacity of the map
+     * @param ordering the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
+     * @param useCopyIterator whether to use copy iterator
+     * @param singleKey the key to use for single-entry optimization
+     * @return a new CompactMap instance
+     */
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive,
+                                                 int capacity, String ordering, boolean useCopyIterator, String singleKey) {
+        Map<String, Object> options = new HashMap<>();
+        options.put(COMPACT_SIZE, compactSize);
+        options.put(CASE_SENSITIVE, caseSensitive);
+        options.put(CAPACITY, capacity);
+        options.put(ORDERING, ordering);
+        options.put(USE_COPY_ITERATOR, useCopyIterator);
+        options.put(SINGLE_KEY, singleKey);
+        options.put(MAP_TYPE, HashMap.class);
+        return newMap(options);
+    }
+
+    /**
+     * Creates a new CompactMap with full configuration options.
+     *
+     * @param <K> the type of keys maintained by this map
+     * @param <V> the type of mapped values
+     * @param compactSize the compact size threshold
+     * @param caseSensitive whether the map is case-sensitive
+     * @param capacity the initial capacity of the map
+     * @param ordering the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
+     * @param useCopyIterator whether to use copy iterator
+     * @param singleKey the key to use for single-entry optimization
+     * @param mapType the type of map to use for backing storage
+     * @return a new CompactMap instance
+     */
+    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive,
+                                                 int capacity, String ordering, boolean useCopyIterator, String singleKey,
+                                                 Class<? extends Map> mapType) {
+        Map<String, Object> options = new HashMap<>();
+        options.put(COMPACT_SIZE, compactSize);
+        options.put(CASE_SENSITIVE, caseSensitive);
+        options.put(CAPACITY, capacity);
+        options.put(ORDERING, ordering);
+        options.put(USE_COPY_ITERATOR, useCopyIterator);
+        options.put(SINGLE_KEY, singleKey);
         options.put(MAP_TYPE, mapType);
         return newMap(options);
     }
-
-    /**
-     * Creates a new CompactMap with specified compact size, case sensitivity,
-     * backing map type, and initialized with the entries from a source map.
-     *
-     * @param <K> the type of keys maintained by this map
-     * @param <V> the type of mapped values
-     * @param compactSize the compact size threshold
-     * @param caseSensitive whether the map is case-sensitive
-     * @param mapType the type of backing map for large sizes
-     * @param source the source map to initialize the CompactMap; may be {@code null}
-     * @return a new CompactMap instance initialized with the entries from the source map
-     */
-    public static <K, V> CompactMap<K, V> newMap(
-            int compactSize,
-            boolean caseSensitive,
-            Class<? extends Map<K, V>> mapType,
-            Map<K, V> source
-    ) {
-        Map<String, Object> options = new HashMap<>();
-        options.put(COMPACT_SIZE, compactSize);
-        options.put(CASE_SENSITIVE, caseSensitive);
-        options.put(MAP_TYPE, mapType);
-        options.put(SOURCE_MAP, source);
-        return newMap(options);
-    }
-
-    /**
-     * Creates a new CompactMap with specified compact size, case sensitivity,
-     * and initialized with the entries from a source map.
-     *
-     * @param <K> the type of keys maintained by this map
-     * @param <V> the type of mapped values
-     * @param compactSize the compact size threshold
-     * @param caseSensitive whether the map is case-sensitive
-     * @param source the source map to initialize the CompactMap; may be {@code null}
-     * @return a new CompactMap instance initialized with the entries from the source map
-     */
-    public static <K, V> CompactMap<K, V> newMap(
-            int compactSize,
-            boolean caseSensitive,
-            Map<K, V> source
-    ) {
-        Map<String, Object> options = new HashMap<>();
-        options.put(COMPACT_SIZE, compactSize);
-        options.put(CASE_SENSITIVE, caseSensitive);
-        options.put(SOURCE_MAP, source);
-        return newMap(options);
-    }
-
+    
     /**
      * Validates the provided configuration options and resolves conflicts.
      * Throws an {@link IllegalArgumentException} if the configuration is invalid.

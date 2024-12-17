@@ -31,6 +31,7 @@ import static com.cedarsoftware.util.CompactMap.SORTED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -2676,10 +2677,10 @@ public class CompactMapTest
     }
 
     @Test
-    public void testCompactCILinkedMap()
+    void testCompactCILinkedMap()
     {
         // Ensure CompactLinkedMap is minimally exercised.
-        CompactMap<String, Integer> ciLinkedMap = new CompactCILinkedMap<>();
+        CompactMap<String, Integer> ciLinkedMap = CompactMap.newMap(80, false, 16, CompactMap.INSERTION);
 
         for (int i=0; i < ciLinkedMap.compactSize() + 5; i++)
         {
@@ -2693,7 +2694,14 @@ public class CompactMapTest
         assert ciLinkedMap.containsKey("FoO" + (ciLinkedMap.compactSize() + 3));
         assert ciLinkedMap.containsKey("foo" + (ciLinkedMap.compactSize() + 3));
 
-        CompactMap<String, Integer> copy = new CompactCILinkedMap<>(ciLinkedMap);
+        CompactMap<String, Integer> copy = CompactMap.newMap(
+                80,
+                false,
+                16,
+                CompactMap.INSERTION,
+                false,
+                "key",
+                ciLinkedMap);
         assert copy.equals(ciLinkedMap);
 
         assert copy.containsKey("FoO0");
@@ -3139,7 +3147,7 @@ public class CompactMapTest
         stringMap.put("One", "Two");
         stringMap.put("Three", "Four");
         stringMap.put("Five", "Six");
-        CompactCILinkedMap<String, Object> newMap = new CompactCILinkedMap<>();
+        CompactMap<String, Object> newMap = CompactMap.newMap(80, false, 16, CompactMap.INSERTION);
         newMap.put("thREe", "four");
         newMap.put("Seven", "Eight");
 
@@ -3151,7 +3159,7 @@ public class CompactMapTest
         assertEquals("four", stringMap.get("three"));
         assertEquals("Eight", stringMap.get("seven"));
 
-        CompactMap<String, Object> a= new CompactMap()
+        CompactMap<String, Object> a = new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3164,7 +3172,7 @@ public class CompactMapTest
     @Test
     public void testKeySetRetainAll2()
     {
-        CompactMap<Object, Object> m= new CompactMap()
+        CompactMap<Object, Object> m = new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<Object, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3439,27 +3447,21 @@ public class CompactMapTest
     }
 
     @Test
-    public void testUnmodifiability()
+    void testUnmodifiability()
     {
-        CompactMap<String, Object> m = new CompactCIHashMap<>();
+        CompactMap<String, Object> m = CompactMap.newMap(80, false);
         m.put("foo", "bar");
         m.put("baz", "qux");
         Map<String, Object> noModMap = Collections.unmodifiableMap(m);
         assert noModMap.containsKey("FOO");
         assert noModMap.containsKey("BAZ");
-
-        try
-        {
-            noModMap.put("Foo", 9);
-            fail();
-        }
-        catch(UnsupportedOperationException e) { }
+        assertThrows(UnsupportedOperationException.class, () -> noModMap.put("Foo", 9));
     }
 
     @Test
     public void testCompactCIHashMap2()
     {
-        CompactCIHashMap<String, Integer> map = new CompactCIHashMap<>();
+        CompactMap<String, Integer> map = CompactMap.newMap(80, false);
 
         for (int i=0; i < map.compactSize() + 10; i++)
         {

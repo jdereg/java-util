@@ -16,6 +16,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
  * A memory-efficient {@code Map} implementation that adapts its internal storage structure
@@ -175,14 +176,14 @@ public class CompactMap<K, V> implements Map<K, V> {
     public static final String USE_COPY_ITERATOR = "useCopyIterator";
     public static final String SINGLE_KEY = "singleKey";
     public static final String SOURCE_MAP = "source";
+    public static final String ORDERING = "ordering";
+    public static final String COMPARATOR = "comparator";
 
     // Constants for ordering options
-    public static final String ORDERING = "ordering";
     public static final String UNORDERED = "unordered";
     public static final String SORTED = "sorted";
     public static final String INSERTION = "insertion";
     public static final String REVERSE = "reverse";
-    public static final String COMPARATOR = "comparator";
 
     // Default values
     private static final int DEFAULT_COMPACT_SIZE = 80;
@@ -889,26 +890,14 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             public boolean retainAll(Collection c) {
                 // Create fast-access O(1) to all elements within passed in Collection
-                Map<K, V> other = new CompactMap<K, V>() {   // Match outer
-                    protected boolean isCaseInsensitive() {
-                        return CompactMap.this.isCaseInsensitive();
-                    }
-
-                    protected int compactSize() {
-                        return CompactMap.this.compactSize();
-                    }
-
-                    protected Map<K, V> getNewMap() {
-                        return CompactMap.this.getNewMap(c.size());
-                    }
-                };
+                Map<K, V> other = getNewMap(c.size());
+                
                 for (Object o : c) {
                     other.put((K) o, null);
                 }
 
                 final int size = size();
                 keySet().removeIf(key -> !other.containsKey(key));
-
                 return size() != size;
             }
         };
@@ -1076,7 +1065,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
         return copy;
     }
-
+    
     private void iteratorRemove(Entry<K, V> currentEntry) {
         if (currentEntry == null) {   // remove() called on iterator prematurely
             throw new IllegalStateException("remove() called on an Iterator before calling next()");
@@ -1198,7 +1187,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * @return new empty Map instance to use when size() becomes {@literal >} compactSize().
+     * @return new empty Map instance to use when {@code size() > compactSize()}.
      */
     protected Map<K, V> getNewMap() {
         return new HashMap<>(compactSize() + 1);
@@ -1209,7 +1198,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         try {
             Constructor<?> constructor = ReflectionUtils.getConstructor(map.getClass(), Integer.TYPE);
             return (Map<K, V>) constructor.newInstance(size);
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             return map;
         }
     }
@@ -1540,9 +1529,6 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @throws IllegalArgumentException if the provided options are invalid or incompatible
      * @see #validateAndFinalizeOptions(Map)
      */
-    /**
-     * Creates a new CompactMap with the specified options.
-     */
     public static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
         validateAndFinalizeOptions(options);
 
@@ -1804,9 +1790,34 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @param options a map of user-provided options
      */
     private static void validateAndFinalizeOptions(Map<String, Object> options) {
-        // Extract and set default values
+        // First check raw map type before any defaults are applied
+        Class<? extends Map> rawMapType = (Class<? extends Map>) options.get(MAP_TYPE);
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
-        Class<? extends Map> mapType = (Class<? extends Map>) options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
+
+        // Determine map type
+        Class<? extends Map> mapType;
+        if (rawMapType == null) {
+            // No map type specified - choose based on ordering
+            if (ordering.equals(INSERTION)) {
+                mapType = LinkedHashMap.class;
+            } else if (ordering.equals(SORTED) || ordering.equals(REVERSE)) {
+                mapType = TreeMap.class;
+            } else {
+                mapType = DEFAULT_MAP_TYPE;
+            }
+            options.put(MAP_TYPE, mapType);
+        } else {
+            mapType = rawMapType;
+            // Validate user's explicit map type choice against ordering
+            if (ordering.equals(INSERTION) && !LinkedHashMap.class.isAssignableFrom(mapType)) {
+                throw new IllegalArgumentException("Ordering 'insertion' requires a LinkedHashMap type.");
+            }
+            if ((ordering.equals(SORTED) || ordering.equals(REVERSE)) && !SortedMap.class.isAssignableFrom(mapType)) {
+                throw new IllegalArgumentException("Ordering 'sorted' or 'reverse' requires a SortedMap type.");
+            }
+        }
+
+        // Get remaining options
         Comparator<?> comparator = (Comparator<?>) options.get(COMPARATOR);
         boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
 
@@ -1834,19 +1845,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         
         // Validate ordering and mapType compatibility for the actual backing map
         Class<?> effectiveMapType = !caseSensitive ? (Class<?>) options.get("INNER_MAP_TYPE") : mapType;
-
-        if (ordering.equals(SORTED) && !SortedMap.class.isAssignableFrom(effectiveMapType)) {
-            throw new IllegalArgumentException("Ordering 'sorted' requires a SortedMap type.");
-        }
-
-        if (ordering.equals(INSERTION) && !LinkedHashMap.class.isAssignableFrom(effectiveMapType)) {
-            throw new IllegalArgumentException("Ordering 'insertion' requires a LinkedHashMap type.");
-        }
-
-        if (ordering.equals(REVERSE) && !SortedMap.class.isAssignableFrom(effectiveMapType)) {
-            throw new IllegalArgumentException("Ordering 'reverse' requires a SortedMap type.");
-        }
-
+        
         // Handle case sensitivity for sorted maps when no comparator is provided
         if ((ordering.equals(SORTED) || ordering.equals(REVERSE)) &&
                 !caseSensitive &&
@@ -1861,7 +1860,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             };
             options.put(COMPARATOR, comparator);
         }
-        
+
         // Handle reverse ordering with or without comparator
         if (ordering.equals(REVERSE)) {
             if (comparator == null && !caseSensitive) {
@@ -1895,7 +1894,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
             options.put(COMPARATOR, comparator);
         }
-        
+
         // Ensure the comparator is compatible with the map type
         if (comparator != null && !SortedMap.class.isAssignableFrom(effectiveMapType)) {
             throw new IllegalArgumentException("Comparator can only be used with a SortedMap type.");

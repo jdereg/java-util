@@ -1,13 +1,19 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentNavigableMap;
 
 /**
  * Usefule utilities for Maps
@@ -252,5 +258,172 @@ public class MapUtilities {
         }
 
         return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Gets the underlying map instance, traversing through any wrapper maps.
+     * <p>
+     * This method unwraps common map wrappers from both the JDK and java-util to find
+     * the innermost backing map. It properly handles nested wrappers and detects cycles.
+     * </p>
+     *
+     * @param map The map to unwrap
+     * @return The innermost backing map, or the original map if not wrapped
+     * @throws IllegalArgumentException if a cycle is detected in the map structure
+     */
+    public static Map<?, ?> getUnderlyingMap(Map<?, ?> map) {
+        if (map == null) {
+            return null;
+        }
+
+        Set<Map<?, ?>> seen = new HashSet<>();
+        Map<?, ?> current = map;
+        List<String> path = new ArrayList<>();
+        path.add(current.getClass().getSimpleName());
+
+        while (true) {
+            if (!seen.add(current)) {
+                throw new IllegalArgumentException(
+                        "Circular map structure detected: " + String.join(" -> ", path));
+            }
+
+            if (current instanceof CompactMap) {
+                CompactMap<?, ?> cMap = (CompactMap<?, ?>) current;
+                if (cMap.getLogicalValueType() == CompactMap.LogicalValueType.MAP) {
+                    current = (Map<?, ?>) cMap.val;  // val is package-private, accessible from MapUtilities
+                    path.add(current.getClass().getSimpleName());
+                    continue;
+                }
+                return current;
+            }
+
+            if (current instanceof CaseInsensitiveMap) {
+                current = ((CaseInsensitiveMap<?, ?>) current).getWrappedMap();
+                path.add(current.getClass().getSimpleName());
+                continue;
+            }
+
+            if (current instanceof TrackingMap) {
+                current = ((TrackingMap<?, ?>) current).getWrappedMap();
+                path.add(current.getClass().getSimpleName());
+                continue;
+            }
+
+            return current;
+        }
+    }
+
+    /**
+     * Gets a string representation of a map's structure, showing all wrapper layers.
+     * <p>
+     * This method is useful for debugging and understanding complex map structures.
+     * It shows the chain of map wrappers and their configurations, including:
+     * <ul>
+     *   <li>CompactMap state (empty, array, single entry) and ordering</li>
+     *   <li>CaseInsensitiveMap wrappers</li>
+     *   <li>TrackingMap wrappers</li>
+     *   <li>NavigableMap implementations</li>
+     *   <li>Circular references in the structure</li>
+     * </ul>
+     * </p>
+     *
+     * @param map The map to analyze
+     * @return A string showing the map's complete structure
+     */
+    public static String getMapStructureString(Map<?, ?> map) {
+        if (map == null) return "null";
+
+        List<String> structure = new ArrayList<>();
+        Set<Map<?, ?>> seen = new HashSet<>();
+        Map<?, ?> current = map;
+
+        while (true) {
+            if (!seen.add(current)) {
+                structure.add("CYCLE -> " + current.getClass().getSimpleName());
+                break;
+            }
+
+            if (current instanceof CompactMap) {
+                CompactMap<?, ?> cMap = (CompactMap<?, ?>) current;
+                structure.add("CompactMap(" + cMap.getLogicalOrdering() + ")");
+
+                CompactMap.LogicalValueType valueType = cMap.getLogicalValueType();
+                if (valueType == CompactMap.LogicalValueType.MAP) {
+                    current = (Map<?, ?>) cMap.val;
+                    continue;
+                }
+
+                structure.add("[" + valueType.name() + "]");
+                break;
+            }
+
+            if (current instanceof CaseInsensitiveMap) {
+                structure.add("CaseInsensitiveMap");
+                current = ((CaseInsensitiveMap<?, ?>) current).getWrappedMap();
+                continue;
+            }
+
+            if (current instanceof TrackingMap) {
+                structure.add("TrackingMap");
+                current = ((TrackingMap<?, ?>) current).getWrappedMap();
+                continue;
+            }
+
+            structure.add(current.getClass().getSimpleName() +
+                    (current instanceof NavigableMap ? "(NavigableMap)" : ""));
+            break;
+        }
+
+        return String.join(" -> ", structure);
+    }
+
+    /**
+     * Analyzes a map to determine its logical ordering behavior.
+     * <p>
+     * This method examines both the map type and its wrapper structure to determine
+     * the actual ordering behavior. It properly handles:
+     * <ul>
+     *   <li>CompactMap with various ordering settings</li>
+     *   <li>CaseInsensitiveMap with different backing maps</li>
+     *   <li>TrackingMap wrappers</li>
+     *   <li>Standard JDK maps (LinkedHashMap, TreeMap, etc.)</li>
+     *   <li>Navigable and Concurrent maps</li>
+     * </ul>
+     * </p>
+     *
+     * @param map The map to analyze
+     * @return The detected ordering type (one of CompactMap.UNORDERED, INSERTION, SORTED, or REVERSE)
+     * @throws IllegalArgumentException if the map structure contains cycles
+     */
+    public static String detectMapOrdering(Map<?, ?> map) {
+        if (map == null) return CompactMap.UNORDERED;
+
+        try {
+            if (map instanceof CompactMap) {
+                return ((CompactMap<?, ?>)map).getLogicalOrdering();
+            }
+
+            Map<?, ?> underlyingMap = getUnderlyingMap(map);
+
+            if (underlyingMap instanceof CompactMap) {
+                return ((CompactMap<?, ?>)underlyingMap).getLogicalOrdering();
+            }
+
+            if (underlyingMap instanceof ConcurrentNavigableMap ||
+                    underlyingMap instanceof NavigableMap) {
+                return CompactMap.SORTED;
+            }
+            if (underlyingMap instanceof TreeMap) {
+                return CompactMap.SORTED;
+            }
+            if (underlyingMap instanceof LinkedHashMap || underlyingMap instanceof EnumMap) {
+                return CompactMap.INSERTION;
+            }
+
+            return CompactMap.UNORDERED;
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Cannot determine map ordering: " + e.getMessage());
+        }
     }
 }

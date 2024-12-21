@@ -12,8 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.SortedMap;
 
 /**
  * Usefule utilities for Maps
@@ -271,7 +270,7 @@ public class MapUtilities {
      * @return The innermost backing map, or the original map if not wrapped
      * @throws IllegalArgumentException if a cycle is detected in the map structure
      */
-    public static Map<?, ?> getUnderlyingMap(Map<?, ?> map) {
+    private static Map<?, ?> getUnderlyingMap(Map<?, ?> map) {
         if (map == null) {
             return null;
         }
@@ -330,7 +329,7 @@ public class MapUtilities {
      * @param map The map to analyze
      * @return A string showing the map's complete structure
      */
-    public static String getMapStructureString(Map<?, ?> map) {
+    static String getMapStructureString(Map<?, ?> map) {
         if (map == null) return "null";
 
         List<String> structure = new ArrayList<>();
@@ -345,7 +344,7 @@ public class MapUtilities {
 
             if (current instanceof CompactMap) {
                 CompactMap<?, ?> cMap = (CompactMap<?, ?>) current;
-                structure.add("CompactMap(" + cMap.getLogicalOrdering() + ")");
+                structure.add("CompactMap(" + cMap.getOrdering() + ")");
 
                 CompactMap.LogicalValueType valueType = cMap.getLogicalValueType();
                 if (valueType == CompactMap.LogicalValueType.MAP) {
@@ -395,27 +394,24 @@ public class MapUtilities {
      * @return The detected ordering type (one of CompactMap.UNORDERED, INSERTION, SORTED, or REVERSE)
      * @throws IllegalArgumentException if the map structure contains cycles
      */
-    public static String detectMapOrdering(Map<?, ?> map) {
+    static String detectMapOrdering(Map<?, ?> map) {
         if (map == null) return CompactMap.UNORDERED;
 
         try {
             if (map instanceof CompactMap) {
-                return ((CompactMap<?, ?>)map).getLogicalOrdering();
+                return ((CompactMap<?, ?>)map).getOrdering();
             }
 
             Map<?, ?> underlyingMap = getUnderlyingMap(map);
 
             if (underlyingMap instanceof CompactMap) {
-                return ((CompactMap<?, ?>)underlyingMap).getLogicalOrdering();
+                return ((CompactMap<?, ?>)underlyingMap).getOrdering();
             }
 
-            if (underlyingMap instanceof ConcurrentNavigableMap ||
-                    underlyingMap instanceof NavigableMap) {
+            if (underlyingMap instanceof SortedMap) {
                 return CompactMap.SORTED;
             }
-            if (underlyingMap instanceof TreeMap) {
-                return CompactMap.SORTED;
-            }
+
             if (underlyingMap instanceof LinkedHashMap || underlyingMap instanceof EnumMap) {
                 return CompactMap.INSERTION;
             }

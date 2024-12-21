@@ -2658,14 +2658,7 @@ public class CompactMapTest
         assert ciHashMap.containsKey("FoO" + (ciHashMap.compactSize() + 3));
         assert ciHashMap.containsKey("foo" + (ciHashMap.compactSize() + 3));
                                                  
-        CompactMap<String, Integer> copy = CompactMap.newMap(
-                80,
-                false,
-                16,
-                CompactMap.UNORDERED,
-                false,
-                "x",
-                ciHashMap);
+        CompactMap<String, Integer> copy = CompactMap.newMap(80, false, 16, CompactMap.UNORDERED, "x", ciHashMap);
         assert copy.equals(ciHashMap);
 
         assert copy.containsKey("FoO0");
@@ -2699,7 +2692,6 @@ public class CompactMapTest
                 false,
                 16,
                 CompactMap.INSERTION,
-                false,
                 "key",
                 ciLinkedMap);
         assert copy.equals(ciLinkedMap);
@@ -2789,6 +2781,7 @@ public class CompactMapTest
             protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
             protected boolean isCaseInsensitive() { return true; }
             protected int compactSize() { return 4; }
+            protected String getOrdering() { return SORTED; }
         };
 
         m.put("z", "zulu");

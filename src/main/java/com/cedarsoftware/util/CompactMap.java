@@ -739,7 +739,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         int mSize = map.size();
         if (val instanceof Map || mSize > compactSize()) {
             if (val == EMPTY_MAP) {
-                val = getNewMap(mSize);
+                val = getNewMap(); // Changed from getNewMap(mSize) to getNewMap()
             }
             ((Map<K, V>) val).putAll(map);
         } else {
@@ -748,7 +748,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
     }
-
+    
     /**
      * Removes all the mappings from this map. The map will be empty after this call returns.
      */
@@ -901,7 +901,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             public boolean retainAll(Collection c) {
                 // Create fast-access O(1) to all elements within passed in Collection
-                Map<K, V> other = getNewMap(c.size());
+                Map<K, V> other = getNewMap();
                 
                 for (Object o : c) {
                     other.put((K) o, null);
@@ -1020,7 +1020,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     }
 
                     protected Map<K, V> getNewMap() {
-                        return CompactMap.this.getNewMap(c.size());
+                        return CompactMap.this.getNewMap();
                     }
                 };
                 for (Object o : c) {
@@ -1171,17 +1171,6 @@ public class CompactMap<K, V> implements Map<K, V> {
         return new HashMap<>(compactSize() + 1);
     }
     
-    // TODO: Remove this method
-    protected Map<K, V> getNewMap(int size) {
-        Map<K, V> map = getNewMap();
-        try {
-            Constructor<?> constructor = ReflectionUtils.getConstructor(map.getClass(), Integer.TYPE);
-            return (Map<K, V>) constructor.newInstance(size);
-        } catch (Exception ignored) {
-            return map;
-        }
-    }
-
     /**
      * Returns the initial capacity to use when creating a new backing map.
      * This defaults to 16 unless overridden.

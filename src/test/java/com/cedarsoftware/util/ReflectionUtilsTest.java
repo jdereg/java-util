@@ -493,7 +493,6 @@ public class ReflectionUtilsTest
         }
         catch (Exception e)
         {
-            System.out.println(e);
             TestUtil.assertContainsIgnoreCase(e.getMessage(), "methodWith0Args", "overloaded");
         }
     }

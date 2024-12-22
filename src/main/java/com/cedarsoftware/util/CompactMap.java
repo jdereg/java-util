@@ -601,8 +601,9 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // Insert pair at correct position
-        array[(j + 1) * 2] = keyToInsert;
-        array[(j + 1) * 2 + 1] = valueToInsert;
+        int j1_2 = (j + 1) * 2;
+        array[j1_2] = keyToInsert;
+        array[j1_2 + 1] = valueToInsert;
     }
     
     private void switchToMap(Object[] entries, K key, V value) {

@@ -190,7 +190,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     public static final String REVERSE = "reverse";
 
     // Default values
-    private static final int DEFAULT_COMPACT_SIZE = 80;
+    private static final int DEFAULT_COMPACT_SIZE = 60;
     private static final int DEFAULT_CAPACITY = 16;
     private static final boolean DEFAULT_CASE_SENSITIVE = true;
     private static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
@@ -266,13 +266,11 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     private boolean areKeysEqual(Object key, Object aKey) {
         if (key instanceof String && aKey instanceof String) {
-            boolean result = isCaseInsensitive()
+            return isCaseInsensitive()
                     ? ((String) key).equalsIgnoreCase((String) aKey)
                     : key.equals(aKey);
-            return result;
         }
-        boolean result = Objects.equals(key, aKey);
-        return result;
+        return Objects.equals(key, aKey);
     }
     
     /**
@@ -393,7 +391,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * {@code false} otherwise
      */
     public boolean containsValue(Object value) {
-        if (val instanceof Object[]) {   // 2 to Compactsize
+        if (val instanceof Object[]) {   // 2 to CompactSize
             Object[] entries = (Object[]) val;
             int len = entries.length;
             for (int i = 0; i < len; i += 2) {
@@ -501,7 +499,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         return handleSingleEntryRemove(key);
     }
 
-    private V putInCompactArray(Object[] entries, K key, V value) {
+    private V putInCompactArray(final Object[] entries, K key, V value) {
         final int len = entries.length;
         for (int i = 0; i < len; i += 2) {
             Object aKey = entries[i];
@@ -572,7 +570,10 @@ public class CompactMap<K, V> implements Map<K, V> {
      *
      * @param array The array containing key-value pairs to sort
      */
-    private void sortCompactArray(Object[] array) {
+    //TODO: What if I did not sort the compactArray, until someone tried to iterate it?  Oh?
+    //TODO: This would make put/remove fast.  Then sort before iterator starts
+    //TODO: Then, during iteration, if a put happens, what do we do?  Ask claude!
+    private void sortCompactArray(final Object[] array) {
         String ordering = getOrdering();
 
         if (ordering.equals(UNORDERED) || ordering.equals(INSERTION)) {
@@ -848,7 +849,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Returns a {@link Set} view of the keys contained in this map.
      * <p>
      * The set is backed by the map, so changes to the map are reflected in the set, and vice versa. If the map
-     * is modified while an iteration over the set is in progress (except through the iterator's own
+     * is modified while an iteration over the set is in progress (except through the iterators own
      * {@code remove} operation), the results of the iteration are undefined. The set supports element removal,
      * which removes the corresponding mapping from the map. It does not support the {@code add} or {@code addAll}
      * operations.
@@ -907,7 +908,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Returns a {@link Collection} view of the values contained in this map.
      * <p>
      * The collection is backed by the map, so changes to the map are reflected in the collection, and vice versa.
-     * If the map is modified while an iteration over the collection is in progress (except through the iterator's
+     * If the map is modified while an iteration over the collection is in progress (except through the iterators
      * own {@code remove} operation), the results of the iteration are undefined. The collection supports element
      * removal, which removes the corresponding mapping from the map. It does not support the {@code add} or
      * {@code addAll} operations.
@@ -936,7 +937,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * <p>
      * Each element in the returned set is a {@code Map.Entry}. The set is backed by the map, so changes to the map
      * are reflected in the set, and vice versa. If the map is modified while an iteration over the set is in progress
-     * (except through the iterator's own {@code remove} operation, or through the {@code setValue} operation on a map
+     * (except through the iterators own {@code remove} operation, or through the {@code setValue} operation on a map
      * entry returned by the iterator), the results of the iteration are undefined. The set supports element removal,
      * which removes the corresponding mapping from the map. It does not support the {@code add} or {@code addAll}
      * operations.
@@ -1041,14 +1042,6 @@ public class CompactMap<K, V> implements Map<K, V> {
         };
     }
     
-    private void iteratorRemove(Entry<K, V> currentEntry) {
-        if (currentEntry == null) {   // remove() called on iterator prematurely
-            throw new IllegalStateException("remove() called on an Iterator before calling next()");
-        }
-
-        remove(currentEntry.getKey());
-    }
-
     @Deprecated
     public Map<K, V> minus(Object removeMe) {
         throw new UnsupportedOperationException("Unsupported operation [minus] or [-] between Maps.  Use removeAll() or retainAll() instead.");
@@ -1190,7 +1183,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     protected boolean isCaseInsensitive() {
         if (getClass() != CompactMap.class && !(this instanceof FactoryCreated)) {
-            Method method = ReflectionUtils.getMethod(getClass(), "isCaseInsensitive", null);
+            Method method = ReflectionUtils.getMethod(getClass(), "isCaseInsensitive");
             if (method != null && method.getDeclaringClass() == CompactMap.class) {
                 Map<String, Object> inferredOptions = INFERRED_OPTIONS.get();
                 if (inferredOptions != null && inferredOptions.containsKey(CASE_SENSITIVE)) {
@@ -1946,15 +1939,12 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // Copy case sensitivity setting from rawMapType if not explicitly set
         if (!options.containsKey(CASE_SENSITIVE)) {
-            boolean isCaseSensitive = true; // default
-            if (CaseInsensitiveMap.class.isAssignableFrom(rawMapType)) {
-                isCaseSensitive = false;
-            }
+            boolean isCaseSensitive = !CaseInsensitiveMap.class.isAssignableFrom(rawMapType); // default
             options.put(CASE_SENSITIVE, isCaseSensitive);
         }
 
         // Verify ordering compatibility
-        boolean isValidForOrdering = false;
+        boolean isValidForOrdering;
         if (rawMapType == CompactMap.class ||
                 rawMapType == CaseInsensitiveMap.class ||
                 rawMapType == TrackingMap.class) {

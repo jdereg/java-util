@@ -21,7 +21,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 
 import static com.cedarsoftware.util.CompactMap.CASE_SENSITIVE;
 import static com.cedarsoftware.util.CompactMap.COMPACT_SIZE;
@@ -3493,14 +3492,14 @@ public class CompactMapTest
         assertEquals(4, compactMap.get("zed"), "Initial value for 'zed' should be 4.");
     }
     
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+//    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
     @Test
     public void testPerformance()
     {
         int maxSize = 1000;
         final int[] compactSize = new int[1];
-        int lower = 5;
-        int upper = 140;
+        int lower = 30;
+        int upper = 60;
         long totals[] = new long[upper - lower + 1];
 
         for (int x = 0; x < 2000; x++)
@@ -3508,7 +3507,7 @@ public class CompactMapTest
             for (int i = lower; i < upper; i++)
             {
                 compactSize[0] = i;
-                CompactMap<String, Integer> map= new CompactMap()
+                CompactMap<String, Integer> map = new CompactMap()
                 {
                     protected String getSingleValueKey()
                     {

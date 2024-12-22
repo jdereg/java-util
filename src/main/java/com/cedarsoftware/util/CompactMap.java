@@ -522,13 +522,15 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
         return null;
     }
-    
+
     /**
-     * Removes a key-value pair from the compact array while preserving order.
+     * Removes a key-value pair from the compact array without unnecessary sorting.
      */
     private V removeFromCompactArray(Object key) {
         Object[] entries = (Object[]) val;
-        if (size() == 2) {   // Transition back to single entry
+        int pairCount = size(); // Number of key-value pairs
+
+        if (pairCount == 2) {   // Transition back to single entry
             return handleTransitionToSingleEntry(entries, key);
         }
 
@@ -537,41 +539,25 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (areKeysEqual(key, entries[i])) {
                 V oldValue = (V) entries[i + 1];
                 Object[] shrink = new Object[len - 2];
-                System.arraycopy(entries, 0, shrink, 0, i);
-                System.arraycopy(entries, i + 2, shrink, i, shrink.length - i);
-                sortCompactArray(shrink); // Centralized sorting logic
+                // Copy entries before the found pair
+                if (i > 0) {
+                    System.arraycopy(entries, 0, shrink, 0, i);
+                }
+                // Copy entries after the found pair
+                if (i + 2 < len) {
+                    System.arraycopy(entries, i + 2, shrink, i, len - i - 2);
+                }
+                // Update the backing array without sorting
                 val = shrink;
                 return oldValue;
             }
         }
-        return null;
+        return null;    // Key not found
     }
-
+    
     /**
-     * Sorts the internal array maintaining key-value pairs in the correct relative positions.
-     * This method is optimized for CompactMap's specific use case where the array is always
-     * sorted except for the last key-value pair added.
-     *
-     * <p>The implementation uses a modified insertion sort to place the newly added pair into
-     * its correct position. This approach was chosen because:
-     * <ul>
-     *   <li>The array is already sorted except for the last pair added</li>
-     *   <li>Only needs to find the insertion point and shift pairs to make room</li>
-     *   <li>Performs O(1) comparisons in best case (new pair belongs at end)</li>
-     *   <li>Performs O(n) comparisons in worst case (new pair belongs at start)</li>
-     *   <li>Makes minimal memory allocations (just temporary storage for inserted pair)</li>
-     * </ul>
-     * </p>
-     *
-     * <p>The method maintains the key-value pair relationship by always moving pairs of array
-     * elements together (keys at even indices, values at odd indices). No sorting is performed
-     * for unordered or insertion-ordered maps.</p>
-     *
-     * @param array The array containing key-value pairs to sort
-     */
-    /**
-     * Sorts the internal array maintaining key-value pairs in the correct relative positions.
-     * Uses Shell Sort algorithm for efficiency on small to medium arrays.
+     * Sorts the array using QuickSort algorithm. Maintains key-value pair relationships
+     * where keys are at even indices and values at odd indices.
      *
      * @param array The array containing key-value pairs to sort
      */
@@ -586,29 +572,51 @@ public class CompactMap<K, V> implements Map<K, V> {
             return;
         }
 
-        // Shell sort using gaps starting at n/2 and reducing by half
-        for (int gap = pairCount/2; gap > 0; gap /= 2) {
-            // Note: i starts at gap*2 because we're dealing with key-value pairs
-            for (int i = gap * 2; i < array.length; i += 2) {
+        quickSort(array, 0, pairCount - 1);  // Work with pair indices
+    }
+
+    private void quickSort(Object[] array, int lowPair, int highPair) {
+        if (lowPair < highPair) {
+            int pivotPair = partition(array, lowPair, highPair);
+            quickSort(array, lowPair, pivotPair - 1);
+            quickSort(array, pivotPair + 1, highPair);
+        }
+    }
+
+    private int partition(Object[] array, int lowPair, int highPair) {
+        // Convert pair indices to array indices
+        int low = lowPair * 2;
+        int high = highPair * 2;
+
+        // Use last element as pivot
+        K pivot = (K)array[high];
+        int i = low - 2;  // Start before first pair
+
+        for (int j = low; j < high; j += 2) {
+            if (compareKeysForOrder((K)array[j], pivot) <= 0) {
+                i += 2;
+                // Swap pairs
                 Object tempKey = array[i];
                 Object tempValue = array[i + 1];
-
-                int j;
-                for (j = i; j >= gap * 2; j -= gap * 2) {
-                    if (compareKeysForOrder((K)array[j - gap * 2], (K)tempKey) <= 0) {
-                        break;
-                    }
-                    // Move pair up
-                    array[j] = array[j - gap * 2];
-                    array[j + 1] = array[j - gap * 2 + 1];
-                }
-                // Place pair in correct position
+                array[i] = array[j];
+                array[i + 1] = array[j + 1];
                 array[j] = tempKey;
                 array[j + 1] = tempValue;
             }
         }
+
+        // Put pivot in correct position
+        i += 2;
+        Object tempKey = array[i];
+        Object tempValue = array[i + 1];
+        array[i] = array[high];
+        array[i + 1] = array[high + 1];
+        array[high] = tempKey;
+        array[high + 1] = tempValue;
+
+        return i/2;  // Return pair index
     }
-    
+
     private void switchToMap(Object[] entries, K key, V value) {
         // Get the correct map type with initial capacity
         Map<K, V> map = getNewMap();  // This respects subclass overrides
@@ -1162,7 +1170,8 @@ public class CompactMap<K, V> implements Map<K, V> {
     protected Map<K, V> getNewMap() {
         return new HashMap<>(compactSize() + 1);
     }
-
+    
+    // TODO: Remove this method
     protected Map<K, V> getNewMap(int size) {
         Map<K, V> map = getNewMap();
         try {

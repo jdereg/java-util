@@ -171,6 +171,7 @@ import java.util.WeakHashMap;
 @SuppressWarnings("unchecked")
 public class CompactMap<K, V> implements Map<K, V> {
     private static final String EMPTY_MAP = "_︿_ψ_☼";
+    private static final ThreadLocal<Map<String, Object>> INFERRED_OPTIONS = new ThreadLocal<>();   // For backward support - will be removed in future
 
     // Constants for option keys
     public static final String COMPACT_SIZE = "compactSize";
@@ -211,8 +212,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (compactSize() < 2) {
             throw new IllegalStateException("compactSize() must be >= 2");
         }
-        // TODO: Fix this, it fails right now:
-        // validateMapConfiguration();
+        validateMapConfiguration();
     }
     
     /**
@@ -459,8 +459,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     @Override
     public V put(K key, V value) {
         if (val == EMPTY_MAP) {   // Empty map
-            // TODO: fix this, it fails right now
-//            validateMapConfiguration();
+            validateMapConfiguration();
             if (areKeysEqual(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
                 // Store the value directly for optimized single-entry storage
                 // (can't allow Map or Object[] because that would throw off the 'state')
@@ -1187,9 +1186,18 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     protected boolean isCaseInsensitive() {
+        if (getClass() != CompactMap.class && !(this instanceof FactoryCreated)) {
+            Method method = ReflectionUtils.getMethod(getClass(), "isCaseInsensitive", null);
+            if (method != null && method.getDeclaringClass() == CompactMap.class) {
+                Map<String, Object> inferredOptions = INFERRED_OPTIONS.get();
+                if (inferredOptions != null && inferredOptions.containsKey(CASE_SENSITIVE)) {
+                    return !(boolean) inferredOptions.get(CASE_SENSITIVE);
+                }
+            }
+        }
         return false;
     }
-
+    
     protected int compactSize() {
         return 80;
     }
@@ -1209,7 +1217,18 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the ordering strategy for this map
      */
     protected String getOrdering() {
-        return UNORDERED; // Default: unordered
+        if (getClass() != CompactMap.class && !(this instanceof FactoryCreated)) {
+            Method method = ReflectionUtils.getMethod(getClass(), "getOrdering", null);
+            // Changed condition - if method is null, we use inferred options
+            // since this means the subclass doesn't override getOrdering()
+            if (method == null) {
+                Map<String, Object> inferredOptions = INFERRED_OPTIONS.get();
+                if (inferredOptions != null && inferredOptions.containsKey(ORDERING)) {
+                    return (String) inferredOptions.get(ORDERING);
+                }
+            }
+        }
+        return UNORDERED;  // fallback
     }
 
     /**
@@ -1222,7 +1241,18 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the comparator used for sorting, or {@code null} for natural ordering
      */
     protected Comparator<? super K> getComparator() {
-        return null; // Default implementation returns null, subclasses can override
+        if (getClass() != CompactMap.class && !(this instanceof FactoryCreated)) {
+            Method method = ReflectionUtils.getMethod(getClass(), "getComparator", null);
+            // Changed condition - if method is null, we use inferred options
+            // since this means the subclass doesn't override getComparator()
+            if (method == null) {
+                Map<String, Object> inferredOptions = INFERRED_OPTIONS.get();
+                if (inferredOptions != null && inferredOptions.containsKey(COMPARATOR)) {
+                    return (Comparator<? super K>) inferredOptions.get(COMPARATOR);
+                }
+            }
+        }
+        return null;
     }
     
     /* ------------------------------------------------------------ */
@@ -1337,48 +1367,64 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     private void validateMapConfiguration() {
-        // Only check if this is a subclass
+        // Skip validation if this is the base class or a factory-created instance:
+        //   - The base class (CompactMap) already has logic in newMap(...) factories.
+        //   - FactoryCreated means newMap(...) was used, so validateAndFinalizeOptions was already called.
+        if (isLegacyCompactMap()) {
+            System.out.println("getClass().getName() = " + getClass().getName());
+            System.out.println("isLegacyCompactMap() = " + isLegacyCompactMap());
 
-        // TODO: This fails right now:
-        if (getClass() == CompactMap.class) {
-            return;
-        }
+            // We are in a *legacy* subclass that may NOT override getOrdering().
+            // We'll do our best to infer the correct "options" from the user’s overrides:
+            //   - getNewMap(), isCaseInsensitive(), compactSize(), capacity(), getSingleValueKey(), etc.
+            // Then we pass those options to validateAndFinalizeOptions(...).
 
-        // Get the map instance they're using
-        Map<K, V> configuredMap = getNewMap();
+            // 1) Build an inferred-options map:
+            Map<String, Object> inferred = new HashMap<>();
 
-        if (configuredMap instanceof TreeMap) {
-            // Check if they're using a TreeMap but haven't overridden getOrdering()
-            Method method = ReflectionUtils.getMethod(getClass(), "getOrdering", null);
-            if (method == null) {
-                throw new IllegalStateException(
-                        "Your CompactMap subclass uses TreeMap but hasn't overridden getOrdering(). " +
-                                "You must override getOrdering() to return CompactMap.SORTED or CompactMap.REVERSE " +
-                                "when using TreeMap as the backing map."
-                );
+            // capacity, compactSize, singleKey
+            inferred.put(CAPACITY, capacity());
+            inferred.put(COMPACT_SIZE, compactSize());
+            inferred.put(SINGLE_KEY, getSingleValueKey());
+
+            // case sensitivity
+            boolean caseInsensitive = isCaseInsensitive();
+            inferred.put(CASE_SENSITIVE, !caseInsensitive); // your code typically treats "false" => case-insensitive
+
+            // 2) Look at the actual Map returned by getNewMap() to infer ordering & mapType
+            Map<K, V> sampleMap = getNewMap();
+            Class<? extends Map> rawMapType = sampleMap.getClass();
+            inferred.put(MAP_TYPE, rawMapType);
+
+            if (sampleMap instanceof SortedMap) {
+                // => sorted or reverse. We can guess "sorted" for normal comparators, or detect if the comparator
+                //   does reverse logic. If that’s too complicated, just default to SORTED.
+                SortedMap<K, V> sm = (SortedMap<K, V>) sampleMap;
+                Comparator<? super K> cmp = sm.comparator();
+                // If null, it means natural ordering, but if we are case-insensitive we might prefer CASE_INSENSITIVE_ORDER
+                // Typically, though, you have your own new TreeMap<>(String.CASE_INSENSITIVE_ORDER).
+                if (cmp != null) {
+                    inferred.put(COMPARATOR, cmp);
+                }
+                // We’ll default to “sorted.” If they actually wanted reverse ordering, they can supply a reversed comparator.
+                inferred.put(ORDERING, SORTED);
+            } else if (sampleMap instanceof LinkedHashMap) {
+                // => insertion or “sequence” ordering
+                inferred.put(ORDERING, INSERTION);
+            } else {
+                // => default to “unordered”
+                inferred.put(ORDERING, UNORDERED);
             }
 
-            // Check if they're using a comparator but haven't overridden getComparator()
-            method = ReflectionUtils.getMethod(getClass(), "getComparator", null);
-            Comparator<?> treeComparator = ((TreeMap<?, ?>) configuredMap).comparator();
-            if (treeComparator != null && method == null) {
-                throw new IllegalStateException(
-                        "Your CompactMap subclass uses TreeMap with a comparator but hasn't overridden getComparator(). " +
-                                "You must override getComparator() to return the same comparator used in your TreeMap."
-                );
-            }
-        }
+            // 3) Let your existing code finalize these options (wrap comparators for case-insensitive, etc.)
+            validateAndFinalizeOptions(inferred);
 
-        Method method = ReflectionUtils.getMethod(getClass(), "getOrdering", null);
-        if (configuredMap instanceof LinkedHashMap && method == null) {
-            throw new IllegalStateException(
-                    "Your CompactMap subclass uses LinkedHashMap but hasn't overridden getOrdering(). " +
-                            "You must override getOrdering() to return CompactMap.INSERTION when using LinkedHashMap."
-            );
+            // 4) Stash them into the ThreadLocal so that getOrdering(), getComparator(), etc.
+            //    will see them if the user’s subclass did not override those methods:
+            INFERRED_OPTIONS.set(inferred);
         }
     }
 
-    
     /**
      * Creates a new {@code CompactMap} with advanced configuration options.
      * <p>
@@ -1499,12 +1545,12 @@ public class CompactMap<K, V> implements Map<K, V> {
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         int capacity = (int) options.getOrDefault(CAPACITY, DEFAULT_CAPACITY);
 
-        CompactMap<K, V> map = new CompactMap<K, V>() {
+        // Create a class that extends CompactMap and implements FactoryCreated
+        class FactoryCompactMap extends CompactMap<K, V> implements FactoryCreated {
             @Override
             protected Map<K, V> getNewMap() {
                 try {
                     if (!caseSensitive) {
-                        // For case-insensitive maps, create the appropriate inner map first
                         Class<? extends Map<K, V>> innerMapType =
                                 (Class<? extends Map<K, V>>) options.get("INNER_MAP_TYPE");
                         Map<K, V> innerMap;
@@ -1516,10 +1562,8 @@ public class CompactMap<K, V> implements Map<K, V> {
                                     innerMapType.getConstructor(int.class);
                             innerMap = constructor.newInstance(capacity);
                         }
-                        // Wrap in CaseInsensitiveMap
                         return new CaseInsensitiveMap<>(Collections.emptyMap(), innerMap);
                     } else {
-                        // Case-sensitive map creation
                         if (comparator != null && SortedMap.class.isAssignableFrom(mapType)) {
                             return mapType.getConstructor(Comparator.class).newInstance(comparator);
                         }
@@ -1564,9 +1608,10 @@ public class CompactMap<K, V> implements Map<K, V> {
             protected Comparator<? super K> getComparator() {
                 return comparator;
             }
-        };
+        }
 
-        // Populate the map with entries from the source map, if provided
+        CompactMap<K, V> map = new FactoryCompactMap();
+
         if (source != null) {
             map.putAll(source);
         }
@@ -1911,5 +1956,19 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         return rawMapType;
+    }
+
+    /**
+     * Returns {@code true} if this {@code CompactMap} instance is considered "legacy,"
+     * meaning it is either:
+     * <ul>
+     *   <li>A direct instance of CompactMap (not a subclass), or</li>
+     *   <li>A subclass that does not override the {@code getOrdering()} method</li>
+     * </ul>
+     * Returns {@code false} if it is a subclass that overrides {@code getOrdering()}.
+     */
+    public boolean isLegacyCompactMap() {
+        return this.getClass() == CompactMap.class ||
+                ReflectionUtils.getMethodAnyAccess(getClass(), "getOrdering", false) == null;
     }
 }

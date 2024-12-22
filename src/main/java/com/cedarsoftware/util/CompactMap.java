@@ -516,14 +516,13 @@ public class CompactMap<K, V> implements Map<K, V> {
             System.arraycopy(entries, 0, expand, 0, len);
             expand[len] = key;
             expand[len + 1] = value;
-            sortCompactArray(expand);  // Make sure sorting happens
-            val = expand;
+            val = expand;  // Simply append, no sorting needed
         } else {
             switchToMap(entries, key, value);
         }
         return null;
     }
-
+    
     /**
      * Removes a key-value pair from the compact array while preserving order.
      */
@@ -570,12 +569,14 @@ public class CompactMap<K, V> implements Map<K, V> {
      *
      * @param array The array containing key-value pairs to sort
      */
-    //TODO: What if I did not sort the compactArray, until someone tried to iterate it?  Oh?
-    //TODO: This would make put/remove fast.  Then sort before iterator starts
-    //TODO: Then, during iteration, if a put happens, what do we do?  Ask claude!
+    /**
+     * Sorts the internal array maintaining key-value pairs in the correct relative positions.
+     * Uses Shell Sort algorithm for efficiency on small to medium arrays.
+     *
+     * @param array The array containing key-value pairs to sort
+     */
     private void sortCompactArray(final Object[] array) {
         String ordering = getOrdering();
-
         if (ordering.equals(UNORDERED) || ordering.equals(INSERTION)) {
             return;
         }
@@ -585,26 +586,27 @@ public class CompactMap<K, V> implements Map<K, V> {
             return;
         }
 
-        // Get last key-value pair position
-        int insertPairIndex = pairCount - 1;
-        K keyToInsert = (K) array[insertPairIndex * 2];
-        Object valueToInsert = array[insertPairIndex * 2 + 1];
+        // Shell sort using gaps starting at n/2 and reducing by half
+        for (int gap = pairCount/2; gap > 0; gap /= 2) {
+            // Note: i starts at gap*2 because we're dealing with key-value pairs
+            for (int i = gap * 2; i < array.length; i += 2) {
+                Object tempKey = array[i];
+                Object tempValue = array[i + 1];
 
-        // Find insertion point and shift
-        int j = insertPairIndex - 1;
-        while (j >= 0 && compareKeysForOrder(array[j * 2], keyToInsert) > 0) {
-            // Shift pair right
-            int j2 = j * 2;
-            int j1_2 = (j + 1) * 2;
-            array[j1_2] = array[j2];
-            array[j1_2 + 1] = array[j2 + 1];
-            j--;
+                int j;
+                for (j = i; j >= gap * 2; j -= gap * 2) {
+                    if (compareKeysForOrder((K)array[j - gap * 2], (K)tempKey) <= 0) {
+                        break;
+                    }
+                    // Move pair up
+                    array[j] = array[j - gap * 2];
+                    array[j + 1] = array[j - gap * 2 + 1];
+                }
+                // Place pair in correct position
+                array[j] = tempKey;
+                array[j + 1] = tempValue;
+            }
         }
-
-        // Insert pair at correct position
-        int j1_2 = (j + 1) * 2;
-        array[j1_2] = keyToInsert;
-        array[j1_2 + 1] = valueToInsert;
     }
     
     private void switchToMap(Object[] entries, K key, V value) {
@@ -1264,16 +1266,27 @@ public class CompactMap<K, V> implements Map<K, V> {
             expectedSize = size();
             current = EMPTY_MAP;
             index = -1;
-            if (val instanceof Map) {
+
+            if (val instanceof Object[]) {   // State 3: 2 to compactSize
+                sortCompactArray((Object[]) val);
+            } else if (val instanceof Map) {   // State 4: > compactSize
                 mapIterator = ((Map<K, V>) val).entrySet().iterator();
+            } else if (val == EMPTY_MAP) {   // State 1: empty
+                // Already handled by initialization of current and index
+            } else {   // State 2: size == 1
+                // Single value or CompactMapEntry handled in next() methods
             }
         }
 
         public final boolean hasNext() {
-            if (mapIterator != null) {
-                return mapIterator.hasNext();
-            } else {
+            if (val instanceof Object[]) {   // State 3: 2 to compactSize
                 return (index + 1) < size();
+            } else if (val instanceof Map) {   // State 4: > compactSize
+                return mapIterator.hasNext();
+            } else if (val == EMPTY_MAP) {   // State 1: empty
+                return false;
+            } else {   // State 2: size == 1
+                return index < 0;  // Only allow one iteration
             }
         }
 
@@ -1284,13 +1297,14 @@ public class CompactMap<K, V> implements Map<K, V> {
             if (++index >= size()) {
                 throw new NoSuchElementException();
             }
-            if (mapIterator != null) {
+            if (val instanceof Object[]) {  // State 3: 2 to compactSize
+                current = ((Object[]) val)[index * 2];  // For keys - values adjust in subclasses
+            } else if (val instanceof Map) {  // State 4: > compactSize
                 current = mapIterator.next();
-            } else if (expectedSize == 1) {
+            } else if (val == EMPTY_MAP) {  // State 1: empty
+                throw new NoSuchElementException();
+            } else {  // State 2: size == 1
                 current = getLogicalSingleKey();
-            } else {
-                // The array is already in proper order - just walk through it
-                current = ((Object[]) val)[index * 2];
             }
         }
 
@@ -1319,7 +1333,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             expectedSize--;
         }
     }
-
+    
     final class CompactKeyIterator extends CompactMap<K, V>.CompactIterator implements Iterator<K> {
         public K next() {
             advance();

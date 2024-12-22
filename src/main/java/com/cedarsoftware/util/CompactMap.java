@@ -212,7 +212,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (compactSize() < 2) {
             throw new IllegalStateException("compactSize() must be >= 2");
         }
-        validateMapConfiguration();
+        initializeLegacyConfig();
     }
     
     /**
@@ -266,13 +266,15 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     private boolean areKeysEqual(Object key, Object aKey) {
         if (key instanceof String && aKey instanceof String) {
-            return isCaseInsensitive()
+            boolean result = isCaseInsensitive()
                     ? ((String) key).equalsIgnoreCase((String) aKey)
                     : key.equals(aKey);
+            return result;
         }
-        return Objects.equals(key, aKey);
+        boolean result = Objects.equals(key, aKey);
+        return result;
     }
-
+    
     /**
      * Compares two keys for ordering based on the map's ordering and case sensitivity settings.
      *
@@ -310,6 +312,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *         or greater than {@code key2}
      */
     private int compareKeysForOrder(Object key1, Object key2) {
+
         // Handle nulls explicitly
         if (key1 == null && key2 == null) {
             return 0;
@@ -335,7 +338,6 @@ public class CompactMap<K, V> implements Map<K, V> {
         // String comparison - most common case
         if (key1 instanceof String) {
             if (key2 instanceof String) {
-                // Both are strings - handle case sensitivity
                 return isCaseInsensitive()
                         ? String.CASE_INSENSITIVE_ORDER.compare((String)key1, (String)key2)
                         : ((String)key1).compareTo((String)key2);
@@ -459,7 +461,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     @Override
     public V put(K key, V value) {
         if (val == EMPTY_MAP) {   // Empty map
-            validateMapConfiguration();
+            initializeLegacyConfig();
             if (areKeysEqual(key, getSingleValueKey()) && !(value instanceof Map || value instanceof Object[])) {
                 // Store the value directly for optimized single-entry storage
                 // (can't allow Map or Object[] because that would throw off the 'state')
@@ -591,10 +593,10 @@ public class CompactMap<K, V> implements Map<K, V> {
         int j = insertPairIndex - 1;
         while (j >= 0 && compareKeysForOrder(array[j * 2], keyToInsert) > 0) {
             // Shift pair right
-            int j2 = j * 2;                  // cache re-used math
-            int j1_2 = (j + 1) * 2;          // cache re-used math
-            array[j1_2] = array[j2];         // Shift key
-            array[j1_2 + 1] = array[j2 + 1]; // Shift value
+            int j2 = j * 2;
+            int j1_2 = (j + 1) * 2;
+            array[j1_2] = array[j2];
+            array[j1_2 + 1] = array[j2 + 1];
             j--;
         }
 
@@ -602,7 +604,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         array[(j + 1) * 2] = keyToInsert;
         array[(j + 1) * 2 + 1] = valueToInsert;
     }
-
+    
     private void switchToMap(Object[] entries, K key, V value) {
         // Get the correct map type with initial capacity
         Map<K, V> map = getNewMap();  // This respects subclass overrides
@@ -1366,63 +1368,63 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
-    private void validateMapConfiguration() {
-        // Skip validation if this is the base class or a factory-created instance:
-        //   - The base class (CompactMap) already has logic in newMap(...) factories.
-        //   - FactoryCreated means newMap(...) was used, so validateAndFinalizeOptions was already called.
-        if (isLegacyCompactMap()) {
-            System.out.println("getClass().getName() = " + getClass().getName());
-            System.out.println("isLegacyCompactMap() = " + isLegacyCompactMap());
-
-            // We are in a *legacy* subclass that may NOT override getOrdering().
-            // We'll do our best to infer the correct "options" from the user’s overrides:
-            //   - getNewMap(), isCaseInsensitive(), compactSize(), capacity(), getSingleValueKey(), etc.
-            // Then we pass those options to validateAndFinalizeOptions(...).
-
-            // 1) Build an inferred-options map:
-            Map<String, Object> inferred = new HashMap<>();
-
-            // capacity, compactSize, singleKey
-            inferred.put(CAPACITY, capacity());
-            inferred.put(COMPACT_SIZE, compactSize());
-            inferred.put(SINGLE_KEY, getSingleValueKey());
-
-            // case sensitivity
-            boolean caseInsensitive = isCaseInsensitive();
-            inferred.put(CASE_SENSITIVE, !caseInsensitive); // your code typically treats "false" => case-insensitive
-
-            // 2) Look at the actual Map returned by getNewMap() to infer ordering & mapType
-            Map<K, V> sampleMap = getNewMap();
-            Class<? extends Map> rawMapType = sampleMap.getClass();
-            inferred.put(MAP_TYPE, rawMapType);
-
-            if (sampleMap instanceof SortedMap) {
-                // => sorted or reverse. We can guess "sorted" for normal comparators, or detect if the comparator
-                //   does reverse logic. If that’s too complicated, just default to SORTED.
-                SortedMap<K, V> sm = (SortedMap<K, V>) sampleMap;
-                Comparator<? super K> cmp = sm.comparator();
-                // If null, it means natural ordering, but if we are case-insensitive we might prefer CASE_INSENSITIVE_ORDER
-                // Typically, though, you have your own new TreeMap<>(String.CASE_INSENSITIVE_ORDER).
-                if (cmp != null) {
-                    inferred.put(COMPARATOR, cmp);
-                }
-                // We’ll default to “sorted.” If they actually wanted reverse ordering, they can supply a reversed comparator.
-                inferred.put(ORDERING, SORTED);
-            } else if (sampleMap instanceof LinkedHashMap) {
-                // => insertion or “sequence” ordering
-                inferred.put(ORDERING, INSERTION);
-            } else {
-                // => default to “unordered”
-                inferred.put(ORDERING, UNORDERED);
-            }
-
-            // 3) Let your existing code finalize these options (wrap comparators for case-insensitive, etc.)
-            validateAndFinalizeOptions(inferred);
-
-            // 4) Stash them into the ThreadLocal so that getOrdering(), getComparator(), etc.
-            //    will see them if the user’s subclass did not override those methods:
-            INFERRED_OPTIONS.set(inferred);
+    private void initializeLegacyConfig() {
+        if (!isLegacyCompactMap()) {
+            return;
         }
+        Map<String, Object> inferred = new HashMap<>();
+
+        // Always get compactSize and singleKey as these are fundamental
+        inferred.put(COMPACT_SIZE, compactSize());
+        inferred.put(SINGLE_KEY, getSingleValueKey());
+
+        // Check if isCaseInsensitive() is overridden
+        Method caseMethod = ReflectionUtils.getMethodAnyAccess(getClass(), "isCaseInsensitive", false);
+        if (caseMethod != null) {
+            boolean caseSensitive = !isCaseInsensitive();
+            inferred.put(CASE_SENSITIVE, caseSensitive);
+        }
+
+        // Only look at map if getNewMap() is overridden
+        Method mapMethod = ReflectionUtils.getMethodAnyAccess(getClass(), "getNewMap", false);
+        if (mapMethod != null) {
+            Map<K, V> sampleMap = getNewMap();
+            inferred.put(MAP_TYPE, sampleMap.getClass());
+
+            // Handle SortedMap with special attention to reverse ordering
+            if (sampleMap instanceof SortedMap) {
+                SortedMap<K, V> sortedMap = (SortedMap<K, V>) sampleMap;
+                Comparator<? super K> mapComparator = sortedMap.comparator();
+
+                if (mapComparator != null) {
+                    // Check for configuration mismatch
+                    boolean isCaseInsensitiveComparator = mapComparator == String.CASE_INSENSITIVE_ORDER;
+                    boolean caseSensitive = (boolean) inferred.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+
+                    if (isCaseInsensitiveComparator && caseSensitive) {
+                        throw new IllegalStateException("Configuration mismatch: Map uses case-insensitive comparison but CompactMap is configured as case-sensitive");
+                    }
+
+                    // Store both the comparator and the ordering
+                    inferred.put(COMPARATOR, mapComparator);
+
+                    // Test if it's a reverse comparator
+                    String test1 = "A";
+                    String test2 = "B";
+                    int compareResult = mapComparator.compare((K)test1, (K)test2);
+                    if (compareResult > 0) {
+                        inferred.put(ORDERING, REVERSE);
+                    } else {
+                        inferred.put(ORDERING, SORTED);
+                    }
+                } else {
+                    inferred.put(ORDERING, SORTED);
+                }
+            }
+        }
+
+        validateAndFinalizeOptions(inferred);
+        INFERRED_OPTIONS.set(inferred);
     }
 
     /**
@@ -1795,15 +1797,18 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // Add this code here to wrap the comparator if one exists
         if (comparator != null) {
-            Comparator<?> originalComparator = comparator;
-            comparator = (a, b) -> {
-                Object key1 = (a instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                        a.toString() : a;
-                Object key2 = (b instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                        b.toString() : b;
-                return ((Comparator<Object>) originalComparator).compare(key1, key2);
-            };
-            options.put(COMPARATOR, comparator);
+            // Don't wrap if it's already a Collections.ReverseComparator
+            if (!isReverseComparator(comparator)) {
+                Comparator<?> originalComparator = comparator;
+                comparator = (a, b) -> {
+                    Object key1 = (a instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                            a.toString() : a;
+                    Object key2 = (b instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
+                            b.toString() : b;
+                    return ((Comparator<Object>) originalComparator).compare(key1, key2);
+                };
+                options.put(COMPARATOR, comparator);
+            }
         }
 
         // Handle case sensitivity for sorted maps when no comparator is provided
@@ -1841,8 +1846,8 @@ public class CompactMap<K, V> implements Map<K, V> {
                             o2.toString() : (String) o2;
                     return s2.compareTo(s1);
                 };
-            } else {
-                // Reverse an existing comparator
+            } else if (!isReverseComparator(comparator)) {
+                // Only reverse if not already a ReverseComparator
                 Comparator<Object> existing = (Comparator<Object>) comparator;
                 comparator = (o1, o2) -> {
                     Object k1 = (o1 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
@@ -1854,7 +1859,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
             options.put(COMPARATOR, comparator);
         }
-
+        
         // Special handling for unsupported map types
         if (IdentityHashMap.class.isAssignableFrom(mapType)) {
             throw new IllegalArgumentException(
@@ -1884,6 +1889,20 @@ public class CompactMap<K, V> implements Map<K, V> {
         options.putIfAbsent(ORDERING, UNORDERED);
     }
 
+    private static boolean isReverseComparator(Comparator<?> comp) {
+        if (comp == Collections.reverseOrder()) {
+            return true;
+        }
+        // Test if it's any form of reverse comparator by checking its behavior
+        try {
+            @SuppressWarnings("unchecked")
+            Comparator<Object> objComp = (Comparator<Object>) comp;
+            return objComp.compare("A", "B") > 0;  // Returns true if it's a reverse comparator
+        } catch (Exception e) {
+            return false;  // If comparison fails, assume it's not a reverse comparator
+        }
+    }
+    
     private static Class<? extends Map> determineMapType(Map<String, Object> options, String ordering) {
         Class<? extends Map> rawMapType = (Class<? extends Map>) options.get(MAP_TYPE);
 

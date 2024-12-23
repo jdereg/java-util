@@ -2644,7 +2644,7 @@ public class CompactMapTest
     void testCompactCIHashMap()
     {
         // Ensure CompactCIHashMap equivalent is minimally exercised.
-        CompactMap<String, Integer> ciHashMap = CompactMap.newMap(80, false, 16, CompactMap.UNORDERED);
+        CompactMap<String, Integer> ciHashMap = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).capacity(16).noOrder().build();
 
         for (int i=0; i < ciHashMap.compactSize() + 5; i++)
         {
@@ -2658,7 +2658,7 @@ public class CompactMapTest
         assert ciHashMap.containsKey("FoO" + (ciHashMap.compactSize() + 3));
         assert ciHashMap.containsKey("foo" + (ciHashMap.compactSize() + 3));
                                                  
-        CompactMap<String, Integer> copy = CompactMap.newMap(80, false, 16, CompactMap.UNORDERED, "x", ciHashMap);
+        CompactMap<String, Integer> copy = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).capacity(16).noOrder().singleValueKey("key").sourceMap(ciHashMap).build();
         assert copy.equals(ciHashMap);
 
         assert copy.containsKey("FoO0");
@@ -2673,7 +2673,7 @@ public class CompactMapTest
     void testCompactCILinkedMap()
     {
         // Ensure CompactLinkedMap is minimally exercised.
-        CompactMap<String, Integer> ciLinkedMap = CompactMap.newMap(80, false, 16, CompactMap.INSERTION);
+        CompactMap<String, Integer> ciLinkedMap = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).capacity(16).insertionOrder().build();
 
         for (int i=0; i < ciLinkedMap.compactSize() + 5; i++)
         {
@@ -2687,13 +2687,12 @@ public class CompactMapTest
         assert ciLinkedMap.containsKey("FoO" + (ciLinkedMap.compactSize() + 3));
         assert ciLinkedMap.containsKey("foo" + (ciLinkedMap.compactSize() + 3));
 
-        CompactMap<String, Integer> copy = CompactMap.newMap(
-                80,
-                false,
-                16,
-                CompactMap.INSERTION,
-                "key",
-                ciLinkedMap);
+        CompactMap<String, Integer> copy = CompactMap.<String, Integer>builder()
+                .compactSize(80)
+                .caseSensitive(false)
+                .capacity(16)
+                .insertionOrder()
+                .singleValueKey("key").sourceMap(ciLinkedMap).build();
         assert copy.equals(ciLinkedMap);
 
         assert copy.containsKey("FoO0");
@@ -3129,7 +3128,7 @@ public class CompactMapTest
     @Test
     public void testPutAll2()
     {
-        CompactMap<String, Object> stringMap= new CompactMap()
+        CompactMap<String, Object> stringMap = new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, Object> getNewMap() { return new CaseInsensitiveMap<>(compactSize() + 1); }
@@ -3140,7 +3139,7 @@ public class CompactMapTest
         stringMap.put("One", "Two");
         stringMap.put("Three", "Four");
         stringMap.put("Five", "Six");
-        CompactMap<String, Object> newMap = CompactMap.newMap(80, false, 16, CompactMap.INSERTION);
+        CompactMap<String, Object> newMap = CompactMap.<String, Object>builder().compactSize(80).caseSensitive(false).capacity(16).insertionOrder().build();
         newMap.put("thREe", "four");
         newMap.put("Seven", "Eight");
 
@@ -3442,7 +3441,7 @@ public class CompactMapTest
     @Test
     void testUnmodifiability()
     {
-        CompactMap<String, Object> m = CompactMap.newMap(80, false);
+        CompactMap<String, Object> m = CompactMap.<String, Object>builder().compactSize(80).caseSensitive(false).build();
         m.put("foo", "bar");
         m.put("baz", "qux");
         Map<String, Object> noModMap = Collections.unmodifiableMap(m);
@@ -3454,7 +3453,7 @@ public class CompactMapTest
     @Test
     public void testCompactCIHashMap2()
     {
-        CompactMap<String, Integer> map = CompactMap.newMap(80, false);
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).build();
 
         for (int i=0; i < map.compactSize() + 10; i++)
         {
@@ -3514,17 +3513,14 @@ public class CompactMapTest
                     {
                         return "key1";
                     }
-
                     protected Map<String, Integer> getNewMap()
                     {
                         return new HashMap<>();
                     }
-
                     protected boolean isCaseInsensitive()
                     {
                         return false;
                     }
-
                     protected int compactSize()
                     {
                         return compactSize[0];

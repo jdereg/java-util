@@ -1626,62 +1626,14 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         return map;
     }
-
-    /**
-     * Creates a new CompactMap with specified compact size and case sensitivity.
-     */
-    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive) {
-        Map<String, Object> options = new HashMap<>();
-        options.put(COMPACT_SIZE, compactSize);
-        options.put(CASE_SENSITIVE, caseSensitive);
-        return newMap(options);
-    }
-
-    /**
-     * Creates a new CompactMap with specified compact size, case sensitivity, capacity, and ordering.
-     */
-    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity,
-                                                 String ordering) {
-        Map<String, Object> options = new HashMap<>();
-        options.put(COMPACT_SIZE, compactSize);
-        options.put(CASE_SENSITIVE, caseSensitive);
-        options.put(CAPACITY, capacity);
-        options.put(ORDERING, ordering);
-        return newMap(options);
-    }
-
-    /**
-     * Creates a new CompactMap with all configuration options and a source map.
-     *
-     * @param <K>           the type of keys maintained by this map
-     * @param <V>           the type of mapped values
-     * @param compactSize   the compact size threshold
-     * @param caseSensitive whether the map is case-sensitive
-     * @param capacity      the initial capacity of the map
-     * @param ordering      the ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
-     * @param singleKey     the key to use for single-entry optimization
-     * @param sourceMap     the source map to initialize entries from
-     * @return a new CompactMap instance
-     */
-    public static <K, V> CompactMap<K, V> newMap(int compactSize, boolean caseSensitive, int capacity,
-                                                 String ordering, String singleKey, Map<K, V> sourceMap) {
-        Map<String, Object> options = new HashMap<>();
-        options.put(COMPACT_SIZE, compactSize);
-        options.put(CASE_SENSITIVE, caseSensitive);
-        options.put(CAPACITY, capacity);
-        options.put(ORDERING, ordering);
-        options.put(SINGLE_KEY, singleKey);
-        options.put(SOURCE_MAP, sourceMap);
-        return newMap(options);
-    }
-
+    
     /**
      * Validates the provided configuration options and resolves conflicts.
      * Throws an {@link IllegalArgumentException} if the configuration is invalid.
      *
      * @param options a map of user-provided options
      */
-    private static void validateAndFinalizeOptions(Map<String, Object> options) {
+    static void validateAndFinalizeOptions(Map<String, Object> options) {
         // First check raw map type before any defaults are applied
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         Class<? extends Map> mapType = determineMapType(options, ordering);
@@ -1903,5 +1855,91 @@ public class CompactMap<K, V> implements Map<K, V> {
     public boolean isLegacyCompactMap() {
         return this.getClass() == CompactMap.class ||
                 ReflectionUtils.getMethodAnyAccess(getClass(), "getOrdering", false) == null;
+    }
+
+    /**
+     * Creates a new CompactMapBuilder to construct a CompactMap with customizable properties.
+     *
+     * Example usage:
+     * {@code
+     * CompactMap<String, Object> map = CompactMap.builder()
+     *     .compactSize(80)
+     *     .caseSensitive(false)
+     *     .mapType(LinkedHashMap.class)
+     *     .order(CompactMap.SORTED)
+     *     .build();
+     * }
+     *
+     * @return a new CompactMapBuilder instance
+     */
+    public static <K, V> Builder<K, V> builder() {
+        return new Builder<>();
+    }
+
+    public static final class Builder<K, V> {
+        private final Map<String, Object> options;
+
+        private Builder() {
+            options = new HashMap<>();
+        }
+
+        public Builder<K, V> caseSensitive(boolean caseSensitive) {
+            options.put(CASE_SENSITIVE, caseSensitive);
+            return this;
+        }
+
+        public Builder<K, V> mapType(Class<? extends Map> mapType) {
+            options.put(MAP_TYPE, mapType);
+            return this;
+        }
+
+        public Builder<K, V> singleValueKey(K key) {
+            options.put(SINGLE_KEY, key);
+            return this;
+        }
+
+        public Builder<K, V> compactSize(int size) {
+            options.put(COMPACT_SIZE, size);
+            return this;
+        }
+
+        public Builder<K, V> sortedOrder() {
+            options.put(ORDERING, CompactMap.SORTED);
+            return this;
+        }
+
+        public Builder<K, V> reverseOrder() {
+            options.put(ORDERING, CompactMap.REVERSE);
+            return this;
+        }
+
+        public Builder<K, V> insertionOrder() {
+            options.put(ORDERING, CompactMap.INSERTION);
+            return this;
+        }
+
+        public Builder<K, V> noOrder() {
+            options.put(ORDERING, CompactMap.UNORDERED);
+            return this;
+        }
+
+        public Builder<K, V> sourceMap(Map<K, V> source) {
+            options.put(SOURCE_MAP, source);
+            return this;
+        }
+
+        public Builder<K, V> capacity(int capacity) {
+            options.put(CAPACITY, capacity);
+            return this;
+        }
+
+        public Builder<K, V> comparator(Comparator<?> comparator) {
+            options.put(COMPARATOR, comparator);
+            return this;
+        }
+
+        public CompactMap<K, V> build() {
+            return CompactMap.newMap(options);
+        }
     }
 }

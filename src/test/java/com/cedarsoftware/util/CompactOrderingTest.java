@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -372,6 +373,54 @@ class CompactOrderingTest {
         assertEquals(4, map.size());
     }
 
+    @Test
+    public void testSequenceOrderMaintainedAfterIteration() {
+        // Setup map with INSERTION order
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.COMPACT_SIZE, 4);
+        options.put(CompactMap.ORDERING, CompactMap.INSERTION);
+        options.put(CompactMap.MAP_TYPE, LinkedHashMap.class);
+        CompactMap<String, String> map = CompactMap.newMap(options);
+
+        // Insert in specific order: 4,1,3,2
+        map.put("4", null);
+        map.put("1", null);
+        map.put("3", null);
+        map.put("2", null);
+
+        // Capture initial toString() order
+        String initialOrder = map.toString();
+        assert initialOrder.equals("{4=null, 1=null, 3=null, 2=null}") :
+                "Initial order incorrect: " + initialOrder;
+
+        // Test keySet() iteration
+        Iterator<String> keyIter = map.keySet().iterator();
+        while (keyIter.hasNext()) {
+            keyIter.next();
+        }
+        String afterKeySetOrder = map.toString();
+        assert afterKeySetOrder.equals(initialOrder) :
+                "Order changed after keySet iteration. Expected: " + initialOrder + ", Got: " + afterKeySetOrder;
+
+        // Test entrySet() iteration
+        Iterator<Map.Entry<String, String>> entryIter = map.entrySet().iterator();
+        while (entryIter.hasNext()) {
+            entryIter.next();
+        }
+        String afterEntrySetOrder = map.toString();
+        assert afterEntrySetOrder.equals(initialOrder) :
+                "Order changed after entrySet iteration. Expected: " + initialOrder + ", Got: " + afterEntrySetOrder;
+
+        // Test values() iteration
+        Iterator<String> valueIter = map.values().iterator();
+        while (valueIter.hasNext()) {
+            valueIter.next();
+        }
+        String afterValuesOrder = map.toString();
+        assert afterValuesOrder.equals(initialOrder) :
+                "Order changed after values iteration. Expected: " + initialOrder + ", Got: " + afterValuesOrder;
+    }
+    
     private static Stream<Arguments> sizeThresholdScenarios() {
         String[] inputs = {"apple", "BANANA", "Cherry", "DATE"};
         String[] expectedOrder = {"apple", "BANANA", "Cherry", "DATE"};

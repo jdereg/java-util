@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -384,7 +386,129 @@ public class CompactMapBuilderConfigTest {
         assertEquals(0, comparator.compare(cis, "bbb"));
         assertEquals(0, comparator.compare("BBB", "bbb"));
     }
-    
+
+    @Test
+    public void testReverseOrderComparatorCreation() {
+        Map<String, Object> options = new HashMap<>();
+
+        // Important sequence:
+        // 1. Set TreeMap as map type since we need a SortedMap for reverse ordering
+        options.put(CompactMap.MAP_TYPE, TreeMap.class);
+
+        // 2. Set case insensitive without a comparator
+        options.put(CompactMap.CASE_SENSITIVE, false);
+        options.put(CompactMap.ORDERING, CompactMap.REVERSE);
+
+        // 3. Explicitly ensure no comparator
+        options.remove(CompactMap.COMPARATOR);
+
+        // Before validation, verify our preconditions
+        assertNull(options.get(CompactMap.COMPARATOR));
+        assertEquals(false, options.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(CompactMap.REVERSE, options.get(CompactMap.ORDERING));
+
+        CompactMap.validateAndFinalizeOptions(options);
+
+        // Get and test the comparator
+        @SuppressWarnings("unchecked")
+        Comparator<Object> comparator = (Comparator<Object>) options.get(CompactMap.COMPARATOR);
+        assertNotNull(comparator);
+
+        // Test both case sensitivity and reverse ordering
+        CaseInsensitiveMap.CaseInsensitiveString cisKey =
+                new CaseInsensitiveMap.CaseInsensitiveString("BBB");
+
+        // Test case insensitivity
+        int equalityResult = comparator.compare(cisKey, "bbb");
+        assertEquals(0, equalityResult,
+                "BBB and bbb should be equal (got comparison result: " + equalityResult + ")");
+
+        // Test reverse ordering
+        int reverseResult = comparator.compare("BBB", "AAA");
+        assertTrue(reverseResult < 0,
+                "BBB should be less than AAA in reverse order (got comparison result: " + reverseResult + ")");
+    }
+
+    @Test
+    public void testComparatorCreationFlow() {
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.MAP_TYPE, TreeMap.class);
+        options.put(CompactMap.CASE_SENSITIVE, false);
+        options.put(CompactMap.ORDERING, CompactMap.REVERSE);
+
+        // Verify initial state
+        assertNull(options.get(CompactMap.COMPARATOR));
+        assertFalse((Boolean)options.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(CompactMap.REVERSE, options.get(CompactMap.ORDERING));
+
+        // This call will hit the first block and set the comparator
+        CompactMap.validateAndFinalizeOptions(options);
+
+        // Verify final state - comparator should be non-null
+        assertNotNull(options.get(CompactMap.COMPARATOR));
+    }
+
+    @Test
+    public void testSourceMapOrderingConflict() {
+        // Create a TreeMap (naturally sorted) as the source
+        TreeMap<String, String> sourceMap = new TreeMap<>();
+        sourceMap.put("A", "value1");
+        sourceMap.put("B", "value2");
+
+        // Create options requesting REVERSE ordering with a SORTED source map
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.SOURCE_MAP, sourceMap);  // SORTED source map
+        options.put(CompactMap.ORDERING, CompactMap.REVERSE);  // Conflicting REVERSE order request
+
+        // This should throw IllegalArgumentException
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                CompactMap.validateAndFinalizeOptions(options)
+        );
+
+        // Verify the exact error message
+        String expectedMessage = "Requested ordering 'reverse' conflicts with source map's ordering 'sorted'. " +
+                "Map structure: " + MapUtilities.getMapStructureString(sourceMap);
+        assertEquals(expectedMessage, exception.getMessage());
+    }
+
+    // Static inner class that tracks capacity
+    private static class CapacityTrackingHashMap<K,V> extends HashMap<K,V> {
+        private static int lastCapacityUsed;
+
+        public CapacityTrackingHashMap() {
+            super();
+        }
+
+        public CapacityTrackingHashMap(int initialCapacity) {
+            super(initialCapacity);
+            lastCapacityUsed = initialCapacity;
+        }
+
+        public static int getLastCapacityUsed() {
+            return lastCapacityUsed;
+        }
+    }
+
+    @Test
+    public void testFactoryCompactMapCapacityMethodCalled() {
+        // Create CompactMap with custom settings
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.COMPACT_SIZE, 2);  // Small compact size to force transition
+        options.put(CompactMap.CAPACITY, 42);     // Custom capacity
+        options.put(CompactMap.MAP_TYPE, CompactMapBuilderConfigTest.CapacityTrackingHashMap.class);
+
+        CompactMap<String, String> map = CompactMap.newMap(options);
+
+        // Add entries to force creation of backing map
+        map.put("A", "1");
+        map.put("B", "2");
+        map.put("C", "3");  // This should trigger backing map creation
+
+        // Verify the capacity was used when creating the HashMap
+        assertEquals(42, CompactMapBuilderConfigTest.CapacityTrackingHashMap.getLastCapacityUsed(),
+                "Backing map was not created with the expected capacity");
+    }
+
     // Helper methods for verification
     private void verifyMapBehavior(CompactMap<String, String> map, boolean reverse, boolean caseSensitive) {
         // Test at size 1

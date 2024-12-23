@@ -160,7 +160,7 @@ public class EncryptionUtilities
     }
 
     /**
-     * Calculate an MD5 Hash String from the passed in byte[].
+     * Calculate an SHA-1 Hash String from the passed in byte[].
      * @param bytes byte[] of bytes for which to compute the SHA1
      * @return the SHA-1 as a String of HEX digits
      */

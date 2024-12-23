@@ -7,8 +7,7 @@ import java.util.Map;
  * A Map implementation that maintains insertion order and uses a compact internal representation
  * for small maps.
  *
- * @deprecated As of Cedar Software java-util 2.19.0, replaced by {@link CompactMap#newMap} with insertion ordering.
- * Use {@code CompactMap.newMap(80, true, 16, CompactMap.INSERTION)} instead of this class.
+ * @deprecated As of Cedar Software java-util 2.19.0, replaced by CompactMap with builder pattern configuration.
  * <p>
  * Example replacement:<br>
  * Instead of: {@code Map<String, String> map = new CompactLinkedMap<>();}<br>

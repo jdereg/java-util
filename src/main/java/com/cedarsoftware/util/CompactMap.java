@@ -1,10 +1,24 @@
 package com.cedarsoftware.util;
 
-import java.lang.reflect.Constructor;
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
+import javax.tools.FileObject;
+import javax.tools.ForwardingJavaFileManager;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.AbstractCollection;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -181,7 +195,6 @@ public class CompactMap<K, V> implements Map<K, V> {
     public static final String SINGLE_KEY = "singleKey";
     public static final String SOURCE_MAP = "source";
     public static final String ORDERING = "ordering";
-    public static final String COMPARATOR = "comparator";
 
     // Constants for ordering options
     public static final String UNORDERED = "unordered";
@@ -327,35 +340,29 @@ public class CompactMap<K, V> implements Map<K, V> {
         String ordering = getOrdering();
         boolean isReverse = REVERSE.equals(ordering);
 
-        // 4. Retrieve and apply custom comparator if available
-        Comparator<? super K> customComparator = getComparator();
-        if (customComparator != null) {
-            return customComparator.compare((K) key1, (K) key2);
-        }
-
-        // 5. Optimize String comparisons by using direct class checks
+        // 4. String comparison - most common case
         Class<?> key1Class = key1.getClass();
         Class<?> key2Class = key2.getClass();
 
-        // 6. String comparison - most common case
         if (key1Class == String.class) {
             if (key2Class == String.class) {
-                return isCaseInsensitive()
+                int comparison = isCaseInsensitive()
                         ? String.CASE_INSENSITIVE_ORDER.compare((String) key1, (String) key2)
                         : ((String) key1).compareTo((String) key2);
+                return isReverse ? -comparison : comparison;
             }
             // key1 is String, key2 is not - use class name comparison
             int cmp = key1Class.getName().compareTo(key2Class.getName());
             return isReverse ? -cmp : cmp;
         }
 
-        // 7. Try Comparable if same type
+        // 5. Try Comparable if same type
         if (key1Class == key2Class && key1 instanceof Comparable) {
-            Comparable<Object> comp1 = (Comparable<Object>) key1;
-            return comp1.compareTo(key2);
+            int comparison = ((Comparable<Object>) key1).compareTo(key2);
+            return isReverse ? -comparison : comparison;
         }
 
-        // 8. Fallback to class name comparison for different types
+        // 6. Fallback to class name comparison for different types
         int cmp = key1Class.getName().compareTo(key2Class.getName());
         return isReverse ? -cmp : cmp;
     }
@@ -595,7 +602,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         int i = low - 2;  // Start before first pair
 
         for (int j = low; j < high; j += 2) {
-            if (compareKeysForOrder((K) array[j], pivot) <= 0) {
+            if (compareKeysForOrder(array[j], pivot) <= 0) {
                 i += 2;
                 // Swap pairs
                 Object tempKey = array[i];
@@ -1206,8 +1213,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Valid values include:
      * <ul>
      *   <li>{@link #INSERTION}: Maintains insertion order.</li>
-     *   <li>{@link #SORTED}: Maintains sorted order based on the {@link #getComparator()}.</li>
-     *   <li>{@link #REVERSE}: Maintains reverse order based on the {@link #getComparator()} or natural reverse order.</li>
+     *   <li>{@link #SORTED}: Maintains sorted order.</li>
+     *   <li>{@link #REVERSE}: Maintains reverse order.</li>
      *   <li>{@link #UNORDERED}: Default unordered behavior.</li>
      * </ul>
      * </p>
@@ -1216,7 +1223,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     protected String getOrdering() {
         if (getClass() != CompactMap.class && !(this instanceof FactoryCreated)) {
-            Method method = ReflectionUtils.getMethod(getClass(), "getOrdering", null);
+            Method method = ReflectionUtils.getMethod(getClass(), "getOrdering");
             // Changed condition - if method is null, we use inferred options
             // since this means the subclass doesn't override getOrdering()
             if (method == null) {
@@ -1228,31 +1235,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
         return UNORDERED;  // fallback
     }
-
-    /**
-     * Returns the comparator used for sorting entries in this map.
-     * <p>
-     * If {@link #getOrdering()} is {@link #SORTED} or {@link #REVERSE}, the returned comparator determines the order.
-     * If {@code null}, natural ordering is used.
-     * </p>
-     *
-     * @return the comparator used for sorting, or {@code null} for natural ordering
-     */
-    protected Comparator<? super K> getComparator() {
-        if (getClass() != CompactMap.class && !(this instanceof FactoryCreated)) {
-            Method method = ReflectionUtils.getMethod(getClass(), "getComparator", null);
-            // Changed condition - if method is null, we use inferred options
-            // since this means the subclass doesn't override getComparator()
-            if (method == null) {
-                Map<String, Object> inferredOptions = INFERRED_OPTIONS.get();
-                if (inferredOptions != null && inferredOptions.containsKey(COMPARATOR)) {
-                    return (Comparator<? super K>) inferredOptions.get(COMPARATOR);
-                }
-            }
-        }
-        return null;
-    }
-
+    
     /* ------------------------------------------------------------ */
     // iterators
 
@@ -1412,10 +1395,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     if (isCaseInsensitiveComparator && caseSensitive) {
                         throw new IllegalStateException("Configuration mismatch: Map uses case-insensitive comparison but CompactMap is configured as case-sensitive");
                     }
-
-                    // Store both the comparator and the ordering
-                    inferred.put(COMPARATOR, mapComparator);
-
+                    
                     // Test if it's a reverse comparator
                     String test1 = "A";
                     String test2 = "B";
@@ -1515,15 +1495,6 @@ public class CompactMap<K, V> implements Map<K, V> {
      *         {@code CASE_SENSITIVE=false}.</td>
      *     <td>{@code UNORDERED}</td>
      *   </tr>
-     *   <tr>
-     *     <td>{@link #COMPARATOR}</td>
-     *     <td>Comparator&lt;? super K&gt;</td>
-     *     <td>A custom comparator to determine key order when {@code ORDERING = SORTED} or
-     *         {@code ORDERING = REVERSE}. If {@code CASE_SENSITIVE=false} and no comparator is provided,
-     *         string keys are sorted case-insensitively by default. If a comparator is provided,
-     *         it overrides any case-insensitive logic.</td>
-     *     <td>{@code null}</td>
-     *   </tr>
      * </table>
      *
      * <h3>Behavior and Validation</h3>
@@ -1544,6 +1515,29 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @see #validateAndFinalizeOptions(Map)
      */
     public static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
+        // Validate and finalize options first (existing code)
+        validateAndFinalizeOptions(options);
+
+        try {
+            // Get template class for these options
+            Class<?> templateClass = TemplateGenerator.getOrCreateTemplateClass(options);
+
+            // Create new instance
+            CompactMap<K, V> map = (CompactMap<K, V>) templateClass.newInstance();
+
+            // Initialize with source map if provided
+            Map<K, V> source = (Map<K, V>) options.get(SOURCE_MAP);
+            if (source != null) {
+                map.putAll(source);
+            }
+
+            return map;
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new IllegalStateException("Failed to create CompactMap instance", e);
+        }
+    }
+
+    public static <K, V> CompactMap<K, V> newMap2(Map<String, Object> options) {
         validateAndFinalizeOptions(options);
 
         // Create an immutable copy of the options
@@ -1553,44 +1547,51 @@ public class CompactMap<K, V> implements Map<K, V> {
         class FactoryCompactMap extends CompactMap<K, V> implements FactoryCreated {
             @Override
             protected Map<K, V> getNewMap() {
-                try {
-                    boolean caseSensitive = (boolean) finalOptions.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
-                    Comparator<? super K> comparator = (Comparator<? super K>) finalOptions.get(COMPARATOR);
-                    int capacity = (int) finalOptions.getOrDefault(CAPACITY, DEFAULT_CAPACITY);
+                boolean caseSensitive = !isCaseInsensitive();
+                int capacity = capacity();
+                String ordering = getOrdering();
+                Class<? extends Map> mapType = (Class<? extends Map>) finalOptions.get(MAP_TYPE);
 
-                    if (!caseSensitive) {
-                        Class<? extends Map<K, V>> innerMapType = (Class<? extends Map<K, V>>) finalOptions.get("INNER_MAP_TYPE");
-                        Map<K, V> innerMap;
-
-                        if (comparator != null && SortedMap.class.isAssignableFrom(innerMapType)) {
-                            innerMap = innerMapType.getConstructor(Comparator.class).newInstance(comparator);
-                        } else {
-                            Constructor<? extends Map<K, V>> constructor = innerMapType.getConstructor(int.class);
-                            innerMap = constructor.newInstance(capacity);
-                        }
-                        return new CaseInsensitiveMap<>(Collections.emptyMap(), innerMap);
+                if (caseSensitive) {
+                    if (SORTED.equals(ordering)) {
+                        return new TreeMap<>();
+                    } else if (REVERSE.equals(ordering)) {
+                        return new TreeMap<>(Collections.reverseOrder());
+                    } else if (INSERTION.equals(ordering)) {
+                        return new LinkedHashMap<>(capacity);
                     } else {
-                        Class<? extends Map<K, V>> mapType =
-                                (Class<? extends Map<K, V>>) finalOptions.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
-
-                        if (comparator != null && SortedMap.class.isAssignableFrom(mapType)) {
-                            return mapType.getConstructor(Comparator.class).newInstance(comparator);
-                        }
-                        Constructor<? extends Map<K, V>> constructor = mapType.getConstructor(int.class);
-                        return constructor.newInstance(capacity);
+                        return createMapInstance(mapType, capacity);
                     }
+                } else {
+                    Map<K, V> innerMap;
+                    if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
+                        innerMap = REVERSE.equals(ordering) ?
+                                new TreeMap<>(Collections.reverseOrder()) :
+                                new TreeMap<>();
+                    } else if (INSERTION.equals(ordering)) {
+                        innerMap = new LinkedHashMap<>(capacity);
+                    } else {
+                        innerMap = createMapInstance(mapType, capacity);
+                    }
+                    return new CaseInsensitiveMap<>(Collections.emptyMap(), innerMap);
+                }
+            }
+            
+            protected Map<K,V> createMapInstance(Class<? extends Map> mapType, int capacity) {
+                try {
+                    // First try with capacity constructor
+                    return mapType.getConstructor(int.class).newInstance(capacity);
                 } catch (Exception e) {
                     try {
-                        Class<? extends Map<K, V>> mapType =
-                                (Class<? extends Map<K, V>>) finalOptions.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
+                        // If that fails, try no-arg constructor
                         return mapType.getDeclaredConstructor().newInstance();
                     } catch (Exception ex) {
-                        throw new IllegalArgumentException("Unable to instantiate Map of type: " +
-                                finalOptions.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE).toString(), ex);
+                        // If all else fails, return a HashMap with the capacity
+                        return new HashMap<>(capacity);
                     }
                 }
             }
-
+            
             @Override
             protected boolean isCaseInsensitive() {
                 return !(boolean) finalOptions.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
@@ -1616,11 +1617,6 @@ public class CompactMap<K, V> implements Map<K, V> {
             protected String getOrdering() {
                 return (String) finalOptions.getOrDefault(ORDERING, UNORDERED);
             }
-
-            @Override
-            protected Comparator<? super K> getComparator() {
-                return (Comparator<? super K>) finalOptions.get(COMPARATOR);
-            }
         }
 
         CompactMap<K, V> map = new FactoryCompactMap();
@@ -1645,8 +1641,18 @@ public class CompactMap<K, V> implements Map<K, V> {
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         Class<? extends Map> mapType = determineMapType(options, ordering);
 
+        // Special handling for unsupported map types
+        if (IdentityHashMap.class.isAssignableFrom(mapType)) {
+            throw new IllegalArgumentException(
+                    "IdentityHashMap is not supported as it compares keys by reference identity");
+        }
+
+        if (WeakHashMap.class.isAssignableFrom(mapType)) {
+            throw new IllegalArgumentException(
+                    "WeakHashMap is not supported as it can unpredictably remove entries");
+        }
+
         // Get remaining options
-        Comparator<?> comparator = (Comparator<?>) options.get(COMPARATOR);
         boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
         Map<?, ?> sourceMap = (Map<?, ?>) options.get(SOURCE_MAP);
 
@@ -1671,71 +1677,9 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
-        // Add this code here to wrap the comparator if one exists
-        if (comparator != null) {
-            // Don't wrap if it's already a Collections.ReverseComparator
-            if (!isReverseComparator(comparator)) {
-                Comparator<?> originalComparator = comparator;
-                comparator = (a, b) -> {
-                    Object key1 = (a instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                            a.toString() : a;
-                    Object key2 = (b instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                            b.toString() : b;
-                    return ((Comparator<Object>) originalComparator).compare(key1, key2);
-                };
-                options.put(COMPARATOR, comparator);
-            }
-        }
-
-        // Handle case sensitivity for sorted maps when no comparator is provided
-        if ((ordering.equals(SORTED) || ordering.equals(REVERSE)) &&
-                !caseSensitive &&
-                comparator == null) {
-            // Create a wrapped case-insensitive comparator that handles CaseInsensitiveString
-            comparator = (o1, o2) -> {
-                String s1 = (o1 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                        o1.toString() : (String) o1;
-                String s2 = (o2 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                        o2.toString() : (String) o2;
-                return String.CASE_INSENSITIVE_ORDER.compare(s1, s2);
-            };
-            options.put(COMPARATOR, comparator);
-        }
-
-        // Handle reverse ordering with or without comparator
+        // Handle reverse ordering
         if (ordering.equals(REVERSE)) {
-            if (comparator == null) {
-                // For case-sensitive reverse ordering
-                comparator = (o1, o2) -> {
-                    String s1 = (o1 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                            o1.toString() : (String) o1;
-                    String s2 = (o2 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                            o2.toString() : (String) o2;
-                    return s2.compareTo(s1);
-                };
-            } else if (!isReverseComparator(comparator)) {
-                // Only reverse if not already a ReverseComparator
-                Comparator<Object> existing = (Comparator<Object>) comparator;
-                comparator = (o1, o2) -> {
-                    Object k1 = (o1 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                            o1.toString() : o1;
-                    Object k2 = (o2 instanceof CaseInsensitiveMap.CaseInsensitiveString) ?
-                            o2.toString() : o2;
-                    return existing.compare(k2, k1);
-                };
-            }
-            options.put(COMPARATOR, comparator);
-        }
-
-        // Special handling for unsupported map types
-        if (IdentityHashMap.class.isAssignableFrom(mapType)) {
-            throw new IllegalArgumentException(
-                    "IdentityHashMap is not supported as it compares keys by reference identity");
-        }
-
-        if (WeakHashMap.class.isAssignableFrom(mapType)) {
-            throw new IllegalArgumentException(
-                    "WeakHashMap is not supported as it can unpredictably remove entries");
+            options.put(ORDERING, REVERSE);
         }
 
         // Additional validation: Ensure SOURCE_MAP overrides capacity if provided
@@ -1743,31 +1687,12 @@ public class CompactMap<K, V> implements Map<K, V> {
             options.put(CAPACITY, sourceMap.size());
         }
 
-        // Resolve any conflicts or set missing defaults
-        if (ordering.equals(UNORDERED)) {
-            options.put(COMPARATOR, null); // Unordered maps don't need a comparator
-        }
-
         // Final default resolution
         options.putIfAbsent(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
-        options.putIfAbsent(CAPACITY, DEFAULT_CAPACITY);
         options.putIfAbsent(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+        options.putIfAbsent(CAPACITY, DEFAULT_CAPACITY);
         options.putIfAbsent(MAP_TYPE, DEFAULT_MAP_TYPE);
         options.putIfAbsent(ORDERING, UNORDERED);
-    }
-    
-    private static boolean isReverseComparator(Comparator<?> comp) {
-        if (comp == Collections.reverseOrder()) {
-            return true;
-        }
-        // Test if it's any form of reverse comparator by checking its behavior
-        try {
-            @SuppressWarnings("unchecked")
-            Comparator<Object> objComp = (Comparator<Object>) comp;
-            return objComp.compare("A", "B") > 0;  // Returns true if it's a reverse comparator
-        } catch (Exception e) {
-            return false;  // If comparison fails, assume it's not a reverse comparator
-        }
     }
 
     private static Class<? extends Map> determineMapType(Map<String, Object> options, String ordering) {
@@ -1857,7 +1782,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     /**
      * Creates a new CompactMapBuilder to construct a CompactMap with customizable properties.
-     *
+     * <p>
      * Example usage:
      * {@code
      * CompactMap<String, Object> map = CompactMap.builder()
@@ -1930,14 +1855,256 @@ public class CompactMap<K, V> implements Map<K, V> {
             options.put(CAPACITY, capacity);
             return this;
         }
-
-        public Builder<K, V> comparator(Comparator<?> comparator) {
-            options.put(COMPARATOR, comparator);
-            return this;
-        }
-
+        
         public CompactMap<K, V> build() {
             return CompactMap.newMap(options);
+        }
+    }
+
+    /**
+     * Generates template classes for CompactMap configurations.
+     * Each unique configuration combination will have its own template class
+     * that extends CompactMap and implements the desired behavior.
+     */
+    private static class TemplateGenerator {
+        private static final String TEMPLATE_CLASS_PREFIX = "com.cedarsoftware.util.CompactMap$Template_";
+
+        static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
+            String className = generateClassName(options);
+            try {
+                return ClassUtilities.getClassLoader().loadClass(className);
+            } catch (ClassNotFoundException e) {
+                return generateTemplateClass(options);
+            }
+        }
+
+        private static String generateClassName(Map<String, Object> options) {
+            StringBuilder keyBuilder = new StringBuilder();
+            // Build deterministic key from all options
+            keyBuilder.append("CS").append(options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE))
+                    .append("_SIZE").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE))
+                    .append("_CAP").append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
+                    .append("_MAP").append(((Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE)).getSimpleName())
+                    .append("_KEY").append(options.getOrDefault(SINGLE_KEY, "key"))
+                    .append("_ORD").append(options.getOrDefault(ORDERING, UNORDERED));
+
+            return TEMPLATE_CLASS_PREFIX +
+                    EncryptionUtilities.calculateSHA1Hash(keyBuilder.toString().getBytes());
+        }
+
+        private static synchronized Class<?> generateTemplateClass(Map<String, Object> options) {
+            // Double-check if class was created while waiting for lock
+            String className = generateClassName(options);
+            try {
+                return ClassUtilities.getClassLoader().loadClass(className);
+            } catch (ClassNotFoundException ignored) {
+                // Generate source code
+                String sourceCode = generateSourceCode(className, options);
+
+                // Compile source code using JavaCompiler
+                Class<?> templateClass = compileClass(className, sourceCode);
+
+                return templateClass;
+            }
+        }
+
+        private static String generateSourceCode(String className, Map<String, Object> options) {
+            String simpleClassName = className.substring(className.lastIndexOf('.') + 1);
+            StringBuilder sb = new StringBuilder();
+
+            // Package and imports
+            sb.append("package com.cedarsoftware.util;\n\n");
+            sb.append("import java.util.*;\n");
+            sb.append("\n");
+
+            // Class declaration
+            sb.append("public class ").append(simpleClassName)
+                    .append(" extends CompactMap {\n");
+
+            boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+            String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
+
+            // Override isCaseInsensitive()
+            sb.append("    protected boolean isCaseInsensitive() {\n")
+                    .append("        return ").append(!caseSensitive).append(";\n")
+                    .append("    }\n\n");
+
+            // Override compactSize()
+            sb.append("    protected int compactSize() {\n")
+                    .append("        return ").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE)).append(";\n")
+                    .append("    }\n\n");
+
+            // Override capacity()
+            sb.append("    protected int capacity() {\n")
+                    .append("        return ").append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY)).append(";\n")
+                    .append("    }\n\n");
+
+            // Override getSingleValueKey()
+            sb.append("    protected Object getSingleValueKey() {\n")
+                    .append("        return \"").append(options.getOrDefault(SINGLE_KEY, "key")).append("\";\n")
+                    .append("    }\n\n");
+
+            // Override getOrdering()
+            sb.append("    protected String getOrdering() {\n")
+                    .append("        return \"").append(ordering).append("\";\n")
+                    .append("    }\n\n");
+
+            // Override getNewMap()
+            sb.append("    protected Map getNewMap() {\n")
+                    .append("        try {\n");
+
+            int capacity = (Integer)options.getOrDefault(CAPACITY, DEFAULT_CAPACITY);
+            Class<?> mapType = (Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
+
+            if (SORTED.equals(ordering) || REVERSE.equals(ordering) || mapType == TreeMap.class) {
+                if (!caseSensitive) {
+                    if (REVERSE.equals(ordering)) {
+                        sb.append("            TreeMap baseMap = new TreeMap(Collections.reverseOrder(String.CASE_INSENSITIVE_ORDER));\n");
+                    } else {
+                        sb.append("            TreeMap baseMap = new TreeMap(String.CASE_INSENSITIVE_ORDER);\n");
+                    }
+                    sb.append("            return baseMap;\n");
+                } else {
+                    if (REVERSE.equals(ordering)) {
+                        sb.append("            return new TreeMap(Collections.reverseOrder());\n");
+                    } else {
+                        sb.append("            return new TreeMap();\n");
+                    }
+                }
+            } else {
+                // Handle custom map type using Class.forName()
+                String mapTypeName = mapType.getName().replace('$', '.');
+                sb.append("            Class<?> mapClass = ClassUtilities.getClassLoader().loadClass(\"").append(mapTypeName).append("\");\n")
+                  .append("            Map baseMap = (Map)mapClass.getConstructor(int.class).newInstance(").append(capacity).append(");\n");
+
+                if (!caseSensitive) {
+                    sb.append("            return new CaseInsensitiveMap(Collections.emptyMap(), baseMap);\n");
+                } else {
+                    sb.append("            return baseMap;\n");
+                }
+            }
+
+            sb.append("        } catch (Exception e) {\n")
+                    .append("            throw new RuntimeException(\"Failed to create map instance\", e);\n")
+                    .append("        }\n")
+                    .append("    }\n");
+
+            // Close class
+            sb.append("}\n");
+
+            return sb.toString();
+        }
+        
+        private static Class<?> compileClass(String className, String sourceCode) {
+            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+            if (compiler == null) {
+                throw new IllegalStateException("No JavaCompiler found. Ensure JDK (not just JRE) is being used.");
+            }
+
+            DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+            StandardJavaFileManager stdFileManager = compiler.getStandardFileManager(diagnostics, null, null);
+
+            // Create in-memory source file
+            SimpleJavaFileObject sourceFile = new SimpleJavaFileObject(
+                    URI.create("string:///" + className.replace('.', '/') + ".java"),
+                    JavaFileObject.Kind.SOURCE) {
+                @Override
+                public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+                    return sourceCode;
+                }
+            };
+
+            // Create in-memory output for class file
+            Map<String, ByteArrayOutputStream> classOutputs = new HashMap<>();
+            JavaFileManager fileManager = new ForwardingJavaFileManager(stdFileManager) {
+                @Override
+                public JavaFileObject getJavaFileForOutput(Location location,
+                                                           String className,
+                                                           JavaFileObject.Kind kind,
+                                                           FileObject sibling) throws IOException {
+                    if (kind == JavaFileObject.Kind.CLASS) {
+                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                        classOutputs.put(className, outputStream);
+                        return new SimpleJavaFileObject(
+                                URI.create("byte:///" + className.replace('.', '/') + ".class"),
+                                JavaFileObject.Kind.CLASS) {
+                            @Override
+                            public OutputStream openOutputStream() {
+                                return outputStream;
+                            }
+                        };
+                    }
+                    return super.getJavaFileForOutput(location, className, kind, sibling);
+                }
+            };
+
+            // Compile the source
+            JavaCompiler.CompilationTask task = compiler.getTask(
+                    null,                // Writer for compiler messages
+                    fileManager,         // Custom file manager
+                    diagnostics,         // DiagnosticListener
+                    Arrays.asList("-proc:none"), // Compiler options - disable annotation processing
+                    null,                // Classes for annotation processing
+                    Collections.singletonList(sourceFile)  // Source files to compile
+            );
+
+            boolean success = task.call();
+            if (!success) {
+                StringBuilder error = new StringBuilder("Compilation failed:\n");
+                for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+                    error.append(diagnostic.toString()).append('\n');
+                }
+                throw new IllegalStateException(error.toString());
+            }
+
+            // Get the class bytes
+            ByteArrayOutputStream classOutput = classOutputs.get(className);
+            if (classOutput == null) {
+                throw new IllegalStateException("No class file generated for " + className);
+            }
+
+            // Define the class
+            byte[] classBytes = classOutput.toByteArray();
+            return defineClass(className, classBytes);
+        }
+
+        private static Class<?> defineClass(String className, byte[] classBytes) {
+            // Use the current thread's context class loader as parent
+            ClassLoader parentLoader = Thread.currentThread().getContextClassLoader();
+            if (parentLoader == null) {
+                parentLoader = CompactMap.class.getClassLoader();
+            }
+
+            // Create our template class loader
+            TemplateClassLoader loader = new TemplateClassLoader(parentLoader);
+
+            // Define the class using our custom loader
+            return loader.defineTemplateClass(className, classBytes);
+        }
+    }
+
+    private static class TemplateClassLoader extends ClassLoader {
+        TemplateClassLoader(ClassLoader parent) {
+            super(parent);
+        }
+
+        Class<?> defineTemplateClass(String name, byte[] bytes) {
+            // First try to load from parent
+            try {
+                return findClass(name);
+            } catch (ClassNotFoundException e) {
+                // If not found, define it
+                return defineClass(name, bytes, 0, bytes.length);
+            }
+        }
+
+        @Override
+        protected Class<?> findClass(String name) throws ClassNotFoundException {
+            // First try parent classloader for any non-template classes
+            if (!name.contains("Template_")) {
+                return getParent().loadClass(name);
+            }
+            throw new ClassNotFoundException(name);
         }
     }
 }

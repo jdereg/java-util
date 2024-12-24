@@ -2,8 +2,6 @@ package com.cedarsoftware.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -16,8 +14,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -66,7 +62,6 @@ public class CompactMapBuilderConfigTest {
                 .mapType(TreeMap.class)
                 .reverseOrder()
                 .caseSensitive(false)
-                .comparator(String.CASE_INSENSITIVE_ORDER)
                 .build();
 
         verifyMapBehavior(map, true, false); // reverse=true, caseSensitive=false
@@ -91,7 +86,6 @@ public class CompactMapBuilderConfigTest {
                 .mapType(TreeMap.class)
                 .sortedOrder()
                 .caseSensitive(false)
-                .comparator(String.CASE_INSENSITIVE_ORDER)
                 .build();
 
         verifyMapBehavior(map, false, false); // reverse=false, caseSensitive=false
@@ -195,7 +189,6 @@ public class CompactMapBuilderConfigTest {
         CompactMap<String, String> map = CompactMap.<String, String>builder()
                 .mapType(TreeMap.class)
                 .reverseOrder()
-                .comparator(Collections.reverseOrder())
                 .build();
 
         map.put("C", "charlie");
@@ -353,101 +346,7 @@ public class CompactMapBuilderConfigTest {
         assertEquals("BBB", keys.get(1));
         assertEquals("AAA", keys.get(2));
     }
-
-    @Test
-    public void testReverseOrderNullComparatorCreation() {
-        Map<String, Object> options = new HashMap<>();
-        // Set up the exact conditions needed:
-        // 1. ORDERING must be REVERSE
-        // 2. CASE_SENSITIVE must be false
-        // 3. COMPARATOR must be null
-        // 4. No other conditions should trigger comparator creation before our target code
-        options.put(CompactMap.ORDERING, CompactMap.REVERSE);
-        options.put(CompactMap.CASE_SENSITIVE, false);
-        options.remove(CompactMap.COMPARATOR);
-
-        // Don't set MAP_TYPE to avoid other comparator creation paths
-
-        CompactMap.validateAndFinalizeOptions(options);
-
-        // Get and test the created comparator
-        @SuppressWarnings("unchecked")
-        Comparator<Object> comparator = (Comparator<Object>) options.get(CompactMap.COMPARATOR);
-
-        // Test the comparator with both String and CaseInsensitiveString
-        CaseInsensitiveMap.CaseInsensitiveString cis =
-                new CaseInsensitiveMap.CaseInsensitiveString("BBB");
-
-        // In reverse order, BBB should be greater than AAA
-        assertTrue(comparator.compare(cis, "AAA") < 0);
-        assertTrue(comparator.compare("BBB", "AAA") < 0);
-
-        // Case insensitive check
-        assertEquals(0, comparator.compare(cis, "bbb"));
-        assertEquals(0, comparator.compare("BBB", "bbb"));
-    }
-
-    @Test
-    public void testReverseOrderComparatorCreation() {
-        Map<String, Object> options = new HashMap<>();
-
-        // Important sequence:
-        // 1. Set TreeMap as map type since we need a SortedMap for reverse ordering
-        options.put(CompactMap.MAP_TYPE, TreeMap.class);
-
-        // 2. Set case insensitive without a comparator
-        options.put(CompactMap.CASE_SENSITIVE, false);
-        options.put(CompactMap.ORDERING, CompactMap.REVERSE);
-
-        // 3. Explicitly ensure no comparator
-        options.remove(CompactMap.COMPARATOR);
-
-        // Before validation, verify our preconditions
-        assertNull(options.get(CompactMap.COMPARATOR));
-        assertEquals(false, options.get(CompactMap.CASE_SENSITIVE));
-        assertEquals(CompactMap.REVERSE, options.get(CompactMap.ORDERING));
-
-        CompactMap.validateAndFinalizeOptions(options);
-
-        // Get and test the comparator
-        @SuppressWarnings("unchecked")
-        Comparator<Object> comparator = (Comparator<Object>) options.get(CompactMap.COMPARATOR);
-        assertNotNull(comparator);
-
-        // Test both case sensitivity and reverse ordering
-        CaseInsensitiveMap.CaseInsensitiveString cisKey =
-                new CaseInsensitiveMap.CaseInsensitiveString("BBB");
-
-        // Test case insensitivity
-        int equalityResult = comparator.compare(cisKey, "bbb");
-        assertEquals(0, equalityResult,
-                "BBB and bbb should be equal (got comparison result: " + equalityResult + ")");
-
-        // Test reverse ordering
-        int reverseResult = comparator.compare("BBB", "AAA");
-        assertTrue(reverseResult < 0,
-                "BBB should be less than AAA in reverse order (got comparison result: " + reverseResult + ")");
-    }
-
-    @Test
-    public void testComparatorCreationFlow() {
-        Map<String, Object> options = new HashMap<>();
-        options.put(CompactMap.MAP_TYPE, TreeMap.class);
-        options.put(CompactMap.CASE_SENSITIVE, false);
-        options.put(CompactMap.ORDERING, CompactMap.REVERSE);
-
-        // Verify initial state
-        assertNull(options.get(CompactMap.COMPARATOR));
-        assertFalse((Boolean)options.get(CompactMap.CASE_SENSITIVE));
-        assertEquals(CompactMap.REVERSE, options.get(CompactMap.ORDERING));
-
-        // This call will hit the first block and set the comparator
-        CompactMap.validateAndFinalizeOptions(options);
-
-        // Verify final state - comparator should be non-null
-        assertNotNull(options.get(CompactMap.COMPARATOR));
-    }
-
+    
     @Test
     public void testSourceMapOrderingConflict() {
         // Create a TreeMap (naturally sorted) as the source
@@ -472,7 +371,7 @@ public class CompactMapBuilderConfigTest {
     }
 
     // Static inner class that tracks capacity
-    private static class CapacityTrackingHashMap<K,V> extends HashMap<K,V> {
+    static class CapacityTrackingHashMap<K,V> extends HashMap<K,V> {
         private static int lastCapacityUsed;
 
         public CapacityTrackingHashMap() {

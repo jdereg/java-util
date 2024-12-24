@@ -296,70 +296,6 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
         return Objects.equals(key, aKey);
     }
-
-    /**
-     * Compares two keys for ordering based on the map's ordering and case sensitivity settings.
-     *
-     * @param key1 the first key to compare
-     * @param key2 the second key to compare
-     * @param forceReverse override to force reverse ordering regardless of map settings
-     * @return a negative integer, zero, or positive integer as key1 is less than, equal to, or greater than key2
-     */
-    private int compareKeysForOrder(Object key1, Object key2, boolean forceReverse) {
-        // 1. Handle nulls explicitly
-        if (key1 == null) {
-            return (key2 == null) ? 0 : 1;  // Nulls last when sorting
-        }
-        if (key2 == null) {
-            return -1; // Nulls last when sorting
-        }
-
-        // 2. Early exit if keys are equal based on case sensitivity
-        if (areKeysEqual(key1, key2)) {
-            return 0;
-        }
-
-        Class<?> key1Class = key1.getClass();
-        Class<?> key2Class = key2.getClass();
-
-        int result;
-        if (isLegacyConstructed()) {
-            if (isCaseInsensitive() && key1Class == String.class && key2Class == String.class) {
-                result = String.CASE_INSENSITIVE_ORDER.compare((String)key1, (String)key2);
-            } else if (key1 instanceof Comparable) {
-                result = ((Comparable)key1).compareTo(key2);
-            } else {
-                result = key1Class.getName().compareTo(key2Class.getName());
-            }
-        } else {
-            // Non-legacy mode logic
-            if (key1Class == String.class) {
-                if (key2Class == String.class) {
-                    result = isCaseInsensitive()
-                            ? String.CASE_INSENSITIVE_ORDER.compare((String) key1, (String) key2)
-                            : ((String) key1).compareTo((String) key2);
-                } else {
-                    // key1 is String, key2 is not - use class name comparison
-                    result = key1Class.getName().compareTo(key2Class.getName());
-                }
-            } else if (key1Class == key2Class && key1 instanceof Comparable) {
-                // Same type and comparable
-                result = ((Comparable<Object>) key1).compareTo(key2);
-            } else {
-                // Fallback to class name comparison for different types
-                result = key1Class.getName().compareTo(key2Class.getName());
-            }
-        }
-
-        // Apply reverse ordering if needed
-        boolean shouldReverse = forceReverse || REVERSE.equals(getOrdering());
-        return shouldReverse ? -result : result;
-    }
-
-    // Remove the old two-parameter version and update all calls to use the three-parameter version
-    private int compareKeysForOrder(Object key1, Object key2) {
-        return compareKeysForOrder(key1, key2, false);
-    }
     
     private boolean isLegacyConstructed() {
         return !getClass().getName().contains("caseSen_");
@@ -576,24 +512,15 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (isLegacyConstructed()) {
             Map<K,V> mapInstance = getNewMap();  // Called only once before iteration
 
-            // Don't sort if the underlying map is insertion-ordered
-            if (mapInstance instanceof LinkedHashMap ||
-                    (mapInstance instanceof CaseInsensitiveMap &&
-                            ((CaseInsensitiveMap)mapInstance).getWrappedMap() instanceof LinkedHashMap)) {
-                return;  // Preserve insertion order
-            }
-
-            boolean reverse = false;
+            // Only sort if it's a SortedMap
             if (mapInstance instanceof SortedMap) {
                 SortedMap<K,V> sortedMap = (SortedMap<K,V>)mapInstance;
-                Comparator<?> comparator = sortedMap.comparator();
-                if (comparator != null) {
-                    reverse = comparator.getClass().getName().toLowerCase().contains("reversecomp");
-                }
-            }
+                boolean reverse = sortedMap.comparator() != null &&
+                        sortedMap.comparator().getClass().getName().toLowerCase().contains("reversecomp");
 
-            Comparator<Object> comparator = new CompactMapComparator(isCaseInsensitive(), reverse);
-            quickSort(array, 0, pairCount - 1, comparator);
+                Comparator<Object> comparator = new CompactMapComparator(isCaseInsensitive(), reverse);
+                quickSort(array, 0, pairCount - 1, comparator);
+            }
             return;
         }
 
@@ -725,33 +652,17 @@ public class CompactMap<K, V> implements Map<K, V> {
             K existingKey = getLogicalSingleKey();
             V existingValue = getLogicalSingleValue();
 
-            // Determine order based on comparison
-            if (SORTED.equals(getOrdering()) || REVERSE.equals(getOrdering())) {
-                int comparison = compareKeysForOrder(existingKey, key);
-                if (comparison <= 0) {
-                    entries[0] = existingKey;
-                    entries[1] = existingValue;
-                    entries[2] = key;
-                    entries[3] = value;
-                } else {
-                    entries[0] = key;
-                    entries[1] = value;
-                    entries[2] = existingKey;
-                    entries[3] = existingValue;
-                }
-            } else {
-                // For INSERTION or UNORDERED, maintain insertion order
-                entries[0] = existingKey;
-                entries[1] = existingValue;
-                entries[2] = key;
-                entries[3] = value;
-            }
+            // Simply append the entries in order: existing entry first, new entry second
+            entries[0] = existingKey;
+            entries[1] = existingValue;
+            entries[2] = key;
+            entries[3] = value;
 
             val = entries;
             return null;
         }
     }
-
+    
     /**
      * Handles a remove operation when the map has a single entry.
      */
@@ -1774,16 +1685,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Basic imports
             sb.append("import java.util.*;\n");
-            sb.append("import java.util.concurrent.*;\n");  // Add this for concurrent collections
-
-            // Add import for map type if it's in a different package
-            Class<?> mapType = (Class<?>)options.get(MAP_TYPE);
-            if (mapType != null &&
-                    !mapType.getPackage().getName().equals("com.cedarsoftware.util")) {
-                sb.append("import ").append(mapType.getName()).append(";\n");
-            }
-
-            sb.append("\n");
+            sb.append("import java.util.concurrent.*;\n\n");  // Add this for concurrent collections
 
             // Class declaration
             sb.append("public class ").append(simpleClassName)
@@ -1826,7 +1728,6 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Close class
             sb.append("}\n");
-
             return sb.toString();
         }
 

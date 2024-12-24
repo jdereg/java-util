@@ -225,17 +225,14 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // Only check configuration for direct subclasses
-        if (getClass() != CompactMap.class) {
-            // First check if isCaseInsensitive is explicitly overridden
+        if (getClass() != CompactMap.class && !getClass().getName().contains("caseSen_")) {
             Method caseMethod = ReflectionUtils.getMethodAnyAccess(getClass(), "isCaseInsensitive", false);
             boolean isOverridden = caseMethod != null && caseMethod.getDeclaringClass() != CompactMap.class;
 
             if (isOverridden) {
-                // Get the map to check its configuration
                 Map<K,V> map = getNewMap();
                 if (map instanceof SortedMap) {
                     Comparator<?> comparator = ((SortedMap<?,?>)map).comparator();
-                    // If map uses case-insensitive comparison but class says sensitive
                     if (comparator == String.CASE_INSENSITIVE_ORDER && !isCaseInsensitive()) {
                         throw new IllegalStateException(
                                 "Configuration mismatch: Map uses case-insensitive comparison but CompactMap is configured as case-sensitive");
@@ -1207,18 +1204,17 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     protected boolean isCaseInsensitive() {
+        // Skip inference for generated classes
+        if (getClass().getName().contains("caseSen_")) {
+            return false;
+        }
+
+        // Do inference for direct subclasses
         if (getClass() != CompactMap.class) {
             Map<K,V> map = getNewMap();
             if (map instanceof SortedMap) {
                 Comparator<?> comparator = ((SortedMap<?,?>)map).comparator();
                 if (comparator == String.CASE_INSENSITIVE_ORDER) {
-                    // If this class overrides isCaseInsensitive() and returns false,
-                    // but the map uses case insensitive comparison, that's a mismatch
-                    Method method = ReflectionUtils.getMethod(getClass(), "isCaseInsensitive");
-                    if (method != null && method.getDeclaringClass() != CompactMap.class) {
-                        throw new IllegalStateException(
-                                "Configuration mismatch: Map uses case-insensitive comparison but CompactMap is configured as case-sensitive");
-                    }
                     return true;
                 }
             }
@@ -1245,19 +1241,19 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the ordering strategy for this map
      */
     protected String getOrdering() {
-        // If we're a direct subclass and getNewMap returns a SortedMap,
-        // infer SORTED or REVERSE ordering
+        // Skip inference for generated classes
+        if (getClass().getName().contains("caseSen_")) {
+            return UNORDERED;
+        }
+
+        // Do inference for direct subclasses
         if (getClass() != CompactMap.class) {
             Map<K,V> map = getNewMap();
             if (map instanceof SortedMap) {
                 Comparator<?> comparator = ((SortedMap<?,?>)map).comparator();
                 if (comparator != null) {
-                    // Check for reverse case-insensitive order
-                    if (comparator.equals(Collections.reverseOrder(String.CASE_INSENSITIVE_ORDER))) {
-                        return REVERSE;
-                    }
-                    // Check for regular reverse order
-                    if (comparator.equals(Collections.reverseOrder())) {
+                    if (comparator.equals(Collections.reverseOrder(String.CASE_INSENSITIVE_ORDER)) ||
+                            comparator.equals(Collections.reverseOrder())) {
                         return REVERSE;
                     }
                 }
@@ -1800,102 +1796,114 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Package and imports
             sb.append("package com.cedarsoftware.util;\n\n");
-            sb.append("import java.util.*;\n");
-            sb.append("\n");
+            sb.append("import java.util.*;\n\n");
+
+            // Add import for the test class if needed
+            Class<?> mapType = (Class<?>)options.get(MAP_TYPE);
+            if (mapType != null && mapType.getEnclosingClass() != null) {
+                sb.append("import ").append(mapType.getEnclosingClass().getName()).append(".*;\n");
+            }
 
             // Class declaration
             sb.append("public class ").append(simpleClassName)
                     .append(" extends CompactMap {\n");
 
-            boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
-            String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
-
-            // Handle both Class and String map types
-            Object mapTypeObj = options.get(MAP_TYPE);
-            String mapTypeName;
-            if (mapTypeObj instanceof Class) {
-                Class<?> mapClass = (Class<?>) mapTypeObj;
-                // For inner classes, use getBinaryName instead of getName
-                if (mapClass.isMemberClass()) {
-                    mapTypeName = mapClass.getDeclaringClass().getName() + "$" + mapClass.getSimpleName();
-                } else {
-                    mapTypeName = mapClass.getName();
-                }
-            } else {
-                mapTypeName = (String) mapTypeObj;
-            }
-
-            // Add the static MAP_TYPE_NAME field instead of MAP_TYPE_CLASS
-            sb.append("    private static final String MAP_TYPE_NAME = \"")
-                    .append(mapTypeName)
-                    .append("\";\n\n");
-
-            // Override isCaseInsensitive()
-            sb.append("    protected boolean isCaseInsensitive() {\n")
-                    .append("        return ").append(!caseSensitive).append(";\n")
-                    .append("    }\n\n");
-
-            // Override compactSize()
-            sb.append("    protected int compactSize() {\n")
-                    .append("        return ").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE)).append(";\n")
-                    .append("    }\n\n");
-
-            // Override capacity()
-            sb.append("    protected int capacity() {\n")
-                    .append("        return ").append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY)).append(";\n")
-                    .append("    }\n\n");
-
-            // Override getSingleValueKey()
-            sb.append("    protected Object getSingleValueKey() {\n")
-                    .append("        return \"").append(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY)).append("\";\n")
-                    .append("    }\n\n");
-
-            // Override getOrdering()
-            sb.append("    protected String getOrdering() {\n")
-                    .append("        return \"").append(ordering).append("\";\n")
-                    .append("    }\n\n");
-
-            // Override getNewMap()
-            sb.append("    protected Map getNewMap() {\n")
-                    .append("        try {\n");
-
-            if (SORTED.equals(ordering) || REVERSE.equals(ordering) || mapTypeName.endsWith("TreeMap")) {
-                if (!caseSensitive) {
-                    if (REVERSE.equals(ordering)) {
-                        sb.append("            TreeMap baseMap = new TreeMap(Collections.reverseOrder(String.CASE_INSENSITIVE_ORDER));\n");
-                    } else {
-                        sb.append("            TreeMap baseMap = new TreeMap(String.CASE_INSENSITIVE_ORDER);\n");
-                    }
-                    sb.append("            return baseMap;\n");
-                } else {
-                    if (REVERSE.equals(ordering)) {
-                        sb.append("            return new TreeMap(Collections.reverseOrder());\n");
-                    } else {
-                        sb.append("            return new TreeMap();\n");
-                    }
-                }
-            } else {
-                sb.append("            Class<?> mapClass = ClassUtilities.getClassLoader().loadClass(MAP_TYPE_NAME);\n")
-                        .append("            Map baseMap = (Map)mapClass.getConstructor(int.class).newInstance(")
-                        .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
-                        .append(");\n");
-
-                if (!caseSensitive) {
-                    sb.append("            return new CaseInsensitiveMap(Collections.emptyMap(), baseMap);\n");
-                } else {
-                    sb.append("            return baseMap;\n");
-                }
-            }
-
-            sb.append("        } catch (Exception e) {\n")
-                    .append("            throw new RuntimeException(\"Failed to create map instance\", e);\n")
-                    .append("        }\n")
-                    .append("    }\n");
+            // Now explicitly override ALL configuration methods
+            appendAllConfigurationOverrides(sb, options);
 
             // Close class
             sb.append("}\n");
 
-            return sb.toString();
+            String code = sb.toString();
+            return code;
+        }
+
+        private static void appendAllConfigurationOverrides(StringBuilder sb, Map<String, Object> options) {
+            // Override isCaseInsensitive
+            boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+            sb.append("    @Override\n")
+                    .append("    protected boolean isCaseInsensitive() {\n")
+                    .append("        return ").append(!caseSensitive).append(";\n")
+                    .append("    }\n\n");
+
+            // Override compactSize
+            sb.append("    @Override\n")
+                    .append("    protected int compactSize() {\n")
+                    .append("        return ").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE)).append(";\n")
+                    .append("    }\n\n");
+
+            // Override capacity
+            sb.append("    @Override\n")
+                    .append("    protected int capacity() {\n")
+                    .append("        return ").append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY)).append(";\n")
+                    .append("    }\n\n");
+
+            // Override getSingleValueKey
+            sb.append("    @Override\n")
+                    .append("    protected Object getSingleValueKey() {\n")
+                    .append("        return \"").append(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY)).append("\";\n")
+                    .append("    }\n\n");
+
+            // Override getOrdering
+            String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
+            sb.append("    @Override\n")
+                    .append("    protected String getOrdering() {\n")
+                    .append("        return \"").append(ordering).append("\";\n")
+                    .append("    }\n\n");
+
+            // Override getNewMap with direct implementation based on options
+            appendGetNewMapOverride(sb, options);
+        }
+
+        private static void appendGetNewMapOverride(StringBuilder sb, Map<String, Object> options) {
+            String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
+            boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
+
+            sb.append("    @Override\n")
+                    .append("    protected Map getNewMap() {\n");
+
+            if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
+                if (!caseSensitive) {
+                    if (REVERSE.equals(ordering)) {
+                        sb.append("        return new TreeMap(Collections.reverseOrder(String.CASE_INSENSITIVE_ORDER));\n");
+                    } else {
+                        sb.append("        return new TreeMap(String.CASE_INSENSITIVE_ORDER);\n");
+                    }
+                } else {
+                    if (REVERSE.equals(ordering)) {
+                        sb.append("        return new TreeMap(Collections.reverseOrder());\n");
+                    } else {
+                        sb.append("        return new TreeMap();\n");
+                    }
+                }
+            } else {
+                Class<?> mapType = (Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
+                if (mapType.getEnclosingClass() != null) {
+                    if (mapType.getPackage().getName().equals("com.cedarsoftware.util")) {
+                        // Same package - use simple enclosing class name
+                        sb.append("        return new ")
+                                .append(mapType.getEnclosingClass().getSimpleName())
+                                .append(".")
+                                .append(mapType.getSimpleName());
+                    } else {
+                        // Different package - use fully qualified name
+                        sb.append("        return new ")
+                                .append(mapType.getName().replace('$', '.'));
+                    }
+                    sb.append("(")
+                            .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
+                            .append(");\n");
+                } else {
+                    // Not an inner class - use simple name as it will be imported
+                    sb.append("        return new ")
+                            .append(mapType.getSimpleName())
+                            .append("(")
+                            .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
+                            .append(");\n");
+                }
+            }
+
+            sb.append("    }\n");
         }
         
         private static Class<?> compileClass(String className, String sourceCode) {

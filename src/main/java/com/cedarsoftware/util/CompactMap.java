@@ -207,11 +207,12 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static final int DEFAULT_CAPACITY = 16;
     private static final boolean DEFAULT_CASE_SENSITIVE = true;
     private static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
+    private static final String DEFAULT_SINGLE_KEY = "id";
 
     // The only "state" and why this is a compactMap - one member variable
     protected Object val = EMPTY_MAP;
 
-    private interface FactoryCreated { }
+    protected interface FactoryCreated { }
     
     /**
      * Constructs an empty CompactMap with the default configuration.
@@ -1170,7 +1171,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return String key name when there is only one entry in the Map.
      */
     protected K getSingleValueKey() {
-        return (K) "key";
+        return (K) DEFAULT_SINGLE_KEY;
     }
 
     /**
@@ -1395,7 +1396,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     if (isCaseInsensitiveComparator && caseSensitive) {
                         throw new IllegalStateException("Configuration mismatch: Map uses case-insensitive comparison but CompactMap is configured as case-sensitive");
                     }
-                    
+
                     // Test if it's a reverse comparator
                     String test1 = "A";
                     String test2 = "B";
@@ -1471,7 +1472,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *     <td>K</td>
      *     <td>Specifies a special key that, if present as the sole entry in the map, allows the map
      *         to store just the value without a {@code Map.Entry}, saving memory for single-entry maps.</td>
-     *     <td>{@code "key"}</td>
+     *     <td>{@code "id"}</td>
      *   </tr>
      *   <tr>
      *     <td>{@link #SOURCE_MAP}</td>
@@ -1536,99 +1537,6 @@ public class CompactMap<K, V> implements Map<K, V> {
             throw new IllegalStateException("Failed to create CompactMap instance", e);
         }
     }
-
-    public static <K, V> CompactMap<K, V> newMap2(Map<String, Object> options) {
-        validateAndFinalizeOptions(options);
-
-        // Create an immutable copy of the options
-        final Map<String, Object> finalOptions = Collections.unmodifiableMap(new HashMap<>(options));
-
-        // Create a class that extends CompactMap and implements FactoryCreated
-        class FactoryCompactMap extends CompactMap<K, V> implements FactoryCreated {
-            @Override
-            protected Map<K, V> getNewMap() {
-                boolean caseSensitive = !isCaseInsensitive();
-                int capacity = capacity();
-                String ordering = getOrdering();
-                Class<? extends Map> mapType = (Class<? extends Map>) finalOptions.get(MAP_TYPE);
-
-                if (caseSensitive) {
-                    if (SORTED.equals(ordering)) {
-                        return new TreeMap<>();
-                    } else if (REVERSE.equals(ordering)) {
-                        return new TreeMap<>(Collections.reverseOrder());
-                    } else if (INSERTION.equals(ordering)) {
-                        return new LinkedHashMap<>(capacity);
-                    } else {
-                        return createMapInstance(mapType, capacity);
-                    }
-                } else {
-                    Map<K, V> innerMap;
-                    if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
-                        innerMap = REVERSE.equals(ordering) ?
-                                new TreeMap<>(Collections.reverseOrder()) :
-                                new TreeMap<>();
-                    } else if (INSERTION.equals(ordering)) {
-                        innerMap = new LinkedHashMap<>(capacity);
-                    } else {
-                        innerMap = createMapInstance(mapType, capacity);
-                    }
-                    return new CaseInsensitiveMap<>(Collections.emptyMap(), innerMap);
-                }
-            }
-            
-            protected Map<K,V> createMapInstance(Class<? extends Map> mapType, int capacity) {
-                try {
-                    // First try with capacity constructor
-                    return mapType.getConstructor(int.class).newInstance(capacity);
-                } catch (Exception e) {
-                    try {
-                        // If that fails, try no-arg constructor
-                        return mapType.getDeclaredConstructor().newInstance();
-                    } catch (Exception ex) {
-                        // If all else fails, return a HashMap with the capacity
-                        return new HashMap<>(capacity);
-                    }
-                }
-            }
-            
-            @Override
-            protected boolean isCaseInsensitive() {
-                return !(boolean) finalOptions.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
-            }
-
-            @Override
-            protected int compactSize() {
-                return (int) finalOptions.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
-            }
-
-            @Override
-            protected int capacity() {
-                return (int) finalOptions.getOrDefault(CAPACITY, DEFAULT_CAPACITY);
-            }
-
-            @Override
-            protected K getSingleValueKey() {
-                K key = (K) finalOptions.get(SINGLE_KEY);
-                return key != null ? key : super.getSingleValueKey();
-            }
-
-            @Override
-            protected String getOrdering() {
-                return (String) finalOptions.getOrDefault(ORDERING, UNORDERED);
-            }
-        }
-
-        CompactMap<K, V> map = new FactoryCompactMap();
-
-        // Initialize with source map if provided
-        Map<K, V> source = (Map<K, V>) options.get(SOURCE_MAP);
-        if (source != null) {
-            map.putAll(source);
-        }
-
-        return map;
-    }
     
     /**
      * Validates the provided configuration options and resolves conflicts.
@@ -1640,6 +1548,10 @@ public class CompactMap<K, V> implements Map<K, V> {
         // First check raw map type before any defaults are applied
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         Class<? extends Map> mapType = determineMapType(options, ordering);
+
+        // Store both the class and its name
+        options.put("MAP_TYPE_CLASS", mapType);
+        options.put(MAP_TYPE, mapType);  // Keep it as Class object
 
         // Special handling for unsupported map types
         if (IdentityHashMap.class.isAssignableFrom(mapType)) {
@@ -1700,16 +1612,15 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // If rawMapType is null, use existing logic
         if (rawMapType == null) {
-            Class<? extends Map> mapType;
             if (ordering.equals(INSERTION)) {
-                mapType = LinkedHashMap.class;
+                rawMapType = LinkedHashMap.class;
             } else if (ordering.equals(SORTED) || ordering.equals(REVERSE)) {
-                mapType = TreeMap.class;
+                rawMapType = TreeMap.class;
             } else {
-                mapType = DEFAULT_MAP_TYPE;
+                rawMapType = DEFAULT_MAP_TYPE;
             }
-            options.put(MAP_TYPE, mapType);
-            return mapType;
+            options.put(MAP_TYPE, rawMapType);  // Store the Class object, not the name
+            return rawMapType;
         }
 
         // Handle case where rawMapType is set
@@ -1733,12 +1644,6 @@ public class CompactMap<K, V> implements Map<K, V> {
                 options.put(ORDERING, UNORDERED);
                 ordering = UNORDERED;
             }
-        }
-
-        // Copy case sensitivity setting from rawMapType if not explicitly set
-        if (!options.containsKey(CASE_SENSITIVE)) {
-            boolean isCaseSensitive = !CaseInsensitiveMap.class.isAssignableFrom(rawMapType); // default
-            options.put(CASE_SENSITIVE, isCaseSensitive);
         }
 
         // Verify ordering compatibility
@@ -1867,7 +1772,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * that extends CompactMap and implements the desired behavior.
      */
     private static class TemplateGenerator {
-        private static final String TEMPLATE_CLASS_PREFIX = "com.cedarsoftware.util.CompactMap$Template_";
+        private static final String TEMPLATE_CLASS_PREFIX = "com.cedarsoftware.util.CompactMap$";
 
         static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
             String className = generateClassName(options);
@@ -1880,16 +1785,25 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         private static String generateClassName(Map<String, Object> options) {
             StringBuilder keyBuilder = new StringBuilder();
-            // Build deterministic key from all options
-            keyBuilder.append("CS").append(options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE))
-                    .append("_SIZE").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE))
-                    .append("_CAP").append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
-                    .append("_MAP").append(((Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE)).getSimpleName())
-                    .append("_KEY").append(options.getOrDefault(SINGLE_KEY, "key"))
-                    .append("_ORD").append(options.getOrDefault(ORDERING, UNORDERED));
 
-            return TEMPLATE_CLASS_PREFIX +
-                    EncryptionUtilities.calculateSHA1Hash(keyBuilder.toString().getBytes());
+            // Handle both Class and String map types
+            Object mapTypeObj = options.get(MAP_TYPE);
+            String mapTypeName;
+            if (mapTypeObj instanceof Class) {
+                mapTypeName = ((Class<?>) mapTypeObj).getSimpleName();
+            } else {
+                mapTypeName = (String) mapTypeObj;
+            }
+
+            // Build key from all options
+            keyBuilder.append("caseSen_").append(options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE))
+                    .append("_size_").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE))
+                    .append("_capacity_").append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
+                    .append("_mapType_").append(mapTypeName.replace('.', '_'))  // replace dots with underscores
+                    .append("_key_").append(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY))
+                    .append("_order_").append(options.getOrDefault(ORDERING, UNORDERED));
+
+            return TEMPLATE_CLASS_PREFIX + keyBuilder;
         }
 
         private static synchronized Class<?> generateTemplateClass(Map<String, Object> options) {
@@ -1903,7 +1817,6 @@ public class CompactMap<K, V> implements Map<K, V> {
 
                 // Compile source code using JavaCompiler
                 Class<?> templateClass = compileClass(className, sourceCode);
-
                 return templateClass;
             }
         }
@@ -1924,6 +1837,26 @@ public class CompactMap<K, V> implements Map<K, V> {
             boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
             String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
 
+            // Handle both Class and String map types
+            Object mapTypeObj = options.get(MAP_TYPE);
+            String mapTypeName;
+            if (mapTypeObj instanceof Class) {
+                Class<?> mapClass = (Class<?>) mapTypeObj;
+                // For inner classes, use getBinaryName instead of getName
+                if (mapClass.isMemberClass()) {
+                    mapTypeName = mapClass.getDeclaringClass().getName() + "$" + mapClass.getSimpleName();
+                } else {
+                    mapTypeName = mapClass.getName();
+                }
+            } else {
+                mapTypeName = (String) mapTypeObj;
+            }
+
+            // Add the static MAP_TYPE_NAME field instead of MAP_TYPE_CLASS
+            sb.append("    private static final String MAP_TYPE_NAME = \"")
+                    .append(mapTypeName)
+                    .append("\";\n\n");
+
             // Override isCaseInsensitive()
             sb.append("    protected boolean isCaseInsensitive() {\n")
                     .append("        return ").append(!caseSensitive).append(";\n")
@@ -1941,7 +1874,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Override getSingleValueKey()
             sb.append("    protected Object getSingleValueKey() {\n")
-                    .append("        return \"").append(options.getOrDefault(SINGLE_KEY, "key")).append("\";\n")
+                    .append("        return \"").append(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY)).append("\";\n")
                     .append("    }\n\n");
 
             // Override getOrdering()
@@ -1953,10 +1886,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             sb.append("    protected Map getNewMap() {\n")
                     .append("        try {\n");
 
-            int capacity = (Integer)options.getOrDefault(CAPACITY, DEFAULT_CAPACITY);
-            Class<?> mapType = (Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
-
-            if (SORTED.equals(ordering) || REVERSE.equals(ordering) || mapType == TreeMap.class) {
+            if (SORTED.equals(ordering) || REVERSE.equals(ordering) || mapTypeName.endsWith("TreeMap")) {
                 if (!caseSensitive) {
                     if (REVERSE.equals(ordering)) {
                         sb.append("            TreeMap baseMap = new TreeMap(Collections.reverseOrder(String.CASE_INSENSITIVE_ORDER));\n");
@@ -1972,10 +1902,10 @@ public class CompactMap<K, V> implements Map<K, V> {
                     }
                 }
             } else {
-                // Handle custom map type using Class.forName()
-                String mapTypeName = mapType.getName().replace('$', '.');
-                sb.append("            Class<?> mapClass = ClassUtilities.getClassLoader().loadClass(\"").append(mapTypeName).append("\");\n")
-                  .append("            Map baseMap = (Map)mapClass.getConstructor(int.class).newInstance(").append(capacity).append(");\n");
+                sb.append("            Class<?> mapClass = ClassUtilities.getClassLoader().loadClass(MAP_TYPE_NAME);\n")
+                        .append("            Map baseMap = (Map)mapClass.getConstructor(int.class).newInstance(")
+                        .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
+                        .append(");\n");
 
                 if (!caseSensitive) {
                     sb.append("            return new CaseInsensitiveMap(Collections.emptyMap(), baseMap);\n");
@@ -2102,6 +2032,15 @@ public class CompactMap<K, V> implements Map<K, V> {
         protected Class<?> findClass(String name) throws ClassNotFoundException {
             // First try parent classloader for any non-template classes
             if (!name.contains("Template_")) {
+                // Use the thread context classloader for test classes
+                ClassLoader classLoader = ClassUtilities.getClassLoader();
+                if (classLoader != null) {
+                    try {
+                        return classLoader.loadClass(name);
+                    } catch (ClassNotFoundException e) {
+                        // Fall through to try parent loader
+                    }
+                }
                 return getParent().loadClass(name);
             }
             throw new ClassNotFoundException(name);

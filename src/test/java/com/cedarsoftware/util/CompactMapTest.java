@@ -2497,7 +2497,7 @@ public class CompactMapTest
     public void testBadNoArgConstructor()
     {
         CompactMap<String, Object> map = new CompactMap();
-        assert "key".equals(map.getSingleValueKey());
+        assert "id".equals(map.getSingleValueKey());
         assert map.getNewMap() instanceof HashMap;
         
         try

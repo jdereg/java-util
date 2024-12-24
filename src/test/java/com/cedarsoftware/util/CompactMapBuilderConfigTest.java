@@ -371,7 +371,7 @@ public class CompactMapBuilderConfigTest {
     }
 
     // Static inner class that tracks capacity
-    static class CapacityTrackingHashMap<K,V> extends HashMap<K,V> {
+    public static class CapacityTrackingHashMap<K,V> extends HashMap<K,V> {
         private static int lastCapacityUsed;
 
         public CapacityTrackingHashMap() {

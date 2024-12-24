@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 /**
  * A memory-efficient {@code Map} implementation that adapts its internal storage structure
@@ -1745,96 +1746,114 @@ public class CompactMap<K, V> implements Map<K, V> {
             sb.append("}\n");
             return sb.toString();
         }
-        
+
         private static void appendGetNewMapOverride(StringBuilder sb, Map<String, Object> options) {
+            // Main method template
+            String methodTemplate =
+                    "    @Override\n" +
+                            "    protected Map getNewMap() {\n" +
+                            "        Map map;\n" +
+                            "        try {\n" +
+                            "%s" +  // Indented map creation code will be inserted here
+                            "        } catch (Exception e) {\n" +
+                            "            throw new IllegalStateException(\"Failed to create map instance\", e);\n" +
+                            "        }\n" +
+                            "        if (!(map instanceof Map)) {\n" +
+                            "            throw new IllegalStateException(\"mapType must be a Map class\");\n" +
+                            "        }\n" +
+                            "        return map;\n" +
+                            "    }\n";
+
+            // Get the appropriate map creation code and indent it
+            String mapCreationCode = getMapCreationCode(options);
+            String indentedCreationCode = indentCode(mapCreationCode, 12); // 3 levels of indent * 4 spaces
+
+            // Combine it all
+            sb.append(String.format(methodTemplate, indentedCreationCode));
+        }
+
+        private static String getSortedMapCreationCode(Class<?> mapType, boolean caseSensitive,
+                                                       String ordering, Map<String, Object> options) {
+            // Template for comparator-based constructor
+            String comparatorTemplate =
+                    "map = new %s(new CompactMapComparator(%b, %b));";
+
+            // Template for capacity-based constructor with fallback
+            String capacityTemplate =
+                    "map = new %s();\n" +
+                            "try {\n" +
+                            "    map = new %s(%d);\n" +
+                            "} catch (Exception e) {\n" +
+                            "    // Fallback to default constructor already done\n" +
+                            "}";
+
+            if (hasComparatorConstructor(mapType)) {
+                return String.format(comparatorTemplate,
+                        getMapClassName(mapType),
+                        !caseSensitive,
+                        REVERSE.equals(ordering));
+            } else {
+                return String.format(capacityTemplate,
+                        getMapClassName(mapType),
+                        getMapClassName(mapType),
+                        options.getOrDefault(CAPACITY, DEFAULT_CAPACITY));
+            }
+        }
+
+        private static String getStandardMapCreationCode(Class<?> mapType, Map<String, Object> options) {
+            String template =
+                    "map = new %s();\n" +
+                            "try {\n" +
+                            "    map = new %s(%d);\n" +
+                            "} catch (Exception e) {\n" +
+                            "    // Fallback to default constructor already done\n" +
+                            "}";
+
+            String mapClassName = getMapClassName(mapType);
+            return String.format(template,
+                    mapClassName,
+                    mapClassName,
+                    options.getOrDefault(CAPACITY, DEFAULT_CAPACITY));
+        }
+
+        private static String getMapClassName(Class<?> mapType) {
+            if (mapType.getEnclosingClass() != null) {
+                if (mapType.getName().contains("Test")) {
+                    return mapType.getSimpleName();
+                } else if (mapType.getPackage().getName().equals("com.cedarsoftware.util")) {
+                    return mapType.getEnclosingClass().getSimpleName() + "." + mapType.getSimpleName();
+                }
+                return mapType.getName().replace('$', '.');
+            }
+            return mapType.getName();
+        }
+
+        private static boolean hasComparatorConstructor(Class<?> mapType) {
+            try {
+                mapType.getConstructor(Comparator.class);
+                return true;
+            } catch (NoSuchMethodException ignored) {
+                return false;
+            }
+        }
+
+        private static String indentCode(String code, int spaces) {
+            String indent = String.format("%" + spaces + "s", "");
+            return Arrays.stream(code.split("\n"))
+                    .map(line -> indent + line)
+                    .collect(Collectors.joining("\n"));
+        }
+        
+        private static String getMapCreationCode(Map<String, Object> options) {
             String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
             boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
             Class<?> mapType = (Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
 
-            sb.append("    @Override\n")
-                    .append("    protected Map getNewMap() {\n")
-                    .append("        Map map;\n")
-                    .append("        try {\n");
-
             if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
-                boolean hasComparatorConstructor = false;
-                try {
-                    mapType.getConstructor(Comparator.class);
-                    hasComparatorConstructor = true;
-                } catch (NoSuchMethodException ignored) {
-                }
-
-                if (hasComparatorConstructor) {
-                    sb.append("            map = new ")
-                            .append(mapType.getName())
-                            .append("(new CompactMapComparator(")
-                            .append(!caseSensitive)
-                            .append(", ")
-                            .append(REVERSE.equals(ordering))
-                            .append("));\n");
-                } else {
-                    appendConstructorWithFallback(sb, mapType, options);
-                }
+                return getSortedMapCreationCode(mapType, caseSensitive, ordering, options);
             } else {
-                // Handle non-sorted maps
-                String mapClassName;
-                if (mapType.getEnclosingClass() != null) {
-                    // For inner classes, use the simple name if it's a test class
-                    if (mapType.getName().contains("Test")) {
-                        mapClassName = mapType.getSimpleName();
-                    } else if (mapType.getPackage().getName().equals("com.cedarsoftware.util")) {
-                        mapClassName = mapType.getEnclosingClass().getSimpleName() +
-                                "." + mapType.getSimpleName();
-                    } else {
-                        mapClassName = mapType.getName().replace('$', '.');
-                    }
-                } else {
-                    mapClassName = mapType.getName();
-                }
-
-                sb.append("            map = new ")
-                        .append(mapClassName)
-                        .append("();\n");
-
-                // Try to set initial capacity if constructor exists
-                sb.append("            try {\n")
-                        .append("                map = new ")
-                        .append(mapClassName)
-                        .append("(")
-                        .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
-                        .append(");\n")
-                        .append("            } catch (Exception e) {\n")
-                        .append("                // Fall back to default constructor if capacity constructor fails\n")
-                        .append("                map = new ")
-                        .append(mapClassName)
-                        .append("();\n")
-                        .append("            }\n");
+                return getStandardMapCreationCode(mapType, options);
             }
-
-            // Add validation and return
-            sb.append("        } catch (Exception e) {\n")
-                    .append("            throw new IllegalStateException(\"Failed to create map instance\", e);\n")
-                    .append("        }\n")
-                    .append("        if (!(map instanceof Map)) {\n")
-                    .append("            throw new IllegalStateException(\"mapType must create a Map instance\");\n")
-                    .append("        }\n")
-                    .append("        return map;\n")
-                    .append("    }\n");
-        }
-        
-        private static void appendConstructorWithFallback(StringBuilder sb, Class<?> mapType, Map<String, Object> options) {
-            sb.append("            try {\n")
-                    .append("                map = new ")
-                    .append(mapType.getName())
-                    .append("(")
-                    .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
-                    .append(");\n")
-                    .append("            } catch (Exception e) {\n")
-                    .append("                // Fall back to default constructor if capacity constructor fails\n")
-                    .append("                map = new ")
-                    .append(mapType.getName())
-                    .append("();\n")
-                    .append("            }\n");
         }
         
         private static Class<?> compileClass(String className, String sourceCode) {

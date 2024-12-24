@@ -212,8 +212,6 @@ public class CompactMap<K, V> implements Map<K, V> {
     // The only "state" and why this is a compactMap - one member variable
     protected Object val = EMPTY_MAP;
 
-    protected interface FactoryCreated { }
-    
     /**
      * Constructs an empty CompactMap with the default configuration.
      * <p>
@@ -1192,7 +1190,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     protected boolean isCaseInsensitive() {
-        if (getClass() != CompactMap.class && !(this instanceof FactoryCreated)) {
+        if (getClass() != CompactMap.class) {
             Method method = ReflectionUtils.getMethod(getClass(), "isCaseInsensitive");
             if (method != null && method.getDeclaringClass() == CompactMap.class) {
                 Map<String, Object> inferredOptions = INFERRED_OPTIONS.get();
@@ -1223,7 +1221,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return the ordering strategy for this map
      */
     protected String getOrdering() {
-        if (getClass() != CompactMap.class && !(this instanceof FactoryCreated)) {
+        if (getClass() != CompactMap.class) {
             Method method = ReflectionUtils.getMethod(getClass(), "getOrdering");
             // Changed condition - if method is null, we use inferred options
             // since this means the subclass doesn't override getOrdering()
@@ -1515,7 +1513,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @throws IllegalArgumentException if the provided options are invalid or incompatible
      * @see #validateAndFinalizeOptions(Map)
      */
-    public static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
+    static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
         // Validate and finalize options first (existing code)
         validateAndFinalizeOptions(options);
 
@@ -1550,7 +1548,6 @@ public class CompactMap<K, V> implements Map<K, V> {
         Class<? extends Map> mapType = determineMapType(options, ordering);
 
         // Store both the class and its name
-        options.put("MAP_TYPE_CLASS", mapType);
         options.put(MAP_TYPE, mapType);  // Keep it as Class object
 
         // Special handling for unsupported map types

@@ -1555,11 +1555,6 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
-        // Handle reverse ordering
-        if (ordering.equals(REVERSE)) {
-            options.put(ORDERING, REVERSE);
-        }
-
         // Additional validation: Ensure SOURCE_MAP overrides capacity if provided
         if (sourceMap != null) {
             options.put(CAPACITY, sourceMap.size());
@@ -1569,8 +1564,6 @@ public class CompactMap<K, V> implements Map<K, V> {
         options.putIfAbsent(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
         options.putIfAbsent(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
         options.putIfAbsent(CAPACITY, DEFAULT_CAPACITY);
-        options.putIfAbsent(MAP_TYPE, DEFAULT_MAP_TYPE);
-        options.putIfAbsent(ORDERING, UNORDERED);
     }
 
     private static Class<? extends Map> determineMapType(Map<String, Object> options, String ordering) {
@@ -1589,27 +1582,24 @@ public class CompactMap<K, V> implements Map<K, V> {
             return rawMapType;
         }
 
-        // Handle case where rawMapType is set
-        if (!options.containsKey(ORDERING)) {
+        // If ORDERING is null or key not set...
+        if (options.get(ORDERING) == null) {
             // Determine and set ordering based on rawMapType
             if (LinkedHashMap.class.isAssignableFrom(rawMapType) ||
                     EnumMap.class.isAssignableFrom(rawMapType)) {
-                options.put(ORDERING, INSERTION);
                 ordering = INSERTION;
             } else if (SortedMap.class.isAssignableFrom(rawMapType)) {
                 // Check if it's a reverse-ordered map
                 if (rawMapType.getName().toLowerCase().contains("reverse") ||
                         rawMapType.getName().toLowerCase().contains("descending")) {
-                    options.put(ORDERING, REVERSE);
                     ordering = REVERSE;
                 } else {
-                    options.put(ORDERING, SORTED);
                     ordering = SORTED;
                 }
             } else {
-                options.put(ORDERING, UNORDERED);
                 ordering = UNORDERED;
             }
+            options.put(ORDERING, ordering);
         }
 
         // Verify ordering compatibility

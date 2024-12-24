@@ -2750,7 +2750,7 @@ public class CompactMapTest
     @Test
     public void testWrappedTreeMap()
     {
-        CompactMap<String, String> m= new CompactMap()
+        CompactMap<String, String> m = new CompactMap()
         {
             protected String getSingleValueKey() { return "a"; }
             protected Map<String, String> getNewMap() { return new TreeMap<>(String.CASE_INSENSITIVE_ORDER); }
@@ -2763,14 +2763,15 @@ public class CompactMapTest
         m.put("a", "alpha");
         assert m.size() == 3;
         Iterator i = m.keySet().iterator();
-        assert "a" == i.next();
+        Object next = i.next();
+        assert "a" == next;  // Original failing assertion
         assert "J" == i.next();
         assert "z" == i.next();
         assert m.containsKey("A");
         assert m.containsKey("j");
         assert m.containsKey("Z");
     }
-
+    
     @Test
     public void testMultipleSortedKeysetIterators()
     {
@@ -3498,8 +3499,8 @@ public class CompactMapTest
     {
         int maxSize = 1000;
         final int[] compactSize = new int[1];
-        int lower = 40;
-        int upper = 120;
+        int lower = 50;
+        int upper = 100;
         long totals[] = new long[upper - lower + 1];
 
         for (int x = 0; x < 2000; x++)

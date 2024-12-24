@@ -319,20 +319,20 @@ public class CompactMap<K, V> implements Map<K, V> {
             return 0;
         }
 
+        Class<?> key1Class = key1.getClass();
+        Class<?> key2Class = key2.getClass();
+
         int result;
         if (isLegacyConstructed()) {
-            if (isCaseInsensitive() && key1 instanceof String && key2 instanceof String) {
+            if (isCaseInsensitive() && key1Class == String.class && key2Class == String.class) {
                 result = String.CASE_INSENSITIVE_ORDER.compare((String)key1, (String)key2);
             } else if (key1 instanceof Comparable) {
                 result = ((Comparable)key1).compareTo(key2);
             } else {
-                result = key1.getClass().getName().compareTo(key2.getClass().getName());
+                result = key1Class.getName().compareTo(key2Class.getName());
             }
         } else {
             // Non-legacy mode logic
-            Class<?> key1Class = key1.getClass();
-            Class<?> key2Class = key2.getClass();
-
             if (key1Class == String.class) {
                 if (key2Class == String.class) {
                     result = isCaseInsensitive()
@@ -572,94 +572,61 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (pairCount <= 1) {
             return;
         }
-        
+
         if (isLegacyConstructed()) {
             Map<K,V> mapInstance = getNewMap();  // Called only once before iteration
-            boolean reverse = false;
 
+            // Don't sort if the underlying map is insertion-ordered
+            if (mapInstance instanceof LinkedHashMap ||
+                    (mapInstance instanceof CaseInsensitiveMap &&
+                            ((CaseInsensitiveMap)mapInstance).getWrappedMap() instanceof LinkedHashMap)) {
+                return;  // Preserve insertion order
+            }
+
+            boolean reverse = false;
             if (mapInstance instanceof SortedMap) {
                 SortedMap<K,V> sortedMap = (SortedMap<K,V>)mapInstance;
                 Comparator<?> comparator = sortedMap.comparator();
                 if (comparator != null) {
-                    // Check if it's one of the reverse comparators from Collections
                     reverse = comparator.getClass().getName().toLowerCase().contains("reversecomp");
                 }
-
-                quickSort(array, 0, pairCount - 1, reverse);
             }
+
+            Comparator<Object> comparator = new CompactMapComparator(isCaseInsensitive(), reverse);
+            quickSort(array, 0, pairCount - 1, comparator);
             return;
         }
 
-        // Non-legacy mode logic remains the same
+        // Non-legacy mode logic
         String ordering = getOrdering();
         if (ordering.equals(UNORDERED) || ordering.equals(INSERTION)) {
             return;
         }
 
-        quickSort(array, 0, pairCount - 1, REVERSE.equals(ordering));
+        Comparator<Object> comparator = new CompactMapComparator(isCaseInsensitive(),
+                REVERSE.equals(ordering));
+        quickSort(array, 0, pairCount - 1, comparator);
     }
     
-    private void quickSort(Object[] array, int lowPair, int highPair, boolean reverse) {
+    private void quickSort(Object[] array, int lowPair, int highPair, Comparator<Object> comparator) {
         if (lowPair < highPair) {
-            int pivotPair = partition(array, lowPair, highPair, reverse);
-            quickSort(array, lowPair, pivotPair - 1, reverse);
-            quickSort(array, pivotPair + 1, highPair, reverse);
+            int pivotPair = partition(array, lowPair, highPair, comparator);
+            quickSort(array, lowPair, pivotPair - 1, comparator);
+            quickSort(array, pivotPair + 1, highPair, comparator);
         }
     }
 
-    private void swapPairs(Object[] array, int i, int j) {
-        Object tempKey = array[i];
-        Object tempValue = array[i + 1];
-        array[i] = array[j];
-        array[i + 1] = array[j + 1];
-        array[j] = tempKey;
-        array[j + 1] = tempValue;
-    }
-
-    private Object selectPivot(Object[] array, int low, int mid, int high) {
-        Object first = array[low];
-        Object middle = array[mid];
-        Object last = array[high];
-
-        // Compare the three elements to find the median
-        if (compareKeysForOrder(first, middle, false) <= 0) {
-            if (compareKeysForOrder(middle, last, false) <= 0) {
-                swapPairs(array, mid, high);  // median is middle
-                return middle;
-            } else if (compareKeysForOrder(first, last, false) <= 0) {
-                // median is last, already in position
-                return last;
-            } else {
-                swapPairs(array, low, high);  // median is first
-                return first;
-            }
-        } else {
-            if (compareKeysForOrder(first, last, false) <= 0) {
-                swapPairs(array, low, high);  // median is first
-                return first;
-            } else if (compareKeysForOrder(middle, last, false) <= 0) {
-                swapPairs(array, mid, high);  // median is middle
-                return middle;
-            } else {
-                // median is last, already in position
-                return last;
-            }
-        }
-    }
-
-    private int partition(Object[] array, int lowPair, int highPair, boolean reverse) {
+    private int partition(Object[] array, int lowPair, int highPair, Comparator<Object> comparator) {
         int low = lowPair * 2;
         int high = highPair * 2;
-        int mid = low + ((high - low) / 4) * 2; // Ensure we stay on key indices
+        int mid = low + ((high - low) / 4) * 2;
 
-        // Select pivot using median-of-three
-        Object pivot = selectPivot(array, low, mid, high);
+        Object pivot = selectPivot(array, low, mid, high, comparator);
 
         int i = low - 2;
 
         for (int j = low; j < high; j += 2) {
-            int comparison = compareKeysForOrder(array[j], pivot, reverse);
-            if (comparison <= 0) {
+            if (comparator.compare(array[j], pivot) <= 0) {
                 i += 2;
                 swapPairs(array, i, j);
             }
@@ -669,7 +636,47 @@ public class CompactMap<K, V> implements Map<K, V> {
         swapPairs(array, i, high);
         return i / 2;
     }
+
+    private Object selectPivot(Object[] array, int low, int mid, int high,
+                               Comparator<Object> comparator) {
+        Object first = array[low];
+        Object middle = array[mid];
+        Object last = array[high];
+
+        if (comparator.compare(first, middle) <= 0) {
+            if (comparator.compare(middle, last) <= 0) {
+                swapPairs(array, mid, high);  // median is middle
+                return middle;
+            } else if (comparator.compare(first, last) <= 0) {
+                // median is last, already in position
+                return last;
+            } else {
+                swapPairs(array, low, high);  // median is first
+                return first;
+            }
+        } else {
+            if (comparator.compare(first, last) <= 0) {
+                swapPairs(array, low, high);  // median is first
+                return first;
+            } else if (comparator.compare(middle, last) <= 0) {
+                swapPairs(array, mid, high);  // median is middle
+                return middle;
+            } else {
+                // median is last, already in position
+                return last;
+            }
+        }
+    }
     
+    private void swapPairs(Object[] array, int i, int j) {
+        Object tempKey = array[i];
+        Object tempValue = array[i + 1];
+        array[i] = array[j];
+        array[i + 1] = array[j + 1];
+        array[j] = tempKey;
+        array[j + 1] = tempValue;
+    }
+
     private void switchToMap(Object[] entries, K key, V value) {
         // Get the correct map type with initial capacity
         Map<K, V> map = getNewMap();  // This respects subclass overrides
@@ -1425,15 +1432,16 @@ public class CompactMap<K, V> implements Map<K, V> {
      *         case-insensitively in the {@code Object[]} compact state.</td>
      *     <td>{@code true}</td>
      *   </tr>
-     *   <tr>
-     *     <td>{@link #MAP_TYPE}</td>
-     *     <td>Class&lt;? extends Map&gt;</td>
-     *     <td>The type of map to use once the size exceeds {@code compactSize()}. For example,
-     *         {@link java.util.HashMap}, {@link java.util.LinkedHashMap}, or a {@link java.util.SortedMap}
-     *         implementation like {@link java.util.TreeMap}. Certain orderings require specific map types
-     *         (e.g., {@code SORTED} requires a {@code SortedMap}).</td>
-     *     <td>{@code HashMap.class}</td>
-     *   </tr>
+     * <tr>
+     *   <td>{@link #MAP_TYPE}</td>
+     *   <td>Class&lt;? extends Map&gt;</td>
+     *   <td>The type of map to use once the size exceeds {@code compactSize()}.
+     *       When using {@code SORTED} or {@code REVERSE} ordering, any {@link SortedMap}
+     *       implementation can be specified (e.g., {@link TreeMap},
+     *       {@link java.util.concurrent.ConcurrentSkipListMap}). If no type is specified with
+     *       {@code SORTED}/{@code REVERSE} ordering, {@link TreeMap} is used as default.</td>
+     *   <td>{@code HashMap.class}</td>
+     * </tr>
      *   <tr>
      *     <td>{@link #SINGLE_KEY}</td>
      *     <td>K</td>
@@ -1512,26 +1520,14 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @param options a map of user-provided options
      */
     static void validateAndFinalizeOptions(Map<String, Object> options) {
-        // First check raw map type before any defaults are applied
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
         Class<? extends Map> mapType = determineMapType(options, ordering);
+        boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
 
-        // Store both the class and its name
-        options.put(MAP_TYPE, mapType);  // Keep it as Class object
-
-        // Special handling for unsupported map types
-        if (IdentityHashMap.class.isAssignableFrom(mapType)) {
-            throw new IllegalArgumentException(
-                    "IdentityHashMap is not supported as it compares keys by reference identity");
-        }
-
-        if (WeakHashMap.class.isAssignableFrom(mapType)) {
-            throw new IllegalArgumentException(
-                    "WeakHashMap is not supported as it can unpredictably remove entries");
-        }
+        // Store the validated mapType
+        options.put(MAP_TYPE, mapType);
 
         // Get remaining options
-        boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
         Map<?, ?> sourceMap = (Map<?, ?>) options.get(SOURCE_MAP);
 
         // Check source map ordering compatibility
@@ -1546,12 +1542,14 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
-        // If case-insensitive, store inner map type and set outer type to CaseInsensitiveMap
+        // Handle case sensitivity
         if (!caseSensitive) {
-            // Don't wrap CaseInsensitiveMap in another CaseInsensitiveMap
-            if (mapType != CaseInsensitiveMap.class) {
-                options.put("INNER_MAP_TYPE", mapType);
-                options.put(MAP_TYPE, CaseInsensitiveMap.class);
+            // Only wrap in CaseInsensitiveMap if we're not using a sorted/reverse ordered map
+            if (!SORTED.equals(ordering) && !REVERSE.equals(ordering)) {
+                if (mapType != CaseInsensitiveMap.class) {
+                    options.put("INNER_MAP_TYPE", mapType);
+                    options.put(MAP_TYPE, CaseInsensitiveMap.class);
+                }
             }
         }
 
@@ -1569,8 +1567,21 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static Class<? extends Map> determineMapType(Map<String, Object> options, String ordering) {
         Class<? extends Map> rawMapType = (Class<? extends Map>) options.get(MAP_TYPE);
 
-        // If rawMapType is null, use existing logic
+        // Handle special map types first
+        if (rawMapType != null) {
+            if (IdentityHashMap.class.isAssignableFrom(rawMapType)) {
+                throw new IllegalArgumentException(
+                        "IdentityHashMap is not supported as it compares keys by reference identity");
+            }
+            if (WeakHashMap.class.isAssignableFrom(rawMapType)) {
+                throw new IllegalArgumentException(
+                        "WeakHashMap is not supported as it can unpredictably remove entries");
+            }
+        }
+
+        // Determine map type and ordering together
         if (rawMapType == null) {
+            // No map type specified, determine based on ordering
             if (ordering.equals(INSERTION)) {
                 rawMapType = LinkedHashMap.class;
             } else if (ordering.equals(SORTED) || ordering.equals(REVERSE)) {
@@ -1578,37 +1589,27 @@ public class CompactMap<K, V> implements Map<K, V> {
             } else {
                 rawMapType = DEFAULT_MAP_TYPE;
             }
-            options.put(MAP_TYPE, rawMapType);  // Store the Class object, not the name
-            return rawMapType;
-        }
-
-        // If ORDERING is null or key not set...
-        if (options.get(ORDERING) == null) {
-            // Determine and set ordering based on rawMapType
+        } else if (options.get(ORDERING) == null) {
+            // Map type specified but no ordering, determine ordering from map type
             if (LinkedHashMap.class.isAssignableFrom(rawMapType) ||
                     EnumMap.class.isAssignableFrom(rawMapType)) {
                 ordering = INSERTION;
             } else if (SortedMap.class.isAssignableFrom(rawMapType)) {
-                // Check if it's a reverse-ordered map
-                if (rawMapType.getName().toLowerCase().contains("reverse") ||
-                        rawMapType.getName().toLowerCase().contains("descending")) {
-                    ordering = REVERSE;
-                } else {
-                    ordering = SORTED;
-                }
+                ordering = rawMapType.getName().toLowerCase().contains("reverse") ||
+                        rawMapType.getName().toLowerCase().contains("descending")
+                        ? REVERSE : SORTED;
             } else {
                 ordering = UNORDERED;
             }
             options.put(ORDERING, ordering);
         }
 
-        // Verify ordering compatibility
-        boolean isValidForOrdering;
-        if (rawMapType == CompactMap.class ||
+        // Validate compatibility
+        if (!(rawMapType == CompactMap.class ||
                 rawMapType == CaseInsensitiveMap.class ||
-                rawMapType == TrackingMap.class) {
-            isValidForOrdering = true;
-        } else {
+                rawMapType == TrackingMap.class)) {
+
+            boolean isValidForOrdering;
             if (ordering.equals(INSERTION)) {
                 isValidForOrdering = LinkedHashMap.class.isAssignableFrom(rawMapType) ||
                         EnumMap.class.isAssignableFrom(rawMapType);
@@ -1617,13 +1618,14 @@ public class CompactMap<K, V> implements Map<K, V> {
             } else {
                 isValidForOrdering = true; // Any map can be unordered
             }
-        }
 
-        if (!isValidForOrdering) {
-            throw new IllegalArgumentException("Map type " + rawMapType.getSimpleName() +
-                    " is not compatible with ordering '" + ordering + "'");
+            if (!isValidForOrdering) {
+                throw new IllegalArgumentException("Map type " + rawMapType.getSimpleName() +
+                        " is not compatible with ordering '" + ordering + "'");
+            }
         }
-
+        
+        options.put(MAP_TYPE, rawMapType);
         return rawMapType;
     }
     
@@ -1772,6 +1774,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Basic imports
             sb.append("import java.util.*;\n");
+            sb.append("import java.util.concurrent.*;\n");  // Add this for concurrent collections
 
             // Add import for map type if it's in a different package
             Class<?> mapType = (Class<?>)options.get(MAP_TYPE);
@@ -1826,53 +1829,59 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             return sb.toString();
         }
-        
+
         private static void appendGetNewMapOverride(StringBuilder sb, Map<String, Object> options) {
             String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
             boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
-
+            Class<?> mapType = (Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
+            
             sb.append("    @Override\n")
                     .append("    protected Map getNewMap() {\n");
 
             if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
-                if (!caseSensitive) {
-                    if (REVERSE.equals(ordering)) {
-                        sb.append("        return new TreeMap(Collections.reverseOrder(String.CASE_INSENSITIVE_ORDER));\n");
-                    } else {
-                        sb.append("        return new TreeMap(String.CASE_INSENSITIVE_ORDER);\n");
-                    }
+                boolean hasComparatorConstructor = false;
+                try {
+                    mapType.getConstructor(Comparator.class);
+                    hasComparatorConstructor = true;
+                } catch (NoSuchMethodException ignored) {
+                }
+
+                if (hasComparatorConstructor) {
+                    String code = "        return new " +
+                            mapType.getName() +
+                            "(new CompactMapComparator(" +
+                            !caseSensitive +
+                            ", " +
+                            REVERSE.equals(ordering) +
+                            "));\n";
+                    sb.append(code);
                 } else {
-                    if (REVERSE.equals(ordering)) {
-                        sb.append("        return new TreeMap(Collections.reverseOrder());\n");
-                    } else {
-                        sb.append("        return new TreeMap();\n");
-                    }
+                    // Fall back to capacity constructor
+                    sb.append("        return new ")
+                            .append(mapType.getName())
+                            .append("(")
+                            .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
+                            .append(");\n");
                 }
             } else {
-                Class<?> mapType = (Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
+                // Handle non-sorted maps
                 if (mapType.getEnclosingClass() != null) {
                     if (mapType.getPackage().getName().equals("com.cedarsoftware.util")) {
-                        // Same package - use simple enclosing class name
                         sb.append("        return new ")
                                 .append(mapType.getEnclosingClass().getSimpleName())
                                 .append(".")
                                 .append(mapType.getSimpleName());
                     } else {
-                        // Different package - use fully qualified name
                         sb.append("        return new ")
                                 .append(mapType.getName().replace('$', '.'));
                     }
-                    sb.append("(")
-                            .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
-                            .append(");\n");
                 } else {
-                    // Not an inner class - use simple name as it will be imported
                     sb.append("        return new ")
-                            .append(mapType.getSimpleName())
-                            .append("(")
-                            .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
-                            .append(");\n");
+                            .append(mapType.getName());
                 }
+                sb.append("(")
+                        .append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
+                        .append(");\n");
             }
 
             sb.append("    }\n");
@@ -1997,6 +2006,64 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return getParent().loadClass(name);
             }
             throw new ClassNotFoundException(name);
+        }
+    }
+
+    /**
+     * Also used in generated code
+     */
+    public static class CompactMapComparator implements Comparator<Object> {
+        private final boolean caseInsensitive;
+        private final boolean reverse;
+
+        public CompactMapComparator(boolean caseInsensitive, boolean reverse) {
+            this.caseInsensitive = caseInsensitive;
+            this.reverse = reverse;
+        }
+
+        @Override
+        public int compare(Object key1, Object key2) {
+            // 1. Handle nulls explicitly (nulls always last, regardless of reverse)
+            if (key1 == null) {
+                return (key2 == null) ? 0 : 1;
+            }
+            if (key2 == null) {
+                return -1;
+            }
+
+            int result;
+            Class<?> key1Class = key1.getClass();
+            Class<?> key2Class = key2.getClass();
+
+            // 2. Handle String comparisons with case sensitivity
+            if (key1Class == String.class) {
+                if (key2Class == String.class) {
+                    // For strings, apply case sensitivity first
+                    result = caseInsensitive
+                            ? String.CASE_INSENSITIVE_ORDER.compare((String) key1, (String) key2)
+                            : ((String) key1).compareTo((String) key2);
+                } else {
+                    // String vs non-String: use class name comparison
+                    result = key1Class.getName().compareTo(key2Class.getName());
+                }
+            }
+            // 3. Handle Comparable objects of the same type
+            else if (key1Class == key2Class && key1 instanceof Comparable) {
+                result = ((Comparable<Object>) key1).compareTo(key2);
+            }
+            // 4. Fallback to class name comparison
+            else {
+                result = key1Class.getName().compareTo(key2Class.getName());
+            }
+
+            // Apply reverse at the end, after all other comparisons
+            return reverse ? -result : result;
+        }
+
+        @Override
+        public String toString() {
+            return "CompactMapComparator{caseInsensitive=" + caseInsensitive +
+                    ", reverse=" + reverse + "}";
         }
     }
 }

@@ -1,13 +1,16 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
@@ -19,6 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests focusing on CompactMap's ordering behavior and storage transitions.
@@ -344,6 +348,99 @@ class CompactOrderingTest {
         String afterValuesOrder = map.toString();
         assert afterValuesOrder.equals(initialOrder) :
                 "Order changed after values iteration. Expected: " + initialOrder + ", Got: " + afterValuesOrder;
+    }
+
+    @Test
+    public void testCaseInsensitiveMapWrapping() {
+        // Create case-insensitive map with LinkedHashMap backing
+        CompactMap<String, String> linkedMap = CompactMap.<String, String>builder()
+                .caseSensitive(false)
+                .mapType(LinkedHashMap.class)
+                .build();
+
+        // Create case-insensitive map with default HashMap backing
+        CompactMap<String, String> hashMap = CompactMap.<String, String>builder()
+                .caseSensitive(false)
+                .build();
+
+        // Add entries in specific order to both maps
+        String[][] entries = {
+                {"Charlie", "third"},
+                {"Alpha", "first"},
+                {"Bravo", "second"}
+        };
+
+        for (String[] entry : entries) {
+            linkedMap.put(entry[0], entry[1]);
+            hashMap.put(entry[0], entry[1]);
+        }
+
+        // Verify order before adding additional entries
+        List<String> linkedKeysBefore = new ArrayList<>(linkedMap.keySet());
+        assertEquals(Arrays.asList("Charlie", "Alpha", "Bravo"), linkedKeysBefore);
+
+        // Force maps to exceed compactSize to trigger backing map creation
+        for (int i = 0; i < linkedMap.compactSize(); i++) {
+            linkedMap.put("Key" + i, "Value" + i);
+            hashMap.put("Key" + i, "Value" + i);
+        }
+
+        // Get all keys from both maps
+        List<String> linkedKeysAfter = new ArrayList<>(linkedMap.keySet());
+        Set<String> hashKeysAfter = new HashSet<>(hashMap.keySet());
+
+        // Verify LinkedHashMap maintains insertion order for original entries
+        assertTrue(linkedKeysAfter.indexOf("Charlie") < linkedKeysAfter.indexOf("Alpha"));
+        assertTrue(linkedKeysAfter.indexOf("Alpha") < linkedKeysAfter.indexOf("Bravo"));
+
+        // Verify HashMap contains all entries
+        Set<String> expectedKeys = new HashSet<>();
+        expectedKeys.add("Charlie");
+        expectedKeys.add("Alpha");
+        expectedKeys.add("Bravo");
+        for (int i = 0; i < linkedMap.compactSize(); i++) {
+            expectedKeys.add("Key" + i);
+        }
+        assertEquals(expectedKeys, hashKeysAfter);
+
+        // Verify case-insensitive behavior for both maps
+        assertTrue(linkedMap.containsKey("CHARLIE"));
+        assertTrue(linkedMap.containsKey("alpha"));
+        assertTrue(linkedMap.containsKey("BRAVO"));
+
+        assertTrue(hashMap.containsKey("CHARLIE"));
+        assertTrue(hashMap.containsKey("alpha"));
+        assertTrue(hashMap.containsKey("BRAVO"));
+
+        // Verify we can get the actual backing map type through reflection
+        try {
+            Object linkedVal = getBackingMapValue(linkedMap);
+            Object hashVal = getBackingMapValue(hashMap);
+
+            assertTrue(linkedVal instanceof CaseInsensitiveMap);
+            assertTrue(hashVal instanceof CaseInsensitiveMap);
+
+            // Get the inner map of the CaseInsensitiveMap
+            Object innerLinkedMap = getInnerMap((CaseInsensitiveMap<?,?>)linkedVal);
+            Object innerHashMap = getInnerMap((CaseInsensitiveMap<?,?>)hashVal);
+
+            assertTrue(innerLinkedMap instanceof LinkedHashMap);
+            assertTrue(innerHashMap instanceof HashMap);
+        } catch (Exception e) {
+            fail("Failed to verify backing map types: " + e.getMessage());
+        }
+    }
+    
+    private Object getBackingMapValue(CompactMap<?,?> map) throws Exception {
+        Field valField = CompactMap.class.getDeclaredField("val");
+        valField.setAccessible(true);
+        return valField.get(map);
+    }
+
+    private Object getInnerMap(CaseInsensitiveMap<?,?> map) throws Exception {
+        Field mapField = CaseInsensitiveMap.class.getDeclaredField("map");
+        mapField.setAccessible(true);
+        return mapField.get(map);
     }
     
     private static Stream<Arguments> sizeThresholdScenarios() {

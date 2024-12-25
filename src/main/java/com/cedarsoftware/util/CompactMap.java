@@ -171,12 +171,12 @@ import java.util.stream.Collectors;
  *
  * <p>The generated class names encode the configuration settings. For example:</p>
  * <ul>
- *   <li>{@code CompactMap$HashMap_CS_S70_Id_Unord} - A case-sensitive, unordered map
+ *   <li>{@code CompactMap$HashMap_CS_S70_id_Unord} - A case-sensitive, unordered map
  *       with HashMap backing, compact size of 70, and "id" as single value key</li>
  *   <li>{@code CompactMap$TreeMap_CI_S100_UUID_Sort} - A case-insensitive, sorted map
  *       with TreeMap backing, compact size of 100, and "UUID" as single value key</li>
  *   <li>{@code CompactMap$LinkedHashMap_CS_S50_Key_Ins} - A case-sensitive map with
- *       insertion ordering, LinkedHashMap backing, compact size of 50, and "key" as
+ *       insertion ordering, LinkedHashMap backing, compact size of 50, and "Key" as
  *       single value key</li>
  * </ul>
  *
@@ -217,6 +217,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static final boolean DEFAULT_CASE_SENSITIVE = true;
     private static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
     private static final String DEFAULT_SINGLE_KEY = "id";
+    private static final String INNER_MAP_TYPE = "innerMapType";
 
     // The only "state" and why this is a compactMap - one member variable
     protected Object val = EMPTY_MAP;
@@ -731,7 +732,15 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Handles the case where the array is reduced to a single entry during removal.
+     * Transitions from two entries to single entry storage when removing a key.
+     * <p>
+     * If the specified key matches either entry, removes it and retains the other entry,
+     * transitioning back to single entry storage mode.
+     * </p>
+     *
+     * @param entries array containing exactly two key-value pairs
+     * @param key the key to remove
+     * @return the previous value associated with the removed key, or null if key not found
      */
     private V handleTransitionToSingleEntry(Object[] entries, Object key) {
         if (areKeysEqual(key, entries[0])) {
@@ -749,7 +758,16 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Handles a put operation when the map has a single entry.
+     * Handles put operation when map contains exactly one entry.
+     * <p>
+     * If key matches existing entry, updates value. Otherwise, transitions
+     * to array storage with both the existing and new entries.
+     * Optimizes storage when key matches singleValueKey.
+     * </p>
+     *
+     * @param key the key to add or update
+     * @param value the value to associate with the key
+     * @return the previous value if key existed, null otherwise
      */
     private V handleSingleEntryPut(K key, V value) {
         if (areKeysEqual(key, getLogicalSingleKey())) {   // Overwrite
@@ -760,7 +778,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 val = new CompactMapEntry(key, value);
             }
             return save;
-        } else {   // CompactMapEntry to []
+        } else {   // Transition to Object[]
             Object[] entries = new Object[4];
             K existingKey = getLogicalSingleKey();
             V existingValue = getLogicalSingleValue();
@@ -775,21 +793,36 @@ public class CompactMap<K, V> implements Map<K, V> {
             return null;
         }
     }
-    
+
     /**
-     * Handles a remove operation when the map has a single entry.
+     * Handles remove operation when map contains exactly one entry.
+     * <p>
+     * If key matches the single entry, removes it and transitions to empty state.
+     * Otherwise, returns null as key was not found.
+     * </p>
+     *
+     * @param key the key to remove
+     * @return the value associated with the removed key, or null if key not found
      */
     private V handleSingleEntryRemove(Object key) {
         if (areKeysEqual(key, getLogicalSingleKey())) {   // Found
             V save = getLogicalSingleValue();
-            val = EMPTY_MAP;
+            clear();
             return save;
         }
         return null;   // Not found
     }
 
     /**
-     * Removes a key-value pair from the map and transitions back to compact storage if needed.
+     * Removes entry from map storage and handles transition to array if needed.
+     * <p>
+     * If size after removal equals compactSize, transitions back to array storage.
+     * Otherwise, maintains map storage with entry removed.
+     * </p>
+     *
+     * @param map the current map storage
+     * @param key the key to remove
+     * @return the value associated with the removed key, or null if key not found
      */
     private V removeFromMap(Map<K, V> map, Object key) {
         if (!map.containsKey(key)) {
@@ -811,30 +844,30 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Copies all the mappings from the specified map to this map. The effect of this call is equivalent
-     * to calling {@link #put(Object, Object)} on this map once for each mapping in the specified map.
+     * Copies all mappings from the specified map into this map.
+     * <p>
+     * If resulting size would exceed compactSize, transitions directly to map storage.
+     * Otherwise, adds entries individually, allowing natural transitions to occur.
+     * </p>
      *
      * @param map mappings to be stored in this map
+     * @throws NullPointerException if the specified map is null
      */
     public void putAll(Map<? extends K, ? extends V> map) {
-        if (map == null) {
+        if (map == null || map.isEmpty()) {
             return;
         }
-        int mSize = map.size();
-        if (val instanceof Map || mSize > compactSize()) {
-            if (val == EMPTY_MAP) {
-                val = getNewMap(); // Changed from getNewMap(mSize) to getNewMap()
-            }
-            ((Map<K, V>) val).putAll(map);
-        } else {
-            for (Entry<? extends K, ? extends V> entry : map.entrySet()) {
-                put(entry.getKey(), entry.getValue());
-            }
+        for (Entry<? extends K, ? extends V> entry : map.entrySet()) {
+            put(entry.getKey(), entry.getValue());
         }
     }
 
     /**
-     * Removes all the mappings from this map. The map will be empty after this call returns.
+     * Removes all mappings from this map.
+     * <p>
+     * Resets internal storage to empty state, allowing garbage collection
+     * of any existing storage structures.
+     * </p>
      */
     public void clear() {
         val = EMPTY_MAP;
@@ -940,13 +973,11 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Returns a {@link Set} view of the keys contained in this map.
+     * Returns a Set view of the keys in this map.
      * <p>
-     * The set is backed by the map, so changes to the map are reflected in the set, and vice versa. If the map
-     * is modified while an iteration over the set is in progress (except through the iterators own
-     * {@code remove} operation), the results of the iteration are undefined. The set supports element removal,
-     * which removes the corresponding mapping from the map. It does not support the {@code add} or {@code addAll}
-     * operations.
+     * The set is backed by the map, so changes to the map are reflected in the set.
+     * Set supports element removal but not addition. Iterator supports concurrent
+     * modification detection.
      * </p>
      *
      * @return a set view of the keys contained in this map
@@ -1150,6 +1181,16 @@ public class CompactMap<K, V> implements Map<K, V> {
         EMPTY, OBJECT, ENTRY, MAP, ARRAY
     }
 
+    /**
+     * Returns the current storage state of this map.
+     * <p>
+     * Possible states are: EMPTY (no entries), OBJECT (single value), ENTRY (single entry),
+     * MAP (backing map), or ARRAY (compact array storage).
+     * Used internally to determine appropriate operations for current state.
+     * </p>
+     *
+     * @return the LogicalValueType enum representing current storage state
+     */
     protected LogicalValueType getLogicalValueType() {
         if (val instanceof Object[]) {   // 2 to compactSize
             return LogicalValueType.ARRAY;
@@ -1167,8 +1208,15 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Marker Class to hold key and value when the key is not the same as the getSingleValueKey().
-     * This method transmits the setValue() changes to the outer CompactMap instance.
+     * A specialized Map.Entry implementation for single-entry storage in CompactMap.
+     * <p>
+     * Extends SimpleEntry to provide:
+     * <ul>
+     *   <li>Write-through behavior to parent CompactMap on setValue</li>
+     *   <li>Case-sensitive/insensitive key comparison based on parent's configuration</li>
+     *   <li>Consistent hashCode computation with parent's key comparison logic</li>
+     * </ul>
+     * </p>
      */
     public class CompactMapEntry extends AbstractMap.SimpleEntry<K, V> {
         public CompactMapEntry(K key, V value) {
@@ -1199,24 +1247,43 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Computes hash code for map keys, handling special cases.
+     * <p>
+     * For String keys, respects case sensitivity setting.
+     * Handles null keys, self-referential keys, and standard objects.
+     * Used for both map operations and entry hash codes.
+     * </p>
+     *
+     * @param key the key to compute hash code for
+     * @return the computed hash code for the key
+     */
     protected int computeKeyHashCode(Object key) {
         if (key instanceof String) {
             if (isCaseInsensitive()) {
                 return StringUtilities.hashCodeIgnoreCase((String) key);
-            } else {   // k can't be null here (null is not instanceof String)
+            } else {   
                 return key.hashCode();
             }
         } else {
-            int keyHash;
             if (key == null) {
                 return 0;
             } else {
-                keyHash = key == CompactMap.this ? 37 : key.hashCode();
+                return key == CompactMap.this ? 37 : key.hashCode();
             }
-            return keyHash;
         }
     }
 
+    /**
+     * Computes hash code for map values, handling special cases.
+     * <p>
+     * Handles null values and self-referential values (where value is this map).
+     * Used for both map operations and entry hash codes.
+     * </p>
+     *
+     * @param value the value to compute hash code for
+     * @return the computed hash code for the value
+     */
     protected int computeValueHashCode(Object value) {
         if (value == CompactMap.this) {
             return 17;
@@ -1225,6 +1292,15 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Returns the key when map contains exactly one entry.
+     * <p>
+     * For CompactMapEntry storage, returns the entry's key.
+     * For optimized single value storage, returns the singleValueKey.
+     * </p>
+     *
+     * @return the key of the single entry in this map
+     */
     private K getLogicalSingleKey() {
         if (CompactMapEntry.class.isInstance(val)) {
             CompactMapEntry entry = (CompactMapEntry) val;
@@ -1233,6 +1309,15 @@ public class CompactMap<K, V> implements Map<K, V> {
         return getSingleValueKey();
     }
 
+    /**
+     * Returns the value when map contains exactly one entry.
+     * <p>
+     * For CompactMapEntry storage, returns the entry's value.
+     * For optimized single value storage, returns the direct value.
+     * </p>
+     *
+     * @return the value of the single entry in this map
+     */
     private V getLogicalSingleValue() {
         if (CompactMapEntry.class.isInstance(val)) {
             CompactMapEntry entry = (CompactMapEntry) val;
@@ -1242,23 +1327,54 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * @return String key name when there is only one entry in the Map.
+     * Returns the designated key for optimized single-value storage.
+     * <p>
+     * When map contains one entry with this key, value is stored directly.
+     * Default implementation returns "id". Override to customize.
+     * </p>
+     *
+     * @return the key to use for optimized single-value storage
      */
     protected K getSingleValueKey() {
         return (K) DEFAULT_SINGLE_KEY;
     }
 
     /**
-     * @return new empty Map instance to use when {@code size() > compactSize()}.
+     * Creates the backing map instance when size exceeds compactSize.
+     * <p>
+     * Default implementation returns HashMap. Override to provide different
+     * map implementation (e.g., TreeMap for sorted maps, LinkedHashMap for
+     * insertion ordered maps).
+     * </p>
+     *
+     * @return new empty map instance for backing storage
      */
     protected Map<K, V> getNewMap() {
         return new HashMap<>();
     }
-
+    /**
+     * Determines if String keys are compared case-insensitively.
+     * <p>
+     * Default implementation returns false (case-sensitive). Override to change
+     * String key comparison behavior. Affects key equality and sorting.
+     * </p>
+     *
+     * @return true if String keys should be compared ignoring case, false otherwise
+     */
     protected boolean isCaseInsensitive() {
         return !DEFAULT_CASE_SENSITIVE;
     }
-    
+
+    /**
+     * Returns the threshold size for compact array storage.
+     * <p>
+     * When size exceeds this value, switches to map storage.
+     * When size reduces to this value, returns to array storage.
+     * Default implementation returns 70.
+     * </p>
+     *
+     * @return the maximum number of entries for compact array storage
+     */
     protected int compactSize() {
         return DEFAULT_COMPACT_SIZE;
     }
@@ -1284,6 +1400,14 @@ public class CompactMap<K, V> implements Map<K, V> {
     /* ------------------------------------------------------------ */
     // iterators
 
+    /**
+     * Base iterator implementation for CompactMap's collection views.
+     * <p>
+     * Handles iteration across all storage states (empty, single entry,
+     * array, and map). Provides concurrent modification detection and
+     * supports element removal. Extended by key, value, and entry iterators.
+     * </p>
+     */
     abstract class CompactIterator {
         Iterator<Map.Entry<K, V>> mapIterator;
         Object current;
@@ -1362,6 +1486,13 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Iterator over the map's keys, maintaining storage-appropriate iteration.
+     * <p>
+     * Provides key-specific iteration behavior while inheriting storage state
+     * management and concurrent modification detection from CompactIterator.
+     * </p>
+     */
     final class CompactKeyIterator extends CompactMap<K, V>.CompactIterator implements Iterator<K> {
         public K next() {
             advance();
@@ -1373,6 +1504,13 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Iterator over the map's values, maintaining storage-appropriate iteration.
+     * <p>
+     * Provides value-specific iteration behavior while inheriting storage state
+     * management and concurrent modification detection from CompactIterator.
+     * </p>
+     */
     final class CompactValueIterator extends CompactMap<K, V>.CompactIterator implements Iterator<V> {
         public V next() {
             advance();
@@ -1386,6 +1524,14 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Iterator over the map's entries, maintaining storage-appropriate iteration.
+     * <p>
+     * Provides entry-specific iteration behavior, creating appropriate entry objects
+     * for each storage state while inheriting concurrent modification detection
+     * from CompactIterator.
+     * </p>
+     */
     final class CompactEntryIterator extends CompactMap<K, V>.CompactIterator implements Iterator<Map.Entry<K, V>> {
         public Map.Entry<K, V> next() {
             advance();
@@ -1405,96 +1551,65 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Creates a new {@code CompactMap} with advanced configuration options.
+     * Creates a new CompactMap instance with specified configuration options.
      * <p>
-     * This method provides fine-grained control over various aspects of the resulting {@code CompactMap},
-     * including size thresholds, ordering strategies, case sensitivity, comparator usage, backing map type,
-     * and source initialization. All options are validated and finalized via {@link #validateAndFinalizeOptions(Map)}
-     * before the map is constructed.
+     * Validates options, generates appropriate template class, and instantiates
+     * the map. Template class is cached for reuse with identical configurations.
+     * If source map provided in options, initializes with its entries.
      * </p>
      *
-     * <h3>Available Options</h3>
-     * <table border="1" cellpadding="5" summary="Configuration Options">
+     * <table border="1" summary="Configuration Options">
+     *   <caption>Available Configuration Options</caption>
      *   <tr>
-     *     <th>Key</th>
+     *     <th>Option Key</th>
      *     <th>Type</th>
      *     <th>Description</th>
-     *     <th>Default Value</th>
+     *     <th>Default</th>
      *   </tr>
      *   <tr>
      *     <td>{@link #COMPACT_SIZE}</td>
      *     <td>Integer</td>
-     *     <td>Specifies the threshold at which the map transitions from compact array-based storage
-     *         to a standard {@link Map} implementation. A value of N means that once the map size
-     *         exceeds N, it uses a backing map. Conversely, if the map size shrinks to N or below,
-     *         it transitions back to compact storage.</td>
-     *     <td>{@code 80}</td>
+     *     <td>Maximum size before switching to backing map</td>
+     *     <td>70</td>
      *   </tr>
      *   <tr>
      *     <td>{@link #CASE_SENSITIVE}</td>
      *     <td>Boolean</td>
-     *     <td>Determines whether {@code String} keys are compared in a case-sensitive manner.
-     *         If {@code false}, string keys are treated case-insensitively for equality checks and,
-     *         if sorting is enabled (and no custom comparator is provided), they are sorted
-     *         case-insensitively in the {@code Object[]} compact state.</td>
-     *     <td>{@code true}</td>
+     *     <td>Whether String keys are case-sensitive</td>
+     *     <td>true</td>
      *   </tr>
-     * <tr>
-     *   <td>{@link #MAP_TYPE}</td>
-     *   <td>Class&lt;? extends Map&gt;</td>
-     *   <td>The type of map to use once the size exceeds {@code compactSize()}.
-     *       When using {@code SORTED} or {@code REVERSE} ordering, any {@link SortedMap}
-     *       implementation can be specified (e.g., {@link TreeMap},
-     *       {@link java.util.concurrent.ConcurrentSkipListMap}). If no type is specified with
-     *       {@code SORTED}/{@code REVERSE} ordering, {@link TreeMap} is used as default.</td>
-     *   <td>{@code HashMap.class}</td>
-     * </tr>
+     *   <tr>
+     *     <td>{@link #MAP_TYPE}</td>
+     *     <td>Class&lt;? extends Map&gt;</td>
+     *     <td>Type of backing map to use</td>
+     *     <td>HashMap.class</td>
+     *   </tr>
      *   <tr>
      *     <td>{@link #SINGLE_KEY}</td>
      *     <td>K</td>
-     *     <td>Specifies a special key that, if present as the sole entry in the map, allows the map
-     *         to store just the value without a {@code Map.Entry}, saving memory for single-entry maps.</td>
-     *     <td>{@code "id"}</td>
+     *     <td>Key for optimized single-value storage</td>
+     *     <td>"id"</td>
      *   </tr>
      *   <tr>
      *     <td>{@link #SOURCE_MAP}</td>
      *     <td>Map&lt;K,V&gt;</td>
-     *     <td>If provided, the new map is initialized with all entries from this source.</td>
-     *     <td>{@code null}</td>
+     *     <td>Initial entries for the map</td>
+     *     <td>null</td>
      *   </tr>
      *   <tr>
      *     <td>{@link #ORDERING}</td>
      *     <td>String</td>
-     *     <td>Determines the ordering of entries. Valid values:
-     *         <ul>
-     *           <li>{@link #UNORDERED}</li>
-     *           <li>{@link #SORTED}</li>
-     *           <li>{@link #REVERSE}</li>
-     *           <li>{@link #INSERTION}</li>
-     *         </ul>
-     *         If {@code SORTED} or {@code REVERSE} is chosen and no custom comparator is provided,
-     *         sorting relies on either natural ordering or case-insensitive ordering for strings if
-     *         {@code CASE_SENSITIVE=false}.</td>
-     *     <td>{@code UNORDERED}</td>
+     *     <td>One of: {@link #UNORDERED}, {@link #SORTED}, {@link #REVERSE}, {@link #INSERTION}</td>
+     *     <td>UNORDERED</td>
      *   </tr>
      * </table>
      *
-     * <h3>Behavior and Validation</h3>
-     * <ul>
-     *   <li>{@link #validateAndFinalizeOptions(Map)} is called first to verify and adjust the options.</li>
-     *   <li>If {@code CASE_SENSITIVE} is {@code false} and no comparator is provided, string keys are
-     *       handled case-insensitively during equality checks and sorting in the compact array state.</li>
-     *   <li>If constraints are violated (e.g., {@code SORTED} ordering with a non-{@code SortedMap} type),
-     *       an {@link IllegalArgumentException} is thrown.</li>
-     *   <li>Providing a {@code SOURCE_MAP} initializes this map with its entries.</li>
-     * </ul>
-     *
-     * @param <K>     the type of keys maintained by the resulting map
-     * @param <V>     the type of values associated with the keys
-     * @param options a map of configuration options (see table above)
-     * @return a new {@code CompactMap} instance configured according to the provided options
-     * @throws IllegalArgumentException if the provided options are invalid or incompatible
-     * @see #validateAndFinalizeOptions(Map)
+     * @param <K> the type of keys maintained by the map
+     * @param <V> the type of values maintained by the map
+     * @param options configuration options for the map
+     * @return a new CompactMap instance configured according to options
+     * @throws IllegalArgumentException if options are invalid or incompatible
+     * @throws IllegalStateException if template generation or instantiation fails
      */
     static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
         // Validate and finalize options first (existing code)
@@ -1526,7 +1641,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * <ul>
      *   <li>Validates the compactSize is >= 2</li>
      *   <li>Determines and validates the appropriate map type based on ordering requirements</li>
-     *   <li>Ensures compatibility between ordering and map type</li>
+     *   <li>Ensures compatibility between 'ordering' property and map type</li>
      *   <li>Handles case sensitivity settings</li>
      *   <li>Validates source map compatibility if provided</li>
      * </ul>
@@ -1591,7 +1706,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             // Only wrap in CaseInsensitiveMap if we're not using a sorted/reverse ordered map
             if (!SORTED.equals(ordering) && !REVERSE.equals(ordering)) {
                 if (mapType != CaseInsensitiveMap.class) {
-                    options.put("INNER_MAP_TYPE", mapType);
+                    options.put(INNER_MAP_TYPE, mapType);
                     options.put(MAP_TYPE, CaseInsensitiveMap.class);
                 }
             }
@@ -1990,12 +2105,41 @@ public class CompactMap<K, V> implements Map<K, V> {
                     .map(line -> indent + line)
                     .collect(Collectors.joining("\n"));
         }
-        
+
         private static String getMapCreationCode(Map<String, Object> options) {
             String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
             boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
             Class<?> mapType = (Class<?>)options.getOrDefault(MAP_TYPE, DEFAULT_MAP_TYPE);
 
+            // Handle CaseInsensitiveMap with inner map type
+            if (mapType == CaseInsensitiveMap.class) {
+                Class<?> innerMapType = (Class<?>) options.get(INNER_MAP_TYPE);
+                if (innerMapType != null) {
+                    if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
+                        return String.format(
+                                "map = new CaseInsensitiveMap(new %s(new CompactMapComparator(%b, %b)));",
+                                getMapClassName(innerMapType),
+                                !caseSensitive,
+                                REVERSE.equals(ordering));
+                    } else {
+                        String template =
+                                "Map innerMap = new %s();\n" +
+                                        "try {\n" +
+                                        "    innerMap = new %s(%d);\n" +
+                                        "} catch (Exception e) {\n" +
+                                        "    // Fallback to default constructor already done\n" +
+                                        "}\n" +
+                                        "map = new CaseInsensitiveMap(innerMap);";
+
+                        return String.format(template,
+                                getMapClassName(innerMapType),
+                                getMapClassName(innerMapType),
+                                (Integer)options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE) + 1);
+                    }
+                }
+            }
+
+            // Handle regular sorted/ordered maps
             if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
                 return getSortedMapCreationCode(mapType, caseSensitive, ordering, options);
             } else {

@@ -162,6 +162,26 @@ import java.util.stream.Collectors;
  *   </tr>
  * </table>
  *
+ * <h2>Implementation Note</h2>
+ * <p>This class uses runtime optimization techniques to create specialized implementations
+ * based on the configuration options. When a CompactMap is first created with a specific
+ * combination of options (case sensitivity, ordering, map type, etc.), a custom class
+ * is dynamically generated and cached to provide optimal performance for that configuration.
+ * This is an implementation detail that is transparent to users of the class.</p>
+ *
+ * <p>The generated class names encode the configuration settings. For example:</p>
+ * <ul>
+ *   <li>{@code CompactMap$HashMap_CS_S70_Id_Unord} - A case-sensitive, unordered map
+ *       with HashMap backing, compact size of 70, and "id" as single value key</li>
+ *   <li>{@code CompactMap$TreeMap_CI_S100_UUID_Sort} - A case-insensitive, sorted map
+ *       with TreeMap backing, compact size of 100, and "UUID" as single value key</li>
+ *   <li>{@code CompactMap$LinkedHashMap_CS_S50_Key_Ins} - A case-sensitive map with
+ *       insertion ordering, LinkedHashMap backing, compact size of 50, and "key" as
+ *       single value key</li>
+ * </ul>
+ *
+ * <p>For developers interested in the internal mechanics, the source code contains
+ * detailed documentation of the template generation and compilation process.</p>
  * <p>Note: As elements are removed, the map will transition back through these states
  * in reverse order to maintain optimal memory usage.</p>
  *
@@ -287,11 +307,28 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
         return Objects.equals(key, aKey);
     }
-    
+
+    /**
+     * Determines if this CompactMap instance was created using legacy construction (direct subclassing)
+     * rather than the template-based generation system.
+     * <p>
+     * Legacy construction refers to instances where CompactMap is directly subclassed by user code,
+     * rather than using the builder pattern or template generation system. This method helps
+     * differentiate between these two creation patterns to maintain backward compatibility.
+     * </p>
+     * <p>
+     * The method works by checking if the class name starts with the template prefix
+     * "com.cedarsoftware.util.CompactMap$". Template-generated classes will always have this
+     * prefix, while legacy subclasses will not.
+     * </p>
+     *
+     * @return {@code true} if this instance was created through legacy subclassing,
+     *         {@code false} if it was created through the template generation system
+     */
     private boolean isLegacyConstructed() {
         return !getClass().getName().startsWith("com.cedarsoftware.util.CompactMap$");
     }
-
+    
     /**
      * Returns {@code true} if this map contains a mapping for the specified key.
      *
@@ -431,6 +468,18 @@ public class CompactMap<K, V> implements Map<K, V> {
         return handleSingleEntryRemove(key);
     }
 
+    /**
+     * Adds or updates an entry in the compact array storage.
+     * <p>
+     * If the key exists, updates its value. If the key is new and there's room to stay as an array (< compactSize),
+     * appends the new entry by growing the Object[]. If adding would exceed compactSize(), transitions to map storage.
+     * </p>
+     *
+     * @param entries the current array storage containing alternating keys and values
+     * @param key the key to add or update
+     * @param value the value to associate with the key
+     * @return the previous value associated with the key, or null if the key was not present
+     */
     private V putInCompactArray(final Object[] entries, K key, V value) {
         final int len = entries.length;
         // Check for "update" case
@@ -457,7 +506,14 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Removes a key-value pair from the compact array without unnecessary sorting.
+     * Removes an entry from the compact array storage.
+     * <p>
+     * If size will become 1 after removal, transitions back to single entry storage.
+     * Otherwise, creates a new smaller array excluding the removed entry.
+     * </p>
+     *
+     * @param key the key whose entry should be removed
+     * @return the value associated with the key, or null if the key was not found
      */
     private V removeFromCompactArray(Object key) {
         Object[] entries = (Object[]) val;
@@ -489,10 +545,14 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Sorts the array using QuickSort algorithm. Maintains key-value pair relationships
-     * where keys are at even indices and values at odd indices.
+     * Sorts the compact array while maintaining key-value pair relationships.
+     * <p>
+     * For legacy constructed maps, sorts only if backing map is a SortedMap.
+     * For template maps, sorts based on the specified ordering (sorted/reverse).
+     * Keys at even indices, values at odd indices are kept together during sort.
+     * </p>
      *
-     * @param array The array containing key-value pairs to sort
+     * @param array the array of alternating keys and values to sort
      */
     private void sortCompactArray(final Object[] array) {
         int pairCount = array.length / 2;
@@ -525,7 +585,19 @@ public class CompactMap<K, V> implements Map<K, V> {
                 REVERSE.equals(ordering));
         quickSort(array, 0, pairCount - 1, comparator);
     }
-    
+
+    /**
+     * Implements QuickSort for the compact array, maintaining key-value pair relationships.
+     * <p>
+     * Indices represent pair positions (i.e., lowPair=1 refers to array indices 2,3).
+     * Uses recursion to sort subarrays around pivot points.
+     * </p>
+     *
+     * @param array the array of alternating keys and values to sort
+     * @param lowPair starting pair index of the subarray
+     * @param highPair ending pair index of the subarray
+     * @param comparator the comparator to use for key comparison
+     */
     private void quickSort(Object[] array, int lowPair, int highPair, Comparator<Object> comparator) {
         if (lowPair < highPair) {
             int pivotPair = partition(array, lowPair, highPair, comparator);
@@ -534,6 +606,19 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Partitions array segment around a pivot while maintaining key-value pairs.
+     * <p>
+     * Uses median-of-three pivot selection and adjusts indices to handle paired elements.
+     * All comparisons are performed on keys (even indices) only.
+     * </p>
+     *
+     * @param array the array of alternating keys and values to partition
+     * @param lowPair starting pair index of the partition segment
+     * @param highPair ending pair index of the partition segment
+     * @param comparator the comparator to use for key comparison
+     * @return the final position (pair index) of the pivot
+     */
     private int partition(Object[] array, int lowPair, int highPair, Comparator<Object> comparator) {
         int low = lowPair * 2;
         int high = highPair * 2;
@@ -555,6 +640,20 @@ public class CompactMap<K, V> implements Map<K, V> {
         return i / 2;
     }
 
+    /**
+     * Selects and positions the median-of-three pivot for partitioning.
+     * <p>
+     * Compares first, middle, and last elements to find the median value.
+     * Moves the selected pivot to the high position while maintaining pair relationships.
+     * </p>
+     *
+     * @param array the array of alternating keys and values
+     * @param low index of the first key in the segment
+     * @param mid index of the middle key in the segment
+     * @param high index of the last key in the segment
+     * @param comparator the comparator to use for key comparison
+     * @return the selected pivot value
+     */
     private Object selectPivot(Object[] array, int low, int mid, int high,
                                Comparator<Object> comparator) {
         Object first = array[low];
@@ -585,7 +684,18 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
     }
-    
+
+    /**
+     * Swaps two key-value pairs in the array.
+     * <p>
+     * Exchanges elements at indices i,i+1 with j,j+1, maintaining
+     * the relationship between keys and their values.
+     * </p>
+     *
+     * @param array the array of alternating keys and values
+     * @param i the index of the first key to swap
+     * @param j the index of the second key to swap
+     */
     private void swapPairs(Object[] array, int i, int j) {
         Object tempKey = array[i];
         Object tempValue = array[i + 1];
@@ -595,6 +705,18 @@ public class CompactMap<K, V> implements Map<K, V> {
         array[j + 1] = tempValue;
     }
 
+    /**
+     * Transitions storage from compact array to backing map implementation.
+     * <p>
+     * Creates new map instance, copies existing entries from array,
+     * adds the new key-value pair, and updates internal storage reference.
+     * Called when size would exceed compactSize.
+     * </p>
+     *
+     * @param entries the current array of alternating keys and values
+     * @param key the new key triggering the transition
+     * @param value the value associated with the new key
+     */
     private void switchToMap(Object[] entries, K key, V value) {
         // Get the correct map type with initial capacity
         Map<K, V> map = getNewMap();  // This respects subclass overrides
@@ -1396,12 +1518,43 @@ public class CompactMap<K, V> implements Map<K, V> {
             throw new IllegalStateException("Failed to create CompactMap instance", e);
         }
     }
-    
+
     /**
-     * Validates the provided configuration options and resolves conflicts.
-     * Throws an {@link IllegalArgumentException} if the configuration is invalid.
+     * Validates and finalizes the configuration options for creating a CompactMap.
+     * <p>
+     * This method performs several important tasks:
+     * <ul>
+     *   <li>Validates the compactSize is >= 2</li>
+     *   <li>Determines and validates the appropriate map type based on ordering requirements</li>
+     *   <li>Ensures compatibility between ordering and map type</li>
+     *   <li>Handles case sensitivity settings</li>
+     *   <li>Validates source map compatibility if provided</li>
+     * </ul>
+     * </p>
+     * <p>
+     * The method may modify the options map to:
+     * <ul>
+     *   <li>Set default values for missing options</li>
+     *   <li>Adjust the map type based on requirements (e.g., wrapping in CaseInsensitiveMap)</li>
+     *   <li>Store the original map type as INNER_MAP_TYPE when wrapping is needed</li>
+     * </ul>
+     * </p>
      *
-     * @param options a map of user-provided options
+     * @param options the map of configuration options to validate and finalize. The map may be modified
+     *               by this method.
+     * @throws IllegalArgumentException if:
+     *         <ul>
+     *           <li>compactSize is less than 2</li>
+     *           <li>map type is incompatible with specified ordering</li>
+     *           <li>source map's ordering conflicts with requested ordering</li>
+     *           <li>IdentityHashMap or WeakHashMap is specified as map type</li>
+     *           <li>specified map type is not a Map class</li>
+     *         </ul>
+     * @see #COMPACT_SIZE
+     * @see #CASE_SENSITIVE
+     * @see #MAP_TYPE
+     * @see #ORDERING
+     * @see #SOURCE_MAP
      */
     static void validateAndFinalizeOptions(Map<String, Object> options) {
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
@@ -1898,7 +2051,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     null,                // Writer for compiler messages
                     fileManager,         // Custom file manager
                     diagnostics,         // DiagnosticListener
-                    Arrays.asList("-proc:none"), // Compiler options - disable annotation processing
+                    Collections.singletonList("-proc:none"), // Compiler options - disable annotation processing
                     null,                // Classes for annotation processing
                     Collections.singletonList(sourceFile)  // Source files to compile
             );

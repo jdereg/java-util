@@ -59,6 +59,30 @@ import java.util.stream.Collectors;
  *     .build();
  * }</pre>
  *
+ * <h3>Type Inference and Builder Usage</h3>
+ * When using the builder pattern with method chaining, you may need to provide a type witness
+ * to help Java's type inference:
+ *
+ * <pre>{@code
+ * // Requires type witness for method chaining
+ * CompactMap<String, Object> map1 = CompactMap.<String, Object>builder()
+ *     .caseSensitive(false)
+ *     .sortedOrder()
+ *     .build();
+ *
+ * // Alternative approach without type witness
+ * Builder<String, Object> builder = CompactMap.builder();
+ * CompactMap<String, Object> map2 = builder
+ *     .caseSensitive(false)
+ *     .sortedOrder()
+ *     .build();
+ * }</pre>
+ *
+ * The type witness ({@code <String, Object>}) is required due to Java's type inference
+ * limitations when method chaining directly from the builder() method. If you find the
+ * type witness syntax cumbersome, you can split the builder creation and configuration
+ * into separate statements as shown in the second example above.
+ *
  * <h3>2. Using Constructor</h3>
  * <pre>{@code
  * // Creates a default CompactMap that scales based on size

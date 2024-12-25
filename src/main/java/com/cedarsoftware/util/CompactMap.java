@@ -1985,11 +1985,38 @@ public class CompactMap<K, V> implements Map<K, V> {
             options = new HashMap<>();
         }
 
+        /**
+         * Sets whether String keys should be compared case-sensitively.
+         * <p>
+         * When set to false, String keys will be compared ignoring case. For example,
+         * "Key", "key", and "KEY" would all be considered equal. This setting only
+         * affects String keys; other key types are compared normally. Maps can
+         * contain heterogeneous content (Strings, Numbers, null, as keys).
+         *
+         * @param caseSensitive true for case-sensitive comparison (default),
+         *                      false for case-insensitive comparison
+         * @return this builder instance for method chaining
+         */
         public Builder<K, V> caseSensitive(boolean caseSensitive) {
             options.put(CASE_SENSITIVE, caseSensitive);
             return this;
         }
 
+        /**
+         * Sets the type of Map to use when size exceeds compact storage threshold.
+         * <p>
+         * Common map types include:
+         * <ul>
+         *     <li>{@link HashMap} - Default, unordered storage</li>
+         *     <li>{@link TreeMap} - Sorted key order</li>
+         *     <li>{@link LinkedHashMap} - Insertion order</li>
+         * </ul>
+         * Note: {@link IdentityHashMap} and {@link WeakHashMap} are not supported.
+         *
+         * @param mapType the Class object representing the desired Map implementation
+         * @return this builder instance for method chaining
+         * @throws IllegalArgumentException if mapType is not a Map class
+         */
         public Builder<K, V> mapType(Class<? extends Map> mapType) {
             if (!Map.class.isAssignableFrom(mapType)) {
                 throw new IllegalArgumentException("mapType must be a Map class");
@@ -1998,54 +2025,145 @@ public class CompactMap<K, V> implements Map<K, V> {
             return this;
         }
 
+        /**
+         * Sets a special key for optimized single-entry storage.
+         * <p>
+         * When the map contains exactly one entry with this key, the value is stored
+         * directly without wrapper objects, reducing memory overhead. The default
+         * single value key is "id".
+         *
+         * @param key the key to use for optimized single-entry storage
+         * @return this builder instance for method chaining
+         */
         public Builder<K, V> singleValueKey(K key) {
             options.put(SINGLE_KEY, key);
             return this;
         }
 
+        /**
+         * Sets the maximum size for compact array storage.
+         * <p>
+         * When the map size is between 2 and this value, entries are stored in a
+         * compact array format. Above this size, entries are moved to a backing map.
+         * Must be greater than or equal to 2.
+         *
+         * @param size the maximum number of entries to store in compact format
+         * @return this builder instance for method chaining
+         */
         public Builder<K, V> compactSize(int size) {
             options.put(COMPACT_SIZE, size);
             return this;
         }
 
+        /**
+         * Configures the map to maintain keys in natural sorted order.
+         * <p>
+         * Keys must be {@link Comparable} or a {@link ClassCastException} will be
+         * thrown when incomparable keys are inserted. For String keys, the ordering
+         * respects the case sensitivity setting.
+         *
+         * @return this builder instance for method chaining
+         */
         public Builder<K, V> sortedOrder() {
             options.put(ORDERING, CompactMap.SORTED);
             return this;
         }
 
+        /**
+         * Configures the map to maintain keys in reverse sorted order.
+         * <p>
+         * Keys must be {@link Comparable} or a {@link ClassCastException} will be
+         * thrown when incomparable keys are inserted. For String keys, the ordering
+         * respects the case sensitivity setting.
+         *
+         * @return this builder instance for method chaining
+         */
         public Builder<K, V> reverseOrder() {
             options.put(ORDERING, CompactMap.REVERSE);
             return this;
         }
 
+        /**
+         * Configures the map to maintain keys in insertion order.
+         * <p>
+         * The iteration order will match the order in which entries were added
+         * to the map. This ordering is preserved even when entries are updated.
+         *
+         * @return this builder instance for method chaining
+         */
         public Builder<K, V> insertionOrder() {
             options.put(ORDERING, CompactMap.INSERTION);
             return this;
         }
 
+        /**
+         * Explicitly configures the map to not maintain any specific ordering.
+         * <p>
+         * This is the default behavior if no ordering is specified. The iteration
+         * order may change as entries are added or removed.
+         *
+         * @return this builder instance for method chaining
+         */
         public Builder<K, V> noOrder() {
             options.put(ORDERING, CompactMap.UNORDERED);
             return this;
         }
 
+        /**
+         * Initializes the map with entries from the specified source map.
+         * <p>
+         *
+         * @param source the map whose entries are to be copied
+         * @return this builder instance for method chaining
+         * @throws IllegalArgumentException if source map's ordering conflicts with
+         *         configured ordering
+         */
         public Builder<K, V> sourceMap(Map<K, V> source) {
             options.put(SOURCE_MAP, source);
             return this;
         }
-        
+
+        /**
+         * Creates a new CompactMap instance with the configured options.
+         * <p>
+         * This method validates all options and creates a specialized implementation
+         * based on the configuration. The resulting map is optimized for the
+         * specified combination of options.
+         *
+         * @return a new CompactMap instance
+         * @throws IllegalArgumentException if any configuration options are invalid
+         *         or incompatible
+         */
         public CompactMap<K, V> build() {
             return CompactMap.newMap(options);
         }
     }
 
     /**
-     * Generates template classes for CompactMap configurations.
-     * Each unique configuration combination will have its own template class
-     * that extends CompactMap and implements the desired behavior.
+     * Internal class that handles dynamic generation of specialized CompactMap implementations.
+     * <p>
+     * This class generates and compiles optimized CompactMap subclasses at runtime based on
+     * configuration options. Generated classes are cached for reuse. Class names encode their
+     * configuration, for example: "CompactMap$HashMap_CS_S70_id_Unord" represents a
+     * case-sensitive, unordered map with HashMap backing, compact size of 70, and "id" as
+     * the single value key.
+     * <p>
+     * This is an implementation detail and not part of the public API.
      */
     private static class TemplateGenerator {
         private static final String TEMPLATE_CLASS_PREFIX = "com.cedarsoftware.util.CompactMap$";
 
+        /**
+         * Returns an existing or creates a new template class for the specified configuration options.
+         * <p>
+         * First attempts to load an existing template class matching the options. If not found,
+         * generates, compiles, and loads a new template class. Generated classes are cached
+         * for future reuse.
+         *
+         * @param options configuration map containing case sensitivity, ordering, map type, etc.
+         * @return the template Class object matching the specified options
+         * @throws IllegalStateException if template generation or compilation fails
+         */
         static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
             String className = generateClassName(options);
             try {
@@ -2055,6 +2173,22 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
+        /**
+         * Generates a unique class name encoding the configuration options.
+         * <p>
+         * Format: "CompactMap$[MapType]_[CS/CI]_S[Size]_[SingleKey]_[Order]"
+         * Example: "CompactMap$HashMap_CS_S70_id_Unord" represents:
+         * <ul>
+         *     <li>HashMap backing</li>
+         *     <li>Case Sensitive (CS)</li>
+         *     <li>Size 70</li>
+         *     <li>Single key "id"</li>
+         *     <li>Unordered</li>
+         * </ul>
+         *
+         * @param options configuration map containing case sensitivity, ordering, map type, etc.
+         * @return the generated class name
+         */
         private static String generateClassName(Map<String, Object> options) {
             StringBuilder keyBuilder = new StringBuilder(TEMPLATE_CLASS_PREFIX);
 
@@ -2100,6 +2234,21 @@ public class CompactMap<K, V> implements Map<K, V> {
             return keyBuilder.toString();
         }
 
+        /**
+         * Creates a new template class for the specified configuration options.
+         * <p>
+         * This synchronized method:
+         * <ul>
+         *     <li>Double-checks if class was created while waiting for lock</li>
+         *     <li>Generates source code for the template class</li>
+         *     <li>Compiles the source code</li>
+         *     <li>Loads and returns the compiled class</li>
+         * </ul>
+         *
+         * @param options configuration map containing case sensitivity, ordering, map type, etc.
+         * @return the newly generated and compiled template Class
+         * @throws IllegalStateException if compilation fails or class cannot be loaded
+         */
         private static synchronized Class<?> generateTemplateClass(Map<String, Object> options) {
             // Double-check if class was created while waiting for lock
             String className = generateClassName(options);
@@ -2115,6 +2264,23 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
+        /**
+         * Generates Java source code for a CompactMap template class.
+         * <p>
+         * Creates a class that extends CompactMap and overrides:
+         * <ul>
+         *     <li>isCaseInsensitive()</li>
+         *     <li>compactSize()</li>
+         *     <li>getSingleValueKey()</li>
+         *     <li>getOrdering()</li>
+         *     <li>getNewMap()</li>
+         * </ul>
+         * The generated class implements the behavior specified by the configuration options.
+         *
+         * @param className fully qualified name for the generated class
+         * @param options configuration map containing case sensitivity, ordering, map type, etc.
+         * @return Java source code as a String
+         */
         private static String generateSourceCode(String className, Map<String, Object> options) {
             String simpleClassName = className.substring(className.lastIndexOf('.') + 1);
             StringBuilder sb = new StringBuilder();
@@ -2129,16 +2295,14 @@ public class CompactMap<K, V> implements Map<K, V> {
             // Add import for test classes if needed
             Class<?> mapType = (Class<?>) options.get(MAP_TYPE);
             if (mapType != null) {
-                if (mapType.getName().contains("Test")) {
-                    // For test classes, import the enclosing class to get access to inner classes
-                    sb.append("import ").append(mapType.getEnclosingClass().getName()).append(".*;\n");
-                } else if (!mapType.getName().startsWith("java.util.") &&
-                        !mapType.getPackage().getName().equals("com.cedarsoftware.util")) {
-                    // For non-standard classes that aren't in java.util or our package
-                    sb.append("import ").append(mapType.getName().replace('$', '.')).append(";\n");
+                String mapClassName = getMapClassName(mapType);
+                if (!mapClassName.startsWith("java.util.") &&
+                        !mapClassName.startsWith("java.util.concurrent.") &&
+                        !mapClassName.startsWith("com.cedarsoftware.util.")) {
+                    sb.append("import ").append(mapClassName).append(";\n");
                 }
             }
-
+            
             sb.append("\n");
 
             // Class declaration
@@ -2179,6 +2343,20 @@ public class CompactMap<K, V> implements Map<K, V> {
             return sb.toString();
         }
 
+        /**
+         * Generates the getNewMap() method override for the template class.
+         * <p>
+         * Creates code that instantiates the appropriate map type with:
+         * <ul>
+         *     <li>Correct constructor (default, capacity, or comparator)</li>
+         *     <li>Error handling for constructor failures</li>
+         *     <li>Type validation checks</li>
+         *     <li>Support for wrapper maps (CaseInsensitive, etc.)</li>
+         * </ul>
+         *
+         * @param sb StringBuilder to append the generated code to
+         * @param options configuration map containing map type and related options
+         */
         private static void appendGetNewMapOverride(StringBuilder sb, Map<String, Object> options) {
             // Main method template
             String methodTemplate =
@@ -2204,6 +2382,23 @@ public class CompactMap<K, V> implements Map<K, V> {
             sb.append(String.format(methodTemplate, indentedCreationCode));
         }
 
+        /**
+         * Generates code to create a sorted map instance (TreeMap or similar).
+         * <p>
+         * Attempts to use comparator constructor if available, falling back to
+         * capacity-based constructor if not. Generated code handles:
+         * <ul>
+         *     <li>Case sensitivity for String keys</li>
+         *     <li>Natural or reverse ordering</li>
+         *     <li>Constructor fallback logic</li>
+         * </ul>
+         *
+         * @param mapType the Class object for the map implementation
+         * @param caseSensitive whether String keys should be case-sensitive
+         * @param ordering the ordering type (SORTED or REVERSE)
+         * @param options additional configuration options including compactSize
+         * @return String containing Java code to create the map instance
+         */
         private static String getSortedMapCreationCode(Class<?> mapType, boolean caseSensitive,
                                                       String ordering, Map<String, Object> options) {
             // Template for comparator-based constructor
@@ -2232,7 +2427,19 @@ public class CompactMap<K, V> implements Map<K, V> {
                         compactSize + 1);  // Use compactSize + 1 as initial capacity (that is the trigger point for expansion)
             }
         }
-        
+
+        /**
+         * Generates code to create a standard (non-sorted) map instance.
+         * <p>
+         * Creates code that attempts to use capacity constructor first,
+         * falling back to default constructor if unavailable. Initial
+         * capacity is set to compactSize + 1 to avoid immediate resize
+         * when transitioning from compact storage.
+         *
+         * @param mapType the Class object for the map implementation
+         * @param options configuration options containing compactSize
+         * @return String containing Java code to create the map instance
+         */
         private static String getStandardMapCreationCode(Class<?> mapType, Map<String, Object> options) {
             String template =
                     "map = new %s();\n" +
@@ -2249,7 +2456,20 @@ public class CompactMap<K, V> implements Map<K, V> {
                     mapClassName,
                     compactSize + 1);  // Use compactSize + 1 as initial capacity (that is the trigger point for expansion)
         }
-        
+
+        /**
+         * Returns the appropriate class name for use in generated code.
+         * <p>
+         * Handles special cases:
+         * <ul>
+         *     <li>Inner classes (converts '$' to '.')</li>
+         *     <li>Test classes (uses simple name)</li>
+         *     <li>java-util classes (uses enclosing class prefix)</li>
+         * </ul>
+         *
+         * @param mapType the Class object for the map implementation
+         * @return fully qualified or simple class name appropriate for generated code
+         */
         private static String getMapClassName(Class<?> mapType) {
             if (mapType.getEnclosingClass() != null) {
                 if (mapType.getName().contains("Test")) {
@@ -2262,6 +2482,15 @@ public class CompactMap<K, V> implements Map<K, V> {
             return mapType.getName();
         }
 
+        /**
+         * Checks if the map class has a constructor that accepts a Comparator.
+         * <p>
+         * Used to determine if a sorted map can be created with a custom
+         * comparator (e.g., case-insensitive or reverse order).
+         *
+         * @param mapType the Class object for the map implementation
+         * @return true if the class has a Comparator constructor, false otherwise
+         */
         private static boolean hasComparatorConstructor(Class<?> mapType) {
             try {
                 mapType.getConstructor(Comparator.class);
@@ -2271,6 +2500,17 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
+        /**
+         * Indents each line of the provided code by the specified number of spaces.
+         * <p>
+         * Splits input on newlines, adds leading spaces to each line, and
+         * rejoins with newlines. Used to format generated source code with
+         * proper indentation.
+         *
+         * @param code the source code to indent
+         * @param spaces number of spaces to add at start of each line
+         * @return the indented source code
+         */
         private static String indentCode(String code, int spaces) {
             String indent = String.format("%" + spaces + "s", "");
             return Arrays.stream(code.split("\n"))
@@ -2278,6 +2518,21 @@ public class CompactMap<K, V> implements Map<K, V> {
                     .collect(Collectors.joining("\n"));
         }
 
+        /**
+         * Generates code to instantiate the appropriate map implementation.
+         * <p>
+         * Handles multiple scenarios:
+         * <ul>
+         *     <li>CaseInsensitiveMap with specified inner map type</li>
+         *     <li>Sorted maps (TreeMap) with comparator</li>
+         *     <li>Standard maps with capacity constructor</li>
+         *     <li>Wrapper maps (maintaining inner map characteristics)</li>
+         * </ul>
+         * Generated code includes proper error handling and constructor fallbacks.
+         *
+         * @param options configuration map containing MAP_TYPE, INNER_MAP_TYPE, ordering, etc.
+         * @return String containing Java code to create the configured map instance
+         */
         private static String getMapCreationCode(Map<String, Object> options) {
             String ordering = (String)options.getOrDefault(ORDERING, UNORDERED);
             boolean caseSensitive = (boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
@@ -2318,7 +2573,23 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return getStandardMapCreationCode(mapType, options);
             }
         }
-        
+
+        /**
+         * Compiles Java source code into a Class object at runtime.
+         * <p>
+         * Process:
+         * <ul>
+         *     <li>Uses JavaCompiler from JDK tools</li>
+         *     <li>Compiles in memory (no file system access needed)</li>
+         *     <li>Captures compilation diagnostics for error reporting</li>
+         *     <li>Loads compiled bytecode via custom ClassLoader</li>
+         * </ul>
+         *
+         * @param className fully qualified name for the class to create
+         * @param sourceCode Java source code to compile
+         * @return the compiled Class object
+         * @throws IllegalStateException if compilation fails or JDK compiler unavailable
+         */
         private static Class<?> compileClass(String className, String sourceCode) {
             JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
             if (compiler == null) {
@@ -2392,6 +2663,21 @@ public class CompactMap<K, V> implements Map<K, V> {
             return defineClass(className, classBytes);
         }
 
+        /**
+         * Defines a Class object from compiled bytecode using a custom ClassLoader.
+         * <p>
+         * Uses TemplateClassLoader to:
+         * <ul>
+         *     <li>Define new template classes</li>
+         *     <li>Handle class loading hierarchy properly</li>
+         *     <li>Support test class loading via thread context</li>
+         * </ul>
+         *
+         * @param className fully qualified name of the class to define
+         * @param classBytes compiled bytecode for the class
+         * @return the defined Class object
+         * @throws LinkageError if class definition fails
+         */
         private static Class<?> defineClass(String className, byte[] classBytes) {
             // Use the current thread's context class loader as parent
             ClassLoader parentLoader = Thread.currentThread().getContextClassLoader();
@@ -2407,11 +2693,35 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Custom ClassLoader for dynamically generated CompactMap template classes.
+     * <p>
+     * Provides class loading that:
+     * <ul>
+     *     <li>Defines new template classes from byte code</li>
+     *     <li>Delegates non-template class loading to parent</li>
+     *     <li>Caches template classes for reuse</li>
+     *     <li>Uses thread context ClassLoader for test classes</li>
+     * </ul>
+     * Internal implementation detail of the template generation system.
+     */
     private static class TemplateClassLoader extends ClassLoader {
         TemplateClassLoader(ClassLoader parent) {
             super(parent);
         }
 
+        /**
+         * Defines or retrieves a template class in this ClassLoader.
+         * <p>
+         * First attempts to find an existing template class. If not found,
+         * defines a new class from the provided bytecode. This method
+         * ensures template classes are only defined once.
+         *
+         * @param name fully qualified class name for the template
+         * @param bytes bytecode for the template class
+         * @return the template Class object
+         * @throws LinkageError if class definition fails
+         */
         Class<?> defineTemplateClass(String name, byte[] bytes) {
             // First try to load from parent
             try {
@@ -2422,10 +2732,24 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
+        /**
+         * Finds the specified class using appropriate ClassLoader.
+         * <p>
+         * For non-template classes (not starting with "com.cedarsoftware.util.CompactMap$"):
+         * <ul>
+         *     <li>First tries thread context ClassLoader</li>
+         *     <li>Falls back to parent ClassLoader</li>
+         * </ul>
+         * Template classes must be defined explicitly via defineTemplateClass().
+         *
+         * @param name fully qualified class name to find
+         * @return the Class object for the specified class
+         * @throws ClassNotFoundException if the class cannot be found
+         */
         @Override
         protected Class<?> findClass(String name) throws ClassNotFoundException {
             // First try parent classloader for any non-template classes
-            if (!name.contains("Template_")) {
+            if (!name.startsWith("com.cedarsoftware.util.CompactMap$")) {
                 // Use the thread context classloader for test classes
                 ClassLoader classLoader = ClassUtilities.getClassLoader();
                 if (classLoader != null) {
@@ -2442,7 +2766,16 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Also used in generated code
+     * Comparator implementation for CompactMap key ordering.
+     * <p>
+     * Provides comparison logic that:
+     * <ul>
+     *     <li>Handles case sensitivity for String keys</li>
+     *     <li>Supports natural or reverse ordering</li>
+     *     <li>Maintains consistent ordering for different key types</li>
+     *     <li>Properly handles null keys (always last)</li>
+     * </ul>
+     * Used by sorted CompactMaps and during compact array sorting.
      */
     public static class CompactMapComparator implements Comparator<Object> {
         private final boolean caseInsensitive;

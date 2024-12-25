@@ -2644,7 +2644,7 @@ public class CompactMapTest
     void testCompactCIHashMap()
     {
         // Ensure CompactCIHashMap equivalent is minimally exercised.
-        CompactMap<String, Integer> ciHashMap = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).capacity(16).noOrder().build();
+        CompactMap<String, Integer> ciHashMap = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).noOrder().build();
 
         for (int i=0; i < ciHashMap.compactSize() + 5; i++)
         {
@@ -2658,7 +2658,7 @@ public class CompactMapTest
         assert ciHashMap.containsKey("FoO" + (ciHashMap.compactSize() + 3));
         assert ciHashMap.containsKey("foo" + (ciHashMap.compactSize() + 3));
                                                  
-        CompactMap<String, Integer> copy = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).capacity(16).noOrder().singleValueKey("key").sourceMap(ciHashMap).build();
+        CompactMap<String, Integer> copy = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).noOrder().singleValueKey("key").sourceMap(ciHashMap).build();
         assert copy.equals(ciHashMap);
 
         assert copy.containsKey("FoO0");
@@ -2673,7 +2673,7 @@ public class CompactMapTest
     void testCompactCILinkedMap()
     {
         // Ensure CompactLinkedMap is minimally exercised.
-        CompactMap<String, Integer> ciLinkedMap = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).capacity(16).insertionOrder().build();
+        CompactMap<String, Integer> ciLinkedMap = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).insertionOrder().build();
 
         for (int i=0; i < ciLinkedMap.compactSize() + 5; i++)
         {
@@ -2690,7 +2690,6 @@ public class CompactMapTest
         CompactMap<String, Integer> copy = CompactMap.<String, Integer>builder()
                 .compactSize(80)
                 .caseSensitive(false)
-                .capacity(16)
                 .insertionOrder()
                 .singleValueKey("key").sourceMap(ciLinkedMap).build();
         assert copy.equals(ciLinkedMap);
@@ -3140,7 +3139,7 @@ public class CompactMapTest
         stringMap.put("One", "Two");
         stringMap.put("Three", "Four");
         stringMap.put("Five", "Six");
-        CompactMap<String, Object> newMap = CompactMap.<String, Object>builder().compactSize(80).caseSensitive(false).capacity(16).insertionOrder().build();
+        CompactMap<String, Object> newMap = CompactMap.<String, Object>builder().compactSize(80).caseSensitive(false).insertionOrder().build();
         newMap.put("thREe", "four");
         newMap.put("Seven", "Eight");
 

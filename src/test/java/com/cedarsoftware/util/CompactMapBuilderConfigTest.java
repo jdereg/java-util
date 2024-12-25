@@ -387,27 +387,7 @@ public class CompactMapBuilderConfigTest {
             return lastCapacityUsed;
         }
     }
-
-    @Test
-    public void testFactoryCompactMapCapacityMethodCalled() {
-        // Create CompactMap with custom settings
-        Map<String, Object> options = new HashMap<>();
-        options.put(CompactMap.COMPACT_SIZE, 2);  // Small compact size to force transition
-        options.put(CompactMap.CAPACITY, 42);     // Custom capacity
-        options.put(CompactMap.MAP_TYPE, CompactMapBuilderConfigTest.CapacityTrackingHashMap.class);
-
-        CompactMap<String, String> map = CompactMap.newMap(options);
-
-        // Add entries to force creation of backing map
-        map.put("A", "1");
-        map.put("B", "2");
-        map.put("C", "3");  // This should trigger backing map creation
-
-        // Verify the capacity was used when creating the HashMap
-        assertEquals(42, CompactMapBuilderConfigTest.CapacityTrackingHashMap.getLastCapacityUsed(),
-                "Backing map was not created with the expected capacity");
-    }
-
+    
     // Helper methods for verification
     private void verifyMapBehavior(CompactMap<String, String> map, boolean reverse, boolean caseSensitive) {
         // Test at size 1

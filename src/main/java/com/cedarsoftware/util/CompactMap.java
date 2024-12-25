@@ -38,149 +38,141 @@ import java.util.stream.Collectors;
 
 /**
  * A memory-efficient {@code Map} implementation that adapts its internal storage structure
- * to minimize memory usage while maintaining acceptable performance. {@code CompactMap}
- * uses only one instance variable ({@code val}) to store all its entries in different
- * forms depending on the current size.
+ * to minimize memory usage while maintaining acceptable performance.
  *
- * <h2>Motivation</h2>
- * Traditional {@code Map} implementations (like {@link java.util.HashMap}) allocate internal
- * structures upfront, even for empty or very small maps. {@code CompactMap} aims to reduce
- * memory overhead by starting in a minimalistic representation and evolving into more
- * complex internal structures only as the map grows.
+ * <h2>Creating a CompactMap</h2>
+ * There are two primary ways to create a CompactMap:
  *
- * <h2>Internal States</h2>
- * As the map size changes, the internal {@code val} field transitions through distinct states:
+ * <h3>1. Using the Builder Pattern (Recommended)</h3>
+ * <pre>{@code
+ * // Create a case-insensitive, sorted CompactMap
+ * CompactMap<String, Object> map = CompactMap.builder()
+ *     .caseSensitive(false)
+ *     .sortedOrder()
+ *     .compactSize(80)
+ *     .build();
+ *
+ * // Create a CompactMap with insertion ordering
+ * CompactMap<String, Object> ordered = CompactMap.builder()
+ *     .insertionOrder()
+ *     .mapType(LinkedHashMap.class)
+ *     .build();
+ * }</pre>
+ *
+ * <h3>2. Using Constructor</h3>
+ * <pre>{@code
+ * // Creates a default CompactMap that scales based on size
+ * CompactMap<String, Object> map = new CompactMap<>();
+ *
+ * // Creates a CompactMap initialized with entries from another map
+ * CompactMap<String, Object> copy = new CompactMap<>(existingMap);
+ * }</pre>
+ *
+ * <h2>Configuration Options</h2>
+ * When using the Builder pattern, the following options are available:
+ * <table border="1" cellpadding="5" summary="Builder Options">
+ *   <tr><th>Method</th><th>Description</th><th>Default</th></tr>
+ *   <tr>
+ *     <td>{@code caseSensitive(boolean)}</td>
+ *     <td>Controls case sensitivity for string keys</td>
+ *     <td>true</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code compactSize(int)}</td>
+ *     <td>Maximum size before switching to backing map</td>
+ *     <td>70</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code mapType(Class)}</td>
+ *     <td>Type of backing map when size exceeds compact size</td>
+ *     <td>HashMap.class</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code singleValueKey(K)}</td>
+ *     <td>Special key that enables optimized storage when map contains only one entry with this key</td>
+ *     <td>"id"</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code sourceMap(Map)}</td>
+ *     <td>Initializes the CompactMap with entries from the provided map</td>
+ *     <td>null</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code sortedOrder()}</td>
+ *     <td>Maintains keys in sorted order</td>
+ *     <td>unordered</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code reverseOrder()}</td>
+ *     <td>Maintains keys in reverse order</td>
+ *     <td>unordered</td>
+ *   </tr>
+ *   <tr>
+ *     <td>{@code insertionOrder()}</td>
+ *     <td>Maintains keys in insertion order</td>
+ *     <td>unordered</td>
+ *   </tr>
+ * </table>
+ *
+ * <h3>Example with Additional Properties</h3>
+ * <pre>{@code
+ * CompactMap<String, Object> map = CompactMap.builder()
+ *     .caseSensitive(false)
+ *     .sortedOrder()
+ *     .compactSize(80)
+ *     .singleValueKey("uuid")    // Optimize storage for single entry with key "uuid"
+ *     .sourceMap(existingMap)    // Initialize with existing entries
+ *     .build();
+ * }</pre>
+ *
+ * <h2>Internal Storage States</h2>
+ * As elements are added to or removed from the map, it transitions through different internal states
+ * to optimize memory usage:
  *
  * <table border="1" cellpadding="5" summary="Internal States">
  *   <tr>
  *     <th>State</th>
  *     <th>Condition</th>
- *     <th>Representation</th>
+ *     <th>Storage</th>
  *     <th>Size Range</th>
  *   </tr>
  *   <tr>
  *     <td>Empty</td>
  *     <td>{@code val == EMPTY_MAP}</td>
- *     <td>A sentinel empty value, indicating no entries are present.</td>
+ *     <td>Sentinel value</td>
  *     <td>0</td>
  *   </tr>
  *   <tr>
- *     <td>Single Entry (Key = getSingleValueKey())</td>
- *     <td>{@code val} is a direct reference to the single value.</td>
- *     <td>When the inserted key matches {@link #getSingleValueKey()}, the map stores
- *         only the value directly (no {@code Map.Entry} overhead).</td>
- *     <td>1</td>
- *   </tr>
- *   <tr>
- *     <td>Single Entry (Key != getSingleValueKey())</td>
- *     <td>{@code val} is a {@link CompactMapEntry}</td>
- *     <td>For a single entry whose key does not match {@code getSingleValueKey()}, the map holds
- *         a single {@link java.util.Map.Entry} containing both key and value.</td>
+ *     <td>Single Entry</td>
+ *     <td>Direct value or Entry</td>
+ *     <td>Optimized single value storage</td>
  *     <td>1</td>
  *   </tr>
  *   <tr>
  *     <td>Compact Array</td>
- *     <td>{@code val} is an {@code Object[]}</td>
- *     <td>For maps with multiple entries (from 2 up to {@code compactSize()}),
- *         keys and values are stored in a single {@code Object[]} array, with keys in even
- *         indices and corresponding values in odd indices. When sorting is requested (e.g.,
- *         {@code ORDERING = SORTED} or {@code REVERSE}), the keys are sorted according to
- *         the chosen comparator or the default logic.</td>
- *     <td>2 to {@code compactSize()}</td>
+ *     <td>{@code val} is Object[]</td>
+ *     <td>Array with alternating keys/values</td>
+ *     <td>2 to compactSize</td>
  *   </tr>
  *   <tr>
  *     <td>Backing Map</td>
- *     <td>{@code val} is a standard {@code Map}</td>
- *     <td>Once the map grows beyond {@code compactSize()}, it delegates storage to a standard
- *         {@code Map} implementation (e.g., {@link java.util.HashMap} by default).
- *         This ensures good performance for larger data sets.</td>
- *     <td>> {@code compactSize()}</td>
+ *     <td>{@code val} is Map</td>
+ *     <td>Standard Map implementation</td>
+ *     <td>> compactSize</td>
  *   </tr>
  * </table>
  *
- * <h2>Case Sensitivity and Sorting</h2>
- * {@code CompactMap} allows you to specify whether string key comparisons are case-sensitive or not,
- * controlled by the {@link #isCaseInsensitive()} method. By default, string key equality checks are
- * case-sensitive. If you configure the map to be case-insensitive (e.g., by passing an option to
- * {@code newMap(...)}), then:
- * <ul>
- *   <li>Key equality checks will ignore case for {@code String} keys.</li>
- *   <li>If sorting is requested (when in the {@code Object[]} compact state and no custom comparator
- *       is provided), string keys will be sorted using a case-insensitive order. Non-string keys
- *       will use natural ordering if possible.</li>
- * </ul>
- * <p>
- * If a custom comparator is provided, that comparator takes precedence over case-insensitivity settings.
+ * <p>Note: As elements are removed, the map will transition back through these states
+ * in reverse order to maintain optimal memory usage.</p>
  *
- * <h2>Behavior and Configuration</h2>
- * {@code CompactMap} allows customization of:
- * <ul>
- *   <li>The compact size threshold (override {@link #compactSize()}).</li>
- *   <li>Case sensitivity for string keys (override {@link #isCaseInsensitive()} or specify via factory options).</li>
- *   <li>The special single-value key optimization (override {@link #getSingleValueKey()}).</li>
- *   <li>The backing map type, comparator, and ordering via provided factory methods.</li>
- * </ul>
- * <p>
- * While subclassing {@code CompactMap} is possible, it is generally not necessary. Use the static
- * factory methods and configuration options to change behavior. This design ensures the core
- * {@code CompactMap} remains minimal with only one member variable.
- *
- * <h2>Factory Methods and Configuration Options</h2>
- * Instead of subclassing, you can configure a {@code CompactMap} through the static factory methods
- * like {@link #newMap(Map)}, which accept a configuration options map. For example, to enable
- * case-insensitivity:
- *
- * <pre>{@code
- * Map<String, Object> options = new HashMap<>();
- * options.put(CompactMap.CASE_SENSITIVE, false); // case-insensitive
- * CompactMap<String, Integer> caseInsensitiveMap = CompactMap.newMap(options);
- * }</pre>
- * <p>
- * If you then request sorted or reverse ordering without providing a custom comparator, string keys
- * will be sorted case-insensitively.
- *
- * <h3>Additional Examples</h3>
- * <pre>{@code
- * // Default CompactMap:
- * CompactMap<String, Integer> defaultMap = CompactMap.newMap();
- *
- * // Case-insensitive and sorted using natural case-insensitive order:
- * Map<String, Object> sortedOptions = new HashMap<>();
- * sortedOptions.put(CompactMap.ORDERING, CompactMap.SORTED);
- * sortedOptions.put(CompactMap.CASE_SENSITIVE, false);
- * sortedOptions.put(CompactMap.MAP_TYPE, TreeMap.class);
- * CompactMap<String, Integer> ciSortedMap = CompactMap.newMap(sortedOptions);
- *
- * // Use a custom comparator to override case-insensitive checks:
- * sortedOptions.put(CompactMap.COMPARATOR, String.CASE_INSENSITIVE_ORDER);
- * // Now sorting uses the provided comparator.
- * CompactMap<String, Integer> customSortedMap = CompactMap.newMap(sortedOptions);
- * }</pre>
- *
- * <h2>Thread Safety</h2>
- * Thread safety depends on the chosen backing map implementation. If you require thread safety,
- * consider using a concurrent map type or external synchronization.
- *
- * <h2>Conclusion</h2>
- * {@code CompactMap} is a flexible, memory-efficient map suitable for scenarios where map sizes vary.
- * Its flexible configuration and factory methods allow you to tailor its behavior—such as case sensitivity
- * and ordering—without subclassing.
+ * <p>While subclassing CompactMap is still supported for backward compatibility,
+ * it is recommended to use the Builder pattern for new implementations.</p>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
- *         Licensed under the Apache License, Version 2.0 (the "License");
- *         you may not use this file except in compliance with the License.
- *         You may obtain a copy of the License at
- *         <br><br>
- *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
- *         <br><br>
- *         Unless required by applicable law or agreed to in writing, software
- *         distributed under the License is distributed on an "AS IS" BASIS,
- *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *         See the License for the specific language governing permissions and
- *         limitations under the License.
+ *         Licensed under the Apache License, Version 2.0 (the "License")
  */
 @SuppressWarnings("unchecked")
 public class CompactMap<K, V> implements Map<K, V> {
@@ -188,7 +180,6 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     // Constants for option keys
     public static final String COMPACT_SIZE = "compactSize";
-    public static final String CAPACITY = "capacity";
     public static final String CASE_SENSITIVE = "caseSensitive";
     public static final String MAP_TYPE = "mapType";
     public static final String SINGLE_KEY = "singleKey";
@@ -203,7 +194,6 @@ public class CompactMap<K, V> implements Map<K, V> {
 
     // Default values
     private static final int DEFAULT_COMPACT_SIZE = 70;
-    private static final int DEFAULT_CAPACITY = 16;
     private static final boolean DEFAULT_CASE_SENSITIVE = true;
     private static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
     private static final String DEFAULT_SINGLE_KEY = "id";
@@ -299,7 +289,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
     
     private boolean isLegacyConstructed() {
-        return !getClass().getName().contains("caseSen_");
+        return !getClass().getName().startsWith("com.cedarsoftware.util.CompactMap$");
     }
 
     /**
@@ -1140,17 +1130,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return new empty Map instance to use when {@code size() > compactSize()}.
      */
     protected Map<K, V> getNewMap() {
-        return new HashMap<>(capacity());
-    }
-
-    /**
-     * Returns the initial capacity to use when creating a new backing map.
-     * This defaults to 16 unless overridden.
-     *
-     * @return the initial capacity for the backing map
-     */
-    protected int capacity() {
-        return DEFAULT_CAPACITY;
+        return new HashMap<>();
     }
 
     protected boolean isCaseInsensitive() {
@@ -1329,13 +1309,6 @@ public class CompactMap<K, V> implements Map<K, V> {
      *     <td>{@code 80}</td>
      *   </tr>
      *   <tr>
-     *     <td>{@link #CAPACITY}</td>
-     *     <td>Integer</td>
-     *     <td>Defines the initial capacity of the backing map when size exceeds {@code compactSize()}.
-     *         Adjusted automatically if a {@link #SOURCE_MAP} is provided.</td>
-     *     <td>{@code 16}</td>
-     *   </tr>
-     *   <tr>
      *     <td>{@link #CASE_SENSITIVE}</td>
      *     <td>Boolean</td>
      *     <td>Determines whether {@code String} keys are compared in a case-sensitive manner.
@@ -1364,8 +1337,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *   <tr>
      *     <td>{@link #SOURCE_MAP}</td>
      *     <td>Map&lt;K,V&gt;</td>
-     *     <td>If provided, the new map is initialized with all entries from this source. The capacity
-     *         may be adjusted accordingly for efficiency.</td>
+     *     <td>If provided, the new map is initialized with all entries from this source.</td>
      *     <td>{@code null}</td>
      *   </tr>
      *   <tr>
@@ -1433,6 +1405,13 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     static void validateAndFinalizeOptions(Map<String, Object> options) {
         String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
+
+        // Validate compactSize
+        int compactSize = (int) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
+        if (compactSize < 2) {
+            throw new IllegalArgumentException("compactSize must be >= 2");
+        }
+
         Class<? extends Map> mapType = determineMapType(options, ordering);
         boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
 
@@ -1465,15 +1444,9 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
 
-        // Additional validation: Ensure SOURCE_MAP overrides capacity if provided
-        if (sourceMap != null) {
-            options.put(CAPACITY, sourceMap.size());
-        }
-
         // Final default resolution
         options.putIfAbsent(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
         options.putIfAbsent(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
-        options.putIfAbsent(CAPACITY, DEFAULT_CAPACITY);
     }
 
     private static Class<? extends Map> determineMapType(Map<String, Object> options, String ordering) {
@@ -1537,7 +1510,12 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
         }
         
+        // Validate mapType is actually a Map
         options.put(MAP_TYPE, rawMapType);
+        if (rawMapType != null && !Map.class.isAssignableFrom(rawMapType)) {
+            throw new IllegalArgumentException("mapType must be a Map class");
+        }
+        
         return rawMapType;
     }
     
@@ -1573,6 +1551,9 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         public Builder<K, V> mapType(Class<? extends Map> mapType) {
+            if (!Map.class.isAssignableFrom(mapType)) {
+                throw new IllegalArgumentException("mapType must be a Map class");
+            }
             options.put(MAP_TYPE, mapType);
             return this;
         }
@@ -1611,11 +1592,6 @@ public class CompactMap<K, V> implements Map<K, V> {
             options.put(SOURCE_MAP, source);
             return this;
         }
-
-        public Builder<K, V> capacity(int capacity) {
-            options.put(CAPACITY, capacity);
-            return this;
-        }
         
         public CompactMap<K, V> build() {
             return CompactMap.newMap(options);
@@ -1640,26 +1616,48 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         private static String generateClassName(Map<String, Object> options) {
-            StringBuilder keyBuilder = new StringBuilder();
+            StringBuilder keyBuilder = new StringBuilder(TEMPLATE_CLASS_PREFIX);
 
-            // Handle both Class and String map types
+            // Add map type's simple name
             Object mapTypeObj = options.get(MAP_TYPE);
-            String mapTypeName;
             if (mapTypeObj instanceof Class) {
-                mapTypeName = ((Class<?>) mapTypeObj).getSimpleName();
+                keyBuilder.append(((Class<?>) mapTypeObj).getSimpleName());
             } else {
-                mapTypeName = (String) mapTypeObj;
+                keyBuilder.append((String) mapTypeObj);
             }
 
-            // Build key from all options
-            keyBuilder.append("caseSen_").append(options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE))
-                    .append("_size_").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE))
-                    .append("_capacity_").append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY))
-                    .append("_mapType_").append(mapTypeName.replace('.', '_'))  // replace dots with underscores
-                    .append("_key_").append(options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY))
-                    .append("_order_").append(options.getOrDefault(ORDERING, UNORDERED));
+            // Add case sensitivity
+            keyBuilder.append('_')
+                    .append((boolean)options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE) ? "CS" : "CI");
 
-            return TEMPLATE_CLASS_PREFIX + keyBuilder;
+            // Add size
+            keyBuilder.append("_S")
+                    .append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE));
+
+            // Add single key value (convert to title case and remove non-alphanumeric)
+            String singleKey = (String) options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY);
+            singleKey = singleKey.substring(0, 1).toUpperCase() + singleKey.substring(1);
+            singleKey = singleKey.replaceAll("[^a-zA-Z0-9]", "");
+            keyBuilder.append('_').append(singleKey);
+
+            // Add ordering
+            String ordering = (String) options.getOrDefault(ORDERING, UNORDERED);
+            keyBuilder.append('_');
+            switch (ordering) {
+                case SORTED:
+                    keyBuilder.append("Sort");
+                    break;
+                case REVERSE:
+                    keyBuilder.append("Rev");
+                    break;
+                case INSERTION:
+                    keyBuilder.append("Ins");
+                    break;
+                default:
+                    keyBuilder.append("Unord");
+            }
+
+            return keyBuilder.toString();
         }
 
         private static synchronized Class<?> generateTemplateClass(Map<String, Object> options) {
@@ -1720,12 +1718,6 @@ public class CompactMap<K, V> implements Map<K, V> {
                     .append("        return ").append(options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE)).append(";\n")
                     .append("    }\n\n");
 
-            // Override capacity
-            sb.append("    @Override\n")
-                    .append("    protected int capacity() {\n")
-                    .append("        return ").append(options.getOrDefault(CAPACITY, DEFAULT_CAPACITY)).append(";\n")
-                    .append("    }\n\n");
-
             // Override getSingleValueKey
             sb.append("    @Override\n")
                     .append("    protected Object getSingleValueKey() {\n")
@@ -1773,7 +1765,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         private static String getSortedMapCreationCode(Class<?> mapType, boolean caseSensitive,
-                                                       String ordering, Map<String, Object> options) {
+                                                      String ordering, Map<String, Object> options) {
             // Template for comparator-based constructor
             String comparatorTemplate =
                     "map = new %s(new CompactMapComparator(%b, %b));";
@@ -1793,13 +1785,14 @@ public class CompactMap<K, V> implements Map<K, V> {
                         !caseSensitive,
                         REVERSE.equals(ordering));
             } else {
+                int compactSize = (Integer) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
                 return String.format(capacityTemplate,
                         getMapClassName(mapType),
                         getMapClassName(mapType),
-                        options.getOrDefault(CAPACITY, DEFAULT_CAPACITY));
+                        compactSize + 1);  // Use compactSize + 1 as initial capacity (that is the trigger point for expansion)
             }
         }
-
+        
         private static String getStandardMapCreationCode(Class<?> mapType, Map<String, Object> options) {
             String template =
                     "map = new %s();\n" +
@@ -1810,12 +1803,13 @@ public class CompactMap<K, V> implements Map<K, V> {
                             "}";
 
             String mapClassName = getMapClassName(mapType);
+            int compactSize = (Integer) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
             return String.format(template,
                     mapClassName,
                     mapClassName,
-                    options.getOrDefault(CAPACITY, DEFAULT_CAPACITY));
+                    compactSize + 1);  // Use compactSize + 1 as initial capacity (that is the trigger point for expansion)
         }
-
+        
         private static String getMapClassName(Class<?> mapType) {
             if (mapType.getEnclosingClass() != null) {
                 if (mapType.getName().contains("Test")) {

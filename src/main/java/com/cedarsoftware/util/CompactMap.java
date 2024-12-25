@@ -1717,6 +1717,38 @@ public class CompactMap<K, V> implements Map<K, V> {
         options.putIfAbsent(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
     }
 
+    /**
+     * Determines the appropriate Map implementation based on configuration options and ordering requirements.
+     * <p>
+     * This method performs several tasks:
+     * <ul>
+     *     <li>Validates that unsupported map types (IdentityHashMap, WeakHashMap) are not used</li>
+     *     <li>Determines the appropriate map type based on ordering if none specified</li>
+     *     <li>Infers ordering from map type if ordering not specified</li>
+     *     <li>Validates compatibility between specified map type and ordering</li>
+     * </ul>
+     *
+     * @param options the configuration options map containing:
+     *               <ul>
+     *                   <li>{@link #MAP_TYPE} - optional, the requested map implementation</li>
+     *                   <li>{@link #ORDERING} - optional, the requested ordering strategy</li>
+     *               </ul>
+     * @param ordering the current ordering strategy (UNORDERED, SORTED, REVERSE, or INSERTION)
+     *
+     * @return the determined map implementation class to use
+     *
+     * @throws IllegalArgumentException if:
+     *         <ul>
+     *             <li>IdentityHashMap or WeakHashMap is specified</li>
+     *             <li>specified map type is not compatible with requested ordering</li>
+     *             <li>specified map type is not a Map class</li>
+     *         </ul>
+     *
+     * @see #UNORDERED
+     * @see #SORTED
+     * @see #REVERSE
+     * @see #INSERTION
+     */
     private static Class<? extends Map> determineMapType(Map<String, Object> options, String ordering) {
         Class<? extends Map> rawMapType = (Class<? extends Map>) options.get(MAP_TYPE);
 
@@ -1786,26 +1818,134 @@ public class CompactMap<K, V> implements Map<K, V> {
         
         return rawMapType;
     }
-    
+
     /**
-     * Creates a new CompactMapBuilder to construct a CompactMap with customizable properties.
+     * Returns a builder for creating customized CompactMap instances.
      * <p>
-     * Example usage:
-     * {@code
-     * CompactMap<String, Object> map = CompactMap.builder()
-     *     .compactSize(80)
-     *     .caseSensitive(false)
-     *     .mapType(LinkedHashMap.class)
-     *     .order(CompactMap.SORTED)
-     *     .build();
-     * }
+     * For detailed configuration options and examples, see {@link Builder}.
+     * <p>
+     * Note: When method chaining directly from builder(), you may need to provide
+     * a type witness to help type inference:
+     * <pre>{@code
+     * // Type witness needed:
+     * CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+     *         .sortedOrder()
+     *         .build();
      *
+     * // Alternative without type witness:
+     * Builder<String, Integer> builder = CompactMap.builder();
+     * CompactMap<String, Integer> map = builder.sortedOrder().build();
+     * }</pre>
+     *
+     * @param <K> the type of keys maintained by the map
+     * @param <V> the type of mapped values
      * @return a new CompactMapBuilder instance
+     *
+     * @see Builder
      */
     public static <K, V> Builder<K, V> builder() {
         return new Builder<>();
     }
 
+    /**
+     * Builder class for creating customized CompactMap instances.
+     * <p>
+     * Simple example with common options:
+     * <pre>{@code
+     * CompactMap<String, Object> map = CompactMap.<String, Object>builder()
+     *         .caseSensitive(false)
+     *         .sortedOrder()
+     *         .build();
+     * }</pre>
+     * <p>
+     * Note the type witness ({@code <String, Object>}) in the example above. This explicit type
+     * information is required when method chaining directly from builder() due to Java's type
+     * inference limitations. Alternatively, you can avoid the type witness by splitting the
+     * builder creation and configuration:
+     * <pre>{@code
+     * // Using type witness
+     * CompactMap<String, Object> map1 = CompactMap.<String, Object>builder()
+     *         .sortedOrder()
+     *         .build();
+     *
+     * // Without type witness
+     * Builder<String, Object> builder = CompactMap.builder();
+     * CompactMap<String, Object> map2 = builder
+     *         .sortedOrder()
+     *         .build();
+     * }</pre>
+     * <p>
+     * Comprehensive example with all options:
+     * <pre>{@code
+     * CompactMap<String, Object> map = CompactMap.<String, Object>builder()
+     *         .caseSensitive(false)           // Enable case-insensitive key comparison
+     *         .compactSize(80)                // Set threshold for switching to backing map
+     *         .mapType(LinkedHashMap.class)   // Specify backing map implementation
+     *         .singleValueKey("uuid")         // Optimize storage for single entry with this key
+     *         .sourceMap(existingMap)         // Initialize with entries from another map
+     *         .insertionOrder()               // Or: .reverseOrder(), .sortedOrder(), .noOrder()
+     *         .build();
+     * }</pre>
+     * 
+     * <table border="1" cellpadding="5" summary="Builder Options">
+     *   <caption>Available Builder Options</caption>
+     *   <tr>
+     *     <th>Method</th>
+     *     <th>Description</th>
+     *     <th>Default</th>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #caseSensitive(boolean)}</td>
+     *     <td>Controls case sensitivity for string keys</td>
+     *     <td>true</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #compactSize(int)}</td>
+     *     <td>Maximum size before switching to backing map</td>
+     *     <td>70</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #mapType(Class)}</td>
+     *     <td>Type of backing map when size exceeds compact size</td>
+     *     <td>HashMap.class</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #singleValueKey(Object)}</td>
+     *     <td>Special key that enables optimized storage when map contains only one entry with this key</td>
+     *     <td>"id"</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #sourceMap(Map)}</td>
+     *     <td>Initializes the CompactMap with entries from the provided map</td>
+     *     <td>null</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #sortedOrder()}</td>
+     *     <td>Maintains keys in sorted order</td>
+     *     <td>unordered</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #reverseOrder()}</td>
+     *     <td>Maintains keys in reverse order</td>
+     *     <td>unordered</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #insertionOrder()}</td>
+     *     <td>Maintains keys in insertion order</td>
+     *     <td>unordered</td>
+     *   </tr>
+     *   <tr>
+     *     <td>{@link #noOrder()}</td>
+     *     <td>Explicitly sets unordered behavior</td>
+     *     <td>unordered</td>
+     *   </tr>
+     * </table>
+     *
+     * @param <K> the type of keys maintained by the map
+     * @param <V> the type of mapped values
+     *
+     * @see CompactMap
+     */
     public static final class Builder<K, V> {
         private final Map<String, Object> options;
 

@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 /**
  * A memory-efficient {@code Map} implementation that adapts its internal storage structure
- * to minimize memory usage while maintaining acceptable performance.
+ * to minimize memory usage while maintaining excellent performance.
  *
  * <h2>Creating a CompactMap</h2>
  * There are two primary ways to create a CompactMap:
@@ -46,30 +46,24 @@ import java.util.stream.Collectors;
  * <h3>1. Using the Builder Pattern (Recommended)</h3>
  * <pre>{@code
  * // Create a case-insensitive, sorted CompactMap
- * CompactMap<String, Object> map = CompactMap.builder()
+ * CompactMap<String, Object> map = CompactMap.<String, Object>builder()
  *     .caseSensitive(false)
  *     .sortedOrder()
  *     .compactSize(80)
  *     .build();
  *
  * // Create a CompactMap with insertion ordering
- * CompactMap<String, Object> ordered = CompactMap.builder()
+ * CompactMap<String, Object> ordered = CompactMap.<String, Object>builder()
  *     .insertionOrder()
  *     .mapType(LinkedHashMap.class)
  *     .build();
  * }</pre>
  *
  * <h3>Type Inference and Builder Usage</h3>
- * When using the builder pattern with method chaining, you may need to provide a type witness
- * to help Java's type inference:
+ * Note the type witness ({@code <String, Object>}) in the example above.  When using the builder pattern
+ * with method chaining, you may need to provide a type witness to help Java's type inference:
  *
  * <pre>{@code
- * // Requires type witness for method chaining
- * CompactMap<String, Object> map1 = CompactMap.<String, Object>builder()
- *     .caseSensitive(false)
- *     .sortedOrder()
- *     .build();
- *
  * // Alternative approach without type witness
  * Builder<String, Object> builder = CompactMap.builder();
  * CompactMap<String, Object> map2 = builder
@@ -91,6 +85,10 @@ import java.util.stream.Collectors;
  * // Creates a CompactMap initialized with entries from another map
  * CompactMap<String, Object> copy = new CompactMap<>(existingMap);
  * }</pre>
+ *
+ * In the examples above, the behavior of the CompactMap will be that of a HashMap,
+ * while using the minimal amount of memory possible to hold the contents. The CompactMap
+ * has only one instance variable.
  *
  * <h2>Configuration Options</h2>
  * When using the Builder pattern, the following options are available:
@@ -216,7 +214,17 @@ import java.util.stream.Collectors;
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
- *         Licensed under the Apache License, Version 2.0 (the "License")
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 @SuppressWarnings("unchecked")
 public class CompactMap<K, V> implements Map<K, V> {

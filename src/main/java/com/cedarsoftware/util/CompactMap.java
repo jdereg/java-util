@@ -2150,7 +2150,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * <p>
      * This is an implementation detail and not part of the public API.
      */
-    private static class TemplateGenerator {
+    private static final class TemplateGenerator {
         private static final String TEMPLATE_CLASS_PREFIX = "com.cedarsoftware.util.CompactMap$";
 
         /**
@@ -2164,7 +2164,7 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @return the template Class object matching the specified options
          * @throws IllegalStateException if template generation or compilation fails
          */
-        static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
+        private static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
             String className = generateClassName(options);
             try {
                 return ClassUtilities.getClassLoader().loadClass(className);
@@ -2679,11 +2679,8 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @throws LinkageError if class definition fails
          */
         private static Class<?> defineClass(String className, byte[] classBytes) {
-            // Use the current thread's context class loader as parent
-            ClassLoader parentLoader = Thread.currentThread().getContextClassLoader();
-            if (parentLoader == null) {
-                parentLoader = CompactMap.class.getClassLoader();
-            }
+            // Use ClassUtilities to get the most appropriate ClassLoader
+            ClassLoader parentLoader = ClassUtilities.getClassLoader(CompactMap.class);
 
             // Create our template class loader
             TemplateClassLoader loader = new TemplateClassLoader(parentLoader);
@@ -2705,8 +2702,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * </ul>
      * Internal implementation detail of the template generation system.
      */
-    private static class TemplateClassLoader extends ClassLoader {
-        TemplateClassLoader(ClassLoader parent) {
+    private static final class TemplateClassLoader extends ClassLoader {
+        private TemplateClassLoader(ClassLoader parent) {
             super(parent);
         }
 
@@ -2722,7 +2719,7 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @return the template Class object
          * @throws LinkageError if class definition fails
          */
-        Class<?> defineTemplateClass(String name, byte[] bytes) {
+        private Class<?> defineTemplateClass(String name, byte[] bytes) {
             // First try to load from parent
             try {
                 return findClass(name);

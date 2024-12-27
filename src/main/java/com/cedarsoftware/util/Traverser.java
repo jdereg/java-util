@@ -215,7 +215,7 @@ public class Traverser
                 }
             }
 
-            Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(c);
+            Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(c);
             for (Field field : fields)
             {
                 Class<?> fc = field.getType();

@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,6 +16,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -90,35 +92,253 @@ public class DeepEquals {
     private final static class ItemsToCompare {
         private final Object _key1;
         private final Object _key2;
-
-        private ItemsToCompare(Object k1, Object k2) {
+        private final String fieldName;
+        private final Integer arrayIndex;
+        private final Class<?> containingClass;
+        
+        private ItemsToCompare(Object k1, Object k2, Class<?> containingClass) {
             _key1 = k1;
             _key2 = k2;
+            fieldName = null;
+            arrayIndex = null;
+            this.containingClass = containingClass;
+        }
+
+        private ItemsToCompare(Object k1, Object k2, String fieldName, Class<?> containingClass) {
+            _key1 = k1;
+            _key2 = k2;
+            this.fieldName = fieldName;
+            this.arrayIndex = null;
+            this.containingClass = containingClass;
+        }
+
+        private ItemsToCompare(Object k1, Object k2, Integer arrayIndex, Class<?> containingClass) {
+            _key1 = k1;
+            _key2 = k2;
+            this.fieldName = null;
+            this.arrayIndex = arrayIndex;
+            this.containingClass = containingClass;
         }
 
         public boolean equals(Object other) {
             if (!(other instanceof ItemsToCompare)) {
                 return false;
             }
-
             ItemsToCompare that = (ItemsToCompare) other;
-            return _key1 == that._key1 && _key2 == that._key2;
+            return _key1 == that._key1 && _key2 == that._key2 &&
+                    Objects.equals(containingClass, that.containingClass);
         }
 
         public int hashCode() {
             int h1 = _key1 != null ? _key1.hashCode() : 0;
             int h2 = _key2 != null ? _key2.hashCode() : 0;
-            return h1 + h2;
+            int h3 = containingClass != null ? containingClass.hashCode() : 0;
+            return h1 + h2 + h3;
         }
 
-        public String toString() {
-            if (_key1.getClass().isPrimitive() && _key2.getClass().isPrimitive()) {
-                return _key1 + " | " + _key2;
-            }
-            return _key1.getClass().getName() + " | " + _key2.getClass().getName();
-        }
+//        public String toString() {
+//            if (_key1.getClass().isPrimitive() && _key2.getClass().isPrimitive()) {
+//                return _key1 + " | " + _key2;
+//            }
+//            return _key1.getClass().getName() + " | " + _key2.getClass().getName();
+//        }
     }
 
+    public enum DifferenceType {
+        VALUE_MISMATCH,
+        TYPE_MISMATCH,
+        NULL_CHECK,
+        SIZE_MISMATCH,
+        CYCLE
+    }
+
+    // Class to build and format the difference output
+    static class DifferenceBuilder {
+        private final DifferenceType type;
+        private final StringBuilder pathBuilder = new StringBuilder();
+        private final Object expected;
+        private final Object found;
+        private String containerType;
+        private Integer expectedSize;
+        private Integer foundSize;
+        private String currentClassName = null;
+        private int indentLevel = 0;
+
+        DifferenceBuilder(DifferenceType type, Object expected, Object found) {
+            this.type = type;
+            this.expected = expected;
+            this.found = found;
+        }
+
+        DifferenceBuilder withContainerInfo(String containerType, int expectedSize, int foundSize) {
+            this.containerType = containerType;
+            this.expectedSize = expectedSize;
+            this.foundSize = foundSize;
+            return this;
+        }
+
+        private void indent() {
+            indentLevel += 2;
+        }
+
+        private void unindent() {
+            indentLevel = Math.max(0, indentLevel - 2);
+        }
+
+        private String getIndent() {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < indentLevel; i++) {
+                sb.append(' ');
+            }
+            return sb.toString();
+        }
+
+        public void appendToPath(String className, String fieldName, Object fieldValue) {
+            if (pathBuilder.length() > 0) {
+                pathBuilder.append("\n");
+            }
+
+            // Start new class context if needed
+            if (!Objects.equals(className, currentClassName)) {
+                pathBuilder.append(getIndent()).append(className).append("\n");
+                currentClassName = className;
+                indent();
+            }
+
+            // Add field information
+            if (fieldName != null) {
+                pathBuilder.append(getIndent())
+                        .append(".")
+                        .append(fieldName);
+
+                if (fieldValue != null) {
+                    pathBuilder.append("(")
+                            .append(formatValue(fieldValue))
+                            .append(" <")
+                            .append(getTypeName(fieldValue))
+                            .append(">)");
+                }
+            }
+        }
+
+        private boolean isComplexObject(Object obj) {
+            if (obj == null) return false;
+            return !obj.getClass().isPrimitive()
+                    && !obj.getClass().getName().startsWith("java.lang")
+                    && !(obj instanceof Number)
+                    && !(obj instanceof String)
+                    && !(obj instanceof Date);
+        }
+
+        public void appendArrayIndex(int index) {
+            pathBuilder.append("[").append(index).append("]");
+        }
+
+        private String getTypeName(Object obj) {
+            if (obj == null) return "null";
+            return obj.getClass().getSimpleName();
+        }
+
+        private String formatValue(Object value) {
+            if (value == null) return "null";
+            if (value instanceof String) return "\"" + value + "\"";
+            if (value instanceof Date) {
+                return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
+            }
+            if (value.getClass().getName().startsWith("com.cedarsoftware")) {
+                return String.format("%s#%s",
+                        value.getClass().getSimpleName(),
+                        Integer.toHexString(System.identityHashCode(value)));
+            }
+            return String.valueOf(value);
+        }
+        
+        @Override
+        public String toString() {
+            StringBuilder result = new StringBuilder();
+            result.append("Difference Type: ").append(type).append("\n");
+            result.append("Path:\n").append(pathBuilder.toString().trim());
+
+            switch (type) {
+                case SIZE_MISMATCH:
+                    result.append("\n  <").append(containerType)
+                            .append(" size ").append(expectedSize)
+                            .append(" vs ").append(foundSize).append(">");
+                    break;
+                case VALUE_MISMATCH:
+                case NULL_CHECK:
+                    result.append("\nExpected: ").append(formatValue(expected))
+                            .append("\nFound: ").append(formatValue(found));
+                    break;
+                case TYPE_MISMATCH:
+                    result.append("\nExpected Type: ").append(getTypeName(expected))
+                            .append("\nFound Type: ").append(getTypeName(found));
+                    break;
+            }
+
+            return result.toString();
+        }
+    }
+    
+    // Modify your generateBreadcrumb method to use the new formatting:
+    private static String generateBreadcrumb(Deque<ItemsToCompare> stack) {
+        DifferenceBuilder builder = null;
+        String currentClassName = null;
+        Iterator<ItemsToCompare> it = stack.descendingIterator();
+
+        // Get the root item to determine the type of difference
+        ItemsToCompare rootItem = stack.peekLast();
+        if (rootItem != null) {
+            if (rootItem._key1 == null || rootItem._key2 == null) {
+                builder = new DifferenceBuilder(DifferenceType.NULL_CHECK, rootItem._key2, rootItem._key1);
+            } else if (!rootItem._key1.getClass().equals(rootItem._key2.getClass())) {
+                builder = new DifferenceBuilder(DifferenceType.TYPE_MISMATCH, rootItem._key2, rootItem._key1);
+            } else if (rootItem._key1 instanceof Collection || rootItem._key1 instanceof Map) {
+                int size1 = rootItem._key1 instanceof Collection ?
+                        ((Collection<?>)rootItem._key1).size() : ((Map<?,?>)rootItem._key1).size();
+                int size2 = rootItem._key2 instanceof Collection ?
+                        ((Collection<?>)rootItem._key2).size() : ((Map<?,?>)rootItem._key2).size();
+                if (size1 != size2) {
+                    builder = new DifferenceBuilder(DifferenceType.SIZE_MISMATCH, rootItem._key2, rootItem._key1)
+                            .withContainerInfo(rootItem._key1.getClass().getSimpleName(), size2, size1);
+                }
+            } else {
+                builder = new DifferenceBuilder(DifferenceType.VALUE_MISMATCH, rootItem._key2, rootItem._key1);
+            }
+        }
+
+        if (builder == null) {
+            return "Unable to determine difference type";
+        }
+
+        while (it.hasNext()) {
+            ItemsToCompare item = it.next();
+
+            // Get the containing class from the stack context
+            Class<?> containingClass = determineContainingClass(item, stack);
+
+            // Use getSimpleName() to get the String class name
+            String className = containingClass != null ? containingClass.getSimpleName() : null;
+
+            builder.appendToPath(className, item.fieldName, item._key1);
+
+            if (item.arrayIndex != null) {
+                builder.appendArrayIndex(item.arrayIndex);
+            }
+        }
+        
+        return builder.toString();
+    }
+
+    private static Class<?> determineContainingClass(ItemsToCompare item, Deque<ItemsToCompare> stack) {
+        // This method would need to be implemented to determine the actual containing class
+        // It might need to look at the previous items in the stack or might need additional
+        // context stored in ItemsToCompare
+
+        // For now, this is a placeholder
+        return item.containingClass; // We'd need to add this field to ItemsToCompare
+    }
+    
     /**
      * Compare two objects with a 'deep' comparison.  This will traverse the
      * Object graph and perform either a field-by-field comparison on each
@@ -182,15 +402,25 @@ public class DeepEquals {
      */
     public static boolean deepEquals(Object a, Object b, Map<String, ?> options) {
         Set<ItemsToCompare> visited = new HashSet<>();
-        return deepEquals(a, b, options, visited);
+        Deque<ItemsToCompare> stack = new LinkedList<>();
+        Class<?> rootClass = a != null ? a.getClass() : (b != null ? b.getClass() : null);
+        boolean result = deepEquals(a, b, stack, options, visited, rootClass);
+        
+        if (!result && !stack.isEmpty()) {
+            String breadcrumb = generateBreadcrumb(stack);
+            System.out.println(breadcrumb);
+            ((Map<String, Object>)options).put("diff", breadcrumb);
+        }
+
+        return result;
     }
 
-    private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<ItemsToCompare> visited) {
-        Deque<ItemsToCompare> stack = new LinkedList<>();
+    private static boolean deepEquals(Object a, Object b, Deque<ItemsToCompare> stack,
+                                      Map<String, ?> options, Set<ItemsToCompare> visited, Class<?> containingClass) {
         Set<Class<?>> ignoreCustomEquals = (Set<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
         final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
 
-        stack.addFirst(new ItemsToCompare(a, b));
+        stack.addFirst(new ItemsToCompare(a, b, containingClass));
 
         while (!stack.isEmpty()) {
             ItemsToCompare itemsToCompare = stack.removeFirst();
@@ -203,39 +433,52 @@ public class DeepEquals {
             }
 
             if (key1 == null || key2 == null) {   // If either one is null, they are not equal (both can't be null, due to above comparison).
+                stack.addFirst(itemsToCompare);
                 return false;
             }
 
-            if (key1 instanceof Number && key2 instanceof Number && compareNumbers((Number) key1, (Number) key2)) {
+            // Handle all numeric comparisons first
+            if (key1 instanceof Number && key2 instanceof Number) {
+                if (!compareNumbers((Number) key1, (Number) key2)) {
+                    stack.addFirst(itemsToCompare);
+                    return false;
+                }
                 continue;
+            }
+
+            // Handle String-to-Number comparison if option is enabled
+            if (allowStringsToMatchNumbers &&
+                    ((key1 instanceof String && key2 instanceof Number) ||
+                            (key1 instanceof Number && key2 instanceof String))) {
+                try {
+                    if (key1 instanceof String) {
+                        if (compareNumbers(convert2BigDecimal(key1), (Number) key2)) {
+                            continue;
+                        }
+                    } else {
+                        if (compareNumbers((Number) key1, convert2BigDecimal(key2))) {
+                            continue;
+                        }
+                    }
+                } catch (Exception ignore) { }
+                stack.addFirst(itemsToCompare);
+                return false;
             }
 
             if (key1 instanceof AtomicBoolean && key2 instanceof AtomicBoolean) {
                 if (!compareAtomicBoolean((AtomicBoolean) key1, (AtomicBoolean) key2)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 } else {
                     continue;
                 }
             }
 
-            if (key1 instanceof Number || key2 instanceof Number) {   // If one is a Number and the other one is not, then optionally compare them as strings, otherwise return false
-                if (allowStringsToMatchNumbers) {
-                    try {
-                        if (key1 instanceof String && compareNumbers(convert2BigDecimal(key1), (Number) key2)) {
-                            continue;
-                        } else if (key2 instanceof String && compareNumbers((Number) key1, convert2BigDecimal(key2))) {
-                            continue;
-                        }
-                    } catch (Exception ignore) {
-                    }
-                }
-                return false;
-            }
-
             Class<?> key1Class = key1.getClass();
 
             if (key1Class.isPrimitive() || prims.contains(key1Class) || key1 instanceof String || key1 instanceof Date || key1 instanceof Class) {
                 if (!key1.equals(key2)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
                 continue;   // Nothing further to push on the stack
@@ -243,44 +486,54 @@ public class DeepEquals {
 
             if (key1 instanceof Set) {
                 if (!(key2 instanceof Set)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
             } else if (key2 instanceof Set) {
+                stack.addFirst(itemsToCompare);
                 return false;
             }
 
             if (key1 instanceof Collection) {   // If Collections, they both must be Collection
                 if (!(key2 instanceof Collection)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
             } else if (key2 instanceof Collection) {
+                stack.addFirst(itemsToCompare);
                 return false;
             }
 
             if (key1 instanceof Map) {
                 if (!(key2 instanceof Map)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
             } else if (key2 instanceof Map) {
+                stack.addFirst(itemsToCompare);
                 return false;
             }
 
             Class<?> key2Class = key2.getClass();
             if (key1Class.isArray()) {
                 if (!key2Class.isArray()) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
             } else if (key2Class.isArray()) {
+                stack.addFirst(itemsToCompare);
                 return false;
             }
 
             if (!isContainerType(key1) && !isContainerType(key2) && !key1Class.equals(key2.getClass())) {   // Must be same class
+                stack.addFirst(itemsToCompare);
                 return false;
             }
 
             // Special handle Sets - items matter but order does not for equality.
             if (key1 instanceof Set<?>) {
-                if (!compareUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, visited, options)) {
+                if (!compareUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, visited, key1Class)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
                 continue;
@@ -288,7 +541,8 @@ public class DeepEquals {
 
             // Collections must match in items and order for equality.
             if (key1 instanceof Collection<?>) {
-                if (!compareOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, visited)) {
+                if (!compareOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, visited, key1Class)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
                 continue;
@@ -298,7 +552,8 @@ public class DeepEquals {
             // order cannot be assumed, therefore a temporary Map must be created, however the
             // comparison still runs in O(N) time.
             if (key1 instanceof Map) {
-                if (!compareMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, visited, options)) {
+                if (!compareMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, visited, options, key1Class)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
                 continue;
@@ -308,7 +563,8 @@ public class DeepEquals {
             // length, be of the same type, be in the same order, and all elements within
             // the array must be deeply equivalent.
             if (key1Class.isArray()) {
-                if (!compareArrays(key1, key2, stack, visited)) {
+                if (!compareArrays(key1, key2, stack, visited, key1Class)) {
+                    stack.addFirst(itemsToCompare);
                     return false;
                 }
                 continue;
@@ -321,17 +577,18 @@ public class DeepEquals {
             if (hasCustomEquals(key1Class)) {
                 if (ignoreCustomEquals == null || (ignoreCustomEquals.size() > 0 && !ignoreCustomEquals.contains(key1Class))) {
                     if (!key1.equals(key2)) {
+                        stack.addFirst(itemsToCompare);
                         return false;
                     }
                     continue;
                 }
             }
 
-            Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(key1Class);
+            Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(key1Class);
 
             for (Field field : fields) {
                 try {
-                    ItemsToCompare dk = new ItemsToCompare(field.get(key1), field.get(key2));
+                    ItemsToCompare dk = new ItemsToCompare(field.get(key1), field.get(key2), field.getName(), key1Class);
                     if (!visited.contains(dk)) {
                         stack.addFirst(dk);
                     }
@@ -357,23 +614,27 @@ public class DeepEquals {
      * @param visited Set of objects already compared (prevents cycles)
      * @return true if the two arrays are the same length and contain deeply equivalent items.
      */
-    private static boolean compareArrays(Object array1, Object array2, Deque<ItemsToCompare> stack, Set<ItemsToCompare> visited) {
-        // Same instance check already performed...
-
+    private static boolean compareArrays(Object array1, Object array2, Deque<ItemsToCompare> stack, Set<ItemsToCompare> visited, Class<?> containingClass) {
         final int len = Array.getLength(array1);
         if (len != Array.getLength(array2)) {
+            stack.addFirst(new ItemsToCompare(array1, array2, containingClass));  // Push back for breadcrumb
             return false;
         }
 
         for (int i = 0; i < len; i++) {
-            ItemsToCompare dk = new ItemsToCompare(Array.get(array1, i), Array.get(array2, i));
-            if (!visited.contains(dk)) {   // push contents for further comparison
+            ItemsToCompare dk = new ItemsToCompare(
+                    Array.get(array1, i),
+                    Array.get(array2, i),
+                    i,     // but we do have an index
+                    containingClass
+            );
+            if (!visited.contains(dk)) {
                 stack.addFirst(dk);
             }
         }
         return true;
     }
-
+    
     /**
      * Deeply compare two Collections that must be same length and in same order.
      *
@@ -384,19 +645,41 @@ public class DeepEquals {
      *                value of 'true' indicates that the Collections may be equal, and the sets
      *                items will be added to the Stack for further comparison.
      */
-    private static boolean compareOrderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack, Set<ItemsToCompare> visited) {
+    private static boolean compareOrderedCollection(Collection<?> col1, Collection<?> col2,
+                                                    Deque<ItemsToCompare> stack,
+                                                    Set<ItemsToCompare> visited,
+                                                    Class<?> containingClass) {
         // Same instance check already performed...
 
         if (col1.size() != col2.size()) {
+            stack.addFirst(new ItemsToCompare(col1, col2, containingClass));
             return false;
         }
 
         Iterator<?> i1 = col1.iterator();
         Iterator<?> i2 = col2.iterator();
+        int index = 0;  // Add index tracking for better context
 
         while (i1.hasNext()) {
-            ItemsToCompare dk = new ItemsToCompare(i1.next(), i2.next());
-            if (!visited.contains(dk)) {   // push contents for further comparison
+            Object item1 = i1.next();
+            Object item2 = i2.next();
+
+            // If the items are of the same type and that type matches the containing class,
+            // use it as the containing class for the comparison, otherwise use the collection's class
+            Class<?> itemContainingClass = (item1 != null && item2 != null &&
+                    item1.getClass().equals(item2.getClass()) &&
+                    item1.getClass().equals(containingClass))
+                    ? containingClass
+                    : col1.getClass();
+
+            ItemsToCompare dk = new ItemsToCompare(
+                    item1,
+                    item2,
+                    index++,  // Pass the index for better context in the breadcrumb
+                    itemContainingClass
+            );
+
+            if (!visited.contains(dk)) {
                 stack.addFirst(dk);
             }
         }
@@ -415,14 +698,17 @@ public class DeepEquals {
      * @param col2    Second collection of items to compare
      * @param stack   add items to compare to the Stack (Stack versus recursion)
      * @param visited Set containing items that have already been compared, to prevent cycles.
-     * @param options the options for comparison (see {@link #deepEquals(Object, Object, Map)}
      * @return boolean false if the Collections are for certain not equals. A
      * value of 'true' indicates that the Collections may be equal, and the sets
      * items will be added to the Stack for further comparison.
      */
-    private static boolean compareUnorderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack, Set<ItemsToCompare> visited, Map<String, ?> options) {
+    private static boolean compareUnorderedCollection(Collection<?> col1, Collection<?> col2,
+                                                      Deque<ItemsToCompare> stack,
+                                                      Set<ItemsToCompare> visited,
+                                                      Class<?> containingClass) {
         // Same instance check already performed...
         if (col1.size() != col2.size()) {
+            stack.addFirst(new ItemsToCompare(col1, col2, containingClass));
             return false;
         }
 
@@ -432,25 +718,77 @@ public class DeepEquals {
             fastLookup.computeIfAbsent(hash, k -> new ArrayList<>()).add(o);
         }
 
+        int index = 0;  // Add index tracking for better context
         for (Object o : col1) {
             Collection<?> other = fastLookup.get(deepHashCode(o));
-            if (other == null || other.isEmpty()) {   // fail fast: item not even found in other Collection, no need to continue.
+            if (other == null || other.isEmpty()) {
+                // Item not found in other Collection
+                ItemsToCompare dk = new ItemsToCompare(
+                        o,
+                        null,
+                        index,
+                        containingClass
+                );
+                stack.addFirst(dk);
                 return false;
             }
 
-            if (other.size() == 1) {   // no hash collision, items must be equivalent or deepEquals is false
-                ItemsToCompare dk = new ItemsToCompare(o, other.iterator().next());
-                if (!visited.contains(dk)) {   // Place items on 'stack' for future equality comparison.
+            if (other.size() == 1) {
+                // No hash collision, direct comparison
+                Object otherObj = other.iterator().next();
+
+                // Determine appropriate containing class for the comparison
+                Class<?> itemContainingClass = (o != null && otherObj != null &&
+                        o.getClass().equals(otherObj.getClass()) &&
+                        o.getClass().equals(containingClass))
+                        ? containingClass
+                        : col1.getClass();
+
+                ItemsToCompare dk = new ItemsToCompare(
+                        o,
+                        otherObj,
+                        index,
+                        itemContainingClass
+                );
+
+                if (!visited.contains(dk)) {
                     stack.addFirst(dk);
                 }
-            } else {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
-                // from collision list, making further comparisons faster)
-                if (!isContained(o, other, visited, options)) {
+            } else {
+                // Handle hash collision
+                if (!isContained(o, other, containingClass)) {
+                    ItemsToCompare dk = new ItemsToCompare(
+                            o,
+                            other,
+                            index,
+                            containingClass
+                    );
+                    stack.addFirst(dk);
                     return false;
                 }
             }
+            index++;
         }
         return true;
+    }
+
+    // Modified isContained method to handle containing class context
+    private static boolean isContained(Object o, Collection<?> other, Class<?> containingClass) {
+        Iterator<?> i = other.iterator();
+        while (i.hasNext()) {
+            Object x = i.next();
+
+            // Create temporary stack and visited set for deep comparison
+            Deque<ItemsToCompare> tempStack = new LinkedList<>();
+            Set<ItemsToCompare> tempVisited = new HashSet<>();
+
+            // Use deepEquals with containing class context
+            if (deepEquals(o, x, tempStack, new HashMap<>(), tempVisited, containingClass)) {
+                i.remove(); // Remove matched item
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -465,44 +803,82 @@ public class DeepEquals {
      * @return false if the Maps are for certain not equals.  'true' indicates that 'on the surface' the maps
      * are equal, however, it will place the contents of the Maps on the stack for further comparisons.
      */
-    private static boolean compareMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Set<ItemsToCompare> visited, Map<String, ?> options) {
+    private static boolean compareMap(Map<?, ?> map1, Map<?, ?> map2,
+                                      Deque<ItemsToCompare> stack,
+                                      Set<ItemsToCompare> visited,
+                                      Map<String, ?> options,
+                                      Class<?> containingClass) {
         // Same instance check already performed...
 
         if (map1.size() != map2.size()) {
+            stack.addFirst(new ItemsToCompare(map1, map2, containingClass));
             return false;
         }
 
         Map<Integer, Collection<Object>> fastLookup = new HashMap<>();
 
+        // Build lookup of map2 entries
         for (Map.Entry<?, ?> entry : map2.entrySet()) {
             int hash = deepHashCode(entry.getKey());
             Collection<Object> items = fastLookup.computeIfAbsent(hash, k -> new ArrayList<>());
 
-            // Use only key and value, not specific Map.Entry type for equality check.
-            // This ensures that Maps that might use different Map.Entry types still compare correctly.
+            // Use SimpleEntry to normalize entry type across different Map implementations
             items.add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()));
         }
 
         for (Map.Entry<?, ?> entry : map1.entrySet()) {
             Collection<Object> other = fastLookup.get(deepHashCode(entry.getKey()));
             if (other == null || other.isEmpty()) {
+                // Key not found in other Map
+                ItemsToCompare dk = new ItemsToCompare(
+                        entry,
+                        null,
+                        "key(" + formatValue(entry.getKey()) + ")",  // Add key context to fieldName
+                        containingClass
+                );
+                stack.addFirst(dk);
                 return false;
             }
 
             if (other.size() == 1) {
+                // No hash collision, direct comparison
                 Map.Entry<?, ?> entry2 = (Map.Entry<?, ?>) other.iterator().next();
-                ItemsToCompare dk = new ItemsToCompare(entry.getKey(), entry2.getKey());
-                if (!visited.contains(dk)) {   // Push keys for further comparison
+
+                // Compare keys
+                Class<?> keyContainingClass = (entry.getKey() != null && entry2.getKey() != null) ?
+                        entry.getKey().getClass() : containingClass;
+                ItemsToCompare dk = new ItemsToCompare(
+                        entry.getKey(),
+                        entry2.getKey(),
+                        "key",
+                        keyContainingClass
+                );
+                if (!visited.contains(dk)) {
                     stack.addFirst(dk);
                 }
 
-                dk = new ItemsToCompare(entry.getValue(), entry2.getValue());
-                if (!visited.contains(dk)) {   // Push values for further comparison
+                // Compare values
+                Class<?> valueContainingClass = (entry.getValue() != null && entry2.getValue() != null) ?
+                        entry.getValue().getClass() : containingClass;
+                dk = new ItemsToCompare(
+                        entry.getValue(),
+                        entry2.getValue(),
+                        "value(" + formatValue(entry.getKey()) + ")",  // Include key in context
+                        valueContainingClass
+                );
+                if (!visited.contains(dk)) {
                     stack.addFirst(dk);
                 }
-            } else {   // hash collision: try all collided items against the current item (if 1 equals, we are good - remove it
-                // from collision list, making further comparisons faster)
-                if (!isContained(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()), other, visited, options)) {
+            } else {
+                // Handle hash collision
+                if (!isContainedInMapEntries(entry, other, containingClass)) {
+                    ItemsToCompare dk = new ItemsToCompare(
+                            entry,
+                            other,
+                            "entry",
+                            containingClass
+                    );
+                    stack.addFirst(dk);
                     return false;
                 }
             }
@@ -511,17 +887,55 @@ public class DeepEquals {
         return true;
     }
 
+    private static boolean isContainedInMapEntries(Map.Entry<?, ?> entry,
+                                                   Collection<?> other,
+                                                   Class<?> containingClass) {
+        Iterator<?> i = other.iterator();
+        while (i.hasNext()) {
+            Map.Entry<?, ?> otherEntry = (Map.Entry<?, ?>) i.next();
+
+            // Create temporary stacks for key and value comparison
+            Deque<ItemsToCompare> tempStack = new LinkedList<>();
+            Set<ItemsToCompare> tempVisited = new HashSet<>();
+
+            // Compare both key and value with containing class context
+            if (deepEquals(entry.getKey(), otherEntry.getKey(), tempStack,
+                    new HashMap<>(), tempVisited, containingClass) &&
+                    deepEquals(entry.getValue(), otherEntry.getValue(), tempStack,
+                            new HashMap<>(), tempVisited, containingClass)) {
+                i.remove();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String formatValue(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof String) {
+            return "\"" + value + "\"";
+        }
+        if (value instanceof Date) {
+            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
+        }
+        if (value.getClass().getName().startsWith("com.cedarsoftware")) {
+            return value.getClass().getSimpleName() + "#" +
+                    Integer.toHexString(System.identityHashCode(value));
+        }
+        return String.valueOf(value);
+    }
+    
     /**
      * @return true if the passed in o is within the passed in Collection, using a deepEquals comparison
      * element by element.  Used only for hash collisions.
      */
-    private static boolean isContained(Object o, Collection<?> other, Set<ItemsToCompare> visited, Map<String, ?> options) {
+    private static boolean isContained(Object o, Collection<?> other) {
         Iterator<?> i = other.iterator();
         while (i.hasNext()) {
             Object x = i.next();
-            Set<ItemsToCompare> visitedForSubelements = new HashSet<>(visited);
-            visitedForSubelements.add(new ItemsToCompare(o, x));
-            if (deepEquals(o, x, options, visitedForSubelements)) {
+            if (Objects.equals(o, x)) {
                 i.remove(); // can only be used successfully once - remove from list
                 return true;
             }
@@ -534,21 +948,49 @@ public class DeepEquals {
     }
 
     private static boolean compareNumbers(Number a, Number b) {
-        if (a instanceof Float && (b instanceof Float || b instanceof Double)) {
-            return compareFloatingPointNumbers(a, b, floatEplison);
-        } else if (a instanceof Double && (b instanceof Float || b instanceof Double)) {
-            return compareFloatingPointNumbers(a, b, doubleEplison);
+        // Handle floating point comparisons
+        if (a instanceof Float || a instanceof Double ||
+                b instanceof Float || b instanceof Double) {
+
+            // Check for overflow/underflow when comparing with BigDecimal
+            if (a instanceof BigDecimal || b instanceof BigDecimal) {
+                try {
+                    BigDecimal bd;
+                    double d;
+                    if (a instanceof BigDecimal) {
+                        bd = (BigDecimal) a;
+                        d = b.doubleValue();
+                    } else {
+                        bd = (BigDecimal) b;
+                        d = a.doubleValue();
+                    }
+
+                    // If BigDecimal is outside Double's range, they can't be equal
+                    if (bd.compareTo(BigDecimal.valueOf(Double.MAX_VALUE)) > 0 ||
+                            bd.compareTo(BigDecimal.valueOf(-Double.MAX_VALUE)) < 0) {
+                        return false;
+                    }
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+
+            // Normal floating point comparison
+            double d1 = a.doubleValue();
+            double d2 = b.doubleValue();
+            return nearlyEqual(d1, d2, doubleEplison);
         }
 
+        // For non-floating point numbers, use exact comparison
         try {
             BigDecimal x = convert2BigDecimal(a);
             BigDecimal y = convert2BigDecimal(b);
-            return x.compareTo(y) == 0.0;
+            return x.compareTo(y) == 0;
         } catch (Exception e) {
             return false;
         }
     }
-
+    
     /**
      * Compare if two floating point numbers are within a given range
      */
@@ -706,7 +1148,7 @@ public class DeepEquals {
                 continue;
             }
 
-            Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(obj.getClass());
+            Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj.getClass());
             for (Field field : fields) {
                 try {
                     stack.addFirst(field.get(obj));

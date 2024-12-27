@@ -10,6 +10,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -82,8 +83,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see Class
  * @see ClassLoader
  * @see Modifier
- * @see Primitive
- * @see OSGi
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -105,11 +104,13 @@ public class ClassUtilities
 {
     private static final Set<Class<?>> prims = new HashSet<>();
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
-    private static final Map<String, Class<?>> nameToClass = new HashMap<>();
+    private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap = new HashMap<>();
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
+    private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
     private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ConcurrentHashMap<>();
-    private static final Set<Class<?>> osgiChecked = new ConcurrentSet<>();
+    private static final Set<Class<?>> osgiChecked = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
 
     static {
         prims.add(Byte.class);
@@ -162,23 +163,19 @@ public class ClassUtilities
     }
 
     /**
-     * Add alias names for classes to allow .forName() to bring the class (.class) back with the alias name.
-     * Because the alias to class name mappings are static, it is expected that these are set up during initialization
-     * and not changed later.
+     * Registers a permanent alias name for a class to support Class.forName() lookups.
      *
-     * @param clazz Class to add an alias for
-     * @param alias String alias name
+     * @param clazz the class to alias
+     * @param alias the alternative name for the class
      */
     public static void addPermanentClassAlias(Class<?> clazz, String alias) {
         nameToClass.put(alias, clazz);
     }
 
     /**
-     * Remove alias name for classes to prevent .forName() from fetching the class with the alias name.
-     * Because the alias to class name mappings are static, it is expected that these are set up during initialization
-     * and not changed later.
+     * Removes a previously registered class alias.
      *
-     * @param alias String alias name
+     * @param alias the alias name to remove
      */
     public static void removePermanentClassAlias(String alias) {
         nameToClass.remove(alias);
@@ -316,13 +313,14 @@ public class ClassUtilities
         }
         c = loadClass(name, classLoader);
 
+        // TODO: This should be in newInstance() call?
         if (ClassLoader.class.isAssignableFrom(c) ||
                 ProcessBuilder.class.isAssignableFrom(c) ||
                 Process.class.isAssignableFrom(c) ||
                 Constructor.class.isAssignableFrom(c) ||
                 Method.class.isAssignableFrom(c) ||
                 Field.class.isAssignableFrom(c)) {
-            throw new SecurityException("For security reasons, cannot instantiate: " + c.getName() + " when loading JSON.");
+            throw new SecurityException("For security reasons, cannot instantiate: " + c.getName());
         }
 
         nameToClass.put(name, c);
@@ -331,6 +329,14 @@ public class ClassUtilities
 
     /**
      * loadClass() provided by: Thomas Margreiter
+     * <p>
+     * Loads a class using the specified ClassLoader, with recursive handling for array types
+     * and primitive arrays.
+     *
+     * @param name the fully qualified class name or array type descriptor
+     * @param classLoader the ClassLoader to use
+     * @return the loaded Class object
+     * @throws ClassNotFoundException if the class cannot be found
      */
     private static Class<?> loadClass(String name, ClassLoader classLoader) throws ClassNotFoundException {
         String className = name;
@@ -436,34 +442,52 @@ public class ClassUtilities
     /**
      * Obtains the appropriate ClassLoader depending on whether the environment is OSGi, JPMS, or neither.
      *
+     * @param anchorClass the class to use as reference for loading
      * @return the appropriate ClassLoader
      */
     public static ClassLoader getClassLoader(final Class<?> anchorClass) {
-        // Attempt to detect and handle OSGi environment
+        if (anchorClass == null) {
+            throw new IllegalArgumentException("Anchor class cannot be null");
+        }
+
+        checkSecurityAccess();
+
+        // Try OSGi first
         ClassLoader cl = getOSGiClassLoader(anchorClass);
         if (cl != null) {
             return cl;
         }
 
-        // Use the thread's context ClassLoader if available
+        // Try context class loader
         cl = Thread.currentThread().getContextClassLoader();
         if (cl != null) {
             return cl;
         }
 
-        // Fallback to the ClassLoader that loaded this utility class
+        // Try anchor class loader
         cl = anchorClass.getClassLoader();
         if (cl != null) {
             return cl;
         }
 
-        // As a last resort, use the system ClassLoader
-        return ClassLoader.getSystemClassLoader();
+        // Last resort
+        return SYSTEM_LOADER;
     }
 
     /**
-     * Attempts to retrieve the OSGi Bundle's ClassLoader using FrameworkUtil.
+     * Checks if the current security manager allows class loader access.
+     */
+    private static void checkSecurityAccess() {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(new RuntimePermission("getClassLoader"));
+        }
+    }
+
+    /**
+     * Attempts to retrieve the OSGi Bundle's ClassLoader.
      *
+     * @param classFromBundle the class from which to get the bundle
      * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
      */
     private static ClassLoader getOSGiClassLoader(final Class<?> classFromBundle) {
@@ -476,16 +500,19 @@ public class ClassUtilities
                 return osgiClassLoaders.get(classFromBundle);
             }
 
-            osgiClassLoaders.computeIfAbsent(classFromBundle, ClassUtilities::getOSGiClassLoader0);
+            ClassLoader loader = getOSGiClassLoader0(classFromBundle);
+            if (loader != null) {
+                osgiClassLoaders.put(classFromBundle, loader);
+            }
             osgiChecked.add(classFromBundle);
+            return loader;
         }
-
-        return osgiClassLoaders.get(classFromBundle);
     }
 
     /**
-     * Attempts to retrieve the OSGi Bundle's ClassLoader using FrameworkUtil.
+     * Internal method to retrieve the OSGi Bundle's ClassLoader using reflection.
      *
+     * @param classFromBundle the class from which to get the bundle
      * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
      */
     private static ClassLoader getOSGiClassLoader0(final Class<?> classFromBundle) {
@@ -506,9 +533,6 @@ public class ClassUtilities
                 // Get the adapt(Class) method
                 Method adaptMethod = bundle.getClass().getMethod("adapt", Class.class);
 
-                // method is inside not a public class, so we need to make it accessible
-                adaptMethod.setAccessible(true);
-
                 // Invoke bundle.adapt(BundleWiring.class) to get the BundleWiring instance
                 Object bundleWiring = adaptMethod.invoke(bundle, bundleWiringClass);
 
@@ -525,12 +549,13 @@ public class ClassUtilities
                 }
             }
         } catch (Exception e) {
-            // OSGi FrameworkUtil is not present; not in an OSGi environment
+            // OSGi environment not detected or error occurred
+            // Silently ignore as this is expected in non-OSGi environments
         }
 
         return null;
     }
-
+    
     /**
      * Finds the closest matching class in an inheritance hierarchy from a map of candidate classes.
      * <p>
@@ -559,7 +584,7 @@ public class ClassUtilities
 
         T closest = defaultClass;
         int minDistance = Integer.MAX_VALUE;
-        Class<?> closestClass = null;  // Track the actual class for tiebreaking
+        Class<?> closestClass = null;  // Track the actual class for tie-breaking
 
         for (Map.Entry<Class<?>, T> entry : candidateClasses.entrySet()) {
             Class<?> candidateClass = entry.getKey();
@@ -596,7 +621,7 @@ public class ClassUtilities
      */
     private static boolean shouldPreferNewCandidate(Class<?> newClass, Class<?> currentClass) {
         if (currentClass == null) return true;
-        // Prefer classes over interfaces
+        // Prefer classes to interfaces
         if (newClass.isInterface() != currentClass.isInterface()) {
             return !newClass.isInterface();
         }

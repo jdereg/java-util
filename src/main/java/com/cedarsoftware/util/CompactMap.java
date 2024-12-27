@@ -2824,8 +2824,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         @Override
         public String toString() {
-            return "CompactMapComparator{caseInsensitive=" + caseInsensitive +
-                    ", reverse=" + reverse + "}";
+            return "CompactMapComparator{caseInsensitive=" + caseInsensitive + ", reverse=" + reverse + "}";
         }
     }
 }

@@ -23,7 +23,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -292,10 +294,8 @@ public class ReflectionUtilsTest
 
         // Now both approaches produce the *same* method reference:
         Method m2 = ReflectionUtils.getMethod(gross, "methodWithNoArgs", 0);
-        // The old line was:  assert m1 != m2;
-        // Instead, we verify they're the same 'Method':
+
         assert m1 == m2;
-        assert m1.getName().equals(m2.getName());
 
         // Extra check: calling by name + no-arg:
         assert "0".equals(ReflectionUtils.call(gross, "methodWithNoArgs"));
@@ -310,9 +310,8 @@ public class ReflectionUtilsTest
 
         // Both approaches now unify to the same method object:
         Method m2 = ReflectionUtils.getMethod(gross, "methodWithOneArg", 1);
-        // The old line was:  assert m1 != m2;
+
         assert m1 == m2;
-        assert m1.getName().equals(m2.getName());
 
         // Confirm reflective call via the simpler API:
         assert "1".equals(ReflectionUtils.call(gross, "methodWithOneArg", 5));
@@ -328,9 +327,8 @@ public class ReflectionUtilsTest
 
         // Both approaches unify to the same method object:
         Method m2 = ReflectionUtils.getMethod(gross, "methodWithTwoArgs", 2);
-        // The old line was:  assert m1 != m2;
+        
         assert m1 == m2;
-        assert m1.getName().equals(m2.getName());
 
         // Confirm reflective call via the simpler API:
         assert "2".equals(ReflectionUtils.call(gross, "methodWithTwoArgs", 9, "foo"));
@@ -532,26 +530,23 @@ public class ReflectionUtilsTest
     }
 
     @Test
-    public void testGetMethodWithDifferentClassLoaders()
-    {
+    public void testGetMethodWithDifferentClassLoaders() throws ClassNotFoundException {
+        // Given
         ClassLoader testClassLoader1 = new TestClassLoader();
         ClassLoader testClassLoader2 = new TestClassLoader();
-        try
-        {
-            Class clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
-            Method m1 = ReflectionUtils.getMethod(clazz1,"getPrice", (Class<?>[])null);
 
-            Class clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
-            Method m2 = ReflectionUtils.getMethod(clazz2,"getPrice", (Class<?>[])null);
+        // When
+        Class<?> clazz1 = testClassLoader1.loadClass("com.cedarsoftware.util.TestClass");
+        Method m1 = ReflectionUtils.getMethod(clazz1, "getPrice");
 
-            // Should get different Method instances since this class was loaded via two different ClassLoaders.
-            assert m1 != m2;
-        }
-        catch (ClassNotFoundException e)
-        {
-            e.printStackTrace();
-            fail();
-        }
+        Class<?> clazz2 = testClassLoader2.loadClass("com.cedarsoftware.util.TestClass");
+        Method m2 = ReflectionUtils.getMethod(clazz2, "getPrice");
+
+        // Then
+        assertNotSame(m1, m2, "Methods from different classloaders should be different instances");
+        // Additional verifications
+        assertNotSame(clazz1, clazz2, "Classes from different classloaders should be different");
+        assertNotEquals(clazz1.getClassLoader(), clazz2.getClassLoader(), "ClassLoaders should be different");
     }
 
     @Test
@@ -761,4 +756,3 @@ public class ReflectionUtilsTest
         assertEquals("toString", method.getName());
     }
 }
-

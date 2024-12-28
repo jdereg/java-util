@@ -290,6 +290,17 @@ public class GraphComparatorTest
         }
     }
 
+    private static class SetContainer implements HasId
+    {
+        long id;
+        Set<Object> set;
+
+        public Object getId()
+        {
+            return id;
+        }
+    }
+
     private static class ListContainer implements HasId
     {
         long id;
@@ -1568,6 +1579,16 @@ public class GraphComparatorTest
     @Test
     public void testApplyDeltaWithCommandParams() throws Exception
     {
+//        SetContainer srcSet = new SetContainer();
+//        srcSet.set = new HashSet<>();
+//        srcSet.set.add("one");
+//
+//        SetContainer targetSet = new SetContainer();
+//        targetSet.set = new HashSet<>();
+//        targetSet.set.add("once");
+//
+//        assertFalse(DeepEquals.deepEquals(srcSet, targetSet));
+
         ListContainer src = new ListContainer();
         src.list = new ArrayList<>();
         src.list.add("one");

@@ -344,7 +344,7 @@ public final class Converter
      * @return {@code true} if a direct conversion exists (including component type conversions for arrays),
      *         {@code false} otherwise
      */
-    public boolean isDirectConversionSupported(Class<?> source, Class<?> target) {
+    public static boolean isDirectConversionSupported(Class<?> source, Class<?> target) {
         return instance.isDirectConversionSupported(source, target);
     }
 
@@ -359,18 +359,21 @@ public final class Converter
      *
      * <p><strong>Example usage:</strong></p>
      * <pre>{@code
-     * Converter converter = new Converter(options);
-     *
      * // Check if String can be converted to Integer
-     * boolean canConvert = converter.isNonCollectionConversionSupportedFor(
+     * boolean canConvert = Converter.isSimpleTypeConversionSupported(
      *     String.class, Integer.class);  // returns true
      *
      * // Check array conversion (always returns false)
-     * boolean arrayConvert = converter.isNonCollectionConversionSupportedFor(
+     * boolean arrayConvert = Converter.isSimpleTypeConversionSupported(
      *     String[].class, Integer[].class);  // returns false
      *
+     * // Intentionally repeat source type (class) - will find identity conversion
+     * // Let's us know that it is a "simple" type (String, Date, Class, UUID, URL, Temporal type, etc.)
+     * boolean isSimpleType = Converter.isSimpleTypeConversionSupported(
+     *     ZonedDateTime.class, ZonedDateTime.class);
+     *
      * // Check collection conversion (always returns false)
-     * boolean listConvert = converter.isNonCollectionConversionSupportedFor(
+     * boolean listConvert = Converter.isSimpleTypeConversionSupported(
      *     List.class, Set.class);  // returns false
      * }</pre>
      *
@@ -381,10 +384,10 @@ public final class Converter
      * @see #isConversionSupportedFor(Class, Class)
      * @see #isDirectConversionSupported(Class, Class)
      */
-    public boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
+    public static boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
         return instance.isSimpleTypeConversionSupported(source, target);
     }
-
+    
     /**
      * Retrieves a map of all supported conversions, categorized by source and target classes.
      * <p>
@@ -434,7 +437,7 @@ public final class Converter
      * @param conversionFunction A function that converts an instance of the source type to an instance of the target type.
      * @return The previous conversion function associated with the source and target types, or {@code null} if no conversion existed.
      */
-    public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
+    public static Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
         return instance.addConversion(source, target, conversionFunction);
     }
 

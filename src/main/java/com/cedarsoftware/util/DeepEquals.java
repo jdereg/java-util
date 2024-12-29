@@ -62,6 +62,14 @@ public class DeepEquals {
         MAP_VALUE
     }
 
+    private enum ContainerType {
+        ARRAY,          // Array (any dimension)
+        SET,            // Unordered collection
+        COLLECTION,     // Ordered collection
+        MAP,           // Key/Value pairs
+        OBJECT         // Instance fields
+    }
+    
     // Class to hold information about items being compared
     private final static class ItemsToCompare {
         private final Object _key1;

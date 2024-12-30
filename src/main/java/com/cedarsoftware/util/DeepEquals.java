@@ -582,7 +582,7 @@ public class DeepEquals {
         }
 
         // 4. Push all elements onto stack (with their full dimensional indices)
-        for (int i = 0; i < len1; i++) {
+        for (int i = len1 - 1; i >= 0; i--) {
             stack.addFirst(new ItemsToCompare(
                     Array.get(array1, i),
                     Array.get(array2, i),
@@ -945,7 +945,7 @@ public class DeepEquals {
                 if (i > 0) pathStr.append(".");
                 pathStr.append(formatPathElement(item));
             }
-
+            
             // Handle the last element (diffItem)
             if (diffItem.arrayIndices != null) {
                 pathStr.append(" at [").append(diffItem.arrayIndices[0]).append("]");
@@ -980,8 +980,8 @@ public class DeepEquals {
 
         // Format the actual difference
         if (diffItem.fieldName != null && "arrayLength".equals(diffItem.fieldName)) {
-            result.append("  Expected length: ").append(Array.getLength(diffItem._key2))
-                    .append("\n  Found length: ").append(Array.getLength(diffItem._key1));
+            result.append("  Expected length: ").append(Array.getLength(diffItem._key1))
+                    .append("\n  Found length: ").append(Array.getLength(diffItem._key2));
         } else {
             formatDifference(result, diffItem, type);
         }
@@ -1060,30 +1060,30 @@ public class DeepEquals {
     private static void formatDifference(StringBuilder result, ItemsToCompare item, DifferenceType type) {
         switch (type) {
             case NULL_MISMATCH:
-                result.append("  Expected: ").append(formatValueConcise(item._key2))
-                        .append("\n  Found: ").append(formatValueConcise(item._key1));
+                result.append("  Expected: ").append(formatValueConcise(item._key1))
+                        .append("\n  Found: ").append(formatValueConcise(item._key2));
                 break;
 
             case SIZE_MISMATCH:
                 if (item.containerType == ContainerType.ARRAY) {
-                    result.append("  Expected length: ").append(Array.getLength(item._key2))
-                            .append("\n  Found length: ").append(Array.getLength(item._key1));
+                    result.append("  Expected length: ").append(Array.getLength(item._key1))
+                            .append("\n  Found length: ").append(Array.getLength(item._key2));
                 } else {
-                    result.append("  Expected size: ").append(getContainerSize(item._key2))
-                            .append("\n  Found size: ").append(getContainerSize(item._key1));
+                    result.append("  Expected size: ").append(getContainerSize(item._key1))
+                            .append("\n  Found size: ").append(getContainerSize(item._key2));
                 }
                 break;
 
             case TYPE_MISMATCH:
                 result.append("  Expected type: ")
-                        .append(item._key2 != null ? item._key2.getClass().getSimpleName() : "null")
+                        .append(item._key1 != null ? item._key1.getClass().getSimpleName() : "null")
                         .append("\n  Found type: ")
-                        .append(item._key1 != null ? item._key1.getClass().getSimpleName() : "null");
+                        .append(item._key2 != null ? item._key2.getClass().getSimpleName() : "null");
                 break;
 
             case VALUE_MISMATCH:
-                result.append("  Expected: ").append(formatValueConcise(item._key2))
-                        .append("\n  Found: ").append(formatValueConcise(item._key1));
+                result.append("  Expected: ").append(formatValueConcise(item._key1))
+                        .append("\n  Found: ").append(formatValueConcise(item._key2));
                 break;
         }
     }

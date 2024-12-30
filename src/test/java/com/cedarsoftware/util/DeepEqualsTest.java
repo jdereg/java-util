@@ -353,7 +353,7 @@ public class DeepEqualsTest
 		Set<Class1> x1 = new LinkedHashSet<>();
         x1.add(new Class1(true, log(pow(E, 2)), 6));
         x1.add(new Class1(true, tan(PI / 4), 1));
-        
+
 		Set<Class1> x2 = new HashSet<>();
         x2.add(new Class1(true, 1, 1));
         x2.add(new Class1(true, 2, 6));
@@ -695,6 +695,43 @@ public class DeepEqualsTest
         assert DeepEquals.deepEquals(set1, set2);
     }
 
+    @Test
+    public void testMapContentsFormatting() {
+        ComplexObject expected = new ComplexObject("obj1");
+        expected.addMapEntry("key1", "value1");
+        expected.addMapEntry("key2", "value2");
+        expected.addMapEntry("key3", "value3");
+        expected.addMapEntry("key4", "value4");
+        expected.addMapEntry("key5", "value5");
+
+        ComplexObject found = new ComplexObject("obj1");
+        found.addMapEntry("key1", "value1");
+        found.addMapEntry("key2", "differentValue");  // This will cause difference
+        found.addMapEntry("key3", "value3");
+        found.addMapEntry("key4", "value4");
+        found.addMapEntry("key5", "value5");
+
+        assertFalse(DeepEquals.deepEquals(expected, found));
+    }
+
+    private static class ComplexObject {
+        private final String name;
+        private final Map<String, String> dataMap = new LinkedHashMap<>();
+
+        public ComplexObject(String name) {
+            this.name = name;
+        }
+
+        public void addMapEntry(String key, String value) {
+            dataMap.put(key, value);
+        }
+
+        @Override
+        public String toString() {
+            return "ComplexObject[" + name + "]";
+        }
+    }
+    
     static class DumbHash
     {
         String s;

@@ -235,12 +235,20 @@ public class DeepEquals {
 
             // Handle primitive wrappers, String, Date, Class, UUID, URL, URI, Temporal classes, etc.
             if (Converter.isSimpleTypeConversionSupported(key1Class, key1Class)) {
+                if (key1 instanceof Comparable && key2 instanceof Comparable) {
+                    try {
+                        if (((Comparable)key1).compareTo(key2) != 0) {
+                            return false;
+                        }
+                        continue;
+                    } catch (Exception ignored) { }   // Fall back to equals() if compareTo() fails
+                }
                 if (!key1.equals(key2)) {
                     return false;
                 }
                 continue;
             }
-
+            
             // Set comparison
             if (key1 instanceof Set) {
                 if (!(key2 instanceof Set)) {

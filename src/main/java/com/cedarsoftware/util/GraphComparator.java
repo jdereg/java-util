@@ -461,7 +461,7 @@ public class GraphComparator
                     continue;
                 }
 
-                final Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(srcValue.getClass());
+                final Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(srcValue.getClass());
                 String sysId = "(" + System.identityHashCode(srcValue) + ").";
 
                 for (Field field : fields)

@@ -198,10 +198,10 @@ public class ReflectionUtilsTest
     }
 
     @Test
-    public void testDeepDeclaredFields() throws Exception
+    public void testAllDeclaredFields() throws Exception
     {
         Calendar c = Calendar.getInstance();
-        Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(c.getClass());
+        Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(c.getClass());
         assertTrue(fields.size() > 0);
 
         boolean miss = true;
@@ -311,7 +311,7 @@ public class ReflectionUtilsTest
         // Both approaches now unify to the same method object:
         Method m2 = ReflectionUtils.getMethod(gross, "methodWithOneArg", 1);
 
-        assert m1 == m2;
+        assert m1.equals(m2);
 
         // Confirm reflective call via the simpler API:
         assert "1".equals(ReflectionUtils.call(gross, "methodWithOneArg", 5));
@@ -328,7 +328,7 @@ public class ReflectionUtilsTest
         // Both approaches unify to the same method object:
         Method m2 = ReflectionUtils.getMethod(gross, "methodWithTwoArgs", 2);
         
-        assert m1 == m2;
+        assert m1.equals(m2);
 
         // Confirm reflective call via the simpler API:
         assert "2".equals(ReflectionUtils.call(gross, "methodWithTwoArgs", 9, "foo"));
@@ -344,7 +344,7 @@ public class ReflectionUtilsTest
         }
         catch (IllegalArgumentException e)
         {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "getMethod", "null");
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "instance cannot be null");
         }
     }
 
@@ -387,7 +387,7 @@ public class ReflectionUtilsTest
         }
         catch (IllegalArgumentException e)
         {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "getMethod", "null", "method name");
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "method name cannot be null");
         }
     }
 
@@ -401,7 +401,7 @@ public class ReflectionUtilsTest
         }
         catch (IllegalArgumentException e)
         {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "getMethod", "null", "null instance");
+            TestUtil.assertContainsIgnoreCase(e.getMessage(), "object instance cannot be null");
         }
     }
 
@@ -439,20 +439,12 @@ public class ReflectionUtilsTest
     }
 
     @Test
-    public void testCantAccessNonPublic()
+    public void testCanAccessNonPublic()
     {
         Method m1 = ReflectionUtils.getMethod(ReflectionUtilsTest.class, "notAllowed");
-        assert m1 == null;
-
-        try
-        {
-            ReflectionUtils.getMethod(new ReflectionUtilsTest(), "notAllowed", 0);
-            fail("should not make it here");
-        }
-        catch (IllegalArgumentException e)
-        {
-            TestUtil.assertContainsIgnoreCase(e.getMessage(), "notAllowed", "not found");
-        }
+        assert m1 != null;
+        Method m2 = ReflectionUtils.getMethod(new ReflectionUtilsTest(), "notAllowed", 0);
+        assert m2 == m1;
     }
 
     @Test
@@ -720,7 +712,7 @@ public class ReflectionUtilsTest
 
     @Test
     void testGetDeepDeclaredFields() {
-        Collection<Field> fields = ReflectionUtils.getDeepDeclaredFields(TestClass.class);
+        Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(TestClass.class);
         assertEquals(2, fields.size()); // field1 and field2
     }
 

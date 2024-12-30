@@ -913,23 +913,65 @@ public class DeepEquals {
 
         StringBuilder result = new StringBuilder();
         DifferenceType type = determineDifferenceType(diffItem);
-        result.append("Difference Type: ").append(type).append("\n");
+        result.append(type).append("\n");
 
-        // Build path from root to difference
-        List<ItemsToCompare> path = getPath(diffItem);
-
-        // Format the path (all items except the last one which contains the difference)
         StringBuilder pathStr = new StringBuilder();
-        for (int i = 0; i < path.size() - 1; i++) {
-            ItemsToCompare item = path.get(i);
-            if (i > 0) pathStr.append(".");
-            pathStr.append(formatPathElement(item));
-        }
 
-        // Add the field name from the difference item if it exists
-        if (diffItem.fieldName != null) {
-            if (pathStr.length() > 0) pathStr.append(".");
-            pathStr.append(diffItem.fieldName);
+        if (type == DifferenceType.SIZE_MISMATCH) {
+            // For size mismatches, just show container type with generic info
+            Object container = diffItem._key1;
+            String typeInfo = getContainerTypeInfo(container);
+            pathStr.append(container.getClass().getSimpleName())
+                    .append(typeInfo);
+        } else if (type == DifferenceType.TYPE_MISMATCH &&
+                (diffItem._key1 instanceof Collection || diffItem._key1 instanceof Map)) {
+            // For collection/map type mismatches, just show the container types
+            Object container = diffItem._key1;
+            String typeInfo = getContainerTypeInfo(container);
+            pathStr.append(container.getClass().getSimpleName())
+                    .append(typeInfo);
+        } else if (diffItem.fieldName != null && "arrayLength".equals(diffItem.fieldName)) {
+            // For array length mismatches, just show array type
+            Object array = diffItem._key1;
+            pathStr.append(array.getClass().getComponentType().getSimpleName())
+                    .append("[]");
+        } else {
+            // Build path from root to difference
+            List<ItemsToCompare> path = getPath(diffItem);
+
+            // Format all but the last element
+            for (int i = 0; i < path.size() - 1; i++) {
+                ItemsToCompare item = path.get(i);
+                if (i > 0) pathStr.append(".");
+                pathStr.append(formatPathElement(item));
+            }
+
+            // Handle the last element (diffItem)
+            if (diffItem.arrayIndices != null) {
+                pathStr.append(" at [").append(diffItem.arrayIndices[0]).append("]");
+            } else if (diffItem.fieldName != null) {
+                if ("unmatchedKey".equals(diffItem.fieldName)) {
+                    pathStr.append(" key not found");
+                } else if ("unmatchedElement".equals(diffItem.fieldName)) {
+                    pathStr.append(" element not found");
+                } else {
+                    if (pathStr.length() > 0) pathStr.append(".");
+                    // Get field type information
+                    try {
+                        Field field = ReflectionUtils.getField(diffItem.parent._key1.getClass(), diffItem.fieldName);
+                        if (field != null) {
+                            pathStr.append(diffItem.fieldName)
+                                    .append("<")
+                                    .append(getTypeDescription(field.getType()))
+                                    .append(">");
+                        } else {
+                            pathStr.append(diffItem.fieldName);
+                        }
+                    } catch (Exception e) {
+                        pathStr.append(diffItem.fieldName);
+                    }
+                }
+            }
         }
 
         if (pathStr.length() > 0) {
@@ -937,11 +979,41 @@ public class DeepEquals {
         }
 
         // Format the actual difference
-        formatDifference(result, diffItem, type);
+        if (diffItem.fieldName != null && "arrayLength".equals(diffItem.fieldName)) {
+            result.append("  Expected length: ").append(Array.getLength(diffItem._key2))
+                    .append("\n  Found length: ").append(Array.getLength(diffItem._key1));
+        } else {
+            formatDifference(result, diffItem, type);
+        }
 
         return result.toString();
     }
 
+    private static String getContainerTypeInfo(Object container) {
+        if (container instanceof Collection) {
+            Class<?> elementType = getCollectionElementType((Collection<?>)container);
+            return elementType != null ? "<" + elementType.getSimpleName() + ">" : "";
+        }
+        if (container instanceof Map) {
+            Map<?,?> map = (Map<?,?>)container;
+            if (!map.isEmpty()) {
+                Map.Entry<?,?> entry = map.entrySet().iterator().next();
+                String keyType = entry.getKey() != null ? entry.getKey().getClass().getSimpleName() : "Object";
+                String valueType = entry.getValue() != null ? entry.getValue().getClass().getSimpleName() : "Object";
+                return "<" + keyType + "," + valueType + ">";
+            }
+        }
+        return "";
+    }
+
+    private static Class<?> getCollectionElementType(Collection<?> collection) {
+        if (collection.isEmpty()) {
+            return null;
+        }
+        Object first = collection.iterator().next();
+        return first != null ? first.getClass() : null;
+    }
+    
     private static List<ItemsToCompare> getPath(ItemsToCompare diffItem) {
         List<ItemsToCompare> path = new ArrayList<>();
         ItemsToCompare current = diffItem;
@@ -951,7 +1023,7 @@ public class DeepEquals {
         }
         return path;
     }
-    
+
     private static String formatPathElement(ItemsToCompare item) {
         StringBuilder sb = new StringBuilder();
 
@@ -962,7 +1034,17 @@ public class DeepEquals {
         } else {
             // Non-root element - show field name or container access
             if (item.fieldName != null) {
-                sb.append(item.fieldName);
+                // Get the field from the parent class to determine its type
+                try {
+                    Field field = ReflectionUtils.getField(item.parent._key1.getClass(), item.fieldName);
+                    if (field != null) {
+                        sb.append(item.fieldName).append("<").append(getTypeDescription(field.getType())).append(">");
+                    } else {
+                        sb.append(item.fieldName);
+                    }
+                } catch (Exception e) {
+                    sb.append(item.fieldName);
+                }
             } else if (item.arrayIndices != null) {
                 for (int index : item.arrayIndices) {
                     sb.append("[").append(index).append("]");
@@ -978,34 +1060,34 @@ public class DeepEquals {
     private static void formatDifference(StringBuilder result, ItemsToCompare item, DifferenceType type) {
         switch (type) {
             case NULL_MISMATCH:
-                result.append("Expected: ").append(formatValueConcise(item._key2))
-                        .append("\nFound: ").append(formatValueConcise(item._key1));
+                result.append("  Expected: ").append(formatValueConcise(item._key2))
+                        .append("\n  Found: ").append(formatValueConcise(item._key1));
                 break;
 
             case SIZE_MISMATCH:
                 if (item.containerType == ContainerType.ARRAY) {
-                    result.append("Expected length: ").append(Array.getLength(item._key2))
-                            .append("\nFound length: ").append(Array.getLength(item._key1));
+                    result.append("  Expected length: ").append(Array.getLength(item._key2))
+                            .append("\n  Found length: ").append(Array.getLength(item._key1));
                 } else {
-                    result.append("Expected size: ").append(getContainerSize(item._key2))
-                            .append("\nFound size: ").append(getContainerSize(item._key1));
+                    result.append("  Expected size: ").append(getContainerSize(item._key2))
+                            .append("\n  Found size: ").append(getContainerSize(item._key1));
                 }
                 break;
 
             case TYPE_MISMATCH:
-                result.append("Expected type: ")
+                result.append("  Expected type: ")
                         .append(item._key2 != null ? item._key2.getClass().getSimpleName() : "null")
-                        .append("\nFound type: ")
+                        .append("\n  Found type: ")
                         .append(item._key1 != null ? item._key1.getClass().getSimpleName() : "null");
                 break;
 
             case VALUE_MISMATCH:
-                result.append("Expected: ").append(formatValueConcise(item._key2))
-                        .append("\nFound: ").append(formatValueConcise(item._key1));
+                result.append("  Expected: ").append(formatValueConcise(item._key2))
+                        .append("\n  Found: ").append(formatValueConcise(item._key1));
                 break;
         }
     }
-    
+
     private static String formatValueConcise(Object value) {
         if (value == null) return "null";
 
@@ -1033,55 +1115,22 @@ public class DeepEquals {
             return formatValue(value);
         }
 
-        // For objects, try to get meaningful fields
+        // For objects, include all simple fields
         try {
             Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(value.getClass());
             StringBuilder sb = new StringBuilder(value.getClass().getSimpleName());
             sb.append(" {");
             boolean first = true;
 
-            // First try to find 'id' or 'name' fields
+            // Include all simple-type fields
             for (Field field : fields) {
-                String fieldName = field.getName().toLowerCase();
-                if (fieldName.equals("id") || fieldName.equals("name")) {
+                Object fieldValue = field.get(value);
+                if (fieldValue != null &&
+                        Converter.isSimpleTypeConversionSupported(field.getType(), field.getType())) {
                     if (!first) sb.append(", ");
                     sb.append(field.getName()).append(": ");
-                    Object fieldValue = field.get(value);
                     sb.append(formatSimpleValue(fieldValue));
                     first = false;
-                }
-            }
-
-            // If no id/name found, look for collection/array fields
-            if (first) {
-                for (Field field : fields) {
-                    Object fieldValue = field.get(value);
-                    if (fieldValue == null ||
-                            fieldValue instanceof Collection ||
-                            fieldValue instanceof Map ||
-                            fieldValue.getClass().isArray()) {
-
-                        if (!first) sb.append(", ");
-                        sb.append(field.getName()).append(": ");
-                        sb.append(fieldValue == null ? "null" : formatContainer(fieldValue));
-                        first = false;
-                    }
-                }
-            }
-
-            // If still nothing found, add first few simple-type fields
-            if (first) {
-                int count = 0;
-                for (Field field : fields) {
-                    Object fieldValue = field.get(value);
-                    if (fieldValue != null &&
-                            Converter.isSimpleTypeConversionSupported(fieldValue.getClass(), fieldValue.getClass())) {
-                        if (!first) sb.append(", ");
-                        sb.append(field.getName()).append(": ");
-                        sb.append(formatSimpleValue(fieldValue));
-                        first = false;
-                        if (++count >= 2) break;
-                    }
                 }
             }
 
@@ -1090,20 +1139,6 @@ public class DeepEquals {
         } catch (Exception e) {
             return value.getClass().getSimpleName();
         }
-    }
-    
-    private static String formatContainer(Object container) {
-        if (container instanceof Collection) {
-            return container.getClass().getSimpleName() + " (size=" + ((Collection<?>)container).size() + ")";
-        }
-        if (container instanceof Map) {
-            return container.getClass().getSimpleName() + " (size=" + ((Map<?,?>)container).size() + ")";
-        }
-        if (container.getClass().isArray()) {
-            return container.getClass().getComponentType().getSimpleName() +
-                    "[] (length=" + Array.getLength(container) + ")";
-        }
-        return container.toString();
     }
     
     private static String formatSimpleValue(Object value) {
@@ -1270,7 +1305,14 @@ public class DeepEquals {
         visited.remove(obj);  // Remove from visited as we're done with this object
         return sb.toString();
     }
-    
+
+    private static String getTypeDescription(Class<?> type) {
+        if (type.isArray()) {
+            return type.getComponentType().getSimpleName() + "[]";
+        }
+        return type.getSimpleName();
+    }
+
     private static int getContainerSize(Object container) {
         if (container == null) return 0;
         if (container instanceof Collection) return ((Collection<?>) container).size();

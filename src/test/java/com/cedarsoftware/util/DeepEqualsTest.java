@@ -4,6 +4,7 @@ import java.awt.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -41,6 +42,7 @@ import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -714,6 +716,214 @@ public class DeepEqualsTest
         assertFalse(DeepEquals.deepEquals(expected, found));
     }
 
+    @Test
+    public void test3DVs2DArray() {
+        // Create a 3D array
+        int[][][] array3D = new int[2][2][2];
+        array3D[0][0][0] = 1;
+        array3D[0][0][1] = 2;
+        array3D[0][1][0] = 3;
+        array3D[0][1][1] = 4;
+        array3D[1][0][0] = 5;
+        array3D[1][0][1] = 6;
+        array3D[1][1][0] = 7;
+        array3D[1][1][1] = 8;
+
+        // Create a 2D array
+        int[][] array2D = new int[2][2];
+        array2D[0][0] = 1;
+        array2D[0][1] = 2;
+        array2D[1][0] = 3;
+        array2D[1][1] = 4;
+
+        // Create options map to capture the diff
+        Map<String, Object> options = new HashMap<>();
+
+        // Perform deep equals comparison
+        boolean result = DeepEquals.deepEquals(array3D, array2D, options);
+
+        // Assert the arrays are not equal
+        assertFalse(result);
+
+        // Get the diff string from options
+        String diff = (String) options.get("diff");
+
+        // Assert the diff contains dimensionality information
+        assertNotNull(diff);
+        assertTrue(diff.contains("dimensionality"));
+    }
+
+    @Test
+    public void test3DArraysDifferentLength() {
+        // Create first 3D array [2][3][2]
+        long[][][] array1 = new long[2][3][2];
+        array1[0][0][0] = 1L;
+        array1[0][0][1] = 2L;
+        array1[0][1][0] = 3L;
+        array1[0][1][1] = 4L;
+        array1[0][2][0] = 5L;
+        array1[0][2][1] = 6L;
+        array1[1][0][0] = 7L;
+        array1[1][0][1] = 8L;
+        array1[1][1][0] = 9L;
+        array1[1][1][1] = 10L;
+        array1[1][2][0] = 11L;
+        array1[1][2][1] = 12L;
+
+        // Create second 3D array [2][2][2] - different length in second dimension
+        long[][][] array2 = new long[2][2][2];
+        array2[0][0][0] = 1L;
+        array2[0][0][1] = 2L;
+        array2[0][1][0] = 3L;
+        array2[0][1][1] = 4L;
+        array2[1][0][0] = 7L;
+        array2[1][0][1] = 8L;
+        array2[1][1][0] = 9L;
+        array2[1][1][1] = 10L;
+
+        // Create options map to capture the diff
+        Map<String, Object> options = new HashMap<>();
+
+        // Perform deep equals comparison
+        boolean result = DeepEquals.deepEquals(array1, array2, options);
+
+        // Assert the arrays are not equal
+        assertFalse(result);
+
+        // Get the diff string from options
+        String diff = (String) options.get("diff");
+
+        // Assert the diff contains length information
+        assertNotNull(diff);
+        assertTrue(diff.contains("length"));
+    }
+
+    @Test
+    public void testObjectArrayWithDifferentInnerTypes() {
+        // Create first Object array containing int[]
+        Object[] array1 = new Object[2];
+        array1[0] = new int[] {1, 2, 3};
+        array1[1] = new int[] {4, 5, 6};
+
+        // Create second Object array containing long[]
+        Object[] array2 = new Object[2];
+        array2[0] = new long[] {1L, 2L, 3L};
+        array2[1] = new long[] {4L, 5L, 6L};
+
+        // Create options map to capture the diff
+        Map<String, Object> options = new HashMap<>();
+
+        // Perform deep equals comparison
+        boolean result = DeepEquals.deepEquals(array1, array2, options);
+
+        // Assert the arrays are not equal
+        assertFalse(result);
+
+        // Get the diff string from options
+        String diff = (String) options.get("diff");
+
+        // Assert the diff contains type information
+        assertNotNull(diff);
+        assertTrue(diff.contains("type"));
+
+        // Print the diff for visual verification
+        System.out.println(diff);
+    }
+
+    @Test
+    public void testObjectFieldFormatting() {
+        // Test class with all field types
+        class Address {
+            String street = "123 Main St";
+        }
+
+        class TestObject {
+            // Array fields
+            int[] emptyArray = new int[0];
+            String[] multiArray = new String[] {"a", "b", "c"};
+            double[] nullArray = null;
+
+            // Collection fields
+            List<String> emptyList = new ArrayList<>();
+            Set<Address> multiSet = new HashSet<>(Arrays.asList(new Address(), new Address()));
+            Collection<Integer> nullCollection = null;
+
+            // Map fields
+            Map<String, Integer> emptyMap = new HashMap<>();
+            Map<String, String> multiMap = new HashMap<String, String>() {{
+                put("a", "1");
+                put("b", "2");
+                put("c", "3");
+            }};
+            Map<String, Double> nullMap = null;
+
+            // Object fields
+            Address emptyAddress = new Address();
+            Address nullAddress = null;
+        }
+
+        TestObject obj1 = new TestObject();
+        TestObject obj2 = new TestObject();
+        // Modify one value to force difference
+        obj2.multiArray[0] = "x";
+
+        Map<String, Object> options = new HashMap<>();
+        boolean result = DeepEquals.deepEquals(obj1, obj2, options);
+        assertFalse(result);
+
+        String diff = (String) options.get("diff");
+
+        // The output should show something like:
+        // TestObject {
+        //   emptyArray<int[]>:[0],
+        //   multiArray<String[]>:[0...2],
+        //   nullArray: null,
+        //   emptyList<String>:(0),
+        //   multiSet<Address>:(0...1),
+        //   nullCollection: null,
+        //   emptyMap:[0],
+        //   multiMap:[3],
+        //   nullMap: null,
+        //   emptyAddress<Address>:{...},
+        //   nullAddress: null
+        // }
+    }
+
+    @Test
+    public void testCollectionTypeFormatting() {
+        class Person {
+            String name;
+            Person(String name) { this.name = name; }
+        }
+
+        class Container {
+            List<String> strings = Arrays.asList("a", "b", "c");
+            List<Integer> numbers = Arrays.asList(1, 2, 3);
+            List<Person> people = Arrays.asList(new Person("John"), new Person("Jane"));
+            List<Object> objects = Arrays.asList("mixed", 123, new Person("Bob"));
+        }
+
+        Container obj1 = new Container();
+        Container obj2 = new Container();
+        // Modify one value to force difference
+        obj2.strings.set(0, "x");
+
+        Map<String, Object> options = new HashMap<>();
+        boolean result = DeepEquals.deepEquals(obj1, obj2, options);
+        assertFalse(result);
+
+        String diff = (String) options.get("diff");
+        System.out.println(diff);
+
+        // The output should show something like:
+        // Container {
+        //   strings<String>:(0...2),
+        //   numbers<Integer>:(0...2),
+        //   people<Person>:(0...1),
+        //   objects:(0...2)  // Note: no type shown for Object
+        // }
+    }
+    
     private static class ComplexObject {
         private final String name;
         private final Map<String, String> dataMap = new LinkedHashMap<>();

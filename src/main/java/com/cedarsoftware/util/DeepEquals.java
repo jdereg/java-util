@@ -1127,22 +1127,56 @@ public class DeepEquals {
             return formatValue(value);
         }
 
-        // For objects, include all simple fields
+        // For objects, include ALL fields (not just simple ones)
         try {
             Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(value.getClass());
             StringBuilder sb = new StringBuilder(value.getClass().getSimpleName());
             sb.append(" {");
             boolean first = true;
 
-            // Include all simple-type fields
+            // Include ALL fields with appropriate formatting
             for (Field field : fields) {
+                if (!first) sb.append(", ");
+                first = false;
+
                 Object fieldValue = field.get(value);
-                if (fieldValue != null &&
-                        Converter.isSimpleTypeConversionSupported(field.getType(), field.getType())) {
-                    if (!first) sb.append(", ");
-                    sb.append(field.getName()).append(": ");
-                    sb.append(formatSimpleValue(fieldValue));
-                    first = false;
+                if (fieldValue == null) {
+                    sb.append(field.getName()).append(": null");
+                    continue;
+                }
+
+                Class<?> fieldType = field.getType();
+                if (fieldType.isArray()) {
+                    int length = Array.getLength(fieldValue);
+                    sb.append(String.format("%s<%s[]>:[%s]",
+                            field.getName(),
+                            fieldType.getComponentType().getSimpleName(),
+                            length == 0 ? "0" : "0..." + (length - 1)));
+                }
+                else if (Collection.class.isAssignableFrom(fieldType)) {
+                    Collection<?> col = (Collection<?>) fieldValue;
+                    Class<?> elementType = getCollectionElementType(col);
+                    String typeInfo = elementType != Object.class ?
+                            String.format("<%s>", elementType.getSimpleName()) : "";
+                    sb.append(String.format("%s%s:(%s)",
+                            field.getName(),
+                            typeInfo,
+                            col.size() == 0 ? "0" : "0..." + (col.size() - 1)));
+                }
+                else if (Map.class.isAssignableFrom(fieldType)) {
+                    Map<?, ?> map = (Map<?, ?>) fieldValue;
+                    sb.append(String.format("%s:[%s]",
+                            field.getName(),
+                            map.size() == 0 ? "0" : "0..." + (map.size() - 1)));
+                }
+                else if (Converter.isSimpleTypeConversionSupported(fieldType, fieldType)) {
+                    sb.append(field.getName()).append(": ")
+                            .append(formatSimpleValue(fieldValue));
+                }
+                else {
+                    sb.append(String.format("%s<%s>:{...}",
+                            field.getName(),
+                            fieldType.getSimpleName()));
                 }
             }
 

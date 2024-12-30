@@ -942,7 +942,11 @@ public class DeepEquals {
             // Format all but the last element
             for (int i = 0; i < path.size() - 1; i++) {
                 ItemsToCompare item = path.get(i);
-                if (i > 0) pathStr.append(".");
+                boolean isArray = item.arrayIndices != null && item.arrayIndices.getClass().isArray();
+                if (i > 0 && !isArray) {
+                    // Don't place a "dot" in front of [], e.g. pets<Pet[]>[7].name<String>   (no dot in front of [7])
+                    pathStr.append(".");
+                }
                 pathStr.append(formatPathElement(item));
             }
             

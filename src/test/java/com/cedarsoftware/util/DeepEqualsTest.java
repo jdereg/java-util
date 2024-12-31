@@ -795,7 +795,8 @@ public class DeepEqualsTest
 
         // Assert the diff contains length information
         assertNotNull(diff);
-        assertTrue(diff.contains("length"));
+        assertTrue(diff.contains("Expected"));
+        assertTrue(diff.contains("Found"));
     }
 
     @Test

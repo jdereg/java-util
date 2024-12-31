@@ -20,6 +20,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.Converter.convert2BigDecimal;
 import static com.cedarsoftware.util.Converter.convert2boolean;
@@ -36,14 +38,6 @@ public class DeepEquals {
 
     // Epsilon values for floating-point comparisons
     private static final double doubleEpsilon = 1e-15;
-    
-    private enum ContainerType {
-        ARRAY,          // Array (any dimension)
-        SET,            // Unordered collection
-        COLLECTION,     // Ordered collection
-        MAP,           // Key/Value pairs
-        OBJECT         // Instance fields
-    }
     
     // Class to hold information about items being compared
     private final static class ItemsToCompare {
@@ -112,9 +106,6 @@ public class DeepEquals {
             }
             if (obj.getClass().isArray()) {
                 return ContainerType.ARRAY;
-            }
-            if (obj instanceof Set) {
-                return ContainerType.SET;
             }
             if (obj instanceof Collection) {
                 return ContainerType.COLLECTION;
@@ -873,13 +864,15 @@ public class DeepEquals {
         return bits;
     }
 
-    // Enum to represent different types of differences
-    private enum DifferenceType {
-        SIZE_MISMATCH,        // Different sizes in collections/arrays/maps
-        VALUE_MISMATCH,       // Different values in simple types
-        TYPE_MISMATCH,        // Different types
-        NULL_MISMATCH,        // One value null, other non-null
-        KEY_MISMATCH         // Map key not found
+    // Enum to represent types of differences
+    public enum DifferenceType {
+        NULL_MISMATCH,
+        TYPE_MISMATCH,
+        SIZE_MISMATCH,
+        VALUE_MISMATCH,
+        KEY_MISMATCH,
+        ELEMENT_NOT_FOUND,
+        DIMENSIONALITY_MISMATCH
     }
 
     private static DifferenceType determineDifferenceType(ItemsToCompare item) {
@@ -890,6 +883,10 @@ public class DeepEquals {
 
         // Handle type mismatches
         if (!item._key1.getClass().equals(item._key2.getClass())) {
+            // Special case for array dimensionality
+            if (item.fieldName != null && item.fieldName.equals("dimensionality")) {
+                return DifferenceType.DIMENSIONALITY_MISMATCH;
+            }
             return DifferenceType.TYPE_MISMATCH;
         }
 
@@ -903,16 +900,15 @@ public class DeepEquals {
             return DifferenceType.KEY_MISMATCH;
         }
 
+        // Handle collection element not found
+        if (item.fieldName != null && item.fieldName.equals("unmatchedElement")) {
+            return DifferenceType.ELEMENT_NOT_FOUND;
+        }
+
         // Must be a value mismatch
         return DifferenceType.VALUE_MISMATCH;
     }
 
-    /**
-     * Generates a breadcrumb path from the comparison stack.
-     *
-     * @param stack Deque of ItemsToCompare representing the path to the difference.
-     * @return A formatted breadcrumb string.
-     */
     private static String generateBreadcrumb(Deque<ItemsToCompare> stack) {
         ItemsToCompare diffItem = stack.peek();
         if (diffItem == null) {
@@ -923,106 +919,25 @@ public class DeepEquals {
         DifferenceType type = determineDifferenceType(diffItem);
         result.append(type).append("\n");
 
-        StringBuilder pathStr = new StringBuilder();
+        // Get the path string (everything up to the @)
+        String pathStr = formatObjectContext(diffItem, type);  // Pass the difference type
 
-        if (type == DifferenceType.SIZE_MISMATCH) {
-            // For size mismatches, just show container type with generic info
-            Object container = diffItem._key1;
-            String typeInfo = getContainerTypeInfo(container);
-            pathStr.append(container.getClass().getSimpleName())
-                    .append(typeInfo);
-        } else if (type == DifferenceType.TYPE_MISMATCH &&
-                (diffItem._key1 instanceof Collection || diffItem._key1 instanceof Map)) {
-            // For collection/map type mismatches, just show the container types
-            Object container = diffItem._key1;
-            String typeInfo = getContainerTypeInfo(container);
-            pathStr.append(container.getClass().getSimpleName())
-                    .append(typeInfo);
-        } else if (diffItem.fieldName != null && "arrayLength".equals(diffItem.fieldName)) {
-            // For array length mismatches, just show array type
-            Object array = diffItem._key1;
-            pathStr.append(array.getClass().getComponentType().getSimpleName())
-                    .append("[]");
-        } else {
-            // Build path from root to difference
-            List<ItemsToCompare> path = getPath(diffItem);
-
-            // Format all but the last element
-            for (int i = 0; i < path.size() - 1; i++) {
-                ItemsToCompare item = path.get(i);
-                boolean isArray = item.arrayIndices != null && item.arrayIndices.getClass().isArray();
-                if (i > 0 && !isArray) {
-                    // Don't place a "dot" in front of [], e.g. pets<Pet[]>[7].name<String>   (no dot in front of [7])
-                    pathStr.append(".");
-                }
-                pathStr.append(formatPathElement(item));
-            }
-            
-            // Handle the last element (diffItem)
-            if (diffItem.arrayIndices != null) {
-                pathStr.append(" at [").append(diffItem.arrayIndices[0]).append("]");
-            } else if (diffItem.fieldName != null) {
-                if ("unmatchedKey".equals(diffItem.fieldName)) {
-                    pathStr.append(" key not found");
-                } else if ("unmatchedElement".equals(diffItem.fieldName)) {
-                    pathStr.append(" element not found");
-                } else {
-                    if (pathStr.length() > 0) pathStr.append(".");
-                    // Get field type information
-                    try {
-                        Field field = ReflectionUtils.getField(diffItem.parent._key1.getClass(), diffItem.fieldName);
-                        if (field != null) {
-                            pathStr.append(diffItem.fieldName)
-                                    .append("<")
-                                    .append(getTypeDescription(field.getType()))
-                                    .append(">");
-                        } else {
-                            pathStr.append(diffItem.fieldName);
-                        }
-                    } catch (Exception e) {
-                        pathStr.append(diffItem.fieldName);
-                    }
-                }
-            }
-        }
-
-        if (pathStr.length() > 0) {
+        // Only append the path if we have one
+        if (!pathStr.isEmpty()) {
             result.append(pathStr).append("\n");
         }
 
         // Format the actual difference
-        if (diffItem.fieldName != null && "arrayLength".equals(diffItem.fieldName)) {
-            result.append("  Expected length: ").append(Array.getLength(diffItem._key1))
-                    .append("\n  Found length: ").append(Array.getLength(diffItem._key2));
-        } else {
-            formatDifference(result, diffItem, type);
-        }
+        formatDifference(result, diffItem, type);
 
         return result.toString();
     }
-
-    private static String getContainerTypeInfo(Object container) {
-        if (container instanceof Collection) {
-            Class<?> elementType = getCollectionElementType((Collection<?>)container);
-            return elementType != null ? "<" + elementType.getSimpleName() + ">" : "";
-        }
-        if (container instanceof Map) {
-            Map<?,?> map = (Map<?,?>)container;
-            if (!map.isEmpty()) {
-                Map.Entry<?,?> entry = map.entrySet().iterator().next();
-                String keyType = entry.getKey() != null ? entry.getKey().getClass().getSimpleName() : "Object";
-                String valueType = entry.getValue() != null ? entry.getValue().getClass().getSimpleName() : "Object";
-                return "<" + keyType + "," + valueType + ">";
-            }
-        }
-        return "";
-    }
-
-    private static Class<?> getCollectionElementType(Collection<?> collection) {
-        if (collection.isEmpty()) {
+    
+    private static Class<?> getCollectionElementType(Collection<?> col) {
+        if (col == null || col.isEmpty()) {
             return null;
         }
-        Object first = collection.iterator().next();
+        Object first = col.iterator().next();
         return first != null ? first.getClass() : null;
     }
     
@@ -1036,50 +951,19 @@ public class DeepEquals {
         return path;
     }
 
-    private static String formatPathElement(ItemsToCompare item) {
-        StringBuilder sb = new StringBuilder();
-
-        // Add class name or field name
-        if (item.parent == null) {
-            // Root element - show class name with simple fields
-            sb.append(formatValueConcise(item._key1));
-        } else {
-            // Non-root element - show field name or container access
-            if (item.fieldName != null) {
-                // Get the field from the parent class to determine its type
-                try {
-                    Field field = ReflectionUtils.getField(item.parent._key1.getClass(), item.fieldName);
-                    if (field != null) {
-                        sb.append(item.fieldName).append("<").append(getTypeDescription(field.getType())).append(">");
-                    } else {
-                        sb.append(item.fieldName);
-                    }
-                } catch (Exception e) {
-                    sb.append(item.fieldName);
-                }
-            } else if (item.arrayIndices != null) {
-                for (int index : item.arrayIndices) {
-                    sb.append("[").append(index).append("]");
-                }
-            } else if (item.mapKey != null) {
-                sb.append(".key(").append(formatValue(item.mapKey)).append(")");
-            }
-        }
-
-        return sb.toString();
-    }
-    
     private static void formatDifference(StringBuilder result, ItemsToCompare item, DifferenceType type) {
         switch (type) {
             case NULL_MISMATCH:
-                result.append("  Expected: ").append(formatValueConcise(item._key1))
-                        .append("\n  Found: ").append(formatValueConcise(item._key2));
+                result.append("  Expected: ")
+                        .append(formatNullMismatchValue(item._key1))
+                        .append("\n  Found: ")
+                        .append(formatNullMismatchValue(item._key2));
                 break;
-
+                
             case SIZE_MISMATCH:
                 if (item.containerType == ContainerType.ARRAY) {
-                    result.append("  Expected length: ").append(Array.getLength(item._key1))
-                            .append("\n  Found length: ").append(Array.getLength(item._key2));
+                    result.append("  Expected: ").append(formatArrayNotation(item._key1))
+                            .append("\n  Found: ").append(formatArrayNotation(item._key2));
                 } else {
                     result.append("  Expected size: ").append(getContainerSize(item._key1))
                             .append("\n  Found size: ").append(getContainerSize(item._key2));
@@ -1088,95 +972,135 @@ public class DeepEquals {
 
             case TYPE_MISMATCH:
                 result.append("  Expected type: ")
-                        .append(item._key1 != null ? item._key1.getClass().getSimpleName() : "null")
+                        .append(getTypeDescription(item._key1 != null ? item._key1.getClass() : null))
                         .append("\n  Found type: ")
-                        .append(item._key2 != null ? item._key2.getClass().getSimpleName() : "null");
+                        .append(getTypeDescription(item._key2 != null ? item._key2.getClass() : null));
                 break;
 
             case VALUE_MISMATCH:
                 result.append("  Expected: ").append(formatValueConcise(item._key1))
                         .append("\n  Found: ").append(formatValueConcise(item._key2));
                 break;
+
+            case DIMENSIONALITY_MISMATCH:
+                // Get the dimensions of both arrays
+                int dim1 = getDimensions(item._key1);
+                int dim2 = getDimensions(item._key2);
+                result.append("  Expected dimensions: ").append(dim1)
+                        .append("\n  Found dimensions: ").append(dim2);
+                break;
         }
+    }
+
+    private static String formatNullMismatchValue(Object value) {
+        if (value == null) {
+            return "null";
+        }
+
+        // For arrays, collections, maps, and complex objects, use formatValueConcise
+        if (value.getClass().isArray() ||
+                value instanceof Collection ||
+                value instanceof Map ||
+                !Converter.isSimpleTypeConversionSupported(value.getClass(), value.getClass())) {
+            return formatValueConcise(value);
+        }
+
+        // For simple types, show type
+        return String.format("%s: %s",
+                getTypeDescription(value.getClass()),
+                formatValue(value));
+    }
+    
+    private static int getDimensions(Object array) {
+        if (array == null) return 0;
+
+        int dimensions = 0;
+        Class<?> type = array.getClass();
+        while (type.isArray()) {
+            dimensions++;
+            type = type.getComponentType();
+        }
+        return dimensions;
     }
 
     private static String formatValueConcise(Object value) {
         if (value == null) return "null";
 
-        // Handle collections
-        if (value instanceof Collection) {
-            Collection<?> col = (Collection<?>) value;
-            return value.getClass().getSimpleName() + " (size=" + col.size() + ")";
-        }
-
-        // Handle maps
-        if (value instanceof Map) {
-            Map<?,?> map = (Map<?,?>) value;
-            return value.getClass().getSimpleName() + " (size=" + map.size() + ")";
-        }
-
-        // Handle arrays
-        if (value.getClass().isArray()) {
-            int length = Array.getLength(value);
-            return value.getClass().getComponentType().getSimpleName() +
-                    "[] (length=" + length + ")";
-        }
-
-        // Handle simple types (String, Number, Boolean, etc.)
-        if (Converter.isSimpleTypeConversionSupported(value.getClass(), value.getClass())) {
-            return formatValue(value);
-        }
-
-        // For objects, include ALL fields (not just simple ones)
         try {
+            // Handle collections
+            if (value instanceof Collection) {
+                Collection<?> col = (Collection<?>) value;
+                String typeName = value.getClass().getSimpleName();
+                return String.format("%s(%s)", typeName,
+                        col.isEmpty() ? "0..0" : "0.." + (col.size() - 1));
+            }
+
+            // Handle maps
+            if (value instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) value;
+                String typeName = value.getClass().getSimpleName();
+                return String.format("%s[%s]", typeName,
+                        map.isEmpty() ? "0..0" : "0.." + (map.size() - 1));
+            }
+
+            // Handle arrays
+            if (value.getClass().isArray()) {
+                int length = Array.getLength(value);
+                String typeName = getTypeDescription(value.getClass().getComponentType());
+                return String.format("%s[%s]", typeName,
+                        length == 0 ? "0..0" : "0.." + (length - 1));
+            }
+
+            // Handle simple types
+            if (Converter.isSimpleTypeConversionSupported(value.getClass(), value.getClass())) {
+                return formatSimpleValue(value);
+            }
+
+            // For objects, include basic fields
             Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(value.getClass());
             StringBuilder sb = new StringBuilder(value.getClass().getSimpleName());
             sb.append(" {");
             boolean first = true;
 
-            // Include ALL fields with appropriate formatting
             for (Field field : fields) {
                 if (!first) sb.append(", ");
                 first = false;
 
                 Object fieldValue = field.get(value);
+                sb.append(field.getName()).append(": ");
+
                 if (fieldValue == null) {
-                    sb.append(field.getName()).append(": null");
+                    sb.append("null");
                     continue;
                 }
 
                 Class<?> fieldType = field.getType();
-                if (fieldType.isArray()) {
+                if (Converter.isSimpleTypeConversionSupported(fieldType, fieldType)) {
+                    // Simple type - show value
+                    sb.append(formatSimpleValue(fieldValue));
+                }
+                else if (fieldType.isArray()) {
+                    // Array - show type and size
                     int length = Array.getLength(fieldValue);
-                    sb.append(String.format("%s<%s[]>:[%s]",
-                            field.getName(),
-                            fieldType.getComponentType().getSimpleName(),
-                            length == 0 ? "0" : "0..." + (length - 1)));
+                    String typeName = getTypeDescription(fieldType.getComponentType());
+                    sb.append(String.format("%s[%s]", typeName,
+                            length == 0 ? "0..0" : "0.." + (length - 1)));
                 }
                 else if (Collection.class.isAssignableFrom(fieldType)) {
+                    // Collection - show type and size
                     Collection<?> col = (Collection<?>) fieldValue;
-                    Class<?> elementType = getCollectionElementType(col);
-                    String typeInfo = elementType != Object.class ?
-                            String.format("<%s>", elementType.getSimpleName()) : "";
-                    sb.append(String.format("%s%s:(%s)",
-                            field.getName(),
-                            typeInfo,
-                            col.size() == 0 ? "0" : "0..." + (col.size() - 1)));
+                    sb.append(String.format("%s(%s)", fieldType.getSimpleName(),
+                            col.isEmpty() ? "0..0" : "0.." + (col.size() - 1)));
                 }
                 else if (Map.class.isAssignableFrom(fieldType)) {
+                    // Map - show type and size
                     Map<?, ?> map = (Map<?, ?>) fieldValue;
-                    sb.append(String.format("%s:[%s]",
-                            field.getName(),
-                            map.size() == 0 ? "0" : "0..." + (map.size() - 1)));
-                }
-                else if (Converter.isSimpleTypeConversionSupported(fieldType, fieldType)) {
-                    sb.append(field.getName()).append(": ")
-                            .append(formatSimpleValue(fieldValue));
+                    sb.append(String.format("%s[%s]", fieldType.getSimpleName(),
+                            map.isEmpty() ? "0..0" : "0.." + (map.size() - 1)));
                 }
                 else {
-                    sb.append(String.format("%s<%s>:{...}",
-                            field.getName(),
-                            fieldType.getSimpleName()));
+                    // Non-simple object - show {..}
+                    sb.append("{..}");
                 }
             }
 
@@ -1186,11 +1110,46 @@ public class DeepEquals {
             return value.getClass().getSimpleName();
         }
     }
+
+    private static boolean shouldShowArrayElements(Field field, Object array) {
+        // Show elements for small arrays of simple types
+        if (!array.getClass().getComponentType().isArray() &&
+                Converter.isSimpleTypeConversionSupported(array.getClass().getComponentType(),
+                        array.getClass().getComponentType())) {
+            int length = Array.getLength(array);
+            return length <= 5;  // Only show elements for small arrays
+        }
+        return false;
+    }
+
+    private static String formatArrayElements(Object[] elements) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < elements.length; i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(formatSimpleValue(elements[i]));
+        }
+        sb.append("]");
+        return sb.toString();
+    }
     
     private static String formatSimpleValue(Object value) {
         if (value == null) return "null";
+
+        if (value instanceof AtomicBoolean) {
+            return String.valueOf(((AtomicBoolean) value).get());
+        }
+        if (value instanceof AtomicInteger) {
+            return String.valueOf(((AtomicInteger) value).get());
+        }
+        if (value instanceof AtomicLong) {
+            return String.valueOf(((AtomicLong) value).get());
+        }
+
         if (value instanceof String) return "\"" + value + "\"";
-        if (value instanceof Number) return value.toString();
+        if (value instanceof Character) return "'" + value + "'";
+        if (value instanceof Number) {
+            return formatNumber((Number) value);
+        }
         if (value instanceof Boolean) return value.toString();
         if (value instanceof Date) {
             return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
@@ -1202,15 +1161,12 @@ public class DeepEquals {
     private static String formatValue(Object value) {
         if (value == null) return "null";
 
-        if (value instanceof String) return "\"" + value + "\"";
-
         if (value instanceof Number) {
-            if (value instanceof Float || value instanceof Double) {
-                return String.format("%.10g", value);
-            } else {
-                return String.valueOf(value);
-            }
+            return formatNumber((Number) value);
         }
+
+        if (value instanceof String) return "\"" + value + "\"";
+        if (value instanceof Character) return "'" + value + "'";
 
         if (value instanceof Date) {
             return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
@@ -1352,11 +1308,264 @@ public class DeepEquals {
         return sb.toString();
     }
 
+    private static String formatArrayNotation(Object array) {
+        if (array == null) return "null";
+
+        int length = Array.getLength(array);
+        String typeName = getTypeDescription(array.getClass().getComponentType());
+
+        return String.format("%s[%s]",
+                typeName,
+                length == 0 ? "0..0" : "0.." + (length - 1));
+    }
+
+    private static String formatCollectionNotation(Collection<?> col) {
+        if (col == null) return "null";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(col.getClass().getSimpleName());
+
+        // Only add type parameter if it's more specific than Object
+        Class<?> elementType = getCollectionElementType(col);
+        if (elementType != null && elementType != Object.class) {
+            sb.append("<").append(getTypeDescription(elementType)).append(">");
+        }
+
+        sb.append("(");
+        if (col.isEmpty()) {
+            sb.append("0..0");
+        } else {
+            sb.append("0..").append(col.size() - 1);
+        }
+        sb.append(")");
+
+        return sb.toString();
+    }
+
+    private static String formatMapNotation(Map<?, ?> map) {
+        if (map == null) return "null";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(map.getClass().getSimpleName());
+
+        sb.append("[");
+        if (map.isEmpty()) {
+            sb.append("0..0");
+        } else {
+            sb.append("0..").append(map.size() - 1);
+        }
+        sb.append("]");
+
+        return sb.toString();
+    }
+
+    private static String formatObjectContext(ItemsToCompare item, DifferenceType diffType) {
+        if (item._key1 == null && item._key2 == null) {
+            return "";
+        }
+
+        List<ItemsToCompare> path = getPath(item);
+        if (path.isEmpty()) {
+            return "";
+        }
+
+        // Format the root object
+        StringBuilder context = new StringBuilder();
+        ItemsToCompare rootItem = path.get(0);
+        context.append(formatRootObject(rootItem._key1, diffType));
+
+        // Format the access path
+        if (path.size() > 1) {
+            context.append(" @ ");
+
+            // Process all path elements with consistent special case handling
+            for (int i = 1; i < path.size(); i++) {
+                ItemsToCompare pathItem = path.get(i);
+
+                // Add appropriate separator unless it's the first element
+                if (i > 1) {
+                    boolean isSpecialCase = pathItem.fieldName != null &&
+                            (pathItem.fieldName.equals("unmatchedKey") ||
+                                    pathItem.fieldName.equals("unmatchedElement") ||
+                                    pathItem.fieldName.equals("arrayLength") ||
+                                    pathItem.fieldName.equals("componentType"));
+
+                    if (!isSpecialCase) {
+                        context.append(pathItem.fieldName != null ? "." : "");
+                    } else {
+                        context.append(" ");  // Space instead of dot for special cases
+                    }
+                }
+
+                if (pathItem.fieldName != null) {
+                    // Handle special cases consistently throughout the path
+                    if (pathItem.fieldName.equals("unmatchedKey")) {
+                        context.append("has unmatched key");
+                    }
+                    else if (pathItem.fieldName.equals("unmatchedElement")) {
+                        context.append("has unmatched element");
+                    }
+                    else if (pathItem.fieldName.equals("arrayLength")) {
+                        context.append("array length mismatch");
+                    }
+                    else if (pathItem.fieldName.equals("componentType")) {
+                        context.append("component type mismatch");
+                    }
+                    else if (pathItem.fieldName.equals("size")) {
+                        context.append(pathItem.fieldName);
+                    }
+                    else {
+                        // Add "field" prefix only for first regular field access
+                        if (i == 1) {
+                            context.append("field ");
+                        }
+                        context.append(pathItem.fieldName);
+                    }
+                }
+                else if (pathItem.arrayIndices != null) {
+                    if (i == 1) {
+                        context.append("element ");
+                    }
+                    context.append("[").append(pathItem.arrayIndices[0]).append("]");
+                }
+                if (pathItem.mapKey != null) {
+                    // Add space between field name and key
+                    if (i > 1) {
+                        context.append(".");
+                    }
+                    context.append(pathItem.fieldName).append(" key:\"")
+                            .append(formatMapKey(pathItem.mapKey))
+                            .append("\"");
+                }
+            }
+        }
+
+        return context.toString();
+    }
+    
+    private static String formatMapKey(Object key) {
+        if (key instanceof String) {
+            return (String) key;  // Return raw string without quotes
+        }
+        return formatValue(key);  // Use normal formatting for non-string keys
+    }
+
+    private static String formatArrayInObject(Object array) {
+        if (array == null) return "null";
+
+        int length = Array.getLength(array);
+        String typeName = getTypeDescription(array.getClass().getComponentType());
+        return String.format("%s[0..%d]", typeName, length - 1);
+    }
+    
+    private static String formatNumber(Number value) {
+        if (value == null) return "null";
+
+        if (value instanceof Double || value instanceof Float) {
+            double d = value.doubleValue();
+            // Use DecimalFormat to control precision
+            if (Math.abs(d) >= 1e16 || Math.abs(d) < 1e-6) {
+                return String.format("%.6e", d);
+            }
+            // For doubles, up to 15 decimal places
+            if (value instanceof Double) {
+                return String.format("%.15g", d).replaceAll("\\.?0+$", "");
+            }
+            // For floats, up to 7 decimal places
+            return String.format("%.7g", d).replaceAll("\\.?0+$", "");
+        }
+
+        if (value instanceof BigDecimal) {
+            BigDecimal bd = (BigDecimal) value;
+            if (bd.precision() > 20) {
+                // Convert to scientific notation
+                return String.format("%.6e", bd.doubleValue());
+            }
+            // Preserve scale but remove trailing zeros
+            return bd.stripTrailingZeros().toPlainString();
+        }
+
+        // For other number types (Integer, Long, etc.), use toString
+        return value.toString();
+    }
+
+    private static String formatRootObject(Object obj, DifferenceType diffType) {
+        if (obj == null) {
+            return "null";
+        }
+
+        // Special handling for TYPE_MISMATCH and VALUE_MISMATCH on simple types
+        if ((diffType == DifferenceType.TYPE_MISMATCH ||
+                diffType == DifferenceType.VALUE_MISMATCH) &&
+                Converter.isSimpleTypeConversionSupported(obj.getClass(), obj.getClass())) {
+            // For simple types, show type: value
+            return String.format("%s: %s",
+                    getTypeDescription(obj.getClass()),
+                    formatSimpleValue(obj));
+        }
+
+        // For collections and maps, just show the container notation
+        if (obj instanceof Collection) {
+            return formatCollectionNotation((Collection<?>)obj);
+        }
+        if (obj instanceof Map) {
+            return formatMapNotation((Map<?,?>)obj);
+        }
+        if (obj.getClass().isArray()) {
+            return formatArrayNotation(obj);
+        }
+
+        // For NULL_MISMATCH on simple types, show type
+        if (diffType == DifferenceType.NULL_MISMATCH &&
+                Converter.isSimpleTypeConversionSupported(obj.getClass(), obj.getClass())) {
+            return String.format("%s: %s",
+                    getTypeDescription(obj.getClass()),
+                    formatValue(obj));
+        }
+
+        // For objects, use the concise format
+        return formatValueConcise(obj);
+    }
+    
     private static String getTypeDescription(Class<?> type) {
+        if (type == null) return "Object";  // Default to Object for null types
+
         if (type.isArray()) {
-            return type.getComponentType().getSimpleName() + "[]";
+            Class<?> componentType = type.getComponentType();
+            return getTypeDescription(componentType) + "[]";
         }
         return type.getSimpleName();
+    }
+    
+    private static String getTypeInfo(ItemsToCompare item) {
+        if (item._key1 == null && item._key2 == null) return "";
+
+        // Use whichever key is not null
+        Object value = item._key1 != null ? item._key1 : item._key2;
+        if (value == null) return "";
+
+        Class<?> type = value.getClass();
+        StringBuilder typeInfo = new StringBuilder();
+
+        if (type.isArray()) {
+            typeInfo.append("<").append(getTypeDescription(type)).append(">");
+        }
+        else if (Collection.class.isAssignableFrom(type)) {
+            Class<?> elementType = getCollectionElementType((Collection<?>)value);
+            typeInfo.append("<").append(type.getSimpleName());
+            if (elementType != null) {
+                typeInfo.append("<").append(getTypeDescription(elementType)).append(">");
+            }
+            typeInfo.append(">");
+        }
+        else if (Map.class.isAssignableFrom(type)) {
+            typeInfo.append("<").append(type.getSimpleName()).append(">");
+        }
+        else {
+            typeInfo.append("<").append(getTypeDescription(type)).append(">");
+        }
+
+        return typeInfo.toString();
     }
 
     private static int getContainerSize(Object container) {
@@ -1365,5 +1574,69 @@ public class DeepEquals {
         if (container instanceof Map) return ((Map<?,?>) container).size();
         if (container.getClass().isArray()) return Array.getLength(container);
         return 0;
+    }
+
+    enum ContainerType {
+        ARRAY {
+            @Override
+            public String format(String name, Class<?> type, Object value) {
+                int length = Array.getLength(value);
+                return String.format("%s<%s>:[%s]",
+                        name,
+                        getTypeDescription(type),
+                        length == 0 ? "0" : "0.." + (length - 1));
+            }
+        },
+        COLLECTION {
+            @Override
+            public String format(String name, Class<?> type, Object value) {
+                Collection<?> col = (Collection<?>) value;
+                Class<?> elementType = getCollectionElementType(col);
+                String typeInfo = elementType != Object.class ?
+                        String.format("<%s>", getTypeDescription(elementType)) : "";
+                return String.format("%s%s:(%s)",
+                        name,
+                        typeInfo,
+                        col.size() == 0 ? "0" : "0.." + (col.size() - 1));
+            }
+        },
+        MAP {
+            @Override
+            public String format(String name, Class<?> type, Object value) {
+                Map<?, ?> map = (Map<?, ?>) value;
+                return String.format("%s<%s>:[%s]",
+                        name,
+                        getTypeDescription(type),
+                        map.size() == 0 ? "0" : "0.." + (map.size() - 1));
+            }
+        },
+        OBJECT {
+            @Override
+            public String format(String name, Class<?> type, Object value) {
+                return String.format("%s<%s>:{..}",
+                        name,
+                        getTypeDescription(type));
+            }
+        };
+
+        public abstract String format(String name, Class<?> type, Object value);
+    }
+
+    private enum AccessType {
+        FIELD("field"),
+        ELEMENT("element"),
+        KEY("key"),
+        VALUE("value");
+
+        private final String description;
+
+        AccessType(String description) {
+            this.description = description;
+        }
+
+        @Override
+        public String toString() {
+            return description;
+        }
     }
 }

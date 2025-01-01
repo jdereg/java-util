@@ -1459,7 +1459,7 @@ public class DeepEquals {
     }
     
     private static boolean isSpecialCase(ItemsToCompare pathItem) {
-        return pathItem.fieldName != null &&
+        return pathItem != null && pathItem.fieldName != null &&
                 (pathItem.fieldName.equals("unmatchedKey") ||
                         pathItem.fieldName.equals("unmatchedElement"));
     }

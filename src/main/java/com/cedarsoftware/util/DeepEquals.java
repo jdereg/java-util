@@ -866,7 +866,6 @@ public class DeepEquals {
 
     // Enum to represent types of differences
     public enum DifferenceType {
-        NULL_MISMATCH,
         TYPE_MISMATCH,
         SIZE_MISMATCH,
         VALUE_MISMATCH,
@@ -878,7 +877,7 @@ public class DeepEquals {
     private static DifferenceType determineDifferenceType(ItemsToCompare item) {
         // Handle null cases
         if (item._key1 == null || item._key2 == null) {
-            return DifferenceType.NULL_MISMATCH;
+            return DifferenceType.VALUE_MISMATCH;
         }
 
         // Handle type mismatches
@@ -953,10 +952,10 @@ public class DeepEquals {
 
     private static void formatDifference(StringBuilder result, ItemsToCompare item, DifferenceType type) {
         switch (type) {
-            case NULL_MISMATCH:
-                result.append("  Expected: ").append(formatNullMismatchValue(item._key1))
-                        .append("\n  Found: ").append(formatNullMismatchValue(item._key2));
-                break;
+//            case NULL_MISMATCH:
+//                result.append("  Expected: ").append(formatNullMismatchValue(item._key1))
+//                        .append("\n  Found: ").append(formatNullMismatchValue(item._key2));
+//                break;
                 
             case SIZE_MISMATCH:
                 if (item.containerType == ContainerType.ARRAY) {
@@ -1370,95 +1369,158 @@ public class DeepEquals {
             return "";
         }
 
-        // Format the root object
         StringBuilder context = new StringBuilder();
-        ItemsToCompare rootItem = path.get(0);
-        context.append(formatRootObject(rootItem._key1, diffType));
+        formatRootObjectPart(context, path.get(0), diffType);
 
-        // Format the access path
         if (path.size() > 1) {
             context.append(" @ ");
-
-            // Process all path elements with consistent special case handling
-            for (int i = 1; i < path.size(); i++) {
-                ItemsToCompare pathItem = path.get(i);
-                ItemsToCompare nextItem = (i < path.size() - 1) ? path.get(i + 1) : null;
-
-                // Add appropriate separator unless it's the first element
-                if (i > 1) {
-                    boolean isSpecialCase = pathItem.fieldName != null &&
-                            (pathItem.fieldName.equals("unmatchedKey") ||
-                                    pathItem.fieldName.equals("unmatchedElement") ||
-                                    pathItem.fieldName.equals("componentType"));
-
-                    boolean nextIsArrayLength = nextItem != null &&
-                            nextItem.fieldName != null &&
-                            nextItem.fieldName.equals("arrayLength");
-
-                    if (!isSpecialCase) {
-                        context.append(pathItem.fieldName != null ? "." : "");
-                    } else {
-                        context.append(" ");  // Space instead of dot for special cases
-                    }
-                }
-
-                if (pathItem.fieldName != null) {
-                    // Handle special cases consistently throughout the path
-                    if (pathItem.fieldName.equals("unmatchedKey")) {
-                        context.append("has unmatched key");
-                    }
-                    else if (pathItem.fieldName.equals("unmatchedElement")) {
-                        context.append("has unmatched element");
-                    }
-                    else if (pathItem.fieldName.equals("arrayLength")) {
-                        context.append("array length mismatch");
-                    }
-                    else if (pathItem.fieldName.equals("componentType")) {
-                        context.append("component type mismatch");
-                    }
-                    else if (pathItem.fieldName.equals("size")) {
-                        context.append(pathItem.fieldName);
-                    }
-                    else {
-                        // Add "field" prefix only for first regular field access
-                        if (i == 1) {
-                            context.append("field ");
-                        }
-                        context.append(pathItem.fieldName);
-                    }
-                }
-                else if (pathItem.arrayIndices != null) {
-                    if (i == 1) {
-                        context.append("element ");
-                    }
-                    context.append("[").append(pathItem.arrayIndices[0]).append("]");
-                }
-                else if (pathItem.mapKey != null) {
-                    if (i > 1) {
-                        String fieldName = pathItem.fieldName;
-                        if (fieldName != null && !fieldName.equals("null")) {
-                            context.append(" ");
-                            context.append(fieldName);
-                        }
-                    }
-                    context.append(" key:\"").append(formatMapKey(pathItem.mapKey)).append("\"");
-                }
-
-                // Check next item for array length mismatch
-                if (nextItem != null && nextItem.fieldName != null &&
-                        nextItem.fieldName.equals("arrayLength")) {
-                    if (pathItem.fieldName != null || pathItem.arrayIndices != null) {
-                        context.append(".");  // Add dot before "array length mismatch"
-                    }
-                    context.append("array length mismatch");
-                    i++;  // Skip the next item since we've handled it
-                }
-            }
+            formatPathElements(context, path);
         }
 
         return context.toString();
     }
+
+    private static void formatRootObjectPart(StringBuilder context, ItemsToCompare rootItem, DifferenceType diffType) {
+        context.append(formatRootObject(rootItem._key1, diffType));
+    }
+
+    private static void formatPathElements(StringBuilder context, List<ItemsToCompare> path) {
+        for (int i = 1; i < path.size(); i++) {
+            ItemsToCompare pathItem = path.get(i);
+            ItemsToCompare nextItem = (i < path.size() - 1) ? path.get(i + 1) : null;
+
+            // Skip arrayLength as it's handled as part of error type
+            if (pathItem.fieldName != null && pathItem.fieldName.equals("arrayLength")) {
+                continue;
+            }
+
+            // Start of path element
+            if (i == 1) {
+                if (pathItem.fieldName != null) {
+                    context.append("field ");
+                } else if (pathItem.arrayIndices != null) {
+                    context.append("element ");
+                }
+            }
+
+            // Build field path
+            if (pathItem.fieldName != null) {
+                if (i > 1 && !isErrorType(pathItem)) {
+                    context.append(".");
+                }
+                if (isErrorType(pathItem)) {
+                    context.append(" "); // Space before error type
+                    appendErrorType(context, pathItem.fieldName);
+                } else {
+                    context.append(pathItem.fieldName);
+                }
+            }
+            else if (pathItem.arrayIndices != null) {
+                context.append("[").append(pathItem.arrayIndices[0]).append("]");
+            }
+            else if (pathItem.mapKey != null) {
+                context.append(" key:\"").append(formatMapKey(pathItem.mapKey)).append("\"");
+            }
+
+            // Handle error types that follow this element
+            if (nextItem != null && isErrorType(nextItem)) {
+                context.append(" ");
+                appendErrorType(context, nextItem.fieldName);
+                i++; // Skip the error type item
+            }
+        }
+    }
+
+    private static boolean isErrorType(ItemsToCompare item) {
+        if (item.fieldName == null) return false;
+        return item.fieldName.equals("arrayLength") ||
+                item.fieldName.equals("unmatchedKey") ||
+                item.fieldName.equals("unmatchedElement") ||
+                item.fieldName.equals("componentType");
+    }
+
+    private static void appendErrorType(StringBuilder context, String fieldName) {
+        switch (fieldName) {
+            case "arrayLength":
+                context.append("array length mismatch");
+                break;
+            case "unmatchedKey":
+                context.append("has unmatched key");
+                break;
+            case "unmatchedElement":
+                context.append("has unmatched element");
+                break;
+            case "componentType":
+                context.append("component type mismatch");
+                break;
+        }
+    }
     
+    private static boolean isArrayLengthMismatch(ItemsToCompare item) {
+        return item != null &&
+                item.fieldName != null &&
+                item.fieldName.equals("arrayLength");
+    }
+
+    private static void formatPathElement(StringBuilder context, int index, ItemsToCompare pathItem) {
+        if (pathItem.fieldName != null) {
+            formatFieldElement(context, index, pathItem);
+        }
+        else if (pathItem.arrayIndices != null) {
+            formatArrayElement(context, index, pathItem);
+        }
+        else if (pathItem.mapKey != null) {
+            formatMapElement(context, index, pathItem);
+        }
+    }
+
+    private static void formatFieldElement(StringBuilder context, int index, ItemsToCompare pathItem) {
+        if (pathItem.fieldName.equals("unmatchedKey")) {
+            context.append("has unmatched key");
+        }
+        else if (pathItem.fieldName.equals("unmatchedElement")) {
+            context.append("has unmatched element");
+        }
+        else if (pathItem.fieldName.equals("componentType")) {
+            context.append("component type mismatch");
+        }
+        else if (pathItem.fieldName.equals("size")) {
+            context.append(pathItem.fieldName);
+        }
+        // Remove arrayLength case as it's handled in handleArrayLengthMismatch
+        else {
+            if (index == 1) {
+                context.append("field ");
+            }
+            context.append(pathItem.fieldName);
+        }
+    }
+
+    private static void formatArrayElement(StringBuilder context, int index, ItemsToCompare pathItem) {
+        if (index == 1) {
+            context.append("element ");
+        }
+        context.append("[").append(pathItem.arrayIndices[0]).append("]");
+    }
+
+    private static void formatMapElement(StringBuilder context, int index, ItemsToCompare pathItem) {
+        if (index > 1) {
+            String fieldName = pathItem.fieldName;
+            if (fieldName != null && !fieldName.equals("null")) {
+                context.append(" ");
+                context.append(fieldName);
+            }
+        }
+        context.append(" key:\"").append(formatMapKey(pathItem.mapKey)).append("\"");
+    }
+
+    private static void handleArrayLengthMismatch(StringBuilder context, ItemsToCompare nextItem, int index) {
+        if (isArrayLengthMismatch(nextItem)) {
+            context.append(" array length mismatch");
+            index++;  // Skip the next item since we've handled it
+        }
+    }
+
     private static String formatMapKey(Object key) {
         if (key instanceof String) {
             String strKey = (String) key;
@@ -1533,14 +1595,6 @@ public class DeepEquals {
         }
         if (obj.getClass().isArray()) {
             return formatArrayNotation(obj);
-        }
-
-        // For NULL_MISMATCH on simple types, show type
-        if (diffType == DifferenceType.NULL_MISMATCH &&
-                Converter.isSimpleTypeConversionSupported(obj.getClass(), obj.getClass())) {
-            return String.format("%s: %s",
-                    getTypeDescription(obj.getClass()),
-                    formatValue(obj));
         }
 
         // For objects, use the concise format

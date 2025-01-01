@@ -1396,6 +1396,10 @@ public class DeepEquals {
 
             // Start of path element
             if (i == 1) {
+                if (isSpecialCase(pathItem)) {
+                    context.append("has unmatched key");
+                    continue;
+                }
                 if (pathItem.fieldName != null) {
                     context.append("field ");
                 } else if (pathItem.arrayIndices != null) {
@@ -1405,7 +1409,9 @@ public class DeepEquals {
 
             // Build field path
             if (pathItem.fieldName != null) {
-                if (i > 1 && !isErrorType(pathItem)) {
+                // Don't add dot after a map value object
+                boolean afterMapValue = i > 1 && path.get(i-1).mapKey != null;
+                if (i > 1 && !isErrorType(pathItem) && !afterMapValue) {
                     context.append(".");
                 }
                 if (isErrorType(pathItem)) {
@@ -1419,24 +1425,43 @@ public class DeepEquals {
                 context.append("[").append(pathItem.arrayIndices[0]).append("]");
             }
             else if (pathItem.mapKey != null) {
-                context.append(" key:\"").append(formatMapKey(pathItem.mapKey)).append("\"");
+                // Format map entry with both key and value
+                context.append(" key:\"").append(formatMapKey(pathItem.mapKey)).append("\" value: ");
+
+                // Get the map value from the ItemsToCompare
+                Object mapValue = pathItem._key1;  // Use _key1 as it's the "expected" value
+                if (mapValue != null) {
+                    context.append(formatValueConcise(mapValue));
+                    // Only add space if there's more path to come
+                    if (i < path.size() - 1 && !isErrorType(nextItem)) {
+                        context.append(" ");
+                    }
+                }
             }
 
             // Handle error types that follow this element
             if (nextItem != null && isErrorType(nextItem)) {
-                context.append(" ");
-                appendErrorType(context, nextItem.fieldName);
+                if (context.toString().endsWith(" @ ")) {
+                    context.append("array length mismatch");
+                } else {
+                    context.append(" ");
+                    appendErrorType(context, nextItem.fieldName);
+                }
                 i++; // Skip the error type item
             }
         }
     }
+    
+    private static boolean isSpecialCase(ItemsToCompare pathItem) {
+        return pathItem.fieldName != null &&
+                (pathItem.fieldName.equals("unmatchedKey") ||
+                        pathItem.fieldName.equals("unmatchedElement"));
+    }
 
     private static boolean isErrorType(ItemsToCompare item) {
-        if (item.fieldName == null) return false;
-        return item.fieldName.equals("arrayLength") ||
-                item.fieldName.equals("unmatchedKey") ||
-                item.fieldName.equals("unmatchedElement") ||
-                item.fieldName.equals("componentType");
+        return item != null && item.fieldName != null &&
+                (item.fieldName.equals("arrayLength") ||
+                        item.fieldName.equals("componentType"));
     }
 
     private static void appendErrorType(StringBuilder context, String fieldName) {

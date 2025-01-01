@@ -826,9 +826,6 @@ public class DeepEqualsTest
         // Assert the diff contains type information
         assertNotNull(diff);
         assertTrue(diff.contains("type"));
-
-        // Print the diff for visual verification
-        System.out.println(diff);
     }
 
     @Test
@@ -914,7 +911,6 @@ public class DeepEqualsTest
         assertFalse(result);
 
         String diff = (String) options.get("diff");
-        System.out.println(diff);
 
         // The output should show something like:
         // Container {

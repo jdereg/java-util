@@ -960,19 +960,19 @@ public class DeepEquals {
 
             // Handle 'mismatch' placeholders first (size, arrayLength, etc.)
             if ("arrayLength".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "array length mismatch");
+                appendMismatchPhrase(sb, "[array length mismatch]");
                 break;
             } else if ("componentType".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "component type mismatch");
+                appendMismatchPhrase(sb, "[component type mismatch]");
                 break;
             } else if ("unmatchedKey".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "has unmatched key");
+                appendMismatchPhrase(sb, "[has unmatched key]");
                 break;
             } else if ("unmatchedElement".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "has unmatched element");
+                appendMismatchPhrase(sb, "[has unmatched element]");
                 break;
             } else if ("size".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "size mismatch");
+                appendMismatchPhrase(sb, "[size mismatch]");
                 break;
             }
 

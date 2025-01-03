@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -48,31 +49,33 @@ public class DeepEquals {
         private final String fieldName;
         private final int[] arrayIndices;
         private final String mapKey;
-        private final Class<?> elementClass;
+        private final Difference difference;    // New field
+
+        // Modified constructors to include Difference
 
         // Constructor for root
         private ItemsToCompare(Object k1, Object k2) {
-            this(k1, k2, null, null, null, null);
+            this(k1, k2, null, null, null, null, null);
         }
 
-        // Constructor for field access
-        private ItemsToCompare(Object k1, Object k2, String fieldName, ItemsToCompare parent) {
-            this(k1, k2, parent, fieldName, null, null);
+        // Constructor for field access with difference
+        private ItemsToCompare(Object k1, Object k2, String fieldName, ItemsToCompare parent, Difference difference) {
+            this(k1, k2, parent, fieldName, null, null, difference);
         }
 
-        // Constructor for array access
-        private ItemsToCompare(Object k1, Object k2, int[] indices, ItemsToCompare parent) {
-            this(k1, k2, parent, null, indices, null);
+        // Constructor for array access with difference
+        private ItemsToCompare(Object k1, Object k2, int[] indices, ItemsToCompare parent, Difference difference) {
+            this(k1, k2, parent, null, indices, null, difference);
         }
 
-        // Constructor for map access
-        private ItemsToCompare(Object k1, Object k2, String mapKey, ItemsToCompare parent, boolean isMapKey) {
-            this(k1, k2, parent, null, null, mapKey);
+        // Constructor for map access with difference
+        private ItemsToCompare(Object k1, Object k2, String mapKey, ItemsToCompare parent, boolean isMapKey, Difference difference) {
+            this(k1, k2, parent, null, null, mapKey, difference);
         }
 
         // Base constructor
         private ItemsToCompare(Object k1, Object k2, ItemsToCompare parent,
-                               String fieldName, int[] arrayIndices, String mapKey) {
+                               String fieldName, int[] arrayIndices, String mapKey, Difference difference) {
             this._key1 = k1;
             this._key2 = k2;
             this.parent = parent;
@@ -80,8 +83,7 @@ public class DeepEquals {
             this.fieldName = fieldName;
             this.arrayIndices = arrayIndices;
             this.mapKey = mapKey;
-            this.elementClass = k1 != null ? k1.getClass() :
-                    (k2 != null ? k2.getClass() : null);
+            this.difference = difference;
         }
 
         @Override
@@ -117,16 +119,6 @@ public class DeepEquals {
                 return null;    // Simple type - not a container
             }
             return ContainerType.OBJECT;  // Must be object with fields
-        }
-    
-        // Helper method to get containing class
-        public Class<?> getContainingClass() {
-            if (parent == null) {
-                return _key1 != null ? _key1.getClass() :
-                        _key2 != null ? _key2.getClass() : null;
-            }
-            return parent._key1 != null ? parent._key1.getClass() :
-                    parent._key2 != null ? parent._key2.getClass() : null;
         }
     }
     
@@ -184,12 +176,14 @@ public class DeepEquals {
 
             // If either one is null, they are not equal
             if (key1 == null || key2 == null) {
+                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
                 return false;
             }
 
             // Handle all numeric comparisons first
             if (key1 instanceof Number && key2 instanceof Number) {
                 if (!compareNumbers((Number) key1, (Number) key2)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -210,11 +204,13 @@ public class DeepEquals {
                         }
                     }
                 } catch (Exception ignore) { }
+                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
                 return false;
             }
 
             if (key1 instanceof AtomicBoolean && key2 instanceof AtomicBoolean) {
                 if (!compareAtomicBoolean((AtomicBoolean) key1, (AtomicBoolean) key2)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
                     return false;
                 } else {
                     continue;
@@ -229,12 +225,14 @@ public class DeepEquals {
                 if (key1 instanceof Comparable && key2 instanceof Comparable) {
                     try {
                         if (((Comparable)key1).compareTo(key2) != 0) {
+                            stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
                             return false;
                         }
                         continue;
                     } catch (Exception ignored) { }   // Fall back to equals() if compareTo() fails
                 }
                 if (!key1.equals(key2)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -243,6 +241,7 @@ public class DeepEquals {
             // Set comparison
             if (key1 instanceof Set) {
                 if (!(key2 instanceof Set)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
                     return false;
                 }
                 if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
@@ -250,12 +249,14 @@ public class DeepEquals {
                 }
                 continue;
             } else if (key2 instanceof Set) {
+                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
                 return false;
             }
 
             // Collection comparison
             if (key1 instanceof Collection) {   // If Collections, they both must be Collection
                 if (!(key2 instanceof Collection)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
                 if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
@@ -263,12 +264,14 @@ public class DeepEquals {
                 }
                 continue;
             } else if (key2 instanceof Collection) {
+                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
 
             // Map comparison
             if (key1 instanceof Map) {
                 if (!(key2 instanceof Map)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
                 if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack)) {
@@ -276,12 +279,14 @@ public class DeepEquals {
                 }
                 continue;
             } else if (key2 instanceof Map) {
+                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
 
             // Array comparison
             if (key1Class.isArray()) {
                 if (!key2Class.isArray()) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
                 if (!decomposeArray(key1, key2, stack)) {
@@ -289,11 +294,13 @@ public class DeepEquals {
                 }
                 continue;
             } else if (key2Class.isArray()) {
+                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
 
             // Must be same class if not a container type
             if (!key1Class.equals(key2Class)) {   // Must be same class
+                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
             
@@ -346,7 +353,8 @@ public class DeepEquals {
                     col1,
                     col2,
                     "size",
-                    currentItem
+                    currentItem,
+                    Difference.COLLECTION_SIZE_MISMATCH
             ));
             return false;
         }
@@ -365,12 +373,7 @@ public class DeepEquals {
 
             if (candidates == null || candidates.isEmpty()) {
                 // No hash matches - first difference found
-                stack.addFirst(new ItemsToCompare(
-                        item1,
-                        null,
-                        "unmatchedElement",
-                        currentItem
-                ));
+                stack.addFirst(new ItemsToCompare(item1, null, "unmatchedElement", currentItem, Difference.COLLECTION_MISSING_ELEMENT));
                 return false;
             }
 
@@ -389,12 +392,7 @@ public class DeepEquals {
 
             if (!foundMatch) {
                 // No matching element found - first difference found
-                stack.addFirst(new ItemsToCompare(
-                        item1,
-                        null,
-                        "unmatchedElement",
-                        currentItem
-                ));
+                stack.addFirst(new ItemsToCompare(item1, null, "unmatchedElement", currentItem, Difference.COLLECTION_MISSING_ELEMENT));
                 return false;
             }
         }
@@ -407,12 +405,7 @@ public class DeepEquals {
 
         // Check sizes first
         if (col1.size() != col2.size()) {
-            stack.addFirst(new ItemsToCompare(
-                    col1,
-                    col2,
-                    "size",
-                    currentItem
-            ));
+            stack.addFirst(new ItemsToCompare(col1, col2, "size", currentItem, Difference.COLLECTION_SIZE_MISMATCH));
             return false;
         }
 
@@ -425,12 +418,7 @@ public class DeepEquals {
             Object item1 = i1.next();
             Object item2 = i2.next();
 
-            stack.addFirst(new ItemsToCompare(
-                    item1,
-                    item2,
-                    new int[]{index++},
-                    currentItem
-            ));
+            stack.addFirst(new ItemsToCompare(item1, item2, new int[]{index++}, currentItem, Difference.COLLECTION_MISSING_ELEMENT));
         }
 
         return true;
@@ -449,12 +437,7 @@ public class DeepEquals {
 
         // Check sizes first
         if (map1.size() != map2.size()) {
-            stack.addFirst(new ItemsToCompare(
-                    map1,
-                    map2,
-                    "size",
-                    currentItem
-            ));
+            stack.addFirst(new ItemsToCompare(map1, map2, "size", currentItem, Difference.MAP_SIZE_MISMATCH));
             return false;
         }
 
@@ -472,12 +455,7 @@ public class DeepEquals {
 
             // Key not found in map2
             if (otherEntries == null || otherEntries.isEmpty()) {
-                stack.addFirst(new ItemsToCompare(
-                        entry.getKey(),
-                        null,
-                        "unmatchedKey",
-                        currentItem
-                ));
+                stack.addFirst(new ItemsToCompare(entry.getKey(), null, "unmatchedKey", currentItem, Difference.MAP_MISSING_KEY));
                 return false;
             }
 
@@ -492,11 +470,12 @@ public class DeepEquals {
                 if (deepEquals(entry.getKey(), otherEntry.getKey())) {
                     // Push value comparison only - keys are known to be equal
                     stack.addFirst(new ItemsToCompare(
-                            entry.getValue(),
-                            otherEntry.getValue(),
-                            formatValue(entry.getKey()),
+                            entry.getValue(),                // map1 value
+                            otherEntry.getValue(),           // map2 value
+                            formatMapKey(entry.getKey()),    // pass the key as 'mapKey'
                             currentItem,
-                            false  // isMapValue
+                            true,                             // isMapKey = true
+                            Difference.MAP_VALUE_MISMATCH
                     ));
 
                     iterator.remove();
@@ -509,12 +488,7 @@ public class DeepEquals {
             }
 
             if (!foundMatch) {
-                stack.addFirst(new ItemsToCompare(
-                        entry.getKey(),
-                        null,
-                        "unmatchedKey",
-                        currentItem
-                ));
+                stack.addFirst(new ItemsToCompare(entry.getKey(), null, "unmatchedKey", currentItem, Difference.MAP_MISSING_KEY));
                 return false;
             }
         }
@@ -547,23 +521,13 @@ public class DeepEquals {
         }
 
         if (dim1 != dim2) {
-            stack.addFirst(new ItemsToCompare(
-                    array1,
-                    array2,
-                    "dimensionality",
-                    currentItem
-            ));
+            stack.addFirst(new ItemsToCompare(array1, array2, "dimensionality", currentItem, Difference.ARRAY_DIMENSION_MISMATCH));
             return false;
         }
 
         // 2. Check component types
         if (!array1.getClass().getComponentType().equals(array2.getClass().getComponentType())) {
-            stack.addFirst(new ItemsToCompare(
-                    array1,
-                    array2,
-                    "componentType",
-                    currentItem
-            ));
+            stack.addFirst(new ItemsToCompare(array1, array2, "componentType", currentItem, Difference.ARRAY_COMPONENT_TYPE_MISMATCH));
             return false;
         }
 
@@ -571,23 +535,15 @@ public class DeepEquals {
         int len1 = Array.getLength(array1);
         int len2 = Array.getLength(array2);
         if (len1 != len2) {
-            stack.addFirst(new ItemsToCompare(
-                    array1,
-                    array2,
-                    "arrayLength",
-                    currentItem
-            ));
+            stack.addFirst(new ItemsToCompare(array1, array2, "arrayLength", currentItem, Difference.ARRAY_LENGTH_MISMATCH));
             return false;
         }
 
         // 4. Push all elements onto stack (with their full dimensional indices)
         for (int i = len1 - 1; i >= 0; i--) {
-            stack.addFirst(new ItemsToCompare(
-                    Array.get(array1, i),
-                    Array.get(array2, i),
+            stack.addFirst(new ItemsToCompare(Array.get(array1, i), Array.get(array2, i),
                     new int[]{i},    // For multidimensional arrays, this gets built up
-                    currentItem
-            ));
+                    currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
         }
 
         return true;
@@ -602,15 +558,13 @@ public class DeepEquals {
         // Push each field for comparison
         for (Field field : fields) {
             try {
+                if (field.getName().startsWith("this$")) {
+                    continue;
+                }
                 Object value1 = field.get(obj1);
                 Object value2 = field.get(obj2);
 
-                stack.addFirst(new ItemsToCompare(
-                        value1,
-                        value2,
-                        field.getName(),
-                        currentItem
-                ));
+                stack.addFirst(new ItemsToCompare(value1, value2, field.getName(), currentItem, Difference.FIELD_VALUE_MISMATCH));
             } catch (Exception ignored) {
             }
         }
@@ -864,48 +818,58 @@ public class DeepEquals {
         return bits;
     }
 
-    // Enum to represent types of differences
-    public enum DifferenceType {
-        TYPE_MISMATCH,
-        SIZE_MISMATCH,
-        VALUE_MISMATCH,
-        KEY_MISMATCH,
-        ELEMENT_NOT_FOUND,
-        DIMENSIONALITY_MISMATCH
+    private enum DiffCategory {
+        VALUE("Expected: %s\nFound: %s"),
+        TYPE("Expected type: %s\nFound type: %s"),
+        SIZE("Expected size: %d\nFound size: %d"),
+        LENGTH("Expected length: %d\nFound length: %d"),
+        DIMENSION("Expected dimensions: %d\nFound dimensions: %d");
+
+        private final String formatString;
+
+        DiffCategory(String formatString) {
+            this.formatString = formatString;
+        }
+
+        public String format(Object expected, Object found) {
+            return String.format(formatString, expected, found);
+        }
     }
 
-    private static DifferenceType determineDifferenceType(ItemsToCompare item) {
-        // Handle null cases
-        if (item._key1 == null || item._key2 == null) {
-            return DifferenceType.VALUE_MISMATCH;
+    private enum Difference {
+        // Basic value difference (includes numbers, atomic values, field values)
+        VALUE_MISMATCH("value mismatch", DiffCategory.VALUE),
+        FIELD_VALUE_MISMATCH("field value mismatch", DiffCategory.VALUE),
+
+        // Collection-specific
+        COLLECTION_SIZE_MISMATCH("collection size mismatch", DiffCategory.SIZE),
+        COLLECTION_MISSING_ELEMENT("missing collection element", DiffCategory.VALUE),
+        COLLECTION_TYPE_MISMATCH("collection type mismatch", DiffCategory.TYPE),
+
+        // Map-specific
+        MAP_SIZE_MISMATCH("map size mismatch", DiffCategory.SIZE),
+        MAP_MISSING_KEY("missing map key", DiffCategory.VALUE),
+        MAP_VALUE_MISMATCH("map value mismatch", DiffCategory.VALUE),
+
+        // Array-specific
+        ARRAY_DIMENSION_MISMATCH("array dimensionality mismatch", DiffCategory.DIMENSION),
+        ARRAY_COMPONENT_TYPE_MISMATCH("array component type mismatch", DiffCategory.TYPE),
+        ARRAY_LENGTH_MISMATCH("array length mismatch", DiffCategory.LENGTH),
+        ARRAY_ELEMENT_MISMATCH("array element mismatch", DiffCategory.VALUE),
+
+        // General type mismatch (when classes don't match)
+        TYPE_MISMATCH("type mismatch", DiffCategory.TYPE);
+
+        private final String description;
+        private final DiffCategory category;
+
+        Difference(String description, DiffCategory category) {
+            this.description = description;
+            this.category = category;
         }
 
-        // Handle type mismatches
-        if (!item._key1.getClass().equals(item._key2.getClass())) {
-            // Special case for array dimensionality
-            if (item.fieldName != null && item.fieldName.equals("dimensionality")) {
-                return DifferenceType.DIMENSIONALITY_MISMATCH;
-            }
-            return DifferenceType.TYPE_MISMATCH;
-        }
-
-        // Handle size mismatches for containers
-        if (item.fieldName != null && item.fieldName.equals("size")) {
-            return DifferenceType.SIZE_MISMATCH;
-        }
-
-        // Handle map key not found
-        if (item.fieldName != null && item.fieldName.equals("unmatchedKey")) {
-            return DifferenceType.KEY_MISMATCH;
-        }
-
-        // Handle collection element not found
-        if (item.fieldName != null && item.fieldName.equals("unmatchedElement")) {
-            return DifferenceType.ELEMENT_NOT_FOUND;
-        }
-
-        // Must be a value mismatch
-        return DifferenceType.VALUE_MISMATCH;
+        public String getDescription() { return description; }
+        public DiffCategory getCategory() { return category; }
     }
 
     private static String generateBreadcrumb(Deque<ItemsToCompare> stack) {
@@ -914,90 +878,130 @@ public class DeepEquals {
             return "Unable to determine difference";
         }
 
-        // 1) Determine the difference type
-        DifferenceType type = determineDifferenceType(diffItem);
-
-        // 2) Build up the result: first the difference type, then the path, then the details
         StringBuilder result = new StringBuilder();
-        result.append(type).append("\n");
 
-        // 3) Get the path context (the "root object" and all child expansions)
-        String pathStr = buildPathContext(diffItem, type);
-        if (!pathStr.isEmpty()) {
+        // Build the path AND get the mismatch phrase
+        PathResult pr = buildPathContextAndPhrase(diffItem);
+        String pathStr = pr.path;
+
+        // Format with unicode arrow (→) and the difference description
+        if (diffItem.difference != null) {
+            result.append("[").append(diffItem.difference.getDescription()).append("] → ")
+                    .append(pathStr).append("\n");
+        } else {
             result.append(pathStr).append("\n");
         }
 
-        // 4) Describe the actual mismatch details
-        formatDifference(result, diffItem, type);
+        // Format the difference details
+        formatDifference(result, diffItem);
 
         return result.toString();
     }
 
-    /**
-     * Builds the “breadcrumb” path string up to the mismatch.
-     */
-    private static String buildPathContext(ItemsToCompare diffItem, DifferenceType diffType) {
-        // Gather the entire chain from the root down to the mismatch
+    private static PathResult buildPathContextAndPhrase(ItemsToCompare diffItem) {
         List<ItemsToCompare> path = getPath(diffItem);
         if (path.isEmpty()) {
-            return "";
+            return new PathResult("", null);
         }
 
-        // 1) Format the “root object” (the very first ItemsToCompare)
+        // 1) Format root
         StringBuilder sb = new StringBuilder();
         ItemsToCompare rootItem = path.get(0);
-        sb.append(formatRootObject(rootItem._key1, diffType));
+        sb.append(formatRootObject(rootItem._key1));  // "Dictionary {...}"
 
-        // 2) If there's only one item, no child fields/indices to append
+        // If no deeper path, just return
         if (path.size() == 1) {
-            return sb.toString();
+            return new PathResult(sb.toString(),
+                    rootItem.difference != null ? rootItem.difference.getDescription() : null);
         }
 
-        // 3) Otherwise, append " @ " plus the chain of fields / array indices / map keys
-        sb.append(" @ ");
+        // 2) Build up child path
+        StringBuilder sb2 = new StringBuilder();
         for (int i = 1; i < path.size(); i++) {
             ItemsToCompare cur = path.get(i);
 
-            // Handle 'mismatch' placeholders first (size, arrayLength, etc.)
-            if ("arrayLength".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "[array length mismatch]");
-                break;
-            } else if ("componentType".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "[component type mismatch]");
-                break;
-            } else if ("unmatchedKey".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "[has unmatched key]");
-                break;
-            } else if ("unmatchedElement".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "[has unmatched element]");
-                break;
-            } else if ("size".equals(cur.fieldName)) {
-                appendMismatchPhrase(sb, "[size mismatch]");
-                break;
+            // If the path item is purely used to store the 'difference' placeholder,
+            // and does not represent a real mapKey/fieldName/arrayIndices, skip printing it:
+            // e.g. skip if fieldName is "arrayLength", "unmatchedElement", "size", etc.
+            if (shouldSkipPlaceholder(cur.fieldName)) {
+                continue;
             }
 
-            // -- Normal path elements (fields, array indices, map key/value) --
-            else if (cur.mapKey != null) {
-                appendSpaceIfNeeded(sb);
-                sb.append("key:\"")
+            // If it's a mapKey, we do the " key:"someKey" value: Something"
+            if (cur.mapKey != null) {
+                appendSpaceIfNeeded(sb2);
+                sb2.append("key:\"")
                         .append(formatMapKey(cur.mapKey))
                         .append("\" value: ")
                         .append(formatValueConcise(cur._key1));
-            } else if (cur.fieldName != null) {
-                // .someField
-                appendSpaceIfEndsWithBrace(sb);  // Only if the last char is '}', insert a space
-                sb.append(".").append(cur.fieldName);
-            } else if (cur.arrayIndices != null) {
-                // e.g. [0], [1]
+            }
+            // If it's a normal field name
+            else if (cur.fieldName != null) {
+                appendSpaceIfEndsWithBrace(sb2);
+                sb2.append(".").append(cur.fieldName);
+            }
+            // If it’s array indices
+            else if (cur.arrayIndices != null) {
                 for (int idx : cur.arrayIndices) {
-                    // If the last char was '}', we want a space before the bracket,
-                    // otherwise we append bracket right after .field or another bracket
-                    appendSpaceIfEndsWithBrace(sb);
-                    sb.append("[").append(idx).append("]");
+                    appendSpaceIfEndsWithBrace(sb2);
+                    sb2.append("[").append(idx).append("]");
                 }
             }
         }
-        return sb.toString();
+
+        // If we built child path text, attach it after " @ "
+        if (sb2.length() > 0) {
+            sb.append(" @ ");
+            sb.append(sb2);
+        }
+
+        // 3) Find the first mismatch phrase from the path
+        String mismatchPhrase = null;
+        for (ItemsToCompare item : path) {
+            if (item.difference != null) {
+                mismatchPhrase = item.difference.getDescription();
+                break;
+            }
+        }
+
+        return new PathResult(sb.toString(), mismatchPhrase);
+    }
+
+    /**
+     * Decide if a "fieldName" is purely a placeholder that you do NOT want
+     * to print in the path.
+     * e.g., "value", "size", "dimensionality", "unmatchedElement", etc.
+     */
+    private static boolean shouldSkipPlaceholder(String fieldName) {
+        if (fieldName == null) {
+            return false;
+        }
+        switch (fieldName) {
+            case "value":
+            case "size":
+            case "type":
+            case "dimensionality":
+            case "componentType":
+            case "unmatchedKey":
+            case "unmatchedElement":
+            case "arrayLength":
+                return true;
+            default:
+                return false;
+        }
+    }
+    
+    /**
+     * Tiny struct-like class to hold both the path & the mismatch phrase.
+     */
+    private static class PathResult {
+        final String path;
+        final String mismatchPhrase;
+
+        PathResult(String path, String mismatchPhrase) {
+            this.path = path;
+            this.mismatchPhrase = mismatchPhrase;
+        }
     }
 
     /**
@@ -1024,35 +1028,7 @@ public class DeepEquals {
             }
         }
     }
-
-    /**
-     * Appends a mismatch phrase (e.g. "array length mismatch") with
-     * a guaranteed preceding space if not already present.
-     *
-     * This ensures you get " .nickNames array length mismatch"
-     * not " .nickNamesarray length mismatch".
-     */
-    private static void appendMismatchPhrase(StringBuilder sb, String phrase) {
-        // If the builder isn't empty and the last char is not a space, append one.
-        int len = sb.length();
-        if (len > 0 && sb.charAt(len - 1) != ' ') {
-            sb.append(' ');
-        }
-        sb.append(phrase);
-    }
-
-    /**
-     * Inserts one space at the end of the sb if the last character is neither
-     * empty nor already a space. This avoids double spaces while ensuring
-     * we never collide text with e.g. '}' or ']'.
-     */
-    private static void maybeAddSpace(StringBuilder sb) {
-        int len = sb.length();
-        if (len > 0 && sb.charAt(len - 1) != ' ') {
-            sb.append(' ');
-        }
-    }
-
+    
     private static Class<?> getCollectionElementType(Collection<?> col) {
         if (col == null || col.isEmpty()) {
             return null;
@@ -1071,48 +1047,46 @@ public class DeepEquals {
         return path;
     }
 
-    private static void formatDifference(StringBuilder result, ItemsToCompare item, DifferenceType type) {
-        switch (type) {
-            case SIZE_MISMATCH:
-                if (item.containerType == ContainerType.ARRAY) {
-                    result.append("  Expected: ").append(formatArrayNotation(item._key1))
-                            .append("\n  Found: ").append(formatArrayNotation(item._key2));
-                } else {
-                    result.append("  Expected size: ").append(getContainerSize(item._key1))
-                            .append("\n  Found size: ").append(getContainerSize(item._key2));
-                }
+    private static void formatDifference(StringBuilder result, ItemsToCompare item) {
+        if (item.difference == null) {
+            return;
+        }
+
+        DiffCategory category = item.difference.getCategory();
+        switch (category) {
+            case SIZE:
+                result.append(String.format("  Expected size: %d%n  Found size: %d",
+                        getContainerSize(item._key1),
+                        getContainerSize(item._key2)));
                 break;
 
-            case TYPE_MISMATCH:
-                result.append("  Expected type: ")
-                        .append(getTypeDescription(item._key1 != null ? item._key1.getClass() : null))
-                        .append("\n  Found type: ")
-                        .append(getTypeDescription(item._key2 != null ? item._key2.getClass() : null));
+            case TYPE:
+                result.append(String.format("  Expected type: %s%n  Found type: %s",
+                        getTypeDescription(item._key1 != null ? item._key1.getClass() : null),
+                        getTypeDescription(item._key2 != null ? item._key2.getClass() : null)));
                 break;
 
-            case VALUE_MISMATCH:
-                if (item.fieldName != null && item.fieldName.equals("arrayLength")) {
-                    // For array length mismatches, just show the lengths
-                    int expectedLength = Array.getLength(item._key1);
-                    int foundLength = Array.getLength(item._key2);
-                    result.append("  Expected length: ").append(expectedLength)
-                            .append("\n  Found length: ").append(foundLength);
-                } else {
-                    result.append("  Expected: ").append(formatDifferenceValue(item._key1))
-                            .append("\n  Found: ").append(formatDifferenceValue(item._key2));
-                }
+            case LENGTH:
+                result.append(String.format("  Expected length: %d%n  Found length: %d",
+                        Array.getLength(item._key1),
+                        Array.getLength(item._key2)));
                 break;
 
-            case DIMENSIONALITY_MISMATCH:
-                // Get the dimensions of both arrays
-                int dim1 = getDimensions(item._key1);
-                int dim2 = getDimensions(item._key2);
-                result.append("  Expected dimensions: ").append(dim1)
-                        .append("\n  Found dimensions: ").append(dim2);
+            case DIMENSION:
+                result.append(String.format("  Expected dimensions: %d%n  Found dimensions: %d",
+                        getDimensions(item._key1),
+                        getDimensions(item._key2)));
+                break;
+
+            case VALUE:
+            default:
+                result.append(String.format("  Expected: %s%n  Found: %s",
+                        formatDifferenceValue(item._key1),
+                        formatDifferenceValue(item._key2)));
                 break;
         }
     }
-
+    
     private static String formatDifferenceValue(Object value) {
         if (value == null) {
             return "null";
@@ -1179,6 +1153,9 @@ public class DeepEquals {
             boolean first = true;
 
             for (Field field : fields) {
+                if (field.getName().startsWith("this$")) {
+                    continue;
+                }
                 if (!first) sb.append(", ");
                 first = false;
 
@@ -1249,6 +1226,10 @@ public class DeepEquals {
         if (value instanceof Date) {
             return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
         }
+        if (value instanceof TimeZone) {
+            TimeZone timeZone = (TimeZone) value;
+            return "TimeZone: " + timeZone.getID();
+        }
         // For other types, just show type and toString
         return value.getClass().getSimpleName() + ":" + value;
     }
@@ -1313,6 +1294,9 @@ public class DeepEquals {
 
         for (Field field : fields) {
             try {
+                if (field.getName().startsWith("this$")) {
+                    continue;
+                }
                 if (!first) sb.append(", ");
                 first = false;
                 sb.append(field.getName()).append(": ");
@@ -1501,20 +1485,10 @@ public class DeepEquals {
         // For other number types (Integer, Long, etc.), use toString
         return value.toString();
     }
-    
-    private static String formatRootObject(Object obj, DifferenceType diffType) {
+
+    private static String formatRootObject(Object obj) {
         if (obj == null) {
             return "null";
-        }
-
-        // Special handling for TYPE_MISMATCH and VALUE_MISMATCH on simple types
-        if ((diffType == DifferenceType.TYPE_MISMATCH ||
-                diffType == DifferenceType.VALUE_MISMATCH) &&
-                Converter.isSimpleTypeConversionSupported(obj.getClass(), obj.getClass())) {
-            // For simple types, show type: value
-            return String.format("%s: %s",
-                    getTypeDescription(obj.getClass()),
-                    formatSimpleValue(obj));
         }
 
         // For collections and maps, just show the container notation
@@ -1526,6 +1500,13 @@ public class DeepEquals {
         }
         if (obj.getClass().isArray()) {
             return formatArrayNotation(obj);
+        }
+
+        // For simple types, show type: value
+        if (Converter.isSimpleTypeConversionSupported(obj.getClass(), obj.getClass())) {
+            return String.format("%s: %s",
+                    getTypeDescription(obj.getClass()),
+                    formatSimpleValue(obj));
         }
 
         // For objects, use the concise format

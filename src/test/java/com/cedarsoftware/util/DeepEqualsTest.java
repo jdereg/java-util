@@ -871,13 +871,13 @@ public class DeepEqualsTest
 
         String diff = (String) options.get("diff");
 
-        assert diff.contains("emptyArray: int[0..0]");
+        assert diff.contains("emptyArray: int[∅]");
         assert diff.contains("multiArray: String[0..2]");
         assert diff.contains("nullArray: null");
-        assert diff.contains("emptyList: List(0..0)");
+        assert diff.contains("emptyList: List(∅)");
         assert diff.contains("multiSet: Set(0..1)");
         assert diff.contains("nullCollection: null");
-        assert diff.contains("emptyMap: Map[0..0]");
+        assert diff.contains("emptyMap: Map[∅]");
         assert diff.contains("multiMap: Map[0..2]");
         assert diff.contains("nullMap: null");
         assert diff.contains("emptyAddress: {..}");
@@ -940,13 +940,25 @@ public class DeepEqualsTest
 
     @Test
     public void testMapKeyCycle() {
-        Map<Object, String> map1 = new HashMap<>();
+        Map<Object, String> map1 = new LinkedHashMap<>();
         map1.put(map1, "value");  // Cycle in key
 
-        Map<Object, String> map2 = new HashMap<>();
+        Map<Object, String> map2 = new LinkedHashMap<>();
         map2.put(map2, "value");  // Cycle in key
 
         assertTrue(DeepEquals.deepEquals(map1, map2));
+        map1.put(new int[]{4, 5, 6}, "value456");
+        map2.put(new int[]{4, 5, 7}, "value456");
+
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    public void testMapDeepHashcodeCycle() {
+        Map<Object, String> map1 = new HashMap<>();
+        map1.put(map1, "value");  // Cycle in key
+
+        assert DeepEquals.deepHashCode(map1) != 0;
     }
 
     @Test
@@ -958,6 +970,11 @@ public class DeepEqualsTest
         map2.put("key", map2);  // Cycle in value
 
         assertTrue(DeepEquals.deepEquals(map1, map2));
+        map1.put("array", new int[]{4, 5, 6});
+        map2.put("array", new int[]{4, 5, 7});
+
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+        
     }
 
     @Test
@@ -1030,6 +1047,12 @@ public class DeepEqualsTest
         map2.put(holder2, "value");  // Indirect cycle
 
         assertTrue(DeepEquals.deepEquals(map1, map2));
+
+        map1.put(new int[]{4, 5, 6}, "value456");
+        map2.put(new int[]{4, 5, 7}, "value456");
+
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+
     }
 
     @Test
@@ -1094,7 +1117,29 @@ public class DeepEqualsTest
 
         assertFalse(DeepEquals.deepEquals(obj1, obj2));
     }
+
+    @Test
+    void testArrayKey() {
+        Map<Object, Object> map1 = new HashMap<>();
+        Map<Object, Object> map2 = new HashMap<>();
+
+        map1.put(new int[] {1, 2, 3, 4, 5}, new int[] {9, 3, 7});
+        map2.put(new int[] {1, 2, 3, 4, 5}, new int[] {9, 2, 7});
+
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+    }
     
+    @Test
+    void test2DArrayKey() {
+        Map<Object, Object> map1 = new HashMap<>();
+        Map<Object, Object> map2 = new HashMap<>();
+
+        map1.put(new int[][] {new int[]{1, 2, 3}, null, new int[] {}, new int[]{1}}, new int[] {9, 3, 7});
+        map2.put(new int[][] {new int[]{1, 2, 3}, null, new int[] {}, new int[]{1}}, new int[] {9, 3, 44});
+
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+    }
+
     private static class ComplexObject {
         private final String name;
         private final Map<String, String> dataMap = new LinkedHashMap<>();

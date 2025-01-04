@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -34,11 +33,12 @@ public class DeepEquals {
     // Option keys
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
     public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
+    private static final String EMPTY = "∅";
+    private static final String ARROW = "▶";
 
-    // Caches for custom equals and hashCode methods
-    private static final Map<String, Boolean> _customEquals = new ConcurrentHashMap<>();
-    private static final Map<String, Boolean> _customHash = new ConcurrentHashMap<>();
-
+    private static final ThreadLocal<Set<Object>> formattingStack = ThreadLocal.withInitial(() ->
+            Collections.newSetFromMap(new IdentityHashMap<>()));
+    
     // Epsilon values for floating-point comparisons
     private static final double doubleEpsilon = 1e-15;
     
@@ -116,7 +116,9 @@ public class DeepEquals {
     // Main deepEquals method with options
     public static boolean deepEquals(Object a, Object b, Map<String, ?> options) {
         Set<Object> visited = new HashSet<>();
-        return deepEquals(a, b, options, visited);
+        boolean result = deepEquals(a, b, options, visited);
+        formattingStack.remove();
+        return result;
     }
 
     private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<Object> visited) {
@@ -426,7 +428,6 @@ public class DeepEquals {
                     .add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()));
         }
 
-        Set<Object> formatVisited = new HashSet<>();
         // Process map1 entries
         for (Map.Entry<?, ?> entry : map1.entrySet()) {
             Collection<Map.Entry<?, ?>> otherEntries = fastLookup.get(deepHashCode(entry.getKey()));
@@ -828,7 +829,7 @@ public class DeepEquals {
         if (diffItem.difference != null) {
             result.append("[");
             result.append(diffItem.difference.getDescription());
-            result.append("] → ");
+            result.append("] ▶ ");
             result.append(pathStr);
             result.append("\n");
         } else {
@@ -885,9 +886,9 @@ public class DeepEquals {
             }
         }
 
-        // If we built child path text, attach it after " @ "
+        // If we built child path text, attach it after " → "
         if (sb2.length() > 0) {
-            sb.append(" @ ");
+            sb.append(" → ");
             sb.append(sb2);
         }
 
@@ -1034,7 +1035,7 @@ public class DeepEquals {
                 Collection<?> col = (Collection<?>) value;
                 String typeName = value.getClass().getSimpleName();
                 return String.format("%s(%s)", typeName,
-                        col.isEmpty() ? "0..0" : "0.." + (col.size() - 1));
+                        col.isEmpty() ? EMPTY : "0.." + (col.size() - 1));
             }
 
             // Handle maps
@@ -1042,7 +1043,7 @@ public class DeepEquals {
                 Map<?, ?> map = (Map<?, ?>) value;
                 String typeName = value.getClass().getSimpleName();
                 return String.format("%s[%s]", typeName,
-                        map.isEmpty() ? "0..0" : "0.." + (map.size() - 1));
+                        map.isEmpty() ? EMPTY : "0.." + (map.size() - 1));
             }
 
             // Handle arrays
@@ -1050,7 +1051,7 @@ public class DeepEquals {
                 int length = Array.getLength(value);
                 String typeName = getTypeDescription(value.getClass().getComponentType());
                 return String.format("%s[%s]", typeName,
-                        length == 0 ? "0..0" : "0.." + (length - 1));
+                        length == 0 ? EMPTY : "0.." + (length - 1));
             }
 
             // Handle simple types
@@ -1089,19 +1090,19 @@ public class DeepEquals {
                     int length = Array.getLength(fieldValue);
                     String typeName = getTypeDescription(fieldType.getComponentType());
                     sb.append(String.format("%s[%s]", typeName,
-                            length == 0 ? "0..0" : "0.." + (length - 1)));
+                            length == 0 ? EMPTY : "0.." + (length - 1)));
                 }
                 else if (Collection.class.isAssignableFrom(fieldType)) {
                     // Collection - show type and size
                     Collection<?> col = (Collection<?>) fieldValue;
                     sb.append(String.format("%s(%s)", fieldType.getSimpleName(),
-                            col.isEmpty() ? "0..0" : "0.." + (col.size() - 1)));
+                            col.isEmpty() ? EMPTY : "0.." + (col.size() - 1)));
                 }
                 else if (Map.class.isAssignableFrom(fieldType)) {
                     // Map - show type and size
                     Map<?, ?> map = (Map<?, ?>) fieldValue;
                     sb.append(String.format("%s[%s]", fieldType.getSimpleName(),
-                            map.isEmpty() ? "0..0" : "0.." + (map.size() - 1)));
+                            map.isEmpty() ? EMPTY : "0.." + (map.size() - 1)));
                 }
                 else {
                     // Non-simple object - show {..}
@@ -1149,28 +1150,38 @@ public class DeepEquals {
     private static String formatValue(Object value) {
         if (value == null) return "null";
 
-        if (value instanceof Number) {
-            return formatNumber((Number) value);
+        // Check if we're already formatting this object
+        Set<Object> stack = formattingStack.get();
+        if (!stack.add(value)) {
+            return "<circular " + value.getClass().getSimpleName() + ">";
         }
 
-        if (value instanceof String) return "\"" + value + "\"";
-        if (value instanceof Character) return "'" + value + "'";
+        try {
+            if (value instanceof Number) {
+                return formatNumber((Number) value);
+            }
 
-        if (value instanceof Date) {
-            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
+            if (value instanceof String) return "\"" + value + "\"";
+            if (value instanceof Character) return "'" + value + "'";
+
+            if (value instanceof Date) {
+                return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
+            }
+
+            // If it's a simple type, use toString()
+            if (Converter.isSimpleTypeConversionSupported(value.getClass(), value.getClass())) {
+                return String.valueOf(value);
+            }
+
+            // For complex objects (not Array, Collection, Map, or simple type)
+            if (!(value.getClass().isArray() || value instanceof Collection || value instanceof Map)) {
+                return formatComplexObject(value);
+            }
+
+            return value.getClass().getSimpleName() + " {" + formatObjectContents(value) + "}";
+        } finally {
+            stack.remove(value);
         }
-
-        // If it's a simple type, use toString()
-        if (Converter.isSimpleTypeConversionSupported(value.getClass(), value.getClass())) {
-            return String.valueOf(value);
-        }
-
-        // For complex objects (not Array, Collection, Map, or simple type)
-        if (!(value.getClass().isArray() || value instanceof Collection || value instanceof Map)) {
-            return formatComplexObject(value);
-        }
-
-        return value.getClass().getSimpleName() + " {" + formatObjectContents(value) + "}";
     }
 
     private static String formatObjectContents(Object obj) {
@@ -1258,7 +1269,7 @@ public class DeepEquals {
 
     private static String formatComplexObject(Object obj) {
         if (obj == null) return "null";
-        
+
         StringBuilder sb = new StringBuilder();
         sb.append(obj.getClass().getSimpleName());
         sb.append(" {");
@@ -1296,7 +1307,7 @@ public class DeepEquals {
         int length = Array.getLength(array);
         String typeName = getTypeDescription(array.getClass().getComponentType());
         return String.format("%s[%s]", typeName,
-                length == 0 ? "0..0" : "0.." + (length - 1));
+                length == 0 ? EMPTY : "0.." + (length - 1));
     }
     
     private static String formatCollectionNotation(Collection<?> col) {
@@ -1313,7 +1324,7 @@ public class DeepEquals {
 
         sb.append("(");
         if (col.isEmpty()) {
-            sb.append("0..0");
+            sb.append(EMPTY);
         } else {
             sb.append("0..").append(col.size() - 1);
         }
@@ -1328,13 +1339,13 @@ public class DeepEquals {
         StringBuilder sb = new StringBuilder();
         sb.append(map.getClass().getSimpleName());
 
-        sb.append("[");
+        sb.append("(");
         if (map.isEmpty()) {
-            sb.append("0..0");
+            sb.append(EMPTY);
         } else {
             sb.append("0..").append(map.size() - 1);
         }
-        sb.append("]");
+        sb.append(")");
 
         return sb.toString();
     }

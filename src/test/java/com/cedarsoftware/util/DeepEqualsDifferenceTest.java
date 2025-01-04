@@ -27,7 +27,6 @@ public class DeepEqualsDifferenceTest {
         assertFalse(DeepEquals.deepEquals(array1, array2, options));
         String diff = (String) options.get("diff");
         assertNotNull("Difference description should be generated", diff);
-        System.out.println(diff);  // Verify output doesn't contain endless recursion
     }
 
     @Test
@@ -44,7 +43,6 @@ public class DeepEqualsDifferenceTest {
         assertFalse(DeepEquals.deepEquals(list1, list2, options));
         String diff = (String) options.get("diff");
         assertNotNull("Difference description should be generated", diff);
-        System.out.println(diff);
     }
 
     @Test
@@ -61,7 +59,6 @@ public class DeepEqualsDifferenceTest {
         assertFalse(DeepEquals.deepEquals(map1, map2, options));
         String diff = (String) options.get("diff");
         assertNotNull("Difference description should be generated", diff);
-        System.out.println(diff);
     }
 
     @Test
@@ -83,7 +80,6 @@ public class DeepEqualsDifferenceTest {
         assertFalse(DeepEquals.deepEquals(obj1, obj2, options));
         String diff = (String) options.get("diff");
         assertNotNull("Difference description should be generated", diff);
-        System.out.println(diff);
     }
 
     @Test
@@ -111,7 +107,6 @@ public class DeepEqualsDifferenceTest {
         assertFalse(DeepEquals.deepEquals(array1, array2, options));
         String diff = (String) options.get("diff");
         assertNotNull("Difference description should be generated", diff);
-        System.out.println(diff);
     }
 
     @Test
@@ -139,7 +134,6 @@ public class DeepEqualsDifferenceTest {
         assertFalse(DeepEquals.deepEquals(list1, list2, options));
         String diff = (String) options.get("diff");
         assertNotNull("Difference description should be generated", diff);
-        System.out.println(diff);
     }
 
     @Test
@@ -167,7 +161,6 @@ public class DeepEqualsDifferenceTest {
         assertFalse(DeepEquals.deepEquals(map1, map2, options));
         String diff = (String) options.get("diff");
         assertNotNull("Difference description should be generated", diff);
-        System.out.println(diff);
     }
 
     @Test
@@ -199,6 +192,5 @@ public class DeepEqualsDifferenceTest {
         assertFalse(DeepEquals.deepEquals(objA1, objA2, options));
         String diff = (String) options.get("diff");
         assertNotNull("Difference description should be generated", diff);
-        System.out.println(diff);
     }
 }

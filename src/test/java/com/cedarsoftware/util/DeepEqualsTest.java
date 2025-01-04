@@ -871,20 +871,17 @@ public class DeepEqualsTest
 
         String diff = (String) options.get("diff");
 
-        // The output should show something like:
-        // TestObject {
-        //   emptyArray<int[]>:[0],
-        //   multiArray<String[]>:[0...2],
-        //   nullArray: null,
-        //   emptyList<String>:(0),
-        //   multiSet<Address>:(0...1),
-        //   nullCollection: null,
-        //   emptyMap:[0],
-        //   multiMap:[3],
-        //   nullMap: null,
-        //   emptyAddress<Address>:{...},
-        //   nullAddress: null
-        // }
+        assert diff.contains("emptyArray: int[0..0]");
+        assert diff.contains("multiArray: String[0..2]");
+        assert diff.contains("nullArray: null");
+        assert diff.contains("emptyList: List(0..0)");
+        assert diff.contains("multiSet: Set(0..1)");
+        assert diff.contains("nullCollection: null");
+        assert diff.contains("emptyMap: Map[0..0]");
+        assert diff.contains("multiMap: Map[0..2]");
+        assert diff.contains("nullMap: null");
+        assert diff.contains("emptyAddress: {..}");
+        assert diff.contains("nullAddress: null");
     }
 
     @Test
@@ -911,14 +908,191 @@ public class DeepEqualsTest
         assertFalse(result);
 
         String diff = (String) options.get("diff");
+        System.out.println(diff);
 
-        // The output should show something like:
-        // Container {
-        //   strings<String>:(0...2),
-        //   numbers<Integer>:(0...2),
-        //   people<Person>:(0...1),
-        //   objects:(0...2)  // Note: no type shown for Object
-        // }
+        assert diff.contains("strings: List(0..2)");
+        assert diff.contains("numbers: List(0..2)");
+        assert diff.contains("people: List(0..1)");
+        assert diff.contains("objects: List(0..2)");
+    }
+
+    @Test
+    public void testArrayDirectCycle() {
+        Object[] array1 = new Object[1];
+        array1[0] = array1;  // Direct cycle
+
+        Object[] array2 = new Object[1];
+        array2[0] = array2;  // Direct cycle
+
+        assertTrue(DeepEquals.deepEquals(array1, array2));
+    }
+
+    @Test
+    public void testCollectionDirectCycle() {
+        List<Object> list1 = new ArrayList<>();
+        list1.add(list1);  // Direct cycle
+
+        List<Object> list2 = new ArrayList<>();
+        list2.add(list2);  // Direct cycle
+
+        assertTrue(DeepEquals.deepEquals(list1, list2));
+    }
+
+    @Test
+    public void testMapKeyCycle() {
+        Map<Object, String> map1 = new HashMap<>();
+        map1.put(map1, "value");  // Cycle in key
+
+        Map<Object, String> map2 = new HashMap<>();
+        map2.put(map2, "value");  // Cycle in key
+
+        assertTrue(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    public void testMapValueCycle() {
+        Map<String, Object> map1 = new HashMap<>();
+        map1.put("key", map1);  // Cycle in value
+
+        Map<String, Object> map2 = new HashMap<>();
+        map2.put("key", map2);  // Cycle in value
+
+        assertTrue(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    public void testObjectFieldCycle() {
+        class CyclicObject {
+            CyclicObject self;
+        }
+
+        CyclicObject obj1 = new CyclicObject();
+        obj1.self = obj1;  // Direct cycle
+
+        CyclicObject obj2 = new CyclicObject();
+        obj2.self = obj2;  // Direct cycle
+
+        assertTrue(DeepEquals.deepEquals(obj1, obj2));
+    }
+
+    @Test
+    public void testArrayIndirectCycle() {
+        class ArrayHolder {
+            Object[] array;
+        }
+
+        Object[] array1 = new Object[1];
+        ArrayHolder holder1 = new ArrayHolder();
+        holder1.array = array1;
+        array1[0] = holder1;  // Indirect cycle
+
+        Object[] array2 = new Object[1];
+        ArrayHolder holder2 = new ArrayHolder();
+        holder2.array = array2;
+        array2[0] = holder2;  // Indirect cycle
+
+        assertTrue(DeepEquals.deepEquals(array1, array2));
+    }
+
+    @Test
+    public void testCollectionIndirectCycle() {
+        class CollectionHolder {
+            Collection<Object> collection;
+        }
+
+        List<Object> list1 = new ArrayList<>();
+        CollectionHolder holder1 = new CollectionHolder();
+        holder1.collection = list1;
+        list1.add(holder1);  // Indirect cycle
+
+        List<Object> list2 = new ArrayList<>();
+        CollectionHolder holder2 = new CollectionHolder();
+        holder2.collection = list2;
+        list2.add(holder2);  // Indirect cycle
+
+        assertTrue(DeepEquals.deepEquals(list1, list2));
+    }
+
+    @Test
+    public void testMapKeyIndirectCycle() {
+        class MapHolder {
+            Map<Object, String> map;
+        }
+
+        Map<Object, String> map1 = new HashMap<>();
+        MapHolder holder1 = new MapHolder();
+        holder1.map = map1;
+        map1.put(holder1, "value");  // Indirect cycle
+
+        Map<Object, String> map2 = new HashMap<>();
+        MapHolder holder2 = new MapHolder();
+        holder2.map = map2;
+        map2.put(holder2, "value");  // Indirect cycle
+
+        assertTrue(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    public void testMapValueIndirectCycle() {
+        class MapHolder {
+            Map<String, Object> map;
+        }
+
+        Map<String, Object> map1 = new HashMap<>();
+        MapHolder holder1 = new MapHolder();
+        holder1.map = map1;
+        map1.put("key", holder1);  // Indirect cycle
+
+        Map<String, Object> map2 = new HashMap<>();
+        MapHolder holder2 = new MapHolder();
+        holder2.map = map2;
+        map2.put("key", holder2);  // Indirect cycle
+
+        assertTrue(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    public void testObjectIndirectCycle() {
+        class ObjectA {
+            Object refToB;
+        }
+
+        class ObjectB {
+            ObjectA refToA;
+        }
+
+        ObjectA objA1 = new ObjectA();
+        ObjectB objB1 = new ObjectB();
+        objA1.refToB = objB1;
+        objB1.refToA = objA1;  // Indirect cycle
+
+        ObjectA objA2 = new ObjectA();
+        ObjectB objB2 = new ObjectB();
+        objA2.refToB = objB2;
+        objB2.refToA = objA2;  // Indirect cycle
+
+        assertTrue(DeepEquals.deepEquals(objA1, objA2));
+    }
+
+    // Additional test to verify unequal cycles are detected
+    @Test
+    public void testUnequalCycles() {
+        class CyclicObject {
+            CyclicObject self;
+            int value;
+
+            CyclicObject(int value) {
+                this.value = value;
+            }
+        }
+
+        CyclicObject obj1 = new CyclicObject(1);
+        obj1.self = obj1;
+
+        CyclicObject obj2 = new CyclicObject(2);  // Different value
+        obj2.self = obj2;
+
+        assertFalse(DeepEquals.deepEquals(obj1, obj2));
     }
     
     private static class ComplexObject {

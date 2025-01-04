@@ -2,11 +2,13 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
@@ -45,7 +47,6 @@ public class DeepEquals {
         private final Object _key1;
         private final Object _key2;
         private ItemsToCompare parent;
-        private final ContainerType containerType;
         private final String fieldName;
         private final int[] arrayIndices;
         private final String mapKey;
@@ -56,6 +57,11 @@ public class DeepEquals {
         // Constructor for root
         private ItemsToCompare(Object k1, Object k2) {
             this(k1, k2, null, null, null, null, null);
+        }
+
+        // Constructor for differences where the Difference does not need additional information
+        private ItemsToCompare(Object k1, Object k2, ItemsToCompare parent, Difference difference) {
+            this(k1, k2, parent, null, null, null, difference);
         }
 
         // Constructor for field access with difference
@@ -79,7 +85,6 @@ public class DeepEquals {
             this._key1 = k1;
             this._key2 = k2;
             this.parent = parent;
-            this.containerType = getContainerType(k1);
             this.fieldName = fieldName;
             this.arrayIndices = arrayIndices;
             this.mapKey = mapKey;
@@ -101,34 +106,20 @@ public class DeepEquals {
         public int hashCode() {
             return System.identityHashCode(_key1) * 31 + System.identityHashCode(_key2);
         }
-
-        private static ContainerType getContainerType(Object obj) {
-            if (obj == null) {
-                return null;
-            }
-            if (obj.getClass().isArray()) {
-                return ContainerType.ARRAY;
-            }
-            if (obj instanceof Collection) {
-                return ContainerType.COLLECTION;
-            }
-            if (obj instanceof Map) {
-                return ContainerType.MAP;
-            }
-            if (Converter.isSimpleTypeConversionSupported(obj.getClass(), obj.getClass())) {
-                return null;    // Simple type - not a container
-            }
-            return ContainerType.OBJECT;  // Must be object with fields
-        }
     }
     
     // Main deepEquals method without options
     public static boolean deepEquals(Object a, Object b) {
         return deepEquals(a, b, new HashMap<>());
     }
-    
+
+    // Main deepEquals method with options
     public static boolean deepEquals(Object a, Object b, Map<String, ?> options) {
         Set<ItemsToCompare> visited = new HashSet<>();
+        return deepEquals(a, b, options, visited);
+    }
+
+    private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<ItemsToCompare> visited) {
         Deque<ItemsToCompare> stack = new LinkedList<>();
         boolean result = deepEquals(a, b, stack, options, visited);
 
@@ -176,14 +167,14 @@ public class DeepEquals {
 
             // If either one is null, they are not equal
             if (key1 == null || key2 == null) {
-                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
                 return false;
             }
 
             // Handle all numeric comparisons first
             if (key1 instanceof Number && key2 instanceof Number) {
                 if (!compareNumbers((Number) key1, (Number) key2)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -204,13 +195,13 @@ public class DeepEquals {
                         }
                     }
                 } catch (Exception ignore) { }
-                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
                 return false;
             }
 
             if (key1 instanceof AtomicBoolean && key2 instanceof AtomicBoolean) {
                 if (!compareAtomicBoolean((AtomicBoolean) key1, (AtomicBoolean) key2)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
                     return false;
                 } else {
                     continue;
@@ -225,14 +216,14 @@ public class DeepEquals {
                 if (key1 instanceof Comparable && key2 instanceof Comparable) {
                     try {
                         if (((Comparable)key1).compareTo(key2) != 0) {
-                            stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
+                            stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
                             return false;
                         }
                         continue;
                     } catch (Exception ignored) { }   // Fall back to equals() if compareTo() fails
                 }
                 if (!key1.equals(key2)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.VALUE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -241,7 +232,7 @@ public class DeepEquals {
             // Set comparison
             if (key1 instanceof Set) {
                 if (!(key2 instanceof Set)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
                     return false;
                 }
                 if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
@@ -249,14 +240,14 @@ public class DeepEquals {
                 }
                 continue;
             } else if (key2 instanceof Set) {
-                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
                 return false;
             }
 
             // Collection comparison
             if (key1 instanceof Collection) {   // If Collections, they both must be Collection
                 if (!(key2 instanceof Collection)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
                 if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
@@ -264,29 +255,29 @@ public class DeepEquals {
                 }
                 continue;
             } else if (key2 instanceof Collection) {
-                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
 
             // Map comparison
             if (key1 instanceof Map) {
                 if (!(key2 instanceof Map)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack)) {
+                if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, options, visited)) {
                     return false;
                 }
                 continue;
             } else if (key2 instanceof Map) {
-                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
 
             // Array comparison
             if (key1Class.isArray()) {
                 if (!key2Class.isArray()) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
                 if (!decomposeArray(key1, key2, stack)) {
@@ -294,13 +285,13 @@ public class DeepEquals {
                 }
                 continue;
             } else if (key2Class.isArray()) {
-                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
 
             // Must be same class if not a container type
             if (!key1Class.equals(key2Class)) {   // Must be same class
-                stack.addFirst(new ItemsToCompare(key1, key2, "value", stack.peek(), Difference.TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
             
@@ -349,13 +340,7 @@ public class DeepEquals {
 
         // Check sizes first
         if (col1.size() != col2.size()) {
-            stack.addFirst(new ItemsToCompare(
-                    col1,
-                    col2,
-                    "size",
-                    currentItem,
-                    Difference.COLLECTION_SIZE_MISMATCH
-            ));
+            stack.addFirst(new ItemsToCompare(col1, col2, currentItem, Difference.COLLECTION_SIZE_MISMATCH));
             return false;
         }
 
@@ -373,7 +358,7 @@ public class DeepEquals {
 
             if (candidates == null || candidates.isEmpty()) {
                 // No hash matches - first difference found
-                stack.addFirst(new ItemsToCompare(item1, null, "unmatchedElement", currentItem, Difference.COLLECTION_MISSING_ELEMENT));
+                stack.addFirst(new ItemsToCompare(item1, null, currentItem, Difference.COLLECTION_MISSING_ELEMENT));
                 return false;
             }
 
@@ -392,7 +377,7 @@ public class DeepEquals {
 
             if (!foundMatch) {
                 // No matching element found - first difference found
-                stack.addFirst(new ItemsToCompare(item1, null, "unmatchedElement", currentItem, Difference.COLLECTION_MISSING_ELEMENT));
+                stack.addFirst(new ItemsToCompare(item1, null, currentItem, Difference.COLLECTION_MISSING_ELEMENT));
                 return false;
             }
         }
@@ -405,7 +390,7 @@ public class DeepEquals {
 
         // Check sizes first
         if (col1.size() != col2.size()) {
-            stack.addFirst(new ItemsToCompare(col1, col2, "size", currentItem, Difference.COLLECTION_SIZE_MISMATCH));
+            stack.addFirst(new ItemsToCompare(col1, col2, currentItem, Difference.COLLECTION_SIZE_MISMATCH));
             return false;
         }
 
@@ -424,20 +409,12 @@ public class DeepEquals {
         return true;
     }
     
-    /**
-     * Breaks a Map into its comparable pieces.
-     *
-     * @param map1           First map.
-     * @param map2           Second map.
-     * @param stack          Comparison stack.
-     * @return true if maps are equal, false otherwise.
-     */
-    private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack) {
+    private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Map<String, ?> options, Set<ItemsToCompare> visited) {
         ItemsToCompare currentItem = stack.peek();
 
         // Check sizes first
         if (map1.size() != map2.size()) {
-            stack.addFirst(new ItemsToCompare(map1, map2, "size", currentItem, Difference.MAP_SIZE_MISMATCH));
+            stack.addFirst(new ItemsToCompare(map1, map2, currentItem, Difference.MAP_SIZE_MISMATCH));
             return false;
         }
 
@@ -455,7 +432,7 @@ public class DeepEquals {
 
             // Key not found in map2
             if (otherEntries == null || otherEntries.isEmpty()) {
-                stack.addFirst(new ItemsToCompare(entry.getKey(), null, "unmatchedKey", currentItem, Difference.MAP_MISSING_KEY));
+                stack.addFirst(new ItemsToCompare(entry.getKey(), null, currentItem, Difference.MAP_MISSING_KEY));
                 return false;
             }
 
@@ -467,16 +444,15 @@ public class DeepEquals {
                 Map.Entry<?, ?> otherEntry = iterator.next();
 
                 // Check if keys are equal
-                if (deepEquals(entry.getKey(), otherEntry.getKey())) {
+                if (deepEquals(entry.getKey(), otherEntry.getKey(), options, visited)) {
                     // Push value comparison only - keys are known to be equal
                     stack.addFirst(new ItemsToCompare(
                             entry.getValue(),                // map1 value
                             otherEntry.getValue(),           // map2 value
-                            formatMapKey(entry.getKey()),    // pass the key as 'mapKey'
-                            currentItem,
-                            true,                             // isMapKey = true
-                            Difference.MAP_VALUE_MISMATCH
-                    ));
+                            formatMapKey(entry.getKey(), (Set<Object>)(Object)visited),    // pass the key as 'mapKey'
+                            currentItem,                     // parent
+                            true,                            // isMapKey = true
+                            Difference.MAP_VALUE_MISMATCH));
 
                     iterator.remove();
                     if (otherEntries.isEmpty()) {
@@ -488,7 +464,7 @@ public class DeepEquals {
             }
 
             if (!foundMatch) {
-                stack.addFirst(new ItemsToCompare(entry.getKey(), null, "unmatchedKey", currentItem, Difference.MAP_MISSING_KEY));
+                stack.addFirst(new ItemsToCompare(entry.getKey(), null, currentItem, Difference.MAP_MISSING_KEY));
                 return false;
             }
         }
@@ -521,13 +497,13 @@ public class DeepEquals {
         }
 
         if (dim1 != dim2) {
-            stack.addFirst(new ItemsToCompare(array1, array2, "dimensionality", currentItem, Difference.ARRAY_DIMENSION_MISMATCH));
+            stack.addFirst(new ItemsToCompare(array1, array2, currentItem, Difference.ARRAY_DIMENSION_MISMATCH));
             return false;
         }
 
         // 2. Check component types
         if (!array1.getClass().getComponentType().equals(array2.getClass().getComponentType())) {
-            stack.addFirst(new ItemsToCompare(array1, array2, "componentType", currentItem, Difference.ARRAY_COMPONENT_TYPE_MISMATCH));
+            stack.addFirst(new ItemsToCompare(array1, array2, currentItem, Difference.ARRAY_COMPONENT_TYPE_MISMATCH));
             return false;
         }
 
@@ -535,7 +511,7 @@ public class DeepEquals {
         int len1 = Array.getLength(array1);
         int len2 = Array.getLength(array2);
         if (len1 != len2) {
-            stack.addFirst(new ItemsToCompare(array1, array2, "arrayLength", currentItem, Difference.ARRAY_LENGTH_MISMATCH));
+            stack.addFirst(new ItemsToCompare(array1, array2, currentItem, Difference.ARRAY_LENGTH_MISMATCH));
             return false;
         }
 
@@ -588,13 +564,10 @@ public class DeepEquals {
             if (a instanceof BigDecimal || b instanceof BigDecimal) {
                 try {
                     BigDecimal bd;
-                    double d;
                     if (a instanceof BigDecimal) {
                         bd = (BigDecimal) a;
-                        d = b.doubleValue();
                     } else {
                         bd = (BigDecimal) b;
-                        d = a.doubleValue();
                     }
 
                     // If BigDecimal is outside Double's range, they can't be equal
@@ -665,27 +638,8 @@ public class DeepEquals {
      * @return true if a custom equals method exists, false otherwise.
      */
     public static boolean hasCustomEquals(Class<?> c) {
-        StringBuilder sb = new StringBuilder(ReflectionUtils.getClassLoaderName(c));
-        sb.append('.');
-        sb.append(c.getName());
-        String key = sb.toString();
-        Boolean ret = _customEquals.get(key);
-
-        if (ret != null) {
-            return ret;
-        }
-
-        while (!Object.class.equals(c)) {
-            try {
-                c.getDeclaredMethod("equals", Object.class);
-                _customEquals.put(key, true);
-                return true;
-            } catch (Exception ignored) {
-            }
-            c = c.getSuperclass();
-        }
-        _customEquals.put(key, false);
-        return false;
+        Method equals = ReflectionUtils.getMethod(c, "equals", Object.class);   // cached
+        return equals.getDeclaringClass() != Object.class;
     }
 
     /**
@@ -695,27 +649,8 @@ public class DeepEquals {
      * @return true if a custom hashCode method exists, false otherwise.
      */
     public static boolean hasCustomHashCode(Class<?> c) {
-        StringBuilder sb = new StringBuilder(ReflectionUtils.getClassLoaderName(c));
-        sb.append('.');
-        sb.append(c.getName());
-        String key = sb.toString();
-        Boolean ret = _customHash.get(key);
-
-        if (ret != null) {
-            return ret;
-        }
-
-        while (!Object.class.equals(c)) {
-            try {
-                c.getDeclaredMethod("hashCode");
-                _customHash.put(key, true);
-                return true;
-            } catch (Exception ignored) {
-            }
-            c = c.getSuperclass();
-        }
-        _customHash.put(key, false);
-        return false;
+        Method hashCode = ReflectionUtils.getMethod(c, "hashCode");   // cached
+        return hashCode.getDeclaringClass() != Object.class;
     }
 
     /**
@@ -755,20 +690,21 @@ public class DeepEquals {
                 continue;
             }
 
-            // Ensure list order matters to hash
-            if (obj instanceof List) {
-                List<?> list = (List<?>) obj;
-                long result = 1;
-
-                for (Object element : list) {
-                    result = 31 * result + deepHashCode(element, visited);  // recursive
-                }
-                hash += (int) result;
+            // Ignore order for Sets [Order is not part of equality / hashCode contract for Sets]
+            if (obj instanceof Set) {
+                stack.addAll(0, (Set<?>) obj);
                 continue;
             }
 
+            // Order matters for non-Set Collections like List
             if (obj instanceof Collection) {
-                stack.addAll(0, (Collection<?>) obj);
+                Collection<?> col = (List<?>) obj;
+                long result = 1;
+
+                for (Object element : col) {
+                    result = 31 * result + deepHashCode(element, visited);  // recursive
+                }
+                hash += (int) result;
                 continue;
             }
 
@@ -794,6 +730,9 @@ public class DeepEquals {
             Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj.getClass());
             for (Field field : fields) {
                 try {
+                    if (field.getName().contains("this$")) {
+                        continue;
+                    }
                     stack.addFirst(field.get(obj));
                 } catch (Exception ignored) {
                 }
@@ -801,7 +740,7 @@ public class DeepEquals {
         }
         return hash;
     }
-
+    
     private static final double SCALE_DOUBLE = Math.pow(10, 10);
 
     private static int hashDouble(double value) {
@@ -878,27 +817,33 @@ public class DeepEquals {
             return "Unable to determine difference";
         }
 
+        // Initialize a new visited set for formatting differences
+        Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+
         StringBuilder result = new StringBuilder();
 
         // Build the path AND get the mismatch phrase
-        PathResult pr = buildPathContextAndPhrase(diffItem);
+        PathResult pr = buildPathContextAndPhrase(diffItem, visited);
         String pathStr = pr.path;
 
         // Format with unicode arrow (→) and the difference description
         if (diffItem.difference != null) {
-            result.append("[").append(diffItem.difference.getDescription()).append("] → ")
-                    .append(pathStr).append("\n");
+            result.append("[");
+            result.append(diffItem.difference.getDescription());
+            result.append("] → ");
+            result.append(pathStr);
+            result.append("\n");
         } else {
             result.append(pathStr).append("\n");
         }
 
-        // Format the difference details
-        formatDifference(result, diffItem);
+        // Format the difference details with cycle detection
+        formatDifference(result, diffItem, visited);
 
         return result.toString();
     }
 
-    private static PathResult buildPathContextAndPhrase(ItemsToCompare diffItem) {
+    private static PathResult buildPathContextAndPhrase(ItemsToCompare diffItem, Set<Object> visited) {
         List<ItemsToCompare> path = getPath(diffItem);
         if (path.isEmpty()) {
             return new PathResult("", null);
@@ -919,19 +864,12 @@ public class DeepEquals {
         StringBuilder sb2 = new StringBuilder();
         for (int i = 1; i < path.size(); i++) {
             ItemsToCompare cur = path.get(i);
-
-            // If the path item is purely used to store the 'difference' placeholder,
-            // and does not represent a real mapKey/fieldName/arrayIndices, skip printing it:
-            // e.g. skip if fieldName is "arrayLength", "unmatchedElement", "size", etc.
-            if (shouldSkipPlaceholder(cur.fieldName)) {
-                continue;
-            }
-
-            // If it's a mapKey, we do the " key:"someKey" value: Something"
+            
+            // If it's a mapKey, we do the " key: "someKey" value: Something"
             if (cur.mapKey != null) {
                 appendSpaceIfNeeded(sb2);
-                sb2.append("key:\"")
-                        .append(formatMapKey(cur.mapKey))
+                sb2.append("key: \"")
+                        .append(formatMapKey(cur.mapKey, visited))
                         .append("\" value: ")
                         .append(formatValueConcise(cur._key1));
             }
@@ -965,30 +903,6 @@ public class DeepEquals {
         }
 
         return new PathResult(sb.toString(), mismatchPhrase);
-    }
-
-    /**
-     * Decide if a "fieldName" is purely a placeholder that you do NOT want
-     * to print in the path.
-     * e.g., "value", "size", "dimensionality", "unmatchedElement", etc.
-     */
-    private static boolean shouldSkipPlaceholder(String fieldName) {
-        if (fieldName == null) {
-            return false;
-        }
-        switch (fieldName) {
-            case "value":
-            case "size":
-            case "type":
-            case "dimensionality":
-            case "componentType":
-            case "unmatchedKey":
-            case "unmatchedElement":
-            case "arrayLength":
-                return true;
-            default:
-                return false;
-        }
     }
     
     /**
@@ -1047,7 +961,7 @@ public class DeepEquals {
         return path;
     }
 
-    private static void formatDifference(StringBuilder result, ItemsToCompare item) {
+    private static void formatDifference(StringBuilder result, ItemsToCompare item, Set<Object> visited) {
         if (item.difference == null) {
             return;
         }
@@ -1081,13 +995,13 @@ public class DeepEquals {
             case VALUE:
             default:
                 result.append(String.format("  Expected: %s%n  Found: %s",
-                        formatDifferenceValue(item._key1),
-                        formatDifferenceValue(item._key2)));
+                        formatDifferenceValue(item._key1, visited),
+                        formatDifferenceValue(item._key2, visited)));
                 break;
         }
     }
     
-    private static String formatDifferenceValue(Object value) {
+    private static String formatDifferenceValue(Object value, Set<Object> visited) {
         if (value == null) {
             return "null";
         }
@@ -1234,9 +1148,17 @@ public class DeepEquals {
         return value.getClass().getSimpleName() + ":" + value;
     }
     
-    private static String formatValue(Object value) {
+    private static String formatValue(Object value, Set<Object> visited) {
         if (value == null) return "null";
 
+        // Check for cycles
+        if (visited.contains(value)) {
+            return getCyclePlaceholder(value);
+        }
+        
+        // Add to visited Set
+        visited.add(value);
+        
         if (value instanceof Number) {
             return formatNumber((Number) value);
         }
@@ -1255,21 +1177,21 @@ public class DeepEquals {
 
         // For complex objects (not Array, Collection, Map, or simple type)
         if (!(value.getClass().isArray() || value instanceof Collection || value instanceof Map)) {
-            return formatComplexObject(value, new IdentityHashMap<>());
+            return formatComplexObject(value, visited);
         }
 
-        return value.getClass().getSimpleName() + " {" + formatObjectContents(value) + "}";
+        return value.getClass().getSimpleName() + " {" + formatObjectContents(value, visited) + "}";
     }
 
-    private static String formatObjectContents(Object obj) {
+    private static String formatObjectContents(Object obj, Set<Object> visited) {
         if (obj == null) return "null";
 
         if (obj instanceof Collection) {
-            return formatCollectionContents((Collection<?>) obj);
+            return formatCollectionContents((Collection<?>) obj, visited);
         }
 
         if (obj instanceof Map) {
-            return formatMapContents((Map<?, ?>) obj);
+            return formatMapContents((Map<?, ?>) obj, visited);
         }
 
         if (obj.getClass().isArray()) {
@@ -1280,7 +1202,7 @@ public class DeepEquals {
                 sb.append(", elements=[");
                 for (int i = 0; i < length && i < 3; i++) {
                     if (i > 0) sb.append(", ");
-                    sb.append(formatValue(Array.get(obj, i)));
+                    sb.append(formatValue(Array.get(obj, i), visited));
                 }
                 if (length > 3) sb.append(", ...");
                 sb.append("]");
@@ -1301,7 +1223,7 @@ public class DeepEquals {
                 first = false;
                 sb.append(field.getName()).append(": ");
                 Object value = field.get(obj);
-                sb.append(formatValue(value));
+                sb.append(formatValue(value, visited));
             } catch (Exception ignored) {
             }
         }
@@ -1309,7 +1231,7 @@ public class DeepEquals {
         return sb.toString();
     }
 
-    private static String formatCollectionContents(Collection<?> collection) {
+    private static String formatCollectionContents(Collection<?> collection, Set<Object> visited) {
         StringBuilder sb = new StringBuilder();
         sb.append("size=").append(collection.size());
         if (!collection.isEmpty()) {
@@ -1317,7 +1239,7 @@ public class DeepEquals {
             Iterator<?> it = collection.iterator();
             for (int i = 0; i < 3 && it.hasNext(); i++) {
                 if (i > 0) sb.append(", ");
-                sb.append(formatValue(it.next()));
+                sb.append(formatValue(it.next(), visited));
             }
             if (collection.size() > 3) sb.append(", ...");
             sb.append("]");
@@ -1325,7 +1247,7 @@ public class DeepEquals {
         return sb.toString();
     }
 
-    private static String formatMapContents(Map<?, ?> map) {
+    private static String formatMapContents(Map<?, ?> map, Set<Object> visited) {
         StringBuilder sb = new StringBuilder();
         sb.append("size=").append(map.size());
         if (!map.isEmpty()) {
@@ -1334,9 +1256,9 @@ public class DeepEquals {
             for (int i = 0; i < 3 && it.hasNext(); i++) {
                 if (i > 0) sb.append(", ");
                 Map.Entry<?, ?> entry = (Map.Entry<?, ?>) it.next();
-                sb.append(formatValue(entry.getKey()))
+                sb.append(formatValue(entry.getKey(), visited))
                         .append("=")
-                        .append(formatValue(entry.getValue()));
+                        .append(formatValue(entry.getValue(), visited));
             }
             if (map.size() > 3) sb.append(", ...");
             sb.append("]");
@@ -1344,16 +1266,15 @@ public class DeepEquals {
         return sb.toString();
     }
 
-    private static String formatComplexObject(Object obj, IdentityHashMap<Object, Object> visited) {
+    private static String formatComplexObject(Object obj, Set<Object> visited) {
         if (obj == null) return "null";
 
         // Check for cycles
-        if (visited.containsKey(obj)) {
-            return obj.getClass().getSimpleName() + "#" +
-                    Integer.toHexString(System.identityHashCode(obj)) + " (cycle)";
+        if (visited.contains(obj)) {
+            return getCyclePlaceholder(obj);
         }
 
-        visited.put(obj, obj);
+        visited.add(obj);
 
         StringBuilder sb = new StringBuilder();
         sb.append(obj.getClass().getSimpleName());
@@ -1375,7 +1296,7 @@ public class DeepEquals {
                 if (value == obj) {
                     sb.append("(this ").append(obj.getClass().getSimpleName()).append(")");
                 } else {
-                    sb.append(formatValue(value));  // Recursive call with cycle detection
+                    sb.append(formatValue(value, visited));  // Recursive call with cycle detection
                 }
             } catch (Exception ignored) {
                 // If we can't access a field, skip it
@@ -1436,7 +1357,7 @@ public class DeepEquals {
         return sb.toString();
     }
 
-    private static String formatMapKey(Object key) {
+    private static String formatMapKey(Object key, Set<Object> visited) {
         if (key instanceof String) {
             String strKey = (String) key;
             // Strip any existing double quotes
@@ -1445,7 +1366,7 @@ public class DeepEquals {
             }
             return strKey;
         }
-        return formatValue(key);
+        return formatValue(key, visited);
     }
 
     private static String formatNumber(Number value) {
@@ -1523,18 +1444,15 @@ public class DeepEquals {
         return type.getSimpleName();
     }
 
+    private static String getCyclePlaceholder(Object obj) {
+        return obj.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(obj)) + " (cycle detected)";
+    }
+
     private static int getContainerSize(Object container) {
         if (container == null) return 0;
         if (container instanceof Collection) return ((Collection<?>) container).size();
-        if (container instanceof Map) return ((Map<?,?>) container).size();
+        if (container instanceof Map) return ((Map<?, ?>) container).size();
         if (container.getClass().isArray()) return Array.getLength(container);
         return 0;
     }
-
-    private enum ContainerType {
-        ARRAY,
-        COLLECTION,
-        MAP,
-        OBJECT
-    };
 }

@@ -16,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -877,8 +878,8 @@ public class DeepEqualsTest
         assert diff.contains("emptyList: List(∅)");
         assert diff.contains("multiSet: Set(0..1)");
         assert diff.contains("nullCollection: null");
-        assert diff.contains("emptyMap: Map[∅]");
-        assert diff.contains("multiMap: Map[0..2]");
+        assert diff.contains("emptyMap: Map(∅)");
+        assert diff.contains("multiMap: Map(0..2)");
         assert diff.contains("nullMap: null");
         assert diff.contains("emptyAddress: {..}");
         assert diff.contains("nullAddress: null");
@@ -908,7 +909,6 @@ public class DeepEqualsTest
         assertFalse(result);
 
         String diff = (String) options.get("diff");
-        System.out.println(diff);
 
         assert diff.contains("strings: List(0..2)");
         assert diff.contains("numbers: List(0..2)");
@@ -1123,9 +1123,14 @@ public class DeepEqualsTest
         Map<Object, Object> map1 = new HashMap<>();
         Map<Object, Object> map2 = new HashMap<>();
 
-        map1.put(new int[] {1, 2, 3, 4, 5}, new int[] {9, 3, 7});
-        map2.put(new int[] {1, 2, 3, 4, 5}, new int[] {9, 2, 7});
+        int[] value1 = new int[] {9, 3, 7};
+        int[] value2 = new int[] {9, 3, 7};
+        map1.put(new int[] {1, 2, 3, 4, 5}, value1);
+        map2.put(new int[] {1, 2, 3, 4, 5}, value2);
 
+        assertFalse(map1.containsKey(new int[] {1, 2, 3, 4, 5}));   // Arrays use Object hashCode() and Object equals()
+        assertTrue(DeepEquals.deepEquals(map1, map2));              // Maps are DeepEquals()
+        value2[2] = 77;
         assertFalse(DeepEquals.deepEquals(map1, map2));
     }
     
@@ -1134,8 +1139,57 @@ public class DeepEqualsTest
         Map<Object, Object> map1 = new HashMap<>();
         Map<Object, Object> map2 = new HashMap<>();
 
-        map1.put(new int[][] {new int[]{1, 2, 3}, null, new int[] {}, new int[]{1}}, new int[] {9, 3, 7});
-        map2.put(new int[][] {new int[]{1, 2, 3}, null, new int[] {}, new int[]{1}}, new int[] {9, 3, 44});
+        int[] value1 = new int[] {9, 3, 7};
+        int[] value2 = new int[] {9, 3, 7};
+        map1.put(new int[][] {new int[]{1, 2, 3}, null, new int[] {}, new int[]{1}}, value1);
+        map2.put(new int[][] {new int[]{1, 2, 3}, null, new int[] {}, new int[]{1}}, value2);
+
+        assertFalse(map1.containsKey(new int[] {1, 2, 3, 4, 5}));   // Arrays use Object.hashCode() [not good key]
+        assertTrue(DeepEquals.deepEquals(map1, map2));              // Maps are DeepEquals()
+        value2[1] = 33;
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    void testComplex2DArrayKey() {
+        ComplexObject co1 = new ComplexObject("Yum");
+        co1.addMapEntry("foo", "bar");
+        ComplexObject co2 = new ComplexObject("Yum");
+        co2.addMapEntry("foo", "bar");
+        Map<Object, Object> map1 = new HashMap<>();
+        Map<Object, Object> map2 = new HashMap<>();
+
+        int[] value1 = new int[] {9, 3, 7};
+        int[] value2 = new int[] {9, 3, 7};
+
+        map1.put(new Object[] {co1}, value1);
+        map2.put(new Object[] {co2}, value2);
+        
+        assertFalse(map1.containsKey(new Object[] {co1}));
+        assertTrue(DeepEquals.deepEquals(map1, map2));              // Maps are DeepEquals()
+        value2[0] = 99;
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    void test2DCollectionKey() {
+        Map<Object, Object> map1 = new HashMap<>();
+        Map<Object, Object> map2 = new HashMap<>();
+        
+        map1.put(Arrays.asList(asList(1, 2, 3), null, Collections.emptyList(), asList(9)), new int[] {9, 3, 7});
+        map2.put(Arrays.asList(asList(1, 2, 3), null, Collections.emptyList(), asList(9)), new int[] {9, 3, 44});
+        assert map2.containsKey((Arrays.asList(asList(1, 2, 3), null, Collections.emptyList(), asList(9))));
+
+        assertFalse(DeepEquals.deepEquals(map1, map2));
+    }
+
+    @Test
+    void test2DCollectionArrayKey() {
+        Map<Object, Object> map1 = new HashMap<>();
+        Map<Object, Object> map2 = new HashMap<>();
+
+        map1.put(Arrays.asList(new int[]{1, 2 ,3}, null, Collections.emptyList(), new int[]{9}), new int[] {9, 3, 7});
+        map2.put(Arrays.asList(new int[]{1, 2, 3}, null, Collections.emptyList(), new int[]{9}), new int[] {9, 3, 44});
 
         assertFalse(DeepEquals.deepEquals(map1, map2));
     }
@@ -1155,6 +1209,26 @@ public class DeepEqualsTest
         @Override
         public String toString() {
             return "ComplexObject[" + name + "]";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            ComplexObject that = (ComplexObject) o;
+            boolean namesEqual = Objects.equals(name, that.name);
+            boolean keysEquals = Objects.equals(dataMap.keySet().toString(), that.dataMap.keySet().toString());
+            boolean valuesEquals = Objects.equals(dataMap.values().toString(), that.dataMap.values().toString());
+            return namesEqual && keysEquals && valuesEquals;
+        }
+
+        @Override
+        public int hashCode() {
+            int name_hc = name.hashCode();
+            int keySet_hc = dataMap.keySet().toString().hashCode();
+            int values_hc = dataMap.values().toString().hashCode();
+            return name_hc + keySet_hc + values_hc;
         }
     }
     

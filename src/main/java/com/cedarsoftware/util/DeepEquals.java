@@ -3,6 +3,8 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
@@ -34,7 +36,8 @@ public class DeepEquals {
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
     public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
     private static final String EMPTY = "∅";
-    private static final String ARROW = "▶";
+    private static final String TRIANGLE_ARROW = "▶";
+    private static final String ARROW = "→";
 
     private static final ThreadLocal<Set<Object>> formattingStack = ThreadLocal.withInitial(() ->
             Collections.newSetFromMap(new IdentityHashMap<>()));
@@ -304,7 +307,12 @@ public class DeepEquals {
                         // Create new options map with ignoreCustomEquals set
                         Map<String, Object> newOptions = new HashMap<>(options);
                         newOptions.put("recursive_call", true);
+
+                        // Create new ignore set preserving existing ignored classes
                         Set<Class<?>> ignoreSet = new HashSet<>();
+                        if (ignoreCustomEquals != null) {
+                            ignoreSet.addAll(ignoreCustomEquals);
+                        }
                         ignoreSet.add(key1Class);
                         newOptions.put(IGNORE_CUSTOM_EQUALS, ignoreSet);
 
@@ -829,7 +837,9 @@ public class DeepEquals {
         if (diffItem.difference != null) {
             result.append("[");
             result.append(diffItem.difference.getDescription());
-            result.append("] ▶ ");
+            result.append("] ");
+            result.append(TRIANGLE_ARROW);
+            result.append(" ");
             result.append(pathStr);
             result.append("\n");
         } else {
@@ -888,7 +898,9 @@ public class DeepEquals {
 
         // If we built child path text, attach it after " → "
         if (sb2.length() > 0) {
-            sb.append(" → ");
+            sb.append(" ");
+            sb.append(ARROW);
+            sb.append(" ");
             sb.append(sb2);
         }
 
@@ -1042,7 +1054,7 @@ public class DeepEquals {
             if (value instanceof Map) {
                 Map<?, ?> map = (Map<?, ?>) value;
                 String typeName = value.getClass().getSimpleName();
-                return String.format("%s[%s]", typeName,
+                return String.format("%s(%s)", typeName,
                         map.isEmpty() ? EMPTY : "0.." + (map.size() - 1));
             }
 
@@ -1101,7 +1113,7 @@ public class DeepEquals {
                 else if (Map.class.isAssignableFrom(fieldType)) {
                     // Map - show type and size
                     Map<?, ?> map = (Map<?, ?>) fieldValue;
-                    sb.append(String.format("%s[%s]", fieldType.getSimpleName(),
+                    sb.append(String.format("%s(%s)", fieldType.getSimpleName(),
                             map.isEmpty() ? EMPTY : "0.." + (map.size() - 1)));
                 }
                 else {
@@ -1173,103 +1185,173 @@ public class DeepEquals {
                 return String.valueOf(value);
             }
 
-            // For complex objects (not Array, Collection, Map, or simple type)
-            if (!(value.getClass().isArray() || value instanceof Collection || value instanceof Map)) {
-                return formatComplexObject(value);
+            if (value instanceof Collection) {
+                return formatCollectionContents((Collection<?>) value);
             }
 
-            return value.getClass().getSimpleName() + " {" + formatObjectContents(value) + "}";
+            if (value instanceof Map) {
+                return formatMapContents((Map<?, ?>) value);
+            }
+            
+            if (value.getClass().isArray()) {
+                return formatArrayContents(value);
+            }
+            return formatComplexObject(value);
         } finally {
             stack.remove(value);
         }
     }
 
-    private static String formatObjectContents(Object obj) {
-        if (obj == null) return "null";
+    private static String formatArrayContents(Object array) {
+        final int limit = 3;
 
-        if (obj instanceof Collection) {
-            return formatCollectionContents((Collection<?>) obj);
+        // Get base type
+        Class<?> type = array.getClass();
+        Class<?> componentType = type;
+        while (componentType.getComponentType() != null) {
+            componentType = componentType.getComponentType();
         }
 
-        if (obj instanceof Map) {
-            return formatMapContents((Map<?, ?>) obj);
-        }
-
-        if (obj.getClass().isArray()) {
-            int length = Array.getLength(obj);
-            StringBuilder sb = new StringBuilder();
-            sb.append("length=").append(length);
-            if (length > 0) {
-                sb.append(", elements=[");
-                for (int i = 0; i < length && i < 3; i++) {
-                    if (i > 0) sb.append(", ");
-                    sb.append(formatValue(Array.get(obj, i)));
-                }
-                if (length > 3) sb.append(", ...");
-                sb.append("]");
-            }
-            return sb.toString();
-        }
-
-        Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj.getClass());
         StringBuilder sb = new StringBuilder();
-        boolean first = true;
+        sb.append(componentType.getSimpleName());  // Base type (int, String, etc)
 
-        for (Field field : fields) {
-            try {
-                if (field.getName().startsWith("this$")) {
-                    continue;
-                }
-                if (!first) sb.append(", ");
-                first = false;
-                sb.append(field.getName()).append(": ");
-                Object value = field.get(obj);
-                sb.append(formatValue(value));
-            } catch (Exception ignored) {
-            }
+        // Only show outer dimensions
+        int outerLength = Array.getLength(array);
+        sb.append("[").append(outerLength).append("]");
+        Class<?> current = type.getComponentType();
+        while (current != null && current.isArray()) {
+            sb.append("[]");
+            current = current.getComponentType();
         }
+
+        // Add contents
+        sb.append("{");
+        int length = Array.getLength(array);  // Using original array here
+        if (length > 0) {
+            int showItems = Math.min(length, limit);
+            for (int i = 0; i < showItems; i++) {
+                if (i > 0) sb.append(", ");
+                Object item = Array.get(array, i);
+                if (item == null) {
+                    sb.append("null");
+                } else if (item.getClass().isArray()) {
+                    // For sub-arrays, just show their contents in brackets
+                    int subLength = Array.getLength(item);
+                    sb.append('[');
+                    for (int j = 0; j < Math.min(subLength, limit); j++) {
+                        if (j > 0) sb.append(", ");
+                        sb.append(formatValue(Array.get(item, j)));
+                    }
+                    if (subLength > 3) sb.append(", ...");
+                    sb.append(']');
+                } else {
+                    sb.append(formatValue(item));
+                }
+            }
+            if (length > 3) sb.append(", ...");
+        }
+        sb.append("}");
 
         return sb.toString();
     }
 
     private static String formatCollectionContents(Collection<?> collection) {
+        final int limit = 3;
         StringBuilder sb = new StringBuilder();
-        sb.append("size=").append(collection.size());
-        if (!collection.isEmpty()) {
-            sb.append(", elements=[");
-            Iterator<?> it = collection.iterator();
-            for (int i = 0; i < 3 && it.hasNext(); i++) {
-                if (i > 0) sb.append(", ");
-                sb.append(formatValue(it.next()));
-            }
-            if (collection.size() > 3) sb.append(", ...");
-            sb.append("]");
+
+        // Get collection type and element type
+        Class<?> type = collection.getClass();
+        Type elementType = getCollectionElementType(collection);
+        sb.append(type.getSimpleName());
+        if (elementType != null) {
+            sb.append("<").append(getTypeSimpleName(elementType)).append(">");
         }
+
+        // Add size
+        sb.append("(").append(collection.size()).append(")");
+
+        // Add contents
+        sb.append("{");
+        if (!collection.isEmpty()) {
+            Iterator<?> it = collection.iterator();
+            int count = 0;
+            while (count < limit && it.hasNext()) {
+                if (count > 0) sb.append(", ");
+                Object item = it.next();
+                if (item == null) {
+                    sb.append("null");
+                } else if (item instanceof Collection) {
+                    Collection<?> subCollection = (Collection<?>) item;
+                    sb.append("(");
+                    Iterator<?> subIt = subCollection.iterator();
+                    for (int j = 0; j < Math.min(subCollection.size(), limit); j++) {
+                        if (j > 0) sb.append(", ");
+                        sb.append(formatValue(subIt.next()));
+                    }
+                    if (subCollection.size() > limit) sb.append(", ...");
+                    sb.append(")");
+                } else {
+                    sb.append(formatValue(item));
+                }
+                count++;
+            }
+            if (collection.size() > limit) sb.append(", ...");
+        }
+        sb.append("}");
+
         return sb.toString();
     }
 
     private static String formatMapContents(Map<?, ?> map) {
+        final int limit = 3;
         StringBuilder sb = new StringBuilder();
-        sb.append("size=").append(map.size());
-        if (!map.isEmpty()) {
-            sb.append(", entries=[");
-            Iterator<?> it = map.entrySet().iterator();
-            for (int i = 0; i < 3 && it.hasNext(); i++) {
-                if (i > 0) sb.append(", ");
-                Map.Entry<?, ?> entry = (Map.Entry<?, ?>) it.next();
-                sb.append(formatValue(entry.getKey()))
-                        .append("=")
-                        .append(formatValue(entry.getValue()));
-            }
-            if (map.size() > 3) sb.append(", ...");
-            sb.append("]");
+
+        // Get map type and key/value types
+        Class<?> type = map.getClass();
+        Type[] typeArgs = getMapTypes(map);
+
+        sb.append(type.getSimpleName());
+        if (typeArgs != null && typeArgs.length == 2) {
+            sb.append("<")
+                    .append(getTypeSimpleName(typeArgs[0]))
+                    .append(", ")
+                    .append(getTypeSimpleName(typeArgs[1]))
+                    .append(">");
         }
+
+        // Add size in parentheses
+        sb.append("(").append(map.size()).append(")");
+
+        // Add contents
+        sb.append("{");
+        if (!map.isEmpty()) {
+            Iterator<? extends Map.Entry<?, ?>> it = map.entrySet().iterator();
+            int count = 0;
+            while (count < limit && it.hasNext()) {
+                if (count > 0) sb.append(", ");
+                Map.Entry<?, ?> entry = it.next();
+                sb.append(formatValue(entry.getKey()))
+                        .append(" ")
+                        .append(ARROW)
+                        .append(" ")
+                        .append(formatValue(entry.getValue()));
+                count++;
+            }
+            if (map.size() > limit) sb.append(", ...");
+        }
+        sb.append("}");
+
         return sb.toString();
     }
 
+    private static String getTypeSimpleName(Type type) {
+        if (type instanceof Class) {
+            return ((Class<?>) type).getSimpleName();
+        }
+        return type.getTypeName();
+    }
+    
     private static String formatComplexObject(Object obj) {
-        if (obj == null) return "null";
-
         StringBuilder sb = new StringBuilder();
         sb.append(obj.getClass().getSimpleName());
         sb.append(" {");
@@ -1279,6 +1361,9 @@ public class DeepEquals {
 
         for (Field field : fields) {
             try {
+                if (field.getName().contains("this$")) {
+                    continue;
+                }
                 if (!first) {
                     sb.append(", ");
                 }
@@ -1311,8 +1396,6 @@ public class DeepEquals {
     }
     
     private static String formatCollectionNotation(Collection<?> col) {
-        if (col == null) return "null";
-
         StringBuilder sb = new StringBuilder();
         sb.append(col.getClass().getSimpleName());
 
@@ -1437,8 +1520,23 @@ public class DeepEquals {
         return type.getSimpleName();
     }
 
-    private static String getCyclePlaceholder(Object obj) {
-        return obj.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(obj)) + " (cycle detected)";
+    private static Type[] getMapTypes(Map<?, ?> map) {
+        // Try to get generic types from class
+        Type type = map.getClass().getGenericSuperclass();
+        if (type instanceof ParameterizedType) {
+            return ((ParameterizedType) type).getActualTypeArguments();
+        }
+        // If no generic type found, try to infer from first non-null entry
+        if (!map.isEmpty()) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                Type keyType = entry.getKey() != null ? entry.getKey().getClass() : null;
+                Type valueType = entry.getValue() != null ? entry.getValue().getClass() : null;
+                if (keyType != null && valueType != null) {
+                    return new Type[]{keyType, valueType};
+                }
+            }
+        }
+        return null;
     }
 
     private static int getContainerSize(Object container) {

@@ -19,6 +19,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -37,7 +38,9 @@ public class DeepEquals {
     public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
     private static final String EMPTY = "∅";
     private static final String TRIANGLE_ARROW = "▶";
-    private static final String ARROW = "→";
+    private static final String ARROW = "⇨";
+    private static final String ANGLE_LEFT = "《";
+    private static final String ANGLE_RIGHT = "》";
 
     private static final ThreadLocal<Set<Object>> formattingStack = ThreadLocal.withInitial(() ->
             Collections.newSetFromMap(new IdentityHashMap<>()));
@@ -49,10 +52,10 @@ public class DeepEquals {
     private final static class ItemsToCompare {
         private final Object _key1;
         private final Object _key2;
-        private ItemsToCompare parent;
+        private final ItemsToCompare parent;
         private final String fieldName;
         private final int[] arrayIndices;
-        private final String mapKey;
+        private final Object mapKey;
         private final Difference difference;    // New field
 
         // Modified constructors to include Difference
@@ -78,13 +81,13 @@ public class DeepEquals {
         }
 
         // Constructor for map access with difference
-        private ItemsToCompare(Object k1, Object k2, String mapKey, ItemsToCompare parent, boolean isMapKey, Difference difference) {
+        private ItemsToCompare(Object k1, Object k2, Object mapKey, ItemsToCompare parent, boolean isMapKey, Difference difference) {
             this(k1, k2, parent, null, null, mapKey, difference);
         }
 
         // Base constructor
         private ItemsToCompare(Object k1, Object k2, ItemsToCompare parent,
-                               String fieldName, int[] arrayIndices, String mapKey, Difference difference) {
+                               String fieldName, int[] arrayIndices, Object mapKey, Difference difference) {
             this._key1 = k1;
             this._key2 = k2;
             this.parent = parent;
@@ -241,6 +244,8 @@ public class DeepEquals {
                     return false;
                 }
                 if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
+                    ItemsToCompare prior = stack.peek();
+                    stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -256,6 +261,8 @@ public class DeepEquals {
                     return false;
                 }
                 if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
+                    ItemsToCompare prior = stack.peek();
+                    stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -271,6 +278,8 @@ public class DeepEquals {
                     return false;
                 }
                 if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, options, visited)) {
+                    ItemsToCompare prior = stack.peek();
+                    stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -286,6 +295,8 @@ public class DeepEquals {
                     return false;
                 }
                 if (!decomposeArray(key1, key2, stack)) {
+                    ItemsToCompare prior = stack.peek();
+                    stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -459,7 +470,7 @@ public class DeepEquals {
                     stack.addFirst(new ItemsToCompare(
                             entry.getValue(),                // map1 value
                             otherEntry.getValue(),           // map2 value
-                            formatMapKey(entry.getKey()),    // pass the key as 'mapKey'
+                            entry.getKey(),                  // pass the key as 'mapKey'
                             currentItem,                     // parent
                             true,                            // isMapKey = true
                             Difference.MAP_VALUE_MISMATCH));
@@ -836,7 +847,7 @@ public class DeepEquals {
         // Format with unicode arrow (→) and the difference description
         if (diffItem.difference != null) {
             result.append("[");
-            result.append(diffItem.difference.getDescription());
+            result.append(pr.mismatchPhrase);
             result.append("] ");
             result.append(TRIANGLE_ARROW);
             result.append(" ");
@@ -874,13 +885,16 @@ public class DeepEquals {
         for (int i = 1; i < path.size(); i++) {
             ItemsToCompare cur = path.get(i);
             
-            // If it's a mapKey, we do the " key: "someKey" value: Something"
+            // If it's a mapKey, we do the " 《 key ⇨ value  》
             if (cur.mapKey != null) {
                 appendSpaceIfNeeded(sb2);
-                sb2.append("key: \"")
+                sb2.append(ANGLE_LEFT)
                         .append(formatMapKey(cur.mapKey))
-                        .append("\" value: ")
-                        .append(formatValueConcise(cur._key1));
+                        .append(" ")
+                        .append(ARROW)
+                        .append(" ")
+                        .append(formatValueConcise(cur._key1))
+                        .append(ANGLE_RIGHT);
             }
             // If it's a normal field name
             else if (cur.fieldName != null) {
@@ -896,26 +910,55 @@ public class DeepEquals {
             }
         }
 
-        // If we built child path text, attach it after " → "
+        // If we built child path text, attach it after " ▶ "
         if (sb2.length() > 0) {
             sb.append(" ");
-            sb.append(ARROW);
+            sb.append(TRIANGLE_ARROW);
             sb.append(" ");
             sb.append(sb2);
         }
 
-        // 3) Find the first mismatch phrase from the path
-        String mismatchPhrase = null;
+        // 3) Find the most specific mismatch phrase (it will be from the "container" of the difference's pov)
+        String mismatchPhrase = getMostSpecificDescription(path);
+        return new PathResult(sb.toString(), mismatchPhrase);
+    }
+
+    private static String getFullDifferencePath(List<ItemsToCompare> path) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+
         for (ItemsToCompare item : path) {
             if (item.difference != null) {
-                mismatchPhrase = item.difference.getDescription();
-                break;
+                if (!first) {
+                    sb.append(" ⇨ ");
+                }
+                sb.append(item.difference.getDescription());
+                first = false;
             }
         }
 
-        return new PathResult(sb.toString(), mismatchPhrase);
+        return sb.toString();
     }
     
+    private static String getMostSpecificDescription(List<ItemsToCompare> path) {
+        ListIterator<ItemsToCompare> it = path.listIterator(path.size());
+        if (!it.hasPrevious()) {
+            return null;
+        }
+
+        String a = it.previous().difference.getDescription();
+        if (it.hasPrevious()) {
+            Difference diff = it.previous().difference;
+            if (diff != null) {
+                String b = diff.getDescription();
+                if (b != null) {
+                    return b;
+                }
+            }
+        }
+        return a;
+    }
+
     /**
      * Tiny struct-like class to hold both the path & the mismatch phrase.
      */
@@ -1323,23 +1366,25 @@ public class DeepEquals {
         sb.append("(").append(map.size()).append(")");
 
         // Add contents
-        sb.append("{");
+//        sb.append("{");
         if (!map.isEmpty()) {
             Iterator<? extends Map.Entry<?, ?>> it = map.entrySet().iterator();
             int count = 0;
             while (count < limit && it.hasNext()) {
                 if (count > 0) sb.append(", ");
                 Map.Entry<?, ?> entry = it.next();
-                sb.append(formatValue(entry.getKey()))
+                sb.append(ANGLE_LEFT)
+                        .append(formatValue(entry.getKey()))
                         .append(" ")
                         .append(ARROW)
                         .append(" ")
-                        .append(formatValue(entry.getValue()));
+                        .append(formatValue(entry.getValue()))
+                        .append(ANGLE_RIGHT);
                 count++;
             }
             if (map.size() > limit) sb.append(", ...");
         }
-        sb.append("}");
+//        sb.append("}");
 
         return sb.toString();
     }
@@ -1434,15 +1479,21 @@ public class DeepEquals {
     }
 
     private static String formatMapKey(Object key) {
-        if (key instanceof String) {
-            String strKey = (String) key;
-            // Strip any existing double quotes
-            if (strKey.startsWith("\"") && strKey.endsWith("\"")) {
-                strKey = strKey.substring(1, strKey.length() - 1);
-            }
-            return strKey;
+        // Null key is a valid case
+        if (key == null) {
+            return "null";
         }
-        return formatValue(key);
+
+        // If the key is truly a String, keep quotes
+        if (key instanceof String) {
+            return "\"" + key + "\"";
+        }
+
+        // Otherwise, format the key in a "concise" way,
+        // but remove any leading/trailing quotes that come
+        // from 'formatValueConcise()' if it decides it's a String.
+        String text = formatValue(key);
+        return StringUtilities.removeLeadingAndTrailingQuotes(text);
     }
 
     private static String formatNumber(Number value) {

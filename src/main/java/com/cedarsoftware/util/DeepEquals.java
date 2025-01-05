@@ -31,11 +31,61 @@ import java.util.concurrent.atomic.AtomicLong;
 import static com.cedarsoftware.util.Converter.convert2BigDecimal;
 import static com.cedarsoftware.util.Converter.convert2boolean;
 
+/**
+ * Performs a deep comparison of two objects, going beyond simple {@code equals()} checks.
+ * Handles nested objects, collections, arrays, and maps while detecting circular references.
+ *
+ * <p><strong>Key features:</strong></p>
+ * <ul>
+ *   <li>Compares entire object graphs including nested structures</li>
+ *   <li>Handles circular references safely</li>
+ *   <li>Provides detailed difference descriptions for troubleshooting</li>
+ *   <li>Supports numeric comparisons with configurable precision</li>
+ *   <li>Supports selective ignoring of custom {@code equals()} implementations</li>
+ *   <li>Supports string-to-number equality comparisons</li>
+ * </ul>
+ *
+ * <p><strong>Options:</strong></p>
+ * <ul>
+ *   <li>
+ *     <code>IGNORE_CUSTOM_EQUALS</code> (a {@code Collection<Class<?>>}):
+ *     <ul>
+ *       <li><strong>{@code null}</strong> &mdash; Use <em>all</em> custom {@code equals()} methods (ignore none).</li>
+ *       <li><strong>Empty set</strong> &mdash; Ignore <em>all</em> custom {@code equals()} methods.</li>
+ *       <li><strong>Non-empty set</strong> &mdash; Ignore only those classes’ custom {@code equals()} implementations.</li>
+ *     </ul>
+ *   </li>
+ *   <li>
+ *     <code>ALLOW_STRINGS_TO_MATCH_NUMBERS</code> (a {@code Boolean}):
+ *     If set to {@code true}, allows strings like {@code "10"} to match the numeric value {@code 10}.
+ *   </li>
+ * </ul>
+ *
+ * <p>The options {@code Map} acts as both input and output. When objects differ, the difference
+ * description is placed in the options {@code Map} under the "diff" key
+ * (see {@link DeepEquals#deepEquals(Object, Object, Map) deepEquals}).</p>
+ *
+ * <p><strong>Example usage:</strong></p>
+ * <pre><code>
+ * Map&lt;String, Object&gt; options = new HashMap&lt;&gt;();
+ * options.put(IGNORE_CUSTOM_EQUALS, Set.of(MyClass.class, OtherClass.class));
+ * options.put(ALLOW_STRINGS_TO_MATCH_NUMBERS, true);
+ *
+ * if (!DeepEquals.deepEquals(obj1, obj2, options)) {
+ *     String diff = (String) options.get(DeepEquals.DIFF);  // Get difference description
+ *     // Handle or log 'diff'
+ * }
+ * </code></pre>
+ *
+ * @see #deepEquals(Object, Object)
+ * @see #deepEquals(Object, Object, Map)
+ */
 @SuppressWarnings("unchecked")
 public class DeepEquals {
     // Option keys
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
     public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
+    public static final String DIFF = "diff";
     private static final String EMPTY = "∅";
     private static final String TRIANGLE_ARROW = "▶";
     private static final String ARROW = "⇨";
@@ -113,18 +163,73 @@ public class DeepEquals {
             return System.identityHashCode(_key1) * 31 + System.identityHashCode(_key2);
         }
     }
-    
-    // Main deepEquals method without options
+
+    /**
+     * Performs a deep comparison between two objects, going beyond a simple {@code equals()} check.
+     * <p>
+     * This method is functionally equivalent to calling
+     * {@link #deepEquals(Object, Object, Map) deepEquals(a, b, new HashMap<>())},
+     * which means it uses no additional comparison options. In other words:
+     * <ul>
+     *   <li>{@code IGNORE_CUSTOM_EQUALS} is not set (all custom equals() methods are used)</li>
+     *   <li>{@code ALLOW_STRINGS_TO_MATCH_NUMBERS} defaults to {@code false}</li>
+     * </ul>
+     * </p>
+     *
+     * @param a the first object to compare, may be {@code null}
+     * @param b the second object to compare, may be {@code null}
+     * @return {@code true} if the two objects are deeply equal, {@code false} otherwise
+     * @see #deepEquals(Object, Object, Map)
+     */
     public static boolean deepEquals(Object a, Object b) {
         return deepEquals(a, b, new HashMap<>());
     }
 
-    // Main deepEquals method with options
+    /**
+     * Performs a deep comparison between two objects with optional comparison settings.
+     * <p>
+     * In addition to comparing objects, collections, maps, and arrays for equality of nested
+     * elements, this method can also:
+     * <ul>
+     *   <li>Ignore certain classes' custom {@code equals()} methods according to user-defined rules</li>
+     *   <li>Allow string-to-number comparisons (e.g., {@code "10"} equals {@code 10})</li>
+     *   <li>Handle floating-point comparisons with tolerance for precision</li>
+     *   <li>Detect and handle circular references to avoid infinite loops</li>
+     * </ul>
+     *
+     * <p><strong>Options:</strong></p>
+     * <ul>
+     *   <li>
+     *     {@code DeepEquals.IGNORE_CUSTOM_EQUALS} (a {@code Collection<Class<?>>}):
+     *     <ul>
+     *       <li><strong>{@code null}</strong> &mdash; Use <em>all</em> custom {@code equals()} methods (ignore none). Default.</li>
+     *       <li><strong>Empty set</strong> &mdash; Ignore <em>all</em> custom {@code equals()} methods.</li>
+     *       <li><strong>Non-empty set</strong> &mdash; Ignore only those classes’ custom {@code equals()} implementations.</li>
+     *     </ul>
+     *   </li>
+     *   <li>
+     *     {@code DeepEquals.ALLOW_STRINGS_TO_MATCH_NUMBERS} (a {@code Boolean}):
+     *     If set to {@code true}, allows strings like {@code "10"} to match the numeric value {@code 10}. Default false.
+     *   </li>
+     * </ul>
+     *
+     * <p>If the objects differ, a difference description string is stored in {@code options}
+     * under the key {@code "diff"}. The key {@code "diff_item"} can provide additional context
+     * regarding the specific location of the mismatch.</p>
+     *
+     * @param a       the first object to compare, may be {@code null}
+     * @param b       the second object to compare, may be {@code null}
+     * @param options a map of comparison options and, on return, possibly difference details
+     * @return {@code true} if the two objects are deeply equal, {@code false} otherwise
+     * @see #deepEquals(Object, Object)
+     */
     public static boolean deepEquals(Object a, Object b, Map<String, ?> options) {
-        Set<Object> visited = new HashSet<>();
-        boolean result = deepEquals(a, b, options, visited);
-        formattingStack.remove();
-        return result;
+        try {
+            Set<Object> visited = new HashSet<>();
+            return deepEquals(a, b, options, visited);
+        } finally {
+            formattingStack.remove();   // Always remove.  When needed next time, initialValue() will be called.
+        }
     }
 
     private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<Object> visited) {
@@ -136,7 +241,7 @@ public class DeepEquals {
             // Store both the breadcrumb and the difference ItemsToCompare
             ItemsToCompare top = stack.peek();
             String breadcrumb = generateBreadcrumb(stack);
-            ((Map<String, Object>) options).put("diff", breadcrumb);
+            ((Map<String, Object>) options).put(DIFF, breadcrumb);
             ((Map<String, Object>) options).put("diff_item", top);
 
             if (!isRecurive) {
@@ -152,7 +257,9 @@ public class DeepEquals {
     // Recursive deepEquals implementation
     private static boolean deepEquals(Object a, Object b, Deque<ItemsToCompare> stack,
                                       Map<String, ?> options, Set<Object> visited) {
-        Set<Class<?>> ignoreCustomEquals = (Set<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
+        Collection<Class<?>> ignoreCustomEquals = (Collection<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
+        boolean allowAllCustomEquals = ignoreCustomEquals == null;
+        boolean hasNonEmptyIgnoreSet = (ignoreCustomEquals != null && !ignoreCustomEquals.isEmpty());
         final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
         stack.addFirst(new ItemsToCompare(a, b));
 
@@ -173,7 +280,7 @@ public class DeepEquals {
                 continue;
             }
 
-            // If either one is null, they are not equal
+            // If either one is null, they are not equal (key1 == key2 already checked)
             if (key1 == null || key2 == null) {
                 stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
                 return false;
@@ -236,38 +343,42 @@ public class DeepEquals {
                 }
                 continue;
             }
-            
-            // Set comparison
-            if (key1 instanceof Set) {
-                if (!(key2 instanceof Set)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
+
+            // Ordered collections where order is defined as part of equality
+            if (key1 instanceof List) {   // If Collections, they both must be Collection
+                if (!(key2 instanceof List)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
+                if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
+                    // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
+                    // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
                     stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
-            } else if (key2 instanceof Set) {
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
+            } else if (key2 instanceof List) {
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                 return false;
             }
 
-            // Collection comparison
-            if (key1 instanceof Collection) {   // If Collections, they both must be Collection
+            // Unordered Collection comparison
+            if (key1 instanceof Collection) {
                 if (!(key2 instanceof Collection)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
+                if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
+                    // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
+                    // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
                     stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
             } else if (key2 instanceof Collection) {
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
                 return false;
             }
 
@@ -278,6 +389,8 @@ public class DeepEquals {
                     return false;
                 }
                 if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, options, visited)) {
+                    // Push VALUE_MISMATCH so parent's container-level description (e.g. "map value mismatch")
+                    // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
                     stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
                     return false;
@@ -295,6 +408,8 @@ public class DeepEquals {
                     return false;
                 }
                 if (!decomposeArray(key1, key2, stack)) {
+                    // Push VALUE_MISMATCH so parent's container-level description (e.g. "array element mismatch")
+                    // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
                     stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
                     return false;
@@ -313,9 +428,12 @@ public class DeepEquals {
             
             // If there is a custom equals and not ignored, compare using custom equals
             if (hasCustomEquals(key1Class)) {
-                if (ignoreCustomEquals == null || (!ignoreCustomEquals.isEmpty() && !ignoreCustomEquals.contains(key1Class))) {
+                boolean useCustomEqualsForThisClass = hasNonEmptyIgnoreSet && !ignoreCustomEquals.contains(key1Class);
+
+                if (allowAllCustomEquals || useCustomEqualsForThisClass) {
                     if (!key1.equals(key2)) {
-                        // Create new options map with ignoreCustomEquals set
+                        // Call "deepEquals()" below on failure of custom equals() above. This
+                        // gets us the "detail" on WHY the custom equals failed (first issue).
                         Map<String, Object> newOptions = new HashMap<>(options);
                         newOptions.put("recursive_call", true);
 
@@ -341,7 +459,7 @@ public class DeepEquals {
                 }
             }
             
-            // Decompose object into its fields
+            // Decompose object into its fields (don't use custom equals)
             if (!decomposeObject(key1, key2, stack)) {
                 return false;
             }
@@ -424,7 +542,7 @@ public class DeepEquals {
             Object item1 = i1.next();
             Object item2 = i2.next();
 
-            stack.addFirst(new ItemsToCompare(item1, item2, new int[]{index++}, currentItem, Difference.COLLECTION_MISSING_ELEMENT));
+            stack.addFirst(new ItemsToCompare(item1, item2, new int[]{index++}, currentItem, Difference.COLLECTION_ELEMENT_MISMATCH));
         }
 
         return true;
@@ -651,12 +769,18 @@ public class DeepEquals {
     private static boolean compareAtomicBoolean(AtomicBoolean a, AtomicBoolean b) {
         return a.get() == b.get();
     }
-    
+
     /**
-     * Determines if a class has a custom equals method.
+     * Determines whether the given class has a custom {@code equals(Object)} method
+     * distinct from {@code Object.equals(Object)}.
+     * <p>
+     * Useful for detecting when a class relies on a specialized equality definition,
+     * which can be selectively ignored by deep-comparison if desired.
+     * </p>
      *
-     * @param c Class to check.
-     * @return true if a custom equals method exists, false otherwise.
+     * @param c the class to inspect, must not be {@code null}
+     * @return {@code true} if {@code c} declares its own {@code equals(Object)} method,
+     *         {@code false} otherwise
      */
     public static boolean hasCustomEquals(Class<?> c) {
         Method equals = ReflectionUtils.getMethod(c, "equals", Object.class);   // cached
@@ -664,10 +788,16 @@ public class DeepEquals {
     }
 
     /**
-     * Determines if a class has a custom hashCode method.
+     * Determines whether the given class has a custom {@code hashCode()} method
+     * distinct from {@code Object.hashCode()}.
+     * <p>
+     * This can help identify classes that rely on a specialized hashing algorithm,
+     * potentially relevant for certain comparison or hashing scenarios.
+     * </p>
      *
-     * @param c Class to check.
-     * @return true if a custom hashCode method exists, false otherwise.
+     * @param c the class to inspect, must not be {@code null}
+     * @return {@code true} if {@code c} declares its own {@code hashCode()} method,
+     *         {@code false} otherwise
      */
     public static boolean hasCustomHashCode(Class<?> c) {
         Method hashCode = ReflectionUtils.getMethod(c, "hashCode");   // cached
@@ -675,10 +805,18 @@ public class DeepEquals {
     }
 
     /**
-     * Generates a 'deep' hash code for an object, considering its entire object graph.
+     * Computes a deep hash code for the given object by traversing its entire graph.
+     * <p>
+     * This method considers the hash codes of nested objects, arrays, maps, and collections,
+     * and uses cyclic reference detection to avoid infinite loops.
+     * </p>
+     * <p>
+     * In order for two objects to be {@link #deepEquals(Object, Object) deeply equal}, they must have
+     * deepHashCode() equivalence. Note, deepHashCode()'s are not guaranteed to be unique.
+     * </p>
      *
-     * @param obj Object to hash.
-     * @return Deep hash code as an int.
+     * @param obj the object to hash, may be {@code null}
+     * @return an integer representing the object's deep hash code
      */
     public static int deepHashCode(Object obj) {
         Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -711,21 +849,21 @@ public class DeepEquals {
                 continue;
             }
 
-            // Ignore order for Sets [Order is not part of equality / hashCode contract for Sets]
-            if (obj instanceof Set) {
-                stack.addAll(0, (Set<?>) obj);
-                continue;
-            }
-
-            // Order matters for non-Set Collections like List
-            if (obj instanceof Collection) {
-                Collection<?> col = (List<?>) obj;
+            // Order matters for List - it is defined as part of equality
+            if (obj instanceof List) {
+                List<?> col = (List<?>) obj;
                 long result = 1;
 
                 for (Object element : col) {
                     result = 31 * result + deepHashCode(element, visited);  // recursive
                 }
                 hash += (int) result;
+                continue;
+            }
+
+            // Ignore order for non-List Collections (not part of definition of equality)
+            if (obj instanceof Collection) {
+                stack.addAll(0, (Collection<?>) obj);
                 continue;
             }
 
@@ -774,26 +912,15 @@ public class DeepEquals {
 
     private static int hashFloat(float value) {
         float normalizedValue = Math.round(value * SCALE_FLOAT) / SCALE_FLOAT;
-        int bits = Float.floatToIntBits(normalizedValue);
-        return bits;
+        return Float.floatToIntBits(normalizedValue);
     }
 
     private enum DiffCategory {
-        VALUE("Expected: %s\nFound: %s"),
-        TYPE("Expected type: %s\nFound type: %s"),
-        SIZE("Expected size: %d\nFound size: %d"),
-        LENGTH("Expected length: %d\nFound length: %d"),
-        DIMENSION("Expected dimensions: %d\nFound dimensions: %d");
-
-        private final String formatString;
-
-        DiffCategory(String formatString) {
-            this.formatString = formatString;
-        }
-
-        public String format(Object expected, Object found) {
-            return String.format(formatString, expected, found);
-        }
+        VALUE,
+        TYPE,
+        SIZE,
+        LENGTH,
+        DIMENSION
     }
 
     private enum Difference {
@@ -805,6 +932,7 @@ public class DeepEquals {
         COLLECTION_SIZE_MISMATCH("collection size mismatch", DiffCategory.SIZE),
         COLLECTION_MISSING_ELEMENT("missing collection element", DiffCategory.VALUE),
         COLLECTION_TYPE_MISMATCH("collection type mismatch", DiffCategory.TYPE),
+        COLLECTION_ELEMENT_MISMATCH("collection element mismatch", DiffCategory.VALUE),
 
         // Map-specific
         MAP_SIZE_MISMATCH("map size mismatch", DiffCategory.SIZE),
@@ -828,8 +956,8 @@ public class DeepEquals {
             this.category = category;
         }
 
-        public String getDescription() { return description; }
-        public DiffCategory getCategory() { return category; }
+        String getDescription() { return description; }
+        DiffCategory getCategory() { return category; }
     }
 
     private static String generateBreadcrumb(Deque<ItemsToCompare> stack) {
@@ -904,8 +1032,11 @@ public class DeepEquals {
             // If it’s array indices
             else if (cur.arrayIndices != null) {
                 for (int idx : cur.arrayIndices) {
+                    boolean isArray = cur.difference.name().contains("ARRAY");
                     appendSpaceIfEndsWithBrace(sb2);
-                    sb2.append("[").append(idx).append("]");
+                    sb2.append(isArray ? "[" : "(");
+                    sb2.append(idx);
+                    sb2.append(isArray ? "]" : ")");
                 }
             }
         }
@@ -919,28 +1050,26 @@ public class DeepEquals {
         }
 
         // 3) Find the most specific mismatch phrase (it will be from the "container" of the difference's pov)
-        String mismatchPhrase = getMostSpecificDescription(path);
+        String mismatchPhrase = getContainingDescription(path);
         return new PathResult(sb.toString(), mismatchPhrase);
     }
 
-    private static String getFullDifferencePath(List<ItemsToCompare> path) {
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-
-        for (ItemsToCompare item : path) {
-            if (item.difference != null) {
-                if (!first) {
-                    sb.append(" ⇨ ");
-                }
-                sb.append(item.difference.getDescription());
-                first = false;
-            }
-        }
-
-        return sb.toString();
-    }
-    
-    private static String getMostSpecificDescription(List<ItemsToCompare> path) {
+    /**
+     * Gets the most appropriate difference description from the comparison path.
+     * <p>
+     * For container types (Arrays, Collections, Maps), the parent node's description
+     * often provides better context than the leaf node. For example, an array length
+     * mismatch is more informative than a simple value mismatch of its elements.
+     * <p>
+     * The method looks at the last two nodes in the path:
+     * - If only one node exists, uses its description
+     * - If two or more nodes exist, prefers the second-to-last node's description
+     * - Falls back to the last node's description if the parent's is null
+     *
+     * @param path The list of ItemsToCompare representing the traversal path to the difference
+     * @return The most appropriate difference description, or null if path is empty
+     */
+    private static String getContainingDescription(List<ItemsToCompare> path) {
         ListIterator<ItemsToCompare> it = path.listIterator(path.size());
         if (!it.hasPrevious()) {
             return null;
@@ -975,7 +1104,7 @@ public class DeepEquals {
     /**
      * If the last character in sb is '}', append exactly one space.
      * Otherwise do nothing.
-     *
+     * <p>
      * This ensures we get:
      *    Pet {...} .nickNames
      * instead of
@@ -1366,7 +1495,6 @@ public class DeepEquals {
         sb.append("(").append(map.size()).append(")");
 
         // Add contents
-//        sb.append("{");
         if (!map.isEmpty()) {
             Iterator<? extends Map.Entry<?, ?>> it = map.entrySet().iterator();
             int count = 0;
@@ -1384,7 +1512,6 @@ public class DeepEquals {
             }
             if (map.size() > limit) sb.append(", ...");
         }
-//        sb.append("}");
 
         return sb.toString();
     }

@@ -6,6 +6,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,7 +51,7 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  * <p><strong>Options:</strong></p>
  * <ul>
  *   <li>
- *     <code>IGNORE_CUSTOM_EQUALS</code> (a {@code Collection<Class<?>>}):
+ *     <code>IGNORE_CUSTOM_EQUALS</code> (a {@code Set<Class<?>>}):
  *     <ul>
  *       <li><strong>{@code null}</strong> &mdash; Use <em>all</em> custom {@code equals()} methods (ignore none).</li>
  *       <li><strong>Empty set</strong> &mdash; Ignore <em>all</em> custom {@code equals()} methods.</li>
@@ -79,6 +82,22 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  *
  * @see #deepEquals(Object, Object)
  * @see #deepEquals(Object, Object, Map)
+ *
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 @SuppressWarnings("unchecked")
 public class DeepEquals {
@@ -91,6 +110,8 @@ public class DeepEquals {
     private static final String ARROW = "⇨";
     private static final String ANGLE_LEFT = "《";
     private static final String ANGLE_RIGHT = "》";
+    private static final double SCALE_DOUBLE = Math.pow(10, 10);      // Scale according to epsilon for double
+    private static final float SCALE_FLOAT = (float) Math.pow(10, 5); // Scale according to epsilon for float
 
     private static final ThreadLocal<Set<Object>> formattingStack = ThreadLocal.withInitial(() ->
             Collections.newSetFromMap(new IdentityHashMap<>()));
@@ -243,12 +264,11 @@ public class DeepEquals {
             String breadcrumb = generateBreadcrumb(stack);
             ((Map<String, Object>) options).put(DIFF, breadcrumb);
             ((Map<String, Object>) options).put("diff_item", top);
-
-            if (!isRecurive) {
-                System.out.println(breadcrumb);
-                System.out.println("--------------------");
-                System.out.flush();
-            }
+//            if (!isRecurive) {
+//                System.out.println(breadcrumb);
+//                System.out.println("--------------------");
+//                System.out.flush();
+//            }
         }
 
         return result;
@@ -429,11 +449,11 @@ public class DeepEquals {
             // If there is a custom equals and not ignored, compare using custom equals
             if (hasCustomEquals(key1Class)) {
                 boolean useCustomEqualsForThisClass = hasNonEmptyIgnoreSet && !ignoreCustomEquals.contains(key1Class);
-
                 if (allowAllCustomEquals || useCustomEqualsForThisClass) {
+                    // No Field-by-field break down
                     if (!key1.equals(key2)) {
-                        // Call "deepEquals()" below on failure of custom equals() above. This
-                        // gets us the "detail" on WHY the custom equals failed (first issue).
+                        // Custom equals failed. Call "deepEquals()" below on failure of custom equals() above.
+                        // This gets us the "detail" on WHY the custom equals failed (first issue).
                         Map<String, Object> newOptions = new HashMap<>(options);
                         newOptions.put("recursive_call", true);
 
@@ -459,10 +479,8 @@ public class DeepEquals {
                 }
             }
             
-            // Decompose object into its fields (don't use custom equals)
-            if (!decomposeObject(key1, key2, stack)) {
-                return false;
-            }
+            // Decompose object into its fields (not using custom equals)
+            decomposeObject(key1, key2, stack);
         }
         return true;
     }
@@ -811,10 +829,16 @@ public class DeepEquals {
      * and uses cyclic reference detection to avoid infinite loops.
      * </p>
      * <p>
-     * In order for two objects to be {@link #deepEquals(Object, Object) deeply equal}, they must have
-     * deepHashCode() equivalence. Note, deepHashCode()'s are not guaranteed to be unique.
+     * While deepHashCode() enables O(n) comparison performance in DeepEquals() when comparing
+     * unordered collections and maps, it does not guarantee that objects which are deepEquals()
+     * will have matching deepHashCode() values. This design choice allows for optimized
+     * performance while maintaining correctness of equality comparisons.
      * </p>
-     *
+     * <p>
+     * You can use it for generating your own hashCodes() on complex items, but understand that
+     * it *always* calls an instants hashCode() method if it has one that override's the
+     * hashCode() method defined on Object.class.
+     * </p>
      * @param obj the object to hash, may be {@code null}
      * @return an integer representing the object's deep hash code
      */
@@ -843,7 +867,7 @@ public class DeepEquals {
 
                 for (int i = 0; i < len; i++) {
                     Object element = Array.get(obj, i);
-                    result = 31 * result + deepHashCode(element, visited); // recursive
+                    result = 31 * result + hashElement(visited, element);
                 }
                 hash += (int) result;
                 continue;
@@ -855,7 +879,7 @@ public class DeepEquals {
                 long result = 1;
 
                 for (Object element : col) {
-                    result = 31 * result + deepHashCode(element, visited);  // recursive
+                    result = 31 * result + hashElement(visited, element);
                 }
                 hash += (int) result;
                 continue;
@@ -899,16 +923,26 @@ public class DeepEquals {
         }
         return hash;
     }
-    
-    private static final double SCALE_DOUBLE = Math.pow(10, 10);
+
+    private static int hashElement(Set<Object> visited, Object element) {
+        if (element == null) {
+            return 0;
+        } else if (element instanceof Double) {
+            return hashDouble((Double) element);
+        } else if (element instanceof Float) {
+            return hashFloat((Float) element);
+        } else if (Converter.isSimpleTypeConversionSupported(element.getClass(), element.getClass())) {
+            return element.hashCode();
+        } else {
+            return deepHashCode(element, visited);
+        }
+    }
 
     private static int hashDouble(double value) {
         double normalizedValue = Math.round(value * SCALE_DOUBLE) / SCALE_DOUBLE;
         long bits = Double.doubleToLongBits(normalizedValue);
         return (int) (bits ^ (bits >>> 32));
     }
-
-    private static final float SCALE_FLOAT = (float) Math.pow(10, 5); // Scale according to epsilon for float
 
     private static int hashFloat(float value) {
         float normalizedValue = Math.round(value * SCALE_FLOAT) / SCALE_FLOAT;
@@ -962,28 +996,19 @@ public class DeepEquals {
 
     private static String generateBreadcrumb(Deque<ItemsToCompare> stack) {
         ItemsToCompare diffItem = stack.peek();
-        if (diffItem == null) {
-            return "Unable to determine difference";
-        }
-
         StringBuilder result = new StringBuilder();
 
         // Build the path AND get the mismatch phrase
         PathResult pr = buildPathContextAndPhrase(diffItem);
         String pathStr = pr.path;
 
-        // Format with unicode arrow (→) and the difference description
-        if (diffItem.difference != null) {
-            result.append("[");
-            result.append(pr.mismatchPhrase);
-            result.append("] ");
-            result.append(TRIANGLE_ARROW);
-            result.append(" ");
-            result.append(pathStr);
-            result.append("\n");
-        } else {
-            result.append(pathStr).append("\n");
-        }
+        result.append("[");
+        result.append(pr.mismatchPhrase);
+        result.append("] ");
+        result.append(TRIANGLE_ARROW);
+        result.append(" ");
+        result.append(pathStr);
+        result.append("\n");
 
         // Format the difference details
         formatDifference(result, diffItem);
@@ -993,21 +1018,15 @@ public class DeepEquals {
 
     private static PathResult buildPathContextAndPhrase(ItemsToCompare diffItem) {
         List<ItemsToCompare> path = getPath(diffItem);
-        if (path.isEmpty()) {
-            return new PathResult("", null);
-        }
+        // path.size is >= 2 always. Even with a root only diff like this deepEquals(4, 5)
+        // because there is an initial root stack push, and then all 'false' paths push a
+        // descriptive ItemsToCompare() on the stack before returning.
 
         // 1) Format root
         StringBuilder sb = new StringBuilder();
         ItemsToCompare rootItem = path.get(0);
         sb.append(formatRootObject(rootItem._key1));  // "Dictionary {...}"
-
-        // If no deeper path, just return
-        if (path.size() == 1) {
-            return new PathResult(sb.toString(),
-                    rootItem.difference != null ? rootItem.difference.getDescription() : null);
-        }
-
+        
         // 2) Build up child path
         StringBuilder sb2 = new StringBuilder();
         for (int i = 1; i < path.size(); i++) {
@@ -1026,14 +1045,12 @@ public class DeepEquals {
             }
             // If it's a normal field name
             else if (cur.fieldName != null) {
-                appendSpaceIfEndsWithBrace(sb2);
                 sb2.append(".").append(cur.fieldName);
             }
             // If it’s array indices
             else if (cur.arrayIndices != null) {
                 for (int idx : cur.arrayIndices) {
                     boolean isArray = cur.difference.name().contains("ARRAY");
-                    appendSpaceIfEndsWithBrace(sb2);
                     sb2.append(isArray ? "[" : "(");
                     sb2.append(idx);
                     sb2.append(isArray ? "]" : ")");
@@ -1049,7 +1066,7 @@ public class DeepEquals {
             sb.append(sb2);
         }
 
-        // 3) Find the most specific mismatch phrase (it will be from the "container" of the difference's pov)
+        // 3) Find the correct mismatch phrase (it will be from the "container" of the difference's pov)
         String mismatchPhrase = getContainingDescription(path);
         return new PathResult(sb.toString(), mismatchPhrase);
     }
@@ -1071,11 +1088,8 @@ public class DeepEquals {
      */
     private static String getContainingDescription(List<ItemsToCompare> path) {
         ListIterator<ItemsToCompare> it = path.listIterator(path.size());
-        if (!it.hasPrevious()) {
-            return null;
-        }
-
         String a = it.previous().difference.getDescription();
+        
         if (it.hasPrevious()) {
             Difference diff = it.previous().difference;
             if (diff != null) {
@@ -1100,23 +1114,7 @@ public class DeepEquals {
             this.mismatchPhrase = mismatchPhrase;
         }
     }
-
-    /**
-     * If the last character in sb is '}', append exactly one space.
-     * Otherwise do nothing.
-     * <p>
-     * This ensures we get:
-     *    Pet {...} .nickNames
-     * instead of
-     *    Pet {...}.nickNames
-     */
-    private static void appendSpaceIfEndsWithBrace(StringBuilder sb) {
-        int len = sb.length();
-        if (len > 0 && sb.charAt(len - 1) == '}') {
-            sb.append(' ');
-        }
-    }
-
+    
     private static void appendSpaceIfNeeded(StringBuilder sb) {
         if (sb.length() > 0) {
             char last = sb.charAt(sb.length() - 1);
@@ -1125,13 +1123,17 @@ public class DeepEquals {
             }
         }
     }
-    
+
     private static Class<?> getCollectionElementType(Collection<?> col) {
         if (col == null || col.isEmpty()) {
             return null;
         }
-        Object first = col.iterator().next();
-        return first != null ? first.getClass() : null;
+        for (Object item : col) {
+            if (item != null) {
+                return item.getClass();
+            }
+        }
+        return null;
     }
     
     private static List<ItemsToCompare> getPath(ItemsToCompare diffItem) {
@@ -1150,6 +1152,9 @@ public class DeepEquals {
         }
 
         DiffCategory category = item.difference.getCategory();
+        if (item.parent.difference != null) {
+            category = item.parent.difference.category;
+        }
         switch (category) {
             case SIZE:
                 result.append(String.format("  Expected size: %d%n  Found size: %d",
@@ -1211,7 +1216,9 @@ public class DeepEquals {
     }
 
     private static String formatValueConcise(Object value) {
-        if (value == null) return "null";
+        if (value == null) {
+            return "null";
+        }
 
         try {
             // Handle collections
@@ -1300,7 +1307,7 @@ public class DeepEquals {
             return value.getClass().getSimpleName();
         }
     }
-    
+
     private static String formatSimpleValue(Object value) {
         if (value == null) return "null";
 
@@ -1327,6 +1334,16 @@ public class DeepEquals {
             TimeZone timeZone = (TimeZone) value;
             return "TimeZone: " + timeZone.getID();
         }
+        if (value instanceof URI) {
+            return value.toString();  // Just the URI string
+        }
+        if (value instanceof URL) {
+            return value.toString();  // Just the URL string
+        }
+        if (value instanceof UUID) {
+            return value.toString();  // Just the UUID string
+        }
+
         // For other types, just show type and toString
         return value.getClass().getSimpleName() + ":" + value;
     }
@@ -1606,10 +1623,7 @@ public class DeepEquals {
     }
 
     private static String formatMapKey(Object key) {
-        // Null key is a valid case
-        if (key == null) {
-            return "null";
-        }
+        if (key == null) return "null";
 
         // If the key is truly a String, keep quotes
         if (key instanceof String) {
@@ -1699,24 +1713,14 @@ public class DeepEquals {
     }
 
     private static Type[] getMapTypes(Map<?, ?> map) {
-        // Try to get generic types from class
+        // Try to get generic types from superclass
         Type type = map.getClass().getGenericSuperclass();
         if (type instanceof ParameterizedType) {
             return ((ParameterizedType) type).getActualTypeArguments();
         }
-        // If no generic type found, try to infer from first non-null entry
-        if (!map.isEmpty()) {
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                Type keyType = entry.getKey() != null ? entry.getKey().getClass() : null;
-                Type valueType = entry.getValue() != null ? entry.getValue().getClass() : null;
-                if (keyType != null && valueType != null) {
-                    return new Type[]{keyType, valueType};
-                }
-            }
-        }
         return null;
     }
-
+    
     private static int getContainerSize(Object container) {
         if (container == null) return 0;
         if (container instanceof Collection) return ((Collection<?>) container).size();

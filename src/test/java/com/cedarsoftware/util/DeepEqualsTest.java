@@ -3,6 +3,9 @@ package com.cedarsoftware.util;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -23,6 +26,7 @@ import java.util.SortedSet;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author John DeRegnaucourt
@@ -1194,6 +1199,480 @@ public class DeepEqualsTest
         assertFalse(DeepEquals.deepEquals(map1, map2));
     }
 
+    @Test
+    void testPrimitiveVsObjectArrays() {
+        int[] primitiveInts = {1, 2, 3};
+        Integer[] objectInts = {1, 2, 3};
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(primitiveInts, objectInts, options),
+                "Primitive int array should equal Integer array with same values");
+    }
+
+    @Test
+    void testArrayComponentTypes() {
+        // Primitive arrays
+        int[] primitiveInts = {1, 2, 3};
+        long[] primitiveLongs = {1L, 2L, 3L};
+        double[] primitiveDoubles = {1.0, 2.0, 3.0};
+
+        // Object arrays
+        Integer[] objectInts = {1, 2, 3};
+        Long[] objectLongs = {1L, 2L, 3L};
+        Double[] objectDoubles = {1.0, 2.0, 3.0};
+
+        Map<String, Object> options = new HashMap<>();
+
+        // Test primitive vs object arrays
+        assertFalse(DeepEquals.deepEquals(primitiveInts, objectInts, options));
+        assertTrue(getDiff(options).contains("array component type mismatch"));
+
+        // Test different primitive arrays
+        assertFalse(DeepEquals.deepEquals(primitiveInts, primitiveLongs, options));
+        assertTrue(getDiff(options).contains("array component type mismatch"));
+
+        // If we want to compare them, we need to use Converter
+        Object convertedArray = Converter.convert(objectInts, int[].class);
+        assertTrue(DeepEquals.deepEquals(primitiveInts, convertedArray, options),
+                "Converted array should equal primitive array");
+    }
+
+    @Test
+    void testArrayConversions() {
+        int[] primitiveInts = {1, 2, 3};
+
+        // Convert to List
+        List<?> asList = Converter.convert(primitiveInts, List.class);
+
+        // Convert back to array
+        int[] backToArray = Converter.convert(asList, int[].class);
+
+        Map<String, Object> options = new HashMap<>();
+        assertTrue(DeepEquals.deepEquals(primitiveInts, backToArray, options),
+                "Round-trip conversion should preserve values");
+    }
+
+    @Test
+    void testMixedNumberArrays() {
+        Number[] numbers = {1, 2.0, 3L};
+        Object converted = Converter.convert(numbers, double[].class);
+
+        double[] doubles = {1.0, 2.0, 3.0};
+
+        Map<String, Object> options = new HashMap<>();
+        assertTrue(DeepEquals.deepEquals(converted, doubles, options),
+                "Converted mixed numbers should equal double array");
+    }
+    
+    @Test
+    void testDifferentCircularReferences() {
+        // Create first circular reference A→B→C→A
+        NodeA a1 = new NodeA();
+        NodeB b1 = new NodeB();
+        NodeC c1 = new NodeC();
+        a1.name = "A";
+        b1.name = "B";
+        c1.name = "C";
+        a1.next = b1;
+        b1.next = c1;
+        c1.next = a1;  // Complete the circle
+
+        // Create second reference A→B→null
+        NodeA a2 = new NodeA();
+        NodeB b2 = new NodeB();
+        a2.name = "A";
+        b2.name = "B";
+        a2.next = b2;
+        b2.next = null;  // Break the chain
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(a1, a2, options));
+        assertTrue(getDiff(options).contains("field value mismatch"));
+    }
+
+    @Test
+    void testDifferentCircularStructures() {
+        // Create first circular reference A→B→C→A
+        NodeA a1 = new NodeA();
+        NodeB b1 = new NodeB();
+        NodeC c1 = new NodeC();
+        a1.name = "A";
+        b1.name = "B";
+        c1.name = "C";
+        a1.next = b1;
+        b1.next = c1;
+        c1.next = a1;  // Complete first circle
+
+        // Create second circular reference A→B→D→A
+        NodeA a2 = new NodeA();
+        NodeB b2 = new NodeB();
+        NodeD d2 = new NodeD();
+        a2.name = "A";
+        b2.name = "B";
+        d2.name = "D";
+        a2.next = b2;
+        b2.next = d2;  // Now legal because NodeD extends NodeC
+        d2.next = a2;  // Complete second circle
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(a1, a2, options));
+        assertTrue(getDiff(options).contains("field value mismatch")); // Should detect C vs D
+    }
+
+    @Test
+    void testComplexCircularWithCollections() {
+        class CircularHolder {
+            String name;
+            Map<CircularHolder, List<CircularHolder>> relations = new HashMap<>();
+        }
+
+        // Build first structure
+        CircularHolder a1 = new CircularHolder();
+        CircularHolder b1 = new CircularHolder();
+        CircularHolder c1 = new CircularHolder();
+        a1.name = "A";
+        b1.name = "B";
+        c1.name = "C";
+
+        // A points to B and C in its list
+        a1.relations.put(b1, Arrays.asList(b1, c1));
+        // B points back to A in its list
+        b1.relations.put(a1, Arrays.asList(a1));
+        // C points to both A and B in its list
+        c1.relations.put(a1, Arrays.asList(a1, b1));
+
+        // Build second structure - same structure but with one different relation
+        CircularHolder a2 = new CircularHolder();
+        CircularHolder b2 = new CircularHolder();
+        CircularHolder c2 = new CircularHolder();
+        a2.name = "A";
+        b2.name = "B";
+        c2.name = "C";
+
+        a2.relations.put(b2, Arrays.asList(b2, c2));
+        b2.relations.put(a2, Arrays.asList(a2));
+        c2.relations.put(b2, Arrays.asList(a2, b2));  // Different from c1 - points to b2 instead of a1
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(a1, a2, options));
+        assertTrue(getDiff(options).contains("missing map key"));
+    }
+
+    @Test
+    void testIgnoreCustomEquals() {
+        class CustomEquals {
+            String field;
+
+            CustomEquals(String field) {
+                this.field = field;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof CustomEquals)) return false;
+                // Intentionally bad equals that always returns true
+                return true;
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(field);
+            }
+        }
+
+        CustomEquals obj1 = new CustomEquals("value1");
+        CustomEquals obj2 = new CustomEquals("value2");  // Different field value
+
+        Map<String, Object> options = new HashMap<>();
+        options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, Collections.emptySet());
+
+        // Should fail because fields are different, even though equals() would return true
+        assertFalse(DeepEquals.deepEquals(obj1, obj2, options));
+        assertTrue(getDiff(options).contains("field value mismatch"));
+    }
+
+    @Test
+    void testNumberComparisonExceptions() {
+        // First catch block - needs to be a BigDecimal comparison with float/double
+        Number badBigDecimal = new BigDecimal("1.0") {
+            @Override
+            public boolean equals(Object o) {
+                return false;  // Ensure we get to comparison logic
+            }
+
+            @Override
+            public double doubleValue() {
+                return 1.0;  // Allow this for the float/double path
+            }
+
+            @Override
+            public int compareTo(BigDecimal val) {
+                throw new ArithmeticException("Forced exception in compareTo");
+            }
+        };
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(badBigDecimal, 1.0, options));  // Compare with double
+
+        // Second catch block - needs to avoid float/double path
+        Number unconvertibleNumber = new Number() {
+            @Override
+            public int intValue() { return 1; }
+
+            @Override
+            public long longValue() { return 1L; }
+
+            @Override
+            public float floatValue() { return 1.0f; }
+
+            @Override
+            public double doubleValue() { return 1.0; }
+
+            @Override
+            public String toString() {
+                throw new ArithmeticException("Can't convert to string");
+            }
+        };
+
+        assertFalse(DeepEquals.deepEquals(unconvertibleNumber, new BigInteger("1"), options));
+    }
+
+    @Test
+    void testNearlyEqualWithTinyNumbers() {
+        // Test with one number being zero
+        Number zero = 0.0;
+        Number almostZero = 1.0e-323;  // Less than epsilon * MIN_NORMAL
+
+        Map<String, Object> options = new HashMap<>();
+        assertTrue(DeepEquals.deepEquals(zero, almostZero, options),
+                "Zero and extremely small number should be considered equal within epsilon");
+
+        // Also test two very small numbers
+        Number tiny1 = 1.0e-323;
+        Number tiny2 = 0.9e-323;
+        assertTrue(DeepEquals.deepEquals(tiny1, tiny2, options),
+                "Two extremely small numbers should be considered equal within epsilon");
+    }
+
+    @Test
+    void testDifferentSizes() {
+        // Test collection size difference
+        List<String> list1 = Arrays.asList("a", "b", "c");
+        List<String> list2 = Arrays.asList("a", "b");
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(list1, list2, options));
+        String diff = getDiff(options);
+        assertTrue(diff.contains("Expected size: 3"));
+        assertTrue(diff.contains("Found size: 2"));
+    }
+
+    @Test
+    void testRootLevelDifference() {
+        // Simple objects that differ at the root level
+        String str1 = "test";
+        Integer int2 = 123;
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(str1, int2, options));
+        String diff = getDiff(options);
+
+        // Or with arrays of different types
+        String[] strArray = {"test"};
+        Integer[] intArray = {123};
+
+        assertFalse(DeepEquals.deepEquals(strArray, intArray, options));
+        diff = getDiff(options);
+    }
+
+    @Test
+    void testNullValueFormatting() {
+        class WithNull {
+            String field = null;
+        }
+
+        WithNull obj1 = new WithNull();
+        WithNull obj2 = new WithNull();
+        obj2.field = "not null";
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(obj1, obj2, options));
+        String diff = getDiff(options);
+        assert diff.contains("field value mismatch");
+        assert diff.contains("Expected: null");
+        assert diff.contains("Found: \"not null\"");
+    }
+
+    // Try with collections too
+    @Test
+    void testNullInCollection() {
+        List<String> list1 = Arrays.asList("a", null, "c");
+        List<String> list2 = Arrays.asList("a", "b", "c");
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(list1, list2, options));
+        String diff = getDiff(options);
+        assert diff.contains("collection element mismatch");
+        assert diff.contains("Expected: null");
+        assert diff.contains("Found: \"b\"");
+    }
+
+    // And with map values
+    @Test
+    void testNullInMap() {
+        Map<String, String> map1 = new HashMap<>();
+        map1.put("key", null);
+
+        Map<String, String> map2 = new HashMap<>();
+        map2.put("key", "value");
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(map1, map2, options));
+        String diff = getDiff(options);
+        assert diff.contains("map value mismatch");
+        assert diff.contains("Expected: null");
+        assert diff.contains("Found: \"value\"");
+    }
+
+    @Test
+    void testOtherSimpleValueFormatting() {
+        // Test with URI
+        URI uri1 = URI.create("http://example.com");
+        URI uri2 = URI.create("http://different.com");
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(uri1, uri2, options));
+        String diff = getDiff(options);
+
+        // Test with UUID
+        UUID uuid1 = UUID.randomUUID();
+        UUID uuid2 = UUID.randomUUID();
+
+        assertFalse(DeepEquals.deepEquals(uuid1, uuid2, options));
+        diff = getDiff(options);
+
+        // Test with URL
+        try {
+            URL url1 = new URL("http://example.com");
+            URL url2 = new URL("http://different.com");
+
+            assertFalse(DeepEquals.deepEquals(url1, url2, options));
+            diff = getDiff(options);
+        } catch (MalformedURLException e) {
+            fail("URL creation failed");
+        }
+    }
+
+    @Test
+    void testMapTypeInference() {
+        // Create a Map implementation that extends a non-generic class
+        // and implements Map without type parameters
+        class NonGenericBase {}
+
+        @SuppressWarnings("rawtypes")
+        class RawMapImpl extends NonGenericBase implements Map {
+            private final Map delegate = new HashMap();
+
+            public int size() { return delegate.size(); }
+            public boolean isEmpty() { return delegate.isEmpty(); }
+            public boolean containsKey(Object key) { return delegate.containsKey(key); }
+            public boolean containsValue(Object value) { return delegate.containsValue(value); }
+            public Object get(Object key) { return delegate.get(key); }
+            public Object put(Object key, Object value) { return delegate.put(key, value); }
+            public Object remove(Object key) { return delegate.remove(key); }
+            public void putAll(Map m) { delegate.putAll(m); }
+            public void clear() { delegate.clear(); }
+            public Set keySet() { return delegate.keySet(); }
+            public Collection values() { return delegate.values(); }
+            public Set entrySet() { return delegate.entrySet(); }
+        }
+
+        @SuppressWarnings("unchecked")
+        Map rawMap = new RawMapImpl();
+        rawMap.put(new Object(), new Object());  // Use distinct objects
+
+        Map<String, Integer> normalMap = new HashMap<>();
+        normalMap.put("key", 123);
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(rawMap, normalMap, options));
+        String diff = getDiff(options);
+    }
+    
+    // Also test with custom Map implementation
+    @Test
+    void testCustomMapTypeInference() {
+        class CustomMap extends HashMap<Object, Object> {
+            // Custom map that doesn't expose generic type info
+        }
+
+        Map<Object, Object> customMap = new CustomMap();
+        customMap.put("key", 123);
+
+        Map<String, Integer> normalMap = new HashMap<>();
+        normalMap.put("key", 456);
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(customMap, normalMap, options));
+        String diff = getDiff(options);
+    }
+    
+    @Test
+    void testCircularWithInheritance() {
+        class Base {
+            String name;
+            Map<Base, List<Base>> relations = new HashMap<>();
+        }
+
+        class Child extends Base {
+            int extra;
+        }
+
+        // Build first structure
+        Base a1 = new Base();
+        Base b1 = new Base();
+        a1.name = "A";
+        b1.name = "B";
+
+        List<Base> list1 = new ArrayList<>();
+        list1.add(new Base());  // Regular Base in the list
+        a1.relations.put(b1, list1);
+        b1.relations.put(a1, Arrays.asList(a1));
+
+        // Build second structure
+        Base a2 = new Base();
+        Base b2 = new Base();
+        a2.name = "A";
+        b2.name = "B";
+
+        List<Base> list2 = new ArrayList<>();
+        list2.add(new Child());  // Child in the list instead of Base
+        a2.relations.put(b2, list2);
+        b2.relations.put(a2, Arrays.asList(a2));
+
+        Map<String, Object> options = new HashMap<>();
+        assertFalse(DeepEquals.deepEquals(a1, a2, options));
+        assertTrue(getDiff(options).contains("collection element mismatch"));
+    }
+    
+    class NodeA {
+        String name;
+        NodeB next;
+    }
+    class NodeB {
+        String name;
+        NodeC next;
+    }
+    class NodeC {
+        String name;
+        NodeA next;  // Completes the circle
+    }
+    class NodeD extends NodeC {
+        String name;
+        NodeA next;  // Different circle
+    }
+    
     private static class ComplexObject {
         private final String name;
         private final Map<String, String> dataMap = new LinkedHashMap<>();
@@ -1409,5 +1888,9 @@ public class DeepEqualsTest
         col.add("whiskey");
         col.add("xray");
         col.add("yankee");
+    }
+
+    String getDiff(Map<String, Object> options) {
+        return (String) options.get(DeepEquals.DIFF);
     }
 }

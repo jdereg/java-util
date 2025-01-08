@@ -1,8 +1,13 @@
 package com.cedarsoftware.util;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.lang.Character.toLowerCase;
 
@@ -713,5 +718,47 @@ public final class StringUtilities {
         }
 
         return input.substring(start, end);
+    }
+
+    /**
+     * Converts a comma-separated string into a {@link Set} of trimmed, non-empty strings.
+     *
+     * <p>
+     * This method splits the provided string by commas, trims whitespace from each resulting substring,
+     * filters out any empty strings, and collects the unique strings into a {@link Set}. If the input string
+     * is {@code null} or empty after trimming, the method returns an empty set.
+     * </p>
+     *
+     * <p>
+     * <b>Usage Example:</b>
+     * </p>
+     * <pre>{@code
+     * String csv = "apple, banana, cherry, apple,  ";
+     * Set<String> fruitSet = commaSeparatedStringToSet(csv);
+     * // fruitSet contains ["apple", "banana", "cherry"]
+     * }</pre>
+     *
+     * <p>
+     * <b>Note:</b> The resulting {@code Set} does not maintain the insertion order. If order preservation is required,
+     * consider using a {@link LinkedHashSet}.
+     * </p>
+     *
+     * @param commaSeparatedString the comma-separated string to convert
+     * @return a {@link Set} containing the trimmed, unique, non-empty substrings from the input string.
+     *         Returns an empty set if the input is {@code null}, empty, or contains only whitespace.
+     *
+     * @throws IllegalArgumentException if the method is modified to disallow {@code null} inputs in the future
+     *
+     * @see String#split(String)
+     * @see Collectors#toSet()
+     */
+    public static Set<String> commaSeparatedStringToSet(String commaSeparatedString) {
+        if (commaSeparatedString == null || commaSeparatedString.trim().isEmpty()) {
+            return Collections.emptySet();
+        }
+        return Arrays.stream(commaSeparatedString.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
     }
 }

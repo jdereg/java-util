@@ -26,12 +26,12 @@ import java.io.Reader;
  */
 public class FastReader extends Reader {
     private Reader in;
-    private char[] buf;
-    private int bufferSize;
-    private int pushbackBufferSize;
+    private final char[] buf;
+    private final int bufferSize;
+    private final int pushbackBufferSize;
     private int position; // Current position in the buffer
     private int limit; // Number of characters currently in the buffer
-    private char[] pushbackBuffer;
+    private final char[] pushbackBuffer;
     private int pushbackPosition; // Current position in the pushback buffer
     private int line = 1;
     private int col = 0;

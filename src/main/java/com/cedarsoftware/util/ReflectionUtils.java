@@ -623,7 +623,7 @@ public final class ReflectionUtils {
 
         for (Field field : fields) {
             String fieldName = field.getName();
-            if (Modifier.isStatic(field.getModifiers()) ||
+            if (Modifier.isStatic(field.getModifiers()) || // field.isSynthetic() ||
                     (field.getDeclaringClass().isEnum() && ("internal".equals(fieldName) || "ENUM$VALUES".equals(fieldName))) ||
                     ("metaClass".equals(fieldName) && "groovy.lang.MetaClass".equals(field.getType().getName())) ||
                     (field.getDeclaringClass().isAssignableFrom(Enum.class) && ("hash".equals(fieldName) || "ordinal".equals(fieldName)))) {
@@ -755,7 +755,7 @@ public final class ReflectionUtils {
      * <pre>
      * List<Field> fields = getAllDeclaredFields(clazz).stream()
      *     .filter(f -> !Modifier.isTransient(f.getModifiers()))
-     *     .filter(f -> !f.getName().startsWith("this$"))
+     *     .filter(f -> !f.isSynthetic())
      *     .collect(Collectors.toList());
      * </pre>
      * This method will be removed in 3.0.0.
@@ -771,7 +771,7 @@ public final class ReflectionUtils {
             // Filter the cached fields according to the old behavior
             return cached.stream()
                     .filter(f -> !Modifier.isTransient(f.getModifiers()))
-                    .filter(f -> !f.getName().startsWith("this$"))
+                    .filter(f -> !f.isSynthetic())
                     .collect(Collectors.toList());
         }
 
@@ -781,51 +781,46 @@ public final class ReflectionUtils {
         // Filter and return according to old behavior
         return Collections.unmodifiableCollection(allFields.stream()
                 .filter(f -> !Modifier.isTransient(f.getModifiers()))
-                .filter(f -> !f.getName().startsWith("this$"))
+                .filter(f -> !f.isSynthetic())
                 .collect(Collectors.toList()));
     }
 
     /**
-     * Return all Fields from a class (including inherited), mapped by String field name
-     * to java.lang.reflect.Field, excluding synthetic "$this" fields and transient fields.
+     * Determines whether the given class has a custom {@code hashCode()} method
+     * distinct from {@code Object.hashCode()}.
      * <p>
-     * Field mapping rules:
-     * <ul>
-     *     <li>Simple field names (e.g., "name") are used when no collision exists</li>
-     *     <li>Qualified names (e.g., "com.example.Parent.name") are used to resolve collisions</li>
-     *     <li>Child class fields take precedence for simple name mapping</li>
-     *     <li>Parent class fields use fully qualified names when shadowed</li>
-     * </ul>
+     * This method helps identify classes that rely on a specialized hashing algorithm,
+     * which can be relevant for certain comparison or hashing scenarios.
+     * </p>
+     *
      * <p>
-     * Excluded fields:
+     * <b>Usage Example:</b>
+     * </p>
+     * <pre>{@code
+     * Class<?> clazz = MyCustomClass.class;
+     * boolean hasCustomHashCode = hasCustomHashCodeMethod(clazz);
+     * System.out.println("Has custom hashCode(): " + hasCustomHashCode);
+     * }</pre>
+     *
+     * <p>
+     * <b>Notes:</b>
+     * </p>
      * <ul>
-     *     <li>Transient fields</li>
-     *     <li>Synthetic "$this" fields for inner classes</li>
-     *     <li>Other synthetic fields</li>
+     *   <li>
+     *     A class is considered to have a custom {@code hashCode()} method if it declares
+     *     its own {@code hashCode()} method that is not inherited directly from {@code Object}.
+     *   </li>
+     *   <li>
+     *     This method does not consider interfaces or abstract classes unless they declare
+     *     a {@code hashCode()} method.
+     *   </li>
      * </ul>
      *
-     * @deprecated As of 2.x.x, replaced by {@link #getAllDeclaredFieldsMap(Class)}.
-     * If you need a map of fields excluding transient and synthetic fields:
-     * <pre>
-     * Map<String, Field> fieldMap = getAllDeclaredFields(clazz).stream()
-     *     .filter(f -> !Modifier.isTransient(f.getModifiers()))
-     *     .filter(f -> !f.getName().startsWith("this$"))
-     *     .collect(Collectors.toMap(
-     *         field -> {
-     *             String name = field.getName();
-     *             return seen.add(name) ? name :
-     *                 field.getDeclaringClass().getName() + "." + name;
-     *         },
-     *         field -> field,
-     *         (existing, replacement) -> replacement,
-     *         LinkedHashMap::new
-     *     ));
-     * </pre>
-     * This method will be removed in 3.0.0 or later.
-     *
-     * @param c Class whose fields are being fetched
-     * @return Map of filtered fields on the Class, keyed by String field name to Field
-     * @throws IllegalArgumentException if the class is null
+     * @param c the class to inspect, must not be {@code null}
+     * @return {@code true} if {@code c} declares its own {@code hashCode()} method,
+     *         {@code false} otherwise
+     * @throws IllegalArgumentException if the provided class {@code c} is {@code null}
+     * @see Object#hashCode()
      */
     @Deprecated
     public static Map<String, Field> getDeepDeclaredFieldMap(Class<?> c) {
@@ -836,8 +831,7 @@ public final class ReflectionUtils {
 
         for (Field field : fields) {
             // Skip transient and synthetic fields
-            if (Modifier.isTransient(field.getModifiers()) ||
-                    field.getName().startsWith("this$")) {
+            if (Modifier.isTransient(field.getModifiers()) || field.isSynthetic()) {
                 continue;
             }
 
@@ -859,7 +853,7 @@ public final class ReflectionUtils {
      * <pre>
      * List<Field> fields = getAllDeclaredFields(clazz).stream()
      *     .filter(f -> !Modifier.isTransient(f.getModifiers()))
-     *     .filter(f -> !f.getName().startsWith("this$"))
+     *     .filter(f -> !f.isSynthetic())
      *     .collect(Collectors.toList());
      * </pre>
      * This method will be removed in 3.0.0 or soon after.
@@ -870,16 +864,15 @@ public final class ReflectionUtils {
             Field[] local = c.getDeclaredFields();
             for (Field field : local) {
                 int modifiers = field.getModifiers();
-                if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) {
+                if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers) || field.isSynthetic()) {
                     continue;
                 }
+                
                 String fieldName = field.getName();
                 if ("metaClass".equals(fieldName) && "groovy.lang.MetaClass".equals(field.getType().getName())) {
                     continue;
                 }
-                if (fieldName.startsWith("this$")) {
-                    continue;
-                }
+
                 if (Modifier.isPublic(modifiers)) {
                     fields.add(field);
                 } else {

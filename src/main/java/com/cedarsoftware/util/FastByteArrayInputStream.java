@@ -24,10 +24,10 @@ import java.io.InputStream;
  */
 public class FastByteArrayInputStream extends InputStream {
 
-    private byte[] buffer;
+    private final byte[] buffer;
     private int pos;
     private int mark = 0;
-    private int count;
+    private final int count;
 
     public FastByteArrayInputStream(byte[] buf) {
         this.buffer = buf;

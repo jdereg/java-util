@@ -2,19 +2,56 @@ package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
- * Java Object Graph traverser.  It will visit all Java object
- * reference fields and call the passed in Visitor instance with
- * each object encountered, including the root.  It will properly
- * detect cycles within the graph and not hang.
+ * A Java Object Graph traverser that visits all object reference fields and invokes a
+ * provided callback for each encountered object, including the root. It properly
+ * detects cycles within the graph to prevent infinite loops.
+ *
+ * <p>
+ * <b>Usage Examples:</b>
+ * </p>
+ *
+ * <p><b>Using the Old API with {@link Traverser.Visitor}:</b></p>
+ * <pre>{@code
+ * // Define a visitor that processes each object
+ * Traverser.Visitor visitor = new Traverser.Visitor() {
+ *     @Override
+ *     public void process(Object o) {
+ *         System.out.println("Visited: " + o);
+ *     }
+ * };
+ *
+ * // Create an object graph and traverse it
+ * SomeClass root = new SomeClass();
+ * Traverser.traverse(root, visitor);
+ * }</pre>
+ *
+ * <p><b>Using the New API with Lambda and {@link Set} of classes to skip:</b></p>
+ * <pre>{@code
+ * // Define classes to skip
+ * Set<Class<?>> classesToSkip = new HashSet<>();
+ * classesToSkip.add(String.class);
+ * classesToSkip.add(Integer.class);
+ *
+ * // Traverse the object graph with a lambda callback
+ * Traverser.traverse(root, classesToSkip, o -> System.out.println("Visited: " + o));
+ * }</pre>
+ *
+ * <p>
+ * <b>Thread Safety:</b> This class is <i>not</i> thread-safe. If multiple threads access
+ * a {@code Traverser} instance concurrently, external synchronization is required.
+ * </p>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -31,198 +68,219 @@ import java.util.Map;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ *
+ * @see ReflectionUtils#getAllDeclaredFields(Class)
  */
-@SuppressWarnings("unchecked")
-public class Traverser
-{
-    public interface  Visitor
-    {
+public class Traverser {
+    /**
+     * A visitor interface to process each object encountered during traversal.
+     * <p>
+     * <b>Note:</b> This interface is deprecated in favor of using lambda expressions
+     * with the new {@code traverse} method.
+     * </p>
+     *
+     * @deprecated Use lambda expressions with {@link #traverse(Object, Set, Consumer)} instead.
+     */
+    @Deprecated
+    @FunctionalInterface
+    public interface Visitor {
+        /**
+         * Processes an encountered object.
+         *
+         * @param o the object to process
+         */
         void process(Object o);
     }
 
-    private final Map<Object, Object> _objVisited = new IdentityHashMap<>();
-    protected final Map<Class, ClassInfo> _classCache = new HashMap<>();
+    // Tracks visited objects to prevent cycles. Uses identity comparison.
+    private final Set<Object> objVisited = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /**
-     * @param o Any Java Object
-     * @param visitor Visitor is called for every object encountered during
-     * the Java object graph traversal.
+     * Traverses the object graph starting from the provided root object.
+     * <p>
+     * This method uses the new API with a {@code Set<Class<?>>} and a lambda expression.
+     * </p>
+     *
+     * @param root            the root object to start traversal
+     * @param classesToSkip   a {@code Set} of {@code Class} objects to skip during traversal; may be {@code null}
+     * @param objectProcessor a lambda expression to process each encountered object
      */
-    public static void traverse(Object o, Visitor visitor)
-    {
-        traverse(o, null, visitor);
+    public static void traverse(Object root, Set<Class<?>> classesToSkip, Consumer<Object> objectProcessor) {
+        if (objectProcessor == null) {
+            throw new IllegalArgumentException("objectProcessor cannot be null");
+        }
+        Traverser traverser = new Traverser();
+        traverser.walk(root, classesToSkip, objectProcessor);
     }
 
     /**
-     * @param o Any Java Object
-     * @param skip String[] of class names to not include in the tally
-     * @param visitor Visitor is called for every object encountered during
-     * the Java object graph traversal.
+     * Traverses the object graph starting from the provided root object.
+     *
+     * @param root    the root object to start traversal
+     * @param visitor the visitor to process each encountered object
+     *
+     * @deprecated Use {@link #traverse(Object, Set, Consumer)} instead with a lambda expression.
      */
-    public static void traverse(Object o, Class<?>[] skip, Visitor visitor)
-    {
-        Traverser traverse = new Traverser();
-        traverse.walk(o, skip, visitor);
-        traverse._objVisited.clear();
-        traverse._classCache.clear();
+    @Deprecated
+    public static void traverse(Object root, Visitor visitor) {
+        traverse(root, (Set<Class<?>>) null, visitor == null ? null : visitor::process);
     }
 
     /**
-     * Traverse the object graph referenced by the passed in root.
-     * @param root Any Java object.
-     * @param skip Set of classes to skip (ignore).  Allowed to be null.
+     * Traverses the object graph starting from the provided root object, skipping specified classes.
+     *
+     * @param root    the root object to start traversal
+     * @param skip    an array of {@code Class} objects to skip during traversal; may be {@code null}
+     * @param visitor the visitor to process each encountered object
+     *
+     * @deprecated Use {@link #traverse(Object, Set, Consumer)} instead with a {@code Set<Class<?>>} and a lambda expression.
      */
-    public void walk(Object root, Class<?>[] skip, Visitor visitor)
-    {
-        Deque stack = new LinkedList();
+    @Deprecated
+    public static void traverse(Object root, Class<?>[] skip, Visitor visitor) {
+        Set<Class<?>> classesToSkip = (skip == null) ? null : new HashSet<>(Arrays.asList(skip));
+        traverse(root, classesToSkip, visitor == null ? null : visitor::process);
+    }
+
+    /**
+     * Traverses the object graph referenced by the provided root.
+     *
+     * @param root            the root object to start traversal
+     * @param classesToSkip   a {@code Set} of {@code Class} objects to skip during traversal; may be {@code null}
+     * @param objectProcessor a lambda expression to process each encountered object
+     */
+    private void walk(Object root, Set<Class<?>> classesToSkip, Consumer<Object> objectProcessor) {
+        if (root == null) {
+            return;
+        }
+
+        Deque<Object> stack = new LinkedList<>();
         stack.add(root);
 
-        while (!stack.isEmpty())
-        {
-            Object current = stack.removeFirst();
+        while (!stack.isEmpty()) {
+            Object current = stack.pollFirst();
 
-            if (current == null || _objVisited.containsKey(current))
-            {
+            if (current == null || objVisited.contains(current)) {
                 continue;
             }
 
-            final Class clazz = current.getClass();
-            ClassInfo classInfo = getClassInfo(clazz, skip);
-            if (classInfo._skip)
-            {  // Do not process any classes that are assignableFrom the skip classes list.
+            Class<?> clazz = current.getClass();
+
+            if (shouldSkipClass(clazz, classesToSkip)) {
                 continue;
             }
 
-            _objVisited.put(current, null);
-            visitor.process(current);
+            objVisited.add(current);
+            objectProcessor.accept(current);
 
-            if (clazz.isArray())
-            {
-                final int len = Array.getLength(current);
-                Class compType = clazz.getComponentType();
-
-                if (!compType.isPrimitive())
-                {   // Speed up: do not walk primitives
-                    ClassInfo info = getClassInfo(compType, skip);
-                    if (!info._skip)
-                    {   // Do not walk array elements of a class type that is to be skipped.
-                        for (int i=0; i < len; i++)
-                        {
-                            Object element = Array.get(current, i);
-                            if (element != null)
-                            {   // Skip processing null array elements
-                                stack.add(Array.get(current, i));
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {   // Process fields of an object instance
-                if (current instanceof Collection)
-                {
-                    walkCollection(stack, (Collection) current);
-                }
-                else if (current instanceof Map)
-                {
-                    walkMap(stack, (Map) current);
-                }
-                else
-                {
-                    walkFields(stack, current, skip);
-                }
+            if (clazz.isArray()) {
+                processArray(stack, current, classesToSkip);
+            } else if (current instanceof Collection) {
+                processCollection(stack, (Collection<?>) current);
+            } else if (current instanceof Map) {
+                processMap(stack, (Map<?, ?>) current);
+            } else {
+                processFields(stack, current, classesToSkip);
             }
         }
-    }
-
-    private void walkFields(Deque stack, Object current, Class<?>[] skip)
-    {
-        ClassInfo classInfo = getClassInfo(current.getClass(), skip);
-
-        for (Field field : classInfo._refFields)
-        {
-            try
-            {
-                Object value = field.get(current);
-                if (value == null || value.getClass().isPrimitive())
-                {
-                    continue;
-                }
-                stack.add(value);
-            }
-            catch (IllegalAccessException ignored) { }
-        }
-    }
-
-    private static void walkCollection(Deque stack, Collection<?> col)
-    {
-        for (Object o : col)
-        {
-            if (o != null && !o.getClass().isPrimitive())
-            {
-                stack.add(o);
-            }
-        }
-    }
-
-    private static void walkMap(Deque stack, Map<?, ?> map)
-    {
-        for (Map.Entry entry : map.entrySet())
-        {
-            Object o = entry.getKey();
-
-            if (o != null && !o.getClass().isPrimitive())
-            {
-                stack.add(entry.getKey());
-                stack.add(entry.getValue());
-            }
-        }
-    }
-
-    private ClassInfo getClassInfo(Class<?> current, Class<?>[] skip)
-    {
-        ClassInfo classCache = _classCache.get(current);
-        if (classCache != null)
-        {
-            return classCache;
-        }
-
-        classCache = new ClassInfo(current, skip);
-        _classCache.put(current, classCache);
-        return classCache;
     }
 
     /**
-     * This class wraps a class in order to cache the fields so they
-     * are only reflectively obtained once.
+     * Determines whether the specified class should be skipped based on the provided skip set.
+     *
+     * @param clazz          the class to check
+     * @param classesToSkip  a {@code Set} of {@code Class} objects to skip; may be {@code null}
+     * @return {@code true} if the class should be skipped; {@code false} otherwise
      */
-    public static class ClassInfo
-    {
-        private boolean _skip = false;
-        private final Collection<Field> _refFields = new ArrayList<>();
+    private boolean shouldSkipClass(Class<?> clazz, Set<Class<?>> classesToSkip) {
+        if (classesToSkip == null) {
+            return false;
+        }
 
-        public ClassInfo(Class<?> c, Class<?>[] skip)
-        {
-            if (skip != null)
-            {
-                for (Class<?> klass : skip)
-                {
-                    if (klass.isAssignableFrom(c))
-                    {
-                        _skip = true;
-                        return;
-                    }
+        for (Class<?> skipClass : classesToSkip) {
+            if (skipClass.isAssignableFrom(clazz)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Processes array elements, adding non-primitive and non-skipped elements to the stack.
+     *
+     * @param stack           the traversal stack
+     * @param array           the array object to process
+     * @param classesToSkip   a {@code Set} of {@code Class} objects to skip during traversal; may be {@code null}
+     */
+    private void processArray(Deque<Object> stack, Object array, Set<Class<?>> classesToSkip) {
+        int length = Array.getLength(array);
+        Class<?> componentType = array.getClass().getComponentType();
+
+        if (!componentType.isPrimitive()) { // Skip primitive arrays
+            for (int i = 0; i < length; i++) {
+                Object element = Array.get(array, i);
+                if (element != null && !shouldSkipClass(element.getClass(), classesToSkip)) {
+                    stack.addFirst(element);
                 }
             }
+        }
+    }
 
-            Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(c);
-            for (Field field : fields)
-            {
-                Class<?> fc = field.getType();
+    /**
+     * Processes elements of a {@link Collection}, adding non-primitive and non-skipped elements to the stack.
+     *
+     * @param stack        the traversal stack
+     * @param collection   the collection to process
+     */
+    private void processCollection(Deque<Object> stack, Collection<?> collection) {
+        for (Object element : collection) {
+            if (element != null && !element.getClass().isPrimitive()) {
+                stack.addFirst(element);
+            }
+        }
+    }
 
-                if (!fc.isPrimitive())
-                {
-                    _refFields.add(field);
+    /**
+     * Processes entries of a {@link Map}, adding non-primitive keys and values to the stack.
+     *
+     * @param stack    the traversal stack
+     * @param map      the map to process
+     */
+    private void processMap(Deque<Object> stack, Map<?, ?> map) {
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+
+            if (key != null && !key.getClass().isPrimitive()) {
+                stack.addFirst(key);
+            }
+            if (value != null && !value.getClass().isPrimitive()) {
+                stack.addFirst(value);
+            }
+        }
+    }
+
+    /**
+     * Processes the fields of an object, adding non-primitive field values to the stack.
+     *
+     * @param stack           the traversal stack
+     * @param object          the object whose fields are to be processed
+     * @param classesToSkip   a {@code Set} of {@code Class} objects to skip during traversal; may be {@code null}
+     */
+    private void processFields(Deque<Object> stack, Object object, Set<Class<?>> classesToSkip) {
+        Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(object.getClass());
+
+        for (Field field : fields) {
+            Class<?> fieldType = field.getType();
+
+            if (!fieldType.isPrimitive()) { // Only process reference fields
+                try {
+                    Object value = field.get(object);
+                    if (value != null && !shouldSkipClass(value.getClass(), classesToSkip)) {
+                        stack.addFirst(value);
+                    }
+                } catch (IllegalAccessException e) {
+                    // Optionally log inaccessible fields
+                    // For now, we'll ignore inaccessible fields
                 }
             }
         }

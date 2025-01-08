@@ -189,10 +189,10 @@ public class DeepEquals {
      * Performs a deep comparison between two objects, going beyond a simple {@code equals()} check.
      * <p>
      * This method is functionally equivalent to calling
-     * {@link #deepEquals(Object, Object, Map) deepEquals(a, b, new HashMap<>())},
+     * {@link #deepEquals(Object, Object, Map) deepEquals(a, b, new HashMap&lt;&gt;())},
      * which means it uses no additional comparison options. In other words:
      * <ul>
-     *   <li>{@code IGNORE_CUSTOM_EQUALS} is not set (all custom equals() methods are used)</li>
+     *   <li>{@code IGNORE_CUSTOM_EQUALS} is not set (all custom {@code equals()} methods are used)</li>
      *   <li>{@code ALLOW_STRINGS_TO_MATCH_NUMBERS} defaults to {@code false}</li>
      * </ul>
      * </p>
@@ -806,13 +806,38 @@ public class DeepEquals {
      * Determines whether the given class has a custom {@code hashCode()} method
      * distinct from {@code Object.hashCode()}.
      * <p>
-     * This can help identify classes that rely on a specialized hashing algorithm,
-     * potentially relevant for certain comparison or hashing scenarios.
+     * This method helps identify classes that rely on a specialized hashing algorithm,
+     * which can be relevant for certain comparison or hashing scenarios.
      * </p>
+     *
+     * <p>
+     * <b>Usage Example:</b>
+     * </p>
+     * <pre>{@code
+     * Class<?> clazz = MyCustomClass.class;
+     * boolean hasCustomHashCode = hasCustomHashCodeMethod(clazz);
+     * System.out.println("Has custom hashCode(): " + hasCustomHashCode);
+     * }</pre>
+     *
+     * <p>
+     * <b>Notes:</b>
+     * </p>
+     * <ul>
+     *   <li>
+     *     A class is considered to have a custom {@code hashCode()} method if it declares
+     *     its own {@code hashCode()} method that is not inherited directly from {@code Object}.
+     *   </li>
+     *   <li>
+     *     This method does not consider interfaces or abstract classes unless they declare
+     *     a {@code hashCode()} method.
+     *   </li>
+     * </ul>
      *
      * @param c the class to inspect, must not be {@code null}
      * @return {@code true} if {@code c} declares its own {@code hashCode()} method,
      *         {@code false} otherwise
+     * @throws IllegalArgumentException if the provided class {@code c} is {@code null}
+     * @see Object#hashCode()
      */
     public static boolean hasCustomHashCode(Class<?> c) {
         Method hashCode = ReflectionUtils.getMethod(c, "hashCode");   // cached

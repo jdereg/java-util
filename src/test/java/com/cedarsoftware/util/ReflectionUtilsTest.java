@@ -225,17 +225,17 @@ public class ReflectionUtilsTest
     }
 
     @Test
-    public void testDeepDeclaredFieldMap() throws Exception
+    public void testAllDeclaredFieldsMap() throws Exception
     {
         Calendar c = Calendar.getInstance();
-        Map<String, Field> fields = ReflectionUtils.getDeepDeclaredFieldMap(c.getClass());
+        Map<String, Field> fields = ReflectionUtils.getAllDeclaredFieldsMap(c.getClass());
         assertTrue(fields.size() > 0);
         assertTrue(fields.containsKey("firstDayOfWeek"));
         assertFalse(fields.containsKey("blart"));
 
 
-        Map<String, Field> test2 = ReflectionUtils.getDeepDeclaredFieldMap(Child.class);
-        assertEquals(2, test2.size());
+        Map<String, Field> test2 = ReflectionUtils.getAllDeclaredFieldsMap(Child.class);
+        assertEquals(4, test2.size());
         assertTrue(test2.containsKey("com.cedarsoftware.util.ReflectionUtilsTest$Parent.foo"));
         assertFalse(test2.containsKey("com.cedarsoftware.util.ReflectionUtilsTest$Child.foo"));
     }
@@ -718,7 +718,7 @@ public class ReflectionUtilsTest
 
     @Test
     void testGetDeepDeclaredFieldMap() {
-        Map<String, Field> fieldMap = ReflectionUtils.getDeepDeclaredFieldMap(TestClass.class);
+        Map<String, Field> fieldMap = ReflectionUtils.getAllDeclaredFieldsMap(TestClass.class);
         assertEquals(2, fieldMap.size());
         assertTrue(fieldMap.containsKey("field1"));
         assertTrue(fieldMap.containsKey("field2"));

@@ -916,7 +916,7 @@ public class GraphComparator
                 continue;
             }
 
-            Map<String, Field> fields = ReflectionUtils.getDeepDeclaredFieldMap(srcValue.getClass());
+            Map<String, Field> fields = ReflectionUtils.getAllDeclaredFieldsMap(srcValue.getClass());
             Field field = fields.get(delta.fieldName);
             if (field == null && OBJECT_ORPHAN != delta.cmd)
             {

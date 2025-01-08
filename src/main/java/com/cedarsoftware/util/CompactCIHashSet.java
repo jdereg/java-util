@@ -1,13 +1,46 @@
 package com.cedarsoftware.util;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Set;
 
 /**
- * Similar to CompactSet, except that it uses a HashSet as delegate Set when
- * more than compactSize() elements are held.
+ * @deprecated As of release 2.19.0, replaced by {@link CompactSet} with builder configurations.
+ *             This class is no longer recommended for use and may be removed in future releases.
+ *             <p>
+ *             Similar to {@link CompactSet}, but it is configured to be case-insensitive.
+ *             Instead of using this subclass, please utilize {@link CompactSet} with the builder
+ *             to configure case insensitivity and other desired behaviors.
+ *             </p>
+ *             <p>
+ *             Example migration:
+ *             </p>
+ *             <pre>{@code
+ * // Deprecated usage:
+ * CompactCIHashSet<String> ciHashSet = new CompactCIHashSet<>();
+ * ciHashSet.add("Apple");
+ * assert ciHashSet.contains("APPLE"); // true
+ *
+ * // Recommended replacement:
+ * CompactSet<String> compactSet = CompactSet.<String>builder()
+ *     .caseSensitive(false)
+ *     .compactSize(70) // or desired size
+ *     .build();
+ * compactSet.add("Apple");
+ * assert compactSet.contains("APPLE"); // true
+ * }</pre>
+ *
+ * <p>
+ * This approach reduces the need for multiple specialized subclasses and leverages the
+ * flexible builder pattern to achieve the desired configurations.
+ * </p>
+ *
+ * @param <E> the type of elements maintained by this set
+ *
+ * @author
+ *         John DeRegnaucourt (jdereg@gmail.com)
+ *
+ * @see CompactSet
+ * @see CompactSet.Builder
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -25,14 +58,65 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CompactCIHashSet<E> extends CompactSet<E>
-{
-    public CompactCIHashSet() { }
-    public CompactCIHashSet(Collection<E> other) { super(other); }
+@Deprecated
+public class CompactCIHashSet<E> extends CompactSet<E> {
 
     /**
-     * @return new empty Set instance to use when size() becomes {@literal >} compactSize().
+     * Constructs an empty {@code CompactCIHashSet} with case-insensitive configuration.
+     * <p>
+     * Specifically, it sets the set to be case-insensitive.
+     * </p>
+     *
+     * @throws IllegalArgumentException if {@link #compactSize()} returns a value less than 2
      */
-    protected Set<E> getNewSet() { return new CaseInsensitiveSet<>(Collections.emptySet(), new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>(compactSize() + 1))); }
-    protected boolean isCaseInsensitive() { return true; }
+    public CompactCIHashSet() {
+        // Initialize the superclass with a pre-configured CompactMap using the builder
+        super(CompactMap.<E, Object>builder()
+                .caseSensitive(false) // case-insensitive
+                .build());
+    }
+
+    /**
+     * Constructs a {@code CompactCIHashSet} containing the elements of the specified collection.
+     * <p>
+     * The set will be case-insensitive.
+     * </p>
+     *
+     * @param other the collection whose elements are to be placed into this set
+     * @throws NullPointerException if the specified collection is null
+     * @throws IllegalArgumentException if {@link #compactSize()} returns a value less than 2
+     */
+    public CompactCIHashSet(Collection<E> other) {
+        // Initialize the superclass with a pre-configured CompactMap using the builder
+        super(CompactMap.<E, Object>builder()
+                .caseSensitive(false) // case-insensitive
+                .build());
+        // Add all elements from the provided collection
+        addAll(other);
+    }
+
+    /**
+     * Indicates that this set is case-insensitive.
+     *
+     * @return {@code true} to denote case-insensitive behavior
+     */
+    @Override
+    protected boolean isCaseInsensitive() {
+        return true;
+    }
+
+    /**
+     * @deprecated This method is no longer used and has been removed.
+     *             It is retained here only to maintain backward compatibility with existing subclasses.
+     *             New implementations should use the builder pattern to configure {@link CompactSet}.
+     *
+     * @return {@code null} as this method is deprecated and no longer functional
+     */
+    @Deprecated
+    @Override
+    protected Set<E> getNewSet() {
+        // Deprecated method; no longer used in the new CompactSet implementation.
+        // Returning null to indicate it has no effect.
+        return null;
+    }
 }

@@ -1,52 +1,38 @@
 package com.cedarsoftware.util;
 
-import java.lang.reflect.Constructor;
-import java.util.AbstractSet;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Objects;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * A memory-efficient Set implementation that optimizes storage based on size.
+ * A memory-efficient Set implementation that internally uses {@link CompactMap}.
  * <p>
- * CompactSet strives to minimize memory usage while maintaining performance close to that of a {@link HashSet}.
- * It uses a single instance variable of type Object and dynamically changes its internal representation as the set grows,
- * achieving memory savings without sacrificing speed for typical use cases.
+ * This implementation provides the same memory benefits as CompactMap while
+ * maintaining proper Set semantics. It can be configured for:
+ * <ul>
+ *     <li>Case sensitivity for String elements</li>
+ *     <li>Element ordering (sorted, reverse, insertion)</li>
+ *     <li>Custom compact size threshold</li>
+ * </ul>
  * </p>
  *
- * <h2>Storage Strategy</h2>
- * The set uses different internal representations based on size:
- * <ul>
- *   <li><b>Empty (size=0):</b> Single sentinel value</li>
- *   <li><b>Single Entry (size=1):</b> Directly stores the single element</li>
- *   <li><b>Multiple Entries (2 ≤ size ≤ compactSize()):</b> Single Object[] to store elements</li>
- *   <li><b>Large Sets (size > compactSize()):</b> Delegates to a standard Set implementation</li>
- * </ul>
- *
- * <h2>Customization Points</h2>
- * The following methods can be overridden to customize behavior:
- *
+ * <h2>Creating a CompactSet</h2>
  * <pre>{@code
- * // Set implementation for large sets (size > compactSize)
- * protected Set<E> getNewSet() { return new HashSet<>(); }
+ * // Create a case-insensitive, sorted CompactSet
+ * CompactSet<String> set = CompactSet.<String>builder()
+ *     .caseSensitive(false)
+ *     .sortedOrder()
+ *     .compactSize(80)
+ *     .build();
  *
- * // Enable case-insensitive element comparison
- * protected boolean isCaseInsensitive() { return false; }
- *
- * // Threshold at which to switch to standard Set implementation
- * protected int compactSize() { return 80; }
+ * // Create a CompactSet with insertion ordering
+ * CompactSet<String> ordered = CompactSet.<String>builder()
+ *     .insertionOrder()
+ *     .build();
  * }</pre>
  *
- * <h2>Additional Notes</h2>
- * <ul>
- *   <li>Supports null elements if the backing Set implementation does</li>
- *   <li>Thread safety depends on the backing Set implementation</li>
- *   <li>Particularly memory efficient for sets of size 0-1</li>
- * </ul>
- *
- * @param <E> The type of elements maintained by this set
+ * @param <E> the type of elements maintained by this set
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -63,265 +49,289 @@ import java.util.Set;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
- * @see HashSet
  */
-public class CompactSet<E> extends AbstractSet<E>
-{
-    private static final String EMPTY_SET = "_︿_ψ_☼";
-    private static final String NO_ENTRY = EMPTY_SET;
-    private Object val = EMPTY_SET;
+public class CompactSet<E> implements Set<E> {
 
-    public CompactSet()
-    {
-        if (compactSize() < 2)
-        {
+    /**
+     * A special marker object stored in the map for each key.
+     * Using a single static instance to avoid per-entry overhead.
+     */
+    private static final Object PRESENT = new Object();
+
+    /**
+     * The one and only data structure: a CompactMap whose keys represent the set elements.
+     */
+    private final CompactMap<E, Object> map;
+
+    /**
+     * Constructs an empty CompactSet with the default configuration (i.e., default CompactMap).
+     * <p>
+     * This uses the no-arg CompactMap constructor, which typically yields:
+     * <ul>
+     *   <li>caseSensitive = true</li>
+     *   <li>compactSize = 70</li>
+     *   <li>unordered</li>
+     * </ul>
+     * <p>
+     * If you want custom config, use the {@link Builder} instead.
+     *
+     * @throws IllegalStateException if {@link #compactSize()} returns a value less than 2
+     */
+    public CompactSet() {
+        // Utilize the overridden compactSize() from subclasses
+        CompactMap<E, Object> defaultMap = CompactMap.<E, Object>builder()
+                .compactSize(this.compactSize())
+                .caseSensitive(!isCaseInsensitive())
+                .build();
+
+        if (defaultMap.compactSize() < 2) {
             throw new IllegalStateException("compactSize() must be >= 2");
         }
-    }
 
-    public CompactSet(Collection<E> other)
-    {
-        this();
-        addAll(other);
-    }
-
-    public int size()
-    {
-        if (val instanceof Object[])
-        {   // 1 to compactSize
-            return ((Object[])val).length;
-        }
-        else if (val instanceof Set)
-        {   // > compactSize
-            return ((Set)val).size();
-        }
-        // empty
-        return 0;
-    }
-
-    public boolean isEmpty()
-    {
-        return val == EMPTY_SET;
-    }
-
-    private boolean compareItems(Object item, Object anItem)
-    {
-        if (item instanceof String)
-        {
-            if (anItem instanceof String)
-            {
-                if (isCaseInsensitive())
-                {
-                    return ((String)anItem).equalsIgnoreCase((String) item);
-                }
-                else
-                {
-                    return anItem.equals(item);
-                }
-            }
-            return false;
-        }
-
-        return Objects.equals(item, anItem);
-    }
-
-    @SuppressWarnings("unchecked")
-    public boolean contains(Object item)
-    {
-        if (val instanceof Object[])
-        {   // 1 to compactSize
-            Object[] entries = (Object[]) val;
-            for (Object entry : entries)
-            {
-                if (compareItems(item, entry))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        else if (val instanceof Set)
-        {   // > compactSize
-            Set<E> set = (Set<E>) val;
-            return set.contains(item);
-        }
-        // empty
-        return false;
-    }
-
-    @SuppressWarnings("unchecked")
-    public Iterator<E> iterator()
-    {
-        return new Iterator<E>()
-        {
-            final Iterator<E> iter = getCopy().iterator();
-            E currentEntry = (E) NO_ENTRY;
-
-            public boolean hasNext() { return iter.hasNext(); }
-            
-            public E next()
-            {
-                currentEntry = iter.next();
-                return currentEntry;
-            }
-
-            public void remove()
-            {
-                if (currentEntry == NO_ENTRY)
-                {   // remove() called on iterator
-                    throw new IllegalStateException("remove() called on an Iterator before calling next()");
-                }
-                CompactSet.this.remove(currentEntry);
-                currentEntry = (E)NO_ENTRY;
-            }
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Set<E> getCopy()
-    {
-        Set<E> copy = getNewSet(size());   // Use their Set (TreeSet, HashSet, LinkedHashSet, etc.)
-        if (val instanceof Object[])
-        {   // 1 to compactSize - copy Object[] into Set
-            Object[] entries = (Object[]) CompactSet.this.val;
-            for (Object entry : entries)
-            {
-                copy.add((E) entry);
-            }
-        }
-        else if (val instanceof Set)
-        {   // > compactSize - addAll to copy
-            copy.addAll((Set<E>)CompactSet.this.val);
-        }
-//        else
-//        {   // empty - nothing to copy
-//        }
-        return copy;
-    }
-
-    @SuppressWarnings("unchecked")
-    public boolean add(E item)
-    {
-        if (val instanceof Object[])
-        {   // 1 to compactSize
-            if (contains(item))
-            {
-                return false;
-            }
-
-            Object[] entries = (Object[]) val;
-            if (size() < compactSize())
-            {   // Grow array
-                Object[] expand = new Object[entries.length + 1];
-                System.arraycopy(entries, 0, expand, 0, entries.length);
-                // Place new entry at end
-                expand[expand.length - 1] = item;
-                val = expand;
-            }
-            else
-            {   // Switch to Map - copy entries
-                Set<E> set = getNewSet(size() + 1);
-                entries = (Object[]) val;
-                for (Object anItem : entries)
-                {
-                    set.add((E) anItem);
-                }
-                // Place new entry
-                set.add(item);
-                val = set;
-            }
-            return true;
-        }
-        else if (val instanceof Set)
-        {   // > compactSize
-            Set<E> set = (Set<E>) val;
-            return set.add(item);
-        }
-        // empty
-        val = new Object[] { item };
-        return true;
-    }
-
-    @SuppressWarnings("unchecked")
-    public boolean remove(Object item)
-    {
-        if (val instanceof Object[])
-        {
-            Object[] local = (Object[]) val;
-            final int len = local.length;
-
-            for (int i=0; i < len; i++)
-            {
-                if (compareItems(local[i], item))
-                {
-                    if (len == 1)
-                    {
-                        val = EMPTY_SET;
-                    }
-                    else
-                    {
-                        Object[] newElems = new Object[len - 1];
-                        System.arraycopy(local, i + 1, local, i, len - i - 1);
-                        System.arraycopy(local, 0, newElems, 0, len - 1);
-                        val = newElems;
-                    }
-                    return true;
-                }
-            }
-            return false;    // not found
-        }
-        else if (val instanceof Set)
-        {   // > compactSize
-            Set<E> set = (Set<E>) val;
-            if (!set.contains(item))
-            {
-                return false;
-            }
-            boolean removed = set.remove(item);
-
-            if (set.size() == compactSize())
-            {   // Down to compactSize, need to switch to Object[]
-                Object[] entries = new Object[compactSize()];
-                Iterator<E> i = set.iterator();
-                int idx = 0;
-                while (i.hasNext())
-                {
-                    entries[idx++] = i.next();
-                }
-                val = entries;
-            }
-            return removed;
-        }
-        
-        // empty
-        return false;
-    }
-
-    public void clear()
-    {
-        val = EMPTY_SET;
+        this.map = defaultMap;
     }
 
     /**
-     * @return new empty Set instance to use when size() becomes {@literal >} compactSize().
+     * Constructs a CompactSet with a pre-existing CompactMap (usually from a builder).
+     *
+     * @param map the underlying CompactMap to store elements
      */
-    protected Set<E> getNewSet() { return new HashSet<>(compactSize() + 1); }
-    
-    @SuppressWarnings("unchecked")
-    protected Set<E> getNewSet(int size)
-    {
-        Set<E> set = getNewSet();
-        try
-        {   // Extra step here is to get a Map of the same type as above, with the "size" already established
-            // which saves the time of growing the internal array dynamically.
-            Constructor<?> constructor = ReflectionUtils.getConstructor(set.getClass(), Integer.TYPE);
-            return (Set<E>) constructor.newInstance(size);
+    protected CompactSet(CompactMap<E, Object> map) {
+        if (map.compactSize() < 2) {
+            throw new IllegalStateException("compactSize() must be >= 2");
         }
-        catch (Exception ignored)
-        {
-            return set;
+        this.map = map;
+    }
+
+    /**
+     * Constructs a CompactSet containing the elements of the specified collection,
+     * using the default CompactMap configuration.
+     *
+     * @param c the collection whose elements are to be placed into this set
+     * @throws NullPointerException if the specified collection is null
+     */
+    public CompactSet(Collection<? extends E> c) {
+        this();
+        addAll(c);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /*                Implementation of Set<E> methods                   */
+    /* ----------------------------------------------------------------- */
+
+    @Override
+    public int size() {
+        return map.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return map.isEmpty();
+    }
+
+    @Override
+    public boolean contains(Object o) {
+        return map.containsKey(o);
+    }
+
+    @Override
+    public boolean add(E e) {
+        // If map.put(e, PRESENT) returns null, the key was not in the map
+        // => we effectively added a new element => return true
+        // else we replaced an existing key => return false (no change)
+        return map.put(e, PRESENT) == null;
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        // If map.remove(o) != null, the key existed => return true
+        // else the key wasn't there => return false
+        return map.remove(o) != null;
+    }
+
+    @Override
+    public void clear() {
+        map.clear();
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> c) {
+        // We can just leverage map.keySet().containsAll(...)
+        return map.keySet().containsAll(c);
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends E> c) {
+        boolean modified = false;
+        for (E e : c) {
+            if (add(e)) {
+                modified = true;
+            }
+        }
+        return modified;
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> c) {
+        // Again, rely on keySet() to do the heavy lifting
+        return map.keySet().retainAll(c);
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        return map.keySet().removeAll(c);
+    }
+
+    @Override
+    public Iterator<E> iterator() {
+        // We can simply return map.keySet().iterator()
+        return map.keySet().iterator();
+    }
+
+    @Override
+    public Object[] toArray() {
+        return map.keySet().toArray();
+    }
+
+    @Override
+    @SuppressWarnings("SuspiciousToArrayCall")
+    public <T> T[] toArray(T[] a) {
+        return map.keySet().toArray(a);
+    }
+
+    /* ----------------------------------------------------------------- */
+    /*              Object overrides (equals, hashCode, etc.)            */
+    /* ----------------------------------------------------------------- */
+
+    @Override
+    public boolean equals(Object o) {
+        // Let keySet() handle equality checks for us
+        return map.keySet().equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return map.keySet().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return map.keySet().toString();
+    }
+
+    /**
+     * Returns a builder for creating customized CompactSet instances.
+     *
+     * @param <E> the type of elements in the set
+     * @return a new Builder instance
+     */
+    public static <E> Builder<E> builder() {
+        return new Builder<>();
+    }
+
+    /**
+     * Builder for creating CompactSet instances with custom configurations.
+     * <p>
+     * Internally, the builder configures a {@link CompactMap} (with &lt;E, Object&gt;).
+     */
+    public static final class Builder<E> {
+        private final CompactMap.Builder<E, Object> mapBuilder;
+
+        private Builder() {
+            // Build a map for our set
+            this.mapBuilder = CompactMap.builder();
+        }
+
+        /**
+         * Sets whether String elements should be compared case-sensitively.
+         * @param caseSensitive if false, do case-insensitive compares
+         */
+        public Builder<E> caseSensitive(boolean caseSensitive) {
+            mapBuilder.caseSensitive(caseSensitive);
+            return this;
+        }
+
+        /**
+         * Sets the maximum size for compact array storage.
+         */
+        public Builder<E> compactSize(int size) {
+            mapBuilder.compactSize(size);
+            return this;
+        }
+
+        /**
+         * Configures the set to maintain elements in natural sorted order.
+         * <p>Requires elements to be {@link Comparable}</p>
+         */
+        public Builder<E> sortedOrder() {
+            mapBuilder.sortedOrder();
+            return this;
+        }
+
+        /**
+         * Configures the set to maintain elements in reverse sorted order.
+         * <p>Requires elements to be {@link Comparable}</p>
+         */
+        public Builder<E> reverseOrder() {
+            mapBuilder.reverseOrder();
+            return this;
+        }
+
+        /**
+         * Configures the set to maintain elements in insertion order.
+         */
+        public Builder<E> insertionOrder() {
+            mapBuilder.insertionOrder();
+            return this;
+        }
+
+        /**
+         * Configures the set to maintain elements in no specific order, like a HashSet.
+         */
+        public Builder<E> noOrder() {
+            mapBuilder.noOrder();
+            return this;
+        }
+
+        /**
+         * Creates a new CompactSet with the configured options.
+         */
+        public CompactSet<E> build() {
+            // Build the underlying map, then wrap it in a new CompactSet
+            CompactMap<E, Object> builtMap = mapBuilder.build();
+            return new CompactSet<>(builtMap);
         }
     }
-    protected boolean isCaseInsensitive() { return false; }
-    protected int compactSize() { return 80; }
+
+    /* ----------------------------------------------------------------- */
+    /*         Optional: Legacy hooks (as in your existing code)         */
+    /* ----------------------------------------------------------------- */
+
+    /**
+     * @deprecated Use {@link Builder#compactSize(int)} instead.
+     * Maintained for backward compatibility with existing subclasses.
+     */
+    @Deprecated
+    protected int compactSize() {
+        // Typically 70 is the default. You can override as needed.
+        return 70;
+    }
+
+    /**
+     * @deprecated Use {@link Builder#caseSensitive(boolean)} instead.
+     * Maintained for backward compatibility with existing subclasses.
+     */
+    @Deprecated
+    protected boolean isCaseInsensitive() {
+        return false;  // default to case-sensitive, for legacy
+    }
+
+    /**
+     * @deprecated Legacy method. Subclasses should configure CompactSet using the builder pattern instead.
+     * Maintained for backward compatibility with existing subclasses.
+     */
+    @Deprecated
+    protected Set<E> getNewSet() {
+        return new LinkedHashSet<>(2);
+    }
 }

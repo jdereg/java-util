@@ -3,7 +3,9 @@ package com.cedarsoftware.util.convert;
 import java.lang.reflect.Array;
 import java.util.Collection;
 
+import static com.cedarsoftware.util.CollectionUtilities.getSynchronizedCollection;
 import static com.cedarsoftware.util.CollectionUtilities.getUnmodifiableCollection;
+import static com.cedarsoftware.util.CollectionUtilities.isSynchronized;
 import static com.cedarsoftware.util.CollectionUtilities.isUnmodifiable;
 import static com.cedarsoftware.util.convert.CollectionHandling.createCollection;
 
@@ -54,6 +56,7 @@ public final class CollectionConversions {
 
         // Determine if the target type requires unmodifiable behavior
         boolean requiresUnmodifiable = isUnmodifiable(targetType);
+        boolean requiresSynchronized = isSynchronized(targetType);
 
         // Create the appropriate collection using CollectionHandling
         Collection<Object> collection = (Collection<Object>) createCollection(array, targetType);
@@ -71,7 +74,13 @@ public final class CollectionConversions {
         }
 
         // If wrapping is required, return the wrapped version
-        return requiresUnmodifiable ? getUnmodifiableCollection(collection) : collection;
+        if (requiresUnmodifiable) {
+            return getUnmodifiableCollection(collection);
+        }
+        if (requiresSynchronized) {
+            return getSynchronizedCollection(collection);
+        }
+        return collection;
     }
 
     /**
@@ -85,6 +94,7 @@ public final class CollectionConversions {
     public static Object collectionToCollection(Collection<?> source, Class<?> targetType) {
         // Determine if the target type requires unmodifiable behavior
         boolean requiresUnmodifiable = isUnmodifiable(targetType);
+        boolean requiresSynchronized = isSynchronized(targetType);
 
         // Create a modifiable collection of the specified target type
         Collection<Object> targetCollection = (Collection<Object>) createCollection(source, targetType);
@@ -99,6 +109,12 @@ public final class CollectionConversions {
         }
 
         // If wrapping is required, return the wrapped version
-        return requiresUnmodifiable ? getUnmodifiableCollection(targetCollection) : targetCollection;
+        if (requiresUnmodifiable) {
+            return getUnmodifiableCollection(targetCollection);
+        }
+        if (requiresSynchronized) {
+            return getSynchronizedCollection(targetCollection);
+        }
+        return targetCollection;
     }
 }

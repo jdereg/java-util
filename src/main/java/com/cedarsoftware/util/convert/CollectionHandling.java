@@ -37,9 +37,6 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.function.Function;
 
 import com.cedarsoftware.util.CaseInsensitiveSet;
-import com.cedarsoftware.util.CompactCIHashSet;
-import com.cedarsoftware.util.CompactCILinkedSet;
-import com.cedarsoftware.util.CompactLinkedSet;
 import com.cedarsoftware.util.CompactSet;
 import com.cedarsoftware.util.ConcurrentNavigableSetNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
@@ -162,15 +159,12 @@ final class CollectionHandling {
     private static void initializeBaseFactories() {
         // Case-insensitive collections (java-util)
         BASE_FACTORIES.put(CaseInsensitiveSet.class, size -> new CaseInsensitiveSet<>());
-        BASE_FACTORIES.put(CompactCILinkedSet.class, size -> new CompactCILinkedSet<>());
-        BASE_FACTORIES.put(CompactCIHashSet.class, size -> new CompactCIHashSet<>());
 
         // Concurrent collections (java-util)
         BASE_FACTORIES.put(ConcurrentNavigableSetNullSafe.class, size -> new ConcurrentNavigableSetNullSafe<>());
         BASE_FACTORIES.put(ConcurrentSet.class, size -> new ConcurrentSet<>());
 
         // Compact collections (java-util)
-        BASE_FACTORIES.put(CompactLinkedSet.class, size -> new CompactLinkedSet<>());
         BASE_FACTORIES.put(CompactSet.class, size -> new CompactSet<>());
 
         // JDK Concurrent collections
@@ -304,16 +298,7 @@ final class CollectionHandling {
     private static Set<?> createOptimalSet(Object source, int size) {
         if (source instanceof CaseInsensitiveSet) {
             return new CaseInsensitiveSet<>();
-        }
-        if (source instanceof CompactCILinkedSet) {
-            return new CompactCILinkedSet<>();
-        }
-        if (source instanceof CompactCIHashSet) {
-            return new CompactCIHashSet<>();
-        }
-        if (source instanceof CompactLinkedSet) {
-            return new CompactLinkedSet<>();
-        }
+        }     
         if (source instanceof CompactSet) {
             return new CompactSet<>();
         }

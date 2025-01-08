@@ -364,9 +364,9 @@ public class DeepEquals {
                 continue;
             }
 
-            // Ordered collections where order is defined as part of equality
-            if (key1 instanceof List) {   // If Collections, they both must be Collection
-                if (!(key2 instanceof List)) {
+            // List interface defines order as required as part of equality
+            if (key1 instanceof List) {   // If List, the order must match
+                if (!(key2 instanceof Collection)) {
                     stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
@@ -378,10 +378,7 @@ public class DeepEquals {
                     return false;
                 }
                 continue;
-            } else if (key2 instanceof List) {
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
-                return false;
-            }
+            } 
 
             // Unordered Collection comparison
             if (key1 instanceof Collection) {

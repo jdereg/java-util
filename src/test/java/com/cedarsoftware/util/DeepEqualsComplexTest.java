@@ -512,8 +512,8 @@ public class DeepEqualsComplexTest {
 
         // Different collection interfaces aren't equal
         List<String> asList = Arrays.asList("a", "b");
-        Set<String> asSet = new HashSet<>(Arrays.asList("a", "b"));
-        assertFalse(DeepEquals.deepEquals(asList, asSet));
+        Set<String> asSet = new LinkedHashSet<>(Arrays.asList("a", "b"));
+        assertTrue(DeepEquals.deepEquals(asList, asSet));
     }
 
     @Test

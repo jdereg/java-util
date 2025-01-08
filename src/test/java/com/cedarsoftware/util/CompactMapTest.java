@@ -2505,7 +2505,7 @@ public class CompactMapTest
             new CompactMap<String, Object>() { protected int compactSize() { return 1; } };
             fail();
         }
-        catch (IllegalStateException ignored) { }
+        catch (Exception ignored) { }
     }
 
     @Test

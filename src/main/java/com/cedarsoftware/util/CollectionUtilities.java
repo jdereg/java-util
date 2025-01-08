@@ -107,6 +107,7 @@ public class CollectionUtilities {
     private static final Set<?> unmodifiableEmptySet = Collections.unmodifiableSet(new HashSet<>());
     private static final List<?> unmodifiableEmptyList = Collections.unmodifiableList(new ArrayList<>());
     private static final Class<?> unmodifiableCollectionClass = CollectionsWrappers.getUnmodifiableCollectionClass();
+    private static final Class<?> synchronizedCollectionClass = CollectionsWrappers.getSynchronizedCollectionClass();
 
     private CollectionUtilities() { }
 
@@ -234,6 +235,31 @@ public class CollectionUtilities {
     public static boolean isUnmodifiable(Class<?> targetType) {
         Objects.requireNonNull(targetType, "targetType (Class) cannot be null");
         return unmodifiableCollectionClass.isAssignableFrom(targetType);
+    }
+
+    /**
+     * Determines whether the specified class represents an synchronized collection type.
+     * <p>
+     * This method checks if the provided {@code targetType} is assignable to the class of
+     * synchronized collections. It is commonly used to identify whether a given class type
+     * indicates a collection that supports concurrent access (e.g., collections wrapped with
+     * {@link Collections#synchronizedCollection(Collection)} or its specialized variants).
+     * </p>
+     *
+     * <p><strong>Null Handling:</strong> If {@code targetType} is {@code null}, this method
+     * will throw a {@link NullPointerException} with a clear error message.</p>
+     *
+     * @param targetType the {@link Class} to check, must not be {@code null}
+     * @return {@code true} if the specified {@code targetType} indicates a synchronized collection;
+     *         {@code false} otherwise
+     * @throws NullPointerException if {@code targetType} is {@code null}
+     * @see Collections#synchronizedCollection(Collection)
+     * @see Collections#synchronizedList(List)
+     * @see Collections#synchronizedSet(Set)
+     */
+    public static boolean isSynchronized(Class<?> targetType) {
+        Objects.requireNonNull(targetType, "targetType (Class) cannot be null");
+        return synchronizedCollectionClass.isAssignableFrom(targetType);
     }
 
     /**

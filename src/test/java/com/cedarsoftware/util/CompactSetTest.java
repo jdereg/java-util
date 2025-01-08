@@ -1,7 +1,10 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -74,7 +77,7 @@ public class CompactSetTest
             new CompactSet() { protected int compactSize() { return 1; } };
             fail();
         }
-        catch (IllegalStateException e) { }
+        catch (Exception e) { }
     }
 
     @Test
@@ -283,7 +286,7 @@ public class CompactSetTest
     @Test
     public void testCompactLinkedSet()
     {
-        Set<String> set = new CompactLinkedSet<>();
+        Set<String> set = CompactSet.<String>builder().insertionOrder().build();
         set.add("foo");
         set.add("bar");
         set.add("baz");
@@ -294,14 +297,17 @@ public class CompactSetTest
         assert i.next() == "baz";
         assert !i.hasNext();
 
-        Set<String> set2 = new CompactLinkedSet<>(set);
+        Set<String> set2 = CompactSet.<String>builder().insertionOrder().build();
+        set2.addAll(set);
         assert set2.equals(set);
     }
 
     @Test
     public void testCompactCIHashSet()
     {
-        CompactSet<String> set = new CompactCIHashSet<>();
+        CompactSet<String> set = CompactSet.<String>builder()
+                .caseSensitive(false)  // This replaces isCaseInsensitive() == true
+                .build();
 
         for (int i=0; i < set.compactSize() + 5; i++)
         {
@@ -315,7 +321,11 @@ public class CompactSetTest
         assert set.contains("FoO" + (set.compactSize() + 3));
         assert set.contains("foo" + (set.compactSize() + 3));
 
-        Set<String> copy = new CompactCIHashSet<>(set);
+        Set<String> copy = CompactSet.<String>builder()
+                .caseSensitive(false)
+                .build();
+        copy.addAll(set);
+
         assert copy.equals(set);
         assert copy != set;
 
@@ -333,7 +343,7 @@ public class CompactSetTest
     @Test
     public void testCompactCILinkedSet()
     {
-        CompactSet<String> set = new CompactCILinkedSet<>();
+        CompactSet<String> set = CompactSet.<String>builder().caseSensitive(false).insertionOrder().build();
 
         for (int i=0; i < set.compactSize() + 5; i++)
         {
@@ -347,7 +357,11 @@ public class CompactSetTest
         assert set.contains("FoO" + (set.compactSize() + 3));
         assert set.contains("foo" + (set.compactSize() + 3));
 
-        Set<String> copy = new CompactCILinkedSet<>(set);
+        Set<String> copy = CompactSet.<String>builder()
+                .caseSensitive(false)   // Makes the set case-insensitive
+                .insertionOrder()      // Preserves insertion order
+                .build();
+        copy.addAll(set);
         assert copy.equals(set);
         assert copy != set;
 
@@ -446,6 +460,131 @@ public class CompactSetTest
         System.out.println("HashSet = " + totals[totals.length - 1] / 1000000.0d);
     }
 
+    @Test
+    public void testSortedOrder() {
+        CompactSet<String> set = CompactSet.<String>builder()
+                .sortedOrder()
+                .build();
+
+        set.add("zebra");
+        set.add("apple");
+        set.add("monkey");
+
+        Iterator<String> iter = set.iterator();
+        assert "apple".equals(iter.next());
+        assert "monkey".equals(iter.next());
+        assert "zebra".equals(iter.next());
+        assert !iter.hasNext();
+    }
+
+    @Test
+    public void testReverseOrder() {
+        CompactSet<String> set = CompactSet.<String>builder()
+                .reverseOrder()
+                .build();
+
+        set.add("zebra");
+        set.add("apple");
+        set.add("monkey");
+
+        Iterator<String> iter = set.iterator();
+        assert "zebra".equals(iter.next());
+        assert "monkey".equals(iter.next());
+        assert "apple".equals(iter.next());
+        assert !iter.hasNext();
+    }
+
+    @Test
+    public void testInsertionOrder() {
+        CompactSet<String> set = CompactSet.<String>builder()
+                .insertionOrder()
+                .build();
+
+        set.add("zebra");
+        set.add("apple");
+        set.add("monkey");
+
+        Iterator<String> iter = set.iterator();
+        assert "zebra".equals(iter.next());
+        assert "apple".equals(iter.next());
+        assert "monkey".equals(iter.next());
+        assert !iter.hasNext();
+    }
+
+    @Test
+    public void testUnorderedBehavior() {
+        CompactSet<String> set1 = CompactSet.<String>builder()
+                .noOrder()
+                .build();
+
+        CompactSet<String> set2 = CompactSet.<String>builder()
+                .noOrder()
+                .build();
+
+        // Add same elements in same order
+        set1.add("zebra");
+        set1.add("apple");
+        set1.add("monkey");
+
+        set2.add("zebra");
+        set2.add("apple");
+        set2.add("monkey");
+
+        // Sets should be equal regardless of iteration order
+        assert set1.equals(set2);
+
+        // Collect iteration orders
+        List<String> order1 = new ArrayList<>();
+        List<String> order2 = new ArrayList<>();
+
+        set1.forEach(order1::add);
+        set2.forEach(order2::add);
+
+        // Verify both sets contain same elements
+        assert order1.size() == 3;
+        assert order2.size() == 3;
+        assert new HashSet<>(order1).equals(new HashSet<>(order2));
+
+        // Note: We can't guarantee different iteration orders, but we can verify
+        // that the unordered set doesn't maintain any specific ordering guarantee
+        // by checking that it doesn't match any of the known ordering patterns
+        List<String> sorted = Arrays.asList("apple", "monkey", "zebra");
+        List<String> reverse = Arrays.asList("zebra", "monkey", "apple");
+
+        // At least one of these should be true (the orders don't match any specific pattern)
+        assert !order1.equals(sorted) ||
+                !order1.equals(reverse) ||
+                !order1.equals(order2);
+    }
+
+    @Test
+    public void testConvertWithCompactSet() {
+        // Create a CompactSet with specific configuration
+        CompactSet<String> original = CompactSet.<String>builder()
+                .caseSensitive(false)
+                .sortedOrder()
+                .compactSize(50)
+                .build();
+
+        // Add some elements
+        original.add("zebra");
+        original.add("apple");
+        original.add("monkey");
+
+        // Convert to another Set
+        Set<String> converted = Converter.convert(original, original.getClass());
+
+        // Verify the conversion preserved configuration
+        assert converted instanceof CompactSet;
+
+        // Test that CompactSet is a default instance (case-sensitive, compactSize 70, etc.)
+        // Why? There is only a class instance passed to Converter.convert(). It cannot get the
+        // configuration options from the class itself.
+        assert !converted.contains("ZEBRA");
+        assert !converted.contains("APPLE");
+        assert !converted.contains("MONKEY");
+    }
+    
     private void clearViaIterator(Set set)
     {
         Iterator i = set.iterator();

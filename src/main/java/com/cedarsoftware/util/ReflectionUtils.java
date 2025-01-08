@@ -1055,7 +1055,7 @@ public final class ReflectionUtils {
                 if (!found.isAccessible()) {
                     try {
                         found.setAccessible(true);
-                    } catch (SecurityException ignored) {
+                    } catch (Exception ignored) {
                         // Return the method even if we can't make it accessible
                     }
                 }

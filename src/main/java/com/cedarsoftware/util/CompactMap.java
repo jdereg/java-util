@@ -264,7 +264,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     public CompactMap() {
         if (compactSize() < 2) {
-            throw new IllegalStateException("compactSize() must be >= 2");
+            throw new IllegalArgumentException("compactSize() must be >= 2");
         }
 
         // Only check direct subclasses, not our generated classes

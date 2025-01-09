@@ -4,7 +4,14 @@ java-util
 [![Maven Central](https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util)](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware)
 [![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
 
-Helpful Java utilities that are thoroughly tested and available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
+A collection of high-performance Java utilities designed to enhance standard Java functionality. These utilities focus on:
+- Memory efficiency and performance optimization
+- Thread-safety and concurrent operations
+- Enhanced collection implementations
+- Simplified common programming tasks
+- Deep object graph operations
+ 
+Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
 The`.jar`file is `336K` and works with `JDK 1.8` through `JDK 23`.
 The `.jar` file classes are version 52 `(JDK 1.8)`
@@ -37,76 +44,69 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 </dependency>
 ```
 ---
+# java-util
 
-## Included in java-util:
 
 ### Sets
-- **[CompactSet](/src/main/java/com/cedarsoftware/util/CompactSet.java)** - A memory-efficient `Set` implementation that dynamically adapts its internal storage structure based on size:
-  - Starts with minimal memory usage for small sets (0-1 elements)
-  - Uses a compact array-based storage for medium-sized sets (2 to N elements, where N is configurable)
-  - Automatically transitions to a full Set implementation of your choice (HashSet, TreeSet, etc.) for larger sizes
-  - Features:
-    - Configurable size thresholds for storage transitions
-    - Support for ordered (sorted, reverse, insertion) and unordered sets
-    - Optional case-insensitive string element comparisons
-    - Custom comparator support
-    - Memory optimization for single-element sets
-    - Compatible with all standard Set operations
-  - Ideal for:
-    - Applications with many small sets
-    - Sets that start small but may grow
-    - Scenarios where memory efficiency is crucial
-    - Systems needing dynamic set behavior based on size
-- **[CaseInsensitiveSet](/src/main/java/com/cedarsoftware/util/CaseInsensitiveSet.java)** - A `Set` that ignores case sensitivity for `Strings`.
-- **[ConcurrentSet](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - A thread-safe `Set` that allows `null` elements.
-- **[ConcurrentNavigableSetNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableSetNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentSkipListSet` that allows `null` values. 
+- **[CompactSet](/src/main/java/com/cedarsoftware/util/CompactSet.java)** - Memory-efficient Set that dynamically adapts its storage structure based on size <details><summary>Details</summary>
+
+  A memory-efficient `Set` implementation that dynamically adapts its internal storage structure based on size:
+
+  **Key Features:**
+    - Dynamic Storage Transitions:
+        - Empty state: Minimal memory footprint
+        - Single element: Optimized single-reference storage
+        - Small sets (2 to N elements): Efficient array-based storage
+        - Large sets: Automatic transition to full Set implementation
+
+  **Example Usage:**
+    ```java
+    // Basic usage
+    CompactSet<String> set = new CompactSet<>();
+
+    // With custom transition size
+    CompactSet<String> set = new CompactSet<>(10);
+
+    // Case-insensitive set
+    CompactSet<String> caseInsensitive = CompactSet.createCaseInsensitiveSet();
+    ```
+</details>
+
+- **[CaseInsensitiveSet](/src/main/java/com/cedarsoftware/util/CaseInsensitiveSet.java)** - Set implementation with case-insensitive String handling
+- **[ConcurrentSet](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - Thread-safe Set supporting null elements
+- **[ConcurrentNavigableSetNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableSetNullSafe.java)** - Thread-safe NavigableSet supporting null elements
 
 ### Maps
-- **[CompactMap](/src/main/java/com/cedarsoftware/util/CompactMap.java)** - A memory-efficient `Map` implementation that dynamically adapts its internal storage structure based on size:
-  - Starts with minimal memory usage for small maps (0-1 entries)
-  - Uses a compact array-based storage for medium-sized maps (2 to N entries, where N is configurable)
-  - Automatically transitions to a full Map implementation of your choice (HashMap, TreeMap, etc.) for larger sizes
-  - Features:
-    - Configurable size thresholds for storage transitions
-    - Support for ordered (sorted, reverse, insertion) and unordered maps
-    - Optional case-insensitive string key comparisons
-    - Custom comparator support
-    - Memory optimization for single-entry maps
-    - Compatible with all standard Map operations
-  - Ideal for:
-    - Applications with many small maps
-    - Maps that start small but may grow
-    - Scenarios where memory efficiency is crucial
-    - Systems needing dynamic map behavior based on size
-- **[CaseInsensitiveMap](/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java)** - Treats `String` keys in a case-insensitive manner.
-- **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - Thread-safe LRU cache which implements the Map API.  Supports "locking" or "threaded" strategy (selectable).
-- **[TTLCache](/src/main/java/com/cedarsoftware/util/TTLCache.java)** - Thread-safe TTL cache which implements the Map API. Entries older than Time-To-Live will be evicted.  Also supports a `maxSize` (LRU capability).
-- **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Tracks access patterns to its keys, aiding in performance optimizations.
-- **[ConcurrentHashMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentHashMapNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentHashMap` that allows `null` keys & values.
-- **[ConcurrentNavigableMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableMapNullSafe.java)** - A thread-safe drop-in replacement for `ConcurrentSkipListMap` that allows `null` keys & values.
+- **[CompactMap](/src/main/java/com/cedarsoftware/util/CompactMap.java)** - Memory-efficient Map that dynamically adapts its storage structure based on size
+- **[CaseInsensitiveMap](/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java)** - Map implementation with case-insensitive String keys
+- **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - Thread-safe Least Recently Used cache with configurable eviction strategies
+- **[TTLCache](/src/main/java/com/cedarsoftware/util/TTLCache.java)** - Thread-safe Time-To-Live cache with optional size limits
+- **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Map that monitors key access patterns for optimization
+- **[ConcurrentHashMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentHashMapNullSafe.java)** - Thread-safe HashMap supporting null keys and values
+- **[ConcurrentNavigableMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableMapNullSafe.java)** - Thread-safe NavigableMap supporting null keys and values
 
 ### Lists
-- **[ConcurrentList](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)** - Provides a thread-safe `List` that can be either an independent or a wrapped instance.
+- **[ConcurrentList](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)** - Thread-safe List implementation with flexible wrapping options
 
 ### Utilities
-- **[ArrayUtilities](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)** - Provides utilities for working with Java arrays `[]`, enhancing array operations.
-- **[ByteUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Offers routines for converting `byte[]` to hexadecimal character arrays and vice versa, facilitating byte manipulation.
-- **[ClassUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Includes utilities for class-related operations. For example, the method `computeInheritanceDistance(source, destination)` calculates the number of superclass steps between two classes, returning it as an integer. If no inheritance relationship exists, it returns -1. Distances for primitives and their wrappers are considered as 0, indicating no separation.
-- **[Converter](/src/main/java/com/cedarsoftware/util/Converter.java)** - Facilitates type conversions, e.g., converting `String` to `BigDecimal`. Supports a wide range of conversions.
-- **[DateUtilities](/src/main/java/com/cedarsoftware/util/DateUtilities.java)** - Robustly parses date strings with support for various formats and idioms.
-- **[DeepEquals](/src/main/java/com/cedarsoftware/util/DeepEquals.java)** - Deeply compares two object graphs for equivalence, handling cycles and using custom `equals()` methods where available.
-- **[IOUtilities](/src/main/java/com/cedarsoftware/util/IOUtilities.java)** - Transfer APIs, close/flush APIs, compress/uncompress APIs.
-  - **[FastReader](/src/main/java/com/cedarsoftware/util/FastReader.java)** and **[FastWriter](/src/main/java/com/cedarsoftware/util/FastWriter.java)** - Provide high-performance alternatives to standard IO classes without synchronization.
-  - **[FastByteArrayInputStream](/src/main/java/com/cedarsoftware/util/FastByteArrayInputStream.java)** and **[FastByteArrayOutputStream](/src/main/java/com/cedarsoftware/util/FastByteArrayOutputStream.java)** - Non-synchronized versions of standard Java IO byte array streams.
-- **[EncryptionUtilities](/src/main/java/com/cedarsoftware/util/EncryptionUtilities.java)** - Simplifies the computation of checksums and encryption using common algorithms.
-- **[Executor](/src/main/java/com/cedarsoftware/util/Executor.java)** - Simplifies the execution of operating system commands with methods for output retrieval.
-- **[GraphComparator](/src/main/java/com/cedarsoftware/util/GraphComparator.java)** - Compares two object graphs and provides deltas, which can be applied to synchronize the graphs.
-- **[MathUtilities](/src/main/java/com/cedarsoftware/util/GraphComparator.java)** - Offers handy mathematical operations and algorithms.
-- **[ReflectionUtils](/src/main/java/com/cedarsoftware/util/ReflectionUtils.java)** - Provides efficient and simplified reflection operations.
-- **[StringUtilities](/src/main/java/com/cedarsoftware/util/StringUtilities.java)** - Contains helpful methods for common `String` manipulation tasks.
-- **[SystemUtilities](/src/main/java/com/cedarsoftware/util/SystemUtilities.java)** - Offers utilities for interacting with the operating system and environment.
-- **[Traverser](/src/main/java/com/cedarsoftware/util/Traverser.java)** - Allows generalized actions on all objects within an object graph through a user-defined method.
-- **[UniqueIdGenerator](/src/main/java/com/cedarsoftware/util/UniqueIdGenerator.java)** - Generates unique identifiers with embedded timing information, suitable for use in clustered environments.
+- **[ArrayUtilities](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)** - Comprehensive array manipulation operations
+- **[ByteUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Byte array and hexadecimal conversion utilities
+- **[ClassUtilities](/src/main/java/com/cedarsoftware/util/ClassUtilities.java)** - Class relationship and reflection helper methods
+- **[Converter](/src/main/java/com/cedarsoftware/util/Converter.java)** - Robust type conversion system
+- **[DateUtilities](/src/main/java/com/cedarsoftware/util/DateUtilities.java)** - Advanced date parsing and manipulation
+- **[DeepEquals](/src/main/java/com/cedarsoftware/util/DeepEquals.java)** - Recursive object graph comparison
+- **[IOUtilities](/src/main/java/com/cedarsoftware/util/IOUtilities.java)** - Enhanced I/O operations and streaming utilities
+- **[EncryptionUtilities](/src/main/java/com/cedarsoftware/util/EncryptionUtilities.java)** - Simplified encryption and checksum operations
+- **[Executor](/src/main/java/com/cedarsoftware/util/Executor.java)** - Streamlined system command execution
+- **[GraphComparator](/src/main/java/com/cedarsoftware/util/GraphComparator.java)** - Object graph difference detection and synchronization
+- **[MathUtilities](/src/main/java/com/cedarsoftware/util/MathUtilities.java)** - Extended mathematical operations
+- **[ReflectionUtils](/src/main/java/com/cedarsoftware/util/ReflectionUtils.java)** - Optimized reflection operations
+- **[StringUtilities](/src/main/java/com/cedarsoftware/util/StringUtilities.java)** - Extended String manipulation operations
+- **[SystemUtilities](/src/main/java/com/cedarsoftware/util/SystemUtilities.java)** - System and environment interaction utilities
+- **[Traverser](/src/main/java/com/cedarsoftware/util/Traverser.java)** - Configurable object graph traversal
+- **[UniqueIdGenerator](/src/main/java/com/cedarsoftware/util/UniqueIdGenerator.java)** - Distributed-safe unique identifier generation
+
+[View detailed documentation](userguide.md)
 
 See [changelog.md](/changelog.md) for revision history.
 

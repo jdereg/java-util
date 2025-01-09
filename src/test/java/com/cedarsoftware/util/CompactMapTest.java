@@ -3507,25 +3507,7 @@ public class CompactMapTest
             for (int i = lower; i < upper; i++)
             {
                 compactSize[0] = i;
-                CompactMap<String, Integer> map = new CompactMap()
-                {
-                    protected String getSingleValueKey()
-                    {
-                        return "key1";
-                    }
-                    protected Map<String, Integer> getNewMap()
-                    {
-                        return new HashMap<>();
-                    }
-                    protected boolean isCaseInsensitive()
-                    {
-                        return false;
-                    }
-                    protected int compactSize()
-                    {
-                        return compactSize[0];
-                    }
-                };
+                CompactMap<String, Integer> map = CompactMap.<String, Integer>builder().compactSize(i).caseSensitive(true).noOrder().singleValueKey("key1").build();
 
                 long start = System.nanoTime();
                 // ===== Timed

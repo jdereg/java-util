@@ -48,31 +48,8 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 
 
 ### Sets
-- **[CompactSet](/src/main/java/com/cedarsoftware/util/CompactSet.java)** - Memory-efficient Set that dynamically adapts its storage structure based on size <details><summary>Details</summary>
-
-  A memory-efficient `Set` implementation that dynamically adapts its internal storage structure based on size:
-
-  **Key Features:**
-    - Dynamic Storage Transitions:
-        - Empty state: Minimal memory footprint
-        - Single element: Optimized single-reference storage
-        - Small sets (2 to N elements): Efficient array-based storage
-        - Large sets: Automatic transition to full Set implementation
-
-  **Example Usage:**
-    ```java
-    // Basic usage
-    CompactSet<String> set = new CompactSet<>();
-
-    // With custom transition size
-    CompactSet<String> set = new CompactSet<>(10);
-
-    // Case-insensitive set
-    CompactSet<String> caseInsensitive = CompactSet.createCaseInsensitiveSet();
-    ```
-</details>
-
-- **[CaseInsensitiveSet](/src/main/java/com/cedarsoftware/util/CaseInsensitiveSet.java)** - Set implementation with case-insensitive String handling
+- **[CompactSet](userguide.md#compactset)** - Memory-efficient Set that dynamically adapts its storage structure based on size
+- **[CaseInsensitiveSet](userguide.md#caseinsensitiveset)** - Set implementation with case-insensitive String handling
 - **[ConcurrentSet](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - Thread-safe Set supporting null elements
 - **[ConcurrentNavigableSetNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableSetNullSafe.java)** - Thread-safe NavigableSet supporting null elements
 

@@ -593,8 +593,8 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Retrieves the declared fields of a class using a custom field filter, with caching for performance.
-     * This method provides direct field access with customizable filtering criteria.
+     * Retrieves the declared fields of a class (not it's parent) using a custom field filter, with caching for
+     * performance. This method provides direct field access with customizable filtering criteria.
      * <p>
      * Key features:
      * <ul>
@@ -667,9 +667,9 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Retrieves the declared fields of a class using the default field filter, with caching for performance.
-     * This method provides the same functionality as {@link #getDeclaredFields(Class, Predicate)} but uses
-     * the default field filter.
+     * Retrieves the declared fields of a class (not it's parent) using the default field filter, with caching for
+     * performance. This method provides the same functionality as {@link #getDeclaredFields(Class, Predicate)}
+     * but uses the default field filter.
      * <p>
      * The default filter excludes:
      * <ul>
@@ -679,8 +679,6 @@ public final class ReflectionUtils {
      *     <li>Groovy's metaClass field</li>
      * </ul>
      * <p>
-     * This method is equivalent to calling {@link #getDeclaredFields(Class, Predicate)} with the default
-     * field filter.
      *
      * @param c The class whose complete field hierarchy is to be retrieved
      * @return An unmodifiable list of all fields in the class hierarchy that pass the default filter
@@ -774,7 +772,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Returns all Fields from a class (including inherited) as a Map, filtered by the provided predicate.
+     * Returns all Fields from a class (including inherited) as a Map filtered by the provided predicate.
      * <p>
      * The returned Map uses String field names as keys and Field objects as values, with special
      * handling for name collisions across the inheritance hierarchy.
@@ -853,11 +851,12 @@ public final class ReflectionUtils {
      * Note that getAllDeclaredFields() includes transient fields and synthetic fields
      * (like "this$"). If you need the old behavior, filter the additional fields:
      * <pre>{@code
-            // Combine DEFAULT_FIELD_FILTER with additional criteria for legacy behavior
-            Predicate<Field> legacyFilter = field ->
-            DEFAULT_FIELD_FILTER.test(field) &&
-            !Modifier.isTransient(field.getModifiers()) &&
-            !field.isSynthetic();
+     * // Get fields excluding transient and synthetic fields
+     * List<Field> fields = getAllDeclaredFields(MyClass.class, field ->
+     *     DEFAULT_FIELD_FILTER.test(field) &&
+     *     !Modifier.isTransient(field.getModifiers()) &&
+     *     !field.isSynthetic()
+     * );
      * }</pre>
      * This method will may be removed in 3.0.0.
      */
@@ -880,11 +879,12 @@ public final class ReflectionUtils {
      * Note that getAllDeclaredFieldsMap() includes transient fields and synthetic fields
      * (like "this$"). If you need the old behavior, filter the additional fields:
      * <pre>{@code
-            // Combine DEFAULT_FIELD_FILTER with additional criteria for legacy behavior
-            Predicate<Field> legacyFilter = field ->
-            DEFAULT_FIELD_FILTER.test(field) &&
-            !Modifier.isTransient(field.getModifiers()) &&
-            !field.isSynthetic();
+     * // Get fields excluding transient and synthetic fields
+     * List<Field> fields = getAllDeclaredFieldsMap(MyClass.class, field ->
+     *     DEFAULT_FIELD_FILTER.test(field) &&
+     *     !Modifier.isTransient(field.getModifiers()) &&
+     *     !field.isSynthetic()
+     * );
      * }</pre>
      * This method will may be removed in 3.0.0.
      */

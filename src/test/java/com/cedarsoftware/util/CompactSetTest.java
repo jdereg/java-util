@@ -381,31 +381,15 @@ public class CompactSetTest
     public void testPerformance()
     {
         int maxSize = 1000;
-        final int[] compactSize = new int[1];
-        int lower = 5;
-        int upper = 140;
+        int lower = 50;
+        int upper = 80;
         long totals[] = new long[upper - lower + 1];
 
         for (int x = 0; x < 2000; x++)
         {
             for (int i = lower; i < upper; i++)
             {
-                compactSize[0] = i;
-                CompactSet<String> set = new CompactSet<String>()
-                {
-                    protected Set<String> getNewSet()
-                    {
-                        return new HashSet<>();
-                    }
-                    protected boolean isCaseInsensitive()
-                    {
-                        return false;
-                    }
-                    protected int compactSize()
-                    {
-                        return compactSize[0];
-                    }
-                };
+                CompactSet<String> set = CompactSet.<String>builder().caseSensitive(true).compactSize(i).build();
 
                 long start = System.nanoTime();
                 // ===== Timed

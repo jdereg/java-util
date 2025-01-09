@@ -34,6 +34,8 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
@@ -250,6 +252,8 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
     private static final String DEFAULT_SINGLE_KEY = "id";
     private static final String INNER_MAP_TYPE = "innerMapType";
+    private static final TemplateClassLoader templateClassLoader = new TemplateClassLoader(ClassUtilities.getClassLoader(CompactMap.class));
+    private static final Map<String, ReentrantLock> CLASS_LOCKS = new ConcurrentHashMap<>();
 
     // The only "state" and why this is a compactMap - one member variable
     protected Object val = EMPTY_MAP;
@@ -2167,12 +2171,11 @@ public class CompactMap<K, V> implements Map<K, V> {
         private static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
             String className = generateClassName(options);
             try {
-                return ClassUtilities.getClassLoader().loadClass(className);
+                return templateClassLoader.loadClass(className);
             } catch (ClassNotFoundException e) {
                 return generateTemplateClass(options);
             }
         }
-
         /**
          * Generates a unique class name encoding the configuration options.
          * <p>
@@ -2237,7 +2240,8 @@ public class CompactMap<K, V> implements Map<K, V> {
         /**
          * Creates a new template class for the specified configuration options.
          * <p>
-         * This synchronized method:
+         * This method effectively synchronizes on the class name to ensure that only one thread can be
+         * compiling a particular class, but multiple threads can compile different classes concurrently.
          * <ul>
          *     <li>Double-checks if class was created while waiting for lock</li>
          *     <li>Generates source code for the template class</li>
@@ -2249,21 +2253,34 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @return the newly generated and compiled template Class
          * @throws IllegalStateException if compilation fails or class cannot be loaded
          */
-        private static synchronized Class<?> generateTemplateClass(Map<String, Object> options) {
-            // Double-check if class was created while waiting for lock
+        private static Class<?> generateTemplateClass(Map<String, Object> options) {
+            // Determine the target class name
             String className = generateClassName(options);
+
+            // Acquire (or create) a lock dedicated to this className
+            ReentrantLock lock = CLASS_LOCKS.computeIfAbsent(className, k -> new ReentrantLock());
+
+            lock.lock();
             try {
-                return ClassUtilities.getClassLoader().loadClass(className);
-            } catch (ClassNotFoundException ignored) {
-                // Generate source code
+                // --- Double-check if class was created while waiting for lock ---
+                try {
+                    return ClassUtilities.getClassLoader(CompactMap.class).loadClass(className);
+                } catch (ClassNotFoundException ignored) {
+                    // Not found, proceed with generation
+                }
+
+                // --- Generate source code ---
                 String sourceCode = generateSourceCode(className, options);
 
-                // Compile source code using JavaCompiler
+                // --- Compile the source code using JavaCompiler ---
                 Class<?> templateClass = compileClass(className, sourceCode);
                 return templateClass;
             }
+            finally {
+                lock.unlock();
+            }
         }
-
+        
         /**
          * Generates Java source code for a CompactMap template class.
          * <p>
@@ -2679,14 +2696,7 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @throws LinkageError if class definition fails
          */
         private static Class<?> defineClass(String className, byte[] classBytes) {
-            // Use ClassUtilities to get the most appropriate ClassLoader
-            ClassLoader parentLoader = ClassUtilities.getClassLoader(CompactMap.class);
-
-            // Create our template class loader
-            TemplateClassLoader loader = new TemplateClassLoader(parentLoader);
-
-            // Define the class using our custom loader
-            return loader.defineTemplateClass(className, classBytes);
+            return templateClassLoader.defineTemplateClass(className, classBytes);
         }
     }
 
@@ -2703,10 +2713,32 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Internal implementation detail of the template generation system.
      */
     private static final class TemplateClassLoader extends ClassLoader {
+        private final Map<String, Class<?>> definedClasses = new ConcurrentHashMap<>();
+        private final Map<String, ReentrantLock> classLoadLocks = new ConcurrentHashMap<>();
+
         private TemplateClassLoader(ClassLoader parent) {
             super(parent);
         }
 
+        public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            // 1. Check if we already loaded it
+            Class<?> c = findLoadedClass(name);
+            if (c == null) {
+                try {
+                    // 2. Parent-first
+                    c = getParent().loadClass(name);
+                }
+                catch (ClassNotFoundException e) {
+                    // 3. If the parent can't find it, attempt local
+                    c = findClass(name);
+                }
+            }
+            if (resolve) {
+                resolveClass(c);
+            }
+            return c;
+        }
+        
         /**
          * Defines or retrieves a template class in this ClassLoader.
          * <p>
@@ -2720,15 +2752,25 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @throws LinkageError if class definition fails
          */
         private Class<?> defineTemplateClass(String name, byte[] bytes) {
-            // First try to load from parent
+            ReentrantLock lock = classLoadLocks.computeIfAbsent(name, k -> new ReentrantLock());
+            lock.lock();
             try {
-                return findClass(name);
-            } catch (ClassNotFoundException e) {
-                // If not found, define it
-                return defineClass(name, bytes, 0, bytes.length);
+                // Check if already defined
+                Class<?> cached = definedClasses.get(name);
+                if (cached != null) {
+                    return cached;
+                }
+
+                // Define new class
+                Class<?> definedClass = defineClass(name, bytes, 0, bytes.length);
+                definedClasses.put(name, definedClass);
+                return definedClass;
+            }
+            finally {
+                lock.unlock();
             }
         }
-
+        
         /**
          * Finds the specified class using appropriate ClassLoader.
          * <p>
@@ -2745,20 +2787,24 @@ public class CompactMap<K, V> implements Map<K, V> {
          */
         @Override
         protected Class<?> findClass(String name) throws ClassNotFoundException {
-            // First try parent classloader for any non-template classes
-            if (!name.startsWith("com.cedarsoftware.util.CompactMap$")) {
-                // Use the thread context classloader for test classes
-                ClassLoader classLoader = ClassUtilities.getClassLoader();
-                if (classLoader != null) {
-                    try {
-                        return classLoader.loadClass(name);
-                    } catch (ClassNotFoundException e) {
-                        // Fall through to try parent loader
-                    }
+            // For your "template" classes:
+            if (name.startsWith("com.cedarsoftware.util.CompactMap$")) {
+                // Check if we have it cached
+                Class<?> cached = definedClasses.get(name);
+                if (cached != null) {
+                    return cached;
                 }
-                return getParent().loadClass(name);
+                // If we don't, we can throw ClassNotFoundException or
+                // your code might dynamically generate the class at this point.
+                // Typically, you'd have a method to define it:
+                //   return defineTemplateClassDynamically(name);
+
+                throw new ClassNotFoundException("Not found: " + name);
             }
-            throw new ClassNotFoundException(name);
+
+            // Fallback: if it's not a template, let the system handle it
+            // (i.e. you can call super, or also do TCCL checks if you want).
+            return super.findClass(name);
         }
     }
 

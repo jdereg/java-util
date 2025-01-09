@@ -53,10 +53,10 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[ConcurrentNavigableSetNullSafe](userguide.md#concurrentnavigablesetnullsafe)** - Thread-safe NavigableSet supporting null elements
 
 ### Maps
-- **[CompactMap](/src/main/java/com/cedarsoftware/util/CompactMap.java)** - Memory-efficient Map that dynamically adapts its storage structure based on size
-- **[CaseInsensitiveMap](/src/main/java/com/cedarsoftware/util/CaseInsensitiveMap.java)** - Map implementation with case-insensitive String keys
-- **[LRUCache](/src/main/java/com/cedarsoftware/util/LRUCache.java)** - Thread-safe Least Recently Used cache with configurable eviction strategies
-- **[TTLCache](/src/main/java/com/cedarsoftware/util/TTLCache.java)** - Thread-safe Time-To-Live cache with optional size limits
+- **[CompactMap](userguide.md#compactmap)** - Memory-efficient Map that dynamically adapts its storage structure based on size
+- **[CaseInsensitiveMap](userguide.md#caseinsensitivemap)** - Map implementation with case-insensitive String keys
+- **[LRUCache](userguide.md#lrucache)** - Thread-safe Least Recently Used cache with configurable eviction strategies
+- **[TTLCache](userguide.md#ttlcache)** - Thread-safe Time-To-Live cache with optional size limits
 - **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Map that monitors key access patterns for optimization
 - **[ConcurrentHashMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentHashMapNullSafe.java)** - Thread-safe HashMap supporting null keys and values
 - **[ConcurrentNavigableMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableMapNullSafe.java)** - Thread-safe NavigableMap supporting null keys and values

@@ -1,16 +1,32 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Stream;
 
+import com.cedarsoftware.util.convert.Converter;
+import com.cedarsoftware.util.convert.DefaultConverterOptions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClassUtilitiesTest {
@@ -18,8 +34,220 @@ class ClassUtilitiesTest {
     interface TestInterface {}
     interface SubInterface extends TestInterface {}
     static class TestClass {}
-    static class SubClass extends TestClass implements TestInterface {}
-    static class AnotherClass {}
+    private static class SubClass extends TestClass implements TestInterface {}
+    private static class AnotherClass {}
+    private Converter converter;
+
+    // Test classes
+    static class NoArgConstructor {
+        public NoArgConstructor() {}
+    }
+
+    static class SingleArgConstructor {
+        private final String value;
+        public SingleArgConstructor(String value) {
+            this.value = value;
+        }
+        public String getValue() { return value; }
+    }
+
+    static class MultiArgConstructor {
+        private final String str;
+        private final int num;
+        public MultiArgConstructor(String str, int num) {
+            this.str = str;
+            this.num = num;
+        }
+        public String getStr() { return str; }
+        public int getNum() { return num; }
+    }
+
+    static class OverloadedConstructors {
+        private final String value;
+        private final int number;
+
+        public OverloadedConstructors() {
+            this("default", 0);
+        }
+
+        public OverloadedConstructors(String value) {
+            this(value, 0);
+        }
+
+        public OverloadedConstructors(String value, int number) {
+            this.value = value;
+            this.number = number;
+        }
+
+        public String getValue() { return value; }
+        public int getNumber() { return number; }
+    }
+
+    static class PrivateConstructor {
+        private String value;
+        private PrivateConstructor(String value) {
+            this.value = value;
+        }
+        public String getValue() { return value; }
+    }
+
+    static class PrimitiveConstructor {
+        private final int intValue;
+        private final boolean boolValue;
+
+        public PrimitiveConstructor(int intValue, boolean boolValue) {
+            this.intValue = intValue;
+            this.boolValue = boolValue;
+        }
+
+        public int getIntValue() { return intValue; }
+        public boolean getBoolValue() { return boolValue; }
+    }
+    
+    @BeforeEach
+    void setUp() {
+        converter = new Converter(new DefaultConverterOptions());
+    }
+
+    @Test
+    @DisplayName("Should create instance with no-arg constructor")
+    void shouldCreateInstanceWithNoArgConstructor() {
+        Object instance = ClassUtilities.newInstance(converter, NoArgConstructor.class, null);
+        assertNotNull(instance);
+        assertTrue(instance instanceof NoArgConstructor);
+    }
+
+    @Test
+    @DisplayName("Should create instance with single argument")
+    void shouldCreateInstanceWithSingleArgument() {
+        List<Object> args = Collections.singletonList("test");
+        Object instance = ClassUtilities.newInstance(converter, SingleArgConstructor.class, args);
+
+        assertNotNull(instance);
+        assertTrue(instance instanceof SingleArgConstructor);
+        assertEquals("test", ((SingleArgConstructor) instance).getValue());
+    }
+
+    @Test
+    @DisplayName("Should create instance with multiple arguments")
+    void shouldCreateInstanceWithMultipleArguments() {
+        List<Object> args = Arrays.asList("test", 42);
+        Object instance = ClassUtilities.newInstance(converter, MultiArgConstructor.class, args);
+
+        assertNotNull(instance);
+        assertTrue(instance instanceof MultiArgConstructor);
+        MultiArgConstructor mac = (MultiArgConstructor) instance;
+        assertEquals("test", mac.getStr());
+        assertEquals(42, mac.getNum());
+    }
+
+    @Test
+    @DisplayName("Should handle private constructors")
+    void shouldHandlePrivateConstructors() {
+        List<Object> args = Collections.singletonList("private");
+        Object instance = ClassUtilities.newInstance(converter, PrivateConstructor.class, args);
+
+        assertNotNull(instance);
+        assertTrue(instance instanceof PrivateConstructor);
+        assertEquals("private", ((PrivateConstructor) instance).getValue());
+    }
+
+    @Test
+    @DisplayName("Should handle primitive parameters with null arguments")
+    void shouldHandlePrimitiveParametersWithNullArguments() {
+        Object instance = ClassUtilities.newInstance(converter, PrimitiveConstructor.class, null);
+
+        assertNotNull(instance);
+        assertTrue(instance instanceof PrimitiveConstructor);
+        PrimitiveConstructor pc = (PrimitiveConstructor) instance;
+        assertEquals(0, pc.getIntValue());  // default int value
+        assertFalse(pc.getBoolValue());     // default boolean value
+    }
+
+    @Test
+    @DisplayName("Should choose best matching constructor with overloads")
+    void shouldChooseBestMatchingConstructor() {
+        List<Object> args = Arrays.asList("custom", 42);
+        Object instance = ClassUtilities.newInstance(converter, OverloadedConstructors.class, args);
+
+        assertNotNull(instance);
+        assertTrue(instance instanceof OverloadedConstructors);
+        OverloadedConstructors oc = (OverloadedConstructors) instance;
+        assertEquals("custom", oc.getValue());
+        assertEquals(42, oc.getNumber());
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException for security-sensitive classes")
+    void shouldThrowExceptionForSecuritySensitiveClasses() {
+        Class<?>[] sensitiveClasses = {
+                ProcessBuilder.class,
+                Process.class,
+                ClassLoader.class,
+                Constructor.class,
+                Method.class,
+                Field.class
+        };
+
+        for (Class<?> sensitiveClass : sensitiveClasses) {
+            IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> ClassUtilities.newInstance(converter, sensitiveClass, null)
+            );
+            assertTrue(exception.getMessage().contains("security reasons"));
+        }
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException for interfaces")
+    void shouldThrowExceptionForInterfaces() {
+        assertThrows(IllegalArgumentException.class,
+                () -> ClassUtilities.newInstance(converter, Runnable.class, null));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException for null class")
+    void shouldThrowExceptionForNullClass() {
+        assertThrows(IllegalArgumentException.class,
+                () -> ClassUtilities.newInstance(converter, null, null));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideArgumentMatchingCases")
+    @DisplayName("Should match constructor arguments correctly")
+    void shouldMatchConstructorArgumentsCorrectly(Class<?> clazz, List<Object> args, Object[] expectedValues) {
+        Object instance = ClassUtilities.newInstance(converter, clazz, args);
+        assertNotNull(instance);
+        assertArrayEquals(expectedValues, getValues(instance));
+    }
+
+    private static Stream<Arguments> provideArgumentMatchingCases() {
+        return Stream.of(
+                Arguments.of(
+                        MultiArgConstructor.class,
+                        Arrays.asList("test", 42),
+                        new Object[]{"test", 42}
+                ),
+                Arguments.of(
+                        MultiArgConstructor.class,
+                        Arrays.asList(42, "test"),  // wrong order, should still match
+                        new Object[]{"test", 42}
+                ),
+                Arguments.of(
+                        MultiArgConstructor.class,
+                        Collections.singletonList("test"),  // partial args
+                        new Object[]{"test", 0}  // default int value
+                )
+        );
+    }
+
+    private Object[] getValues(Object instance) {
+        if (instance instanceof MultiArgConstructor) {
+            MultiArgConstructor mac = (MultiArgConstructor) instance;
+            return new Object[]{mac.getStr(), mac.getNum()};
+        }
+        throw new IllegalArgumentException("Unsupported test class");
+    }
 
     @Test
     void testComputeInheritanceDistanceWithNulls() {

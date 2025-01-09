@@ -13,7 +13,7 @@ A collection of high-performance Java utilities designed to enhance standard Jav
  
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `336K` and works with `JDK 1.8` through `JDK 23`.
+The`.jar`file is `414K` and works with `JDK 1.8` through `JDK 23`.
 The `.jar` file classes are version 52 `(JDK 1.8)`
 ## Compatibility
 
@@ -46,12 +46,11 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 ---
 # java-util
 
-
 ### Sets
 - **[CompactSet](userguide.md#compactset)** - Memory-efficient Set that dynamically adapts its storage structure based on size
 - **[CaseInsensitiveSet](userguide.md#caseinsensitiveset)** - Set implementation with case-insensitive String handling
-- **[ConcurrentSet](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)** - Thread-safe Set supporting null elements
-- **[ConcurrentNavigableSetNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableSetNullSafe.java)** - Thread-safe NavigableSet supporting null elements
+- **[ConcurrentSet](userguide.md#concurrentset)** - Thread-safe Set supporting null elements
+- **[ConcurrentNavigableSetNullSafe](userguide.md#concurrentnavigablesetnullsafe)** - Thread-safe NavigableSet supporting null elements
 
 ### Maps
 - **[CompactMap](/src/main/java/com/cedarsoftware/util/CompactMap.java)** - Memory-efficient Map that dynamically adapts its storage structure based on size
@@ -88,16 +87,5 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 See [changelog.md](/changelog.md) for revision history.
 
 ---
-### Sponsors
-[![Alt text](https://www.yourkit.com/images/yklogo.png "YourKit")](https://www.yourkit.com/.net/profiler/index.jsp)
-
-YourKit supports open source projects with its full-featured Java Profiler.
-YourKit, LLC is the creator of <a href="https://www.yourkit.com/java/profiler/index.jsp">YourKit Java Profiler</a>
-and <a href="https://www.yourkit.com/.net/profiler/index.jsp">YourKit .NET Profiler</a>,
-innovative and intelligent tools for profiling Java and .NET applications.
-
-<a href="https://www.jetbrains.com/idea/"><img alt="Intellij IDEA from JetBrains" src="https://s-media-cache-ak0.pinimg.com/236x/bd/f4/90/bdf49052dd79aa1e1fc2270a02ba783c.jpg" data-canonical-src="https://s-media-cache-ak0.pinimg.com/236x/bd/f4/90/bdf49052dd79aa1e1fc2270a02ba783c.jpg" width="100" height="100" /></a>
-**Intellij IDEA**<hr>
-
 
 By: John DeRegnaucourt and Kenny Partlow

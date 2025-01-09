@@ -1085,6 +1085,9 @@ public class ClassUtilities
      * }</pre>
      */
     public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
+        if (c == null) {
+            throw new IllegalArgumentException("Class cannot be null");
+        }
         throwIfSecurityConcern(ProcessBuilder.class, c);
         throwIfSecurityConcern(Process.class, c);
         throwIfSecurityConcern(ClassLoader.class, c);

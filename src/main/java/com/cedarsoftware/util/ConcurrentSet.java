@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
@@ -163,7 +164,7 @@ public class ConcurrentSet<T> implements Set<T> {
         Object[] internalArray = set.toArray();
         int size = internalArray.length;
         if (a.length < size) {
-            a = (T1[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), size);
+            a = (T1[]) Array.newInstance(a.getClass().getComponentType(), size);
         }
         for (int i = 0; i < size; i++) {
             if (internalArray[i] == NullSentinel.NULL_ITEM) {

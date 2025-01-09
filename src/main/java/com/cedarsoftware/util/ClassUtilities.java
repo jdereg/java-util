@@ -1172,7 +1172,7 @@ public class ClassUtilities
     }
 
     // Try instantiation via unsafe (if turned on).  It is off by default.  Use
-    // MetaUtils.setUseUnsafe(true) to enable it. This may result in heap-dumps
+    // ClassUtilities.setUseUnsafe(true) to enable it. This may result in heap-dumps
     // for e.g. ConcurrentHashMap or can cause problems when the class is not initialized,
     // that's why we try ordinary constructors first.
     private static Object tryUnsafeInstantiation(Class<?> c) {

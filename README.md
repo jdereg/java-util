@@ -57,9 +57,9 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[CaseInsensitiveMap](userguide.md#caseinsensitivemap)** - Map implementation with case-insensitive String keys
 - **[LRUCache](userguide.md#lrucache)** - Thread-safe Least Recently Used cache with configurable eviction strategies
 - **[TTLCache](userguide.md#ttlcache)** - Thread-safe Time-To-Live cache with optional size limits
-- **[TrackingMap](/src/main/java/com/cedarsoftware/util/TrackingMap.java)** - Map that monitors key access patterns for optimization
-- **[ConcurrentHashMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentHashMapNullSafe.java)** - Thread-safe HashMap supporting null keys and values
-- **[ConcurrentNavigableMapNullSafe](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableMapNullSafe.java)** - Thread-safe NavigableMap supporting null keys and values
+- **[TrackingMap](userguide.md#trackingmap)** - Map that monitors key access patterns for optimization
+- **[ConcurrentHashMapNullSafe](userguide.md#concurrenthashmapnullsafe)** - Thread-safe HashMap supporting null keys and values
+- **[ConcurrentNavigableMapNullSafe](userguide.md#concurrentnavigablemapnullsafe)** - Thread-safe NavigableMap supporting null keys and values
 
 ### Lists
 - **[ConcurrentList](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)** - Thread-safe List implementation with flexible wrapping options

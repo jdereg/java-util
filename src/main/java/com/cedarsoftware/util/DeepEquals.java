@@ -688,7 +688,7 @@ public class DeepEquals {
         // Push each field for comparison
         for (Field field : fields) {
             try {
-                if (field.getName().startsWith("this$")) {
+                if (field.isSynthetic()) {
                     continue;
                 }
                 Object value1 = field.get(obj1);
@@ -935,7 +935,7 @@ public class DeepEquals {
             Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj.getClass());
             for (Field field : fields) {
                 try {
-                    if (field.getName().contains("this$")) {
+                    if (field.isSynthetic()) {
                         continue;
                     }
                     stack.addFirst(field.get(obj));
@@ -1279,7 +1279,7 @@ public class DeepEquals {
             boolean first = true;
 
             for (Field field : fields) {
-                if (field.getName().startsWith("this$")) {
+                if (field.isSynthetic()) {
                     continue;
                 }
                 if (!first) sb.append(", ");
@@ -1572,7 +1572,7 @@ public class DeepEquals {
 
         for (Field field : fields) {
             try {
-                if (field.getName().contains("this$")) {
+                if (field.isSynthetic()) {
                     continue;
                 }
                 if (!first) {

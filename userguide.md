@@ -746,3 +746,232 @@ try {
     // Handle shutdown failure
 }
 ```
+---
+## TrackingMap
+[Source](/src/main/java/com/cedarsoftware/util/TrackingMap.java)
+
+A Map wrapper that tracks key access patterns, enabling monitoring and optimization of map usage. Tracks which keys have been accessed via `get()` or `containsKey()` methods, allowing for identification and removal of unused entries.
+
+### Key Features
+- Tracks key access patterns
+- Supports removal of unused entries
+- Wraps any Map implementation
+- Full Map interface implementation
+- Access pattern merging capability
+- Maintains original map behavior
+- Memory usage optimization support
+
+### Usage Examples
+
+**Basic Usage:**
+```java
+// Create a tracking map
+Map<String, User> userMap = new HashMap<>();
+TrackingMap<String, User> tracker = new TrackingMap<>(userMap);
+
+// Access some entries
+tracker.get("user1");
+tracker.containsKey("user2");
+
+// Remove unused entries
+tracker.expungeUnused();  // Removes entries never accessed
+```
+
+**Usage Pattern Analysis:**
+```java
+TrackingMap<String, Config> configMap = new TrackingMap<>(sourceMap);
+
+// After some time...
+Set<String> usedKeys = configMap.keysUsed();
+System.out.println("Accessed configs: " + usedKeys);
+```
+
+**Merging Usage Patterns:**
+```java
+// Multiple tracking maps
+TrackingMap<String, Data> map1 = new TrackingMap<>(source1);
+TrackingMap<String, Data> map2 = new TrackingMap<>(source2);
+
+// Merge access patterns
+map1.informAdditionalUsage(map2);
+```
+
+**Memory Optimization:**
+```java
+TrackingMap<String, Resource> resourceMap = 
+    new TrackingMap<>(resources);
+
+// Periodically clean unused resources
+scheduler.scheduleAtFixedRate(() -> {
+    resourceMap.expungeUnused();
+}, 1, 1, TimeUnit.HOURS);
+```
+
+### Performance Characteristics
+- get(): O(1) + tracking overhead
+- put(): O(1)
+- containsKey(): O(1) + tracking overhead
+- expungeUnused(): O(n)
+- Memory: Additional Set for tracking
+
+### Use Cases
+- Memory optimization
+- Usage pattern analysis
+- Resource cleanup
+- Access monitoring
+- Configuration optimization
+- Cache efficiency improvement
+- Dead code detection
+
+### Implementation Notes
+- Not thread-safe
+- Wraps any Map implementation
+- Maintains wrapped map's characteristics
+- Tracks only get() and containsKey() calls
+- put() operations are not tracked
+- Supports null keys and values
+
+### Access Tracking Details
+- Tracks calls to get()
+- Tracks calls to containsKey()
+- Does not track put() operations
+- Does not track containsValue()
+- Access history survives remove operations
+- Clear operation resets tracking
+
+### Available Operations
+```java
+// Core tracking operations
+Set<K> keysUsed()              // Get accessed keys
+void expungeUnused()           // Remove unused entries
+
+// Usage pattern merging
+void informAdditionalUsage(Collection<K>)    // Merge from collection
+void informAdditionalUsage(TrackingMap<K,V>) // Merge from another tracker
+
+// Map access
+Map<K,V> getWrappedMap()       // Get underlying map
+```
+
+### Thread Safety Notes
+- Not thread-safe by default
+- External synchronization required
+- Wrap with Collections.synchronizedMap() if needed
+- Consider concurrent access patterns
+- Protect during expungeUnused()
+
+---
+## ConcurrentHashMapNullSafe
+[Source](/src/main/java/com/cedarsoftware/util/ConcurrentHashMapNullSafe.java)
+
+A thread-safe Map implementation that extends ConcurrentHashMap's capabilities by supporting null keys and values. Provides all the concurrency benefits of ConcurrentHashMap while allowing null entries.
+
+### Key Features
+- Full thread-safety and concurrent operation support
+- Allows null keys and values
+- High-performance concurrent operations
+- Full Map and ConcurrentMap interface implementation
+- Maintains ConcurrentHashMap's performance characteristics
+- Configurable initial capacity and load factor
+- Atomic operations support
+
+### Usage Examples
+
+**Basic Usage:**
+```java
+// Create a new map
+ConcurrentHashMapNullSafe<String, User> map = 
+    new ConcurrentHashMapNullSafe<>();
+
+// Support for null keys and values
+map.put(null, new User("John"));
+map.put("key", null);
+
+// Regular operations
+map.put("user1", new User("Alice"));
+User user = map.get("user1");
+```
+
+**With Initial Capacity:**
+```java
+// Create with known size for better performance
+ConcurrentHashMapNullSafe<Integer, String> map = 
+    new ConcurrentHashMapNullSafe<>(1000);
+
+// Create with capacity and load factor
+ConcurrentHashMapNullSafe<Integer, String> map = 
+    new ConcurrentHashMapNullSafe<>(1000, 0.75f);
+```
+
+**Atomic Operations:**
+```java
+ConcurrentHashMapNullSafe<String, Integer> scores = 
+    new ConcurrentHashMapNullSafe<>();
+
+// Atomic operations with null support
+scores.putIfAbsent("player1", null);
+scores.replace("player1", null, 100);
+
+// Compute operations
+scores.computeIfAbsent("player2", k -> 0);
+scores.compute("player1", (k, v) -> (v == null) ? 1 : v + 1);
+```
+
+**Bulk Operations:**
+```java
+// Create from existing map
+Map<String, Integer> source = Map.of("A", 1, "B", 2);
+ConcurrentHashMapNullSafe<String, Integer> map = 
+    new ConcurrentHashMapNullSafe<>(source);
+
+// Merge operations
+map.merge("A", 10, Integer::sum);
+```
+
+### Performance Characteristics
+- get(): O(1) average case
+- put(): O(1) average case
+- remove(): O(1) average case
+- containsKey(): O(1)
+- size(): O(1)
+- Concurrent read operations: Lock-free
+- Write operations: Segmented locking
+- Memory overhead: Minimal for null handling
+
+### Thread Safety Features
+- Atomic operations support
+- Lock-free reads
+- Segmented locking for writes
+- Full happens-before guarantees
+- Safe publication of changes
+- Consistent iteration behavior
+
+### Use Cases
+- Concurrent caching
+- Shared resource management
+- Thread-safe data structures
+- High-concurrency applications
+- Null-tolerant collections
+- Distributed systems
+- Session management
+
+### Implementation Notes
+- Based on ConcurrentHashMap
+- Uses sentinel objects for null handling
+- Maintains thread-safety guarantees
+- Preserves map contract
+- Consistent serialization behavior
+- Safe iterator implementation
+
+### Atomic Operation Support
+```java
+// Atomic operations examples
+map.putIfAbsent(key, value);     // Add if not present
+map.replace(key, oldVal, newVal); // Atomic replace
+map.remove(key, value);           // Conditional remove
+
+// Compute operations
+map.computeIfAbsent(key, k -> generator.get());
+map.computeIfPresent(key, (k, v) -> processor.apply(v));
+map.compute(key, (k, v) -> calculator.calculate(k, v));
+```

@@ -62,12 +62,12 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[ConcurrentNavigableMapNullSafe](userguide.md#concurrentnavigablemapnullsafe)** - Thread-safe NavigableMap supporting null keys and values
 
 ### Lists
-- **[ConcurrentList](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)** - Thread-safe List implementation with flexible wrapping options
+- **[ConcurrentList](userguide.md#concurrentlist)** - Thread-safe List implementation with flexible wrapping options
 
 ### Utilities
-- **[ArrayUtilities](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)** - Comprehensive array manipulation operations
-- **[ByteUtilities](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)** - Byte array and hexadecimal conversion utilities
-- **[ClassUtilities](/src/main/java/com/cedarsoftware/util/ClassUtilities.java)** - Class relationship and reflection helper methods
+- **[ArrayUtilities](userguide.md#arrayutilities)** - Comprehensive array manipulation operations
+- **[ByteUtilities](userguide.md#byteutilities)** - Byte array and hexadecimal conversion utilities
+- **[ClassUtilities](userguide.md#classutilities)** - Class relationship and reflection helper methods
 - **[Converter](/src/main/java/com/cedarsoftware/util/Converter.java)** - Robust type conversion system
 - **[DateUtilities](/src/main/java/com/cedarsoftware/util/DateUtilities.java)** - Advanced date parsing and manipulation
 - **[DeepEquals](/src/main/java/com/cedarsoftware/util/DeepEquals.java)** - Recursive object graph comparison

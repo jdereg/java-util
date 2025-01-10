@@ -131,6 +131,9 @@ public final class ByteUtilities {
      * @return true if bytes are gzip compressed, false otherwise.
      */
     public static boolean isGzipped(byte[] bytes) {
+        if (ArrayUtilities.size(bytes) < 18) {  // minimum valid GZIP size
+            return false;
+        }
         return bytes[0] == (byte) 0x1f && bytes[1] == (byte) 0x8b;
     }
 }

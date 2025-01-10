@@ -1107,3 +1107,529 @@ map.tailMap(fromKey, inclusive);
 Map.Entry<K,V> first = map.pollFirstEntry();
 Map.Entry<K,V> last = map.pollLastEntry();
 ```
+
+---
+## ConcurrentList
+[Source](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)
+
+A thread-safe List implementation that provides synchronized access to list operations using read-write locks. Can be used either as a standalone thread-safe list or as a wrapper to make existing lists thread-safe.
+
+### Key Features
+- Full thread-safety with read-write lock implementation
+- Standalone or wrapper mode operation
+- Read-only snapshot iterators
+- Non-blocking concurrent reads
+- Exclusive write access
+- Safe collection views
+- Null element support (if backing list allows)
+
+### Usage Examples
+
+**Basic Usage:**
+```java
+// Create a new thread-safe list
+List<String> list = new ConcurrentList<>();
+list.add("item1");
+list.add("item2");
+
+// Create with initial capacity
+List<String> list = new ConcurrentList<>(1000);
+
+// Wrap existing list
+List<String> existing = new ArrayList<>();
+List<String> concurrent = new ConcurrentList<>(existing);
+```
+
+**Concurrent Operations:**
+```java
+ConcurrentList<User> users = new ConcurrentList<>();
+
+// Safe concurrent access
+users.add(new User("Alice"));
+User first = users.get(0);
+
+// Bulk operations
+List<User> newUsers = Arrays.asList(
+    new User("Bob"), 
+    new User("Charlie")
+);
+users.addAll(newUsers);
+```
+
+**Thread-Safe Iteration:**
+```java
+ConcurrentList<String> list = new ConcurrentList<>();
+list.addAll(Arrays.asList("A", "B", "C"));
+
+// Safe iteration with snapshot view
+for (String item : list) {
+    System.out.println(item);
+}
+
+// List iterator (read-only)
+ListIterator<String> iterator = list.listIterator();
+while (iterator.hasNext()) {
+    String item = iterator.next();
+    // Process item
+}
+```
+
+### Performance Characteristics
+- Read operations: Non-blocking
+- Write operations: Exclusive access
+- Iterator creation: O(n) copy
+- get(): O(1)
+- add(): O(1) amortized
+- remove(): O(n)
+- contains(): O(n)
+- size(): O(1)
+
+### Thread Safety Features
+- Read-write lock separation
+- Safe concurrent reads
+- Exclusive write access
+- Snapshot iterators
+- Thread-safe bulk operations
+- Atomic modifications
+
+### Use Cases
+- Shared data structures
+- Producer-consumer scenarios
+- Multi-threaded caching
+- Concurrent data collection
+- Thread-safe logging
+- Event handling
+- Resource management
+
+### Implementation Notes
+- Uses ReentrantReadWriteLock
+- Supports null elements
+- No duplicate creation in wrapper mode
+- Read-only iterator snapshots
+- Unsupported operations:
+    - listIterator(int)
+    - subList(int, int)
+
+### Operation Examples
+```java
+// Thread-safe operations
+List<Integer> numbers = new ConcurrentList<>();
+
+// Modification operations
+numbers.add(1);                      // Single element add
+numbers.addAll(Arrays.asList(2, 3)); // Bulk add
+numbers.remove(1);                   // Remove by index
+numbers.removeAll(Arrays.asList(2)); // Bulk remove
+
+// Access operations
+int first = numbers.get(0);             // Get by index
+boolean contains = numbers.contains(1); // Check containment
+int size = numbers.size();              // Get size
+boolean empty = numbers.isEmpty();      // Check if empty
+
+// Bulk operations
+numbers.clear();                        // Remove all elements
+numbers.retainAll(Arrays.asList(1, 2)); // Keep only specified
+```
+
+### Collection Views
+```java
+// Safe iteration examples
+List<String> list = new ConcurrentList<>();
+
+// Array conversion
+Object[] array = list.toArray();
+String[] strArray = list.toArray(new String[0]);
+
+// Iterator usage
+Iterator<String> it = list.iterator();
+while (it.hasNext()) {
+    String item = it.next();
+    // Safe to process item
+}
+
+// List iterator
+ListIterator<String> listIt = list.listIterator();
+while (listIt.hasNext()) {
+    // Forward iteration
+}
+```
+
+---
+## ArrayUtilities
+[Source](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)
+
+A utility class providing static methods for array operations, offering null-safe and type-safe array manipulations with support for common array operations and conversions.
+
+### Key Features
+- Immutable common array constants
+- Null-safe array operations
+- Generic array manipulation
+- Collection to array conversion
+- Array combining utilities
+- Subset creation
+- Shallow copy support
+
+### Usage Examples
+
+**Basic Operations:**
+```java
+// Check for empty arrays
+boolean empty = ArrayUtilities.isEmpty(array);
+int size = ArrayUtilities.size(array);
+
+// Use common empty arrays
+Object[] emptyObj = ArrayUtilities.EMPTY_OBJECT_ARRAY;
+byte[] emptyBytes = ArrayUtilities.EMPTY_BYTE_ARRAY;
+```
+
+**Array Creation and Manipulation:**
+```java
+// Create typed arrays
+String[] strings = ArrayUtilities.createArray("a", "b", "c");
+Integer[] numbers = ArrayUtilities.createArray(1, 2, 3);
+
+// Combine arrays
+String[] array1 = {"a", "b"};
+String[] array2 = {"c", "d"};
+String[] combined = ArrayUtilities.addAll(array1, array2);
+// Result: ["a", "b", "c", "d"]
+
+// Remove items
+Integer[] array = {1, 2, 3, 4};
+Integer[] modified = ArrayUtilities.removeItem(array, 1);
+// Result: [1, 3, 4]
+```
+
+**Array Subsetting:**
+```java
+// Create array subset
+String[] full = {"a", "b", "c", "d", "e"};
+String[] sub = ArrayUtilities.getArraySubset(full, 1, 4);
+// Result: ["b", "c", "d"]
+```
+
+**Collection Conversion:**
+```java
+// Convert Collection to typed array
+List<String> list = Arrays.asList("x", "y", "z");
+String[] array = ArrayUtilities.toArray(String.class, list);
+
+// Shallow copy
+String[] original = {"a", "b", "c"};
+String[] copy = ArrayUtilities.shallowCopy(original);
+```
+
+### Common Constants
+```java
+ArrayUtilities.EMPTY_OBJECT_ARRAY   // Empty Object[]
+ArrayUtilities.EMPTY_BYTE_ARRAY     // Empty byte[]
+ArrayUtilities.EMPTY_CHAR_ARRAY     // Empty char[]
+ArrayUtilities.EMPTY_CHARACTER_ARRAY // Empty Character[]
+ArrayUtilities.EMPTY_CLASS_ARRAY    // Empty Class<?>[]
+```
+
+### Performance Characteristics
+- isEmpty(): O(1)
+- size(): O(1)
+- shallowCopy(): O(n)
+- addAll(): O(n)
+- removeItem(): O(n)
+- getArraySubset(): O(n)
+- toArray(): O(n)
+
+### Implementation Notes
+- Thread-safe (all methods are static)
+- Null-safe operations
+- Generic type support
+- Uses System.arraycopy for efficiency
+- Uses Arrays.copyOfRange for subsetting
+- Direct array manipulation for collection conversion
+
+### Best Practices
+```java
+// Use empty constants instead of creating new arrays
+Object[] empty = ArrayUtilities.EMPTY_OBJECT_ARRAY;  // Preferred
+Object[] empty2 = new Object[0];                     // Avoid
+
+// Use type-safe array creation
+String[] strings = ArrayUtilities.createArray("a", "b");  // Preferred
+Object[] objects = new Object[]{"a", "b"};                // Avoid
+
+// Null-safe checks
+if (ArrayUtilities.isEmpty(array)) {  // Preferred
+    // handle empty case
+}
+if (array == null || array.length == 0) {  // Avoid
+    // handle empty case
+}
+```
+
+### Limitations
+- No deep copy support (see [json-io](http://github.com/jdereg/json-io)) 
+- No multi-dimensional array specific operations (see [Converter](userguide.md#converter))
+
+---
+## ByteUtilities
+[Source](/src/main/java/com/cedarsoftware/util/ByteUtilities.java)
+
+A utility class providing static methods for byte array operations and hexadecimal string conversions. Offers thread-safe methods for encoding, decoding, and GZIP detection.
+
+### Key Features
+- Hex string to byte array conversion
+- Byte array to hex string conversion
+- GZIP compression detection
+- Thread-safe operations
+- Performance optimized
+- Null-safe methods
+
+### Usage Examples
+
+**Hex Encoding and Decoding:**
+```java
+// Encode bytes to hex string
+byte[] data = {0x1F, 0x8B, 0x3C};
+String hex = ByteUtilities.encode(data);
+// Result: "1F8B3C"
+
+// Decode hex string to bytes
+byte[] decoded = ByteUtilities.decode("1F8B3C");
+// Result: {0x1F, 0x8B, 0x3C}
+```
+
+**GZIP Detection:**
+```java
+// Check if byte array is GZIP compressed
+byte[] compressedData = {0x1f, 0x8b, /* ... */};
+boolean isGzipped = ByteUtilities.isGzipped(compressedData);
+// Result: true
+```
+
+**Error Handling:**
+```java
+// Invalid hex string (odd length)
+byte[] result = ByteUtilities.decode("1F8");
+// Result: null
+
+// Valid hex string
+byte[] valid = ByteUtilities.decode("1F8B");
+// Result: {0x1F, 0x8B}
+```
+
+### Performance Characteristics
+- encode(): O(n) with optimized StringBuilder
+- decode(): O(n) with single-pass conversion
+- isGzipped(): O(1) constant time
+- Memory usage: Linear with input size
+- No recursive operations
+
+### Implementation Notes
+- Uses pre-defined hex character array
+- Optimized StringBuilder sizing
+- Direct character-to-digit conversion
+- No external dependencies
+- Immutable hex character mapping
+
+### Best Practices
+```java
+// Prefer direct byte array operations
+byte[] bytes = {0x1F, 0x8B};
+String hex = ByteUtilities.encode(bytes);
+
+// Check for null on decode
+byte[] decoded = ByteUtilities.decode(hexString);
+if (decoded == null) {
+    // Handle invalid hex string
+}
+
+// GZIP detection with null check
+if (bytes != null && bytes.length >= 2 && ByteUtilities.isGzipped(bytes)) {
+    // Handle GZIP compressed data
+}
+```
+
+### Limitations
+- decode() returns null for invalid input
+- No partial array operations
+- No streaming support
+- Fixed hex format (uppercase)
+- No binary string conversion
+- No endianness handling
+
+### Thread Safety
+- All methods are static and thread-safe
+- No shared state
+- No synchronization required
+- Safe for concurrent use
+- No instance creation needed
+
+### Use Cases
+- Binary data serialization
+- Hex string representation
+- GZIP detection
+- Data format conversion
+- Debug logging
+- Network protocol implementation
+- File format handling
+
+### Error Handling
+```java
+// Handle potential null result from decode
+String hexString = "1F8";  // Invalid (odd length)
+byte[] result = ByteUtilities.decode(hexString);
+if (result == null) {
+    // Handle invalid hex string
+    throw new IllegalArgumentException("Invalid hex string");
+}
+
+// Ensures sufficient length and starting magic number for GZIP check
+byte[] data = new byte[] { 0x1f, 0x8b, 0x44 };  // Too short (< 18)
+boolean isGzip = ByteUtilities.isGzipped(data);
+```
+
+### Performance Tips
+```java
+// Efficient for large byte arrays
+StringBuilder sb = new StringBuilder(bytes.length * 2);
+String hex = ByteUtilities.encode(largeByteArray);
+
+// Avoid repeated encoding/decoding
+byte[] data = ByteUtilities.decode(hexString);
+// Process data directly instead of converting back and forth
+```
+
+This implementation provides efficient and thread-safe operations for byte array manipulation and hex string conversion, with a focus on performance and reliability.
+
+---
+## ClassUtilities
+[Source](/src/main/java/com/cedarsoftware/util/ClassUtilities.java)
+
+A comprehensive utility class for Java class operations, providing methods for class manipulation, inheritance analysis, instantiation, and resource loading.
+
+### Key Features
+- Inheritance distance calculation
+- Primitive type handling
+- Class loading and instantiation
+- Resource loading utilities
+- Class alias management
+- OSGi/JPMS support
+- Constructor caching
+- Unsafe instantiation support
+
+### Usage Examples
+
+**Class Analysis:**
+```java
+// Check inheritance distance
+int distance = ClassUtilities.computeInheritanceDistance(ArrayList.class, List.class);
+// Result: 1
+
+// Check primitive types
+boolean isPrim = ClassUtilities.isPrimitive(Integer.class);
+// Result: true
+
+// Check class properties
+boolean isFinal = ClassUtilities.isClassFinal(String.class);
+boolean privateConstructors = ClassUtilities.areAllConstructorsPrivate(Math.class);
+```
+
+**Class Loading and Instantiation:**
+```java
+// Load class by name
+Class<?> clazz = ClassUtilities.forName("java.util.ArrayList", myClassLoader);
+
+// Create new instance
+List<Object> args = Arrays.asList("arg1", 42);
+Object instance = ClassUtilities.newInstance(converter, MyClass.class, args);
+
+// Convert primitive types
+Class<?> wrapper = ClassUtilities.toPrimitiveWrapperClass(int.class);
+// Result: Integer.class
+```
+
+**Resource Loading:**
+```java
+// Load resource as string
+String content = ClassUtilities.loadResourceAsString("config.json");
+
+// Load resource as bytes
+byte[] data = ClassUtilities.loadResourceAsBytes("image.png");
+```
+
+**Class Alias Management:**
+```java
+// Add class alias
+ClassUtilities.addPermanentClassAlias(ArrayList.class, "list");
+
+// Remove class alias
+ClassUtilities.removePermanentClassAlias("list");
+```
+
+### Performance Characteristics
+- Constructor caching for improved instantiation
+- Optimized class loading
+- Efficient inheritance distance calculation
+- Resource loading buffering
+- ClassLoader caching for OSGi
+
+### Implementation Notes
+- Thread-safe operations
+- Null-safe methods
+- Security checks for instantiation
+- OSGi environment detection
+- JPMS compatibility
+- Constructor accessibility handling
+
+### Best Practices
+```java
+// Prefer cached constructors
+Object obj = ClassUtilities.newInstance(converter, MyClass.class, args);
+
+// Use appropriate ClassLoader
+ClassLoader loader = ClassUtilities.getClassLoader(anchorClass);
+
+// Handle primitive types properly
+if (ClassUtilities.isPrimitive(clazz)) {
+    clazz = ClassUtilities.toPrimitiveWrapperClass(clazz);
+}
+```
+
+### Security Considerations
+```java
+// Restricted class instantiation
+// These will throw IllegalArgumentException:
+ClassUtilities.newInstance(converter, ProcessBuilder.class, null);
+ClassUtilities.newInstance(converter, ClassLoader.class, null);
+
+// Safe resource loading
+try {
+    byte[] data = ClassUtilities.loadResourceAsBytes("config.json");
+} catch (IllegalArgumentException e) {
+    // Handle missing resource
+}
+```
+
+### Advanced Features
+```java
+// Enable unsafe instantiation (use with caution)
+ClassUtilities.setUseUnsafe(true);
+
+// Find closest matching class
+Map<Class<?>, Handler> handlers = new HashMap<>();
+Handler handler = ClassUtilities.findClosest(targetClass, handlers, defaultHandler);
+
+// Check enum relationship
+Class<?> enumClass = ClassUtilities.getClassIfEnum(someClass);
+```
+
+### Common Use Cases
+- Dynamic class loading
+- Reflection utilities
+- Resource management
+- Type conversion
+- Class relationship analysis
+- Constructor selection
+- Instance creation
+- ClassLoader management
+
+This implementation provides a robust set of utilities for class manipulation and reflection operations, with emphasis on security, performance, and compatibility across different Java environments.

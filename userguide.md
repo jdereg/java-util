@@ -880,7 +880,7 @@ A thread-safe Map implementation that extends ConcurrentHashMap's capabilities b
 **Basic Usage:**
 ```java
 // Create a new map
-ConcurrentHashMapNullSafe<String, User> map = 
+ConcurrentMap<String, User> map = 
     new ConcurrentHashMapNullSafe<>();
 
 // Support for null keys and values
@@ -895,17 +895,17 @@ User user = map.get("user1");
 **With Initial Capacity:**
 ```java
 // Create with known size for better performance
-ConcurrentHashMapNullSafe<Integer, String> map = 
+ConcurrentMap<Integer, String> map = 
     new ConcurrentHashMapNullSafe<>(1000);
 
 // Create with capacity and load factor
-ConcurrentHashMapNullSafe<Integer, String> map = 
+ConcurrentMap<Integer, String> map = 
     new ConcurrentHashMapNullSafe<>(1000, 0.75f);
 ```
 
 **Atomic Operations:**
 ```java
-ConcurrentHashMapNullSafe<String, Integer> scores = 
+ConcurrentMap<String, Integer> scores = 
     new ConcurrentHashMapNullSafe<>();
 
 // Atomic operations with null support
@@ -921,7 +921,7 @@ scores.compute("player1", (k, v) -> (v == null) ? 1 : v + 1);
 ```java
 // Create from existing map
 Map<String, Integer> source = Map.of("A", 1, "B", 2);
-ConcurrentHashMapNullSafe<String, Integer> map = 
+ConcurrentMap<String, Integer> map = 
     new ConcurrentHashMapNullSafe<>(source);
 
 // Merge operations
@@ -974,4 +974,136 @@ map.remove(key, value);           // Conditional remove
 map.computeIfAbsent(key, k -> generator.get());
 map.computeIfPresent(key, (k, v) -> processor.apply(v));
 map.compute(key, (k, v) -> calculator.calculate(k, v));
+```
+
+---
+## ConcurrentNavigableMapNullSafe
+[Source](/src/main/java/com/cedarsoftware/util/ConcurrentNavigableMapNullSafe.java)
+
+A thread-safe NavigableMap implementation that extends ConcurrentSkipListMap's capabilities by supporting null keys and values while maintaining sorted order. Provides all the navigation and concurrent benefits while allowing null entries.
+
+### Key Features
+- Full thread-safety and concurrent operation support
+- Allows null keys and values
+- Maintains sorted order with null handling
+- Complete NavigableMap interface implementation
+- Bidirectional navigation capabilities
+- Range-view operations
+- Customizable comparator support
+
+### Usage Examples
+
+**Basic Usage:**
+```java
+// Create with natural ordering
+ConcurrentNavigableMap<String, Integer> map = 
+    new ConcurrentNavigableMapNullSafe<>();
+
+// Support for null keys and values
+map.put(null, 100);    // Null keys are supported
+map.put("B", null);    // Null values are supported
+map.put("A", 1);
+
+// Navigation operations
+Integer first = map.firstEntry().getValue();  // Returns 1
+Integer last = map.lastEntry().getValue();    // Returns 100 (null key)
+```
+
+**Custom Comparator:**
+```java
+// Create with custom ordering
+Comparator<String> comparator = String.CASE_INSENSITIVE_ORDER;
+ConcurrentNavigableMap<String, Integer> map = 
+    new ConcurrentNavigableMapNullSafe<>(comparator);
+
+// Custom ordering is maintained
+map.put("a", 1);
+map.put("B", 2);
+map.put(null, 3);
+```
+
+**Navigation Operations:**
+```java
+ConcurrentNavigableMap<Integer, String> map = 
+    new ConcurrentNavigableMapNullSafe<>();
+
+// Navigation methods
+Map.Entry<Integer, String> lower = map.lowerEntry(5);
+Map.Entry<Integer, String> floor = map.floorEntry(5);
+Map.Entry<Integer, String> ceiling = map.ceilingEntry(5);
+Map.Entry<Integer, String> higher = map.higherEntry(5);
+```
+
+**Range Views:**
+```java
+// Submap views
+ConcurrentNavigableMap<String, Integer> subMap = 
+    map.subMap("A", true, "C", false);
+
+// Head/Tail views
+ConcurrentNavigableMap<String, Integer> headMap = 
+    map.headMap("B", true);
+ConcurrentNavigableMap<String, Integer> tailMap = 
+    map.tailMap("B", true);
+```
+
+### Performance Characteristics
+- get(): O(log n)
+- put(): O(log n)
+- remove(): O(log n)
+- containsKey(): O(log n)
+- firstKey()/lastKey(): O(1)
+- subMap operations: O(1)
+- Memory overhead: Logarithmic
+
+### Thread Safety Features
+- Lock-free reads
+- Lock-free writes
+- Full concurrent operation support
+- Consistent range view behavior
+- Safe iteration guarantees
+- Atomic navigation operations
+
+### Use Cases
+- Priority queues
+- Sorted caches
+- Range-based data structures
+- Time-series data
+- Event scheduling
+- Version control
+- Hierarchical data management
+
+### Implementation Notes
+- Based on ConcurrentSkipListMap
+- Null sentinel handling
+- Maintains total ordering
+- Thread-safe navigation
+- Consistent range views
+- Preserves NavigableMap contract
+
+### Navigation Operation Support
+```java
+// Navigation examples
+K firstKey = map.firstKey();           // Smallest key
+K lastKey = map.lastKey();             // Largest key
+K lowerKey = map.lowerKey(key);        // Greatest less than
+K floorKey = map.floorKey(key);        // Greatest less or equal
+K ceilingKey = map.ceilingKey(key);    // Least greater or equal
+K higherKey = map.higherKey(key);      // Least greater than
+
+// Descending operations
+NavigableSet<K> descKeys = map.descendingKeySet();
+ConcurrentNavigableMap<K,V> descMap = map.descendingMap();
+```
+
+### Range View Operations
+```java
+// Range view examples
+map.subMap(fromKey, fromInclusive, toKey, toInclusive);
+map.headMap(toKey, inclusive);
+map.tailMap(fromKey, inclusive);
+
+// Polling operations
+Map.Entry<K,V> first = map.pollFirstEntry();
+Map.Entry<K,V> last = map.pollLastEntry();
 ```

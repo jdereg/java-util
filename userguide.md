@@ -3281,3 +3281,317 @@ String config = SystemUtilities.getExternalVariable("CONFIG");
 ```
 
 This implementation provides robust system utilities with emphasis on platform independence, proper resource management, and comprehensive error handling.
+
+---
+## Traverser
+[Source](/src/main/java/com/cedarsoftware/util/Traverser.java)
+
+A utility class for traversing object graphs in Java, with cycle detection and configurable object visitation.
+
+### Key Features
+- Complete object graph traversal
+- Cycle detection
+- Configurable class filtering
+- Support for collections, arrays, and maps
+- Lambda-based processing
+- Legacy visitor pattern support
+
+### Core Methods
+
+**Modern API (Recommended):**
+```java
+// Basic traversal with lambda
+Traverser.traverse(root, classesToSkip, object -> {
+    // Process object
+});
+
+// Simple traversal without skipping
+Traverser.traverse(root, null, object -> {
+    // Process object
+});
+```
+
+### Class Filtering
+
+**Skip Configuration:**
+```java
+// Create skip set
+Set<Class<?>> skipClasses = new HashSet<>();
+skipClasses.add(String.class);
+skipClasses.add(Integer.class);
+
+// Traverse with filtering
+Traverser.traverse(root, skipClasses, obj -> {
+    // Only non-skipped objects processed
+});
+```
+
+### Collection Handling
+
+**Supported Collections:**
+```java
+// Lists
+List<String> list = Arrays.asList("a", "b", "c");
+Traverser.traverse(list, null, obj -> {
+    // Visits list and its elements
+});
+
+// Maps
+Map<String, Integer> map = new HashMap<>();
+Traverser.traverse(map, null, obj -> {
+    // Visits map, keys, and values
+});
+
+// Arrays
+String[] array = {"x", "y", "z"};
+Traverser.traverse(array, null, obj -> {
+    // Visits array and elements
+});
+```
+
+### Object Processing
+
+**Custom Processing:**
+```java
+// Type-specific processing
+Traverser.traverse(root, null, obj -> {
+    if (obj instanceof User) {
+        processUser((User) obj);
+    } else if (obj instanceof Order) {
+        processOrder((Order) obj);
+    }
+});
+
+// Counting objects
+AtomicInteger counter = new AtomicInteger(0);
+Traverser.traverse(root, null, obj -> counter.incrementAndGet());
+```
+
+### Legacy Support
+
+**Deprecated Visitor Pattern:**
+```java
+// Using visitor interface (deprecated)
+Traverser.Visitor visitor = new Traverser.Visitor() {
+    @Override
+    public void process(Object obj) {
+        // Process object
+    }
+};
+Traverser.traverse(root, visitor);
+```
+
+### Implementation Notes
+
+**Thread Safety:**
+```java
+// Not thread-safe
+// Use external synchronization if needed
+synchronized(lockObject) {
+    Traverser.traverse(root, null, obj -> process(obj));
+}
+```
+
+**Error Handling:**
+```java
+try {
+    Traverser.traverse(root, null, obj -> {
+        // Processing that might throw
+        riskyOperation(obj);
+    });
+} catch (Exception e) {
+    // Handle processing errors
+}
+```
+
+### Best Practices
+
+**Memory Management:**
+```java
+// Limit scope with class filtering
+Set<Class<?>> skipClasses = new HashSet<>();
+skipClasses.add(ResourceHeavyClass.class);
+
+// Process with limited scope
+Traverser.traverse(root, skipClasses, obj -> {
+    // Efficient processing
+});
+```
+
+**Efficient Processing:**
+```java
+// Avoid heavy operations in processor
+Traverser.traverse(root, null, obj -> {
+    // Keep processing light
+    recordReference(obj);
+});
+
+// Collect and process later if needed
+List<Object> collected = new ArrayList<>();
+Traverser.traverse(root, null, collected::add);
+processCollected(collected);
+```
+
+This implementation provides a robust object graph traversal utility with emphasis on flexibility, proper cycle detection, and efficient processing options.
+
+---
+## UniqueIdGenerator
+UniqueIdGenerator is a utility class that generates guaranteed unique, time-based, monotonically increasing 64-bit IDs suitable for distributed environments. It provides two ID generation methods with different characteristics and throughput capabilities.
+
+### Features
+- Distributed-safe unique IDs
+- Monotonically increasing values
+- Clock regression handling
+- Thread-safe operation
+- Cluster-aware with configurable server IDs
+- Two ID formats for different use cases
+
+### Basic Usage
+
+**Standard ID Generation**
+```java
+// Generate a standard unique ID
+long id = UniqueIdGenerator.getUniqueId();
+// Format: timestampMs(13-14 digits).sequence(3 digits).serverId(2 digits)
+// Example: 1234567890123456.789.99
+
+// Get timestamp from ID
+Date date = UniqueIdGenerator.getDate(id);
+Instant instant = UniqueIdGenerator.getInstant(id);
+```
+
+**High-Throughput ID Generation**
+```java
+// Generate a 19-digit unique ID
+long id = UniqueIdGenerator.getUniqueId19();
+// Format: timestampMs(13 digits).sequence(4 digits).serverId(2 digits)
+// Example: 1234567890123.9999.99
+
+// Get timestamp from ID
+Date date = UniqueIdGenerator.getDate19(id);
+Instant instant = UniqueIdGenerator.getInstant19(id);
+```
+
+### ID Format Comparison
+
+**Standard Format (getUniqueId)**   
+```
+Characteristics:
+- Format: timestampMs(13-14 digits).sequence(3 digits).serverId(2 digits)
+- Sequence: Counts from 000-999 within each millisecond
+- Rate: Up to 1,000 IDs per millisecond
+- Range: Until year 5138
+- Example: 1234567890123456.789.99
+```
+
+**High-Throughput Format (getUniqueId19)**
+```
+Characteristics:
+- Format: timestampMs(13 digits).sequence(4 digits).serverId(2 digits)
+- Sequence: Counts from 0000-9999 within each millisecond
+- Rate: Up to 10,000 IDs per millisecond
+- Range: Until year 2286 (positive values)
+- Example: 1234567890123.9999.99
+```
+
+### Cluster Configuration
+
+Server IDs are determined in the following priority order:
+
+**1. Environment Variable:**
+```bash
+export JAVA_UTIL_CLUSTERID=42
+```
+
+**2. Kubernetes Pod Name:**
+```yaml
+spec:
+  containers:
+    - name: myapp
+      env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+```
+
+**3. VMware Tanzu:**
+```bash
+export VMWARE_TANZU_INSTANCE_ID=7
+```
+
+**4. Cloud Foundry:**
+```bash
+export CF_INSTANCE_INDEX=3
+```
+
+**5. Hostname Hash (automatic fallback)**
+**6. Random Number (final fallback)**
+
+### Implementation Notes
+
+**Thread Safety**
+```java
+// All methods are thread-safe
+// Can be safely called from multiple threads
+ExecutorService executor = Executors.newFixedThreadPool(10);
+for (int i = 0; i < 100; i++) {
+    executor.submit(() -> {
+        long id = UniqueIdGenerator.getUniqueId();
+        processId(id);
+    });
+}
+```
+
+**Clock Regression Handling**
+```java
+// Automatically handles system clock changes
+// No special handling needed
+long id1 = UniqueIdGenerator.getUniqueId();
+// Even if system clock goes backwards
+long id2 = UniqueIdGenerator.getUniqueId();
+assert id2 > id1; // Always true
+```
+
+### Best Practices
+
+**Choosing ID Format**
+```java
+// Use standard format for general purposes
+if (normalThroughput) {
+    return UniqueIdGenerator.getUniqueId();
+}
+
+// Use 19-digit format for high-throughput scenarios
+if (highThroughput) {
+    return UniqueIdGenerator.getUniqueId19();
+}
+```
+
+**Error Handling**
+```java
+try {
+    Instant instant = UniqueIdGenerator.getInstant(id);
+} catch (IllegalArgumentException e) {
+    // Handle invalid ID format
+    log.error("Invalid ID format", e);
+}
+```
+
+**Performance Considerations**
+```java
+// Batch ID generation if needed
+List<Long> ids = new ArrayList<>();
+for (int i = 0; i < batchSize; i++) {
+    ids.add(UniqueIdGenerator.getUniqueId());
+}
+```
+
+### Limitations
+- Server IDs limited to range 0-99
+- High-throughput format limited to year 2286
+- Minimal blocking behavior (max 1ms) if sequence numbers exhausted within a millisecond
+- Requires proper cluster configuration for distributed uniqueness (otherwise uses hostname-based or random server IDs as for uniqueId within cluster)
+
+### Support
+For additional support or to report issues, please refer to the project's GitHub repository or documentation.

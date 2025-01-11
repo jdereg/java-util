@@ -2498,3 +2498,631 @@ String output2 = exec.getOut();
 ```
 
 This implementation provides a robust and convenient way to execute system commands while properly handling streams, environment variables, and working directories.
+
+---
+## GraphComparator
+[Source](/src/main/java/com/cedarsoftware/util/GraphComparator.java)
+
+A powerful utility for comparing object graphs and generating delta commands to transform one graph into another.
+
+### Key Features
+- Deep graph comparison
+- Delta command generation
+- Cyclic reference handling
+- Collection support (Lists, Sets, Maps)
+- Array comparison
+- ID-based object tracking
+- Delta application support
+
+### Usage Examples
+
+**Basic Graph Comparison:**
+```java
+// Define ID fetcher
+GraphComparator.ID idFetcher = obj -> {
+    if (obj instanceof MyClass) {
+        return ((MyClass)obj).getId();
+    }
+    throw new IllegalArgumentException("Not an ID object");
+};
+
+// Compare graphs
+List<Delta> deltas = GraphComparator.compare(sourceGraph, targetGraph, idFetcher);
+
+// Apply deltas
+DeltaProcessor processor = GraphComparator.getJavaDeltaProcessor();
+List<DeltaError> errors = GraphComparator.applyDelta(sourceGraph, deltas, idFetcher, processor);
+```
+
+**Custom Delta Processing:**
+```java
+DeltaProcessor customProcessor = new DeltaProcessor() {
+    public void processArraySetElement(Object source, Field field, Delta delta) {
+        // Custom array element handling
+    }
+    // Implement other methods...
+};
+
+GraphComparator.applyDelta(source, deltas, idFetcher, customProcessor);
+```
+
+### Delta Commands
+
+**Object Operations:**
+```java
+// Field assignment
+OBJECT_ASSIGN_FIELD      // Change field value
+OBJECT_FIELD_TYPE_CHANGED // Field type changed
+OBJECT_ORPHAN            // Object no longer referenced
+
+// Array Operations
+ARRAY_SET_ELEMENT       // Set array element
+ARRAY_RESIZE           // Resize array
+
+// Collection Operations
+LIST_SET_ELEMENT       // Set list element
+LIST_RESIZE           // Resize list
+SET_ADD              // Add to set
+SET_REMOVE          // Remove from set
+MAP_PUT             // Put map entry
+MAP_REMOVE          // Remove map entry
+```
+
+### Implementation Notes
+
+**ID Handling:**
+```java
+// ID fetcher implementation
+GraphComparator.ID idFetcher = obj -> {
+    if (obj instanceof Entity) {
+        return ((Entity)obj).getId();
+    }
+    if (obj instanceof Document) {
+        return ((Document)obj).getDocId();
+    }
+    throw new IllegalArgumentException("Not an ID object");
+};
+```
+
+**Delta Processing:**
+```java
+// Process specific delta types
+switch (delta.getCmd()) {
+    case ARRAY_SET_ELEMENT:
+        // Handle array element change
+        break;
+    case MAP_PUT:
+        // Handle map entry addition
+        break;
+    case OBJECT_ASSIGN_FIELD:
+        // Handle field assignment
+        break;
+}
+```
+
+### Best Practices
+
+**ID Fetcher:**
+```java
+// Robust ID fetcher
+GraphComparator.ID idFetcher = obj -> {
+    if (obj == null) throw new IllegalArgumentException("Null object");
+    
+    if (obj instanceof Identifiable) {
+        return ((Identifiable)obj).getId();
+    }
+    
+    throw new IllegalArgumentException(
+        "Not an ID object: " + obj.getClass().getName());
+};
+```
+
+**Error Handling:**
+```java
+List<DeltaError> errors = GraphComparator.applyDelta(
+    source, deltas, idFetcher, processor, true); // failFast=true
+
+if (!errors.isEmpty()) {
+    for (DeltaError error : errors) {
+        log.error("Delta error: {} for {}", 
+            error.getError(), error.getCmd());
+    }
+}
+```
+
+### Performance Considerations
+- Uses identity hash maps for cycle detection
+- Efficient collection comparison
+- Minimal object creation
+- Smart delta generation
+- Optimized graph traversal
+
+### Limitations
+- Objects must have unique IDs
+- Collections must be standard JDK types
+- Arrays must be single-dimensional
+- No support for concurrent modifications
+- Field access must be possible
+
+This implementation provides robust graph comparison and transformation capabilities with detailed control over the delta application process.
+
+---
+## MathUtilities
+[Source](/src/main/java/com/cedarsoftware/util/MathUtilities.java)
+
+A utility class providing enhanced mathematical operations, numeric type handling, and algorithmic functions.
+
+### Key Features
+- Min/Max calculations for multiple numeric types
+- Smart numeric parsing
+- Permutation generation
+- Constant definitions
+- Thread-safe operations
+
+### Numeric Constants
+```java
+// Useful BigInteger/BigDecimal constants
+BIG_INT_LONG_MIN  // BigInteger.valueOf(Long.MIN_VALUE)
+BIG_INT_LONG_MAX  // BigInteger.valueOf(Long.MAX_VALUE)
+BIG_DEC_DOUBLE_MIN // BigDecimal.valueOf(-Double.MAX_VALUE)
+BIG_DEC_DOUBLE_MAX // BigDecimal.valueOf(Double.MAX_VALUE)
+```
+
+### Minimum/Maximum Operations
+
+**Primitive Types:**
+```java
+// Long operations
+long min = MathUtilities.minimum(1L, 2L, 3L);  // Returns 1
+long max = MathUtilities.maximum(1L, 2L, 3L);  // Returns 3
+
+// Double operations
+double minD = MathUtilities.minimum(1.0, 2.0, 3.0);  // Returns 1.0
+double maxD = MathUtilities.maximum(1.0, 2.0, 3.0);  // Returns 3.0
+```
+
+**Big Number Types:**
+```java
+// BigInteger operations
+BigInteger minBi = MathUtilities.minimum(
+    BigInteger.ONE, 
+    BigInteger.TEN
+);
+
+BigInteger maxBi = MathUtilities.maximum(
+    BigInteger.ONE, 
+    BigInteger.TEN
+);
+
+// BigDecimal operations
+BigDecimal minBd = MathUtilities.minimum(
+    BigDecimal.ONE, 
+    BigDecimal.TEN
+);
+
+BigDecimal maxBd = MathUtilities.maximum(
+    BigDecimal.ONE, 
+    BigDecimal.TEN
+);
+```
+
+### Smart Numeric Parsing
+
+**Minimal Type Selection:**
+```java
+// Integer values within Long range
+Number n1 = MathUtilities.parseToMinimalNumericType("123");
+// Returns Long(123)
+
+// Decimal values within Double precision
+Number n2 = MathUtilities.parseToMinimalNumericType("123.45");
+// Returns Double(123.45)
+
+// Large integers
+Number n3 = MathUtilities.parseToMinimalNumericType("999999999999999999999");
+// Returns BigInteger
+
+// High precision decimals
+Number n4 = MathUtilities.parseToMinimalNumericType("1.23456789012345678901");
+// Returns BigDecimal
+```
+
+### Permutation Generation
+
+**Generate All Permutations:**
+```java
+List<Integer> list = new ArrayList<>(Arrays.asList(1, 2, 3));
+
+// Print all permutations
+do {
+    System.out.println(list);
+} while (MathUtilities.nextPermutation(list));
+
+// Output:
+// [1, 2, 3]
+// [1, 3, 2]
+// [2, 1, 3]
+// [2, 3, 1]
+// [3, 1, 2]
+// [3, 2, 1]
+```
+
+### Implementation Notes
+
+**Null Handling:**
+```java
+// BigInteger/BigDecimal methods throw IllegalArgumentException for null values
+try {
+    MathUtilities.minimum((BigInteger)null);
+} catch (IllegalArgumentException e) {
+    // Handle null input
+}
+
+// Primitive arrays cannot contain nulls
+MathUtilities.minimum(1L, 2L, 3L);  // Always safe
+```
+
+**Type Selection Rules:**
+```java
+// Integer values
+"123"       → Long
+"999...999" → BigInteger (if > Long.MAX_VALUE)
+
+// Decimal values
+"123.45"    → Double
+"1e308"     → BigDecimal (if > Double.MAX_VALUE)
+"1.234...5" → BigDecimal (if needs more precision)
+```
+
+### Best Practices
+
+**Efficient Min/Max:**
+```java
+// Use varargs for multiple values
+long min = MathUtilities.minimum(val1, val2, val3);
+
+// Use appropriate type
+BigDecimal precise = MathUtilities.minimum(bd1, bd2, bd3);
+```
+
+**Smart Parsing:**
+```java
+// Let the utility choose the best type
+Number n = MathUtilities.parseToMinimalNumericType(numericString);
+
+// Check the actual type if needed
+if (n instanceof Long) {
+    // Handle integer case
+} else if (n instanceof Double) {
+    // Handle decimal case
+} else if (n instanceof BigInteger) {
+    // Handle large integer case
+} else if (n instanceof BigDecimal) {
+    // Handle high precision decimal case
+}
+```
+
+### Performance Considerations
+- Efficient implementation of min/max operations
+- Smart type selection to minimize memory usage
+- No unnecessary object creation
+- Thread-safe operations
+- Optimized permutation generation
+
+This implementation provides a robust set of mathematical utilities with emphasis on type safety, precision, and efficiency.
+
+---
+## ReflectionUtils
+[Source](/src/main/java/com/cedarsoftware/util/ReflectionUtils.java)
+
+A high-performance reflection utility providing cached access to fields, methods, constructors, and annotations with sophisticated filtering capabilities.
+
+### Key Features
+- Cached reflection operations
+- Field and method access
+- Annotation discovery
+- Constructor handling
+- Class bytecode analysis
+- Thread-safe implementation
+
+### Cache Management
+
+**Custom Cache Configuration (optional - use if you want to use your own cache):**
+```java
+// Configure custom caches
+Map<Object, Method> methodCache = new ConcurrentHashMap<>();
+ReflectionUtils.setMethodCache(methodCache);
+
+Map<Object, Field> fieldCache = new ConcurrentHashMap<>();
+ReflectionUtils.setFieldCache(fieldCache);
+
+Map<Object, Constructor<?>> constructorCache = new ConcurrentHashMap<>();
+ReflectionUtils.setConstructorCache(constructorCache);
+```
+
+### Field Operations
+
+**Field Access:**
+```java
+// Get single field
+Field field = ReflectionUtils.getField(MyClass.class, "fieldName");
+
+// Get all fields (including inherited)
+List<Field> allFields = ReflectionUtils.getAllDeclaredFields(MyClass.class);
+
+// Get fields with custom filter
+List<Field> filteredFields = ReflectionUtils.getAllDeclaredFields(
+    MyClass.class,
+    field -> !Modifier.isStatic(field.getModifiers())
+);
+
+// Get fields as map
+Map<String, Field> fieldMap = ReflectionUtils.getAllDeclaredFieldsMap(MyClass.class);
+```
+
+### Method Operations
+
+**Method Access:**
+```java
+// Get method by name and parameter types
+Method method = ReflectionUtils.getMethod(
+    MyClass.class, 
+    "methodName", 
+    String.class, 
+    int.class
+);
+
+// Get non-overloaded method
+Method simple = ReflectionUtils.getNonOverloadedMethod(
+    MyClass.class, 
+    "uniqueMethod"
+);
+
+// Method invocation
+Object result = ReflectionUtils.call(instance, method, arg1, arg2);
+Object result2 = ReflectionUtils.call(instance, "methodName", arg1, arg2);
+```
+
+### Annotation Operations
+
+**Annotation Discovery:**
+```java
+// Get class annotation
+MyAnnotation anno = ReflectionUtils.getClassAnnotation(
+    MyClass.class, 
+    MyAnnotation.class
+);
+
+// Get method annotation
+MyAnnotation methodAnno = ReflectionUtils.getMethodAnnotation(
+    method, 
+    MyAnnotation.class
+);
+```
+
+### Constructor Operations
+
+**Constructor Access:**
+```java
+// Get constructor
+Constructor<?> ctor = ReflectionUtils.getConstructor(
+    MyClass.class, 
+    String.class, 
+    int.class
+);
+```
+
+### Implementation Notes
+
+**Caching Strategy:**
+```java
+// All operations use internal caching
+private static final int CACHE_SIZE = 1000;
+private static final Map<MethodCacheKey, Method> METHOD_CACHE = 
+    new LRUCache<>(CACHE_SIZE);
+private static final Map<FieldsCacheKey, Collection<Field>> FIELDS_CACHE = 
+    new LRUCache<>(CACHE_SIZE);
+```
+
+**Thread Safety:**
+```java
+// All caches are thread-safe
+private static volatile Map<ConstructorCacheKey, Constructor<?>> CONSTRUCTOR_CACHE;
+private static volatile Map<MethodCacheKey, Method> METHOD_CACHE;
+```
+
+### Best Practices
+
+**Field Access:**
+```java
+// Prefer getAllDeclaredFields for complete hierarchy
+List<Field> fields = ReflectionUtils.getAllDeclaredFields(clazz);
+
+// Use field map for repeated lookups
+Map<String, Field> fieldMap = ReflectionUtils.getAllDeclaredFieldsMap(clazz);
+```
+
+**Method Access:**
+```java
+// Cache method lookups at class level
+private static final Method method = ReflectionUtils.getMethod(
+    MyClass.class, 
+    "process"
+);
+
+// Use call() for simplified invocation
+Object result = ReflectionUtils.call(instance, method, args);
+```
+
+### Performance Considerations
+- All reflection operations are cached
+- Thread-safe implementation
+- Optimized for repeated access
+- Minimal object creation
+- Efficient cache key generation
+- Smart cache eviction
+
+### Security Notes
+```java
+// Handles security restrictions gracefully
+try {
+    field.setAccessible(true);
+} catch (SecurityException ignored) {
+    // Continue with restricted access
+}
+
+// Respects security manager
+SecurityManager sm = System.getSecurityManager();
+if (sm != null) {
+    // Handle security checks
+}
+```
+
+This implementation provides high-performance reflection utilities with sophisticated caching and comprehensive access to Java's reflection capabilities.
+
+---
+## StringUtilities
+[Source](/src/main/java/com/cedarsoftware/util/StringUtilities.java)
+
+A comprehensive utility class providing enhanced string manipulation, comparison, and conversion operations with null-safe implementations.
+
+### Key Features
+- String comparison (case-sensitive and insensitive)
+- Whitespace handling
+- String trimming operations
+- Distance calculations (Levenshtein and Damerau-Levenshtein)
+- Encoding conversions
+- Random string generation
+- Hex encoding/decoding
+
+### Basic Operations
+
+**String Comparison:**
+```java
+// Case-sensitive comparison
+boolean equals = StringUtilities.equals("text", "text");      // true
+boolean equals = StringUtilities.equals("Text", "text");      // false
+
+// Case-insensitive comparison
+boolean equals = StringUtilities.equalsIgnoreCase("Text", "text");  // true
+
+// Comparison with trimming
+boolean equals = StringUtilities.equalsWithTrim(" text ", "text");  // true
+boolean equals = StringUtilities.equalsIgnoreCaseWithTrim(" Text ", "text");  // true
+```
+
+**Whitespace Handling:**
+```java
+// Check for empty or whitespace
+boolean empty = StringUtilities.isEmpty("   ");        // true
+boolean empty = StringUtilities.isEmpty(null);         // true
+boolean empty = StringUtilities.isEmpty("  text  ");   // false
+
+// Check for content
+boolean hasContent = StringUtilities.hasContent("text");  // true
+boolean hasContent = StringUtilities.hasContent("   ");   // false
+```
+
+**String Trimming:**
+```java
+// Basic trim operations
+String result = StringUtilities.trim("  text  ");        // "text"
+String result = StringUtilities.trimToEmpty(null);       // ""
+String result = StringUtilities.trimToNull("  ");        // null
+String result = StringUtilities.trimEmptyToDefault(
+    "  ", "default");  // "default"
+```
+
+### Advanced Features
+
+**Distance Calculations:**
+```java
+// Levenshtein distance
+int distance = StringUtilities.levenshteinDistance("kitten", "sitting");  // 3
+
+// Damerau-Levenshtein distance (handles transpositions)
+int distance = StringUtilities.damerauLevenshteinDistance("book", "back");  // 2
+```
+
+**Encoding Operations:**
+```java
+// UTF-8 operations
+byte[] bytes = StringUtilities.getUTF8Bytes("text");
+String text = StringUtilities.createUTF8String(bytes);
+
+// Custom encoding
+byte[] bytes = StringUtilities.getBytes("text", "ISO-8859-1");
+String text = StringUtilities.createString(bytes, "ISO-8859-1");
+```
+
+**Random String Generation:**
+```java
+Random random = new Random();
+// Generate random string (proper case)
+String random = StringUtilities.getRandomString(random, 5, 10);  // "Abcdef"
+
+// Generate random character
+String char = StringUtilities.getRandomChar(random, true);  // Uppercase
+String char = StringUtilities.getRandomChar(random, false); // Lowercase
+```
+
+### String Manipulation
+
+**Quote Handling:**
+```java
+// Remove quotes
+String result = StringUtilities.removeLeadingAndTrailingQuotes("\"text\"");  // "text"
+String result = StringUtilities.removeLeadingAndTrailingQuotes("\"\"text\"\"");  // "text"
+```
+
+**Set Conversion:**
+```java
+// Convert comma-separated string to Set
+Set<String> set = StringUtilities.commaSeparatedStringToSet("a,b,c");
+// Result: ["a", "b", "c"]
+```
+
+### Implementation Notes
+
+**Performance Features:**
+```java
+// Efficient case-insensitive hash code
+int hash = StringUtilities.hashCodeIgnoreCase("Text");
+
+// Optimized string counting
+int count = StringUtilities.count("text", 't');
+int count = StringUtilities.count("text text", "text");
+```
+
+**Pattern Conversion:**
+```java
+// Convert * and ? wildcards to regex
+String regex = StringUtilities.wildcardToRegexString("*.txt");
+// Result: "^.*\.txt$"
+```
+
+### Best Practices
+
+**Null Handling:**
+```java
+// Use null-safe methods
+String result = StringUtilities.trimToEmpty(nullString);    // Returns ""
+String result = StringUtilities.trimToNull(emptyString);    // Returns null
+String result = StringUtilities.trimEmptyToDefault(
+    nullString, "default");  // Returns "default"
+```
+
+**Length Calculations:**
+```java
+// Safe length calculations
+int len = StringUtilities.length(nullString);      // Returns 0
+int len = StringUtilities.trimLength(nullString);  // Returns 0
+```
+
+### Constants
+```java
+StringUtilities.EMPTY           // Empty string ""
+StringUtilities.FOLDER_SEPARATOR // Forward slash "/"
+```
+
+This implementation provides robust string manipulation capabilities with emphasis on null safety, performance, and convenience.

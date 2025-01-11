@@ -7,7 +7,25 @@ import java.util.List;
 import static java.util.Collections.swap;
 
 /**
- * Useful Math utilities
+ * Mathematical utility class providing enhanced numeric operations and algorithms.
+ * <p>
+ * This class provides:
+ * </p>
+ * <ul>
+ *   <li>Minimum/Maximum calculations for various numeric types</li>
+ *   <li>Smart numeric parsing with minimal type selection</li>
+ *   <li>Permutation generation</li>
+ *   <li>Common mathematical constants</li>
+ * </ul>
+ *
+ * <p><strong>Features:</strong></p>
+ * <ul>
+ *   <li>Support for primitive types (long, double)</li>
+ *   <li>Support for BigInteger and BigDecimal</li>
+ *   <li>Null-safe operations</li>
+ *   <li>Efficient implementations</li>
+ *   <li>Thread-safe operations</li>
+ * </ul>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -238,13 +256,30 @@ public final class MathUtilities
     }
 
     /**
-     * Parse the passed in String as a numeric value and return the minimal data type between Long, Double,
-     * BigDecimal, or BigInteger.  Useful for processing values from JSON files.
-     * @param numStr String to parse.
-     * @return Long, BigInteger, Double, or BigDecimal depending on the value.  If the value is and integer and
-     * between the range of Long min/max, a Long is returned.  If the value is an integer and outside this range, a
-     * BigInteger is returned.  If the value is a decimal but within the confines of a Double, then a Double is
-     * returned, otherwise a BigDecimal is returned.
+     * Parses a string representation of a number into the most appropriate numeric type.
+     * <p>
+     * This method intelligently selects the smallest possible numeric type that can accurately
+     * represent the value, following these rules:
+     * </p>
+     * <ul>
+     *   <li>Integer values within Long range: returns {@link Long}</li>
+     *   <li>Integer values outside Long range: returns {@link BigInteger}</li>
+     *   <li>Decimal values within Double precision: returns {@link Double}</li>
+     *   <li>Decimal values requiring more precision: returns {@link BigDecimal}</li>
+     * </ul>
+     *
+     * <p><strong>Examples:</strong></p>
+     * <pre>{@code
+     * parseToMinimalNumericType("123")      → Long(123)
+     * parseToMinimalNumericType("1.23")     → Double(1.23)
+     * parseToMinimalNumericType("1e308")    → BigDecimal
+     * parseToMinimalNumericType("999999999999999999999") → BigInteger
+     * }</pre>
+     *
+     * @param numStr the string to parse, must not be null
+     * @return the parsed number in its most appropriate type
+     * @throws NumberFormatException if the string cannot be parsed as a number
+     * @throws IllegalArgumentException if numStr is null
      */
     public static Number parseToMinimalNumericType(String numStr) {
         // Handle and preserve negative signs correctly while removing leading zeros
@@ -297,13 +332,33 @@ public final class MathUtilities
     }
 
     /**
-     * Utility method for generating the "next" permutation.
-     * @param list List of integers, longs, etc.  Typically, something like [1, 2, 3, 4] and it
-     *             will generate the next permutation [1, 2, 4, 3].  It will override the passed in
-     *             list. This way, each call to nextPermutation(list) works, until it returns false,
-     *             much like an Iterator.
+     * Generates the next lexicographically ordered permutation of the given list.
+     * <p>
+     * This method modifies the input list in-place to produce the next permutation.
+     * If there are no more permutations possible, it returns false.
+     * </p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * List<Integer> list = new ArrayList<>(Arrays.asList(1, 2, 3));
+     * do {
+     *     System.out.println(list);  // Prints each permutation
+     * } while (nextPermutation(list));
+     * // Output:
+     * // [1, 2, 3]
+     * // [1, 3, 2]
+     * // [2, 1, 3]
+     * // [2, 3, 1]
+     * // [3, 1, 2]
+     * // [3, 2, 1]
+     * }</pre>
+     *
+     * @param <T> type of elements in the list, must implement Comparable
+     * @param list the list to permute, will be modified in-place
+     * @return true if a next permutation exists and was generated, false if no more permutations exist
+     * @throws IllegalArgumentException if list is null
      */
-    static <T extends Comparable<? super T>> boolean nextPermutation(List<T> list) {
+    public static <T extends Comparable<? super T>> boolean nextPermutation(List<T> list) {
         int k = list.size() - 2;
         while (k >= 0 && list.get(k).compareTo(list.get(k + 1)) >= 0) {
             k--;

@@ -73,11 +73,11 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[DeepEquals](userguide.md#deepequals)** - Recursive object graph comparison
 - **[EncryptionUtilities](userguide.md#encryptionutilities)** - Simplified encryption and checksum operations
 - **[Executor](userguide.md#executor)** - Streamlined system command execution
-- **[GraphComparator](/src/main/java/com/cedarsoftware/util/GraphComparator.java)** - Object graph difference detection and synchronization
+- **[GraphComparator](userguide.md#graphcomparator)** - Object graph difference detection and synchronization
 - **[IOUtilities](userguide.md#ioutilities)** - Enhanced I/O operations and streaming utilities
-- **[MathUtilities](/src/main/java/com/cedarsoftware/util/MathUtilities.java)** - Extended mathematical operations
-- **[ReflectionUtils](/src/main/java/com/cedarsoftware/util/ReflectionUtils.java)** - Optimized reflection operations
-- **[StringUtilities](/src/main/java/com/cedarsoftware/util/StringUtilities.java)** - Extended String manipulation operations
+- **[MathUtilities](userguide.md#mathutilities)** - Extended mathematical operations
+- **[ReflectionUtils](userguide.md#reflectionutils)** - Optimized reflection operations
+- **[StringUtilities](userguide.md#stringutilities)** - Extended String manipulation operations
 - **[SystemUtilities](/src/main/java/com/cedarsoftware/util/SystemUtilities.java)** - System and environment interaction utilities
 - **[Traverser](/src/main/java/com/cedarsoftware/util/Traverser.java)** - Configurable object graph traversal
 - **[UniqueIdGenerator](/src/main/java/com/cedarsoftware/util/UniqueIdGenerator.java)** - Distributed-safe unique identifier generation

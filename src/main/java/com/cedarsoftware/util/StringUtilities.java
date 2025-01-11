@@ -12,7 +12,90 @@ import java.util.stream.Collectors;
 import static java.lang.Character.toLowerCase;
 
 /**
- * Useful String utilities for common tasks
+ * Comprehensive utility class for string operations providing enhanced manipulation, comparison,
+ * and conversion capabilities with null-safe implementations.
+ *
+ * <h2>Key Features</h2>
+ * <ul>
+ *   <li><b>String Comparison:</b>
+ *     <ul>
+ *       <li>Case-sensitive and case-insensitive equality</li>
+ *       <li>Comparison with automatic trimming</li>
+ *       <li>Null-safe operations</li>
+ *       <li>CharSequence support</li>
+ *     </ul>
+ *   </li>
+ *   <li><b>Content Analysis:</b>
+ *     <ul>
+ *       <li>Empty and whitespace checking</li>
+ *       <li>String length calculations</li>
+ *       <li>Character/substring counting</li>
+ *       <li>Pattern matching with wildcards</li>
+ *     </ul>
+ *   </li>
+ *   <li><b>String Manipulation:</b>
+ *     <ul>
+ *       <li>Advanced trimming operations</li>
+ *       <li>Quote handling</li>
+ *       <li>Encoding conversions</li>
+ *       <li>Random string generation</li>
+ *     </ul>
+ *   </li>
+ *   <li><b>Distance Metrics:</b>
+ *     <ul>
+ *       <li>Levenshtein distance calculation</li>
+ *       <li>Damerau-Levenshtein distance calculation</li>
+ *     </ul>
+ *   </li>
+ * </ul>
+ *
+ * <h2>Usage Examples</h2>
+ *
+ * <h3>String Comparison:</h3>
+ * <pre>{@code
+ * // Case-sensitive and insensitive comparison
+ * boolean equals = StringUtilities.equals("text", "text");           // true
+ * boolean equals = StringUtilities.equalsIgnoreCase("Text", "text"); // true
+ *
+ * // Comparison with trimming
+ * boolean equals = StringUtilities.equalsWithTrim(" text ", "text"); // true
+ * }</pre>
+ *
+ * <h3>Content Checking:</h3>
+ * <pre>{@code
+ * // Empty and whitespace checking
+ * boolean empty = StringUtilities.isEmpty("   ");      // true
+ * boolean empty = StringUtilities.isEmpty(null);       // true
+ * boolean hasContent = StringUtilities.hasContent(" text "); // true
+ *
+ * // Length calculations
+ * int len = StringUtilities.length(null);             // 0
+ * int len = StringUtilities.trimLength(" text ");     // 4
+ * }</pre>
+ *
+ * <h3>String Manipulation:</h3>
+ * <pre>{@code
+ * // Trimming operations
+ * String result = StringUtilities.trimToEmpty(null);    // ""
+ * String result = StringUtilities.trimToNull("  ");     // null
+ * String result = StringUtilities.trimEmptyToDefault("  ", "default");  // "default"
+ *
+ * // Quote handling
+ * String result = StringUtilities.removeLeadingAndTrailingQuotes("\"text\"");  // text
+ *
+ * // Set conversion
+ * Set<String> set = StringUtilities.commaSeparatedStringToSet("a,b,c");  // [a, b, c]
+ * }</pre>
+ *
+ * <h3>Distance Calculations:</h3>
+ * <pre>{@code
+ * // Edit distance metrics
+ * int distance = StringUtilities.levenshteinDistance("kitten", "sitting");        // 3
+ * int distance = StringUtilities.damerauLevenshteinDistance("book", "back");      // 2
+ * }</pre>
+ *
+ * <h2>Thread Safety</h2>
+ * <p>All methods in this class are stateless and thread-safe.</p>
  *
  * @author Ken Partlow
  * @author John DeRegnaucourt (jdereg@gmail.com)

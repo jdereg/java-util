@@ -9,8 +9,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.Flushable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,8 +47,8 @@ import java.util.zip.InflaterInputStream;
  * <p><strong>Usage Example:</strong></p>
  * <pre>{@code
  * // Copy file to output stream
- * try (FileInputStream fis = new FileInputStream("input.txt")) {
- *     try (FileOutputStream fos = new FileOutputStream("output.txt")) {
+ * try (InputStream fis = Files.newInputStream(Paths.get("input.txt"))) {
+ *     try (OutputStream fos = Files.newOutputStream(Paths.get("output.txt"))) {
  *         IOUtilities.transfer(fis, fos);
  *     }
  * }
@@ -172,7 +170,7 @@ public final class IOUtilities
      * @throws Exception if any error occurs during the transfer
      */
     public static void transfer(InputStream s, File f, TransferCallback cb) throws Exception {
-        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(f))) {
+        try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(f.toPath()))) {
             transfer(s, out, cb);
         }
     }
@@ -257,7 +255,7 @@ public final class IOUtilities
      * @throws IOException if an I/O error occurs during transfer
      */
     public static void transfer(File file, OutputStream out) throws IOException {
-        try (InputStream in = new BufferedInputStream(new FileInputStream(file), TRANSFER_BUFFER)) {
+        try (InputStream in = new BufferedInputStream(Files.newInputStream(file.toPath()), TRANSFER_BUFFER)) {
             transfer(in, out);
         } finally {
             flush(out);

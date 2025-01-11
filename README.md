@@ -72,7 +72,7 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[DateUtilities](userguide.md#dateutilities)** - Advanced date parsing and manipulation
 - **[DeepEquals](userguide.md#deepequals)** - Recursive object graph comparison
 - **[EncryptionUtilities](userguide.md#encryptionutilities)** - Simplified encryption and checksum operations
-- **[Executor](/src/main/java/com/cedarsoftware/util/Executor.java)** - Streamlined system command execution
+- **[Executor](userguide.md#executor)** - Streamlined system command execution
 - **[GraphComparator](/src/main/java/com/cedarsoftware/util/GraphComparator.java)** - Object graph difference detection and synchronization
 - **[IOUtilities](userguide.md#ioutilities)** - Enhanced I/O operations and streaming utilities
 - **[MathUtilities](/src/main/java/com/cedarsoftware/util/MathUtilities.java)** - Extended mathematical operations

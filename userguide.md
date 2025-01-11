@@ -2089,8 +2089,8 @@ A comprehensive utility class for I/O operations, providing robust stream handli
 ```java
 // File to OutputStream
 File sourceFile = new File("source.txt");
-try (FileOutputStream fos = new FileOutputStream("dest.txt")) {
-    IOUtilities.transfer(sourceFile, fos);
+try (OutputStream fos = Files.newOutputStream(Paths.get("dest.txt"))) {
+        IOUtilities.transfer(sourceFile, fos);
 }
 
 // InputStream to OutputStream with callback
@@ -2179,17 +2179,18 @@ IOUtilities.transfer(inputStream, buffer);
 ### Best Practices
 ```java
 // Use try-with-resources when possible
-try (InputStream in = new FileInputStream(file)) {
-    try (OutputStream out = new FileOutputStream(dest)) {
+try (InputStream in = Files.newInputStream(file.toPath())) {
+    try (OutputStream out = Files.newOutputStream(dest.toPath())) {
         IOUtilities.transfer(in, out);
     }
 }
 
-// Always close resources
-finally {
-    IOUtilities.close(inputStream);
-    IOUtilities.close(outputStream);
-}
+// Note: try-with-resources handles closing automatically
+// The following is unnecessary when using try-with-resources:
+// finally {
+//     IOUtilities.close(inputStream);
+//     IOUtilities.close(outputStream);
+// }
 
 // Use callbacks for large transfers
 IOUtilities.transfer(source, dest, new TransferCallback() {
@@ -2350,3 +2351,150 @@ String hash = EncryptionUtilities.calculateFileHash(channel, digest);
 ```
 
 This implementation provides a robust set of cryptographic utilities with emphasis on performance, security, and ease of use.
+
+---
+## Executor
+[Source](/src/main/java/com/cedarsoftware/util/Executor.java)
+
+A utility class for executing system commands and capturing their output. Provides a convenient wrapper around Java's Runtime.exec() with automatic stream handling and output capture.
+
+### Key Features
+- Command execution with various parameter options
+- Automatic stdout/stderr capture
+- Non-blocking output handling
+- Environment variable support
+- Working directory specification
+- Stream management
+
+### Basic Usage
+
+**Simple Command Execution:**
+```java
+Executor exec = new Executor();
+
+// Execute simple command
+int exitCode = exec.exec("ls -l");
+String output = exec.getOut();
+String errors = exec.getError();
+
+// Execute with command array (better argument handling)
+String[] cmd = {"git", "status", "--porcelain"};
+exitCode = exec.exec(cmd);
+```
+
+**Environment Variables:**
+```java
+// Set custom environment variables
+String[] env = {"PATH=/usr/local/bin:/usr/bin", "JAVA_HOME=/usr/java"};
+int exitCode = exec.exec("mvn clean install", env);
+
+// With command array
+String[] cmd = {"python", "script.py"};
+exitCode = exec.exec(cmd, env);
+```
+
+**Working Directory:**
+```java
+// Execute in specific directory
+File workDir = new File("/path/to/work");
+int exitCode = exec.exec("make", null, workDir);
+
+// With command array and environment
+String[] cmd = {"npm", "install"};
+String[] env = {"NODE_ENV=production"};
+exitCode = exec.exec(cmd, env, workDir);
+```
+
+### Output Handling
+
+**Accessing Command Output:**
+```java
+Executor exec = new Executor();
+exec.exec("git log -1");
+
+// Get command output
+String stdout = exec.getOut();  // Standard output
+String stderr = exec.getError(); // Standard error
+
+// Check for success
+if (stdout != null && stderr.isEmpty()) {
+    // Command succeeded
+}
+```
+
+### Implementation Notes
+
+**Exit Codes:**
+- 0: Typically indicates success
+- -1: Process start failure
+- Other: Command-specific error codes
+
+**Stream Management:**
+- Non-blocking output handling
+- Automatic stream cleanup
+- Thread-safe output capture
+
+### Best Practices
+
+**Command Arrays vs Strings:**
+```java
+// Better - uses command array
+String[] cmd = {"git", "clone", "https://github.com/user/repo.git"};
+exec.exec(cmd);
+
+// Avoid - shell interpretation issues
+exec.exec("git clone https://github.com/user/repo.git");
+```
+
+**Error Handling:**
+```java
+Executor exec = new Executor();
+int exitCode = exec.exec(command);
+
+if (exitCode != 0) {
+    String error = exec.getError();
+    System.err.println("Command failed: " + error);
+}
+```
+
+**Working Directory:**
+```java
+// Specify absolute paths when possible
+File workDir = new File("/absolute/path/to/dir");
+
+// Use relative paths carefully
+File relativeDir = new File("relative/path");
+```
+
+### Performance Considerations
+- Uses separate threads for stdout/stderr
+- Non-blocking output capture
+- Efficient stream buffering
+- Automatic resource cleanup
+
+### Security Notes
+```java
+// Avoid shell injection - use command arrays
+String userInput = "malicious; rm -rf /";
+String[] cmd = {"echo", userInput};  // Safe
+exec.exec(cmd);
+
+// Don't use string concatenation
+exec.exec("echo " + userInput);  // Unsafe
+```
+
+### Resource Management
+```java
+// Resources are automatically managed
+Executor exec = new Executor();
+exec.exec(command);
+// Streams and processes are cleaned up automatically
+
+// Each exec() call is independent
+exec.exec(command1);
+String output1 = exec.getOut();
+exec.exec(command2);
+String output2 = exec.getOut();
+```
+
+This implementation provides a robust and convenient way to execute system commands while properly handling streams, environment variables, and working directories.

@@ -28,7 +28,7 @@ import java.util.zip.GZIPOutputStream;
  *
  * <h2>Usage Example</h2>
  * <pre>{@code
- * try (OutputStream fileOut = new FileOutputStream("compressed.gz");
+ * try (OutputStream fileOut = Files.newOutputStream(Paths.get("compressed.gz"));
  *      AdjustableGZIPOutputStream gzipOut = new AdjustableGZIPOutputStream(fileOut, Deflater.BEST_COMPRESSION)) {
  *     gzipOut.write("Example data to compress".getBytes(StandardCharsets.UTF_8));
  * }

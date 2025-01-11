@@ -78,7 +78,7 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[MathUtilities](userguide.md#mathutilities)** - Extended mathematical operations
 - **[ReflectionUtils](userguide.md#reflectionutils)** - Optimized reflection operations
 - **[StringUtilities](userguide.md#stringutilities)** - Extended String manipulation operations
-- **[SystemUtilities](/src/main/java/com/cedarsoftware/util/SystemUtilities.java)** - System and environment interaction utilities
+- **[SystemUtilities](userguide.md#systemutilities)** - System and environment interaction utilities
 - **[Traverser](/src/main/java/com/cedarsoftware/util/Traverser.java)** - Configurable object graph traversal
 - **[UniqueIdGenerator](/src/main/java/com/cedarsoftware/util/UniqueIdGenerator.java)** - Distributed-safe unique identifier generation
 

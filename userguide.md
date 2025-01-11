@@ -3126,3 +3126,158 @@ StringUtilities.FOLDER_SEPARATOR // Forward slash "/"
 ```
 
 This implementation provides robust string manipulation capabilities with emphasis on null safety, performance, and convenience.
+
+---
+## SystemUtilities
+[Source](/src/main/java/com/cedarsoftware/util/SystemUtilities.java)
+
+A comprehensive utility class providing system-level operations and information gathering capabilities with a focus on platform independence.
+
+### Key Features
+- Environment and property access
+- Memory monitoring
+- Network interface information
+- Process management
+- Runtime environment analysis
+- Temporary file handling
+
+### System Constants
+
+**Common System Properties:**
+```java
+SystemUtilities.OS_NAME       // Operating system name
+SystemUtilities.JAVA_VERSION  // Java version
+SystemUtilities.USER_HOME     // User home directory
+SystemUtilities.TEMP_DIR      // Temporary directory
+```
+
+### Environment Operations
+
+**Variable Access:**
+```java
+// Get environment variable with system property fallback
+String value = SystemUtilities.getExternalVariable("CONFIG_PATH");
+
+// Get filtered environment variables
+Map<String, String> vars = SystemUtilities.getEnvironmentVariables(
+    key -> key.startsWith("JAVA_")
+);
+```
+
+### System Resources
+
+**Processor and Memory:**
+```java
+// Get available processors
+int processors = SystemUtilities.getAvailableProcessors();
+
+// Memory information
+MemoryInfo memory = SystemUtilities.getMemoryInfo();
+long total = memory.getTotalMemory();
+long free = memory.getFreeMemory();
+long max = memory.getMaxMemory();
+
+// Check memory availability
+boolean hasMemory = SystemUtilities.hasAvailableMemory(1024 * 1024 * 100);
+
+// System load
+double load = SystemUtilities.getSystemLoadAverage();
+```
+
+### Network Operations
+
+**Interface Information:**
+```java
+// Get network interfaces
+List<NetworkInfo> interfaces = SystemUtilities.getNetworkInterfaces();
+for (NetworkInfo ni : interfaces) {
+    String name = ni.getName();
+    String display = ni.getDisplayName();
+    List<InetAddress> addresses = ni.getAddresses();
+    boolean isLoopback = ni.isLoopback();
+}
+```
+
+### Process Management
+
+**Process Information:**
+```java
+// Get current process ID
+long pid = SystemUtilities.getCurrentProcessId();
+
+// Add shutdown hook
+SystemUtilities.addShutdownHook(() -> {
+    // Cleanup code
+});
+```
+
+### File Operations
+
+**Temporary Files:**
+```java
+// Create temp directory
+File tempDir = SystemUtilities.createTempDirectory("prefix-");
+// Directory will be deleted on JVM exit
+```
+
+### Version Management
+
+**Java Version Checking:**
+```java
+// Check Java version
+boolean isJava11OrHigher = SystemUtilities.isJavaVersionAtLeast(11, 0);
+```
+
+### Time Zone Handling
+
+**System Time Zone:**
+```java
+// Get system timezone
+TimeZone tz = SystemUtilities.getSystemTimeZone();
+```
+
+### Implementation Notes
+
+**Thread Safety:**
+```java
+// All methods are thread-safe
+// Static utility methods only
+// No shared state
+```
+
+**Error Handling:**
+```java
+try {
+    File tempDir = SystemUtilities.createTempDirectory("temp-");
+} catch (IOException e) {
+    // Handle filesystem errors
+}
+
+try {
+    List<NetworkInfo> interfaces = SystemUtilities.getNetworkInterfaces();
+} catch (SocketException e) {
+    // Handle network errors
+}
+```
+
+### Best Practices
+
+**Resource Management:**
+```java
+// Use try-with-resources for system resources
+File tempDir = SystemUtilities.createTempDirectory("temp-");
+try {
+    // Use temporary directory
+} finally {
+    // Directory will be automatically cleaned up on JVM exit
+}
+```
+
+**Environment Variables:**
+```java
+// Prefer getExternalVariable over direct System.getenv
+String config = SystemUtilities.getExternalVariable("CONFIG");
+// Checks both system properties and environment variables
+```
+
+This implementation provides robust system utilities with emphasis on platform independence, proper resource management, and comprehensive error handling.

@@ -84,11 +84,11 @@ public class IOUtilitiesTest
         File f = File.createTempFile("test", "test");
 
         // perform test
-        URL inUrl = IOUtilitiesTest.class.getClassLoader().getResource("test.inflate");
+        URL inUrl = ClassUtilities.getClassLoader(IOUtilitiesTest.class).getResource("test.inflate");
         InputStream in = Files.newInputStream(Paths.get(inUrl.toURI()));
         URLConnection c = mock(URLConnection.class);
         when(c.getInputStream()).thenReturn(in);
-        when(c.getContentEncoding()).thenReturn("deflate");
+        when(c.getContentEncoding()).thenReturn("gzip");
         IOUtilities.transfer(c, f, null);
         IOUtilities.close(in);
 

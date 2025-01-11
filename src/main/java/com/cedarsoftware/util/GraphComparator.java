@@ -488,25 +488,21 @@ public class GraphComparator
 
         // source objects by ID
         final Set<Object> potentialOrphans = new HashSet<>();
-        Traverser.traverse(source, new Traverser.Visitor()
-        {
-            public void process(Object o)
-            {
-                if (isIdObject(o, idFetcher))
-                {
-                    potentialOrphans.add(idFetcher.getId(o));
-                }
+        Traverser.traverse(source, visit -> {
+            Object node = visit.getNode();
+            if (isIdObject(node, idFetcher)) {
+                potentialOrphans.add(idFetcher.getId(node));
             }
-        });
+        }, null);
 
         // Remove all target objects from potential orphan map, leaving remaining objects
         // that are no longer referenced in the potentialOrphans map.
-        Traverser.traverse(target, o -> {
-            if (isIdObject(o, idFetcher))
-            {
-                potentialOrphans.remove(idFetcher.getId(o));
+        Traverser.traverse(target, visit -> {
+            Object node = visit.getNode();
+            if (isIdObject(node, idFetcher)) {
+                potentialOrphans.remove(idFetcher.getId(node));
             }
-        });
+        }, null);
 
         List<Delta> forReturn = new ArrayList<>(deltas);
         // Generate DeltaCommands for orphaned objects

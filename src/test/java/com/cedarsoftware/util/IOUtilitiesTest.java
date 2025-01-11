@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipException;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -193,12 +195,9 @@ public class IOUtilitiesTest
 
     @Test
     public void testUncompressBytesWithException() throws Exception {
-        // Since there is less than 18 bytes, it is not a valid gzip file, so it will return the same bytes passed in.
-        byte[] bytes = IOUtilities.uncompressBytes(new byte[] {(byte)0x1f, (byte)0x8b, (byte)0x01});
-        assert bytes.length == 3;
-        assert bytes[0] == (byte) 0x1f;
-        assert bytes[1] == (byte) 0x8b;
-        assert bytes[2] == (byte) 0x01;
+        // Not a valid gzip byte stream, but starts with correct signature
+        Throwable t = assertThrows(RuntimeException.class, () -> IOUtilities.uncompressBytes(new byte[] {(byte)0x1f, (byte)0x8b, (byte)0x01}));
+        assert t.getCause() instanceof ZipException;
     }
 
     private ByteArrayOutputStream getUncompressedByteArray() throws IOException

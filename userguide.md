@@ -2211,3 +2211,142 @@ IOUtilities.transfer(source, dest, new TransferCallback() {
 - Progress monitoring capability
 
 This implementation provides a robust set of I/O utilities with emphasis on resource safety, performance, and ease of use.
+
+---
+## EncryptionUtilities
+[Source](/src/main/java/com/cedarsoftware/util/EncryptionUtilities.java)
+
+A comprehensive utility class providing cryptographic operations including high-performance hashing, encryption, and decryption capabilities.
+
+### Key Features
+- Optimized file hashing (MD5, SHA-1, SHA-256, SHA-512)
+- AES-128 encryption/decryption
+- Zero-copy I/O operations
+- Thread-safe implementation
+- Custom filesystem support
+- Efficient memory usage
+
+### Hash Operations
+
+**File Hashing:**
+```java
+// High-performance file hashing
+String md5 = EncryptionUtilities.fastMD5(new File("large.dat"));
+String sha1 = EncryptionUtilities.fastSHA1(new File("large.dat"));
+String sha256 = EncryptionUtilities.fastSHA256(new File("large.dat"));
+String sha512 = EncryptionUtilities.fastSHA512(new File("large.dat"));
+```
+
+**Byte Array Hashing:**
+```java
+// Hash byte arrays
+String md5Hash = EncryptionUtilities.calculateMD5Hash(bytes);
+String sha1Hash = EncryptionUtilities.calculateSHA1Hash(bytes);
+String sha256Hash = EncryptionUtilities.calculateSHA256Hash(bytes);
+String sha512Hash = EncryptionUtilities.calculateSHA512Hash(bytes);
+```
+
+### Encryption Operations
+
+**String Encryption:**
+```java
+// Encrypt/decrypt strings
+String encrypted = EncryptionUtilities.encrypt("password", "sensitive data");
+String decrypted = EncryptionUtilities.decrypt("password", encrypted);
+```
+
+**Byte Array Encryption:**
+```java
+// Encrypt/decrypt byte arrays
+String encryptedHex = EncryptionUtilities.encryptBytes("password", originalBytes);
+byte[] decryptedBytes = EncryptionUtilities.decryptBytes("password", encryptedHex);
+```
+
+### Custom Cipher Creation
+
+**AES Cipher Configuration:**
+```java
+// Create encryption cipher
+Cipher encryptCipher = EncryptionUtilities.createAesEncryptionCipher("password");
+
+// Create decryption cipher
+Cipher decryptCipher = EncryptionUtilities.createAesDecryptionCipher("password");
+
+// Create custom mode cipher
+Cipher customCipher = EncryptionUtilities.createAesCipher("password", Cipher.ENCRYPT_MODE);
+```
+
+### Implementation Notes
+
+**Performance Features:**
+- 64KB buffer size for optimal I/O
+- DirectByteBuffer for zero-copy operations
+- Efficient memory management
+- Optimized for modern storage systems
+
+**Security Features:**
+- CBC mode with PKCS5 padding
+- IV generation from key using MD5
+- Standard JDK security providers
+- Thread-safe operations
+
+### Best Practices
+
+**Hashing:**
+```java
+// Prefer SHA-256 or SHA-512 for security
+String secureHash = EncryptionUtilities.fastSHA256(file);
+
+// MD5/SHA-1 for legacy or non-security uses only
+String legacyHash = EncryptionUtilities.fastMD5(file);
+```
+
+**Encryption:**
+```java
+// Use strong passwords
+String strongKey = "complex-password-here";
+String encrypted = EncryptionUtilities.encrypt(strongKey, data);
+
+// Handle exceptions appropriately
+try {
+    Cipher cipher = EncryptionUtilities.createAesEncryptionCipher(key);
+} catch (Exception e) {
+    // Handle cipher creation failure
+}
+```
+
+### Performance Considerations
+- Uses optimal buffer sizes (64KB)
+- Minimizes memory allocation
+- Efficient I/O operations
+- Zero-copy where possible
+
+### Security Notes
+```java
+// MD5 and SHA-1 are cryptographically broken
+// Use only for checksums or legacy compatibility
+String checksum = EncryptionUtilities.fastMD5(file);
+
+// For security, use SHA-256 or SHA-512
+String secure = EncryptionUtilities.fastSHA256(file);
+
+// AES implementation details
+// - Uses CBC mode with PKCS5 padding
+// - IV is derived from key using MD5
+// - 128-bit key size
+Cipher cipher = EncryptionUtilities.createAesEncryptionCipher(key);
+```
+
+### Resource Management
+```java
+// Resources are automatically managed
+try (InputStream in = Files.newInputStream(file.toPath())) {
+    // Hash calculation handles cleanup
+    String hash = EncryptionUtilities.fastSHA256(file);
+}
+
+// DirectByteBuffer is managed internally
+String hash = EncryptionUtilities.calculateFileHash(channel, digest);
+```
+
+This implementation provides a robust set of cryptographic utilities with emphasis on performance, security, and ease of use.

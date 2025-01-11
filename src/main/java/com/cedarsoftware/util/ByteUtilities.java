@@ -128,12 +128,13 @@ public final class ByteUtilities {
      * @return String hex digits
      */
     public static String encode(final byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length << 1);
-        for (byte aByte : bytes) {
-            sb.append(convertDigit(aByte >> 4));
-            sb.append(convertDigit(aByte & 0x0f));
+        char[] hexChars = new char[bytes.length * 2];
+        for (int i = 0; i < bytes.length; i++) {
+            int v = bytes[i] & 0xFF;
+            hexChars[i * 2] = _hex[v >>> 4];
+            hexChars[i * 2 + 1] = _hex[v & 0x0F];
         }
-        return sb.toString();
+        return new String(hexChars);
     }
 
     /**

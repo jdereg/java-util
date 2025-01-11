@@ -3286,44 +3286,58 @@ This implementation provides robust system utilities with emphasis on platform i
 ## Traverser
 [Source](/src/main/java/com/cedarsoftware/util/Traverser.java)
 
-A utility class for traversing object graphs in Java, with cycle detection and configurable object visitation.
+A utility class for traversing object graphs in Java, with cycle detection and rich node visitation information.
 
 ### Key Features
 - Complete object graph traversal
 - Cycle detection
 - Configurable class filtering
+- Full field metadata access
 - Support for collections, arrays, and maps
 - Lambda-based processing
-- Legacy visitor pattern support
+- Legacy visitor pattern support (deprecated)
 
 ### Core Methods
 
 **Modern API (Recommended):**
 ```java
-// Basic traversal with lambda
-Traverser.traverse(root, classesToSkip, object -> {
-    // Process object
-});
+// Basic traversal with field information
+Traverser.traverse(root, visit -> {
+    Object node = visit.getNode();
+    visit.getFields().forEach((field, value) -> {
+        System.out.println(field.getName() + " = " + value);
+        // Access field metadata if needed
+        System.out.println("  type: " + field.getType());
+        System.out.println("  annotations: " + Arrays.toString(field.getAnnotations()));
+    });
+}, null);
 
-// Simple traversal without skipping
-Traverser.traverse(root, null, object -> {
-    // Process object
-});
-```
-
-### Class Filtering
-
-**Skip Configuration:**
-```java
-// Create skip set
+// With class filtering
 Set<Class<?>> skipClasses = new HashSet<>();
 skipClasses.add(String.class);
-skipClasses.add(Integer.class);
+Traverser.traverse(root, visit -> {
+    // Process node and its fields
+}, skipClasses);
+```
 
-// Traverse with filtering
-Traverser.traverse(root, skipClasses, obj -> {
-    // Only non-skipped objects processed
-});
+### Field Information Access
+
+**Accessing Field Metadata:**
+```java
+Traverser.traverse(root, visit -> {
+    visit.getFields().forEach((field, value) -> {
+        // Field information
+        String name = field.getName();
+        Class<?> type = field.getType();
+        int modifiers = field.getModifiers();
+        
+        // Annotations
+        if (field.isAnnotationPresent(JsonProperty.class)) {
+            JsonProperty ann = field.getAnnotation(JsonProperty.class);
+            System.out.println(name + " JSON name: " + ann.value());
+        }
+    });
+}, null);
 ```
 
 ### Collection Handling
@@ -3332,53 +3346,42 @@ Traverser.traverse(root, skipClasses, obj -> {
 ```java
 // Lists
 List<String> list = Arrays.asList("a", "b", "c");
-Traverser.traverse(list, null, obj -> {
-    // Visits list and its elements
-});
+Traverser.traverse(list, visit -> {
+    System.out.println("Visiting: " + visit.getNode());
+    // Fields include collection internals
+}, null);
 
 // Maps
 Map<String, Integer> map = new HashMap<>();
-Traverser.traverse(map, null, obj -> {
-    // Visits map, keys, and values
-});
+Traverser.traverse(map, visit -> {
+    Map<?, ?> node = (Map<?, ?>)visit.getNode();
+    System.out.println("Map size: " + node.size());
+}, null);
 
 // Arrays
 String[] array = {"x", "y", "z"};
-Traverser.traverse(array, null, obj -> {
-    // Visits array and elements
-});
+Traverser.traverse(array, visit -> {
+    Object[] node = (Object[])visit.getNode();
+    System.out.println("Array length: " + node.length);
+}, null);
 ```
 
 ### Object Processing
 
-**Custom Processing:**
+**Type-Specific Processing:**
 ```java
-// Type-specific processing
-Traverser.traverse(root, null, obj -> {
-    if (obj instanceof User) {
-        processUser((User) obj);
-    } else if (obj instanceof Order) {
-        processOrder((Order) obj);
+Traverser.traverse(root, visit -> {
+    Object node = visit.getNode();
+    if (node instanceof User) {
+        User user = (User)node;
+        // Access User-specific fields through visit.getFields()
+        processUser(user);
     }
-});
+}, null);
 
-// Counting objects
-AtomicInteger counter = new AtomicInteger(0);
-Traverser.traverse(root, null, obj -> counter.incrementAndGet());
-```
-
-### Legacy Support
-
-**Deprecated Visitor Pattern:**
-```java
-// Using visitor interface (deprecated)
-Traverser.Visitor visitor = new Traverser.Visitor() {
-    @Override
-    public void process(Object obj) {
-        // Process object
-    }
-};
-Traverser.traverse(root, visitor);
+// Collecting objects
+List<Object> collected = new ArrayList<>();
+Traverser.traverse(root, visit -> collected.add(visit.getNode()), null);
 ```
 
 ### Implementation Notes
@@ -3388,23 +3391,35 @@ Traverser.traverse(root, visitor);
 // Not thread-safe
 // Use external synchronization if needed
 synchronized(lockObject) {
-    Traverser.traverse(root, null, obj -> process(obj));
+    Traverser.traverse(root, visit -> process(visit), null);
 }
 ```
 
 **Error Handling:**
 ```java
 try {
-    Traverser.traverse(root, null, obj -> {
+    Traverser.traverse(root, visit -> {
         // Processing that might throw
-        riskyOperation(obj);
-    });
+        riskyOperation(visit.getNode());
+    }, null);
 } catch (Exception e) {
     // Handle processing errors
 }
 ```
 
 ### Best Practices
+
+**Efficient Field Access:**
+```java
+// Access fields through NodeVisit
+Traverser.traverse(root, visit -> {
+    visit.getFields().forEach((field, value) -> {
+        if (value != null && field.getName().startsWith("important")) {
+            processImportantField(field, value);
+        }
+    });
+}, null);
+```
 
 **Memory Management:**
 ```java
@@ -3413,26 +3428,13 @@ Set<Class<?>> skipClasses = new HashSet<>();
 skipClasses.add(ResourceHeavyClass.class);
 
 // Process with limited scope
-Traverser.traverse(root, skipClasses, obj -> {
+Traverser.traverse(root, visit -> {
     // Efficient processing
-});
+    processNode(visit.getNode());
+}, skipClasses);
 ```
 
-**Efficient Processing:**
-```java
-// Avoid heavy operations in processor
-Traverser.traverse(root, null, obj -> {
-    // Keep processing light
-    recordReference(obj);
-});
-
-// Collect and process later if needed
-List<Object> collected = new ArrayList<>();
-Traverser.traverse(root, null, collected::add);
-processCollected(collected);
-```
-
-This implementation provides a robust object graph traversal utility with emphasis on flexibility, proper cycle detection, and efficient processing options.
+This implementation provides a robust object graph traversal utility with rich field metadata access, proper cycle detection, and efficient processing options.
 
 ---
 ## UniqueIdGenerator

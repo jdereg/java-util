@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.LRUCache;
 
 
 /**
@@ -164,11 +165,7 @@ public final class Converter {
     private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private final ConverterOptions options;
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new HashMap<>();
-    
-    // Thread-local cache for frequently used conversion keys
-    private static final ThreadLocal<Map<Long, ConversionPair>> KEY_CACHE = ThreadLocal.withInitial(
-            () -> new HashMap<>(32)
-    );
+    private static final Map<Long, ConversionPair> KEY_CACHE = new LRUCache<>(2000, LRUCache.StrategyType.THREADED);
 
     // Efficient key that combines two Class instances for fast creation and lookup
     public static final class ConversionPair {
@@ -206,15 +203,9 @@ public final class Converter {
 
     // Helper method to get or create a cached key
     private static ConversionPair pair(Class<?> source, Class<?> target) {
-        // Combine source and target class identities into a single long for cache lookup
         long cacheKey = ((long)System.identityHashCode(source) << 32) | System.identityHashCode(target);
-        Map<Long, ConversionPair> cache = KEY_CACHE.get();
-        ConversionPair key = cache.get(cacheKey);
-        if (key == null) {
-            key = new ConversionPair(source, target);
-            cache.put(cacheKey, key);
-        }
-        return key;
+        return KEY_CACHE.computeIfAbsent(cacheKey,
+                k -> new ConversionPair(source, target));
     }
     
     static {
@@ -244,7 +235,6 @@ public final class Converter {
      * {@link #addConversion(Class, Class, Convert)} method as needed.
      * </p>
      */
-    @SuppressWarnings("unchecked")
     private static void buildFactoryConversions() {
         // toNumber
         CONVERSION_DB.put(pair(Byte.class, Number.class), Converter::identity);
@@ -1250,7 +1240,7 @@ public final class Converter {
     @SuppressWarnings("unchecked")
     private <T> T attemptCollectionConversion(Object from, Class<?> sourceType, Class<T> toType) {
         // First validate source type is actually a collection/array type
-        if (!(from == null || from.getClass().isArray() || from instanceof Collection)) {
+        if (!(from.getClass().isArray() || from instanceof Collection)) {
             return null;
         }
 

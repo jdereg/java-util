@@ -1624,7 +1624,7 @@ Class<?> enumClass = ClassUtilities.getClassIfEnum(someClass);
 
 ### Common Use Cases
 - Dynamic class loading
-- Reflection utilities
+- Reflection utilities for dynamically obtaining classes, methods/constructors, fields, annotations
 - Resource management
 - Type conversion
 - Class relationship analysis
@@ -1633,3 +1633,316 @@ Class<?> enumClass = ClassUtilities.getClassIfEnum(someClass);
 - ClassLoader management
 
 This implementation provides a robust set of utilities for class manipulation and reflection operations, with emphasis on security, performance, and compatibility across different Java environments.
+
+---
+## Converter
+[Source](/src/main/java/com/cedarsoftware/util/convert/Converter.java)
+
+A powerful type conversion utility that supports conversion between various Java types, including primitives, collections, dates, and custom objects.
+
+### Key Features
+- Extensive built-in type conversions
+- Collection and array conversions
+- Null-safe operations
+- Custom converter support
+- Thread-safe design
+- Inheritance-based conversion resolution
+- Performance optimized with caching
+- Static or Instance API
+
+### Usage Examples
+
+**Basic Conversions:**
+```java
+// Simple type conversions (using static com.cedarsoftware.util.Converter)
+Long x = Converter.convert("35", Long.class);
+Date d = Converter.convert("2015/01/01", Date.class);
+int y = Converter.convert(45.0, int.class);
+String dateStr = Converter.convert(date, String.class);
+
+// Instance based conversion (using com.cedarsoftware.util.convert.Converter)
+Converter converter = new Converter(new DefaultConverterOptions());
+String str = converter.convert(42, String.class);
+```
+
+**Static versus Instance API:**
+The static API is the easiest to use. It uses the default `ConverterOptions` object. Simply call
+public static APIs on the `com.cedarsoftware.util.Converter` class.
+
+The instance API allows you to create a `com.cedarsoftware.util.converter.Converter` instance with a custom `ConverterOptions` object.  If you add custom conversions, they will be used by the `Converter` instance.
+You can create as many instances of the Converter as needed.  Often though, the static API is sufficient.
+
+```java
+
+
+**Collection Conversions:**
+```java
+// Array to List
+String[] array = {"a", "b", "c"};
+List<String> list = converter.convert(array, List.class);
+
+// List to Array
+List<Integer> numbers = Arrays.asList(1, 2, 3);
+Integer[] numArray = converter.convert(numbers, Integer[].class);
+
+// EnumSet conversion
+Object[] enumArray = {Day.MONDAY, "TUESDAY", 3};
+EnumSet<Day> days = (EnumSet<Day>)(Object)converter.convert(enumArray, Day.class);
+```
+
+**Custom Conversions:**
+```java
+// Add custom converter
+converter.addConversion(String.class, CustomType.class, 
+    (from, conv) -> new CustomType(from));
+
+// Use custom converter
+CustomType obj = converter.convert("value", CustomType.class);
+```
+
+### Supported Conversions
+
+**Primitive Types:**
+```java
+// Numeric conversions
+Integer intVal = converter.convert("123", Integer.class);
+Double doubleVal = converter.convert(42, Double.class);
+BigDecimal decimal = converter.convert("123.45", BigDecimal.class);
+
+// Boolean conversions
+Boolean bool = converter.convert(1, Boolean.class);
+boolean primitive = converter.convert("true", boolean.class);
+```
+
+**Date/Time Types:**
+```java
+// Date conversions
+Date date = converter.convert("2023-01-01", Date.class);
+LocalDateTime ldt = converter.convert(date, LocalDateTime.class);
+ZonedDateTime zdt = converter.convert(instant, ZonedDateTime.class);
+```
+
+### Checking Conversion Support
+
+```java
+import java.util.concurrent.atomic.AtomicInteger;
+
+// Check if conversion is supported
+boolean canConvert = converter.isConversionSupportedFor(
+        String.class, Integer.class);  // will look up inheritance chain
+
+// Check direct conversion
+boolean directSupport = converter.isDirectConversionSupported(
+        String.class, Long.class);    // will not look up inheritance chain
+
+// Check simple type conversion
+boolean simpleConvert = converter.isSimpleTypeConversionSupported(
+        String.class, Date.class);    // built-in JDK types (BigDecimal, Atomic*,
+
+// Fetch supported conversions (as Strings)
+Map<String, Set<String>> map = Converter.getSupportedConversions();
+
+// Fetch supported conversions (as Classes)
+Map<Class<?>, Set<Class<?>>> map = Converter.getSupportedConversions();
+```
+
+### Implementation Notes
+- Thread-safe operations
+- Caches conversion paths
+- Handles primitive types automatically
+- Supports inheritance-based resolution
+- Optimized collection handling
+- Null-safe conversions
+
+### Best Practices
+```java
+// Prefer primitive wrappers for consistency
+Integer value = converter.convert("123", Integer.class);
+
+// Use appropriate collection types
+List<String> list = converter.convert(array, ArrayList.class);
+
+// Handle null values appropriately
+Object nullVal = converter.convert(null, String.class); // Returns null
+
+// Check conversion support before converting
+if (converter.isConversionSupportedFor(sourceType, targetType)) {
+    Object result = converter.convert(source, targetType);
+}
+```
+
+### Performance Considerations
+- Uses caching for conversion pairs (no instances created during convertion other than final converted item)
+- Optimized collection handling (array to collection, colletion to array, n-dimensional arrays and nested collections, collection/array to EnumSets)
+- Efficient type resolution: O(1) operation
+- Minimal object creation
+- Fast lookup for common conversions
+
+This implementation provides a robust and extensible conversion framework with support for a wide range of Java types and custom conversions.
+
+---
+## DateUtilities
+[Source](/src/main/java/com/cedarsoftware/util/DateUtilities.java)
+
+A flexible date parsing utility that handles a wide variety of date and time formats, supporting multiple timezone specifications and optional components.
+
+### Key Features
+- Multiple date format support
+- Flexible time components
+- Timezone handling
+- Thread-safe operation
+- Null-safe parsing
+- Unix epoch support
+- Extensive timezone abbreviation mapping
+
+### Supported Date Formats
+
+**Numeric Formats:**
+```java
+// MM/DD/YYYY (with flexible separators: /, -, .)
+DateUtilities.parseDate("12-31-2023");
+DateUtilities.parseDate("12/31/2023");
+DateUtilities.parseDate("12.31.2023");
+
+// YYYY/MM/DD (with flexible separators: /, -, .)
+DateUtilities.parseDate("2023-12-31");
+DateUtilities.parseDate("2023/12/31");
+DateUtilities.parseDate("2023.12.31");
+```
+
+**Text-Based Formats:**
+```java
+// Month Day, Year
+DateUtilities.parseDate("January 6th, 2024");
+DateUtilities.parseDate("Jan 6, 2024");
+
+// Day Month Year
+DateUtilities.parseDate("17th January 2024");
+DateUtilities.parseDate("17 Jan 2024");
+
+// Year Month Day
+DateUtilities.parseDate("2024 January 31st");
+DateUtilities.parseDate("2024 Jan 31");
+```
+
+**Unix Style:**
+```java
+// Full Unix format
+DateUtilities.parseDate("Sat Jan 6 11:06:10 EST 2024");
+```
+
+### Time Components
+
+**Time Formats:**
+```java
+// Basic time
+DateUtilities.parseDate("2024-01-15 13:30");
+
+// With seconds
+DateUtilities.parseDate("2024-01-15 13:30:45");
+
+// With fractional seconds
+DateUtilities.parseDate("2024-01-15 13:30:45.123456");
+
+// With timezone offset
+DateUtilities.parseDate("2024-01-15 13:30+01:00");
+DateUtilities.parseDate("2024-01-15 13:30:45-0500");
+
+// With named timezone
+DateUtilities.parseDate("2024-01-15 13:30 EST");
+DateUtilities.parseDate("2024-01-15 13:30:45 America/New_York");
+```
+
+### Timezone Support
+
+**Offset Formats:**
+```java
+// GMT/UTC offset
+DateUtilities.parseDate("2024-01-15 15:30+00:00");  // UTC
+DateUtilities.parseDate("2024-01-15 10:30-05:00");  // EST
+DateUtilities.parseDate("2024-01-15 20:30+05:00");  // IST
+```
+
+**Named Timezones:**
+```java
+// Using abbreviations
+DateUtilities.parseDate("2024-01-15 15:30 GMT");
+DateUtilities.parseDate("2024-01-15 10:30 EST");
+DateUtilities.parseDate("2024-01-15 20:30 IST");
+
+// Using full zone IDs
+DateUtilities.parseDate("2024-01-15 15:30 Europe/London");
+DateUtilities.parseDate("2024-01-15 10:30 America/New_York");
+DateUtilities.parseDate("2024-01-15 20:30 Asia/Kolkata");
+```
+
+### Special Features
+
+**Unix Epoch:**
+```java
+// Parse milliseconds since epoch
+DateUtilities.parseDate("1640995200000");  // 2022-01-01 00:00:00 UTC
+```
+
+**Default Timezone Control:**
+```java
+// Parse with specific default timezone
+ZonedDateTime date = DateUtilities.parseDate(
+    "2024-01-15 14:30:00",
+    ZoneId.of("America/New_York"),
+    true
+);
+```
+
+**Optional Components:**
+```java
+// Optional day of week (ignored in calculation)
+DateUtilities.parseDate("Sunday 2024-01-15 14:30");
+DateUtilities.parseDate("2024-01-15 14:30 Sunday");
+
+// Flexible date/time separator
+DateUtilities.parseDate("2024-01-15T14:30:00");
+DateUtilities.parseDate("2024-01-15 14:30:00");
+```
+
+### Implementation Notes
+- Thread-safe design
+- Null-safe operations
+- Extensive timezone abbreviation mapping
+- Handles ambiguous timezone abbreviations
+- Supports variable precision in fractional seconds
+- Flexible separator handling
+- Optional components support
+
+### Best Practices
+```java
+// Specify timezone when possible
+ZonedDateTime date = DateUtilities.parseDate(
+    dateString,
+    ZoneId.of("UTC"),
+    true
+);
+
+// Use full zone IDs for unambiguous timezone handling
+DateUtilities.parseDate("2024-01-15 14:30 America/New_York");
+
+// Include seconds for precise time handling
+DateUtilities.parseDate("2024-01-15 14:30:00");
+
+// Use ISO format for machine-generated dates
+DateUtilities.parseDate("2024-01-15T14:30:00Z");
+```
+
+### Error Handling
+```java
+try {
+    Date date = DateUtilities.parseDate("invalid date");
+} catch (IllegalArgumentException e) {
+    // Handle invalid date format
+}
+
+// Null handling
+Date date = DateUtilities.parseDate(null);  // Returns null
+```
+
+This utility provides robust date parsing capabilities with extensive format support and timezone handling, making it suitable for applications dealing with various date/time string representations.

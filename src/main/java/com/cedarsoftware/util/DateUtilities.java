@@ -12,53 +12,97 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Utility for parsing String dates with optional times, especially when the input String formats
- * may be inconsistent.  This will parse the following formats:<br/>
- * <pre>
- * 12-31-2023, 12/31/2023, 12.31.2023     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
- *                                  
- * 2023-12-31, 2023/12/31, 2023.12.31     mm is 1-12 or 01-12, dd is 1-31 or 01-31, and yyyy can be 0000 to 9999.
- *                                  
- * January 6th, 2024                Month (3-4 digit abbreviation or full English name), white-space and optional comma,
- *                                  day of month (1-31) with optional suffixes 1st, 3rd, 22nd, whitespace and
- *                                  optional comma, and yyyy (0000-9999)
+ * Utility for parsing String dates with optional times, supporting a wide variety of formats and patterns.
+ * Handles inconsistent input formats, optional time components, and various timezone specifications.
  *
- * 17th January 2024                day of month (1-31) with optional suffixes (e.g. 1st, 3rd, 22nd),
- *                                  Month (3-4 digit abbreviation or full English name), whites space and optional comma,
- *                                  and yyyy (0000-9999)
+ * <h2>Supported Date Formats</h2>
+ * <table border="1" summary="Supported date formats">
+ *   <tr><th>Format</th><th>Example</th><th>Description</th></tr>
+ *   <tr>
+ *     <td>Numeric with separators</td>
+ *     <td>12-31-2023, 12/31/2023, 12.31.2023</td>
+ *     <td>mm is 1-12 or 01-12, dd is 1-31 or 01-31, yyyy is 0000-9999</td>
+ *   </tr>
+ *   <tr>
+ *     <td>ISO-style</td>
+ *     <td>2023-12-31, 2023/12/31, 2023.12.31</td>
+ *     <td>yyyy-mm-dd format with flexible separators (-, /, .)</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Month first</td>
+ *     <td>January 6th, 2024</td>
+ *     <td>Month name (full or 3-4 letter), day with optional suffix, year</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Day first</td>
+ *     <td>17th January 2024</td>
+ *     <td>Day with optional suffix, month name, year</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Year first</td>
+ *     <td>2024 January 31st</td>
+ *     <td>Year, month name, day with optional suffix</td>
+ *   </tr>
+ *   <tr>
+ *     <td>Unix style</td>
+ *     <td>Sat Jan 6 11:06:10 EST 2024</td>
+ *     <td>Day of week, month, day, time, timezone, year</td>
+ *   </tr>
+ * </table>
  *
- * 2024 January 31st                4 digit year, white space and optional comma, Month (3-4 digit abbreviation or full
- *                                  English name), white space and optional command, and day of month with optional
- *                                  suffixes (1st, 3rd, 22nd)
+ * <h2>Supported Time Formats</h2>
+ * <table border="1" summary="Supported time formats">
+ *   <tr><th>Format</th><th>Example</th><th>Description</th></tr>
+ *   <tr>
+ *     <td>Basic time</td>
+ *     <td>13:30</td>
+ *     <td>24-hour format (00-23:00-59)</td>
+ *   </tr>
+ *   <tr>
+ *     <td>With seconds</td>
+ *     <td>13:30:45</td>
+ *     <td>Includes seconds (00-59)</td>
+ *   </tr>
+ *   <tr>
+ *     <td>With fractional seconds</td>
+ *     <td>13:30:45.123456</td>
+ *     <td>Variable precision fractional seconds</td>
+ *   </tr>
+ *   <tr>
+ *     <td>With offset</td>
+ *     <td>13:30+01:00, 13:30:45-0500</td>
+ *     <td>Supports +HH:mm, +HHmm, +HH, -HH:mm, -HHmm, -HH, Z</td>
+ *   </tr>
+ *   <tr>
+ *     <td>With timezone</td>
+ *     <td>13:30 EST, 13:30:45 America/New_York</td>
+ *     <td>Supports abbreviations and full zone IDs</td>
+ *   </tr>
+ * </table>
  *
- * Sat Jan 6 11:06:10 EST 2024      Unix/Linux style.  Day of week (3-letter or full name), Month (3-4 digit or full
- *                                  English name), time hh:mm:ss, TimeZone (Java supported Timezone names), Year
- * </pre>
- *  All dates can be followed by a Time, or the time can precede the Date. Whitespace or a single letter T must separate the
- *  date and the time for the non-Unix time formats.  The Time formats supported:<br/>
- * <pre>
- * hh:mm                            hours (00-23), minutes (00-59).  24 hour format.
- * 
- * hh:mm:ss                         hours (00-23), minutes (00-59), seconds (00-59).  24 hour format.
+ * <h2>Special Features</h2>
+ * <ul>
+ *   <li>Supports Unix epoch milliseconds (e.g., "1640995200000")</li>
+ *   <li>Optional day-of-week in any position (ignored in date calculation)</li>
+ *   <li>Flexible date/time separator (space or 'T')</li>
+ *   <li>Time can appear before or after date</li>
+ *   <li>Extensive timezone support including abbreviations and full zone IDs</li>
+ *   <li>Handles ambiguous timezone abbreviations with population-based resolution</li>
+ *   <li>Thread-safe implementation</li>
+ * </ul>
  *
- * hh:mm:ss.sssss                   hh:mm:ss and fractional seconds. Variable fractional seconds supported.
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * // Basic parsing with system default timezone
+ * Date date1 = DateUtilities.parseDate("2024-01-15 14:30:00");
  *
- * hh:mm:offset -or-                offset can be specified as +HH:mm, +HHmm, +HH, -HH:mm, -HHmm, -HH, or Z (GMT)
- * hh:mm:ss.sss:offset              which will match: "12:34", "12:34:56", "12:34.789", "12:34:56.789", "12:34+01:00",
- *                                  "12:34:56+1:00", "12:34-01", "12:34:56-1", "12:34Z", "12:34:56Z"
+ * // Parsing with specific timezone
+ * ZonedDateTime date2 = DateUtilities.parseDate("2024-01-15 14:30:00",
+ *     ZoneId.of("America/New_York"), true);
  *
- * hh:mm:zone -or-                  Zone can be specified as Z (Zulu = UTC), older short forms: GMT, EST, CST, MST,
- * hh:mm:ss.sss:zone                PST, IST, JST, BST etc. as well as the long forms: "America/New_York", "Asia/Saigon",
- *                                  etc. See ZoneId.getAvailableZoneIds().
- * </pre>
- * DateUtilities will parse Epoch-based integer-based value. It is considered number of milliseconds since Jan, 1970 GMT.
- * <pre>
- * "0" to                           A string of numeric digits will be parsed and returned as the number of milliseconds
- * "999999999999999999"             the Unix Epoch, January 1st, 1970 00:00:00 UTC.
- * </pre>
- * On all patterns above (excluding the numeric epoch millis), if a day-of-week (e.g. Thu, Sunday, etc.) is included
- * (front, back, or between date and time), it will be ignored, allowing for even more formats than listed here.
- * The day-of-week is not be used to influence the Date calculation.
+ * // Parsing Unix style date
+ * Date date3 = DateUtilities.parseDate("Tue Jan 15 14:30:00 EST 2024");
+ * }</pre>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -151,7 +195,7 @@ public final class DateUtilities {
         ABBREVIATION_TO_TIMEZONE.put("EDT", "America/New_York");    // Eastern Daylight Time
 
         // CST is ambiguous: could be Central Standard Time (North America) or China Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("CST", "America/Chicago");     // China Standard Time
+        ABBREVIATION_TO_TIMEZONE.put("CST", "America/Chicago");     // Central Standard Time
 
         ABBREVIATION_TO_TIMEZONE.put("CDT", "America/Chicago");     // Central Daylight Time
         // Note: CDT can also be Cuba Daylight Time (America/Havana)
@@ -159,12 +203,12 @@ public final class DateUtilities {
         // MST is ambiguous: could be Mountain Standard Time (North America) or Myanmar Standard Time
         // Chose Myanmar Standard Time due to larger population
         // Conflicts: America/Denver (Mountain Standard Time)
-        ABBREVIATION_TO_TIMEZONE.put("MST", "Asia/Yangon");         // Myanmar Standard Time
+        ABBREVIATION_TO_TIMEZONE.put("MST", "America/Denver");      // Mountain Standard Time
 
         ABBREVIATION_TO_TIMEZONE.put("MDT", "America/Denver");      // Mountain Daylight Time
 
         // PST is ambiguous: could be Pacific Standard Time (North America) or Philippine Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("PST", "America/Los_Angeles"); // Philippine Standard Time
+        ABBREVIATION_TO_TIMEZONE.put("PST", "America/Los_Angeles"); // Pacific Standard Time
         ABBREVIATION_TO_TIMEZONE.put("PDT", "America/Los_Angeles"); // Pacific Daylight Time
 
         ABBREVIATION_TO_TIMEZONE.put("AKST", "America/Anchorage");  // Alaska Standard Time
@@ -177,10 +221,8 @@ public final class DateUtilities {
         ABBREVIATION_TO_TIMEZONE.put("GMT", "Europe/London");       // Greenwich Mean Time
 
         // BST is ambiguous: could be British Summer Time or Bangladesh Standard Time
-        // Chose Bangladesh Standard Time due to larger population
-        // Conflicts: Europe/London (British Summer Time)
-        ABBREVIATION_TO_TIMEZONE.put("BST", "Asia/Dhaka");          // Bangladesh Standard Time
-
+        // Chose British Summer Time as it's more commonly used in international contexts
+        ABBREVIATION_TO_TIMEZONE.put("BST", "Europe/London");       // British Summer Time
         ABBREVIATION_TO_TIMEZONE.put("WET", "Europe/Lisbon");       // Western European Time
         ABBREVIATION_TO_TIMEZONE.put("WEST", "Europe/Lisbon");      // Western European Summer Time
 
@@ -248,7 +290,7 @@ public final class DateUtilities {
         // Chose Singapore Time due to larger population
         ABBREVIATION_TO_TIMEZONE.put("SGT", "Asia/Singapore");      // Singapore Time
 
-        // MST is already mapped to Asia/Yangon (Myanmar Standard Time)
+        // MST is mapped to America/Denver (Mountain Standard Time) above
         // MYT is Malaysia Time
         ABBREVIATION_TO_TIMEZONE.put("MYT", "Asia/Kuala_Lumpur");   // Malaysia Time
 

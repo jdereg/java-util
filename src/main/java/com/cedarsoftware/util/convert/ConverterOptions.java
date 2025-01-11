@@ -10,6 +10,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
+import com.cedarsoftware.util.ClassUtilities;
+
 /**
  * Configuration options for the Converter class, providing customization of type conversion behavior.
  * This interface defines default settings and allows overriding of conversion parameters like timezone,
@@ -84,7 +86,7 @@ public interface ConverterOptions {
     /**
      * @return ClassLoader for loading and initializing classes.
      */
-    default ClassLoader getClassLoader() { return ConverterOptions.class.getClassLoader(); }
+    default ClassLoader getClassLoader() { return ClassUtilities.getClassLoader(ConverterOptions.class); }
 
     /**
      * @return Custom option

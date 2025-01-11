@@ -68,8 +68,8 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[ArrayUtilities](userguide.md#arrayutilities)** - Comprehensive array manipulation operations
 - **[ByteUtilities](userguide.md#byteutilities)** - Byte array and hexadecimal conversion utilities
 - **[ClassUtilities](userguide.md#classutilities)** - Class relationship and reflection helper methods
-- **[Converter](/src/main/java/com/cedarsoftware/util/Converter.java)** - Robust type conversion system
-- **[DateUtilities](/src/main/java/com/cedarsoftware/util/DateUtilities.java)** - Advanced date parsing and manipulation
+- **[Converter](userguide.md#converter)** - Robust type conversion system
+- **[DateUtilities](userguide.md#dateutilities)** - Advanced date parsing and manipulation
 - **[DeepEquals](/src/main/java/com/cedarsoftware/util/DeepEquals.java)** - Recursive object graph comparison
 - **[IOUtilities](/src/main/java/com/cedarsoftware/util/IOUtilities.java)** - Enhanced I/O operations and streaming utilities
 - **[EncryptionUtilities](/src/main/java/com/cedarsoftware/util/EncryptionUtilities.java)** - Simplified encryption and checksum operations

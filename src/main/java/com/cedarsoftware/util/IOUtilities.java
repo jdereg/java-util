@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLConnection;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
@@ -24,7 +25,40 @@ import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
 /**
- * Useful IOUtilities that simplify common io tasks
+ * Utility class providing robust I/O operations with built-in error handling and resource management.
+ * <p>
+ * This class simplifies common I/O tasks such as:
+ * </p>
+ * <ul>
+ *   <li>Stream transfers and copying</li>
+ *   <li>Resource closing and flushing</li>
+ *   <li>Byte array compression/decompression</li>
+ *   <li>URL connection handling</li>
+ *   <li>File operations</li>
+ * </ul>
+ *
+ * <p><strong>Key Features:</strong></p>
+ * <ul>
+ *   <li>Automatic buffer management for optimal performance</li>
+ *   <li>GZIP and Deflate compression support</li>
+ *   <li>Silent exception handling for close/flush operations</li>
+ *   <li>Progress tracking through callback mechanism</li>
+ *   <li>Support for XML stream operations</li>
+ * </ul>
+ *
+ * <p><strong>Usage Example:</strong></p>
+ * <pre>{@code
+ * // Copy file to output stream
+ * try (FileInputStream fis = new FileInputStream("input.txt")) {
+ *     try (FileOutputStream fos = new FileOutputStream("output.txt")) {
+ *         IOUtilities.transfer(fis, fos);
+ *     }
+ * }
+ *
+ * // Compress byte array
+ * byte[] compressed = IOUtilities.compressBytes(originalBytes);
+ * byte[] uncompressed = IOUtilities.uncompressBytes(compressed);
+ * }</pre>
  *
  * @author Ken Partlow
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -47,83 +81,122 @@ public final class IOUtilities
 {
     private static final int TRANSFER_BUFFER = 32768;
 
-    private IOUtilities()
-    {
-    }
+    private IOUtilities() { }
 
-    public static InputStream getInputStream(URLConnection c) throws IOException
-    {
+    /**
+     * Gets an appropriate InputStream from a URLConnection, handling compression if necessary.
+     * <p>
+     * This method automatically detects and handles various compression encodings:
+     * </p>
+     * <ul>
+     *   <li>GZIP ("gzip" or "x-gzip")</li>
+     *   <li>DEFLATE ("deflate")</li>
+     * </ul>
+     * <p>
+     * The returned stream is always buffered for optimal performance.
+     * </p>
+     *
+     * @param c the URLConnection to get the input stream from
+     * @return a buffered InputStream, potentially wrapped with a decompressing stream
+     * @throws IOException if an I/O error occurs
+     */
+    public static InputStream getInputStream(URLConnection c) throws IOException {
         InputStream is = c.getInputStream();
         String enc = c.getContentEncoding();
 
-        if ("gzip".equalsIgnoreCase(enc) || "x-gzip".equalsIgnoreCase(enc))
-        {
+        if ("gzip".equalsIgnoreCase(enc) || "x-gzip".equalsIgnoreCase(enc)) {
             is = new GZIPInputStream(is, TRANSFER_BUFFER);
-        }
-        else if ("deflate".equalsIgnoreCase(enc))
-        {
+        } else if ("deflate".equalsIgnoreCase(enc)) {
             is = new InflaterInputStream(is, new Inflater(), TRANSFER_BUFFER);
         }
 
         return new BufferedInputStream(is);
     }
 
-    public static void transfer(File f, URLConnection c, TransferCallback cb) throws Exception
-    {
+    /**
+     * Transfers the contents of a File to a URLConnection's output stream.
+     * <p>
+     * Progress can be monitored and the transfer can be cancelled through the callback interface.
+     * </p>
+     *
+     * @param f the source File to transfer
+     * @param c the destination URLConnection
+     * @param cb optional callback for progress monitoring and cancellation (may be null)
+     * @throws Exception if any error occurs during the transfer
+     */
+    public static void transfer(File f, URLConnection c, TransferCallback cb) throws Exception {
         InputStream in = null;
         OutputStream out = null;
-        try
-        {
-            in = new BufferedInputStream(new FileInputStream(f));
+        try {
+            in = new BufferedInputStream(Files.newInputStream(f.toPath()));
             out = new BufferedOutputStream(c.getOutputStream());
             transfer(in, out, cb);
-        }
-        finally
-        {
+        } finally {
             close(in);
             close(out);
         }
     }
 
-    public static void transfer(URLConnection c, File f, TransferCallback cb) throws Exception
-    {
+    /**
+     * Transfers the contents of a URLConnection's input stream to a File.
+     * <p>
+     * Progress can be monitored and the transfer can be cancelled through the callback interface.
+     * Automatically handles compressed streams.
+     * </p>
+     *
+     * @param c the source URLConnection
+     * @param f the destination File
+     * @param cb optional callback for progress monitoring and cancellation (may be null)
+     * @throws Exception if any error occurs during the transfer
+     */
+    public static void transfer(URLConnection c, File f, TransferCallback cb) throws Exception {
         InputStream in = null;
-        try
-        {
+        try {
             in = getInputStream(c);
             transfer(in, f, cb);
-        }
-        finally
-        {
+        } finally {
             close(in);
         }
     }
 
-    public static void transfer(InputStream s, File f, TransferCallback cb) throws Exception
-    {        
-        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(f)))
-        {            
+    /**
+     * Transfers the contents of an InputStream to a File.
+     * <p>
+     * Progress can be monitored and the transfer can be cancelled through the callback interface.
+     * The output stream is automatically buffered for optimal performance.
+     * </p>
+     *
+     * @param s the source InputStream
+     * @param f the destination File
+     * @param cb optional callback for progress monitoring and cancellation (may be null)
+     * @throws Exception if any error occurs during the transfer
+     */
+    public static void transfer(InputStream s, File f, TransferCallback cb) throws Exception {
+        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(f))) {
             transfer(s, out, cb);
-        }        
+        }
     }
 
     /**
-     * Transfers bytes from an input stream to an output stream.
-     * Callers of this method are responsible for closing the streams
-     * since they are the ones that opened the streams.
+     * Transfers bytes from an input stream to an output stream with optional progress monitoring.
+     * <p>
+     * This method does not close the streams; that responsibility remains with the caller.
+     * Progress can be monitored and the transfer can be cancelled through the callback interface.
+     * </p>
+     *
+     * @param in the source InputStream
+     * @param out the destination OutputStream
+     * @param cb optional callback for progress monitoring and cancellation (may be null)
+     * @throws IOException if an I/O error occurs during transfer
      */
-    public static void transfer(InputStream in, OutputStream out, TransferCallback cb) throws IOException
-    {
+    public static void transfer(InputStream in, OutputStream out, TransferCallback cb) throws IOException {
         byte[] bytes = new byte[TRANSFER_BUFFER];
         int count;
-        while ((count = in.read(bytes)) != -1)
-        {
+        while ((count = in.read(bytes)) != -1) {
             out.write(bytes, 0, count);
-            if (cb != null)
-            {
+            if (cb != null) {
                 cb.bytesTransferred(bytes, count);
-                if (cb.isCancelled())
-                {
+                if (cb.isCancelled()) {
                     break;
                 }
             }
@@ -131,212 +204,294 @@ public final class IOUtilities
     }
 
     /**
-     * Use this when you expect a byte[] length of bytes to be read from the InputStream
+     * Reads exactly the specified number of bytes from an InputStream into a byte array.
+     * <p>
+     * This method will continue reading until either the byte array is full or the end of the stream is reached.
+     * </p>
+     *
+     * @param in the InputStream to read from
+     * @param bytes the byte array to fill
+     * @throws IOException if the stream ends before the byte array is filled or if any other I/O error occurs
      */
-    public static void transfer(InputStream in, byte[] bytes) throws IOException
-    {
+    public static void transfer(InputStream in, byte[] bytes) throws IOException {
         // Read in the bytes
         int offset = 0;
         int numRead;
-        while (offset < bytes.length && (numRead = in.read(bytes, offset, bytes.length - offset)) >= 0)
-        {
+        while (offset < bytes.length && (numRead = in.read(bytes, offset, bytes.length - offset)) >= 0) {
             offset += numRead;
         }
 
-        if (offset < bytes.length)
-        {
+        if (offset < bytes.length) {
             throw new IOException("Retry:  Not all bytes were transferred correctly.");
         }
     }
-
-
+    
     /**
-     * Transfers bytes from an input stream to an output stream.
-     * Callers of this method are responsible for closing the streams
-     * since they are the ones that opened the streams.
+     * Transfers all bytes from an input stream to an output stream.
+     * <p>
+     * This method does not close the streams; that responsibility remains with the caller.
+     * Uses an internal buffer for efficient transfer.
+     * </p>
+     *
+     * @param in the source InputStream
+     * @param out the destination OutputStream
+     * @throws IOException if an I/O error occurs during transfer
      */
-    public static void transfer(InputStream in, OutputStream out) throws IOException
-    {
+    public static void transfer(InputStream in, OutputStream out) throws IOException {
         byte[] bytes = new byte[TRANSFER_BUFFER];
         int count;
-        while ((count = in.read(bytes)) != -1)
-        {
+        while ((count = in.read(bytes)) != -1) {
             out.write(bytes, 0, count);
         }
     }
 
-    public static void transfer(File file, OutputStream out) throws IOException
-    {        
-        try (InputStream in = new BufferedInputStream(new FileInputStream(file), TRANSFER_BUFFER))
-        {            
+    /**
+     * Transfers the contents of a File to an OutputStream.
+     * <p>
+     * The input is automatically buffered for optimal performance.
+     * The output stream is flushed after the transfer but not closed.
+     * </p>
+     *
+     * @param file the source File
+     * @param out the destination OutputStream
+     * @throws IOException if an I/O error occurs during transfer
+     */
+    public static void transfer(File file, OutputStream out) throws IOException {
+        try (InputStream in = new BufferedInputStream(new FileInputStream(file), TRANSFER_BUFFER)) {
             transfer(in, out);
-        }
-        finally
-        {
+        } finally {
             flush(out);
         }
     }
 
-    public static void close(XMLStreamReader reader)
-    {
-        try
-        {
-            if (reader != null)
-            {
+    /**
+     * Safely closes an XMLStreamReader, suppressing any exceptions.
+     *
+     * @param reader the XMLStreamReader to close (may be null)
+     */
+    public static void close(XMLStreamReader reader) {
+        try {
+            if (reader != null) {
                 reader.close();
             }
+        } catch (XMLStreamException ignore) {
         }
-        catch (XMLStreamException ignore)
-        { }
     }
 
-    public static void close(XMLStreamWriter writer)
-    {
-        try
-        {
-            if (writer != null)
-            {
+    /**
+     * Safely closes an XMLStreamWriter, suppressing any exceptions.
+     *
+     * @param writer the XMLStreamWriter to close (may be null)
+     */
+    public static void close(XMLStreamWriter writer) {
+        try {
+            if (writer != null) {
                 writer.close();
             }
+        } catch (XMLStreamException ignore) {
         }
-        catch (XMLStreamException ignore)
-        { }
     }
 
-    public static void close(Closeable c)
-    {
-        try
-        {
-            if (c != null)
-            {
+    /**
+     * Safely closes any Closeable resource, suppressing any exceptions.
+     *
+     * @param c the Closeable resource to close (may be null)
+     */
+    public static void close(Closeable c) {
+        try {
+            if (c != null) {
                 c.close();
             }
+        } catch (IOException ignore) {
         }
-        catch (IOException  ignore) { }
     }
-
-    public static void flush(Flushable f)
-    {
-        try
-        {
-            if (f != null)
-            {
+    
+    /**
+     * Safely flushes any Flushable resource, suppressing any exceptions.
+     *
+     * @param f the Flushable resource to flush (may be null)
+     */
+    public static void flush(Flushable f) {
+        try {
+            if (f != null) {
                 f.flush();
             }
+        } catch (IOException ignore) {
         }
-        catch (IOException ignore)  { }
     }
 
-    public static void flush(XMLStreamWriter writer)
-    {
-        try
-        {
-            if (writer != null)
-            {
+    /**
+     * Safely flushes an XMLStreamWriter, suppressing any exceptions.
+     *
+     * @param writer the XMLStreamWriter to flush (may be null)
+     */
+    public static void flush(XMLStreamWriter writer) {
+        try {
+            if (writer != null) {
                 writer.flush();
             }
+        } catch (XMLStreamException ignore) {
         }
-        catch (XMLStreamException ignore)  { }
     }
+
     /**
-     * Convert InputStream contents to a byte[].
-     * Will return null on error.  Only use this API if you know that the stream length will be
-     * relatively small.
+     * Converts an InputStream's contents to a byte array.
+     * <p>
+     * This method should only be used when the input stream's length is known to be relatively small,
+     * as it loads the entire stream into memory.
+     * </p>
+     *
+     * @param in the InputStream to read from
+     * @return the byte array containing the stream's contents, or null if an error occurs
      */
-    public static byte[] inputStreamToBytes(InputStream in)
-    {
-        try
-        {
+    public static byte[] inputStreamToBytes(InputStream in) {
+        try {
             FastByteArrayOutputStream out = new FastByteArrayOutputStream(16384);
             transfer(in, out);
             return out.toByteArray();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             return null;
         }
     }
 
     /**
-     * Transfers a byte[] to the output stream of a URLConnection
-     * @param c  Connection to transfer output
-     * @param bytes the bytes to send
-     * @throws IOException
+     * Transfers a byte array to a URLConnection's output stream.
+     * <p>
+     * The output stream is automatically buffered for optimal performance and properly closed after transfer.
+     * </p>
+     *
+     * @param c the URLConnection to write to
+     * @param bytes the byte array to transfer
+     * @throws IOException if an I/O error occurs during transfer
      */
-    public static void transfer(URLConnection c, byte[] bytes) throws IOException
-    {
-        try (OutputStream out = new BufferedOutputStream(c.getOutputStream()))
-        {
+    public static void transfer(URLConnection c, byte[] bytes) throws IOException {
+        try (OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             out.write(bytes);
         }
     }
 
-    public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException
-    {
+    /**
+     * Compresses the contents of one ByteArrayOutputStream into another using GZIP compression.
+     * <p>
+     * Uses BEST_SPEED compression level for optimal performance.
+     * </p>
+     *
+     * @param original the ByteArrayOutputStream containing the data to compress
+     * @param compressed the ByteArrayOutputStream to receive the compressed data
+     * @throws IOException if an I/O error occurs during compression
+     */
+    public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException {
         DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED);
         original.writeTo(gzipStream);
         gzipStream.flush();
         gzipStream.close();
     }
 
-    public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException
-    {
+    /**
+     * Compresses the contents of one FastByteArrayOutputStream into another using GZIP compression.
+     * <p>
+     * Uses BEST_SPEED compression level for optimal performance.
+     * </p>
+     *
+     * @param original the FastByteArrayOutputStream containing the data to compress
+     * @param compressed the FastByteArrayOutputStream to receive the compressed data
+     * @throws IOException if an I/O error occurs during compression
+     */
+    public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException {
         DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED);
         gzipStream.write(original.toByteArray(), 0, original.size());
         gzipStream.flush();
         gzipStream.close();
     }
 
-    public static byte[] compressBytes(byte[] bytes)
-    {
+    /**
+     * Compresses a byte array using GZIP compression.
+     *
+     * @param bytes the byte array to compress
+     * @return a new byte array containing the compressed data
+     * @throws RuntimeException if compression fails
+     */
+    public static byte[] compressBytes(byte[] bytes) {
         return compressBytes(bytes, 0, bytes.length);
     }
 
-    public static byte[] compressBytes(byte[] bytes, int offset, int len)
-    {
-        try (FastByteArrayOutputStream byteStream = new FastByteArrayOutputStream())
-        {
-            try (DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(byteStream, Deflater.BEST_SPEED))
-            {
+    /**
+     * Compresses a portion of a byte array using GZIP compression.
+     *
+     * @param bytes the source byte array
+     * @param offset the starting position in the source array
+     * @param len the number of bytes to compress
+     * @return a new byte array containing the compressed data
+     * @throws RuntimeException if compression fails
+     */
+    public static byte[] compressBytes(byte[] bytes, int offset, int len) {
+        try (FastByteArrayOutputStream byteStream = new FastByteArrayOutputStream()) {
+            try (DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(byteStream, Deflater.BEST_SPEED)) {
                 gzipStream.write(bytes, offset, len);
                 gzipStream.flush();
             }
             return Arrays.copyOf(byteStream.toByteArray(), byteStream.size());
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             throw new RuntimeException("Error compressing bytes.", e);
         }
     }
 
-    public static byte[] uncompressBytes(byte[] bytes)
-    {
+    /**
+     * Uncompresses a GZIP-compressed byte array.
+     * <p>
+     * If the input is not GZIP-compressed, returns the original array unchanged.
+     * </p>
+     *
+     * @param bytes the compressed byte array
+     * @return the uncompressed byte array, or the original array if not compressed
+     * @throws RuntimeException if decompression fails
+     */
+    public static byte[] uncompressBytes(byte[] bytes) {
         return uncompressBytes(bytes, 0, bytes.length);
     }
 
-    public static byte[] uncompressBytes(byte[] bytes, int offset, int len)
-    {
-        if (ByteUtilities.isGzipped(bytes))
-        {
-            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len))
-            {
-                try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 16384))
-                {
+    /**
+     * Uncompresses a portion of a GZIP-compressed byte array.
+     * <p>
+     * If the input is not GZIP-compressed, returns the original array unchanged.
+     * </p>
+     *
+     * @param bytes the compressed byte array
+     * @param offset the starting position in the source array
+     * @param len the number of bytes to uncompress
+     * @return the uncompressed byte array, or the original array if not compressed
+     * @throws RuntimeException if decompression fails
+     */
+    public static byte[] uncompressBytes(byte[] bytes, int offset, int len) {
+        if (ByteUtilities.isGzipped(bytes)) {
+            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len)) {
+                try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 16384)) {
                     return inputStreamToBytes(gzipStream);
                 }
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 throw new RuntimeException("Error uncompressing bytes", e);
             }
         }
         return bytes;
     }
 
-    public interface TransferCallback
-    {
+    /**
+     * Callback interface for monitoring and controlling byte transfers.
+     */
+    public interface TransferCallback {
+        /**
+         * Called when bytes are transferred during an operation.
+         *
+         * @param bytes the buffer containing the transferred bytes
+         * @param count the number of bytes actually transferred
+         */
         void bytesTransferred(byte[] bytes, int count);
 
+        /**
+         * Checks if the transfer operation should be cancelled.
+         *
+         * @return true if the transfer should be cancelled, false to continue
+         */
         boolean isCancelled();
     }
 }

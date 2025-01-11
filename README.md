@@ -70,11 +70,11 @@ implementation 'com.cedarsoftware:java-util:2.18.0'
 - **[ClassUtilities](userguide.md#classutilities)** - Class relationship and reflection helper methods
 - **[Converter](userguide.md#converter)** - Robust type conversion system
 - **[DateUtilities](userguide.md#dateutilities)** - Advanced date parsing and manipulation
-- **[DeepEquals](/src/main/java/com/cedarsoftware/util/DeepEquals.java)** - Recursive object graph comparison
-- **[IOUtilities](/src/main/java/com/cedarsoftware/util/IOUtilities.java)** - Enhanced I/O operations and streaming utilities
+- **[DeepEquals](userguide.md#deepequals)** - Recursive object graph comparison
 - **[EncryptionUtilities](/src/main/java/com/cedarsoftware/util/EncryptionUtilities.java)** - Simplified encryption and checksum operations
 - **[Executor](/src/main/java/com/cedarsoftware/util/Executor.java)** - Streamlined system command execution
 - **[GraphComparator](/src/main/java/com/cedarsoftware/util/GraphComparator.java)** - Object graph difference detection and synchronization
+- **[IOUtilities](userguide.md#ioutilities)** - Enhanced I/O operations and streaming utilities
 - **[MathUtilities](/src/main/java/com/cedarsoftware/util/MathUtilities.java)** - Extended mathematical operations
 - **[ReflectionUtils](/src/main/java/com/cedarsoftware/util/ReflectionUtils.java)** - Optimized reflection operations
 - **[StringUtilities](/src/main/java/com/cedarsoftware/util/StringUtilities.java)** - Extended String manipulation operations

@@ -480,10 +480,48 @@ public class ClassUtilities
         return currentClass;
     }
 
+    /**
+     * Determines if a class is declared as final.
+     * <p>
+     * Checks if the class has the {@code final} modifier, indicating that it cannot be subclassed.
+     * </p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * boolean isFinal = ClassUtilities.isClassFinal(String.class);  // Returns true
+     * boolean notFinal = ClassUtilities.isClassFinal(ArrayList.class);  // Returns false
+     * }</pre>
+     *
+     * @param c the class to check, must not be null
+     * @return true if the class is final, false otherwise
+     * @throws NullPointerException if the input class is null
+     */
     public static boolean isClassFinal(Class<?> c) {
         return (c.getModifiers() & Modifier.FINAL) != 0;
     }
 
+    /**
+     * Determines if all constructors in a class are declared as private.
+     * <p>
+     * This method is useful for identifying classes that enforce singleton patterns
+     * or utility classes that should not be instantiated.
+     * </p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * // Utility class with private constructor
+     * public final class Utils {
+     *     private Utils() {}
+     * }
+     *
+     * boolean isPrivate = ClassUtilities.areAllConstructorsPrivate(Utils.class);  // Returns true
+     * boolean notPrivate = ClassUtilities.areAllConstructorsPrivate(String.class);  // Returns false
+     * }</pre>
+     *
+     * @param c the class to check, must not be null
+     * @return true if all constructors in the class are private, false if any constructor is non-private
+     * @throws NullPointerException if the input class is null
+     */
     public static boolean areAllConstructorsPrivate(Class<?> c) {
         Constructor<?>[] constructors = c.getDeclaredConstructors();
 
@@ -496,6 +534,38 @@ public class ClassUtilities
         return true;
     }
 
+    /**
+     * Converts a primitive class to its corresponding wrapper class.
+     * <p>
+     * If the input class is already a non-primitive type, it is returned unchanged.
+     * For primitive types, returns the corresponding wrapper class (e.g., {@code int.class} → {@code Integer.class}).
+     * </p>
+     *
+     * <p><strong>Examples:</strong></p>
+     * <pre>{@code
+     * Class<?> intWrapper = ClassUtilities.toPrimitiveWrapperClass(int.class);     // Returns Integer.class
+     * Class<?> boolWrapper = ClassUtilities.toPrimitiveWrapperClass(boolean.class); // Returns Boolean.class
+     * Class<?> sameClass = ClassUtilities.toPrimitiveWrapperClass(String.class);    // Returns String.class
+     * }</pre>
+     *
+     * <p><strong>Supported Primitive Types:</strong></p>
+     * <ul>
+     *   <li>{@code boolean.class} → {@code Boolean.class}</li>
+     *   <li>{@code byte.class} → {@code Byte.class}</li>
+     *   <li>{@code char.class} → {@code Character.class}</li>
+     *   <li>{@code double.class} → {@code Double.class}</li>
+     *   <li>{@code float.class} → {@code Float.class}</li>
+     *   <li>{@code int.class} → {@code Integer.class}</li>
+     *   <li>{@code long.class} → {@code Long.class}</li>
+     *   <li>{@code short.class} → {@code Short.class}</li>
+     *   <li>{@code void.class} → {@code Void.class}</li>
+     * </ul>
+     *
+     * @param primitiveClass the class to convert, must not be null
+     * @return the wrapper class if the input is primitive, otherwise the input class itself
+     * @throws NullPointerException if the input class is null
+     * @throws IllegalArgumentException if the input class is not a recognized primitive type
+     */
     public static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass) {
         if (!primitiveClass.isPrimitive()) {
             return primitiveClass;
@@ -510,6 +580,37 @@ public class ClassUtilities
         return c;
     }
 
+    /**
+     * Determines if one class is the wrapper type of the other.
+     * <p>
+     * This method checks if there is a primitive-wrapper relationship between two classes.
+     * For example, {@code Integer.class} wraps {@code int.class} and vice versa.
+     * </p>
+     *
+     * <p><strong>Examples:</strong></p>
+     * <pre>{@code
+     * boolean wraps = ClassUtilities.doesOneWrapTheOther(Integer.class, int.class);    // Returns true
+     * boolean wraps2 = ClassUtilities.doesOneWrapTheOther(int.class, Integer.class);   // Returns true
+     * boolean noWrap = ClassUtilities.doesOneWrapTheOther(Integer.class, long.class);  // Returns false
+     * }</pre>
+     *
+     * <p><strong>Supported Wrapper Pairs:</strong></p>
+     * <ul>
+     *   <li>{@code Boolean.class} ↔ {@code boolean.class}</li>
+     *   <li>{@code Byte.class} ↔ {@code byte.class}</li>
+     *   <li>{@code Character.class} ↔ {@code char.class}</li>
+     *   <li>{@code Double.class} ↔ {@code double.class}</li>
+     *   <li>{@code Float.class} ↔ {@code float.class}</li>
+     *   <li>{@code Integer.class} ↔ {@code int.class}</li>
+     *   <li>{@code Long.class} ↔ {@code long.class}</li>
+     *   <li>{@code Short.class} ↔ {@code short.class}</li>
+     * </ul>
+     *
+     * @param x first class to check
+     * @param y second class to check
+     * @return true if one class is the wrapper of the other, false otherwise
+     * @throws NullPointerException if either input class is null
+     */
     public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y) {
         return wrapperMap.get(x) == y;
     }

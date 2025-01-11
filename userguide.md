@@ -1672,9 +1672,6 @@ public static APIs on the `com.cedarsoftware.util.Converter` class.
 The instance API allows you to create a `com.cedarsoftware.util.converter.Converter` instance with a custom `ConverterOptions` object.  If you add custom conversions, they will be used by the `Converter` instance.
 You can create as many instances of the Converter as needed.  Often though, the static API is sufficient.
 
-```java
-
-
 **Collection Conversions:**
 ```java
 // Array to List
@@ -1946,3 +1943,271 @@ Date date = DateUtilities.parseDate(null);  // Returns null
 ```
 
 This utility provides robust date parsing capabilities with extensive format support and timezone handling, making it suitable for applications dealing with various date/time string representations.
+
+---
+## DeepEquals
+[Source](/src/main/java/com/cedarsoftware/util/DeepEquals.java)
+
+A sophisticated utility for performing deep equality comparisons between objects, supporting complex object graphs, collections, and providing detailed difference reporting.
+
+### Key Features
+- Deep object graph comparison
+- Circular reference detection
+- Detailed difference reporting
+- Configurable precision for numeric comparisons
+- Custom equals() method handling
+- String-to-number comparison support
+- Thread-safe implementation
+
+### Usage Examples
+
+**Basic Comparison:**
+```java
+// Simple comparison
+boolean equal = DeepEquals.deepEquals(obj1, obj2);
+
+// With options and difference reporting
+Map<String, Object> options = new HashMap<>();
+if (!DeepEquals.deepEquals(obj1, obj2, options)) {
+    String diff = (String) options.get(DeepEquals.DIFF);
+    System.out.println("Difference: " + diff);
+}
+```
+
+**Custom Configuration:**
+```java
+// Ignore custom equals() for specific classes
+Map<String, Object> options = new HashMap<>();
+options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, 
+    Set.of(MyClass.class, OtherClass.class));
+
+// Allow string-to-number comparisons
+options.put(DeepEquals.ALLOW_STRINGS_TO_MATCH_NUMBERS, true);
+```
+
+**Deep Hash Code Generation:**
+```java
+// Generate hash code for complex objects
+int hash = DeepEquals.deepHashCode(complexObject);
+
+// Use in custom hashCode() implementation
+@Override
+public int hashCode() {
+    return DeepEquals.deepHashCode(this);
+}
+```
+
+### Comparison Support
+
+**Basic Types:**
+```java
+// Primitives and their wrappers
+DeepEquals.deepEquals(10, 10);              // true
+DeepEquals.deepEquals(10L, 10);             // true
+DeepEquals.deepEquals(10.0, 10);            // true
+
+// Strings and Characters
+DeepEquals.deepEquals("test", "test");      // true
+DeepEquals.deepEquals('a', 'a');            // true
+
+// Dates and Times
+DeepEquals.deepEquals(date1, date2);        // Compares timestamps
+```
+
+**Collections and Arrays:**
+```java
+// Arrays
+DeepEquals.deepEquals(new int[]{1,2}, new int[]{1,2});
+
+// Lists (order matters)
+DeepEquals.deepEquals(Arrays.asList(1,2), Arrays.asList(1,2));
+
+// Sets (order doesn't matter)
+DeepEquals.deepEquals(new HashSet<>(list1), new HashSet<>(list2));
+
+// Maps
+DeepEquals.deepEquals(map1, map2);
+```
+
+### Implementation Notes
+- Thread-safe design
+- Efficient circular reference detection
+- Precise floating-point comparison
+- Detailed difference reporting
+- Collection order awareness
+- Map entry comparison support
+- Array dimension validation
+
+### Best Practices
+```java
+// Use options for custom behavior
+Map<String, Object> options = new HashMap<>();
+options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, customEqualsClasses);
+options.put(DeepEquals.ALLOW_STRINGS_TO_MATCH_NUMBERS, true);
+
+// Check differences
+if (!DeepEquals.deepEquals(obj1, obj2, options)) {
+    String diff = (String) options.get(DeepEquals.DIFF);
+    // Handle difference
+}
+
+// Generate consistent hash codes
+@Override
+public int hashCode() {
+    return DeepEquals.deepHashCode(this);
+}
+```
+
+### Performance Considerations
+- Caches reflection data
+- Optimized collection comparison
+- Efficient circular reference detection
+- Smart difference reporting
+- Minimal object creation
+- Thread-local formatting
+
+This implementation provides robust deep comparison capabilities with detailed difference reporting and configurable behavior.
+
+---
+## IOUtilities
+[Source](/src/main/java/com/cedarsoftware/util/IOUtilities.java)
+
+A comprehensive utility class for I/O operations, providing robust stream handling, compression, and resource management capabilities.
+
+### Key Features
+- Stream transfer operations
+- Resource management (close/flush)
+- Compression utilities
+- URL connection handling
+- Progress tracking
+- XML stream support
+- Buffer optimization
+
+### Usage Examples
+
+**Stream Transfer Operations:**
+```java
+// File to OutputStream
+File sourceFile = new File("source.txt");
+try (FileOutputStream fos = new FileOutputStream("dest.txt")) {
+    IOUtilities.transfer(sourceFile, fos);
+}
+
+// InputStream to OutputStream with callback
+IOUtilities.transfer(inputStream, outputStream, new TransferCallback() {
+    public void bytesTransferred(byte[] bytes, int count) {
+        // Track progress
+    }
+    public boolean isCancelled() {
+        return false;  // Continue transfer
+    }
+});
+```
+
+**Compression Operations:**
+```java
+// Compress byte array
+byte[] original = "Test data".getBytes();
+byte[] compressed = IOUtilities.compressBytes(original);
+
+// Uncompress byte array
+byte[] uncompressed = IOUtilities.uncompressBytes(compressed);
+
+// Stream compression
+ByteArrayOutputStream original = new ByteArrayOutputStream();
+ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+IOUtilities.compressBytes(original, compressed);
+```
+
+**URL Connection Handling:**
+```java
+// Get input stream with automatic encoding detection
+URLConnection conn = url.openConnection();
+try (InputStream is = IOUtilities.getInputStream(conn)) {
+    // Use input stream
+}
+
+// Upload file to URL
+File uploadFile = new File("upload.dat");
+URLConnection conn = url.openConnection();
+IOUtilities.transfer(uploadFile, conn, callback);
+```
+
+### Resource Management
+
+**Closing Resources:**
+```java
+// Close Closeable resources
+IOUtilities.close(inputStream);
+IOUtilities.close(outputStream);
+
+// Close XML resources
+IOUtilities.close(xmlStreamReader);
+IOUtilities.close(xmlStreamWriter);
+```
+
+**Flushing Resources:**
+```java
+// Flush Flushable resources
+IOUtilities.flush(outputStream);
+IOUtilities.flush(writer);
+
+// Flush XML writer
+IOUtilities.flush(xmlStreamWriter);
+```
+
+### Stream Conversion
+
+**Byte Array Operations:**
+```java
+// Convert InputStream to byte array
+byte[] bytes = IOUtilities.inputStreamToBytes(inputStream);
+
+// Transfer exact number of bytes
+byte[] buffer = new byte[1024];
+IOUtilities.transfer(inputStream, buffer);
+```
+
+### Implementation Notes
+- Uses 32KB buffer size for transfers
+- Supports GZIP and Deflate compression
+- Silent exception handling for close/flush
+- Thread-safe implementation
+- Automatic resource management
+- Progress tracking support
+
+### Best Practices
+```java
+// Use try-with-resources when possible
+try (InputStream in = new FileInputStream(file)) {
+    try (OutputStream out = new FileOutputStream(dest)) {
+        IOUtilities.transfer(in, out);
+    }
+}
+
+// Always close resources
+finally {
+    IOUtilities.close(inputStream);
+    IOUtilities.close(outputStream);
+}
+
+// Use callbacks for large transfers
+IOUtilities.transfer(source, dest, new TransferCallback() {
+    public void bytesTransferred(byte[] bytes, int count) {
+        updateProgress(count);
+    }
+    public boolean isCancelled() {
+        return userCancelled;
+    }
+});
+```
+
+### Performance Considerations
+- Optimized buffer size (32KB)
+- Buffered streams for efficiency
+- Minimal object creation
+- Memory-efficient transfers
+- Streaming compression support
+- Progress monitoring capability
+
+This implementation provides a robust set of I/O utilities with emphasis on resource safety, performance, and ease of use.

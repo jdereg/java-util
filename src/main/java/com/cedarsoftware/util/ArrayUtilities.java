@@ -221,6 +221,27 @@ public final class ArrayUtilities {
         return newArray;
     }
 
+    /**
+     * Removes an element at the specified position from an array, returning a new array with the element removed.
+     * <p>
+     * This method creates a new array with length one less than the input array and copies all elements
+     * except the one at the specified position. The original array remains unchanged.
+     * </p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * Integer[] numbers = {1, 2, 3, 4, 5};
+     * Integer[] result = ArrayUtilities.removeItem(numbers, 2);
+     * // result = {1, 2, 4, 5}
+     * }</pre>
+     *
+     * @param array the source array from which to remove an element
+     * @param pos   the position of the element to remove (zero-based)
+     * @param <T>   the component type of the array
+     * @return a new array containing all elements from the original array except the element at the specified position
+     * @throws ArrayIndexOutOfBoundsException if {@code pos} is negative or greater than or equal to the array length
+     * @throws NullPointerException if the input array is null
+     */
     @SuppressWarnings("unchecked")
     public static <T> T[] removeItem(T[] array, int pos) {
         final int len = Array.getLength(array);
@@ -231,6 +252,30 @@ public final class ArrayUtilities {
         return dest;
     }
 
+    /**
+     * Creates a new array containing elements from the specified range of the source array.
+     * <p>
+     * Returns a new array containing elements from index {@code start} (inclusive) to index {@code end} (exclusive).
+     * The original array remains unchanged.
+     * </p>
+     *
+     * <p><strong>Example:</strong></p>
+     * <pre>{@code
+     * String[] words = {"apple", "banana", "cherry", "date", "elderberry"};
+     * String[] subset = ArrayUtilities.getArraySubset(words, 1, 4);
+     * // subset = {"banana", "cherry", "date"}
+     * }</pre>
+     *
+     * @param array the source array from which to extract elements
+     * @param start the initial index of the range, inclusive
+     * @param end   the final index of the range, exclusive
+     * @param <T>   the component type of the array
+     * @return a new array containing the specified range from the original array
+     * @throws ArrayIndexOutOfBoundsException if {@code start} is negative, {@code end} is greater than the array length,
+     *         or {@code start} is greater than {@code end}
+     * @throws NullPointerException if the input array is null
+     * @see Arrays#copyOfRange(Object[], int, int)
+     */
     public static <T> T[] getArraySubset(T[] array, int start, int end) {
         return Arrays.copyOfRange(array, start, end);
     }

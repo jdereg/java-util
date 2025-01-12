@@ -4376,9 +4376,9 @@ class ConverterTest
     void testMapToThrowableFail() {
         Map<String, Object> map = mapOf(MESSAGE, "5", CLASS, GnarlyException.class.getName());
         Throwable expected = new GnarlyException(5);
-        assertThatThrownBy(() -> converter.convert(map, Throwable.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unable to reconstruct exception instance from map");
+        Throwable actual = converter.convert(map, Throwable.class);
+        assert actual instanceof GnarlyException;
+        assert actual.getMessage().equals("5");
     }
 
     @Test

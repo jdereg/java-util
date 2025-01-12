@@ -1,6 +1,6 @@
 package com.cedarsoftware.util.convert;
 
-import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -21,18 +21,25 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.CompactLinkedMap;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
 
 /**
@@ -595,42 +602,93 @@ final class MapConversions {
     static Throwable toThrowable(Object from, Converter converter, Class<?> target) {
         Map<String, Object> map = (Map<String, Object>) from;
         try {
+            // Determine most derived class between target and class specified in map
+            Class<?> classToUse = target;
             String className = (String) map.get(CLASS);
-            String message = (String) map.get(MESSAGE);
-            if (StringUtilities.isEmpty((message))) {
-                message = (String) map.get(DETAIL_MESSAGE);
+            if (StringUtilities.hasContent(className)) {
+                Class<?> mapClass = ClassUtilities.forName(className, ClassUtilities.getClassLoader(MapConversions.class));
+                if (mapClass != null) {
+                    // Use ClassUtilities to determine which class is more derived
+                    if (ClassUtilities.computeInheritanceDistance(mapClass, target) >= 0) {
+                        classToUse = mapClass;
+                    }
+                }
             }
+
+            // First, handle the cause if it exists
+            Throwable cause = null;
             String causeClassName = (String) map.get(CAUSE);
             String causeMessage = (String) map.get(CAUSE_MESSAGE);
-
-            Class<?> clazz = className != null ?
-                    Class.forName(className) :
-                    target;
-
-            Throwable cause = null;
-
-            if (causeClassName != null && !causeClassName.isEmpty()) {
-                Class<?> causeClass = Class.forName(causeClassName);
-                // Assuming the cause class has a constructor that takes a String message.
-                Constructor<?> causeConstructor = causeClass.getConstructor(String.class);
-                cause = (Throwable) causeConstructor.newInstance(causeMessage);
+            if (StringUtilities.hasContent(causeClassName)) {
+                Class<?> causeClass = ClassUtilities.forName(causeClassName, ClassUtilities.getClassLoader(MapConversions.class));
+                if (causeClass != null) {
+                    cause = (Throwable) ClassUtilities.newInstance(converter, causeClass, Arrays.asList(causeMessage));
+                }
             }
 
-            // Check for appropriate constructor based on whether a cause is present.
-            Constructor<?> constructor;
-            Throwable exception;
+            // Prepare constructor args - message and cause if available
+            List<Object> constructorArgs = new ArrayList<>();
+            String message = (String) map.get(MESSAGE);
+            if (message != null) {
+                constructorArgs.add(message);
+            } else {
+                if (map.containsKey(DETAIL_MESSAGE)) {
+                    constructorArgs.add(map.get(DETAIL_MESSAGE));
+                }
+            }
 
             if (cause != null) {
-                constructor = clazz.getConstructor(String.class, Throwable.class);
-                exception = (Throwable) constructor.newInstance(message, cause);
-            } else {
-                constructor = clazz.getConstructor(String.class);
-                exception = (Throwable) constructor.newInstance(message);
+                constructorArgs.add(cause);
             }
 
+            // Create the main exception using the determined class
+            Throwable exception = (Throwable) ClassUtilities.newInstance(converter, classToUse, constructorArgs);
+
+            // If cause wasn't handled in constructor, set it explicitly
+            if (cause != null && exception.getCause() == null) {
+                exception.initCause(cause);
+            }
+
+            // Now attempt to populate all remaining fields
+            populateFields(exception, map, converter);
+
+            // Clear the stackTrace
+            exception.setStackTrace(new StackTraceElement[0]);
+            
             return exception;
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to reconstruct exception instance from map: " + map);
+            throw new IllegalArgumentException("Unable to reconstruct exception instance from map: " + map, e);
+        }
+    }
+
+    private static void populateFields(Throwable exception, Map<String, Object> map, Converter converter) {
+        // Skip special fields we've already handled
+        Set<String> skipFields = CollectionUtilities.setOf(CAUSE, CAUSE_MESSAGE, MESSAGE, "stackTrace");
+
+        // Get all fields as a Map for O(1) lookup, excluding fields we want to skip
+        Map<String, Field> fieldMap = ReflectionUtils.getAllDeclaredFieldsMap(
+                exception.getClass(),
+                field -> !skipFields.contains(field.getName())
+        );
+
+        // Process each map entry
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String fieldName = entry.getKey();
+            Object value = entry.getValue();
+            Field field = fieldMap.get(fieldName);
+            
+            if (field != null) {
+                try {
+                    // Convert value to field type if needed
+                    Object convertedValue = value;
+                    if (value != null && !field.getType().isAssignableFrom(value.getClass())) {
+                        convertedValue = converter.convert(value, field.getType());
+                    }
+                    field.set(exception, convertedValue);
+                } catch (Exception ignored) {
+                    // Silently ignore field population errors
+                }
+            }
         }
     }
     
@@ -672,10 +730,10 @@ final class MapConversions {
 
         StringBuilder builder = new StringBuilder("To convert from Map to '" + Converter.getShortName(type) + "' the map must include: ");
 
-        for (int i = 0; i < keySets.length; i++) {
+        for (String[] keySet : keySets) {
             builder.append("[");
             // Convert the inner String[] to a single string, joined by ", "
-            builder.append(String.join(", ", keySets[i]));
+            builder.append(String.join(", ", keySet));
             builder.append("]");
             builder.append(", ");
         }

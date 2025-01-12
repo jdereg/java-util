@@ -34,6 +34,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -904,25 +905,74 @@ public class ClassUtilities
      * @return List of values that are best ordered to match the passed in parameter types.  This
      * list will be the same length as the passed in parameterTypes list.
      */
-    private static List<Object> matchArgumentsToParameters(com.cedarsoftware.util.convert.Converter converter, Collection<Object> values, Parameter[] parameterTypes, boolean useNull) {
+    private static List<Object> matchArgumentsToParameters(Converter converter, Collection<Object> values, Parameter[] parameterTypes, boolean useNull) {
         List<Object> answer = new ArrayList<>();
         if (parameterTypes == null || parameterTypes.length == 0) {
             return answer;
         }
-        List<Object> copyValues = new ArrayList<>(values);
 
-        for (Parameter parameter : parameterTypes) {
-            final Class<?> paramType = parameter.getType();
-            Object value = pickBestValue(paramType, copyValues);
-            if (value == null) {
-                if (useNull) {
-                    value = paramType.isPrimitive() ? converter.convert(null, paramType) : null;  // don't send null to a primitive parameter
-                } else {
-                    value = getArgForType(converter, paramType);
+        // First pass: Try exact matches and close inheritance matches
+        List<Object> copyValues = new ArrayList<>(values);
+        boolean[] parameterMatched = new boolean[parameterTypes.length];
+
+        // First try exact matches
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (parameterMatched[i]) {
+                continue;
+            }
+
+            Class<?> paramType = parameterTypes[i].getType();
+            Iterator<Object> valueIter = copyValues.iterator();
+            while (valueIter.hasNext()) {
+                Object value = valueIter.next();
+                if (value != null && value.getClass() == paramType) {
+                    answer.add(value);
+                    valueIter.remove();
+                    parameterMatched[i] = true;
+                    break;
                 }
             }
+        }
+
+        // Second pass: Try inheritance and conversion matches for unmatched parameters
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (parameterMatched[i]) {
+                continue;
+            }
+
+            Parameter parameter = parameterTypes[i];
+            Class<?> paramType = parameter.getType();
+
+            // Try to find best match from remaining values
+            Object value = pickBestValue(paramType, copyValues);
+
+            if (value == null) {
+                // No matching value found, handle according to useNull flag
+                if (useNull) {
+                    // For primitives, convert null to default value
+                    value = paramType.isPrimitive() ? converter.convert(null, paramType) : null;
+                } else {
+                    // Try to get a suitable default value
+                    value = getArgForType(converter, paramType);
+
+                    // If still null and primitive, convert null
+                    if (value == null && paramType.isPrimitive()) {
+                        value = converter.convert(null, paramType);
+                    }
+                }
+            } else if (value != null && !paramType.isAssignableFrom(value.getClass())) {
+                // Value needs conversion
+                try {
+                    value = converter.convert(value, paramType);
+                } catch (Exception e) {
+                    // Conversion failed, fall back to default
+                    value = useNull ? null : getArgForType(converter, paramType);
+                }
+            }
+
             answer.add(value);
         }
+
         return answer;
     }
 
@@ -937,21 +987,50 @@ public class ClassUtilities
      * were assignable to the 'param'.
      */
     private static Object pickBestValue(Class<?> param, List<Object> values) {
-        int[] distances = new int[values.size()];
+        int[] scores = new int[values.size()];
         int i = 0;
 
         for (Object value : values) {
-            distances[i++] = value == null ? -1 : ClassUtilities.computeInheritanceDistance(value.getClass(), param);
+            if (value == null) {
+                scores[i] = param.isPrimitive() ? Integer.MAX_VALUE : 1000; // Null is okay for objects, bad for primitives
+            } else {
+                Class<?> valueClass = value.getClass();
+                int inheritanceDistance = ClassUtilities.computeInheritanceDistance(valueClass, param);
+
+                if (inheritanceDistance >= 0) {
+                    // Direct match or inheritance relationship
+                    scores[i] = inheritanceDistance;
+                } else if (doesOneWrapTheOther(param, valueClass)) {
+                    // Primitive to wrapper match (like int -> Integer)
+                    scores[i] = 1;
+                } else if (com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(param, valueClass)) {
+                    // Convertible types (like String -> Integer)
+                    scores[i] = 100;
+                } else {
+                    // No match
+                    scores[i] = Integer.MAX_VALUE;
+                }
+            }
+            i++;
         }
 
-        int index = indexOfSmallestValue(distances);
-        if (index >= 0) {
-            Object valueBestMatching = values.get(index);
-            values.remove(index);
-            return valueBestMatching;
-        } else {
-            return null;
+        int bestIndex = -1;
+        int bestScore = Integer.MAX_VALUE;
+
+        for (i = 0; i < scores.length; i++) {
+            if (scores[i] < bestScore) {
+                bestScore = scores[i];
+                bestIndex = i;
+            }
         }
+
+        if (bestIndex >= 0 && bestScore < Integer.MAX_VALUE) {
+            Object bestValue = values.get(bestIndex);
+            values.remove(bestIndex);
+            return bestValue;
+        }
+
+        return null;
     }
 
     /**
@@ -1189,83 +1268,94 @@ public class ClassUtilities
         if (c == null) {
             throw new IllegalArgumentException("Class cannot be null");
         }
-        throwIfSecurityConcern(ProcessBuilder.class, c);
-        throwIfSecurityConcern(Process.class, c);
-        throwIfSecurityConcern(ClassLoader.class, c);
-        throwIfSecurityConcern(Constructor.class, c);
-        throwIfSecurityConcern(Method.class, c);
-        throwIfSecurityConcern(Field.class, c);
-        // JDK11+ remove the line below
-        if (c.getName().equals("java.lang.ProcessImpl")) {
+
+        // Security checks
+        Set<Class<?>> securityChecks = CollectionUtilities.setOf(
+                ProcessBuilder.class, Process.class, ClassLoader.class,
+                Constructor.class, Method.class, Field.class);
+
+        for (Class<?> check : securityChecks) {
+            if (check.isAssignableFrom(c)) {
+                throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: " + check.getName());
+            }
+        }
+
+        // Additional security check for ProcessImpl
+        if ("java.lang.ProcessImpl".equals(c.getName())) {
             throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: java.lang.ProcessImpl");
         }
 
-        if (argumentValues == null) {
-            argumentValues = new ArrayList<>();
+        if (c.isInterface()) {
+            throw new IllegalArgumentException("Cannot instantiate interface: " + c.getName());
         }
 
-        final String cacheKey = createCacheKey(c, argumentValues);
+        // Normalize arguments
+        List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
+
+        // Try cached constructor first
+        String cacheKey = createCacheKey(c, normalizedArgs);
         CachedConstructor cachedConstructor = constructors.get(cacheKey);
-        if (cachedConstructor == null) {
-            if (c.isInterface()) {
-                throw new IllegalArgumentException("Cannot instantiate unknown interface: " + c.getName());
+        if (cachedConstructor != null) {
+            Object instance = tryConstructorInstantiation(cachedConstructor, normalizedArgs, converter);
+            if (instance != null) {
+                return instance;
             }
+            // Cache miss - remove invalid cache entry
+            constructors.remove(cacheKey);
+        }
 
-            final Constructor<?>[] declaredConstructors = c.getDeclaredConstructors();
-            Set<ConstructorWithValues> constructorOrder = new TreeSet<>();
-            List<Object> argValues = new ArrayList<>(argumentValues);   // Copy to allow destruction
+        // No cache or cache miss - try all constructors
+        return tryNewConstructors(c, normalizedArgs, converter, cacheKey);
+    }
 
-            // Spin through all constructors, adding the constructor and the best match of arguments for it, as an
-            // Object to a Set.  The Set is ordered by ConstructorWithValues.compareTo().
-            for (Constructor<?> constructor : declaredConstructors) {
-                Parameter[] parameters = constructor.getParameters();
-                List<Object> argumentsNull = matchArgumentsToParameters(converter, argValues, parameters, true);
-                List<Object> argumentsNonNull = matchArgumentsToParameters(converter, argValues, parameters, false);
-                constructorOrder.add(new ConstructorWithValues(constructor, argumentsNull.toArray(), argumentsNonNull.toArray()));
-            }
+    private static Object tryConstructorInstantiation(CachedConstructor cached, List<Object> args, Converter converter) {
+        try {
+            Parameter[] parameters = cached.constructor.getParameters();
+            List<Object> matchedArgs = matchArgumentsToParameters(converter, args, parameters, cached.useNullSetting);
+            return cached.constructor.newInstance(matchedArgs.toArray());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
 
-            for (ConstructorWithValues constructorWithValues : constructorOrder) {
-                Constructor<?> constructor = constructorWithValues.constructor;
+    private static Object tryNewConstructors(Class<?> c, List<Object> args, Converter converter, String cacheKey) {
+        Constructor<?>[] declaredConstructors = c.getDeclaredConstructors();
+        Set<ConstructorWithValues> constructorOrder = new TreeSet<>();
+
+        // Prepare all constructors with their argument matches
+        for (Constructor<?> constructor : declaredConstructors) {
+            Parameter[] parameters = constructor.getParameters();
+            List<Object> argsNonNull = matchArgumentsToParameters(converter, new ArrayList<>(args), parameters, false);
+            List<Object> argsNull = matchArgumentsToParameters(converter, new ArrayList<>(args), parameters, true);
+            constructorOrder.add(new ConstructorWithValues(constructor, argsNull.toArray(), argsNonNull.toArray()));
+        }
+
+        // Try constructors in order (based on ConstructorWithValues comparison logic)
+        for (ConstructorWithValues constructorWithValues : constructorOrder) {
+            Constructor<?> constructor = constructorWithValues.constructor;
+            trySetAccessible(constructor);
+
+            // Try with non-null arguments first (prioritize actual values)
+            try {
+                Object instance = constructor.newInstance(constructorWithValues.argsNonNull);
+                constructors.put(cacheKey, new CachedConstructor(constructor, false));
+                return instance;
+            } catch (Exception ignored) {
+                // If non-null arguments fail, try with null arguments
                 try {
-                    trySetAccessible(constructor);
-                    Object o = constructor.newInstance(constructorWithValues.argsNull);
-                    // cache constructor search effort (null used for parameters of common types not matched to arguments)
+                    Object instance = constructor.newInstance(constructorWithValues.argsNull);
                     constructors.put(cacheKey, new CachedConstructor(constructor, true));
-                    return o;
-                } catch (Exception ignore) {
-                    try {
-                        if (constructor.getParameterCount() > 0) {
-                            // The no-arg constructor should only be tried one time.
-                            Object o = constructor.newInstance(constructorWithValues.argsNonNull);
-                            // cache constructor search effort (non-null used for parameters of common types not matched to arguments)
-                            constructors.put(cacheKey, new CachedConstructor(constructor, false));
-                            return o;
-                        }
-                    } catch (Exception ignored) {
-                    }
+                    return instance;
+                } catch (Exception ignored2) {
+                    // Both attempts failed for this constructor, continue to next constructor
                 }
             }
+        }
 
-            Object o = tryUnsafeInstantiation(c);
-            if (o != null) {
-                return o;
-            }
-        } else {
-            List<Object> argValues = new ArrayList<>(argumentValues);   // Copy to allow destruction
-            Parameter[] parameters = cachedConstructor.constructor.getParameters();
-            List<Object> arguments = matchArgumentsToParameters(converter, argValues, parameters, cachedConstructor.useNullSetting);
-
-            try {
-                // Be nice to person debugging
-                Object o = cachedConstructor.constructor.newInstance(arguments.toArray());
-                return o;
-            } catch (Exception ignored) {
-            }
-
-            Object o = tryUnsafeInstantiation(c);
-            if (o != null) {
-                return o;
-            }
+        // Last resort: try unsafe instantiation
+        Object instance = tryUnsafeInstantiation(c);
+        if (instance != null) {
+            return instance;
         }
 
         throw new IllegalArgumentException("Unable to instantiate: " + c.getName());

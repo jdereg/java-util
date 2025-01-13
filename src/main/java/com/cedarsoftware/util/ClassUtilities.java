@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -1265,14 +1266,14 @@ public class ClassUtilities
      * }</pre>
      */
     public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
-        if (c == null) {
-            throw new IllegalArgumentException("Class cannot be null");
-        }
-
+        if (c == null) { throw new IllegalArgumentException("Class cannot be null"); }
+        if (c.isInterface()) { throw new IllegalArgumentException("Cannot instantiate interface: " + c.getName()); }
+        if (Modifier.isAbstract(c.getModifiers())) { throw new IllegalArgumentException("Cannot instantiate abstract class: " + c.getName()); }
+        
         // Security checks
         Set<Class<?>> securityChecks = CollectionUtilities.setOf(
                 ProcessBuilder.class, Process.class, ClassLoader.class,
-                Constructor.class, Method.class, Field.class);
+                Constructor.class, Method.class, Field.class, MethodHandle.class);
 
         for (Class<?> check : securityChecks) {
             if (check.isAssignableFrom(c)) {
@@ -1283,10 +1284,6 @@ public class ClassUtilities
         // Additional security check for ProcessImpl
         if ("java.lang.ProcessImpl".equals(c.getName())) {
             throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: java.lang.ProcessImpl");
-        }
-
-        if (c.isInterface()) {
-            throw new IllegalArgumentException("Cannot instantiate interface: " + c.getName());
         }
 
         // Normalize arguments
@@ -1319,7 +1316,7 @@ public class ClassUtilities
     }
 
     private static Object tryNewConstructors(Class<?> c, List<Object> args, Converter converter, String cacheKey) {
-        Constructor<?>[] declaredConstructors = c.getDeclaredConstructors();
+        Constructor<?>[] declaredConstructors = ReflectionUtils.getAllConstructors(c);
         Set<ConstructorWithValues> constructorOrder = new TreeSet<>();
 
         // Prepare all constructors with their argument matches

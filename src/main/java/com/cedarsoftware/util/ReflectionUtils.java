@@ -45,7 +45,7 @@ import java.util.function.Predicate;
  *         limitations under the License.
  */
 public final class ReflectionUtils {
-    private static final int CACHE_SIZE = 1000;
+    private static final int CACHE_SIZE = 1500;
 
     private static volatile Map<ConstructorCacheKey, Constructor<?>> CONSTRUCTOR_CACHE = new LRUCache<>(CACHE_SIZE);
     private static volatile Map<MethodCacheKey, Method> METHOD_CACHE = new LRUCache<>(CACHE_SIZE);
@@ -1197,7 +1197,7 @@ public final class ReflectionUtils {
         if (!selected.isAccessible()) {
             try {
                 selected.setAccessible(true);
-            } catch (SecurityException ignored) {
+            } catch (Exception ignored) {
                 // Return the method even if we can't make it accessible
             }
         }
@@ -1290,7 +1290,7 @@ public final class ReflectionUtils {
             if (!Modifier.isPublic(found.getModifiers())) {
                 try {
                     found.setAccessible(true);
-                } catch (SecurityException ignored) {
+                } catch (Exception ignored) {
                     // Return the constructor even if we can't make it accessible
                 }
             }
@@ -1301,6 +1301,49 @@ public final class ReflectionUtils {
         // Cache the result (even if null)
         CONSTRUCTOR_CACHE.put(key, found);
         return found;
+    }
+
+    /**
+     * Returns all declared constructors for the given class, storing each one in
+     * the existing CONSTRUCTOR_CACHE (keyed by (classLoader + className + paramTypes)).
+     * <p>
+     * If the constructor is not yet in the cache, we setAccessible(true) when possible
+     * and store it. Subsequent calls will retrieve the same Constructor from the cache.
+     *
+     * @param clazz The class whose constructors we want.
+     * @return An array of all declared constructors for that class.
+     */
+    public static Constructor<?>[] getAllConstructors(Class<?> clazz) {
+        if (clazz == null) {
+            return new Constructor<?>[0];
+        }
+        // Reflectively find them all
+        Constructor<?>[] declared = clazz.getDeclaredConstructors();
+        if (declared.length == 0) {
+            return declared;  // no constructors
+        }
+
+        // For each constructor, see if it’s in CONSTRUCTOR_CACHE.
+        // If not, cache it (and setAccessible if possible).
+        for (Constructor<?> ctor : declared) {
+            Class<?>[] paramTypes = ctor.getParameterTypes();
+            ConstructorCacheKey key = new ConstructorCacheKey(clazz, paramTypes);
+            Constructor<?> cached = CONSTRUCTOR_CACHE.get(key);
+
+            if (cached == null && !CONSTRUCTOR_CACHE.containsKey(key)) {
+                // Not yet cached, set it accessible and cache it
+                try {
+                    ctor.setAccessible(true);
+                } catch (Exception ignored) {
+                    // Even if we cannot set it accessible, we still cache it
+                }
+                CONSTRUCTOR_CACHE.put(key, ctor);
+            }
+        }
+
+        // Now, we either found them or just cached them.
+        // But we still return a fresh array so the caller sees *all* of them.
+        return declared;
     }
     
     private static String makeParamKey(Class<?>... parameterTypes) {

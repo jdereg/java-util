@@ -25,6 +25,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -114,7 +115,7 @@ class ClassUtilitiesTest {
     void shouldCreateInstanceWithNoArgConstructor() {
         Object instance = ClassUtilities.newInstance(converter, NoArgConstructor.class, null);
         assertNotNull(instance);
-        assertTrue(instance instanceof NoArgConstructor);
+        assertInstanceOf(NoArgConstructor.class, instance);
     }
 
     @Test
@@ -124,7 +125,7 @@ class ClassUtilitiesTest {
         Object instance = ClassUtilities.newInstance(converter, SingleArgConstructor.class, args);
 
         assertNotNull(instance);
-        assertTrue(instance instanceof SingleArgConstructor);
+        assertInstanceOf(SingleArgConstructor.class, instance);
         assertEquals("test", ((SingleArgConstructor) instance).getValue());
     }
 
@@ -135,7 +136,7 @@ class ClassUtilitiesTest {
         Object instance = ClassUtilities.newInstance(converter, MultiArgConstructor.class, args);
 
         assertNotNull(instance);
-        assertTrue(instance instanceof MultiArgConstructor);
+        assertInstanceOf(MultiArgConstructor.class, instance);
         MultiArgConstructor mac = (MultiArgConstructor) instance;
         assertEquals("test", mac.getStr());
         assertEquals(42, mac.getNum());
@@ -148,7 +149,7 @@ class ClassUtilitiesTest {
         Object instance = ClassUtilities.newInstance(converter, PrivateConstructor.class, args);
 
         assertNotNull(instance);
-        assertTrue(instance instanceof PrivateConstructor);
+        assertInstanceOf(PrivateConstructor.class, instance);
         assertEquals("private", ((PrivateConstructor) instance).getValue());
     }
 
@@ -158,7 +159,7 @@ class ClassUtilitiesTest {
         Object instance = ClassUtilities.newInstance(converter, PrimitiveConstructor.class, null);
 
         assertNotNull(instance);
-        assertTrue(instance instanceof PrimitiveConstructor);
+        assertInstanceOf(PrimitiveConstructor.class, instance);
         PrimitiveConstructor pc = (PrimitiveConstructor) instance;
         assertEquals(0, pc.getIntValue());  // default int value
         assertFalse(pc.getBoolValue());     // default boolean value
@@ -171,7 +172,7 @@ class ClassUtilitiesTest {
         Object instance = ClassUtilities.newInstance(converter, OverloadedConstructors.class, args);
 
         assertNotNull(instance);
-        assertTrue(instance instanceof OverloadedConstructors);
+        assertInstanceOf(OverloadedConstructors.class, instance);
         OverloadedConstructors oc = (OverloadedConstructors) instance;
         assertEquals("custom", oc.getValue());
         assertEquals(42, oc.getNumber());
@@ -194,7 +195,8 @@ class ClassUtilitiesTest {
                     IllegalArgumentException.class,
                     () -> ClassUtilities.newInstance(converter, sensitiveClass, null)
             );
-            assertTrue(exception.getMessage().contains("security reasons"));
+            assertTrue(exception.getMessage().contains("not"));
+            assertInstanceOf(IllegalArgumentException.class, exception);
         }
     }
 

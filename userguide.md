@@ -1974,14 +1974,15 @@ if (!DeepEquals.deepEquals(obj1, obj2, options)) {
 }
 ```
 
-**Example "diff" output:**
+**"diff" output notes:**
 - Empty lists, maps, and arrays are shown with (∅) or [∅]
-- Map(0..0) size = 1, int[0..1] size == 2, List(∅) = empty
+- A Map of size 1 is shown as Map(0..0), an int[] of size 2 is shown as int[0..1], an empty list is List(∅)
 - Sub-object fields on non-difference path shown as {..}
 - Map entry shown with 《key ⇨ value》 and may be nested
 - General pattern is [difference type] ▶ root context ▶ shorthand path starting at a root context element (Object field, array/collection element, Map key-value)
 - If the root is not a container (Collection, Map, Array, or Object), no shorthand description is displayed
 
+**"diff" output examples:**
 ```groovy  
 // Map with a different value associated to a key (Map size = 1 noted as 0..0)  
 [map value mismatch] ▶ LinkedHashMap(0..0) ▶ 《"key" ⇨ "value1"》

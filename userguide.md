@@ -1962,7 +1962,7 @@ A sophisticated utility for performing deep equality comparisons between objects
 ### Usage Examples
 
 **Basic Comparison:**
-```java
+```groovy
 // Simple comparison
 boolean equal = DeepEquals.deepEquals(obj1, obj2);
 
@@ -1975,8 +1975,15 @@ if (!DeepEquals.deepEquals(obj1, obj2, options)) {
 ```
 
 **Example "diff" output:**
-```
-// Map with a different value associated to a key (Map size = 1 noted as 0..0)
+- Empty lists, maps, and arrays are shown with (∅) or [∅]
+- Map(0..0) size = 1, int[0..1] size == 2, List(∅) = empty
+- Sub-object fields on non-difference path shown as {..}
+- Map entry shown with 《key ⇨ value》 and may be nested
+- General pattern is [difference type] ▶ root context ▶ shorthand path starting at a root context element (Object field, array/collection element, Map key-value)
+- If the root is not a container (Collection, Map, Array, or Object), no shorthand description is displayed
+
+```groovy  
+// Map with a different value associated to a key (Map size = 1 noted as 0..0)  
 [map value mismatch] ▶ LinkedHashMap(0..0) ▶ 《"key" ⇨ "value1"》
   Expected: "value1"
   Found: "value2"
@@ -1986,7 +1993,7 @@ if (!DeepEquals.deepEquals(obj1, obj2, options)) {
   Expected: "value1"
   Found: "value2"
 
-// Object (Container) with a field strings (a List size 3 noted as 0..2) with a different value at index 0)  
+// Object (Container) with a field strings (a List size 3 noted as 0..2) with a different value at index 0  
 [collection element mismatch] ▶ Container {strings: List(0..2), numbers: List(0..2), people: List(0..1), objects: List(0..2)} ▶ .strings(0)
   Expected: "a"
   Found: "x"
@@ -2043,7 +2050,7 @@ public int hashCode() {
 ### Comparison Support
 
 **Basic Types:**
-```java
+```groovy
 // Primitives and their wrappers
 DeepEquals.deepEquals(10, 10);              // true
 DeepEquals.deepEquals(10L, 10);             // true
@@ -2058,7 +2065,7 @@ DeepEquals.deepEquals(date1, date2);        // Compares timestamps
 ```
 
 **Collections and Arrays:**
-```java
+```groovy
 // Arrays
 DeepEquals.deepEquals(new int[]{1,2}, new int[]{1,2});
 
@@ -2082,7 +2089,7 @@ DeepEquals.deepEquals(map1, map2);
 - Array dimension validation
 
 ### Best Practices
-```java
+```groovy
 // Use options for custom behavior
 Map<String, Object> options = new HashMap<>();
 options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, customEqualsClasses);
@@ -2129,7 +2136,7 @@ A comprehensive utility class for I/O operations, providing robust stream handli
 ### Usage Examples
 
 **Stream Transfer Operations:**
-```java
+```groovy
 // File to OutputStream
 File sourceFile = new File("source.txt");
 try (OutputStream fos = Files.newOutputStream(Paths.get("dest.txt"))) {

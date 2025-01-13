@@ -1974,6 +1974,49 @@ if (!DeepEquals.deepEquals(obj1, obj2, options)) {
 }
 ```
 
+**Example "diff" output:**
+```
+// Map with a different value associated to a key (Map size = 1 noted as 0..0)
+[map value mismatch] ▶ LinkedHashMap(0..0) ▶ 《"key" ⇨ "value1"》
+  Expected: "value1"
+  Found: "value2"
+
+// Map with a key associated to a MapHolder with field "value" having a different value
+[field value mismatch] ▶ HashMap(0..0) ▶ 《"key" ⇨ MapHolder {map: Map(0..0), value: "value1"}》.value
+  Expected: "value1"
+  Found: "value2"
+
+// Object (Container) with a field strings (a List size 3 noted as 0..2) with a different value at index 0)  
+[collection element mismatch] ▶ Container {strings: List(0..2), numbers: List(0..2), people: List(0..1), objects: List(0..2)} ▶ .strings(0)
+  Expected: "a"
+  Found: "x"
+
+// Map with a key that is an ArrayList (with an Array List in it) mapped to an int[].  The last element, int[2] was different.  
+[array element mismatch] ▶ HashMap(0..0) ▶ 《ArrayList<ArrayList>(4){(1, 2, 3), null, (), ...} ⇨ int[0..2]》[2]
+  Expected: 7
+  Found: 44
+
+// Simple object difference  
+[field value mismatch] ▶ Person {name: "Jim Bob", age: 27} ▶ .age
+  Expected: 27
+  Found: 34
+  
+// Array with a component type mismatch (Object[] holding a int[] in source, target had long[] at element 0)
+[array component type mismatch] ▶ Object[0..1] ▶ [0]
+  Expected type: int[]
+  Found type: long[]
+
+// Array element mismatch within an object that has an array
+[array element mismatch] ▶ Person {id: 173679590720000287, first: "John", last: "Smith", favoritePet: {..}, pets: Pet[0..1]} ▶ .pets[0].nickNames[0]
+  Expected: "Edward"
+  Found: "Eddie"
+  
+// Example of deeply nested object graph with a difference
+[array length mismatch] ▶ University {name: "Test University", departmentsByCode: Map(0..1), location: {..}} ▶ .departmentsByCode 《"CS" ⇨ Department {code: "CS", name: "Computer Science", programs: List(0..2), departmentHead: {..}, facultyMembers: null}》.programs(0).requiredCourses
+  Expected length: 2
+  Found length: 3    
+```
+
 **Custom Configuration:**
 ```java
 // Ignore custom equals() for specific classes

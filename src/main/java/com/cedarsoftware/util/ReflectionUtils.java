@@ -400,24 +400,20 @@ public final class ReflectionUtils {
      */
     public static <T extends Annotation> T getClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass) {
         if (classToCheck == null) {
-            return null; // legacy behavior, not changing now.
+            return null;
         }
         Convention.throwIfNull(annoClass, "annotation class cannot be null");
 
-        ClassAnnotationCacheKey key = new ClassAnnotationCacheKey(classToCheck, annoClass);
+        final ClassAnnotationCacheKey key = new ClassAnnotationCacheKey(classToCheck, annoClass);
 
-        // Check cache first
-        Annotation cached = CLASS_ANNOTATION_CACHE.get(key);
-        if (cached != null || CLASS_ANNOTATION_CACHE.containsKey(key)) {
-            return (T) cached;
-        }
+        // Use computeIfAbsent to ensure only one instance (or null) is stored per key
+        Annotation annotation = CLASS_ANNOTATION_CACHE.computeIfAbsent(key, k -> {
+            // If findClassAnnotation() returns null, that null will be stored in the cache
+            return findClassAnnotation(classToCheck, annoClass);
+        });
 
-        // Not in cache, do the lookup
-        T found = findClassAnnotation(classToCheck, annoClass);
-
-        // Cache the result (even if null)
-        CLASS_ANNOTATION_CACHE.put(key, found);
-        return found;
+        // Cast the stored Annotation (or null) back to the desired type
+        return (T) annotation;
     }
 
     private static <T extends Annotation> T findClassAnnotation(Class<?> classToCheck, Class<T> annoClass) {
@@ -489,54 +485,47 @@ public final class ReflectionUtils {
         Convention.throwIfNull(method, "method cannot be null");
         Convention.throwIfNull(annoClass, "annotation class cannot be null");
 
-        MethodAnnotationCacheKey key = new MethodAnnotationCacheKey(method, annoClass);
+        final MethodAnnotationCacheKey key = new MethodAnnotationCacheKey(method, annoClass);
 
-        // Check cache first
-        Annotation cached = METHOD_ANNOTATION_CACHE.get(key);
-        if (cached != null || METHOD_ANNOTATION_CACHE.containsKey(key)) {
-            return (T) cached;
-        }
-
-        // Search through class hierarchy
-        Class<?> currentClass = method.getDeclaringClass();
-        while (currentClass != null) {
-            try {
-                Method currentMethod = currentClass.getDeclaredMethod(
-                        method.getName(),
-                        method.getParameterTypes()
-                );
-
-                T annotation = currentMethod.getAnnotation(annoClass);
-                if (annotation != null) {
-                    METHOD_ANNOTATION_CACHE.put(key, annotation);
-                    return annotation;
+        // Atomically retrieve or compute the annotation from the cache
+        Annotation annotation = METHOD_ANNOTATION_CACHE.computeIfAbsent(key, k -> {
+            // Search the class hierarchy
+            Class<?> currentClass = method.getDeclaringClass();
+            while (currentClass != null) {
+                try {
+                    Method currentMethod = currentClass.getDeclaredMethod(
+                            method.getName(),
+                            method.getParameterTypes()
+                    );
+                    T found = currentMethod.getAnnotation(annoClass);
+                    if (found != null) {
+                        return found;  // store in cache
+                    }
+                } catch (Exception ignored) {
+                    // Not found in currentClass, go to superclass
                 }
-            } catch (NoSuchMethodException ignored) {
-                // Method not found in current class, continue up hierarchy
+                currentClass = currentClass.getSuperclass();
             }
-            currentClass = currentClass.getSuperclass();
-        }
 
-        // Also check interfaces
-        for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
-            try {
-                Method ifaceMethod = iface.getMethod(
-                        method.getName(),
-                        method.getParameterTypes()
-                );
-                T annotation = ifaceMethod.getAnnotation(annoClass);
-                if (annotation != null) {
-                    METHOD_ANNOTATION_CACHE.put(key, annotation);
-                    return annotation;
+            // Check interfaces
+            for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
+                try {
+                    Method ifaceMethod = iface.getMethod(method.getName(), method.getParameterTypes());
+                    T found = ifaceMethod.getAnnotation(annoClass);
+                    if (found != null) {
+                        return found;  // store in cache
+                    }
+                } catch (Exception ignored) {
+                    // Not found in this interface, move on
                 }
-            } catch (NoSuchMethodException ignored) {
-                // Method not found in interface
             }
-        }
 
-        // Cache the miss
-        METHOD_ANNOTATION_CACHE.put(key, null);
-        return null;
+            // No annotation found - store null
+            return null;
+        });
+
+        // Cast result back to T (or null)
+        return (T) annotation;
     }
     
     /**
@@ -569,27 +558,18 @@ public final class ReflectionUtils {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(fieldName, "fieldName cannot be null");
 
-        FieldNameCacheKey key = new FieldNameCacheKey(c, fieldName);
+        final FieldNameCacheKey key = new FieldNameCacheKey(c, fieldName);
 
-        // Check if we already cached this field lookup
-        Field cachedField = FIELD_NAME_CACHE.get(key);
-        if (cachedField != null || FIELD_NAME_CACHE.containsKey(key)) {  // Handle null field case (caches misses)
-            return cachedField;
-        }
-
-        // Not in cache, do the linear search
-        Collection<Field> fields = getAllDeclaredFields(c);
-        Field found = null;
-        for (Field field : fields) {
-            if (fieldName.equals(field.getName())) {
-                found = field;
-                break;
+        // Atomically retrieve or compute the field from the cache
+        return FIELD_NAME_CACHE.computeIfAbsent(key, k -> {
+            Collection<Field> fields = getAllDeclaredFields(c);  // returns all fields in c's hierarchy
+            for (Field field : fields) {
+                if (fieldName.equals(field.getName())) {
+                    return field;
+                }
             }
-        }
-
-        // Cache the result (even if null)
-        FIELD_NAME_CACHE.put(key, found);
-        return found;
+            return null;  // no matching field
+        });
     }
 
     /**
@@ -634,36 +614,38 @@ public final class ReflectionUtils {
      * @see Predicate
      * @see #getAllDeclaredFields(Class) For retrieving fields from the entire class hierarchy
      */
-    public static List<Field> getDeclaredFields(final Class<?> c, Predicate<Field> fieldFilter) {
+    public static List<Field> getDeclaredFields(final Class<?> c, final Predicate<Field> fieldFilter) {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(fieldFilter, "fieldFilter cannot be null");
 
-        FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, false);
-        Collection<Field> cached = FIELDS_CACHE.get(key);
-        if (cached != null || FIELDS_CACHE.containsKey(key)) {  // Cache misses so we don't retry over and over
-            return (List<Field>) cached;
-        }
+        final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, false);
 
-        Field[] fields = c.getDeclaredFields();
-        List<Field> list = new ArrayList<>(fields.length);  // do not change from being List
+        // Atomically compute and cache the unmodifiable List<Field> if absent
+        Collection<Field> cachedFields = FIELDS_CACHE.computeIfAbsent(key, k -> {
+            Field[] declared = c.getDeclaredFields();
+            List<Field> filteredList = new ArrayList<>(declared.length);
 
-        for (Field field : fields) {
-            if (!fieldFilter.test(field)) {
-                continue;
+            for (Field field : declared) {
+                if (!fieldFilter.test(field)) {
+                    continue;
+                }
+
+                if (!Modifier.isPublic(field.getModifiers())) {
+                    try {
+                        field.setAccessible(true);
+                    } catch(Exception ignored) {
+                        // Even if setAccessible fails, we still include the field
+                    }
+                }
+                filteredList.add(field);
             }
 
-            if (!Modifier.isPublic(field.getModifiers())) {
-                try {
-                    field.setAccessible(true);
-                } catch(Exception ignored) { }
-            }
+            // Return an unmodifiable List so it cannot be mutated later
+            return Collections.unmodifiableList(filteredList);
+        });
 
-            list.add(field);
-        }
-
-        List<Field> unmodifiableFields = Collections.unmodifiableList(list);
-        FIELDS_CACHE.put(key, unmodifiableFields);
-        return unmodifiableFields;
+        // Cast back to List<Field> (we stored an unmodifiable List in the map)
+        return (List<Field>) cachedFields;
     }
 
     /**
@@ -727,27 +709,29 @@ public final class ReflectionUtils {
      * @see Predicate
      * @see #getAllDeclaredFields(Class) For retrieving fields using the default filter
      */
-    public static List<Field> getAllDeclaredFields(final Class<?> c, Predicate<Field> fieldFilter) {
+    public static List<Field> getAllDeclaredFields(final Class<?> c, final Predicate<Field> fieldFilter) {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(fieldFilter, "fieldFilter cannot be null");
 
-        FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, true);
-        Collection<Field> cached = FIELDS_CACHE.get(key);
-        if (cached != null || FIELDS_CACHE.containsKey(key)) {  // Cache misses so we do not retry over and over
-            return (List<Field>) cached;
-        }
+        final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, true);
 
-        List<Field> allFields = new ArrayList<>();
-        Class<?> current = c;
-        while (current != null) {
-            allFields.addAll(getDeclaredFields(current, fieldFilter));
-            current = current.getSuperclass();
-        }
+        // Atomically compute and cache the unmodifiable list, if not already present
+        Collection<Field> cached = FIELDS_CACHE.computeIfAbsent(key, k -> {
+            // Collect fields from class + superclasses
+            List<Field> allFields = new ArrayList<>();
+            Class<?> current = c;
+            while (current != null) {
+                allFields.addAll(getDeclaredFields(current, fieldFilter));
+                current = current.getSuperclass();
+            }
+            // Return an unmodifiable list to prevent further modification
+            return Collections.unmodifiableList(allFields);
+        });
 
-        List<Field> unmodifiableFields = Collections.unmodifiableList(allFields);
-        FIELDS_CACHE.put(key, unmodifiableFields);
-        return unmodifiableFields;
+        // We know we stored a List<Field>, so cast is safe
+        return (List<Field>) cached;
     }
+
 
     /**
      * Retrieves all fields from a class and its complete inheritance hierarchy using the default field filter.
@@ -1075,38 +1059,31 @@ public final class ReflectionUtils {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(methodName, "methodName cannot be null");
 
-        MethodCacheKey key = new MethodCacheKey(c, methodName, types);
+        final MethodCacheKey key = new MethodCacheKey(c, methodName, types);
 
-        // Check cache first
-        Method cached = METHOD_CACHE.get(key);
-        if (cached != null || METHOD_CACHE.containsKey(key)) {
-            return cached;
-        }
+        // Atomically retrieve (or compute) the method
+        return METHOD_CACHE.computeIfAbsent(key, k -> {
+            Method method = null;
+            Class<?> current = c;
 
-        // Search for method
-        Method found = null;
-        Class<?> current = c;
-
-        while (current != null && found == null) {
-            try {
-                found = current.getDeclaredMethod(methodName, types);
-
-                // Attempt to make the method accessible
-                if (!found.isAccessible()) {
-                    try {
-                        found.setAccessible(true);
-                    } catch (Exception ignored) {
-                        // Return the method even if we can't make it accessible
+            while (current != null && method == null) {
+                try {
+                    method = current.getDeclaredMethod(methodName, types);
+                    if (!Modifier.isPublic(method.getModifiers())) {
+                        try {
+                            method.setAccessible(true);
+                        } catch (SecurityException ignored) {
+                            // We'll still cache and return the method
+                        }
                     }
+                } catch (Exception ignored) {
+                    // Move on up the superclass chain
                 }
-            } catch (NoSuchMethodException ignored) {
                 current = current.getSuperclass();
             }
-        }
-
-        // Cache the result (even if null)
-        METHOD_CACHE.put(key, found);
-        return found;
+            // Will be null if not found
+            return method;
+        });
     }
     
     /**
@@ -1279,17 +1256,17 @@ public final class ReflectionUtils {
         return CONSTRUCTOR_CACHE.computeIfAbsent(key, k -> {
             try {
                 // Try to fetch the constructor reflectively
-                Constructor<?> found = clazz.getDeclaredConstructor(parameterTypes);
+                Constructor<?> ctor = clazz.getDeclaredConstructor(parameterTypes);
 
                 // Only setAccessible(true) if the constructor is not public
-                if (!Modifier.isPublic(found.getModifiers())) {
+                if (!Modifier.isPublic(ctor.getModifiers())) {
                     try {
-                        found.setAccessible(true);
+                        ctor.setAccessible(true);
                     } catch (Exception ignored) {
                     }
                 }
-                return found;
-            } catch (NoSuchMethodException ignored) {
+                return ctor;
+            } catch (Exception ignored) {
                 // If no such constructor exists, store null in the cache
                 return null;
             }
@@ -1375,8 +1352,8 @@ public final class ReflectionUtils {
         if (clazz == null) {
             throw new IllegalArgumentException("Attempted to call getMethod() [" + methodName + "()] on a null class.");
         }
-        if (methodName == null) {
-            throw new IllegalArgumentException("Attempted to call getMethod() with a null method name on class: " + clazz.getName());
+        if (StringUtilities.isEmpty(methodName)) {
+            throw new IllegalArgumentException("Attempted to call getMethod() with a null or blank method name on class: " + clazz.getName());
         }
 
         // Create a cache key for a method with no parameters
@@ -1531,8 +1508,12 @@ public final class ReflectionUtils {
      * @param c The class whose class loader is to be identified.
      * @return A String representing the class loader.
      */
-    static String getClassLoaderName(Class<?> c) {
-        ClassLoader loader = c.getClassLoader();  // Actual ClassLoader that loaded this specific class
-        return loader == null ? "bootstrap" : loader.toString();
+    private static String getClassLoaderName(Class<?> c) {
+        ClassLoader loader = c.getClassLoader();
+        if (loader == null) {
+            return "bootstrap";
+        }
+        // Example: "org.example.MyLoader@1a2b3c4"
+        return loader.getClass().getName() + '@' + Integer.toHexString(System.identityHashCode(loader));
     }
 }

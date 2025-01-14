@@ -19,7 +19,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,7 +52,6 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -153,10 +151,8 @@ public class ClassUtilities
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
     private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ConcurrentHashMap<>();
     private static final Set<Class<?>> osgiChecked = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private static final ConcurrentMap<String, CachedConstructor> constructors = new ConcurrentHashMap<>();
-    static final ThreadLocal<SimpleDateFormat> dateFormat = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
     private static volatile boolean useUnsafe = false;
-    private static Unsafe unsafe;
+    private static volatile Unsafe unsafe;
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new HashMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
 
@@ -1203,17 +1199,7 @@ public class ClassUtilities
 
         return null;
     }
-
-    private static class CachedConstructor {
-        private final Constructor<?> constructor;
-        private final boolean useNullSetting;
-
-        CachedConstructor(Constructor<?> constructor, boolean useNullSetting) {
-            this.constructor = constructor;
-            this.useNullSetting = useNullSetting;
-        }
-    }
-
+    
     /**
      * Create a new instance of the specified class, optionally using provided constructor arguments.
      * <p>
@@ -1269,7 +1255,7 @@ public class ClassUtilities
         if (c == null) { throw new IllegalArgumentException("Class cannot be null"); }
         if (c.isInterface()) { throw new IllegalArgumentException("Cannot instantiate interface: " + c.getName()); }
         if (Modifier.isAbstract(c.getModifiers())) { throw new IllegalArgumentException("Cannot instantiate abstract class: " + c.getName()); }
-        
+
         // Security checks
         Set<Class<?>> securityChecks = CollectionUtilities.setOf(
                 ProcessBuilder.class, Process.class, ClassLoader.class,
@@ -1286,64 +1272,52 @@ public class ClassUtilities
             throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: java.lang.ProcessImpl");
         }
 
+        // Handle inner classes
+        if (c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers())) {
+            try {
+                // For inner classes, try to get the enclosing instance
+                Object enclosingInstance = newInstance(converter, c.getEnclosingClass(), Collections.emptyList());
+                Constructor<?> constructor = ReflectionUtils.getConstructor(c, c.getEnclosingClass());
+                if (constructor != null) {
+                    trySetAccessible(constructor);
+                    return constructor.newInstance(enclosingInstance);
+                }
+            } catch (Exception ignored) {
+                // Fall through to regular instantiation if this fails
+            }
+        }
+
         // Normalize arguments
         List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
 
-        // Try cached constructor first
-        String cacheKey = createCacheKey(c, normalizedArgs);
-        CachedConstructor cachedConstructor = constructors.get(cacheKey);
-        if (cachedConstructor != null) {
-            Object instance = tryConstructorInstantiation(cachedConstructor, normalizedArgs, converter);
-            if (instance != null) {
-                return instance;
-            }
-            // Cache miss - remove invalid cache entry
-            constructors.remove(cacheKey);
-        }
-
-        // No cache or cache miss - try all constructors
-        return tryNewConstructors(c, normalizedArgs, converter, cacheKey);
-    }
-
-    private static Object tryConstructorInstantiation(CachedConstructor cached, List<Object> args, Converter converter) {
-        try {
-            Parameter[] parameters = cached.constructor.getParameters();
-            List<Object> matchedArgs = matchArgumentsToParameters(converter, args, parameters, cached.useNullSetting);
-            return cached.constructor.newInstance(matchedArgs.toArray());
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private static Object tryNewConstructors(Class<?> c, List<Object> args, Converter converter, String cacheKey) {
+        // Try constructors in order of parameter count match
         Constructor<?>[] declaredConstructors = ReflectionUtils.getAllConstructors(c);
         Set<ConstructorWithValues> constructorOrder = new TreeSet<>();
 
         // Prepare all constructors with their argument matches
         for (Constructor<?> constructor : declaredConstructors) {
             Parameter[] parameters = constructor.getParameters();
-            List<Object> argsNonNull = matchArgumentsToParameters(converter, new ArrayList<>(args), parameters, false);
-            List<Object> argsNull = matchArgumentsToParameters(converter, new ArrayList<>(args), parameters, true);
+            List<Object> argsNonNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, false);
+            List<Object> argsNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, true);
             constructorOrder.add(new ConstructorWithValues(constructor, argsNull.toArray(), argsNonNull.toArray()));
         }
 
         // Try constructors in order (based on ConstructorWithValues comparison logic)
+        Exception lastException = null;
         for (ConstructorWithValues constructorWithValues : constructorOrder) {
             Constructor<?> constructor = constructorWithValues.constructor;
-            trySetAccessible(constructor);
 
             // Try with non-null arguments first (prioritize actual values)
             try {
-                Object instance = constructor.newInstance(constructorWithValues.argsNonNull);
-                constructors.put(cacheKey, new CachedConstructor(constructor, false));
-                return instance;
-            } catch (Exception ignored) {
+                trySetAccessible(constructor);
+                return constructor.newInstance(constructorWithValues.argsNonNull);
+            } catch (Exception e1) {
                 // If non-null arguments fail, try with null arguments
                 try {
-                    Object instance = constructor.newInstance(constructorWithValues.argsNull);
-                    constructors.put(cacheKey, new CachedConstructor(constructor, true));
-                    return instance;
-                } catch (Exception ignored2) {
+                    trySetAccessible(constructor);
+                    return constructor.newInstance(constructorWithValues.argsNull);
+                } catch (Exception e2) {
+                    lastException = e2;
                     // Both attempts failed for this constructor, continue to next constructor
                 }
             }
@@ -1355,7 +1329,12 @@ public class ClassUtilities
             return instance;
         }
 
-        throw new IllegalArgumentException("Unable to instantiate: " + c.getName());
+        // If we get here, we couldn't create the instance
+        String msg = "Unable to instantiate: " + c.getName();
+        if (lastException != null) {
+            msg += " - " + lastException.getMessage();
+        }
+        throw new IllegalArgumentException(msg);
     }
 
     static void trySetAccessible(AccessibleObject object) {

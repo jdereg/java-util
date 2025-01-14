@@ -1273,35 +1273,29 @@ public final class ReflectionUtils {
     public static Constructor<?> getConstructor(Class<?> clazz, Class<?>... parameterTypes) {
         Convention.throwIfNull(clazz, "class cannot be null");
 
-        ConstructorCacheKey key = new ConstructorCacheKey(clazz, parameterTypes);
+        final ConstructorCacheKey key = new ConstructorCacheKey(clazz, parameterTypes);
 
-        // Check if we already cached this constructor lookup (hit or miss)
-        Constructor<?> cached = CONSTRUCTOR_CACHE.get(key);
-        if (cached != null || CONSTRUCTOR_CACHE.containsKey(key)) {
-            return cached;
-        }
+        // Atomically retrieve or compute the cached constructor
+        return CONSTRUCTOR_CACHE.computeIfAbsent(key, k -> {
+            try {
+                // Try to fetch the constructor reflectively
+                Constructor<?> found = clazz.getDeclaredConstructor(parameterTypes);
 
-        // Not in cache, attempt to find the constructor
-        Constructor<?> found = null;
-        try {
-            found = clazz.getDeclaredConstructor(parameterTypes);
-
-            // Attempt to make it accessible if it's not public
-            if (!Modifier.isPublic(found.getModifiers())) {
-                try {
-                    found.setAccessible(true);
-                } catch (Exception ignored) {
-                    // Return the constructor even if we can't make it accessible
+                // Only setAccessible(true) if the constructor is not public
+                if (!Modifier.isPublic(found.getModifiers())) {
+                    try {
+                        found.setAccessible(true);
+                    } catch (Exception ignored) {
+                    }
                 }
+                return found;
+            } catch (NoSuchMethodException ignored) {
+                // If no such constructor exists, store null in the cache
+                return null;
             }
-        } catch (NoSuchMethodException ignored) {
-            // Constructor not found - will cache null
-        }
-
-        // Cache the result (even if null)
-        CONSTRUCTOR_CACHE.put(key, found);
-        return found;
+        });
     }
+
 
     /**
      * Returns all declared constructors for the given class, storing each one in
@@ -1317,32 +1311,32 @@ public final class ReflectionUtils {
         if (clazz == null) {
             return new Constructor<?>[0];
         }
-        // Reflectively find them all
+
         Constructor<?>[] declared = clazz.getDeclaredConstructors();
         if (declared.length == 0) {
-            return declared;  // no constructors
+            return declared;
         }
 
-        // For each constructor, see if it’s in CONSTRUCTOR_CACHE.
-        // If not, cache it (and setAccessible if possible).
-        for (Constructor<?> ctor : declared) {
+        for (int i = 0; i < declared.length; i++) {
+            final Constructor<?> ctor = declared[i];
             Class<?>[] paramTypes = ctor.getParameterTypes();
             ConstructorCacheKey key = new ConstructorCacheKey(clazz, paramTypes);
-            Constructor<?> cached = CONSTRUCTOR_CACHE.get(key);
 
-            if (cached == null && !CONSTRUCTOR_CACHE.containsKey(key)) {
-                // Not yet cached, set it accessible and cache it
-                try {
-                    ctor.setAccessible(true);
-                } catch (Exception ignored) {
-                    // Even if we cannot set it accessible, we still cache it
+            // Atomically retrieve or compute the cached Constructor
+            Constructor<?> cached = CONSTRUCTOR_CACHE.computeIfAbsent(key, k -> {
+                // Only setAccessible(true) if constructor is not public
+                if (!Modifier.isPublic(ctor.getModifiers())) {
+                    try {
+                        ctor.setAccessible(true);
+                    } catch (Exception ignored) {
+                    }
                 }
-                CONSTRUCTOR_CACHE.put(key, ctor);
-            }
-        }
+                return ctor;  // store this instance
+            });
 
-        // Now, we either found them or just cached them.
-        // But we still return a fresh array so the caller sees *all* of them.
+            // Replace declared[i] with the cached reference (ensures consistency)
+            declared[i] = cached;
+        }
         return declared;
     }
     

@@ -1,7 +1,14 @@
 ### Revision History
-#### 2.19.0
-> * Added Collection, Array, and EnumSet support to `Converter.` All of the prior supported types are now supported in within Collection, array, and EnumSet, including multiple dimensions.
-> * Added `Number` as a destination type for `Converter.`  This is useful when using converter as a casting tool - casting to `Number` returns the same value back (if instance of `Number`) or throws conversion exception.  This covers all primitives, primitive wrappers, `AtomicInteger`, `AtomicLong`, `BigInteger`, and `BigDecimal`.
+#### 3.0.0
+> * [DeepEquals](userguide.md#deepequals) now outputs the first encountered graph "diff" in the passed in input/output options Map if provided. See userguide for example output.
+> * [CompactMap](userguide.md#compactmap) and [CompactSet](userguide.md#compactset) no longer do you need to sublcass for variations.  Use the new builder api.
+> * [ClassUtilities](userguide.md#classutilities) added `newInstance()`. Also, `getClassLoader()` works in OSGi, JPMS, and non-modular environments.
+> * [Converter](userguide.md#converter) added support for arrays to collections, arrays to arrays (for type difference that can be converted), for n-dimensional arrays.  Collections to arrays and Collections to Collections, also supported nested collections. Arrays and Collections to EnumSet.
+> * [ReflectionUtils](userguide.md#reflectionutils) robust caching in all cases, optional `Field` filtering via `Predicate.`
+> * [SystemUtilities](userguide.md#systemutilities) added many new APIs.
+> * [Traverser](userguide.md#traverser) updated to support passing all fields to visitor, uses lambda for visitor.
+> * Should be API compatible with 2.x.x versions.
+> * Complete Javadoc upgrade throughout the project.
 #### 2.18.0
 > * Fix issue with field access `ClassUtilities.getClassLoader()` when in OSGi environment.  Thank you @ozhelezniak-talend.
 > * Added `ClassUtilities.getClassLoader(Class<?> c)` so that class loading was not confined to java-util classloader bundle. Thank you @ozhelezniak-talend.

@@ -4,7 +4,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 
@@ -31,7 +31,7 @@ final class UriConversions {
 
     static Map toMap(Object from, Converter converter) {
         URI uri = (URI) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put(URI_KEY, uri.toString());
         return target;
     }

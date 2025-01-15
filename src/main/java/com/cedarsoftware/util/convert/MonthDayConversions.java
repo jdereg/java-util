@@ -3,7 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.time.MonthDay;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -28,7 +28,7 @@ final class MonthDayConversions {
 
     static Map toMap(Object from, Converter converter) {
         MonthDay monthDay = (MonthDay) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put("day", monthDay.getDayOfMonth());
         target.put("month", monthDay.getMonthValue());
         return target;

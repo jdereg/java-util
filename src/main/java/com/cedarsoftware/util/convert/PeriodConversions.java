@@ -3,7 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.time.Period;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -28,7 +28,7 @@ final class PeriodConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         Period period = (Period) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put(MapConversions.YEARS, period.getYears());
         target.put(MapConversions.MONTHS, period.getMonths());
         target.put(MapConversions.DAYS, period.getDays());

@@ -3,7 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.util.Locale;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 import com.cedarsoftware.util.StringUtilities;
 
 import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
@@ -20,7 +20,7 @@ public final class LocaleConversions {
 
     static Map<?, ?> toMap(Object from, Converter converter) {
         Locale locale = (Locale) from;
-        Map<String, Object> map = new CompactLinkedMap<>();
+        Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
 
         String language = locale.getLanguage();
         map.put(LANGUAGE, language);

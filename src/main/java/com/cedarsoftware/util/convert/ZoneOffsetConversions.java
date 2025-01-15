@@ -4,7 +4,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 import static com.cedarsoftware.util.convert.MapConversions.HOURS;
 import static com.cedarsoftware.util.convert.MapConversions.MINUTES;
@@ -33,7 +33,7 @@ final class ZoneOffsetConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         ZoneOffset offset = (ZoneOffset) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         int totalSeconds = offset.getTotalSeconds();
 
         // Calculate hours, minutes, and seconds

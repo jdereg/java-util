@@ -11,14 +11,13 @@ import java.util.Map;
  * <p>
  * Example replacement:<br>
  * Instead of: {@code Map<String, String> map = new CompactLinkedMap<>();}<br>
- * Use: {@code Map<String, String> map = CompactMap.newMap(80, true, 16, CompactMap.INSERTION);}
+ * Use: {@code Map<String, String> map = CompactMap.<String, Object>builder().insertionOrder().build();}
  * </p>
  * <p>
  * This creates a CompactMap with:
  * <ul>
- *   <li>compactSize = 80 (same as CompactLinkedMap)</li>
+ *   <li>compactSize = 70</li>
  *   <li>caseSensitive = true (default behavior)</li>
- *   <li>capacity = 16 (default initial capacity)</li>
  *   <li>ordering = INSERTION (maintains insertion order)</li>
  * </ul>
  * </p>

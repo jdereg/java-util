@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 import static com.cedarsoftware.util.convert.MapConversions.YEAR;
 
@@ -78,7 +78,7 @@ final class YearConversions {
 
     static Map<?, ?> toMap(Object from, Converter converter) {
         Year year = (Year) from;
-        Map<String, Integer> map = new CompactLinkedMap<>();
+        Map<String, Integer> map = CompactMap.<String, Integer>builder().insertionOrder().build();
         map.put(YEAR, year.getValue());
         return map;
     }

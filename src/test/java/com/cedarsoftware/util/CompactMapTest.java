@@ -2612,10 +2612,10 @@ public class CompactMapTest
     }
 
     @Test
-    public void testCompactLinkedMap()
+    public void testCompactMapSequence()
     {
         // Ensure CompactLinkedMap is minimally exercised.
-        CompactMap<String, Integer> linkedMap = new CompactLinkedMap<>();
+        CompactMap<String, Integer> linkedMap = CompactMap.<String, Integer>builder().insertionOrder().build();
 
         for (int i=0; i < linkedMap.compactSize() + 5; i++)
         {
@@ -2629,7 +2629,7 @@ public class CompactMapTest
         assert linkedMap.containsKey("FoO" + (linkedMap.compactSize() + 3));
         assert !linkedMap.containsKey("foo" + (linkedMap.compactSize() + 3));
 
-        CompactMap<String, Integer> copy = new CompactLinkedMap<>(linkedMap);
+        CompactMap<String, Integer> copy = CompactMap.<String, Integer>builder().insertionOrder().build();
         assert copy.equals(linkedMap);
 
         assert copy.containsKey("FoO0");
@@ -2672,7 +2672,7 @@ public class CompactMapTest
     @Test
     void testCompactCILinkedMap()
     {
-        // Ensure CompactLinkedMap is minimally exercised.
+        // Ensure CompactMap case insenstive and sequence order, is minimally exercised.
         CompactMap<String, Integer> ciLinkedMap = CompactMap.<String, Integer>builder().compactSize(80).caseSensitive(false).insertionOrder().build();
 
         for (int i=0; i < ciLinkedMap.compactSize() + 5; i++)

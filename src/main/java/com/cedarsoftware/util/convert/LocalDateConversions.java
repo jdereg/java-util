@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -109,7 +109,7 @@ final class LocalDateConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         LocalDate localDate = (LocalDate) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put(MapConversions.DATE, localDate.toString());
         return target;
     }

@@ -2,7 +2,7 @@ package com.cedarsoftware.util.convert;
 
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
@@ -32,7 +32,7 @@ final class ThrowableConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         Throwable throwable = (Throwable) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put(CLASS, throwable.getClass().getName());
         target.put(MESSAGE, throwable.getMessage());
         if (throwable.getCause() != null) {

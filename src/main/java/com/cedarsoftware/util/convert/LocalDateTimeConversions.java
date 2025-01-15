@@ -16,7 +16,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -116,7 +116,7 @@ final class LocalDateTimeConversions {
 
     static Map<?, ?> toMap(Object from, Converter converter) {
         LocalDateTime localDateTime = (LocalDateTime) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put(MapConversions.DATE, localDateTime.toLocalDate().toString());
         target.put(MapConversions.TIME, localDateTime.toLocalTime().toString());
         return target;

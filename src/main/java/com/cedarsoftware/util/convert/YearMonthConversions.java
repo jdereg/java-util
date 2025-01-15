@@ -3,7 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.time.YearMonth;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -28,7 +28,7 @@ final class YearMonthConversions {
 
     static Map toMap(Object from, Converter converter) {
         YearMonth yearMonth = (YearMonth) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put("year", yearMonth.getYear());
         target.put("month", yearMonth.getMonthValue());
         return target;

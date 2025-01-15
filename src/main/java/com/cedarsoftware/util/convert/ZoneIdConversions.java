@@ -4,7 +4,7 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.TimeZone;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -29,7 +29,7 @@ final class ZoneIdConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         ZoneId zoneID = (ZoneId) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put("zone", zoneID.toString());
         return target;
     }

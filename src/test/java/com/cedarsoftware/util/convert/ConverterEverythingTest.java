@@ -47,7 +47,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -1934,7 +1934,7 @@ class ConverterEverythingTest {
                     return cal;
                 }},
                 {(Supplier<Map<String, Object>>) () -> {
-                    Map<String, Object> map = new CompactLinkedMap<>();
+                    Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
@@ -1971,7 +1971,7 @@ class ConverterEverythingTest {
                     return cal;
                 }},
                 {(Supplier<Map<String, Object>>) () -> {
-                    Map<String, Object> map = new CompactLinkedMap<>();
+                    Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
                     map.put(DATE, "2024-02-05");
                     map.put(TIME, "22:31:17.409");
                     map.put(ZONE, TOKYO);

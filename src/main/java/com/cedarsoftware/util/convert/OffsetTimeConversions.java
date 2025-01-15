@@ -4,7 +4,7 @@ import java.time.OffsetTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -33,7 +33,7 @@ final class OffsetTimeConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         OffsetTime offsetTime = (OffsetTime) from;
-        Map<String, Object> map = new CompactLinkedMap<>();
+        Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
         map.put(MapConversions.TIME, offsetTime.toString());
         return map;
     }

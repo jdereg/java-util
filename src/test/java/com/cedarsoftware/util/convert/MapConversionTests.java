@@ -491,7 +491,7 @@ class MapConversionTests {
         assertEquals(1, dateMap.size());
         assertEquals(1, nullMap.size());
 
-        // Verify the map is mutable (CompactLinkedMap is used)
+        // Verify the map is mutable (CompactMap is used)
         try {
             Map<String, Object> testMap = (Map<String, Object>) MapConversions.initMap("test", converter);
             testMap.put("newKey", "newValue");

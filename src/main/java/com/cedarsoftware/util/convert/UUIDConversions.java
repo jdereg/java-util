@@ -5,7 +5,7 @@ import java.math.BigInteger;
 import java.util.Map;
 import java.util.UUID;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -40,7 +40,7 @@ final class UUIDConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         UUID uuid = (UUID) from;
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put(MapConversions.UUID, uuid.toString());
         return target;
     }

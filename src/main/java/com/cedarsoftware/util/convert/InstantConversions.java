@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -42,7 +42,7 @@ final class InstantConversions {
     static Map toMap(Object from, Converter converter) {
         long sec = ((Instant) from).getEpochSecond();
         int nanos = ((Instant) from).getNano();
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put("seconds", sec);
         target.put("nanos", nanos);
         return target;

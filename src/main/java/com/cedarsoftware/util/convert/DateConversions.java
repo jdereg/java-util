@@ -17,7 +17,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -149,7 +149,7 @@ final class DateConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         Date date = (Date) from;
-        Map<String, Object> map = new CompactLinkedMap<>();
+        Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
         ZonedDateTime zdt = toZonedDateTime(date, converter);
         map.put(MapConversions.DATE, zdt.toLocalDate().toString());
         map.put(MapConversions.TIME, zdt.toLocalTime().toString());

@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.CollectionUtilities;
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
@@ -702,7 +702,7 @@ final class MapConversions {
     }
 
     static Map<String, ?> initMap(Object from, Converter converter) {
-        Map<String, Object> map = new CompactLinkedMap<>();
+        Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
         map.put(V, from);
         return map;
     }

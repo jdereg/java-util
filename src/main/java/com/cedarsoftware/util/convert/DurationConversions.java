@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -34,7 +34,7 @@ final class DurationConversions {
     static Map toMap(Object from, Converter converter) {
         long sec = ((Duration) from).getSeconds();
         int nanos = ((Duration) from).getNano();
-        Map<String, Object> target = new CompactLinkedMap<>();
+        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put("seconds", sec);
         target.put("nanos", nanos);
         return target;

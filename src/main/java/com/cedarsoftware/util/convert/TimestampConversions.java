@@ -12,7 +12,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactLinkedMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -76,7 +76,7 @@ final class TimestampConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         Date date = (Date) from;
-        Map<String, Object> map = new CompactLinkedMap<>();
+        Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
         OffsetDateTime odt = toOffsetDateTime(date, converter);
         map.put(MapConversions.DATE, odt.toLocalDate().toString());
         map.put(MapConversions.TIME, odt.toLocalTime().toString());

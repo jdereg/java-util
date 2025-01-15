@@ -9,6 +9,7 @@
 > * [Traverser](userguide.md#traverser) updated to support passing all fields to visitor, uses lambda for visitor.
 > * Should be API compatible with 2.x.x versions.
 > * Complete Javadoc upgrade throughout the project.
+> * New [User Guide](userguide.md#compactset) added.
 #### 2.18.0
 > * Fix issue with field access `ClassUtilities.getClassLoader()` when in OSGi environment.  Thank you @ozhelezniak-talend.
 > * Added `ClassUtilities.getClassLoader(Class<?> c)` so that class loading was not confined to java-util classloader bundle. Thank you @ozhelezniak-talend.

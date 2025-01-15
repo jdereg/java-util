@@ -831,7 +831,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * @deprecated As of 2.0.19, replaced by {@link #getAllDeclaredFields(Class)}.
+     * @deprecated As of 3.0.0, replaced by {@link #getAllDeclaredFields(Class)}.
      * Note that getAllDeclaredFields() includes transient fields and synthetic fields
      * (like "this$"). If you need the old behavior, filter the additional fields:
      * <pre>{@code
@@ -842,7 +842,7 @@ public final class ReflectionUtils {
      *     !field.isSynthetic()
      * );
      * }</pre>
-     * This method will may be removed in 3.0.0.
+     * This method may be removed in 3.0.0.
      */
     @Deprecated
     public static Collection<Field> getDeepDeclaredFields(Class<?> c) {
@@ -859,7 +859,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * @deprecated As of 2.0.19, replaced by {@link #getAllDeclaredFieldsMap(Class)}.
+     * @deprecated As of 3.0.0, replaced by {@link #getAllDeclaredFieldsMap(Class)}.
      * Note that getAllDeclaredFieldsMap() includes transient fields and synthetic fields
      * (like "this$"). If you need the old behavior, filter the additional fields:
      * <pre>{@code
@@ -870,7 +870,7 @@ public final class ReflectionUtils {
      *     !field.isSynthetic()
      * );
      * }</pre>
-     * This method will may be removed in 3.0.0.
+     * This method may be removed in 3.0.0.
      */
     @Deprecated
     public static Map<String, Field> getDeepDeclaredFieldMap(Class<?> c) {
@@ -886,7 +886,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * @deprecated As of 2.0.19, replaced by {@link #getAllDeclaredFields(Class)}.
+     * @deprecated As of 3.0.0, replaced by {@link #getAllDeclaredFields(Class)}.
      * Note that getAllDeclaredFields() includes transient fields and synthetic fields
      * (like "this$"). If you need the old behavior, filter the additional fields:
      * <pre>{@code

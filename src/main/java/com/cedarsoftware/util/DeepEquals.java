@@ -67,7 +67,15 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  * <p>The options {@code Map} acts as both input and output. When objects differ, the difference
  * description is placed in the options {@code Map} under the "diff" key
  * (see {@link DeepEquals#deepEquals(Object, Object, Map) deepEquals}).</p>
- *
+ * <p><strong>"diff" output notes:</strong></p>
+ * <ul>
+ *  <li>Empty lists, maps, and arrays are shown with (∅) or [∅]</li>
+ *  <li>A Map of size 1 is shown as Map(0..0), an int[] of size 2 is shown as int[0..1], an empty list is List(∅)</li>
+ *  <li>Sub-object fields on non-difference path shown as {..}</li>
+ *  <li>Map entry shown with 《key ⇨ value》 and may be nested</li>
+ *  <li>General pattern is [difference type] ▶ root context ▶ shorthand path starting at a root context element (Object field, array/collection element, Map key-value)</li>
+ *  <li>If the root is not a container (Collection, Map, Array, or Object), no shorthand description is displayed</li>
+ *  </ul>
  * <p><strong>Example usage:</strong></p>
  * <pre><code>
  * Map&lt;String, Object&gt; options = new HashMap&lt;&gt;();
@@ -77,7 +85,23 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  * if (!DeepEquals.deepEquals(obj1, obj2, options)) {
  *     String diff = (String) options.get(DeepEquals.DIFF);  // Get difference description
  *     // Handle or log 'diff'
- * }
+ *
+ * Example output:
+ * // Simple object difference
+ * [field value mismatch] ▶ Person {name: "Jim Bob", age: 27} ▶ .age
+ *   Expected: 27
+ *   Found: 34
+ *   
+ * // Array element mismatch within an object that has an array
+ * [array element mismatch] ▶ Person {id: 173679590720000287, first: "John", last: "Smith", favoritePet: {..}, pets: Pet[0..1]} ▶ .pets[0].nickNames[0]
+ *   Expected: "Edward"
+ *   Found: "Eddie"
+ *
+ * // Map with a different value associated to a key (Map size = 1 noted as 0..0)
+ * [map value mismatch] ▶ LinkedHashMap(0..0) ▶ 《"key" ⇨ "value1"》
+ *   Expected: "value1"
+ *   Found: "value2"
+ *   
  * </code></pre>
  *
  * @see #deepEquals(Object, Object)

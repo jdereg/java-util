@@ -1,4 +1,16 @@
 ### Revision History
+#### 3.0.1
+> * [ClassUtilities](userguide.md#classutilities) adds 
+>   * `Set<Class<?>> findLowestCommonSupertypes(Class<?> a, Class<?> b)` 
+>     * which returns the lowest common anscestor(s) of two classes, excluding `Object.class.`  This is useful for finding the common ancestor of two classes that are not related by inheritance.  Generally, executes in O(n log n) - uses sort internally.  If more than one exists, you can filter the returned Set as you please, favoring classes, interfaces, etc.
+>   * `Class<?> findLowestCommonSupertype(Class<?> a, Class<?> b)` 
+>     * which is a convenience method that calls the above method and then returns the first one in the Set or null.
+>   * `boolean haveCommonAncestor(Class<?> a, Class<?> b)`
+>     * which returns true if the two classes have a common ancestor (excluding `Object.class`).
+>   * `Set<Class<?>> getAllSupertypes(Class<?> clazz)`
+>     * which returns all superclasses and interfaces of a class, including itself.  This is useful for finding all the classes and interfaces that a class implements or extends.
+> * Moved `Sealable*` test cases to json-io project.
+> * Removed remaining usages of deprecated `CompactLinkedMap.`
 #### 3.0.0
 > * [DeepEquals](userguide.md#deepequals) now outputs the first encountered graph "diff" in the passed in input/output options Map if provided. See userguide for example output.
 > * [CompactMap](userguide.md#compactmap) and [CompactSet](userguide.md#compactset) no longer do you need to sublcass for variations.  Use the new builder api.

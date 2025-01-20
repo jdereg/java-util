@@ -2629,7 +2629,7 @@ public class CompactMapTest
         assert linkedMap.containsKey("FoO" + (linkedMap.compactSize() + 3));
         assert !linkedMap.containsKey("foo" + (linkedMap.compactSize() + 3));
 
-        CompactMap<String, Integer> copy = CompactMap.<String, Integer>builder().insertionOrder().build();
+        CompactMap<String, Integer> copy = CompactMap.<String, Integer>builder().sourceMap(linkedMap).insertionOrder().build();
         assert copy.equals(linkedMap);
 
         assert copy.containsKey("FoO0");

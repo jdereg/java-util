@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -1145,19 +1146,6 @@ public class ClassUtilities
         }
     }
 
-    private static String createCacheKey(Class<?> c, Collection<?> args) {
-        StringBuilder s = new StringBuilder(c.getName());
-        for (Object o : args) {
-            if (o == null) {
-                s.append(":null");
-            } else {
-                s.append(':');
-                s.append(o.getClass().getSimpleName());
-            }
-        }
-        return s.toString();
-    }
-
     /**
      * Determines if a class is an enum or is related to an enum through inheritance or enclosure.
      * <p>
@@ -1370,5 +1358,187 @@ public class ClassUtilities
                 useUnsafe = false;
             }
         }
+    }
+
+    /**
+     * Returns all equally "lowest" common supertypes (classes or interfaces) shared by both
+     * {@code classA} and {@code classB}, excluding any types specified in {@code skipList}.
+     * <p>
+     * A "lowest" common supertype is defined as any type {@code T} such that:
+     * <ul>
+     *   <li>{@code T} is a supertype of both {@code classA} and {@code classB} (either
+     *       via inheritance or interface implementation), and</li>
+     *   <li>{@code T} is not a superclass (or superinterface) of any other common supertype
+     *       in the result. In other words, no other returned type is a subtype of {@code T}.</li>
+     * </ul>
+     *
+     * <p>Typically, this method is used to discover the most specific shared classes or
+     * interfaces without including certain unwanted types—such as {@code Object.class}
+     * or other "marker" interfaces (e.g. {@code Serializable}, {@code Cloneable},
+     * {@code Comparable}). If you do not want these in the final result, add them to
+     * {@code skipList}.</p>
+     *
+     * <p>The returned set may contain multiple types if they are "equally specific"
+     * and do not extend or implement one another. If the resulting set is empty,
+     * then there is no common supertype of {@code classA} and {@code classB} outside
+     * of the skipped types.</p>
+     *
+     * <p>Example (skipping {@code Object.class}):
+     * <pre>{@code
+     * Set<Class<?>> skip = Collections.singleton(Object.class);
+     * Set<Class<?>> supertypes = findLowestCommonSupertypesWithSkip(TreeSet.class, HashSet.class, skip);
+     * // supertypes might contain only [Set], since Set is the lowest interface
+     * // they both implement, and we skipped Object.
+     * }</pre>
+     *
+     * @param classA   the first class, may be null
+     * @param classB   the second class, may be null
+     * @param skipList a set of classes or interfaces to exclude from the final result
+     *                 (e.g. {@code Object.class}, {@code Serializable.class}, etc.).
+     *                 May be empty but not null.
+     * @return a {@code Set} of the most specific common supertypes of {@code classA}
+     *         and {@code classB}, excluding any in {@code skipList}; if either class
+     *         is {@code null} or the entire set is excluded, an empty set is returned
+     * @see #findLowestCommonSupertypes(Class, Class)
+     * @see #getAllSupertypes(Class)
+     */
+    public static Set<Class<?>> findLowestCommonSupertypesExcluding(
+            Class<?> classA, Class<?> classB,
+            Set<Class<?>> skipList)
+    {
+        if (classA == null || classB == null) {
+            return Collections.emptySet();
+        }
+        if (classA.equals(classB)) {
+            // If it's in the skip list, return empty; otherwise return singleton
+            return skipList.contains(classA) ? Collections.emptySet()
+                    : Collections.singleton(classA);
+        }
+
+        // 1) Gather all supertypes of A and B
+        Set<Class<?>> allA = getAllSupertypes(classA);
+        Set<Class<?>> allB = getAllSupertypes(classB);
+
+        // 2) Intersect
+        allA.retainAll(allB);
+
+        // 3) Remove anything in the skip list, including Object if you like
+        allA.removeAll(skipList);
+
+        if (allA.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        // 4) Sort by descending depth
+        List<Class<?>> candidates = new ArrayList<>(allA);
+        candidates.sort((x, y) -> {
+            int dx = getDepth(x);
+            int dy = getDepth(y);
+            return Integer.compare(dy, dx); // descending
+        });
+
+        // 5) Identify "lowest"
+        Set<Class<?>> lowest = new LinkedHashSet<>();
+        Set<Class<?>> unionOfAncestors = new HashSet<>();
+
+        for (Class<?> T : candidates) {
+            if (unionOfAncestors.contains(T)) {
+                // T is an ancestor of something in 'lowest'
+                continue;
+            }
+            // T is indeed a "lowest" so far
+            lowest.add(T);
+
+            // Add all T's supertypes to the union set
+            Set<Class<?>> ancestorsOfT = getAllSupertypes(T);
+            unionOfAncestors.addAll(ancestorsOfT);
+        }
+
+        return lowest;
+    }
+
+    /**
+     * Returns all equally "lowest" common supertypes (classes or interfaces) that
+     * both {@code classA} and {@code classB} share, automatically excluding
+     * {@code Object.class}.
+     * <p>
+     * This method is a convenience wrapper around
+     * {@link #findLowestCommonSupertypesExcluding(Class, Class, Set)} using a skip list
+     * that includes only {@code Object.class}. In other words, if the only common
+     * ancestor is {@code Object.class}, this method returns an empty set.
+     * </p>
+     *
+     * <p>Example:
+     * <pre>{@code
+     * Set<Class<?>> supertypes = findLowestCommonSupertypes(Integer.class, Double.class);
+     * // Potentially returns [Number, Comparable, Serializable] because those are
+     * // equally specific and not ancestors of one another, ignoring Object.class.
+     * }</pre>
+     *
+     * @param classA the first class, may be null
+     * @param classB the second class, may be null
+     * @return a {@code Set} of all equally "lowest" common supertypes, excluding
+     *         {@code Object.class}; or an empty set if none are found beyond {@code Object}
+     *         (or if either input is null)
+     * @see #findLowestCommonSupertypesExcluding(Class, Class, Set)
+     * @see #getAllSupertypes(Class)
+     */
+    public static Set<Class<?>> findLowestCommonSupertypes(Class<?> classA, Class<?> classB) {
+        return findLowestCommonSupertypesExcluding(classA, classB,
+                CollectionUtilities.setOf(Object.class));
+    }
+
+    /**
+     * Returns the *single* most specific type from findLowestCommonSupertypes(...).
+     * If there's more than one, returns any one (or null if none).
+     */
+    public static Class<?> findLowestCommonSupertype(Class<?> classA, Class<?> classB) {
+        Set<Class<?>> all = findLowestCommonSupertypes(classA, classB);
+        return all.isEmpty() ? null : all.iterator().next();
+    }
+
+    /**
+     * Gather all superclasses and all interfaces (recursively) of 'clazz',
+     * including clazz itself.
+     * <p>
+     * BFS or DFS is fine.  Here is a simple BFS approach:
+     */
+    public static Set<Class<?>> getAllSupertypes(Class<?> clazz) {
+        Set<Class<?>> results = new HashSet<>();
+        Queue<Class<?>> queue = new ArrayDeque<>();
+        queue.add(clazz);
+        while (!queue.isEmpty()) {
+            Class<?> current = queue.poll();
+            if (current != null && results.add(current)) {
+                // Add its superclass
+                Class<?> sup = current.getSuperclass();
+                if (sup != null) {
+                    queue.add(sup);
+                }
+                // Add all interfaces
+                for (Class<?> ifc : current.getInterfaces()) {
+                    queue.add(ifc);
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Returns distance of 'clazz' from Object.class in its *class* hierarchy
+     * (not counting interfaces).  This is a convenience for sorting by depth.
+     */
+    private static int getDepth(Class<?> clazz) {
+        int depth = 0;
+        while (clazz != null) {
+            clazz = clazz.getSuperclass();
+            depth++;
+        }
+        return depth;
+    }
+
+    // Convenience boolean method
+    public static boolean haveCommonAncestor(Class<?> a, Class<?> b) {
+        return !findLowestCommonSupertypes(a, b).isEmpty();
     }
 }

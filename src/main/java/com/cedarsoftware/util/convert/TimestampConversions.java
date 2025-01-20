@@ -46,8 +46,9 @@ final class TimestampConversions {
     }
     
     static BigInteger toBigInteger(Object from, Converter converter) {
-        Duration duration = toDuration(from, converter);
-        return DurationConversions.toBigInteger(duration, converter);
+        Timestamp timestamp = (Timestamp) from;
+        Instant instant = timestamp.toInstant();
+        return InstantConversions.toBigInteger(instant, converter);
     }
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {

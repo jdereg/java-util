@@ -1579,9 +1579,9 @@ public final class Converter {
             return target.isArray() || Collection.class.isAssignableFrom(target);
         }
 
-        // If the source is a generic Collection, we only support converting it to an array type.
+        // If the source is a generic Collection, we only support converting it to an array or collection
         if (Collection.class.isAssignableFrom(sourceType)) {
-            return target.isArray();
+            return target.isArray() || Collection.class.isAssignableFrom(target);
         }
 
         // If the source is an array:
@@ -1638,6 +1638,11 @@ public final class Converter {
         if (source.isArray() || Collection.class.isAssignableFrom(source) ||
                 target.isArray() || Collection.class.isAssignableFrom(target)) {
             return false;
+        }
+
+        // Special case: Number.class as source
+        if (source.equals(Number.class)) {
+            return isConversionInMap(Long.class, target);
         }
 
         // Direct conversion check first (fastest)

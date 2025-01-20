@@ -46,11 +46,19 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import com.cedarsoftware.io.JsonIo;
+import com.cedarsoftware.io.JsonIoException;
+import com.cedarsoftware.io.ReadOptions;
+import com.cedarsoftware.io.ReadOptionsBuilder;
+import com.cedarsoftware.io.WriteOptions;
+import com.cedarsoftware.io.WriteOptionsBuilder;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.CompactMap;
+import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -88,6 +96,8 @@ import static com.cedarsoftware.util.convert.MapConversions.V;
 import static com.cedarsoftware.util.convert.MapConversions.VARIANT;
 import static com.cedarsoftware.util.convert.MapConversions.YEAR;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -3577,7 +3587,10 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(ByteBuffer.class, byte[].class), new Object[][]{
                 {ByteBuffer.wrap(new byte[]{}), new byte[] {}, true},
+                {ByteBuffer.wrap(new byte[]{-1}), new byte[] {-1}, true},
                 {ByteBuffer.wrap(new byte[]{1, 2}), new byte[] {1, 2}, true},
+                {ByteBuffer.wrap(new byte[]{1, 2, -3}), new byte[] {1, 2, -3}, true},
+                {ByteBuffer.wrap(new byte[]{-128, 0, 127, 16}), new byte[] {-128, 0, 127, 16}, true},
         });
         TEST_DB.put(pair(char[].class, byte[].class), new Object[][] {
                 {new char[] {}, new byte[] {}, true},
@@ -3813,6 +3826,69 @@ class ConverterEverythingTest {
         return Stream.of(list.toArray(new Arguments[]{}));
     }
 
+    @Disabled
+    @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
+    @MethodSource("generateTestEverythingParams")
+    void testJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
+        if (shortNameSource.equals("Void")) {
+            return;
+        }
+        if (sourceClass.equals(Timestamp.class)) {
+            return;
+        }
+        if (targetClass.equals(Timestamp.class)) {
+            return;
+        }
+
+        if (!Map.class.isAssignableFrom(sourceClass)) {
+            return;
+        }
+        if (!Calendar.class.equals(targetClass)) {
+            return;
+        }
+//        if (!Calendar.class.isAssignableFrom(sourceClass)) {
+//            return;
+//        }
+//        if (!targetClass.equals(ByteBuffer.class)) {
+//            return;
+//        }
+
+        System.out.println("source=" + sourceClass.getName());
+        System.out.println("target=" + targetClass.getName());
+
+        Converter conv = new Converter(new ConverterOptions() {
+            @Override
+            public ZoneId getZoneId() {
+                return TOKYO_Z;
+            }
+        });
+        WriteOptions writeOptions = new WriteOptionsBuilder().build();
+        ReadOptions readOptions = new ReadOptionsBuilder().setZoneId(TOKYO_Z).build();
+        String json = JsonIo.toJson(source, writeOptions);
+        if (target instanceof Throwable) {
+            Throwable t = (Throwable) target;
+            try {
+                Object x = JsonIo.toObjects(json, readOptions, targetClass);
+                System.out.println("x = " + x);
+                fail("This test: " + shortNameSource + " ==> " + shortNameTarget + " should have thrown: " + target.getClass().getName());
+            } catch (Throwable e) {
+                if (e instanceof JsonIoException) {
+                    e = e.getCause();
+                } else {
+                    System.out.println("*********************************************************");
+                }
+                assertThat(e.getMessage()).contains(t.getMessage());
+                assertEquals(e.getClass(), t.getClass());
+            }
+        } else {
+            Object restored = JsonIo.toObjects(json, readOptions, targetClass);
+            if (!DeepEquals.deepEquals(restored, target)) {
+                System.out.println("restored = " + restored);
+                System.out.println("target = " + target);
+            }
+        }
+    }
+
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testConvert(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
@@ -3824,9 +3900,6 @@ class ConverterEverythingTest {
             }
         }
 
-        if (source instanceof Map && targetClass.equals(Throwable.class)) {
-            System.out.println();
-        }
         if (source == null) {
             assertEquals(Void.class, sourceClass, "On the source-side of test input, null can only appear in the Void.class data");
         } else {

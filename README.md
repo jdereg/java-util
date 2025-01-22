@@ -32,7 +32,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 To include in your project:
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:3.0.1'
+implementation 'com.cedarsoftware:java-util:3.0.2'
 ```
 
 ##### Maven
@@ -40,7 +40,7 @@ implementation 'com.cedarsoftware:java-util:3.0.1'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>3.0.1</version>
+  <version>3.0.2</version>
 </dependency>
 ```
 ---

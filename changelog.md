@@ -1,4 +1,7 @@
 ### Revision History
+#### 3.0.2
+> * Conversion test added that ensures all conversions go from instance, to JSON, and JSON, back to instance, through all conversion types supported. `java-util` uses `json-io` as a test dependency only.
+> * Timestamp conversion improvements (better honoring of nanos)
 #### 3.0.1
 > * [ClassUtilities](userguide.md#classutilities) adds 
 >   * `Set<Class<?>> findLowestCommonSupertypes(Class<?> a, Class<?> b)` 

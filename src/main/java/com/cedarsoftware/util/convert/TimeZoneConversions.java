@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.convert;
 
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -42,5 +43,12 @@ final class TimeZoneConversions {
         Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
         target.put(ZONE, tz.getID());
         return target;
+    }
+
+    static ZoneOffset toZoneOffset(Object from, Converter converter) {
+        TimeZone tz = (TimeZone) from;
+        // Convert the raw offset (in milliseconds) to total seconds
+        int offsetSeconds = tz.getRawOffset() / 1000;
+        return ZoneOffset.ofTotalSeconds(offsetSeconds);
     }
 }

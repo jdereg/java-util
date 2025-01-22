@@ -1,6 +1,8 @@
 package com.cedarsoftware.util.convert;
 
+import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -37,5 +39,10 @@ final class ZoneIdConversions {
     static TimeZone toTimeZone(Object from, Converter converter) {
         ZoneId zoneId = (ZoneId) from;
         return TimeZone.getTimeZone(zoneId);
+    }
+
+    static ZoneOffset toZoneOffset(Object from, Converter converter) {
+        ZoneId zoneId = (ZoneId) from;
+        return zoneId.getRules().getOffset(Instant.now());
     }
 }

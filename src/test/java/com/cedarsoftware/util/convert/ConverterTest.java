@@ -3514,7 +3514,7 @@ class ConverterTest
     }
 
     @Test
-    void tesTimestampToString()
+    void testTimestampToString()
     {
         long now = System.currentTimeMillis();
         Timestamp date = new Timestamp(now);

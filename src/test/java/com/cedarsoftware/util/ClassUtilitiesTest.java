@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -698,5 +699,12 @@ class ClassUtilitiesTest {
     {
         assertFalse(ClassUtilities.haveCommonAncestor(null, String.class));
         assertFalse(ClassUtilities.haveCommonAncestor(String.class, null));
+    }
+
+    @Test
+    void testMapAndCollectionNotRelated() {
+        Set<Class<?>> skip = new HashSet<>();
+        Set<Class<?>> results = ClassUtilities.findLowestCommonSupertypesExcluding(Collection.class, Map.class, skip);
+        assert results.isEmpty();
     }
 }

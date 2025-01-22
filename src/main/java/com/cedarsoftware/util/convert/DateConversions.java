@@ -135,15 +135,6 @@ final class DateConversions {
                 .appendOffset("+HH:MM", "Z") // Timezone offset
                 .toFormatter();
 
-        // Build a formatter with optional milliseconds and always show the timezone name
-//        DateTimeFormatter formatter = new DateTimeFormatterBuilder()
-//                .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
-//                .appendFraction(ChronoField.MILLI_OF_SECOND, 0, 3, true) // Optional milliseconds
-//                .appendLiteral('[') // Space separator
-//                .appendZoneId()
-//                .appendLiteral(']')
-//                .toFormatter();
-
         return zonedDateTime.format(formatter);
     }
 

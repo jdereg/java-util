@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.TimeZone;
 
 import com.cedarsoftware.util.CompactMap;
 
@@ -29,7 +30,8 @@ import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
  */
 final class ZoneOffsetConversions {
 
-    private ZoneOffsetConversions() {}
+    private ZoneOffsetConversions() {
+    }
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         ZoneOffset offset = (ZoneOffset) from;
@@ -50,5 +52,12 @@ final class ZoneOffsetConversions {
 
     static ZoneId toZoneId(Object from, Converter converter) {
         return (ZoneId) from;
+    }
+
+    static TimeZone toTimeZone(Object from, Converter converter) {
+        ZoneOffset offset = (ZoneOffset) from;
+        // Ensure we create the TimeZone with the correct GMT offset format
+        String id = offset.equals(ZoneOffset.UTC) ? "GMT" : "GMT" + offset.getId();
+        return TimeZone.getTimeZone(id);
     }
 }

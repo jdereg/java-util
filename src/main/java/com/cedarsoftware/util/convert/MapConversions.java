@@ -221,6 +221,28 @@ final class MapConversions {
             return timeStamp;
         }
 
+        Object time = map.get(VALUE);
+        if (time == null) {
+            time = map.get(TIME);
+        }
+        if (time instanceof Number) {
+            long ms = converter.convert(time, long.class);
+            Timestamp timeStamp = new Timestamp(ms);
+            if (map.containsKey(NANOS) && ns != 0) {
+                timeStamp.setNanos(ns);
+            }
+            return timeStamp;
+        } else if (time instanceof String && StringUtilities.hasContent((String)time)) {
+            if (!((String) time).contains(":")) { // not in date-time (ISO-8601) or time (ISO-8601 time) format
+                long ms = converter.convert(time, long.class);
+                Timestamp timeStamp = new Timestamp(ms);
+                if (map.containsKey(NANOS) && ns != 0) {
+                    timeStamp.setNanos(ns);
+                }
+                return timeStamp;
+            }
+        }
+        
         // Map.Entry<Long, Integer> return has key of epoch-millis and value of nanos-of-second
         Map.Entry<Long, Integer> epochTime = toEpochMillis(from, converter);
         if (epochTime == null) {    // specified as "value" or "_v" are not at all and will give nice exception error message.

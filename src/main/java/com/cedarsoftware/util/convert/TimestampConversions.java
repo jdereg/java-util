@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
@@ -75,14 +76,50 @@ final class TimestampConversions {
         return cal;
     }
 
+    static Date toDate(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+        Instant instant = timestamp.toInstant();
+        return Date.from(instant);
+    }
+
+    static java.sql.Date toSqlDate(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+        return new java.sql.Date(timestamp.getTime());
+    }
+
+    static long toLong(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+        return timestamp.getTime();
+    }
+
+    static String toString(Object from, Converter converter) {
+        Timestamp timestamp = (Timestamp) from;
+        int nanos = timestamp.getNanos();
+
+        String pattern;
+        if (nanos == 0) {
+            pattern = "yyyy-MM-dd'T'HH:mm:ssXXX";  // whole seconds
+        } else if (nanos % 1_000_000 == 0) {
+            pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";  // milliseconds
+        } else {
+            pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSXXX";  // nanoseconds
+        }
+
+        // Timestamps are always UTC internally
+        String ts = timestamp.toInstant()
+                .atZone(converter.getOptions().getZoneId())
+                .format(DateTimeFormatter.ofPattern(pattern));
+        return ts;
+    }
+    
     static Map<String, Object> toMap(Object from, Converter converter) {
-        Date date = (Date) from;
+        Timestamp timestamp = (Timestamp) from;
         Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
-        OffsetDateTime odt = toOffsetDateTime(date, converter);
+        OffsetDateTime odt = toOffsetDateTime(timestamp, converter);
         map.put(MapConversions.DATE, odt.toLocalDate().toString());
         map.put(MapConversions.TIME, odt.toLocalTime().toString());
         map.put(MapConversions.ZONE, converter.getOptions().getZoneId().toString());
-        map.put(MapConversions.EPOCH_MILLIS, date.getTime());
+        map.put(MapConversions.EPOCH_MILLIS, timestamp.getTime());
         map.put(MapConversions.NANOS, odt.getNano());
         return map;
     }

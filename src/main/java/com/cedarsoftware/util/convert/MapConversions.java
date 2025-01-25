@@ -65,6 +65,7 @@ final class MapConversions {
     static final String VALUE = "value";
     static final String DATE = "date";
     static final String TIME = "time";
+    static final String TIMESTAMP = "timestamp";
     static final String ZONE = "zone";
     static final String YEAR = "year";
     static final String YEARS = "years";
@@ -210,48 +211,34 @@ final class MapConversions {
      */
     static Timestamp toTimestamp(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
+        Object time = map.get(TIMESTAMP);
+        if (time == null) {
+            time = map.get(VALUE);  // allow "value"
+        }
+        if (time == null) {
+            time = map.get(V);  // allow "_v"
+        }
+
+        if (time instanceof String && StringUtilities.hasContent((String)time)) {
+            ZonedDateTime zdt = DateUtilities.parseDate((String) time, ZoneId.of("Z"), true);
+            Timestamp timestamp = Timestamp.from(zdt.toInstant());
+            return timestamp;
+        }
+
+        // Allow epoch_millis with optional nanos
         Object epochMillis = map.get(EPOCH_MILLIS);
         int ns = converter.convert(map.get(NANOS), int.class);  // optional
         if (epochMillis != null) {
-            long time = converter.convert(epochMillis, long.class);
-            Timestamp timeStamp = new Timestamp(time);
-            if (map.containsKey(NANOS) && ns != 0) {
-                timeStamp.setNanos(ns);
-            }
-            return timeStamp;
-        }
-
-        Object time = map.get(VALUE);
-        if (time == null) {
-            time = map.get(TIME);
-        }
-        if (time instanceof Number) {
-            long ms = converter.convert(time, long.class);
+            long ms = converter.convert(epochMillis, long.class);
             Timestamp timeStamp = new Timestamp(ms);
             if (map.containsKey(NANOS) && ns != 0) {
                 timeStamp.setNanos(ns);
             }
             return timeStamp;
-        } else if (time instanceof String && StringUtilities.hasContent((String)time)) {
-            if (!((String) time).contains(":")) { // not in date-time (ISO-8601) or time (ISO-8601 time) format
-                long ms = converter.convert(time, long.class);
-                Timestamp timeStamp = new Timestamp(ms);
-                if (map.containsKey(NANOS) && ns != 0) {
-                    timeStamp.setNanos(ns);
-                }
-                return timeStamp;
-            }
         }
         
         // Map.Entry<Long, Integer> return has key of epoch-millis and value of nanos-of-second
-        Map.Entry<Long, Integer> epochTime = toEpochMillis(from, converter);
-        if (epochTime == null) {    // specified as "value" or "_v" are not at all and will give nice exception error message.
-            return fromMap(from, converter, Timestamp.class, new String[]{EPOCH_MILLIS, NANOS + OPTIONAL}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
-        }
-
-        Timestamp timestamp = new Timestamp(epochTime.getKey());
-        timestamp.setNanos(epochTime.getValue());
-        return timestamp;
+        return fromMap(from, converter, Timestamp.class, new String[]{TIMESTAMP}, new String[]{EPOCH_MILLIS, NANOS + OPTIONAL});
     }
 
     static TimeZone toTimeZone(Object from, Converter converter) {

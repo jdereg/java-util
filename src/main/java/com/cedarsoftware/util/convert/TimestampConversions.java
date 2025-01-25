@@ -7,13 +7,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
-
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -107,20 +108,43 @@ final class TimestampConversions {
 
         // Timestamps are always UTC internally
         String ts = timestamp.toInstant()
-                .atZone(converter.getOptions().getZoneId())
+                .atZone(ZoneId.of("Z"))
                 .format(DateTimeFormatter.ofPattern(pattern));
         return ts;
     }
     
     static Map<String, Object> toMap(Object from, Converter converter) {
         Timestamp timestamp = (Timestamp) from;
-        Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
-        OffsetDateTime odt = toOffsetDateTime(timestamp, converter);
-        map.put(MapConversions.DATE, odt.toLocalDate().toString());
-        map.put(MapConversions.TIME, odt.toLocalTime().toString());
-        map.put(MapConversions.ZONE, converter.getOptions().getZoneId().toString());
-        map.put(MapConversions.EPOCH_MILLIS, timestamp.getTime());
-        map.put(MapConversions.NANOS, odt.getNano());
+        long millis = timestamp.getTime();
+
+        // 1) Convert Timestamp -> Instant -> UTC ZonedDateTime
+        ZonedDateTime zdt = timestamp.toInstant().atZone(ZoneOffset.UTC);
+
+        // 2) Extract nanoseconds
+        int nanos = zdt.getNano(); // 0 to 999,999,999
+
+        // 3) Build the output string in ISO-8601 w/ "Z" at the end
+        String formatted;
+        if (nanos == 0) {
+            // No fractional seconds
+            // e.g. 2025-01-01T10:15:30Z
+            // Pattern approach:
+            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+        } else if (nanos % 1_000_000 == 0) {
+            // Exactly millisecond precision
+            // e.g. 2025-01-01T10:15:30.123Z
+            int ms = nanos / 1_000_000;
+            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+                    + String.format(".%03dZ", ms);
+        } else {
+            // Full nanosecond precision
+            // e.g. 2025-01-01T10:15:30.123456789Z
+            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+                    + String.format(".%09dZ", nanos);
+        }
+
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(MapConversions.TIMESTAMP, formatted);
         return map;
     }
 }

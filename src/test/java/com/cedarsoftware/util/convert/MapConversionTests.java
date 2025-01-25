@@ -202,8 +202,7 @@ class MapConversionTests {
 
         // Test case 2: Time string with sub-millisecond precision
         map.clear();
-        map.put("time", "2024-01-01T08:37:16.987654321");  // ISO-8601 format
-        map.put("nanos", 123456789);  // Should be ignored since time string has nano resolution
+        map.put("timestamp", "2024-01-01T08:37:16.987654321Z");  // ISO-8601 format at UTC "Z"
         ts = MapConversions.toTimestamp(map, converter);
         assertEquals(987654321, ts.getNanos());  // Should use nanos from time string
     }

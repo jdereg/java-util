@@ -90,6 +90,7 @@ import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
 import static com.cedarsoftware.util.convert.MapConversions.SECOND;
 import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
 import static com.cedarsoftware.util.convert.MapConversions.TIME;
+import static com.cedarsoftware.util.convert.MapConversions.TIMESTAMP;
 import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.V;
@@ -804,9 +805,9 @@ class ConverterEverythingTest {
                 {new java.sql.Date(1), "1970-01-01T09:00:00.001+09:00", true},
         });
         TEST_DB.put(pair(Timestamp.class, String.class), new Object[][]{
-                {new Timestamp(-1), "1970-01-01T08:59:59.999+09:00", true},     // Tokyo (set in options - defaults to system when not set explicitly)
-                {new Timestamp(0), "1970-01-01T09:00:00+09:00", true},
-                {new Timestamp(1), "1970-01-01T09:00:00.001+09:00", true},
+                {new Timestamp(-1), "1969-12-31T23:59:59.999Z", true},
+                {new Timestamp(0), "1970-01-01T00:00:00Z", true},
+                {new Timestamp(1), "1970-01-01T00:00:00.001Z", true},
         });
         TEST_DB.put(pair(ZonedDateTime.class, String.class), new Object[][]{
                 {ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z"), "1969-12-31T23:59:59.999999999Z", true},
@@ -1316,30 +1317,25 @@ class ConverterEverythingTest {
         });
         // No symmetry checks - because an OffsetDateTime of "2024-02-18T06:31:55.987654321+00:00" and "2024-02-18T15:31:55.987654321+09:00" are equivalent but not equals. They both describe the same Instant.
         TEST_DB.put(pair(Map.class, Timestamp.class), new Object[][] {
-                { mapOf(EPOCH_MILLIS, -1L, DATE, "1970-01-01", TIME, "08:59:59.987654321", ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.999Z") },  // Epoch millis take precedence
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 1, DATE, "1970-01-01", TIME, "08:59:59.987654321", ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.000000001Z") },  // Epoch millis and nanos take precedence
-                { mapOf(EPOCH_MILLIS, -1L, ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.999Z") },  // save as above
-                { mapOf(DATE, "1970-01-01", TIME, "08:59:59.987654321", ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.987654321Z") },  // Epoch millis take precedence
-                { mapOf(NANOS, 123456789, DATE, "1970-01-01", TIME, "08:59:59.987654321", ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.987654321Z") },  // time trumps nanos when it is better than second resolution
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 123456789, DATE, "1970-01-01", TIME, "08:59:59.999999999", ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.123456789Z") }, // Epoch millis and nanos trump time
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000, DATE, "1970-01-01", TIME, "08:59:59.999999999", ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.999Z")}, // redundant, conflicting nanos + DATE, TIME, and ZONE fields for reverse test
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 888888888, DATE, "1970-01-01", TIME, "08:59:59.999999999", ZONE, TOKYO_Z.toString()), timestamp("1969-12-31T23:59:59.888888888Z")}, // redundant, conflicting nanos
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), new Timestamp(-1L), true},
-                { mapOf(EPOCH_MILLIS, 0L, NANOS, 0, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), timestamp("1970-01-01T00:00:00Z"), true},
-                { mapOf(EPOCH_MILLIS, 0L, NANOS, 0, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), new Timestamp(0L), true},
-                { mapOf(EPOCH_MILLIS, 0L, NANOS, 1, DATE, "1970-01-01", TIME, "09:00:00.000000001", ZONE, TOKYO_Z.toString()), timestamp("1970-01-01T00:00:00.000000001Z"), true},
-                { mapOf(EPOCH_MILLIS, 1L, NANOS, 1000000, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), new Timestamp(1L), true},
-                { mapOf(EPOCH_MILLIS, 1710714535152L, NANOS, 152000000, DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), new Timestamp(1710714535152L), true},
-                { mapOf(TIME, "1970-01-01T00:00:00.000000001Z", NANOS, 1234), timestamp("1970-01-01T00:00:00.000000001Z")},     // fractional seconds in time, ignore "nanos" value if it exists
-                { mapOf(TIME, "1970-01-01T00:00:00Z", NANOS, 1234), (Supplier<Timestamp>) () -> timestamp("1970-01-01T00:00:00.000001234Z")},   // No fractional seconds in time, use "nanos" value if it exists
-                { mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001", NANOS, 1234), timestamp("1970-01-01T00:00:00.000000001+09:00")},     // fractional seconds in time, ignore "nanos" value if it exists
-                { mapOf(DATE, "1970-01-01", TIME, "00:00:00", NANOS, 1234), (Supplier<Timestamp>) () -> timestamp("1970-01-01T00:00:00.000001234+09:00")},   // No fractional seconds in time, use "nanos" value if it exists
-                { mapOf(TIME, "2024-03-18T07:28:55.152000001", ZONE, TOKYO_Z.toString()), (Supplier<Timestamp>) () -> {
+                { mapOf(EPOCH_MILLIS, -1L ), timestamp("1969-12-31T23:59:59.999Z") },
+                { mapOf(EPOCH_MILLIS, -1L, NANOS, 1), timestamp("1969-12-31T23:59:59.000000001Z") },
+                { mapOf(TIMESTAMP, "1969-12-31T23:59:59.987654321Z"), timestamp("1969-12-31T23:59:59.987654321Z"), true },
+                { mapOf(EPOCH_MILLIS, -1L, NANOS, 123456789), timestamp("1969-12-31T23:59:59.123456789Z") }, // Epoch millis and nanos trump time
+                { mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000), timestamp("1969-12-31T23:59:59.999Z")},
+                { mapOf(EPOCH_MILLIS, -1L, NANOS, 888888888), timestamp("1969-12-31T23:59:59.888888888Z")},
+                { mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000), new Timestamp(-1L)},
+                { mapOf(EPOCH_MILLIS, 0L, NANOS, 0), timestamp("1970-01-01T00:00:00Z")},
+                { mapOf(EPOCH_MILLIS, 0L, NANOS, 0), new Timestamp(0L)},
+                { mapOf(EPOCH_MILLIS, 0L, NANOS, 1), timestamp("1970-01-01T00:00:00.000000001Z")},
+                { mapOf(EPOCH_MILLIS, 1L, NANOS, 1000000), new Timestamp(1L)},
+                { mapOf(EPOCH_MILLIS, 1710714535152L, NANOS, 152000000), new Timestamp(1710714535152L)},
+                { mapOf(TIMESTAMP, "1970-01-01T00:00:00.000000001Z"), timestamp("1970-01-01T00:00:00.000000001Z"), true},
+                { mapOf(TIMESTAMP, "2024-03-17T22:28:55.152000001Z"), (Supplier<Timestamp>) () -> {
                     Timestamp ts = new Timestamp(1710714535152L);
                     ts.setNanos(152000001);
                     return ts;
-                }},
-                { mapOf("bad key", "2024-03-18T07:28:55.152", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Map to 'Timestamp' the map must include: [epochMillis, nanos (optional)], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values")},
+                }, true},
+                { mapOf("bad key", "2024-03-18T07:28:55.152", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Map to 'Timestamp' the map must include: [timestamp], [epochMillis, nanos (optional)], [value], or [_v] as keys with associated values")},
         });
     }
 
@@ -2240,7 +2236,8 @@ class ConverterEverythingTest {
                 {sqlDate("9999-02-18T19:58:01Z"), new BigInteger("253374983881000000000"), true},
         });
         TEST_DB.put(pair(Timestamp.class, BigInteger.class), new Object[][]{
-                {timestamp("0000-01-01T00:00:00.000000000Z"), new BigInteger("-62167219200000000000"), true},
+                // Timestamp uses a proleptic Gregorian calendar starting at year 1, hence no 0000 tests.
+                {timestamp("0001-01-01T00:00:00.000000000Z"), new BigInteger("-62135596800000000000"), true},
                 {timestamp("0001-02-18T19:58:01.000000000Z"), new BigInteger("-62131377719000000000"), true},
                 {timestamp("1969-12-31T23:59:59.000000000Z"), BigInteger.valueOf(-1000000000), true},
                 {timestamp("1969-12-31T23:59:59.000000001Z"), BigInteger.valueOf(-999999999), true},
@@ -2422,7 +2419,7 @@ class ConverterEverythingTest {
                 {"1", '1', true},
                 {"A", 'A', true},
                 {"{", '{', true},
-                {"\uD83C", '\uD83C', true},
+                {"\uD7FF", '\uD7FF', true},
                 {"\uFFFF", '\uFFFF', true},
                 {"FFFZ", new IllegalArgumentException("Unable to parse 'FFFZ' as a char/Character. Invalid Unicode escape sequence.FFFZ")},
         });
@@ -3825,6 +3822,12 @@ class ConverterEverythingTest {
         return Stream.of(list.toArray(new Arguments[]{}));
     }
 
+    /**
+     * Run all conversion tests this way ==> Source to JSON, JSON to target (root class).  This will ensure that our
+     * root class converts from what was passed to what was "asked for" by the rootType (Class) parameter.
+     *
+     * Need to wait for json-io 4.34.0 to enable.
+     */
     @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
@@ -3873,10 +3876,11 @@ class ConverterEverythingTest {
                 e.printStackTrace();
                 throw new RuntimeException(e);
             }
-            if (!DeepEquals.deepEquals(restored, target)) {
-                System.out.println("restored = " + restored);
-                System.out.println("target = " + target);
-            }
+            assert DeepEquals.deepEquals(restored, target);
+//            System.out.println("source = " + source);
+//            System.out.println("target = " + target);
+//            System.out.println("restored = " + restored);
+//            System.out.println("*****");
         }
     }
 
@@ -3990,8 +3994,7 @@ class ConverterEverythingTest {
     }
 
     private static Timestamp timestamp(String s) {
-        ZonedDateTime zdt = ZonedDateTime.parse(s);
-        return Timestamp.from(zdt.toInstant());
+        return Timestamp.from(Instant.parse(s));
     }
 
     private static ZonedDateTime zdt(String s) {

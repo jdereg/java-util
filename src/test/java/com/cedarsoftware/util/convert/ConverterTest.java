@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
+import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,6 @@ import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.CLASS;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
-import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
 import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.TIME;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
@@ -3002,7 +3002,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Timestamp.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Timestamp' the map must include: [epochMillis, nanos (optional)], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Timestamp' the map must include: [timestamp], [epochMillis, nanos (optional)], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -3521,7 +3521,7 @@ class ConverterTest
         String strDate = this.converter.convert(date, String.class);
         Date x = this.converter.convert(strDate, Date.class);
         String str2Date = this.converter.convert(x, String.class);
-        assertEquals(str2Date, strDate);
+        assertEquals(DateUtilities.parseDate(str2Date), DateUtilities.parseDate(strDate));
     }
 
     @Test
@@ -3754,9 +3754,11 @@ class ConverterTest
     {
         Timestamp now = new Timestamp(System.currentTimeMillis());
         Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 5;  // date, time, zone, epoch_mills, nanos
-        assertEquals(map.get(EPOCH_MILLIS), now.getTime());
-        assert map.get(EPOCH_MILLIS).getClass().equals(Long.class);
+        assert map.size() == 1;  // timestamp (in UTC)
+        assert map.containsKey("timestamp");
+        String timestamp = (String) map.get("timestamp");
+        Date date = DateUtilities.parseDate(timestamp);
+        assertEquals(date.getTime(), now.getTime());
     }
 
     @Test

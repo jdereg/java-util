@@ -144,8 +144,10 @@ final class DateConversions {
         Map<String, Object> map = new LinkedHashMap<>();
 
         if (date instanceof java.sql.Date) {
-            // SQL Date - interpret as a LocalDate
-            LocalDate localDate = ((java.sql.Date) date).toLocalDate();
+            // Convert millis to Instant then LocalDate in UTC
+            LocalDate localDate = Instant.ofEpochMilli(date.getTime())
+                    .atZone(ZoneOffset.UTC)
+                    .toLocalDate();
 
             // Place that LocalDate at midnight in UTC, then format
             ZonedDateTime zdt = localDate.atStartOfDay(ZoneOffset.UTC);

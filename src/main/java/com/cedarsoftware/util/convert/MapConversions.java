@@ -200,7 +200,14 @@ final class MapConversions {
         }
 
         if (time instanceof String && StringUtilities.hasContent((String)time)) {
-            ZonedDateTime zdt = DateUtilities.parseDate((String) time, converter.getOptions().getZoneId(), true);
+            String timeStr = (String)time;
+            ZoneId zoneId;
+            if (timeStr.endsWith("Z")) {
+                zoneId = ZoneId.of("Z");
+            } else {
+                zoneId = converter.getOptions().getZoneId();
+            }
+            ZonedDateTime zdt = DateUtilities.parseDate((String) time, zoneId, true);
             return new java.sql.Date(zdt.toInstant().toEpochMilli());
         }
 

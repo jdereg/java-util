@@ -1777,7 +1777,7 @@ class ConverterEverythingTest {
                 { mapOf(EPOCH_MILLIS, 0L), new java.sql.Date(0L)},
                 { mapOf(EPOCH_MILLIS, 1L), new java.sql.Date(1L)},
                 { mapOf(EPOCH_MILLIS, 1710714535152L), new java.sql.Date(1710714535152L)},
-                { mapOf(SQL_DATE, "1970-01-01T00:00:00Z"), new java.sql.Date(0L)},
+                { mapOf(SQL_DATE, "1970-01-01T00:00:00Z"), new java.sql.Date(0L), true},
                 { mapOf(SQL_DATE, "X1970-01-01T00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(SQL_DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(SQL_DATE, "1970-01-01T00:00bad zone"), new IllegalArgumentException("Issue parsing date-time, other characters present: zone")},
@@ -3867,10 +3867,10 @@ class ConverterEverythingTest {
                 e.printStackTrace();
                 throw new RuntimeException(e);
             }
-            System.out.println("source = " + source);
-            System.out.println("target = " + target);
-            System.out.println("restored = " + restored);
-            System.out.println("*****");
+//            System.out.println("source = " + source);
+//            System.out.println("target = " + target);
+//            System.out.println("restored = " + restored);
+//            System.out.println("*****");
             assert DeepEquals.deepEquals(restored, target);
         }
     }

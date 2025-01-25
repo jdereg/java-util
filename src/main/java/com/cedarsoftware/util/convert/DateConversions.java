@@ -9,15 +9,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -140,12 +140,33 @@ final class DateConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         Date date = (Date) from;
-        Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
-        ZonedDateTime zdt = toZonedDateTime(date, converter);
-        map.put(MapConversions.DATE, zdt.toLocalDate().toString());
-        map.put(MapConversions.TIME, zdt.toLocalTime().toString());
-        map.put(MapConversions.ZONE, converter.getOptions().getZoneId().toString());
-        map.put(MapConversions.EPOCH_MILLIS, date.getTime());
+        String formatted;
+        Map<String, Object> map = new LinkedHashMap<>();
+
+        if (date instanceof java.sql.Date) {
+            // SQL Date - interpret as a LocalDate
+            LocalDate localDate = ((java.sql.Date) date).toLocalDate();
+
+            // Place that LocalDate at midnight in UTC, then format
+            ZonedDateTime zdt = localDate.atStartOfDay(ZoneOffset.UTC);
+            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+
+            map.put(MapConversions.SQL_DATE, formatted);
+        } else {
+            // Regular util.Date - format with time
+            ZonedDateTime zdt = date.toInstant().atZone(ZoneOffset.UTC);
+            int ms = zdt.getNano() / 1_000_000;  // Convert nanos to millis
+            if (ms == 0) {
+                // No fractional seconds
+                formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+            } else {
+                // Millisecond precision
+                formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+                        + String.format(".%03dZ", ms);
+            }
+            map.put(MapConversions.DATE, formatted);
+        }
+
         return map;
     }
 }

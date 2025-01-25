@@ -20,7 +20,6 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -64,6 +63,7 @@ final class MapConversions {
     static final String V = "_v";
     static final String VALUE = "value";
     static final String DATE = "date";
+    static final String SQL_DATE = "sqlDate";
     static final String TIME = "time";
     static final String TIMESTAMP = "timestamp";
     static final String ZONE = "zone";
@@ -187,19 +187,57 @@ final class MapConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        Map.Entry<Long, Integer> epochTime = toEpochMillis(from, converter);
-        if (epochTime == null) {
-            return fromMap(from, converter, java.sql.Date.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
+        Map<String, Object> map = (Map<String, Object>) from;
+        Object time = map.get(SQL_DATE);
+        if (time == null) {
+            time = map.get(VALUE);  // allow "value"
         }
-        return new java.sql.Date(epochTime.getKey() + epochTime.getValue() / 1_000_000);
-    }
+        if (time == null) {
+            time = map.get(V);  // allow "_v"
+        }
+        if (time == null) {
+            time = map.get(EPOCH_MILLIS);
+        }
 
-    static Date toDate(Object from, Converter converter) {
-        Map.Entry<Long, Integer> epochTime = toEpochMillis(from, converter);
-        if (epochTime == null) {
-            return fromMap(from, converter, Date.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
+        if (time instanceof String && StringUtilities.hasContent((String)time)) {
+            ZonedDateTime zdt = DateUtilities.parseDate((String) time, converter.getOptions().getZoneId(), true);
+            return new java.sql.Date(zdt.toInstant().toEpochMilli());
         }
-        return new Date(epochTime.getKey() + epochTime.getValue() / 1_000_000);
+
+        // Handle case where value is a number (epoch millis)
+        if (time instanceof Number) {
+            return new java.sql.Date(((Number)time).longValue());
+        }
+
+        // Map.Entry<Long, Integer> return has key of epoch-millis
+        return fromMap(from, converter, java.sql.Date.class, new String[]{SQL_DATE}, new String[]{EPOCH_MILLIS});
+    }
+    
+    static Date toDate(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        Object time = map.get(DATE);
+        if (time == null) {
+            time = map.get(VALUE);  // allow "value"
+        }
+        if (time == null) {
+            time = map.get(V);  // allow "_v"
+        }
+        if (time == null) {
+            time = map.get(EPOCH_MILLIS);
+        }
+
+        if (time instanceof String && StringUtilities.hasContent((String)time)) {
+            ZonedDateTime zdt = DateUtilities.parseDate((String) time, converter.getOptions().getZoneId(), true);
+            return Date.from(zdt.toInstant());
+        }
+
+        // Handle case where value is a number (epoch millis)
+        if (time instanceof Number) {
+            return new Date(((Number)time).longValue());
+        }
+
+        // Map.Entry<Long, Integer> return has key of epoch-millis
+        return fromMap(from, converter, Date.class, new String[]{DATE}, new String[]{EPOCH_MILLIS});
     }
 
     /**
@@ -220,7 +258,7 @@ final class MapConversions {
         }
 
         if (time instanceof String && StringUtilities.hasContent((String)time)) {
-            ZonedDateTime zdt = DateUtilities.parseDate((String) time, ZoneId.of("Z"), true);
+            ZonedDateTime zdt = DateUtilities.parseDate((String) time, converter.getOptions().getZoneId(), true);
             Timestamp timestamp = Timestamp.from(zdt.toInstant());
             return timestamp;
         }
@@ -286,62 +324,6 @@ final class MapConversions {
             return cal;
         }
         return fromMap(from, converter, Calendar.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
-    }
-
-    // Map.Entry<Long, Integer> return has key of epoch-millis and value of nanos-of-second
-    private static Map.Entry<Long, Integer> toEpochMillis(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-
-        Object epochMillis = map.get(EPOCH_MILLIS);
-        int ns = converter.convert(map.get(NANOS), int.class);  // optional
-        if (epochMillis != null) {
-            return new AbstractMap.SimpleImmutableEntry<>(converter.convert(epochMillis, long.class), ns);
-        }
-
-        Object time = map.get(TIME);
-        Object date = map.get(DATE);
-        Object zone = map.get(ZONE);
-
-        // All 3 (date, time, zone)
-        if (time != null && date != null && zone != null) {
-            LocalDate ld = converter.convert(date, LocalDate.class);
-            LocalTime lt = converter.convert(time, LocalTime.class);
-            ZoneId zoneId = converter.convert(zone, ZoneId.class);
-            ZonedDateTime zdt = ZonedDateTime.of(ld, lt, zoneId);
-            return nanoRule(zdt, ns);
-        }
-
-        // Time only
-        if (time != null && date == null && zone == null) {
-            ZonedDateTime zdt = converter.convert(time, ZonedDateTime.class);
-            return nanoRule(zdt, ns);
-        }
-
-        // Time & Zone, no Date
-        if (time != null && date == null && zone != null) {
-            LocalDateTime ldt = converter.convert(time, LocalDateTime.class);
-            ZoneId zoneId = converter.convert(zone, ZoneId.class);
-            ZonedDateTime zdt = ZonedDateTime.of(ldt, zoneId);
-            return nanoRule(zdt, ns);
-        }
-
-        // Time & Date, no zone
-        if (time != null && date != null && zone == null) {
-            LocalDate ld = converter.convert(date, LocalDate.class);
-            LocalTime lt = converter.convert(time, LocalTime.class);
-            ZonedDateTime zdt = ZonedDateTime.of(ld, lt, converter.getOptions().getZoneId());
-            return nanoRule(zdt, ns);
-        }
-
-        return null;
-    }
-
-    private static Map.Entry<Long, Integer> nanoRule(ZonedDateTime zdt, int nanosFromMap) {
-        int nanos = zdt.getNano();
-        if (nanos != 0) {
-            nanosFromMap = nanos;
-        }
-        return new AbstractMap.SimpleImmutableEntry<>(zdt.toEpochSecond() * 1000, nanosFromMap);
     }
 
     static Locale toLocale(Object from, Converter converter) {

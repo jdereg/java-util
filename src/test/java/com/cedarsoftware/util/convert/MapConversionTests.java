@@ -177,8 +177,7 @@ class MapConversionTests {
 
         // Test with date/time components
         map.clear();
-        map.put("date", "2024-01-01");
-        map.put("time", "12:00:00");
+        map.put("sqlDate", "2024-01-01T12:00:00Z");
         assertNotNull(MapConversions.toSqlDate(map, converter));
     }
 

@@ -2956,7 +2956,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Date' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Date' the map must include: [date], [epochMillis], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2979,7 +2979,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, java.sql.Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'java.sql.Date' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'java.sql.Date' the map must include: [sqlDate], [epochMillis], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -3722,21 +3722,62 @@ class ConverterTest
     }
 
     @Test
-    void testCalendarToMap()
-    {
+    void testCalendarToMap() {
         Calendar cal = Calendar.getInstance();
         Map<?, ?> map = this.converter.convert(cal, Map.class);
-        assert map.size() == 4; // date, time, zone, epochMillis
-    }
+        assert map.size() == 4;
 
+        // Verify map has all required keys
+        assert map.containsKey(MapConversions.DATE);
+        assert map.containsKey(MapConversions.TIME);
+        assert map.containsKey(MapConversions.ZONE);
+        assert map.containsKey(MapConversions.EPOCH_MILLIS);
+
+        // Verify values match original calendar
+        String date = (String) map.get(MapConversions.DATE);
+        String time = (String) map.get(MapConversions.TIME);
+        String zone = (String) map.get(MapConversions.ZONE);
+        Long epochMillis = (Long) map.get(MapConversions.EPOCH_MILLIS);
+
+        // Check date components
+        LocalDate localDate = LocalDate.parse(date);
+        assert localDate.getYear() == cal.get(Calendar.YEAR);
+        assert localDate.getMonthValue() == cal.get(Calendar.MONTH) + 1;  // Calendar months are 0-based
+        assert localDate.getDayOfMonth() == cal.get(Calendar.DAY_OF_MONTH);
+
+        // Check time components
+        LocalTime localTime = LocalTime.parse(time);
+        assert localTime.getHour() == cal.get(Calendar.HOUR_OF_DAY);
+        assert localTime.getMinute() == cal.get(Calendar.MINUTE);
+        assert localTime.getSecond() == cal.get(Calendar.SECOND);
+        assert localTime.getNano() == cal.get(Calendar.MILLISECOND) * 1_000_000;
+
+        // Check zone and epochMillis
+        assert zone.equals(cal.getTimeZone().toZoneId().toString());
+        assert epochMillis == cal.getTimeInMillis();
+    }
+    
     @Test
-    void testDateToMap()
-    {
+    void testDateToMap() {
         Date now = new Date();
         Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 4;    // date, time, zone, epochMillis
-        assertEquals(map.get(MapConversions.EPOCH_MILLIS), now.getTime());
-        assert map.get(MapConversions.EPOCH_MILLIS).getClass().equals(Long.class);
+        assert map.size() == 1;    // date
+
+        String dateStr = (String) map.get(MapConversions.DATE);
+        assert dateStr != null;
+        assert dateStr.endsWith("Z");  // Verify UTC timezone
+        assert dateStr.contains("T");  // Verify ISO-8601 format
+
+        // Parse back and compare timestamps
+        ZonedDateTime zdt = ZonedDateTime.parse(dateStr);
+        Date converted = Date.from(zdt.toInstant());
+        assert now.getTime() == converted.getTime();
+
+        // If there are milliseconds, verify format
+        if (now.getTime() % 1000 != 0) {
+            assert dateStr.contains(".");
+            assert dateStr.split("\\.")[1].length() == 4;  // "123Z"
+        }
     }
 
     @Test
@@ -3744,11 +3785,21 @@ class ConverterTest
     {
         java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
         Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 4;    // date, time, zone, epochMillis
-        assertEquals(map.get(MapConversions.EPOCH_MILLIS), now.getTime());
-        assert map.get(MapConversions.EPOCH_MILLIS).getClass().equals(Long.class);
-    }
+        assert map.size() == 1;
 
+        String dateStr = (String) map.get(MapConversions.SQL_DATE);
+        assert dateStr != null;
+        assert dateStr.endsWith("T00:00:00Z"); // SQL Date should have no time component
+
+        // Parse back and verify date components match
+        LocalDate original = now.toLocalDate();
+        LocalDate converted = LocalDate.parse(dateStr.substring(0, 10)); // Get yyyy-MM-dd part
+        assert original.equals(converted);
+
+        // Verify no milliseconds are present in string
+        assert !dateStr.contains(".");
+    }
+    
     @Test
     void testTimestampToMap()
     {

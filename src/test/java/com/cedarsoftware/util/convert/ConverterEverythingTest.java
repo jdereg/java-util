@@ -58,7 +58,6 @@ import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -89,6 +88,7 @@ import static com.cedarsoftware.util.convert.MapConversions.OFFSET_MINUTE;
 import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
 import static com.cedarsoftware.util.convert.MapConversions.SECOND;
 import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
+import static com.cedarsoftware.util.convert.MapConversions.SQL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.TIME;
 import static com.cedarsoftware.util.convert.MapConversions.TIMESTAMP;
 import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
@@ -1772,25 +1772,17 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.999Z"), new java.sql.Date(999), true},
         });
         TEST_DB.put(pair(Map.class, java.sql.Date.class), new Object[][] {
-                { mapOf(TIME, 1703043551033L), new java.sql.Date(1703043551033L), false},
-                { mapOf(EPOCH_MILLIS, -1L, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), new java.sql.Date(-1L), true},
-                { mapOf(EPOCH_MILLIS, 0L, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), new java.sql.Date(0L), true},
-                { mapOf(EPOCH_MILLIS, 1L, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), new java.sql.Date(1L), true},
-                { mapOf(EPOCH_MILLIS, 1710714535152L, DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), new java.sql.Date(1710714535152L), true},
-                { mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, "Z"), new java.sql.Date(0L)},
-                { mapOf(DATE, "X1970-01-01", TIME, "00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf(DATE, "1970-01-01", TIME, "X00:00", ZONE, "Z"), new IllegalArgumentException("Unable to parse: X00:00 as a date-time")},
-                { mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
-                { mapOf(TIME, "1970-01-01T00:00Z"), new java.sql.Date(0L)},
-                { mapOf(TIME, "1970-01-01 00:00Z"), new java.sql.Date(0L)},
-                { mapOf(TIME, "X1970-01-01 00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf(DATE, "1970-01-01", TIME, "09:00"), new java.sql.Date(0L)},
-                { mapOf(DATE, "X1970-01-01", TIME, "09:00"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf(DATE, "1970-01-01", TIME, "X09:00"), new IllegalArgumentException("Unable to parse: X09:00 as a date-time")},
-                { mapOf(TIME, "1970-01-01T00:00", ZONE, "Z"), new java.sql.Date(0L)},
-                { mapOf(TIME, "X1970-01-01T00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf(TIME, "1970-01-01T00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
-                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'java.sql.Date' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values")},
+                { mapOf(SQL_DATE, 1703043551033L), new java.sql.Date(1703043551033L)},
+                { mapOf(EPOCH_MILLIS, -1L), new java.sql.Date(-1L)},
+                { mapOf(EPOCH_MILLIS, 0L), new java.sql.Date(0L)},
+                { mapOf(EPOCH_MILLIS, 1L), new java.sql.Date(1L)},
+                { mapOf(EPOCH_MILLIS, 1710714535152L), new java.sql.Date(1710714535152L)},
+                { mapOf(SQL_DATE, "1970-01-01T00:00:00Z"), new java.sql.Date(0L)},
+                { mapOf(SQL_DATE, "X1970-01-01T00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(SQL_DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(SQL_DATE, "1970-01-01T00:00bad zone"), new IllegalArgumentException("Issue parsing date-time, other characters present: zone")},
+                { mapOf(SQL_DATE, "1970-01-01 00:00:00Z"), new java.sql.Date(0L)},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'java.sql.Date' the map must include: [sqlDate], [epochMillis], [value], or [_v] as keys with associated values")},
         });
     }
 
@@ -1870,24 +1862,19 @@ class ConverterEverythingTest {
                 {"1970-01-01T09:00:00.001+09:00", new Date(1), true},
         });
         TEST_DB.put(pair(Map.class, Date.class), new Object[][] {
-                { mapOf(EPOCH_MILLIS, -1L, DATE, "1970-01-01", TIME, "08:59:59.999", ZONE, TOKYO_Z.toString()), new Date(-1L), true},
-                { mapOf(EPOCH_MILLIS, 0L, DATE, "1970-01-01", TIME, "09:00", ZONE, TOKYO_Z.toString()), new Date(0L), true},
-                { mapOf(EPOCH_MILLIS, 1L, DATE, "1970-01-01", TIME, "09:00:00.001", ZONE, TOKYO_Z.toString()), new Date(1L), true},
-                { mapOf(EPOCH_MILLIS, 1710714535152L, DATE, "2024-03-18", TIME, "07:28:55.152", ZONE, TOKYO_Z.toString()), new Date(1710714535152L), true},
-                { mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, "Z"), new Date(0L)},
-                { mapOf(DATE, "X1970-01-01", TIME, "00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf(DATE, "1970-01-01", TIME, "X00:00", ZONE, "Z"), new IllegalArgumentException("Unable to parse: X00:00 as a date-time")},
-                { mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
-                { mapOf(TIME, "1970-01-01T00:00Z"), new Date(0L)},
-                { mapOf(TIME, "1970-01-01 00:00Z"), new Date(0L)},
-                { mapOf(TIME, "X1970-01-01 00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf(DATE, "1970-01-01", TIME, "09:00"), new Date(0L)},
-                { mapOf(DATE, "X1970-01-01", TIME, "09:00"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf(DATE, "1970-01-01", TIME, "X09:00"), new IllegalArgumentException("Unable to parse: X09:00 as a date-time")},
-                { mapOf(TIME, "1970-01-01T00:00", ZONE, "Z"), new Date(0L)},
-                { mapOf(TIME, "X1970-01-01T00:00", ZONE, "Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf(TIME, "1970-01-01T00:00", ZONE, "bad zone"), new IllegalArgumentException("Unknown time-zone ID: 'bad zone'")},
-                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'Date' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values")},
+                { mapOf(EPOCH_MILLIS, -1L), new Date(-1L)},
+                { mapOf(EPOCH_MILLIS, 0L), new Date(0L)},
+                { mapOf(EPOCH_MILLIS, 1L), new Date(1L)},
+                { mapOf(EPOCH_MILLIS, 1710714535152L), new Date(1710714535152L)},
+                { mapOf(DATE, "1970-01-01T00:00:00Z"), new Date(0L), true},
+                { mapOf(DATE, "X1970-01-01T00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01T00:00bad zone"), new IllegalArgumentException("Issue parsing date-time, other characters present: zone")},
+                { mapOf(DATE, "1970-01-01 00:00:00Z"), new Date(0L)},
+                { mapOf(DATE, "X1970-01-01 00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "X1970-01-01T00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf(DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'Date' the map must include: [date], [epochMillis], [value], or [_v] as keys with associated values")},
         });
     }
 
@@ -3828,7 +3815,6 @@ class ConverterEverythingTest {
      *
      * Need to wait for json-io 4.34.0 to enable.
      */
-    @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
@@ -3851,6 +3837,11 @@ class ConverterEverythingTest {
         }
         boolean skip4 = sourceClass.equals(Map.class) && targetClass.equals(Throwable.class);
         if (skip4) {
+            return;
+        }
+        // TODO: temporary - remove when json-io is updated to consume latest version of java-util.
+        boolean skip5 = sourceClass.equals(Timestamp.class);
+        if (skip5) {
             return;
         }
         WriteOptions writeOptions = new WriteOptionsBuilder().build();
@@ -3876,11 +3867,11 @@ class ConverterEverythingTest {
                 e.printStackTrace();
                 throw new RuntimeException(e);
             }
+            System.out.println("source = " + source);
+            System.out.println("target = " + target);
+            System.out.println("restored = " + restored);
+            System.out.println("*****");
             assert DeepEquals.deepEquals(restored, target);
-//            System.out.println("source = " + source);
-//            System.out.println("target = " + target);
-//            System.out.println("restored = " + restored);
-//            System.out.println("*****");
         }
     }
 

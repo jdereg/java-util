@@ -1,7 +1,10 @@
 ### Revision History
+#### 3.0.3
+> * `Date` conversion - Timezone is always specified now, so no risk of system default Timezone being used. Would only use system default timezone if tz not specified, which could only happen if older version sending older format JSON.
+> * Conversion enabled that ensures all conversions go from instance, to JSON, and JSON, back to instance, through all conversion types supported. `java-util` uses `json-io` as a test dependency only.
 #### 3.0.2
 > * Conversion test added that ensures all conversions go from instance, to JSON, and JSON, back to instance, through all conversion types supported. `java-util` uses `json-io` as a test dependency only.
-> * Timestamp conversion improvements (better honoring of nanos)
+> * `Timestamp` conversion improvements (better honoring of nanos) and Timezone is always specified now, so no risk of system default Timezone being used.  Would only use system default timezone if tz not specified, which could only happen if older version sending older format JSON.
 #### 3.0.1
 > * [ClassUtilities](userguide.md#classutilities) adds 
 >   * `Set<Class<?>> findLowestCommonSupertypes(Class<?> a, Class<?> b)` 

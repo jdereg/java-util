@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -783,6 +784,78 @@ class DateUtilitiesTest
         assertEquals("31690708-07-05 01:46:39.999", gmtDateString);
     }
 
+    @Test
+    void testParseInvalidTimeZoneFormats() {
+        // Test with named timezone without time - should fail
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05[Asia/Tokyo]", ZoneId.of("Z"), false),
+                "Should fail with timezone but no time");
+
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05[Asia/Tokyo]", ZoneId.of("Z"), true),
+                "Should fail with timezone but no time");
+
+        // Test with offset without time - should fail
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05+09:00", ZoneId.of("Z"), false),
+                "Should fail with offset but no time");
+
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05+09:00", ZoneId.of("Z"), true),
+                "Should fail with offset but no time");
+
+        // Test with Z without time - should fail
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05Z", ZoneId.of("Z"), false),
+                "Should fail with Z but no time");
+
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05Z", ZoneId.of("Z"), true),
+                "Should fail with Z but no time");
+
+        // Test with T but no time - should fail
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05T[Asia/Tokyo]", ZoneId.of("Z"), false),
+                "Should fail with T but no time");
+
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05T[Asia/Tokyo]", ZoneId.of("Z"), true),
+                "Should fail with T but no time");
+    }
+
+    @Test
+    void testParseWithTrailingText() {
+        // Test with trailing text - should pass with strict=false
+        ZonedDateTime zdt = DateUtilities.parseDate("2024-02-05 is a great day", ZoneId.of("Z"), false);
+        assertEquals(2024, zdt.getYear());
+        assertEquals(2, zdt.getMonthValue());
+        assertEquals(5, zdt.getDayOfMonth());
+        assertEquals(ZoneId.of("Z"), zdt.getZone());
+        assertEquals(0, zdt.getHour());
+        assertEquals(0, zdt.getMinute());
+        assertEquals(0, zdt.getSecond());
+
+        // Test with trailing text - should fail with strict=true
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05 is a great day", ZoneId.of("Z"), true),
+                "Should fail with trailing text in strict mode");
+
+        // Test with trailing text after full datetime - should pass with strict=false
+        zdt = DateUtilities.parseDate("2024-02-05T10:30:45Z and then some text", ZoneId.of("Z"), false);
+        assertEquals(2024, zdt.getYear());
+        assertEquals(2, zdt.getMonthValue());
+        assertEquals(5, zdt.getDayOfMonth());
+        assertEquals(10, zdt.getHour());
+        assertEquals(30, zdt.getMinute());
+        assertEquals(45, zdt.getSecond());
+        assertEquals(ZoneId.of("Z"), zdt.getZone());
+
+        // Test with trailing text after full datetime - should fail with strict=true
+        assertThrows(IllegalArgumentException.class, () ->
+                        DateUtilities.parseDate("2024-02-05T10:30:45Z and then some text", ZoneId.of("Z"), true),
+                "Should fail with trailing text in strict mode");
+    }
+    
     private static Stream provideTimeZones()
     {
         return Stream.of(

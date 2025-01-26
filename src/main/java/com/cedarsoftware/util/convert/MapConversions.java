@@ -64,6 +64,7 @@ final class MapConversions {
     static final String VALUE = "value";
     static final String DATE = "date";
     static final String SQL_DATE = "sqlDate";
+    static final String CALENDAR = "calendar";
     static final String TIME = "time";
     static final String TIMESTAMP = "timestamp";
     static final String ZONE = "zone";
@@ -292,47 +293,18 @@ final class MapConversions {
 
     static Calendar toCalendar(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object epochMillis = map.get(EPOCH_MILLIS);
-        if (epochMillis != null) {
-            return converter.convert(epochMillis, Calendar.class);
-        }
-
-        Object date = map.get(DATE);
-        Object time = map.get(TIME);
-        Object zone = map.get(ZONE);     // optional
-        ZoneId zoneId;
-        if (zone != null) {
-            zoneId = converter.convert(zone, ZoneId.class);
-        } else {
-            zoneId = converter.getOptions().getZoneId();
-        }
-
-        if (date != null && time != null) {
-            LocalDate localDate = converter.convert(date, LocalDate.class);
-            LocalTime localTime = converter.convert(time, LocalTime.class);
-            LocalDateTime ldt = LocalDateTime.of(localDate, localTime);
-            ZonedDateTime zdt = ldt.atZone(zoneId);
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
-            cal.set(Calendar.YEAR, zdt.getYear());
-            cal.set(Calendar.MONTH, zdt.getMonthValue() - 1);
-            cal.set(Calendar.DAY_OF_MONTH, zdt.getDayOfMonth());
-            cal.set(Calendar.HOUR_OF_DAY, zdt.getHour());
-            cal.set(Calendar.MINUTE, zdt.getMinute());
-            cal.set(Calendar.SECOND, zdt.getSecond());
-            cal.set(Calendar.MILLISECOND, zdt.getNano() / 1_000_000);
-            cal.getTime();
-            return cal;
-        }
-
-        if (time != null && date == null) {
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
-            ZonedDateTime zdt = DateUtilities.parseDate((String)time, zoneId, true);
+        Object calStr = map.get(CALENDAR);
+        if (calStr instanceof String && StringUtilities.hasContent((String)calStr)) {
+            ZonedDateTime zdt = DateUtilities.parseDate((String)calStr, converter.getOptions().getZoneId(), true);
+            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zdt.getZone()));
             cal.setTimeInMillis(zdt.toInstant().toEpochMilli());
             return cal;
         }
-        return fromMap(from, converter, Calendar.class, new String[]{EPOCH_MILLIS}, new String[]{TIME, ZONE + OPTIONAL}, new String[]{DATE, TIME, ZONE + OPTIONAL});
-    }
 
+        // Handle legacy/alternate formats via fromMap
+        return fromMap(from, converter, Calendar.class, new String[]{CALENDAR});
+    }
+    
     static Locale toLocale(Object from, Converter converter) {
         Map<String, String> map = (Map<String, String>) from;
 

@@ -366,6 +366,7 @@ public final class DateUtilities {
         }
         Convention.throwIfNull(defaultZoneId, "ZoneId cannot be null.  Use ZoneId.of(\"America/New_York\"), ZoneId.systemDefault(), etc.");
 
+        // If purely digits => epoch millis
         if (allDigits.matcher(dateStr).matches()) {
             return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(defaultZoneId);
         }
@@ -373,7 +374,7 @@ public final class DateUtilities {
         String year, day, remains, tz = null;
         int month;
 
-        // Determine which date pattern to use
+        // 1) Try matching ISO or numeric style date
         Matcher matcher = isoDatePattern.matcher(dateStr);
         String remnant = matcher.replaceFirst("");
         if (remnant.length() < dateStr.length()) {
@@ -388,6 +389,7 @@ public final class DateUtilities {
             }
             remains = remnant;
         } else {
+            // 2) Try alphaMonthPattern
             matcher = alphaMonthPattern.matcher(dateStr);
             remnant = matcher.replaceFirst("");
             if (remnant.length() < dateStr.length()) {
@@ -410,6 +412,7 @@ public final class DateUtilities {
                 }
                 month = months.get(mon.trim().toLowerCase());
             } else {
+                // 3) Try unixDateTimePattern
                 matcher = unixDateTimePattern.matcher(dateStr);
                 if (matcher.replaceFirst("").length() == dateStr.length()) {
                     throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date-time");
@@ -418,20 +421,24 @@ public final class DateUtilities {
                 String mon = matcher.group(2);
                 month = months.get(mon.trim().toLowerCase());
                 day = matcher.group(3);
+
+                // e.g. "EST"
                 tz = matcher.group(5);
-                remains = matcher.group(4);     // leave optional time portion remaining
+
+                // time portion remains to parse
+                remains = matcher.group(4);
             }
         }
 
-        // For the remaining String, match the time portion (which could have appeared ahead of the date portion)
+        // 4) Parse time portion (could appear before or after date)
         String hour = null, min = null, sec = "00", fracSec = "0";
         remains = remains.trim();
         matcher = timePattern.matcher(remains);
         remnant = matcher.replaceFirst("");
-        
+
         if (remnant.length() < remains.length()) {
             hour = matcher.group(1);
-            min = matcher.group(2);
+            min  = matcher.group(2);
             if (matcher.group(3) != null) {
                 sec = matcher.group(3);
             }
@@ -442,20 +449,29 @@ public final class DateUtilities {
                 tz = matcher.group(5).trim();
             }
             if (matcher.group(6) != null) {
-                // to make round trip of ZonedDateTime equivalent we need to use the original Zone as ZoneId
-                // ZoneId is a much broader definition handling multiple possible dates, and we want this to
-                // be equivalent to the original zone that was used if one was present.
                 tz = stripBrackets(matcher.group(6).trim());
             }
         }
 
+        // 5) If strict, verify no leftover text
         if (ensureDateTimeAlone) {
             verifyNoGarbageLeft(remnant);
         }
 
-        ZoneId zoneId = StringUtilities.isEmpty(tz) ? defaultZoneId : getTimeZone(tz);
-        ZonedDateTime dateTime = getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
-        return dateTime;
+        ZoneId zoneId;
+        try {
+            zoneId = StringUtilities.isEmpty(tz) ? defaultZoneId : getTimeZone(tz);
+        } catch (Exception e) {
+            if (ensureDateTimeAlone) {
+                // In strict mode, rethrow
+                throw e;
+            }
+            // else in non-strict mode, ignore the invalid zone and default
+            zoneId = defaultZoneId;
+        }
+
+        // 6) Build the ZonedDateTime
+        return getDate(dateStr, zoneId, year, month, day, hour, min, sec, fracSec);
     }
 
     private static ZonedDateTime getDate(String dateStr,

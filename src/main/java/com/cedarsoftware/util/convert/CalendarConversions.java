@@ -10,12 +10,12 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -122,11 +122,22 @@ final class CalendarConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         Calendar cal = (Calendar) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        target.put(MapConversions.DATE, LocalDate.of(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH)).toString());
-        target.put(MapConversions.TIME, LocalTime.of(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND), cal.get(Calendar.MILLISECOND) * 1_000_000).toString());
-        target.put(MapConversions.ZONE, cal.getTimeZone().toZoneId().toString());
-        target.put(MapConversions.EPOCH_MILLIS, cal.getTimeInMillis());
+        ZonedDateTime zdt = cal.toInstant().atZone(cal.getTimeZone().toZoneId());
+
+        // Format with timezone keeping DST information
+        String formatted;
+        int ms = zdt.getNano() / 1_000_000;  // Convert nanos to millis
+        if (ms == 0) {
+            // No fractional seconds
+            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'['VV']'"));
+        } else {
+            // Millisecond precision
+            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+                    + String.format(".%03d[%s]", ms, zdt.getZone());
+        }
+
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.CALENDAR, formatted);
         return target;
     }
 }

@@ -53,7 +53,6 @@ import com.cedarsoftware.io.ReadOptionsBuilder;
 import com.cedarsoftware.io.WriteOptions;
 import com.cedarsoftware.io.WriteOptionsBuilder;
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.CompactMap;
 import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -64,6 +63,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import static com.cedarsoftware.util.MapUtilities.mapOf;
 import static com.cedarsoftware.util.convert.Converter.VALUE;
+import static com.cedarsoftware.util.convert.MapConversions.CALENDAR;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.CLASS;
@@ -1913,68 +1913,52 @@ class ConverterEverythingTest {
                 {new BigDecimal(1), cal(1000), true},
         });
         TEST_DB.put(pair(Map.class, Calendar.class), new Object[][]{
-                {mapOf(VALUE, "2024-02-05T22:31:17.409[" + TOKYO + "]"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
-                    cal.set(Calendar.MILLISECOND, 409);
-                    return cal;
-                }},
-                {mapOf(VALUE, "2024-02-05T22:31:17.409" + TOKYO_ZO.toString()), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
-                    cal.set(Calendar.MILLISECOND, 409);
-                    return cal;
-                }},
-                {(Supplier<Map<String, Object>>) () -> {
-                    Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
-                    cal.set(Calendar.MILLISECOND, 409);
-                    map.put(VALUE, cal);
-                    return map;
-                }, (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
-                    cal.set(Calendar.MILLISECOND, 409);
-                    return cal;
-                }},
-                {mapOf(DATE, "1970-01-01", TIME, "00:00:00"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
-                    cal.set(Calendar.MILLISECOND, 0);
-                    return cal;
-                }},
-                {mapOf(DATE, "1970-01-01", TIME, "00:00:00", ZONE, "America/New_York"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("America/New_York")));
-                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
-                    cal.set(Calendar.MILLISECOND, 0);
-                    return cal;
-                }},
-                {mapOf(TIME, "1970-01-01T00:00:00"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
-                    cal.set(Calendar.MILLISECOND, 0);
-                    return cal;
-                }},
-                {mapOf(TIME, "1970-01-01T00:00:00", ZONE, "America/New_York"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("America/New_York")));
-                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
-                    cal.set(Calendar.MILLISECOND, 0);
-                    return cal;
-                }},
-                {(Supplier<Map<String, Object>>) () -> {
-                    Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
-                    map.put(DATE, "2024-02-05");
-                    map.put(TIME, "22:31:17.409");
-                    map.put(ZONE, TOKYO);
-                    map.put(EPOCH_MILLIS, 1707139877409L);
-                    return map;
-                }, (Supplier<Calendar>) () -> {
+                // Test with timezone name format
+                {mapOf(CALENDAR, "2024-02-05T22:31:17.409[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
                     return cal;
                 }, true},
+
+                // Test with offset format
+                {mapOf(CALENDAR, "2024-02-05T22:31:17.409+09:00"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
+                    return cal;
+                }, false},  // re-writing it out, will go from offset back to zone name, hence not bi-directional
+                // Test with no milliseconds
+                {mapOf(CALENDAR, "2024-02-05T22:31:17[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    return cal;
+                }, true},
+
+                // Test New York timezone
+                {mapOf(CALENDAR, "1970-01-01T00:00:00[America/New_York]"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("America/New_York")));
+                    cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    return cal;
+                }, true},
+
+                // Test flexible parsing (space instead of T) - bidirectional false since it will normalize to T
+                {mapOf(CALENDAR, "2024-02-05 22:31:17.409[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
+                    cal.set(Calendar.MILLISECOND, 409);
+                    return cal;
+                }, false},
+
+                // Test date with no time (will use start of day)
+                {mapOf(CALENDAR, "2024-02-05[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    cal.set(2024, Calendar.FEBRUARY, 5, 0, 0, 0);
+                    cal.set(Calendar.MILLISECOND, 0);
+                    return cal;
+                }, false}
         });
         TEST_DB.put(pair(ZonedDateTime.class, Calendar.class), new Object[][] {
                 {zdt("1969-12-31T23:59:59.999Z"), cal(-1), true},

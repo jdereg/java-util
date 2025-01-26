@@ -115,7 +115,6 @@ final class TimestampConversions {
     
     static Map<String, Object> toMap(Object from, Converter converter) {
         Timestamp timestamp = (Timestamp) from;
-        long millis = timestamp.getTime();
 
         // 1) Convert Timestamp -> Instant -> UTC ZonedDateTime
         ZonedDateTime zdt = timestamp.toInstant().atZone(ZoneOffset.UTC);

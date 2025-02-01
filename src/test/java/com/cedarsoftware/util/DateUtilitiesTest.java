@@ -3,7 +3,9 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
@@ -19,6 +21,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static com.cedarsoftware.util.DateUtilities.ABBREVIATION_TO_TIMEZONE;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -571,10 +575,16 @@ class DateUtilitiesTest
     @ParameterizedTest
     @ValueSource(strings = {"JST", "IST", "CET", "BST", "EST", "CST", "MST", "PST", "CAT", "EAT", "ART", "ECT", "NST", "AST", "HST"})
     void testTimeZoneValidShortNames(String timeZoneId) {
+        String resolvedId = ABBREVIATION_TO_TIMEZONE.get(timeZoneId);
+        if (resolvedId == null) {
+            // fallback
+            resolvedId = timeZoneId;
+        }
+
         // Support for some of the oldie but goodies (when the TimeZone returned does not have a 0 offset)
         Date date = DateUtilities.parseDate("2021-01-13T13:01:54.6747552 " + timeZoneId);
         Calendar calendar = Calendar.getInstance();
-        calendar.setTimeZone(TimeZone.getTimeZone(timeZoneId));
+        calendar.setTimeZone(TimeZone.getTimeZone(resolvedId));
         calendar.clear();
         calendar.set(2021, Calendar.JANUARY, 13, 13, 1, 54);
         assert date.getTime() - calendar.getTime().getTime() == 674;    // less than 1000 millis
@@ -705,9 +715,15 @@ class DateUtilitiesTest
     @ValueSource(strings = {"JST", "IST", "CET", "BST", "EST", "CST", "MST", "PST", "CAT", "EAT", "ART", "ECT", "NST", "AST", "HST"})
     void testMacUnixDateFormat(String timeZoneId)
     {
+        String resolvedId = ABBREVIATION_TO_TIMEZONE.get(timeZoneId);
+        if (resolvedId == null) {
+            // fallback
+            resolvedId = timeZoneId;
+        }
+
         Date date = DateUtilities.parseDate("Sat Jan  6 20:06:58 " + timeZoneId + " 2024");
         Calendar calendar = Calendar.getInstance();
-        calendar.setTimeZone(TimeZone.getTimeZone(timeZoneId));
+        calendar.setTimeZone(TimeZone.getTimeZone(resolvedId));
         calendar.clear();
         calendar.set(2024, Calendar.JANUARY, 6, 20, 6, 58);
         assertEquals(calendar.getTime(), date);
@@ -758,7 +774,7 @@ class DateUtilitiesTest
     }
     
     @Test
-    void testEpochMillis()
+    void testEpochMillis2()
     {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
         sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -1026,5 +1042,242 @@ class DateUtilitiesTest
     void testFormatsThatShouldNotWork(String badFormat)
     {
         DateUtilities.parseDate(badFormat, ZoneId.systemDefault(), true);
+    }
+
+    /**
+     * Basic ISO 8601 date-times (strictly valid), with or without time,
+     * fractional seconds, and 'T' separators.
+     */
+    @Test
+    void testBasicIso8601() {
+        // 1) Simple date + time with 'T'
+        ZonedDateTime zdt1 = DateUtilities.parseDate("2025-02-15T10:30:00", ZoneId.of("UTC"), true);
+        assertNotNull(zdt1);
+        assertEquals(2025, zdt1.getYear());
+        assertEquals(2, zdt1.getMonthValue());
+        assertEquals(15, zdt1.getDayOfMonth());
+        assertEquals(10, zdt1.getHour());
+        assertEquals(30, zdt1.getMinute());
+        assertEquals(0, zdt1.getSecond());
+        assertEquals(ZoneId.of("UTC"), zdt1.getZone());
+
+        // 2) Date + time with fractional seconds
+        ZonedDateTime zdt2 = DateUtilities.parseDate("2025-02-15T10:30:45.123", ZoneId.of("UTC"), true);
+        assertNotNull(zdt2);
+        assertEquals(45, zdt2.getSecond());
+        // We can't do an exact nanos compare easily, but let's do:
+        assertEquals(123_000_000, zdt2.getNano());
+
+        // 3) Using '/' separators
+        ZonedDateTime zdt3 = DateUtilities.parseDate("2025/02/15 10:30:00", ZoneId.of("UTC"), true);
+        assertNotNull(zdt3);
+        assertEquals(10, zdt3.getHour());
+
+        // 4) Only date (no time). Should default to 00:00:00 in UTC
+        ZonedDateTime zdt4 = DateUtilities.parseDate("2025-02-15", ZoneId.of("UTC"), true);
+        assertNotNull(zdt4);
+        assertEquals(0, zdt4.getHour());
+        assertEquals(0, zdt4.getMinute());
+        assertEquals(0, zdt4.getSecond());
+        assertEquals(ZoneId.of("UTC"), zdt4.getZone());
+    }
+
+    /**
+     * Test Java's ZonedDateTime.toString() style, e.g. "YYYY-MM-DDTHH:mm:ss-05:00[America/New_York]".
+     */
+    @Test
+    void testZonedDateTimeToString() {
+        // Example from Java's ZonedDateTime
+        // Typically: "2025-05-10T13:15:30-04:00[America/New_York]"
+        String javaString = "2025-05-10T13:15:30-04:00[America/New_York]";
+        ZonedDateTime zdt = DateUtilities.parseDate(javaString, ZoneId.systemDefault(), true);
+        assertNotNull(zdt);
+        assertEquals(2025, zdt.getYear());
+        assertEquals(5, zdt.getMonthValue());
+        assertEquals(10, zdt.getDayOfMonth());
+        assertEquals(13, zdt.getHour());
+        assertEquals("America/New_York", zdt.getZone().getId());
+        // -04:00 offset is inside the bracketed zone.
+        // The final zone is "America/New_York" with whatever offset it has on that date.
+    }
+
+    /**
+     * Unix / Linux style strings, like: "Thu Jan 6 11:06:10 EST 2024".
+     */
+    @Test
+    void testUnixStyle() {
+        // 1) Basic Unix date
+        ZonedDateTime zdt1 = DateUtilities.parseDate("Thu Jan 6 11:06:10 EST 2024", ZoneId.of("UTC"), true);
+        assertNotNull(zdt1);
+        assertEquals(2024, zdt1.getYear());
+        assertEquals(1, zdt1.getMonthValue());    // January
+        assertEquals(6, zdt1.getDayOfMonth());
+        assertEquals(11, zdt1.getHour());
+        assertEquals(6, zdt1.getMinute());
+        assertEquals(10, zdt1.getSecond());
+        // "EST" should become "America/New_York"
+        assertEquals("America/New_York", zdt1.getZone().getId());
+
+        // 2) Variation in day-of-week
+        ZonedDateTime zdt2 = DateUtilities.parseDate("Friday Apr 1 07:10:00 CST 2022", ZoneId.of("UTC"), true);
+        assertNotNull(zdt2);
+        assertEquals(4, zdt2.getMonthValue());  // April
+        assertEquals("America/Chicago", zdt2.getZone().getId());
+    }
+
+    /**
+     * Test zone offsets in various legal formats, e.g. +HH, +HH:mm, -HHmm, etc.
+     * Also test Z for UTC.
+     */
+    @Test
+    void testZoneOffsets() {
+        // 1) +HH:mm
+        ZonedDateTime zdt1 = DateUtilities.parseDate("2025-06-15T08:30+02:00", ZoneId.of("UTC"), true);
+        assertNotNull(zdt1);
+        // The final zone is "GMT+02:00" internally
+        assertEquals(8, zdt1.getHour());
+        assertEquals(30, zdt1.getMinute());
+        // Because we used +02:00, the local time is 08:30 in that offset
+        assertEquals(ZoneOffset.ofHours(2), zdt1.getOffset());
+
+        // 2) -HH
+        ZonedDateTime zdt2 = DateUtilities.parseDate("2025-06-15 08:30-5", ZoneId.of("UTC"), true);
+        assertNotNull(zdt2);
+        assertEquals(ZoneOffset.ofHours(-5), zdt2.getOffset());
+
+        // 3) +HHmm (4-digit)
+        ZonedDateTime zdt3 = DateUtilities.parseDate("2025-06-15T08:30+0230", ZoneId.of("UTC"), true);
+        assertNotNull(zdt3);
+        assertEquals(ZoneOffset.ofHoursMinutes(2, 30), zdt3.getOffset());
+
+        // 4) Z for UTC
+        ZonedDateTime zdt4 = DateUtilities.parseDate("2025-06-15T08:30Z", ZoneId.systemDefault(), true);
+        assertNotNull(zdt4);
+        // Should parse as UTC
+        assertEquals(ZoneOffset.UTC, zdt4.getOffset());
+    }
+
+    /**
+     * Test old-fashioned full month name, day, year, with or without ordinal suffix
+     * (like "January 21st, 2024").
+     */
+    @Test
+    void testFullMonthName() {
+        // 1) "January 21, 2024"
+        ZonedDateTime zdt1 = DateUtilities.parseDate("January 21, 2024", ZoneId.of("UTC"), true);
+        assertNotNull(zdt1);
+        assertEquals(2024, zdt1.getYear());
+        assertEquals(1, zdt1.getMonthValue());
+        assertEquals(21, zdt1.getDayOfMonth());
+
+        // 2) With an ordinal suffix
+        ZonedDateTime zdt2 = DateUtilities.parseDate("January 21st, 2024", ZoneId.of("UTC"), true);
+        assertNotNull(zdt2);
+        assertEquals(21, zdt2.getDayOfMonth());
+
+        // 3) Mixed upper/lower on suffix
+        ZonedDateTime zdt3 = DateUtilities.parseDate("January 21ST, 2024", ZoneId.of("UTC"), true);
+        assertNotNull(zdt3);
+        assertEquals(21, zdt3.getDayOfMonth());
+    }
+
+    /**
+     * Test random but valid combos: day-of-week + alpha month + leftover spacing,
+     * with time possibly preceding the date, or date first, etc.
+     */
+    @Test
+    void testMiscFlexibleCombos() {
+        // 1) Day-of-week up front, alpha month, year
+        ZonedDateTime zdt1 = DateUtilities.parseDate("thu, Dec 25, 2014", ZoneId.systemDefault(), true);
+        assertNotNull(zdt1);
+        assertEquals(2014, zdt1.getYear());
+        assertEquals(12, zdt1.getMonthValue());
+        assertEquals(25, zdt1.getDayOfMonth());
+
+        // 2) Time first, then date
+        ZonedDateTime zdt2 = DateUtilities.parseDate("07:45:33 2024-11-23", ZoneId.of("UTC"), true);
+        assertNotNull(zdt2);
+        assertEquals(2024, zdt2.getYear());
+        assertEquals(11, zdt2.getMonthValue());
+        assertEquals(23, zdt2.getDayOfMonth());
+        assertEquals(7, zdt2.getHour());
+        assertEquals(45, zdt2.getMinute());
+        assertEquals(33, zdt2.getSecond());
+    }
+
+    /**
+     * Test Unix epoch-millis (all digits).
+     */
+    @Test
+    void testEpochMillis() {
+        // Let's pick an arbitrary timestamp: 1700000000000 =>
+        // Wed Nov 15 2023 06:13:20 UTC (for example)
+        long epochMillis = 1700000000000L;
+        ZonedDateTime zdt = DateUtilities.parseDate(String.valueOf(epochMillis), ZoneId.of("UTC"), true);
+        assertNotNull(zdt);
+        // Re-verify the instant
+        Instant inst = Instant.ofEpochMilli(epochMillis);
+        assertEquals(inst, zdt.toInstant());
+    }
+
+    /**
+     * Confirm that a parseDate(String) -> Date (old Java date) also works
+     * for some old-style or common formats.
+     */
+    @Test
+    void testLegacyDateApi() {
+        // parseDate(String) returns a Date (overloaded method).
+        // e.g. "Mar 15 1997 13:55:44 PDT"
+        Date d1 = DateUtilities.parseDate("Mar 15 13:55:44 PDT 1997");
+        assertNotNull(d1);
+
+        // Check the time
+        ZonedDateTime zdt1 = d1.toInstant().atZone(ZoneId.of("UTC"));
+        // 1997-03-15T20:55:44Z = 13:55:44 PDT is UTC-7
+        assertEquals(1997, zdt1.getYear());
+        assertEquals(3, zdt1.getMonthValue());
+        assertEquals(15, zdt1.getDayOfMonth());
+    }
+
+    @Test
+    void testTokyoOffset() {
+        // Input string has explicit Asia/Tokyo zone
+        String input = "2024-02-05T22:31:17.409[Asia/Tokyo]";
+
+        // When parseDate sees an explicit zone, it should keep it,
+        // ignoring the "default" zone (ZoneId.of("UTC")) because the string
+        // already contains a zone or offset.
+        ZonedDateTime zdt = DateUtilities.parseDate(input, ZoneId.of("UTC"), true);
+
+        // Also convert the same string to a Calendar
+        Calendar cal = Converter.convert(input, Calendar.class);
+
+        // Check that the utility did NOT "force" UTC,
+        // because the string has an explicit zone: Asia/Tokyo
+        assertThat(zdt).isNotNull();
+        assertThat(zdt.getZone()).isEqualTo(ZoneId.of("Asia/Tokyo"));
+        // The local date-time portion should remain 2024-02-05T22:31:17.409
+        assertThat(zdt.getHour()).isEqualTo(22);
+        assertThat(zdt.getMinute()).isEqualTo(31);
+        assertThat(zdt.getSecond()).isEqualTo(17);
+        // And the offset from UTC should be +09:00
+        assertThat(zdt.getOffset()).isEqualTo(ZoneOffset.ofHours(9));
+
+        // The actual instant in UTC is 9 hours earlier: 2024-02-05T13:31:17.409Z
+        Instant expectedInstant = Instant.parse("2024-02-05T13:31:17.409Z");
+        assertThat(zdt.toInstant()).isEqualTo(expectedInstant);
+
+        // Now check the Calendar result
+        assertThat(cal).isNotNull();
+        // The Calendar might have a different TimeZone internally,
+        // but it should still represent the same Instant.
+        Instant calInstant = cal.toInstant();
+        assertThat(calInstant).isEqualTo(expectedInstant);
+
+        // Round-trip check: convert the Calendar back to String, parse again,
+        // and verify we land on the same Instant.
+        String roundTripped = Converter.convert(cal, String.class);
+        ZonedDateTime roundTrippedZdt = DateUtilities.parseDate(roundTripped, ZoneId.of("UTC"), true);
+        assertThat(roundTrippedZdt.toInstant()).isEqualTo(expectedInstant);
     }
 }

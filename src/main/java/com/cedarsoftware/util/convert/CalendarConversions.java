@@ -15,6 +15,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -111,7 +112,22 @@ final class CalendarConversions {
 
     static String toString(Object from, Converter converter) {
         Calendar cal = (Calendar) from;
-        return DateConversions.toString(cal.getTime(), converter);
+        ZonedDateTime zdt = cal.toInstant().atZone(cal.getTimeZone().toZoneId());
+        TimeZone tz = cal.getTimeZone();
+
+        String pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS";
+
+        // Only use named zones for IANA timezone IDs
+        String id = tz.getID();
+        if (id.contains("/")) {  // IANA timezones contain "/"
+            pattern += "['['VV']']";
+        } else if ("GMT".equals(id) || "UTC".equals(id)) {
+            pattern += "X";  // Z for UTC/GMT
+        } else {
+            pattern += "xxx";  // Offsets for everything else (EST, GMT+02:00, etc)
+        }
+
+        return zdt.format(DateTimeFormatter.ofPattern(pattern));
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
@@ -121,23 +137,8 @@ final class CalendarConversions {
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {
-        Calendar cal = (Calendar) from;
-        ZonedDateTime zdt = cal.toInstant().atZone(cal.getTimeZone().toZoneId());
-
-        // Format with timezone keeping DST information
-        String formatted;
-        int ms = zdt.getNano() / 1_000_000;  // Convert nanos to millis
-        if (ms == 0) {
-            // No fractional seconds
-            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'['VV']'"));
-        } else {
-            // Millisecond precision
-            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
-                    + String.format(".%03d[%s]", ms, zdt.getZone());
-        }
-
         Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.CALENDAR, formatted);
+        target.put(MapConversions.CALENDAR, toString(from, converter));
         return target;
     }
 }

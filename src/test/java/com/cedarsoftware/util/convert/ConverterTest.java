@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -1797,16 +1798,16 @@ class ConverterTest
     }
 
     @Test
-    void testString_fromDate()
-    {
-        Calendar cal = Calendar.getInstance();
+    void testString_fromDate() {
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         cal.clear();
-        cal.set(2015, 0, 17, 8, 34, 49);
+        // Now '8:34:49' is in UTC, not local time
+        cal.set(2015, Calendar.JANUARY, 17, 8, 34, 49);
 
         Date date = cal.getTime();
 
         String converted = this.converter.convert(date, String.class);
-        assertThat(converted).startsWith("2015-01-17T08:34:49");
+        assertThat(converted).startsWith("2015-01-17T08:34:49.000Z");
     }
 
     @Test
@@ -2865,7 +2866,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Calendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Calendar' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Calendar' the map must include: [calendar], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2881,9 +2882,7 @@ class ConverterTest
 //        System.out.println("zdt = " + zdt);
         
         final Map map = new HashMap<>();
-        map.put("date", zdt.toLocalDate());
-        map.put("time", zdt.toLocalTime());
-        map.put("zone", cal.getTimeZone().toZoneId());
+        map.put("calendar", zdt.toString());
 //        System.out.println("map = " + map);
 
         Calendar newCal = this.converter.convert(map, Calendar.class);
@@ -2906,8 +2905,7 @@ class ConverterTest
         ZonedDateTime zdt = ZonedDateTime.ofInstant(instant, tz.toZoneId());
 
         final Map map = new HashMap<>();
-        map.put("date", zdt.toLocalDate());
-        map.put("time", zdt.toLocalTime());
+        map.put("calendar", zdt.toLocalDateTime());
         Calendar newCal = this.converter.convert(map, Calendar.class);
         assert cal.equals(newCal);
         assert DeepEquals.deepEquals(cal, newCal);
@@ -2933,7 +2931,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, GregorianCalendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Calendar' the map must include: [epochMillis], [time, zone (optional)], [date, time, zone (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("ap to 'Calendar' the map must include: [calendar], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -2960,21 +2958,31 @@ class ConverterTest
     }
 
     @Test
-    void testMapToSqlDate()
-    {
+    void testMapToSqlDate() {
         long now = System.currentTimeMillis();
-        final Map map = new HashMap<>();
+        final Map<String, Object> map = new HashMap<>();
         map.put("value", now);
-        java.sql.Date date = this.converter.convert(map, java.sql.Date.class);
-        assert now == date.getTime();
 
+        // Convert using your converter
+        java.sql.Date actualDate = this.converter.convert(map, java.sql.Date.class);
+
+        // Compute the expected date by interpreting 'now' in UTC and normalizing it.
+        LocalDate expectedLD = Instant.ofEpochMilli(now)
+                .atZone(ZoneOffset.UTC)
+                .toLocalDate();
+        java.sql.Date expectedDate = java.sql.Date.valueOf(expectedLD.toString());
+
+        // Compare the literal date strings (or equivalently, the normalized LocalDates).
+        assertEquals(expectedDate.toString(), actualDate.toString());
+
+        // The rest of the tests:
         map.clear();
         map.put("value", "");
-        assert null == this.converter.convert(map, java.sql.Date.class);
+        assertNull(this.converter.convert(map, java.sql.Date.class));
 
         map.clear();
         map.put("value", null);
-        assert null == this.converter.convert(map, java.sql.Date.class);
+        assertNull(this.converter.convert(map, java.sql.Date.class));
 
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, java.sql.Date.class))
@@ -3502,15 +3510,39 @@ class ConverterTest
     }
 
     @Test
-    void testSqlDateToString()
-    {
-        long now = System.currentTimeMillis();
-        java.sql.Date date = new java.sql.Date(now);
-        String strDate = this.converter.convert(date, String.class);
-        Date x = this.converter.convert(strDate, Date.class);
-        LocalDate l1 = this.converter.convert(date, LocalDate.class);
-        LocalDate l2 = this.converter.convert(x, LocalDate.class);
-        assertEquals(l1, l2);
+    void testSqlDateToString_LocalMidnight() {
+        // Create the sql.Date as a local date using valueOf.
+        java.sql.Date date = java.sql.Date.valueOf("2025-01-29");
+
+        // Convert to String using your converter.
+        String strDate = converter.convert(date, String.class);
+
+        // Convert back to a java.util.Date (or java.sql.Date) using your converter.
+        Date x = converter.convert(strDate, Date.class);
+
+        // Convert both dates to LocalDate in the system default time zone.
+        LocalDate l1 = Instant.ofEpochMilli(date.getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        LocalDate l2 = Instant.ofEpochMilli(x.getTime())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+        // --- Debug prints (optional) ---
+//    System.out.println("date (sql)     = " + date);        // e.g. "2025-01-29"
+//    System.out.println("strDate        = " + strDate);     // e.g. "2025-01-29"
+//    System.out.println("x (util.Date)  = " + x);           // local time representation
+//    System.out.println("l1 (local)     = " + l1);          // "2025-01-29"
+//    System.out.println("l2 (local)     = " + l2);          // "2025-01-29"
+
+        // Assert that the local dates match.
+        assertEquals(l1, l2, "Local dates should match in system default interpretation");
+
+        // Parse the string as a LocalDate (since it is "YYYY-MM-DD").
+        LocalDate ld = LocalDate.parse(strDate);
+        ZonedDateTime parsedZdt = ld.atStartOfDay(ZoneOffset.systemDefault());
+        // Check that the parsed date has the correct local date.
+        assertEquals(l1, parsedZdt.toLocalDate());
     }
 
     @Test
@@ -3725,36 +3757,15 @@ class ConverterTest
     void testCalendarToMap() {
         Calendar cal = Calendar.getInstance();
         Map<?, ?> map = this.converter.convert(cal, Map.class);
-        assert map.size() == 4;
 
-        // Verify map has all required keys
-        assert map.containsKey(MapConversions.DATE);
-        assert map.containsKey(MapConversions.TIME);
-        assert map.containsKey(MapConversions.ZONE);
-        assert map.containsKey(MapConversions.EPOCH_MILLIS);
+        assert map.size() == 1;
+        assert map.containsKey(MapConversions.CALENDAR);
 
-        // Verify values match original calendar
-        String date = (String) map.get(MapConversions.DATE);
-        String time = (String) map.get(MapConversions.TIME);
-        String zone = (String) map.get(MapConversions.ZONE);
-        Long epochMillis = (Long) map.get(MapConversions.EPOCH_MILLIS);
+        Calendar reconstructed = this.converter.convert(map, Calendar.class);
 
-        // Check date components
-        LocalDate localDate = LocalDate.parse(date);
-        assert localDate.getYear() == cal.get(Calendar.YEAR);
-        assert localDate.getMonthValue() == cal.get(Calendar.MONTH) + 1;  // Calendar months are 0-based
-        assert localDate.getDayOfMonth() == cal.get(Calendar.DAY_OF_MONTH);
-
-        // Check time components
-        LocalTime localTime = LocalTime.parse(time);
-        assert localTime.getHour() == cal.get(Calendar.HOUR_OF_DAY);
-        assert localTime.getMinute() == cal.get(Calendar.MINUTE);
-        assert localTime.getSecond() == cal.get(Calendar.SECOND);
-        assert localTime.getNano() == cal.get(Calendar.MILLISECOND) * 1_000_000;
-
-        // Check zone and epochMillis
-        assert zone.equals(cal.getTimeZone().toZoneId().toString());
-        assert epochMillis == cal.getTimeInMillis();
+        assert cal.getTimeInMillis() == reconstructed.getTimeInMillis();
+        assert cal.getTimeZone().getID().equals(reconstructed.getTimeZone().getID());
+        assert DeepEquals.deepEquals(cal, reconstructed);
     }
     
     @Test
@@ -3781,20 +3792,22 @@ class ConverterTest
     }
 
     @Test
-    void testSqlDateToMap()
-    {
-        java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
-        Map<?, ?> map = this.converter.convert(now, Map.class);
+    void testSqlDateToMap() {
+        // Create a specific UTC instant that won't have timezone issues
+        Instant utcInstant = Instant.parse("2024-01-15T23:09:00Z");
+        java.sql.Date sqlDate = new java.sql.Date(utcInstant.toEpochMilli());
+
+        Map<?, ?> map = this.converter.convert(sqlDate, Map.class);
         assert map.size() == 1;
 
         String dateStr = (String) map.get(MapConversions.SQL_DATE);
         assert dateStr != null;
-        assert dateStr.endsWith("T00:00:00Z"); // SQL Date should have no time component
+        assert !dateStr.contains("00:00:00");  // SQL Date should have no time component
 
-        // Parse back and verify date components match
-        LocalDate original = now.toLocalDate();
-        LocalDate converted = LocalDate.parse(dateStr.substring(0, 10)); // Get yyyy-MM-dd part
-        assert original.equals(converted);
+        // Parse both as UTC and compare
+        LocalDate expectedDate = LocalDate.parse("2024-01-15");
+        LocalDate convertedDate = LocalDate.parse(dateStr.substring(0, 10));
+        assert expectedDate.equals(convertedDate);
 
         // Verify no milliseconds are present in string
         assert !dateStr.contains(".");

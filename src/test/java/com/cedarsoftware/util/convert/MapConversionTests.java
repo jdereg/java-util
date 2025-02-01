@@ -173,7 +173,11 @@ class MapConversionTests {
         Map<String, Object> map = new HashMap<>();
         long currentTime = System.currentTimeMillis();
         map.put("epochMillis", currentTime);
-        assertEquals(new java.sql.Date(currentTime), MapConversions.toSqlDate(map, converter));
+        LocalDate expectedLD = Instant.ofEpochMilli(currentTime)
+                .atZone(ZoneOffset.UTC)
+                .toLocalDate();
+        java.sql.Date expected = java.sql.Date.valueOf(expectedLD.toString());
+        assertEquals(expected, MapConversions.toSqlDate(map, converter));
 
         // Test with date/time components
         map.clear();
@@ -217,7 +221,7 @@ class MapConversionTests {
     public void testToCalendar() {
         Map<String, Object> map = new HashMap<>();
         long currentTime = System.currentTimeMillis();
-        map.put("epochMillis", currentTime);
+        map.put("calendar", currentTime);
         Calendar cal = MapConversions.toCalendar(map, converter);
         assertEquals(currentTime, cal.getTimeInMillis());
     }

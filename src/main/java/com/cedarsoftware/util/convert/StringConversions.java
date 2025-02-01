@@ -371,8 +371,21 @@ final class StringConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        Instant instant = toInstant(from, converter);
-        return instant == null ? null :  new java.sql.Date(instant.toEpochMilli());
+        String dateStr = ((String) from).trim();
+
+        try {
+            return java.sql.Date.valueOf(dateStr);
+        } catch (Exception e) {
+            // If direct conversion fails, try parsing using DateUtilities.
+            ZonedDateTime zdt = DateUtilities.parseDate(dateStr, converter.getOptions().getZoneId(), true);
+            if (zdt == null) {
+                return null;
+            }
+            // Convert ZonedDateTime to Instant, then to java.util.Date, then to java.sql.Date.
+            Instant instant = zdt.toInstant();
+            Date utilDate = Date.from(instant);
+            return new java.sql.Date(utilDate.getTime());
+        }
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

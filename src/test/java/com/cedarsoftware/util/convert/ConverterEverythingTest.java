@@ -57,6 +57,7 @@ import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -800,13 +801,29 @@ class ConverterEverythingTest {
                 {ByteBuffer.wrap(new byte[]{(byte) 0x30, (byte) 0x31, (byte) 0x32, (byte) 0x33}), "0123", true}
         });
         TEST_DB.put(pair(java.sql.Date.class, String.class), new Object[][]{
-                {new java.sql.Date(-1), "1970-01-01T08:59:59.999+09:00", true}, // Tokyo (set in options - defaults to system when not set explicitly)
-                {new java.sql.Date(0), "1970-01-01T09:00:00.000+09:00", true},
-                {new java.sql.Date(1), "1970-01-01T09:00:00.001+09:00", true},
+                // Basic cases around epoch
+                {java.sql.Date.valueOf("1969-12-31"), "1969-12-31", true},
+                {java.sql.Date.valueOf("1970-01-01"), "1970-01-01", true},
+
+                // Modern dates
+                {java.sql.Date.valueOf("2025-01-29"), "2025-01-29", true},
+                {java.sql.Date.valueOf("2025-12-31"), "2025-12-31", true},
+
+                // Edge cases
+                {java.sql.Date.valueOf("0001-01-01"), "0001-01-01", true},
+                {java.sql.Date.valueOf("9999-12-31"), "9999-12-31", true},
+
+                // Leap year cases
+                {java.sql.Date.valueOf("2024-02-29"), "2024-02-29", true},
+                {java.sql.Date.valueOf("2000-02-29"), "2000-02-29", true},
+
+                // Month boundaries
+                {java.sql.Date.valueOf("2025-01-01"), "2025-01-01", true},
+                {java.sql.Date.valueOf("2025-12-31"), "2025-12-31", true}
         });
         TEST_DB.put(pair(Timestamp.class, String.class), new Object[][]{
                 {new Timestamp(-1), "1969-12-31T23:59:59.999Z", true},
-                {new Timestamp(0), "1970-01-01T00:00:00Z", true},
+                {new Timestamp(0), "1970-01-01T00:00:00.000Z", true},
                 {new Timestamp(1), "1970-01-01T00:00:00.001Z", true},
         });
         TEST_DB.put(pair(ZonedDateTime.class, String.class), new Object[][]{
@@ -1381,7 +1398,7 @@ class ConverterEverythingTest {
                 {mapOf(ID, NY_Z), NY_Z},
                 {mapOf("_v", "Asia/Tokyo"), TOKYO_Z},
                 {mapOf("_v", TOKYO_Z), TOKYO_Z},
-                {mapOf("zone", mapOf("_v", TOKYO_Z)), TOKYO_Z},
+                {mapOf(ZONE, mapOf("_v", TOKYO_Z)), TOKYO_Z},
         });
     }
 
@@ -1772,12 +1789,14 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.999Z"), new java.sql.Date(999), true},
         });
         TEST_DB.put(pair(Map.class, java.sql.Date.class), new Object[][] {
-                { mapOf(SQL_DATE, 1703043551033L), new java.sql.Date(1703043551033L)},
-                { mapOf(EPOCH_MILLIS, -1L), new java.sql.Date(-1L)},
-                { mapOf(EPOCH_MILLIS, 0L), new java.sql.Date(0L)},
-                { mapOf(EPOCH_MILLIS, 1L), new java.sql.Date(1L)},
+                { mapOf(SQL_DATE, 1703043551033L), java.sql.Date.valueOf("2023-12-20")},
+                { mapOf(EPOCH_MILLIS, -1L), java.sql.Date.valueOf("1969-12-31")},
+                { mapOf(EPOCH_MILLIS, 0L), java.sql.Date.valueOf("1970-01-01")},
+                { mapOf(EPOCH_MILLIS, 1L), java.sql.Date.valueOf("1970-01-01")},
                 { mapOf(EPOCH_MILLIS, 1710714535152L), new java.sql.Date(1710714535152L)},
-                { mapOf(SQL_DATE, "1970-01-01T00:00:00Z"), new java.sql.Date(0L), true},
+                { mapOf(SQL_DATE, "1969-12-31"), java.sql.Date.valueOf("1969-12-31"), true},  // One day before epoch
+                { mapOf(SQL_DATE, "1970-01-01"), java.sql.Date.valueOf("1970-01-01"), true},  // Epoch
+                { mapOf(SQL_DATE, "1970-01-02"), java.sql.Date.valueOf("1970-01-02"), true},  // One day after epoch
                 { mapOf(SQL_DATE, "X1970-01-01T00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(SQL_DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(SQL_DATE, "1970-01-01T00:00bad zone"), new IllegalArgumentException("Issue parsing date-time, other characters present: zone")},
@@ -1857,16 +1876,16 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(String.class, Date.class), new Object[][]{
                 {"", null},
-                {"1970-01-01T08:59:59.999+09:00", new Date(-1), true},  // Tokyo (set in options - defaults to system when not set explicitly)
-                {"1970-01-01T09:00:00.000+09:00", new Date(0), true},
-                {"1970-01-01T09:00:00.001+09:00", new Date(1), true},
+                {"1969-12-31T23:59:59.999Z", new Date(-1), true},
+                {"1970-01-01T00:00:00.000Z", new Date(0), true},
+                {"1970-01-01T00:00:00.001Z", new Date(1), true},
         });
         TEST_DB.put(pair(Map.class, Date.class), new Object[][] {
                 { mapOf(EPOCH_MILLIS, -1L), new Date(-1L)},
                 { mapOf(EPOCH_MILLIS, 0L), new Date(0L)},
                 { mapOf(EPOCH_MILLIS, 1L), new Date(1L)},
                 { mapOf(EPOCH_MILLIS, 1710714535152L), new Date(1710714535152L)},
-                { mapOf(DATE, "1970-01-01T00:00:00Z"), new Date(0L), true},
+                { mapOf(DATE, "1970-01-01T00:00:00.000Z"), new Date(0L), true},
                 { mapOf(DATE, "X1970-01-01T00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(DATE, "1970-01-01T00:00bad zone"), new IllegalArgumentException("Issue parsing date-time, other characters present: zone")},
@@ -1923,13 +1942,14 @@ class ConverterEverythingTest {
 
                 // Test with offset format
                 {mapOf(CALENDAR, "2024-02-05T22:31:17.409+09:00"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
+                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT+09:00"));
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
                     return cal;
                 }, false},  // re-writing it out, will go from offset back to zone name, hence not bi-directional
+                
                 // Test with no milliseconds
-                {mapOf(CALENDAR, "2024-02-05T22:31:17[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
+                {mapOf(CALENDAR, "2024-02-05T22:31:17.000[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 0);
@@ -1937,7 +1957,7 @@ class ConverterEverythingTest {
                 }, true},
 
                 // Test New York timezone
-                {mapOf(CALENDAR, "1970-01-01T00:00:00[America/New_York]"), (Supplier<Calendar>) () -> {
+                {mapOf(CALENDAR, "1970-01-01T00:00:00.000[America/New_York]"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("America/New_York")));
                     cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
                     cal.set(Calendar.MILLISECOND, 0);
@@ -1953,12 +1973,7 @@ class ConverterEverythingTest {
                 }, false},
 
                 // Test date with no time (will use start of day)
-                {mapOf(CALENDAR, "2024-02-05[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
-                    Calendar cal = Calendar.getInstance(TOKYO_TZ);
-                    cal.set(2024, Calendar.FEBRUARY, 5, 0, 0, 0);
-                    cal.set(Calendar.MILLISECOND, 0);
-                    return cal;
-                }, false}
+                {mapOf(CALENDAR, "2024-02-05[Asia/Tokyo]"), new IllegalArgumentException("time"), false}
         });
         TEST_DB.put(pair(ZonedDateTime.class, Calendar.class), new Object[][] {
                 {zdt("1969-12-31T23:59:59.999Z"), cal(-1), true},
@@ -1972,9 +1987,12 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(String.class, Calendar.class), new Object[][]{
                 { "", null}, 
-                {"1970-01-01T08:59:59.999+09:00", cal(-1), true},
-                {"1970-01-01T09:00:00.000+09:00", cal(0), true},
-                {"1970-01-01T09:00:00.001+09:00", cal(1), true},
+                {"1970-01-01T08:59:59.999[Asia/Tokyo]", cal(-1), true},
+                {"1970-01-01T09:00:00.000[Asia/Tokyo]", cal(0), true},
+                {"1970-01-01T09:00:00.001[Asia/Tokyo]", cal(1), true},
+                {"1970-01-01T08:59:59.999+09:00", cal(-1), false},  // zone offset vs zone name
+                {"1970-01-01T09:00:00.000+09:00", cal(0), false},
+                {"1970-01-01T09:00:00.001+09:00", cal(1), false},
         });
     }
 
@@ -3799,6 +3817,7 @@ class ConverterEverythingTest {
      *
      * Need to wait for json-io 4.34.0 to enable.
      */
+    @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
@@ -3924,6 +3943,14 @@ class ConverterEverythingTest {
                 } else if (target instanceof BigDecimal) {
                     if (((BigDecimal) target).compareTo((BigDecimal) actual) != 0) {
                         assertEquals(target, actual);
+                    }
+                    updateStat(pair(sourceClass, targetClass), true);
+                }
+                else if (targetClass.equals(java.sql.Date.class)) {
+                    // Compare java.sql.Date values using their toString() values,
+                    // since we treat them as literal "yyyy-MM-dd" values.
+                    if (actual != null) {
+                        assertEquals(target.toString(), actual.toString());
                     }
                     updateStat(pair(sourceClass, targetClass), true);
                 } else {

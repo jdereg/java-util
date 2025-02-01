@@ -9,7 +9,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -37,6 +36,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *         limitations under the License.
  */
 final class DateConversions {
+    static final DateTimeFormatter MILLIS_FMT = new DateTimeFormatterBuilder()
+            .appendInstant(3)  // Force exactly 3 decimal places
+            .toFormatter();
 
     private DateConversions() {}
     
@@ -118,55 +120,27 @@ final class DateConversions {
         return new AtomicLong(toLong(from, converter));
     }
 
-    static String sqlDateToString(Object from, Converter converter) {
-        java.sql.Date sqlDate = (java.sql.Date) from;
-        return toString(new Date(sqlDate.getTime()), converter);
-    }
-
     static String toString(Object from, Converter converter) {
         Date date = (Date) from;
-
-        // Convert Date to ZonedDateTime
-        ZonedDateTime zonedDateTime = date.toInstant().atZone(converter.getOptions().getZoneId());
-
-        // Build a formatter with optional milliseconds and always show timezone offset
-        DateTimeFormatter formatter = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
-                .appendOffset("+HH:MM", "Z") // Timezone offset
-                .toFormatter();
-
-        return zonedDateTime.format(formatter);
+        Instant instant = date.toInstant();   // Convert legacy Date to Instant
+        return MILLIS_FMT.format(instant);
     }
 
+    static String toSqlDateString(Object from, Converter converter) {
+        java.sql.Date sqlDate = (java.sql.Date) from;
+        // java.sql.Date.toString() returns the date in "yyyy-MM-dd" format.
+        return sqlDate.toString();
+    }
+    
     static Map<String, Object> toMap(Object from, Converter converter) {
         Date date = (Date) from;
-        String formatted;
         Map<String, Object> map = new LinkedHashMap<>();
 
         if (date instanceof java.sql.Date) {
-            // Convert millis to Instant then LocalDate in UTC
-            LocalDate localDate = Instant.ofEpochMilli(date.getTime())
-                    .atZone(ZoneOffset.UTC)
-                    .toLocalDate();
-
-            // Place that LocalDate at midnight in UTC, then format
-            ZonedDateTime zdt = localDate.atStartOfDay(ZoneOffset.UTC);
-            formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
-
-            map.put(MapConversions.SQL_DATE, formatted);
+            map.put(MapConversions.SQL_DATE, toSqlDateString(date, converter));
         } else {
             // Regular util.Date - format with time
-            ZonedDateTime zdt = date.toInstant().atZone(ZoneOffset.UTC);
-            int ms = zdt.getNano() / 1_000_000;  // Convert nanos to millis
-            if (ms == 0) {
-                // No fractional seconds
-                formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
-            } else {
-                // Millisecond precision
-                formatted = zdt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
-                        + String.format(".%03dZ", ms);
-            }
-            map.put(MapConversions.DATE, formatted);
+            map.put(MapConversions.DATE, toString(from, converter));
         }
 
         return map;

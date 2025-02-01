@@ -5,6 +5,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
@@ -152,16 +153,26 @@ public final class DateUtilities {
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern unixDateTimePattern = Pattern.compile(
-            "\\b(" + days + ")\\b" + ws + "\\b(" + mos + ")\\b" + ws + "(" + d1or2 + ")" + ws + "(" + d2 + ":" + d2 + ":" + d2 + ")" + wsOp + "(" + tzUnix + ")?" + wsOp + "(" + yr + ")",
+            "(?:\\b(" + days + ")\\b" + ws + ")?"
+                    + "\\b(" + mos + ")\\b" + ws
+                    + "(" + d1or2 + ")" + ws
+                    + "(" + d2 + ":" + d2 + ":" + d2 + ")" + wsOp
+                    + "(" + tzUnix + ")?"
+                    + wsOp
+                    + "(" + yr + ")",
             Pattern.CASE_INSENSITIVE);
-
+    
     private static final Pattern timePattern = Pattern.compile(
             "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
             Pattern.CASE_INSENSITIVE);
 
+    private static final Pattern zonePattern = Pattern.compile(
+            "(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")",
+            Pattern.CASE_INSENSITIVE);
+
     private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", Pattern.CASE_INSENSITIVE);
     private static final Map<String, Integer> months = new ConcurrentHashMap<>();
-    private static final Map<String, String> ABBREVIATION_TO_TIMEZONE = new ConcurrentHashMap<>();
+    public static final Map<String, String> ABBREVIATION_TO_TIMEZONE = new HashMap<>();
 
     static {
         // Month name to number map
@@ -388,6 +399,18 @@ public final class DateUtilities {
                 day = matcher.group(7);
             }
             remains = remnant;
+            // Do we have a Date with a TimeZone after it, but no time?
+            if (remnant.startsWith("T")) {
+                matcher = zonePattern.matcher(remnant.substring(1));
+                if (matcher.matches()) {
+                    throw new IllegalArgumentException("Time zone information without time is invalid: " + dateStr);
+                }
+            } else {
+                matcher = zonePattern.matcher(remnant);
+                if (matcher.matches()) {
+                    throw new IllegalArgumentException("Time zone information without time is invalid: " + dateStr);
+                }
+            }
         } else {
             // 2) Try alphaMonthPattern
             matcher = alphaMonthPattern.matcher(dateStr);
@@ -523,27 +546,36 @@ public final class DateUtilities {
     }
 
     private static ZoneId getTimeZone(String tz) {
-        if (tz != null) {
-            if (tz.startsWith("-") || tz.startsWith("+")) {
-                ZoneOffset offset = ZoneOffset.of(tz);
-                return ZoneId.ofOffset("GMT", offset);
-            } else {
-                try {
-                    return ZoneId.of(tz);
-                } catch (Exception e) {
-                    TimeZone timeZone = TimeZone.getTimeZone(tz);
-                    if (timeZone.getRawOffset() == 0) {
-                        String zoneName = ABBREVIATION_TO_TIMEZONE.get(tz);
-                        if (zoneName != null) {
-                            return ZoneId.of(zoneName);
-                        }
-                        throw e;
-                    }
-                    return timeZone.toZoneId();
-                }
-            }
+        if (tz == null || tz.isEmpty()) {
+            return ZoneId.systemDefault();
         }
-        return ZoneId.systemDefault();
+
+        // 1) If tz starts with +/- => offset
+        if (tz.startsWith("-") || tz.startsWith("+")) {
+            ZoneOffset offset = ZoneOffset.of(tz);
+            return ZoneId.ofOffset("GMT", offset);
+        }
+
+        // 2) Check custom abbreviation map first
+        String mappedZone = ABBREVIATION_TO_TIMEZONE.get(tz.toUpperCase());
+        if (mappedZone != null) {
+            // e.g. "EST" => "America/New_York"
+            return ZoneId.of(mappedZone);
+        }
+
+        // 3) Try ZoneId.of(tz) for full region IDs like "Europe/Paris"
+        try {
+            return ZoneId.of(tz);
+        } catch (Exception zoneIdEx) {
+            // 4) Fallback to TimeZone for weird short IDs or older JDK
+            TimeZone timeZone = TimeZone.getTimeZone(tz);
+            if (timeZone.getID().equals("GMT") && !tz.toUpperCase().equals("GMT")) {
+                // Means the JDK didn't recognize 'tz' (it fell back to "GMT")
+                throw zoneIdEx;  // rethrow original
+            }
+            // Otherwise, we accept whatever the JDK returned
+            return timeZone.toZoneId();
+        }
     }
 
     private static void verifyNoGarbageLeft(String remnant) {

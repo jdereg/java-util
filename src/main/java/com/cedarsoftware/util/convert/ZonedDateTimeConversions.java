@@ -12,14 +12,11 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactMap;
-
-import static com.cedarsoftware.util.convert.MapConversions.DATE;
-import static com.cedarsoftware.util.convert.MapConversions.TIME;
-import static com.cedarsoftware.util.convert.MapConversions.ZONE;
+import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -118,11 +115,9 @@ final class ZonedDateTimeConversions {
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {
-        ZonedDateTime zdt = (ZonedDateTime) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        target.put(DATE, zdt.toLocalDate().toString());
-        target.put(TIME, zdt.toLocalTime().toString());
-        target.put(ZONE, zdt.getZone().toString());
+        String zdtStr = toString(from, converter);
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(ZONED_DATE_TIME, zdtStr);
         return target;
     }
 }

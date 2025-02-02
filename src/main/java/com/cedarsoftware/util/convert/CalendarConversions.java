@@ -8,15 +8,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.cedarsoftware.util.DateUtilities;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -111,23 +115,36 @@ final class CalendarConversions {
     }
 
     static String toString(Object from, Converter converter) {
-        Calendar cal = (Calendar) from;
-        ZonedDateTime zdt = cal.toInstant().atZone(cal.getTimeZone().toZoneId());
-        TimeZone tz = cal.getTimeZone();
+        ZonedDateTime zdt = toZonedDateTime(from, converter);
+        String zoneId = zdt.getZone().getId();
 
-        String pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS";
-
-        // Only use named zones for IANA timezone IDs
-        String id = tz.getID();
-        if (id.contains("/")) {  // IANA timezones contain "/"
-            pattern += "['['VV']']";
-        } else if ("GMT".equals(id) || "UTC".equals(id)) {
-            pattern += "X";  // Z for UTC/GMT
-        } else {
-            pattern += "xxx";  // Offsets for everything else (EST, GMT+02:00, etc)
+        // If the zoneId does NOT contain "/", assume it's an abbreviation.
+        if (!zoneId.contains("/")) {
+            String fullZone = DateUtilities.ABBREVIATION_TO_TIMEZONE.get(zoneId);
+            if (fullZone != null) {
+                // Adjust the ZonedDateTime to use the full zone name.
+                zdt = zdt.withZoneSameInstant(ZoneId.of(fullZone));
+            }
         }
 
-        return zdt.format(DateTimeFormatter.ofPattern(pattern));
+        // Build a formatter with optional fractional seconds.
+        // In JDK8, the last parameter of appendFraction is a boolean.
+        // With minWidth=0, no output (not even a decimal) is produced when there are no fractional seconds.
+        if (zdt.getZone() instanceof ZoneOffset) {
+            DateTimeFormatter offsetFormatter = new DateTimeFormatterBuilder()
+                    .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+                    .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+                    .appendPattern("XXX")
+                    .toFormatter();
+            return offsetFormatter.format(zdt);
+        } else {
+            DateTimeFormatter zoneFormatter = new DateTimeFormatterBuilder()
+                    .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+                    .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+                    .appendPattern("XXX'['VV']'")
+                    .toFormatter();
+            return zoneFormatter.format(zdt);
+        }
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {

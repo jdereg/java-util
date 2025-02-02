@@ -54,15 +54,15 @@ import static com.cedarsoftware.util.convert.ConverterTest.fubar.foo;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.CLASS;
-import static com.cedarsoftware.util.convert.MapConversions.DATE;
+import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
-import static com.cedarsoftware.util.convert.MapConversions.TIME;
-import static com.cedarsoftware.util.convert.MapConversions.ZONE;
+import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -1820,7 +1820,7 @@ class ConverterTest
             public ZoneId getZoneId() { return ZoneId.of("GMT"); }
         });
         assertEquals("2015-01-17T08:34:49.000Z", converter1.convert(cal.getTime(), String.class));
-        assertEquals("2015-01-17T08:34:49.000Z", converter1.convert(cal, String.class));
+        assertEquals("2015-01-17T08:34:49Z[Europe/London]", converter1.convert(cal, String.class));
     }
 
     @Test
@@ -2204,7 +2204,7 @@ class ConverterTest
 
         // String to java.sql.Date
         java.sql.Date sqlDate = this.converter.convert("2015-01-17 09:54", java.sql.Date.class);
-        assertEquals(cal.getTime(), sqlDate);
+        assertEquals("2015-01-17", sqlDate.toString());
         assert sqlDate != null;
 
         // Calendar to Date
@@ -2449,7 +2449,7 @@ class ConverterTest
     void testStringKeysOnMapToLocalDate()
     {
         Map<String, Object> map = new HashMap<>();
-        map.put("date", "2023-12-23");
+        map.put(LOCAL_DATE, "2023-12-23");
         LocalDate ld = converter.convert(map, LocalDate.class);
         assert ld.getYear() == 2023;
         assert ld.getMonthValue() == 12;
@@ -2887,7 +2887,7 @@ class ConverterTest
 
         Calendar newCal = this.converter.convert(map, Calendar.class);
 //        System.out.println("newCal = " + newCal.getTime());
-        assertEquals(cal, newCal);
+        assertEquals(cal.getTime(), newCal.getTime());
         assert DeepEquals.deepEquals(cal, newCal);
     }
 
@@ -3010,7 +3010,24 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Timestamp.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Timestamp' the map must include: [timestamp], [epochMillis, nanos (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Timestamp' the map must include: [timestamp], [epochMillis], [value], or [_v] as keys with associated values");
+    }
+
+    @Test
+    public void testTimestampNanosInString() {
+        // Create an Instant with non-zero nanos.
+        String dateTime = "2023-12-20T15:30:45.123456789Z";
+        Timestamp tsNew = converter.convert(dateTime, Timestamp.class);
+
+        // Expected Timestamp from the Instant (preserving nanos)
+        Instant instant = Instant.parse(dateTime);
+        Timestamp expected = Timestamp.from(instant);
+
+        // Check that both the millisecond value and the nanos are preserved.
+        assertEquals(expected.getTime(), tsNew.getTime(), "Millisecond part should match");
+        assertEquals(expected.getNanos(), tsNew.getNanos(), "Nanosecond part should match");
+        // Optionally, check the string representation:
+        assertEquals(expected.toString(), tsNew.toString(), "String representation should match");
     }
 
     @Test
@@ -3033,7 +3050,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDate.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'LocalDate' the map must include: [date], [year, month, day], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'LocalDate' the map must include: [localDate], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -3056,7 +3073,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'LocalDateTime' the map must include: [date, time (optional)], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'LocalDateTime' the map must include: [localDateTime], [epochMillis], [value], or [_v] as keys with associated values");
     }
 
     @Test
@@ -3075,7 +3092,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, ZonedDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'ZonedDateTime' the map must include: [epochMillis], [time, zone], [date, time, zone], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'ZonedDateTime' the map must include: [zonedDateTime], [epochMillis], [value], or [_v] as keys with associated values");
 
     }
 
@@ -3831,8 +3848,8 @@ class ConverterTest
         LocalDate now = LocalDate.now();
         Map<?, ?> map = this.converter.convert(now, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(DATE), now.toString());
-        assert map.get(DATE).getClass().equals(String.class);
+        assertEquals(map.get(LOCAL_DATE), now.toString());
+        assert map.get(LOCAL_DATE).getClass().equals(String.class);
     }
 
     @Test
@@ -3840,20 +3857,48 @@ class ConverterTest
     {
         LocalDateTime now = LocalDateTime.now();
         Map<?, ?> map = converter.convert(now, Map.class);
-        assert map.size() == 2; // date, time
+        assert map.size() == 1; // localDateTime
         LocalDateTime now2 = converter.convert(map, LocalDateTime.class);
         assertEquals(now, now2);
     }
 
     @Test
-    void testZonedDateTimeToMap()
-    {
+    void testZonedDateTimeToMap() {
+        // Create a sample ZonedDateTime.
         ZonedDateTime now = ZonedDateTime.now();
+
+        // Convert the ZonedDateTime to a Map.
         Map<?, ?> map = this.converter.convert(now, Map.class);
-        assert map.size() == 3;
-        assert map.containsKey(DATE);
-        assert map.containsKey(TIME);
-        assert map.containsKey(ZONE);
+
+        // Assert the map has one entry and contains the expected key.
+        assertEquals(1, map.size());
+        assertTrue(map.containsKey(ZONED_DATE_TIME));
+
+        // Retrieve the value from the map.
+        Object value = map.get(ZONED_DATE_TIME);
+        assertNotNull(value);
+        // We expect the converter to output a String representation.
+        assertTrue(value instanceof String);
+        String zdtStr = (String) value;
+
+        // Parse the string back into a ZonedDateTime.
+        // (Assuming the format is ISO_ZONED_DATE_TIME.)
+        ZonedDateTime parsedZdt = ZonedDateTime.parse(zdtStr);
+
+        // Additional assertions to ensure that the date, time, and zone are the same.
+        assertEquals(now.getYear(), parsedZdt.getYear(), "Year mismatch");
+        assertEquals(now.getMonthValue(), parsedZdt.getMonthValue(), "Month mismatch");
+        assertEquals(now.getDayOfMonth(), parsedZdt.getDayOfMonth(), "Day mismatch");
+        assertEquals(now.getHour(), parsedZdt.getHour(), "Hour mismatch");
+        assertEquals(now.getMinute(), parsedZdt.getMinute(), "Minute mismatch");
+        assertEquals(now.getSecond(), parsedZdt.getSecond(), "Second mismatch");
+        assertEquals(now.getNano(), parsedZdt.getNano(), "Nanosecond mismatch");
+        assertEquals(now.getZone(), parsedZdt.getZone(), "Zone mismatch");
+
+        // Optionally, also verify that the formatted string does not include an offset
+        // if that is the expected behavior (for example, if your custom formatter omits it).
+        // For instance, you might check that zdtStr contains the zone ID in brackets:
+        assertTrue(zdtStr.contains("[" + now.getZone().getId() + "]"), "Zone ID not found in output string");
     }
 
     @Test

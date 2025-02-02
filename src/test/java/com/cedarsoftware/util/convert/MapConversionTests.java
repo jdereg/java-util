@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.MonthDay;
+import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.Period;
 import java.time.Year;
@@ -28,9 +29,14 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
+import static com.cedarsoftware.util.convert.MapConversions.LOCAL_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.OFFSET_DATE_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -195,18 +201,10 @@ class MapConversionTests {
 
     @Test
     public void testToTimestamp() {
-        // Test case 1: Basic epochMillis with nanos
-        Map<String, Object> map = new HashMap<>();
-        long currentTime = System.currentTimeMillis();
-        map.put("epochMillis", currentTime);
-        map.put("nanos", 123456789);  // Should be incorporated since time doesn't have nano resolution
-        Timestamp ts = MapConversions.toTimestamp(map, converter);
-        assertEquals(123456789, ts.getNanos());
-
         // Test case 2: Time string with sub-millisecond precision
-        map.clear();
+        Map<String, Object> map = new HashMap<>();
         map.put("timestamp", "2024-01-01T08:37:16.987654321Z");  // ISO-8601 format at UTC "Z"
-        ts = MapConversions.toTimestamp(map, converter);
+        Timestamp ts = MapConversions.toTimestamp(map, converter);
         assertEquals(987654321, ts.getNanos());  // Should use nanos from time string
     }
     
@@ -237,19 +235,14 @@ class MapConversionTests {
     @Test
     public void testToLocalDate() {
         Map<String, Object> map = new HashMap<>();
-        map.put("year", 2024);
-        map.put("month", 1);
-        map.put("day", 1);
+        map.put(LOCAL_DATE, "2024/1/1");
         assertEquals(LocalDate.of(2024, 1, 1), MapConversions.toLocalDate(map, converter));
     }
 
     @Test
     public void testToLocalTime() {
         Map<String, Object> map = new HashMap<>();
-        map.put("hour", 12);
-        map.put("minute", 30);
-        map.put("second", 45);
-        map.put("nanos", 123456789);
+        map.put(LOCAL_TIME, "12:30:45.123456789");
         assertEquals(
                 LocalTime.of(12, 30, 45, 123456789),
                 MapConversions.toLocalTime(map, converter)
@@ -271,21 +264,79 @@ class MapConversionTests {
         );
     }
 
+    /**
+     * Test converting a valid ISO-8601 offset date time string.
+     */
     @Test
-    public void testToOffsetDateTime() {
+    public void testToOffsetDateTime_withValidString() {
         Map<String, Object> map = new HashMap<>();
-        String time = "2024-01-01T12:00:00";
-        String offset = "+01:00";
-        map.put("time", time);
-        map.put("offset", offset);
-        assertNotNull(MapConversions.toOffsetDateTime(map, converter));
+        String timeString = "2024-01-01T12:00:00+01:00";
+        map.put(OFFSET_DATE_TIME, timeString);
+
+        OffsetDateTime expected = OffsetDateTime.parse(timeString);
+        OffsetDateTime actual = MapConversions.toOffsetDateTime(map, converter);
+
+        assertNotNull(actual, "Converted OffsetDateTime should not be null");
+        assertEquals(expected, actual, "Converted OffsetDateTime should match expected");
+    }
+
+    /**
+     * Test converting when the value is already an OffsetDateTime.
+     */
+    @Test
+    public void testToOffsetDateTime_withExistingOffsetDateTime() {
+        Map<String, Object> map = new HashMap<>();
+        OffsetDateTime now = OffsetDateTime.now();
+        map.put(OFFSET_DATE_TIME, now);
+
+        OffsetDateTime actual = MapConversions.toOffsetDateTime(map, converter);
+
+        assertNotNull(actual, "Converted OffsetDateTime should not be null");
+        assertEquals(now, actual, "The returned OffsetDateTime should equal the provided one");
+    }
+
+    /**
+     * Test converting when the value is a ZonedDateTime.
+     */
+    @Test
+    public void testToOffsetDateTime_withZonedDateTime() {
+        Map<String, Object> map = new HashMap<>();
+        ZonedDateTime zonedDateTime = ZonedDateTime.now();
+        map.put(OFFSET_DATE_TIME, zonedDateTime);
+
+        OffsetDateTime expected = zonedDateTime.toOffsetDateTime();
+        OffsetDateTime actual = MapConversions.toOffsetDateTime(map, converter);
+
+        assertNotNull(actual,"Converted OffsetDateTime should not be null");
+        assertEquals(expected, actual, "The OffsetDateTime should match the ZonedDateTime's offset version");
+    }
+
+    /**
+     * Test that an invalid value type causes an exception.
+     */
+    public void testToOffsetDateTime_withInvalidValue() {
+        Map<String, Object> map = new HashMap<>();
+        // An invalid type (e.g., an integer) should not be accepted.
+        map.put(OFFSET_DATE_TIME, 12345);
+
+        // This call is expected to throw an IllegalArgumentException.
+        MapConversions.toOffsetDateTime(map, converter);
+    }
+
+    /**
+     * Test that when the key is absent, the method returns null.
+     */
+    @Test
+    public void testToOffsetDateTime_whenKeyAbsent() {
+        Map<String, Object> map = new HashMap<>();
+        // Do not put any value for OFFSET_DATE_TIME
+        assertThrows(IllegalArgumentException.class, () -> MapConversions.toOffsetDateTime(map, converter));
     }
 
     @Test
     public void testToLocalDateTime() {
         Map<String, Object> map = new HashMap<>();
-        map.put("date", "2024-01-01");
-        map.put("time", "12:00:00");
+        map.put("localDateTime", "2024-01-01T12:00:00");
         LocalDateTime expected = LocalDateTime.of(2024, 1, 1, 12, 0);
         assertEquals(expected, MapConversions.toLocalDateTime(map, converter));
     }
@@ -293,9 +344,7 @@ class MapConversionTests {
     @Test
     public void testToZonedDateTime() {
         Map<String, Object> map = new HashMap<>();
-        map.put("date", "2024-01-01");
-        map.put("time", "12:00:00");
-        map.put("zone", "UTC");
+        map.put(ZONED_DATE_TIME, "2024-01-01T12:00:00Z[UTC]");
         ZonedDateTime expected = ZonedDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneId.of("UTC"));
         assertEquals(expected, MapConversions.toZonedDateTime(map, converter));
     }

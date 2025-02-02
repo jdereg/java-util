@@ -381,16 +381,15 @@ final class StringConversions {
             if (zdt == null) {
                 return null;
             }
-            // Convert ZonedDateTime to Instant, then to java.util.Date, then to java.sql.Date.
-            Instant instant = zdt.toInstant();
-            Date utilDate = Date.from(instant);
-            return new java.sql.Date(utilDate.getTime());
+            LocalDate ld = zdt.toLocalDate();
+            // Now, create a normalized java.sql.Date whose underlying millisecond value represents midnight.
+            return java.sql.Date.valueOf(ld.toString());
         }
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
         Instant instant = toInstant(from, converter);
-        return instant == null ? null : new Timestamp(instant.toEpochMilli());
+        return instant == null ? null : Timestamp.from(instant);
     }
 
     static TimeZone toTimeZone(Object from, Converter converter) {
@@ -403,15 +402,19 @@ final class StringConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
-        String calStr = (String) from;
         ZonedDateTime zdt = toZonedDateTime(from, converter);
         if (zdt == null) {
             return null;
         }
-        ZonedDateTime zdtUser = zdt.withZoneSameInstant(converter.getOptions().getZoneId());
-        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zdtUser.getZone()));
-        cal.setTimeInMillis(zdtUser.toInstant().toEpochMilli());
-        return cal;
+
+        TimeZone timeZone = TimeZone.getTimeZone(zdt.getZone());
+        Locale locale = Locale.getDefault();
+
+        // Get the appropriate calendar type for the locale
+        Calendar calendar = Calendar.getInstance(timeZone, locale);
+        calendar.setTimeInMillis(zdt.toInstant().toEpochMilli());
+
+        return calendar;
     }
 
     static LocalDate toLocalDate(Object from, Converter converter) {

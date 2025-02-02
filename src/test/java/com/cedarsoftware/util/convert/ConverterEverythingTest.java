@@ -70,20 +70,21 @@ import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.CLASS;
 import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
-import static com.cedarsoftware.util.convert.MapConversions.DAY;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
 import static com.cedarsoftware.util.convert.MapConversions.HOUR;
 import static com.cedarsoftware.util.convert.MapConversions.HOURS;
 import static com.cedarsoftware.util.convert.MapConversions.ID;
 import static com.cedarsoftware.util.convert.MapConversions.LANGUAGE;
 import static com.cedarsoftware.util.convert.MapConversions.LEAST_SIG_BITS;
+import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
+import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.LOCAL_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.MINUTE;
 import static com.cedarsoftware.util.convert.MapConversions.MINUTES;
-import static com.cedarsoftware.util.convert.MapConversions.MONTH;
 import static com.cedarsoftware.util.convert.MapConversions.MOST_SIG_BITS;
 import static com.cedarsoftware.util.convert.MapConversions.NANOS;
-import static com.cedarsoftware.util.convert.MapConversions.OFFSET;
+import static com.cedarsoftware.util.convert.MapConversions.OFFSET_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_HOUR;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_MINUTE;
 import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
@@ -96,8 +97,8 @@ import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.V;
 import static com.cedarsoftware.util.convert.MapConversions.VARIANT;
-import static com.cedarsoftware.util.convert.MapConversions.YEAR;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
+import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 import static org.assertj.core.api.Fail.fail;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -951,10 +952,9 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, ZonedDateTime.class), new Object[][]{
                 {mapOf(VALUE, new AtomicLong(now)), Instant.ofEpochMilli(now).atZone(TOKYO_Z)},
                 {mapOf(EPOCH_MILLIS, now), Instant.ofEpochMilli(now).atZone(TOKYO_Z)},
-                {mapOf(TIME, "1970-01-01T00:00:00", ZONE, TOKYO), zdt("1970-01-01T00:00:00+09:00")},
-                {mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999", ZONE, TOKYO), zdt("1969-12-31T23:59:59.999999999+09:00"), true},
-                {mapOf(DATE, "1970-01-01", TIME, "00:00", ZONE, TOKYO), zdt("1970-01-01T00:00:00+09:00"), true},
-                {mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001", ZONE, TOKYO), zdt("1970-01-01T00:00:00.000000001+09:00"), true},
+                {mapOf(ZONED_DATE_TIME, "1969-12-31T23:59:59.999999999+09:00[Asia/Tokyo]"), zdt("1969-12-31T23:59:59.999999999+09:00"), true},
+                {mapOf(ZONED_DATE_TIME, "1970-01-01T00:00:00+09:00[Asia/Tokyo]"), zdt("1970-01-01T00:00:00+09:00"), true},
+                {mapOf(ZONED_DATE_TIME, "1970-01-01T00:00:00.000000001+09:00[Asia/Tokyo]"), zdt("1970-01-01T00:00:00.000000001+09:00"), true},
         });
     }
 
@@ -1008,11 +1008,11 @@ class ConverterEverythingTest {
                 {"1965-12-31T16:20:00", ldt("1965-12-31T16:20:00"), true},
         });
         TEST_DB.put(pair(Map.class, LocalDateTime.class), new Object[][] {
-                { mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999"), ldt("1969-12-31T23:59:59.999999999"), true},
-                { mapOf(DATE, "1970-01-01", TIME, "00:00"), ldt("1970-01-01T00:00"), true},
-                { mapOf(DATE, "1970-01-01"), ldt("1970-01-01T00:00")},
-                { mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001"), ldt("1970-01-01T00:00:00.000000001"), true},
-                { mapOf(DATE, "2024-03-10", TIME, "11:07:00.123456789"), ldt("2024-03-10T11:07:00.123456789"), true},
+                { mapOf(LOCAL_DATE_TIME, "1969-12-31T23:59:59.999999999"), ldt("1969-12-31T23:59:59.999999999"), true},
+                { mapOf(LOCAL_DATE_TIME, "1970-01-01T00:00"), ldt("1970-01-01T00:00"), true},
+                { mapOf(LOCAL_DATE_TIME, "1970-01-01"), ldt("1970-01-01T00:00")},
+                { mapOf(LOCAL_DATE_TIME, "1970-01-01T00:00:00.000000001"), ldt("1970-01-01T00:00:00.000000001"), true},
+                { mapOf(LOCAL_DATE_TIME, "2024-03-10T11:07:00.123456789"), ldt("2024-03-10T11:07:00.123456789"), true},
                 { mapOf(VALUE, "2024-03-10T11:07:00.123456789"), ldt("2024-03-10T11:07:00.123456789")},
         });
     }
@@ -1140,14 +1140,13 @@ class ConverterEverythingTest {
                 {"09:26:17.000000001", LocalTime.of(9, 26, 17, 1), true},
         });
         TEST_DB.put(pair(Map.class, LocalTime.class), new Object[][] {
-                {mapOf(TIME, "00:00"), LocalTime.parse("00:00:00.000000000"), true},
-                {mapOf(TIME, "00:00:00.000000001"), LocalTime.parse("00:00:00.000000001"), true},
-                {mapOf(TIME, "00:00"), LocalTime.parse("00:00:00"), true},
-                {mapOf(TIME, "23:59:59.999999999"), LocalTime.parse("23:59:59.999999999"), true},
+                {mapOf(LOCAL_TIME, "00:00"), LocalTime.parse("00:00:00.000000000"), true},
+                {mapOf(LOCAL_TIME, "00:00:00.000000001"), LocalTime.parse("00:00:00.000000001"), true},
+                {mapOf(LOCAL_TIME, "00:00"), LocalTime.parse("00:00:00"), true},
+                {mapOf(LOCAL_TIME, "23:59:59.999999999"), LocalTime.parse("23:59:59.999999999"), true},
+                {mapOf(LOCAL_TIME, "23:59"), LocalTime.parse("23:59") , true},
+                {mapOf(LOCAL_TIME, "23:59:59"), LocalTime.parse("23:59:59"), true },
                 {mapOf(VALUE, "23:59:59.999999999"), LocalTime.parse("23:59:59.999999999") },
-                {mapOf(HOUR, 23, MINUTE, 59), LocalTime.parse("23:59") },
-                {mapOf(HOUR, 23, MINUTE, 59, SECOND, 59), LocalTime.parse("23:59:59") },
-                {mapOf(HOUR, 23, MINUTE, 59, SECOND, 59, NANOS, 999999999), LocalTime.parse("23:59:59.999999999") },
         });
     }
 
@@ -1226,11 +1225,11 @@ class ConverterEverythingTest {
                 {"2024-03-20", LocalDate.parse("2024-03-20"), true},
         });
         TEST_DB.put(pair(Map.class, LocalDate.class), new Object[][] {
-                {mapOf(DATE, "1969-12-31"), LocalDate.parse("1969-12-31"), true},
-                {mapOf(DATE, "1970-01-01"), LocalDate.parse("1970-01-01"), true},
-                {mapOf(DATE, "1970-01-02"), LocalDate.parse("1970-01-02"), true},
+                {mapOf(LOCAL_DATE, "1969-12-31"), LocalDate.parse("1969-12-31"), true},
+                {mapOf(LOCAL_DATE, "1970-01-01"), LocalDate.parse("1970-01-01"), true},
+                {mapOf(LOCAL_DATE, "1970-01-02"), LocalDate.parse("1970-01-02"), true},
                 {mapOf(VALUE, "2024-03-18"), LocalDate.parse("2024-03-18")},
-                {mapOf(YEAR, "2024", MONTH, 3, DAY, 18), LocalDate.parse("2024-03-18")},
+                {mapOf(V, "2024/03/18"), LocalDate.parse("2024-03-18")},
         });
     }
 
@@ -1334,25 +1333,21 @@ class ConverterEverythingTest {
         });
         // No symmetry checks - because an OffsetDateTime of "2024-02-18T06:31:55.987654321+00:00" and "2024-02-18T15:31:55.987654321+09:00" are equivalent but not equals. They both describe the same Instant.
         TEST_DB.put(pair(Map.class, Timestamp.class), new Object[][] {
-                { mapOf(EPOCH_MILLIS, -1L ), timestamp("1969-12-31T23:59:59.999Z") },
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 1), timestamp("1969-12-31T23:59:59.000000001Z") },
+                { mapOf(EPOCH_MILLIS, -1L), timestamp("1969-12-31T23:59:59.999Z") },
+                { mapOf(EPOCH_MILLIS, 0L), timestamp("1970-01-01T00:00:00Z") },
+                { mapOf(EPOCH_MILLIS, 1L), timestamp("1970-01-01T00:00:00.001Z") },
+                { mapOf(EPOCH_MILLIS, -1L), new Timestamp(-1L)},
+                { mapOf(EPOCH_MILLIS, 0L), new Timestamp(0L)},
+                { mapOf(EPOCH_MILLIS, 1L), new Timestamp(1L)},
+                { mapOf(EPOCH_MILLIS, 1710714535152L), new Timestamp(1710714535152L)},
                 { mapOf(TIMESTAMP, "1969-12-31T23:59:59.987654321Z"), timestamp("1969-12-31T23:59:59.987654321Z"), true },
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 123456789), timestamp("1969-12-31T23:59:59.123456789Z") }, // Epoch millis and nanos trump time
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000), timestamp("1969-12-31T23:59:59.999Z")},
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 888888888), timestamp("1969-12-31T23:59:59.888888888Z")},
-                { mapOf(EPOCH_MILLIS, -1L, NANOS, 999000000), new Timestamp(-1L)},
-                { mapOf(EPOCH_MILLIS, 0L, NANOS, 0), timestamp("1970-01-01T00:00:00Z")},
-                { mapOf(EPOCH_MILLIS, 0L, NANOS, 0), new Timestamp(0L)},
-                { mapOf(EPOCH_MILLIS, 0L, NANOS, 1), timestamp("1970-01-01T00:00:00.000000001Z")},
-                { mapOf(EPOCH_MILLIS, 1L, NANOS, 1000000), new Timestamp(1L)},
-                { mapOf(EPOCH_MILLIS, 1710714535152L, NANOS, 152000000), new Timestamp(1710714535152L)},
                 { mapOf(TIMESTAMP, "1970-01-01T00:00:00.000000001Z"), timestamp("1970-01-01T00:00:00.000000001Z"), true},
                 { mapOf(TIMESTAMP, "2024-03-17T22:28:55.152000001Z"), (Supplier<Timestamp>) () -> {
                     Timestamp ts = new Timestamp(1710714535152L);
                     ts.setNanos(152000001);
                     return ts;
                 }, true},
-                { mapOf("bad key", "2024-03-18T07:28:55.152", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Map to 'Timestamp' the map must include: [timestamp], [epochMillis, nanos (optional)], [value], or [_v] as keys with associated values")},
+                { mapOf("bad key", "2024-03-18T07:28:55.152", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Map to 'Timestamp' the map must include: [timestamp], [epochMillis], [value], or [_v] as keys with associated values")},
         });
     }
 
@@ -1632,13 +1627,14 @@ class ConverterEverythingTest {
                 {"2024-02-10T10:15:07+01:00", OffsetDateTime.parse("2024-02-10T10:15:07+01:00"), true},
         });
         TEST_DB.put(pair(Map.class, OffsetDateTime.class), new Object[][] {
-                { mapOf(DATE, "1969-12-31", TIME, "23:59:59.999999999", OFFSET, "+09:00"), OffsetDateTime.parse("1969-12-31T23:59:59.999999999+09:00"), true},
-                { mapOf(DATE, "1970-01-01", TIME, "00:00", OFFSET, "+09:00"), OffsetDateTime.parse("1970-01-01T00:00+09:00"), true},
-                { mapOf(DATE, "1970-01-01", TIME, "00:00:00.000000001", OFFSET, "+09:00"), OffsetDateTime.parse("1970-01-01T00:00:00.000000001+09:00"), true},
-                { mapOf(DATE, "2024-03-10", TIME, "11:07:00.123456789", OFFSET, "+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00"), true},
-                { mapOf(DATE, "2024-03-10", TIME, "11:07:00.123456789"), new IllegalArgumentException("Map to 'OffsetDateTime' the map must include: [time, offset], [date, time, offset], [value], or [_v] as keys with associated values")},
-                { mapOf(TIME, "2024-03-10T11:07:00.123456789", OFFSET, "+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
+                { mapOf(OFFSET_DATE_TIME, "1969-12-31T23:59:59.999999999+09:00"), OffsetDateTime.parse("1969-12-31T23:59:59.999999999+09:00"), true},
+                { mapOf(OFFSET_DATE_TIME, "1970-01-01T00:00:00+09:00"), OffsetDateTime.parse("1970-01-01T00:00+09:00"), true},
+                { mapOf(OFFSET_DATE_TIME, "1970-01-01T00:00:00.000000001+09:00"), OffsetDateTime.parse("1970-01-01T00:00:00.000000001+09:00"), true},
+                { mapOf(OFFSET_DATE_TIME, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00"), true},
+                { mapOf("foo", "2024-03-10T11:07:00.123456789+00:00"), new IllegalArgumentException("Map to 'OffsetDateTime' the map must include: [offsetDateTime], [epochMillis], [value], or [_v] as keys with associated values")},
+                { mapOf(OFFSET_DATE_TIME, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
                 { mapOf(VALUE, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
+                { mapOf(V, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
         });
     }
 
@@ -1800,7 +1796,7 @@ class ConverterEverythingTest {
                 { mapOf(SQL_DATE, "X1970-01-01T00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(SQL_DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(SQL_DATE, "1970-01-01T00:00bad zone"), new IllegalArgumentException("Issue parsing date-time, other characters present: zone")},
-                { mapOf(SQL_DATE, "1970-01-01 00:00:00Z"), new java.sql.Date(0L)},
+                { mapOf(SQL_DATE, "1970-01-01 00:00:00Z"), java.sql.Date.valueOf("1970-01-01")},
                 { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'java.sql.Date' the map must include: [sqlDate], [epochMillis], [value], or [_v] as keys with associated values")},
         });
     }
@@ -1933,7 +1929,7 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, Calendar.class), new Object[][]{
                 // Test with timezone name format
-                {mapOf(CALENDAR, "2024-02-05T22:31:17.409[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
+                {mapOf(CALENDAR, "2024-02-05T22:31:17.409+09:00[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
@@ -1949,7 +1945,7 @@ class ConverterEverythingTest {
                 }, false},  // re-writing it out, will go from offset back to zone name, hence not bi-directional
                 
                 // Test with no milliseconds
-                {mapOf(CALENDAR, "2024-02-05T22:31:17.000[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
+                {mapOf(CALENDAR, "2024-02-05T22:31:17+09:00[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 0);
@@ -1957,7 +1953,7 @@ class ConverterEverythingTest {
                 }, true},
 
                 // Test New York timezone
-                {mapOf(CALENDAR, "1970-01-01T00:00:00.000[America/New_York]"), (Supplier<Calendar>) () -> {
+                {mapOf(CALENDAR, "1970-01-01T00:00:00-05:00[America/New_York]"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("America/New_York")));
                     cal.set(1970, Calendar.JANUARY, 1, 0, 0, 0);
                     cal.set(Calendar.MILLISECOND, 0);
@@ -1965,7 +1961,7 @@ class ConverterEverythingTest {
                 }, true},
 
                 // Test flexible parsing (space instead of T) - bidirectional false since it will normalize to T
-                {mapOf(CALENDAR, "2024-02-05 22:31:17.409[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
+                {mapOf(CALENDAR, "2024-02-05 22:31:17.409+09:00[Asia/Tokyo]"), (Supplier<Calendar>) () -> {
                     Calendar cal = Calendar.getInstance(TOKYO_TZ);
                     cal.set(2024, Calendar.FEBRUARY, 5, 22, 31, 17);
                     cal.set(Calendar.MILLISECOND, 409);
@@ -1987,12 +1983,24 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(String.class, Calendar.class), new Object[][]{
                 { "", null}, 
-                {"1970-01-01T08:59:59.999[Asia/Tokyo]", cal(-1), true},
-                {"1970-01-01T09:00:00.000[Asia/Tokyo]", cal(0), true},
-                {"1970-01-01T09:00:00.001[Asia/Tokyo]", cal(1), true},
-                {"1970-01-01T08:59:59.999+09:00", cal(-1), false},  // zone offset vs zone name
-                {"1970-01-01T09:00:00.000+09:00", cal(0), false},
-                {"1970-01-01T09:00:00.001+09:00", cal(1), false},
+                {"1970-01-01T08:59:59.999+09:00[Asia/Tokyo]", cal(-1), true},
+                {"1970-01-01T09:00:00+09:00[Asia/Tokyo]", cal(0), true},
+                {"1970-01-01T09:00:00.001+09:00[Asia/Tokyo]", cal(1), true},
+                {"1970-01-01T08:59:59.999+09:00", (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("GMT+09:00")));
+                    cal.setTimeInMillis(-1);
+                    return cal;
+                }, false},  // zone offset vs zone name
+                {"1970-01-01T09:00:00.000+09:00", (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("GMT+09:00")));
+                    cal.setTimeInMillis(0);
+                    return cal;
+                }, false},
+                {"1970-01-01T09:00:00.001+09:00", (Supplier<Calendar>) () -> {
+                    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneId.of("GMT+09:00")));
+                    cal.setTimeInMillis(1);
+                    return cal;
+                }, false},
         });
     }
 
@@ -3817,10 +3825,9 @@ class ConverterEverythingTest {
      *
      * Need to wait for json-io 4.34.0 to enable.
      */
-    @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
-    void testJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
+    void testConvertJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
         if (shortNameSource.equals("Void")) {
             return;
         }
@@ -3842,8 +3849,7 @@ class ConverterEverythingTest {
         if (skip4) {
             return;
         }
-        // TODO: temporary - remove when json-io is updated to consume latest version of java-util.
-        boolean skip5 = sourceClass.equals(Timestamp.class);
+        boolean skip5 = sourceClass.equals(java.sql.Date.class) || targetClass.equals(java.sql.Date.class);
         if (skip5) {
             return;
         }
@@ -3854,13 +3860,14 @@ class ConverterEverythingTest {
             Throwable t = (Throwable) target;
             try {
                 Object x = JsonIo.toObjects(json, readOptions, targetClass);
-                System.out.println("x = " + x);
+//                System.out.println("x = " + x);
                 fail("This test: " + shortNameSource + " ==> " + shortNameTarget + " should have thrown: " + target.getClass().getName());
             } catch (Throwable e) {
                 if (e instanceof JsonIoException) {
                     e = e.getCause();
                 }
                 assertEquals(e.getClass(), t.getClass());
+                updateStat(pair(sourceClass, targetClass), true);
             }
         } else {
             Object restored = null;
@@ -3875,7 +3882,15 @@ class ConverterEverythingTest {
 //            System.out.println("restored = " + restored);
 //            System.out.println("*****");
             assert DeepEquals.deepEquals(restored, target);
+            updateStat(pair(sourceClass, targetClass), true);
         }
+    }
+
+    @Disabled
+    @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
+    @MethodSource("generateTestEverythingParamsInReverse")
+    void testConvertReverseJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
+        testConvertJsonIo(shortNameSource, shortNameTarget, source, target, sourceClass, targetClass, index);
     }
 
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
@@ -3945,8 +3960,7 @@ class ConverterEverythingTest {
                         assertEquals(target, actual);
                     }
                     updateStat(pair(sourceClass, targetClass), true);
-                }
-                else if (targetClass.equals(java.sql.Date.class)) {
+                } else if (targetClass.equals(java.sql.Date.class)) {
                     // Compare java.sql.Date values using their toString() values,
                     // since we treat them as literal "yyyy-MM-dd" values.
                     if (actual != null) {

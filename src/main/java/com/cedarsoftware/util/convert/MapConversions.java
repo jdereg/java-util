@@ -37,11 +37,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.CompactMap;
-import com.cedarsoftware.util.DateUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
-
-import static com.cedarsoftware.util.DateUtilities.ABBREVIATION_TO_TIMEZONE;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -69,6 +66,11 @@ final class MapConversions {
     static final String CALENDAR = "calendar";
     static final String TIME = "time";
     static final String TIMESTAMP = "timestamp";
+    static final String LOCAL_DATE = "localDate";
+    static final String LOCAL_TIME = "localTime";
+    static final String LOCAL_DATE_TIME = "localDateTime";
+    static final String OFFSET_DATE_TIME = "offsetDateTime";
+    static final String ZONED_DATE_TIME = "zonedDateTime";
     static final String ZONE = "zone";
     static final String YEAR = "year";
     static final String YEARS = "years";
@@ -189,34 +191,32 @@ final class MapConversions {
         return fromMap(from, converter, AtomicBoolean.class);
     }
 
-    // TODO: Need to look at toDate(), toTimeStamp(), (calendar - check), (sqlDate check)
-    // TODO: ZonedDateTime, OffsetDateTie, LocalDateTime, LocalDate, LocalTime write, single String, robust Map to x
     private static final String[] SQL_DATE_KEYS = {SQL_DATE, VALUE, V, EPOCH_MILLIS};
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object time = null;
+        Object sqlDate = null;
 
         for (String key : SQL_DATE_KEYS) {
             Object candidate = map.get(key);
             if (candidate != null && (!(candidate instanceof String) || StringUtilities.hasContent((String) candidate))) {
-                time = candidate;
+                sqlDate = candidate;
                 break;
             }
         }
 
+        // Handle strings by delegating to the String conversion method.
+        if (sqlDate instanceof String) {
+            return StringConversions.toSqlDate(sqlDate, converter);
+        }
+
         // Handle numeric values as UTC-based
-        if (time instanceof Number) {
-            long num = ((Number) time).longValue();
+        if (sqlDate instanceof Number) {
+            long num = ((Number) sqlDate).longValue();
             LocalDate ld = Instant.ofEpochMilli(num)
                     .atZone(ZoneOffset.UTC)
                     .toLocalDate();
             return java.sql.Date.valueOf(ld.toString());
-        }
-
-        // Handle strings by delegating to the String conversion method.
-        if (time instanceof String) {
-            return StringConversions.toSqlDate(time, converter);
         }
 
         // Fallback conversion if no valid key/value is found.
@@ -236,13 +236,12 @@ final class MapConversions {
         }
 
         if (time instanceof String && StringUtilities.hasContent((String)time)) {
-            ZonedDateTime zdt = DateUtilities.parseDate((String) time, converter.getOptions().getZoneId(), true);
-            return Date.from(zdt.toInstant());
+            return StringConversions.toDate(time, converter);
         }
 
         // Handle case where value is a number (epoch millis)
         if (time instanceof Number) {
-            return new Date(((Number)time).longValue());
+            return NumberConversions.toDate(time, converter);
         }
 
         // Map.Entry<Long, Integer> return has key of epoch-millis
@@ -268,45 +267,17 @@ final class MapConversions {
             }
         }
 
-        // First, try to obtain the nanos value from the map
-        int ns = 0;
-        Object nanosObj = map.get(NANOS);
-        if (nanosObj != null) {
-            if (nanosObj instanceof Number) {
-                ns = ((Number) nanosObj).intValue();
-            } else {
-                try {
-                    ns = Integer.parseInt(nanosObj.toString());
-                } catch (NumberFormatException e) {
-                    ns = 0;
-                }
-            }
-        }
-
         // If the 'time' value is a non-empty String, parse it
         if (time instanceof String && StringUtilities.hasContent((String) time)) {
-            ZonedDateTime zdt = DateUtilities.parseDate((String) time, converter.getOptions().getZoneId(), true);
-            Timestamp timestamp = Timestamp.from(zdt.toInstant());
-            // Update with nanos if present
-            if (ns != 0) {
-                timestamp.setNanos(ns);
-            }
-            return timestamp;
+            return StringConversions.toTimestamp(time, converter);
         }
 
-        // Otherwise, if epoch_millis is provided, use it with the nanos (if any)
-        Object epochMillis = map.get(EPOCH_MILLIS);
-        if (epochMillis != null) {
-            long ms = converter.convert(epochMillis, long.class);
-            Timestamp timeStamp = new Timestamp(ms);
-            if (map.containsKey(NANOS) && ns != 0) {
-                timeStamp.setNanos(ns);
-            }
-            return timeStamp;
+        if (time instanceof Number) {
+            return NumberConversions.toTimestamp(time, converter);
         }
 
         // Fallback conversion if none of the above worked
-        return fromMap(from, converter, Timestamp.class, new String[]{TIMESTAMP}, new String[]{EPOCH_MILLIS, NANOS + OPTIONAL});
+        return fromMap(from, converter, Timestamp.class, new String[]{TIMESTAMP}, new String[]{EPOCH_MILLIS});
     }
 
     static TimeZone toTimeZone(Object from, Converter converter) {
@@ -326,17 +297,10 @@ final class MapConversions {
             }
         }
         if (calStr instanceof String && StringUtilities.hasContent((String)calStr)) {
-            ZonedDateTime zdt = DateUtilities.parseDate((String)calStr, converter.getOptions().getZoneId(), true);
-            String zoneId = zdt.getZone().getId();
-            TimeZone tz = TimeZone.getTimeZone(ABBREVIATION_TO_TIMEZONE.getOrDefault(zoneId, zoneId));
-            Calendar cal = Calendar.getInstance(tz);
-            cal.setTimeInMillis(zdt.toInstant().toEpochMilli());
-            return cal;
+            return StringConversions.toCalendar(calStr, converter);
         }
         if (calStr instanceof Number) {
-            Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
-            cal.setTimeInMillis(((Number)calStr).longValue());
-            return cal;
+            return NumberConversions.toCalendar(calStr, converter);
         }
 
         return fromMap(from, converter, Calendar.class, new String[]{CALENDAR});
@@ -383,34 +347,50 @@ final class MapConversions {
         return builder.build();
     }
 
+    private static final String[] LOCAL_DATE_KEYS = {LOCAL_DATE, VALUE, V};
+
     static LocalDate toLocalDate(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object year = map.get(YEAR);
-        Object month = map.get(MONTH);
-        Object day = map.get(DAY);
-        if (year != null && month != null && day != null) {
-            int y = converter.convert(year, int.class);
-            int m = converter.convert(month, int.class);
-            int d = converter.convert(day, int.class);
-            return LocalDate.of(y, m, d);
+        Object localDate = null;
+        for (String key : LOCAL_DATE_KEYS) {
+            localDate = map.get(key);
+            if (localDate != null && (!(localDate instanceof String) || StringUtilities.hasContent((String) localDate))) {
+                break;
+            }
         }
-        return fromMap(from, converter, LocalDate.class, new String[]{DATE}, new String[] {YEAR, MONTH, DAY});
+
+        if (localDate instanceof String && StringUtilities.hasContent((String) localDate)) {
+            return StringConversions.toLocalDate(localDate, converter);
+        }
+
+        if (localDate instanceof Number) {
+            return NumberConversions.toLocalDate(localDate, converter);
+        }
+
+        return fromMap(from, converter, LocalDate.class, new String[]{LOCAL_DATE});
     }
+
+    private static final String[] LOCAL_TIME_KEYS = {LOCAL_TIME, VALUE, V};
 
     static LocalTime toLocalTime(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object hour = map.get(HOUR);
-        Object minute = map.get(MINUTE);
-        Object second = map.get(SECOND);
-        Object nano = map.get(NANOS);
-        if (hour != null && minute != null) {
-            int h = converter.convert(hour, int.class);
-            int m = converter.convert(minute, int.class);
-            int s = converter.convert(second, int.class);
-            int n = converter.convert(nano, int.class);
-            return LocalTime.of(h, m, s, n);
+        Object localTime = null;
+        for (String key : LOCAL_TIME_KEYS) {
+            localTime = map.get(key);
+            if (localTime != null && (!(localTime instanceof String) || StringUtilities.hasContent((String) localTime))) {
+                break;
+            }
         }
-        return fromMap(from, converter, LocalTime.class, new String[]{TIME}, new String[]{HOUR, MINUTE, SECOND + OPTIONAL, NANOS + OPTIONAL});
+
+        if (localTime instanceof String && StringUtilities.hasContent((String) localTime)) {
+            return StringConversions.toLocalTime(localTime, converter);
+        }
+
+        if (localTime instanceof Number) {
+            return LongConversions.toLocalTime(((Number)localTime).longValue(), converter);
+        }
+
+        return fromMap(from, converter, LocalTime.class, new String[]{LOCAL_TIME});
     }
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
@@ -446,62 +426,80 @@ final class MapConversions {
         return fromMap(from, converter, OffsetTime.class, new String[] {TIME}, new String[] {HOUR, MINUTE, SECOND + OPTIONAL, NANOS + OPTIONAL, OFFSET_HOUR, OFFSET_MINUTE});
     }
 
+    private static final String[] OFFSET_KEYS = {OFFSET_DATE_TIME, VALUE, V};
+
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object offset = map.get(OFFSET);
-        Object time = map.get(TIME);
-        Object date = map.get(DATE);
-
-        if (time != null && offset != null && date == null) {
-            LocalDateTime ldt = converter.convert(time, LocalDateTime.class);
-            ZoneOffset zoneOffset = converter.convert(offset, ZoneOffset.class);
-            return OffsetDateTime.of(ldt, zoneOffset);
+        Object dateTime = null;
+        for (String key : OFFSET_KEYS) {
+            dateTime = map.get(key);
+            if (dateTime != null && (!(dateTime instanceof String) || StringUtilities.hasContent((String) dateTime))) {
+                break;
+            }
         }
 
-        if (time != null && offset != null && date != null) {
-            LocalDate ld = converter.convert(date, LocalDate.class);
-            LocalTime lt = converter.convert(time, LocalTime.class);
-            ZoneOffset zoneOffset = converter.convert(offset, ZoneOffset.class);
-            return OffsetDateTime.of(ld, lt, zoneOffset);
+        // If the 'offsetDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (dateTime instanceof String && StringUtilities.hasContent((String) dateTime)) {
+            return StringConversions.toOffsetDateTime(dateTime, converter);
         }
 
-        return fromMap(from, converter, OffsetDateTime.class, new String[] {TIME, OFFSET}, new String[] {DATE, TIME, OFFSET});
+        // Otherwise, if epoch_millis is provided, use it with the nanos (if any)
+        Object epochMillis = map.get(EPOCH_MILLIS);
+        if (epochMillis != null) {
+            long ms = converter.convert(epochMillis, long.class);
+            return NumberConversions.toOffsetDateTime(ms, converter);
+        }
+        
+        return fromMap(from, converter, OffsetDateTime.class, new String[] {OFFSET_DATE_TIME}, new String[] {EPOCH_MILLIS});
     }
+
+    private static final String[] LDT_KEYS = {LOCAL_DATE_TIME, VALUE, V, EPOCH_MILLIS};
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object date = map.get(DATE);
-        if (date != null) {
-            LocalDate localDate = converter.convert(date, LocalDate.class);
-            Object time = map.get(TIME);
-            LocalTime localTime = time != null ? converter.convert(time, LocalTime.class) : LocalTime.MIDNIGHT;
-            return LocalDateTime.of(localDate, localTime);
+        Object dateTime = null;
+        for (String key : LDT_KEYS) {
+            dateTime = map.get(key);
+            if (dateTime != null && (!(dateTime instanceof String) || StringUtilities.hasContent((String) dateTime))) {
+                break;
+            }
         }
-        return fromMap(from, converter, LocalDateTime.class, new String[] {DATE, TIME + OPTIONAL});
+
+        // If the 'offsetDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (dateTime instanceof String && StringUtilities.hasContent((String) dateTime)) {
+            return StringConversions.toLocalDateTime(dateTime, converter);
+        }
+
+        if (dateTime instanceof Number) {
+            return NumberConversions.toLocalDateTime(dateTime, converter);
+        }
+
+        return fromMap(from, converter, LocalDateTime.class, new String[] {LOCAL_DATE_TIME}, new String[] {EPOCH_MILLIS});
     }
+
+    private static final String[] ZDT_KEYS = {ZONED_DATE_TIME, VALUE, V, EPOCH_MILLIS};
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object epochMillis = map.get(EPOCH_MILLIS);
-        if (epochMillis != null) {
-            return converter.convert(epochMillis, ZonedDateTime.class);
+        Object dateTime = null;
+        for (String key : ZDT_KEYS) {
+            dateTime = map.get(key);
+            if (dateTime != null && (!(dateTime instanceof String) || StringUtilities.hasContent((String) dateTime))) {
+                break;
+            }
         }
 
-        Object date = map.get(DATE);
-        Object time = map.get(TIME);
-        Object zone = map.get(ZONE);
-        if (date != null && time != null && zone != null) {
-            LocalDate localDate = converter.convert(date, LocalDate.class);
-            LocalTime localTime = converter.convert(time, LocalTime.class);
-            ZoneId zoneId = converter.convert(zone, ZoneId.class);
-            return ZonedDateTime.of(localDate, localTime, zoneId);
+        // If the 'zonedDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (dateTime instanceof String && StringUtilities.hasContent((String) dateTime)) {
+            return StringConversions.toZonedDateTime(dateTime, converter);
         }
-        if (zone != null && time != null && date == null) {
-            ZoneId zoneId = converter.convert(zone, ZoneId.class);
-            LocalDateTime localDateTime = converter.convert(time, LocalDateTime.class);
-            return ZonedDateTime.of(localDateTime, zoneId);
+
+        // Otherwise, if epoch_millis is provided, use it with the nanos (if any)
+        if (dateTime instanceof Number) {
+            return NumberConversions.toZonedDateTime(dateTime, converter);
         }
-        return fromMap(from, converter, ZonedDateTime.class, new String[] {EPOCH_MILLIS}, new String[] {TIME, ZONE}, new String[] {DATE, TIME, ZONE});
+
+        return fromMap(from, converter, ZonedDateTime.class, new String[] {ZONED_DATE_TIME}, new String[] {EPOCH_MILLIS});
     }
 
     static Class<?> toClass(Object from, Converter converter) {

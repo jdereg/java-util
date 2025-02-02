@@ -13,10 +13,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -116,9 +115,8 @@ final class LocalDateTimeConversions {
 
     static Map<?, ?> toMap(Object from, Converter converter) {
         LocalDateTime localDateTime = (LocalDateTime) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        target.put(MapConversions.DATE, localDateTime.toLocalDate().toString());
-        target.put(MapConversions.TIME, localDateTime.toLocalTime().toString());
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.LOCAL_DATE_TIME, localDateTime.toString());
         return target;
     }
 }

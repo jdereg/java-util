@@ -13,10 +13,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -109,11 +108,8 @@ final class OffsetDateTimeConversions {
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {
-        ZonedDateTime zdt = toZonedDateTime(from, converter);
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        target.put(MapConversions.DATE, zdt.toLocalDate().toString());
-        target.put(MapConversions.TIME, zdt.toLocalTime().toString());
-        target.put(MapConversions.OFFSET, zdt.getOffset().toString());
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.OFFSET_DATE_TIME, toString(from, converter));
         return target;
     }
 

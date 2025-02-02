@@ -138,7 +138,7 @@ public final class DateUtilities {
     private static final String tz_Hh_MM_SS = "[+-]\\d{1,2}:\\d{2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
     private static final String tz_Hh = "[+-]\\d{1,2}";
-    private static final String tzNamed = wsOp + "\\[?[A-Za-z][A-Za-z0-9~\\/._+-]+]?";
+    private static final String tzNamed = wsOp + "\\[?(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]+)]?";
     private static final String nano = "\\.\\d+";
 
     // Patterns defined in BNF influenced style using above named elements

@@ -6,11 +6,10 @@ import java.math.RoundingMode;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -36,8 +35,8 @@ final class LocalTimeConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         LocalTime localTime = (LocalTime) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        target.put(MapConversions.TIME, localTime.toString());
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.LOCAL_TIME, localTime.toString());
         return target;
     }
 

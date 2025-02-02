@@ -100,10 +100,10 @@ final class TimestampConversions {
         final String pattern;
         if (nanos % 1_000_000 == 0) {
             // Exactly millisecond precision
-            pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+            pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
         } else {
             // Nanosecond precision
-            pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSSXXX";
+            pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'";
         }
 
         // Format the Timestamp in UTC using the chosen pattern

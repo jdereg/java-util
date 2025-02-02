@@ -1,6 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import java.time.LocalTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -27,10 +26,5 @@ final class AtomicIntegerConversions {
     static AtomicInteger toAtomicInteger(Object from, Converter converter) {
         AtomicInteger atomicInt = (AtomicInteger) from;
         return new AtomicInteger(atomicInt.intValue());
-    }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        AtomicInteger atomicInteger= (AtomicInteger) from;
-        return LongConversions.toLocalTime((long)atomicInteger.get(), converter);
     }
 }

@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -109,6 +110,21 @@ final class BigIntegerConversions {
         return toZonedDateTime(from, converter).toLocalDateTime();
     }
 
+    static OffsetTime toOffsetTime(Object from, Converter converter) {
+        BigInteger bigI = (BigInteger) from;
+        try {
+            // Divide by billion to get seconds
+            BigInteger[] secondsAndNanos = bigI.divideAndRemainder(BigInteger.valueOf(1_000_000_000L));
+            long seconds = secondsAndNanos[0].longValue();
+            long nanos = secondsAndNanos[1].longValue();
+
+            Instant instant = Instant.ofEpochSecond(seconds, nanos);
+            return OffsetTime.ofInstant(instant, converter.getOptions().getZoneId());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Input value [" + bigI + "] for conversion to LocalTime must be >= 0 && <= 86399999999999", e);
+        }
+    }
+    
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toOffsetDateTime();
     }

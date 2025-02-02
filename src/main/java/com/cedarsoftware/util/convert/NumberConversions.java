@@ -7,7 +7,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.Year;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
@@ -185,6 +187,15 @@ final class NumberConversions {
         return CalendarConversions.create(toLong(from, converter), converter);
     }
 
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        long millis = ((Number) from).longValue();
+        try {
+            return LocalTime.ofNanoOfDay(millis * 1_000_000);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Input value [" + millis + "] for conversion to LocalTime must be >= 0 && <= 86399999", e);
+        }
+    }
+
     static LocalDate toLocalDate(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDate();
     }
@@ -195,6 +206,20 @@ final class NumberConversions {
     
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
         return toInstant(from, converter).atZone(converter.getOptions().getZoneId());
+    }
+
+    static OffsetTime toOffsetTime(Object from, Converter converter) {
+        if (from instanceof Integer || from instanceof Long || from instanceof AtomicLong || from instanceof AtomicInteger) {
+            long number = ((Number)from).longValue();
+            Instant instant = Instant.ofEpochMilli(number);
+            return OffsetTime.ofInstant(instant, converter.getOptions().getZoneId());
+        } else if (from instanceof BigDecimal) {
+            return BigDecimalConversions.toOffsetTime(from, converter);
+        } else if (from instanceof BigInteger) {
+            return BigIntegerConversions.toOffsetTime(from, converter);
+        }
+        
+        throw new IllegalArgumentException("Unsupported value: " + from + " requested to be converted to an OffsetTime.");
     }
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {

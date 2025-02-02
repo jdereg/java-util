@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_DATE_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.OFFSET_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -252,12 +253,7 @@ class MapConversionTests {
     @Test
     public void testToOffsetTime() {
         Map<String, Object> map = new HashMap<>();
-        map.put("hour", 12);
-        map.put("minute", 30);
-        map.put("second", 45);
-        map.put("nanos", 123456789);
-        map.put("offsetHour", 1);
-        map.put("offsetMinute", 0);
+        map.put(OFFSET_TIME, "12:30:45.123456789+01:00");
         assertEquals(
                 OffsetTime.of(12, 30, 45, 123456789, ZoneOffset.ofHours(1)),
                 MapConversions.toOffsetTime(map, converter)

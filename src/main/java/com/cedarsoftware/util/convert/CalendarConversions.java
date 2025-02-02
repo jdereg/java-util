@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.cedarsoftware.util.DateUtilities;
 
 /**
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  * @author Kenny Partlow (kpartlow@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC

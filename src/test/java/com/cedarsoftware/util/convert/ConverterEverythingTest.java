@@ -71,7 +71,6 @@ import static com.cedarsoftware.util.convert.MapConversions.CLASS;
 import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
-import static com.cedarsoftware.util.convert.MapConversions.HOUR;
 import static com.cedarsoftware.util.convert.MapConversions.HOURS;
 import static com.cedarsoftware.util.convert.MapConversions.ID;
 import static com.cedarsoftware.util.convert.MapConversions.LANGUAGE;
@@ -80,18 +79,14 @@ import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
-import static com.cedarsoftware.util.convert.MapConversions.MINUTE;
 import static com.cedarsoftware.util.convert.MapConversions.MINUTES;
 import static com.cedarsoftware.util.convert.MapConversions.MOST_SIG_BITS;
 import static com.cedarsoftware.util.convert.MapConversions.NANOS;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_DATE_TIME;
-import static com.cedarsoftware.util.convert.MapConversions.OFFSET_HOUR;
-import static com.cedarsoftware.util.convert.MapConversions.OFFSET_MINUTE;
+import static com.cedarsoftware.util.convert.MapConversions.OFFSET_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
-import static com.cedarsoftware.util.convert.MapConversions.SECOND;
 import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
 import static com.cedarsoftware.util.convert.MapConversions.SQL_DATE;
-import static com.cedarsoftware.util.convert.MapConversions.TIME;
 import static com.cedarsoftware.util.convert.MapConversions.TIMESTAMP;
 import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
@@ -451,8 +446,53 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, OffsetTime.class), new Object[][]{
                 {null, null}
         });
+        TEST_DB.put(pair(Integer.class, OffsetTime.class), new Object[][]{  // millis
+                {-1, OffsetTime.parse("08:59:59.999+09:00"), true},
+                {0, OffsetTime.parse("09:00:00.000+09:00"), true},
+                {1, OffsetTime.parse("09:00:00.001+09:00"), true},
+        });
+        TEST_DB.put(pair(Long.class, OffsetTime.class), new Object[][]{ // millis
+                {-1L, OffsetTime.parse("08:59:59.999+09:00"), true},
+                {0L, OffsetTime.parse("09:00:00.000+09:00"), true},
+                {1L, OffsetTime.parse("09:00:00.001+09:00"), true},
+        });
+        TEST_DB.put(pair(Double.class, OffsetTime.class), new Object[][]{   // seconds & fractional seconds
+                {-1d, OffsetTime.parse("08:59:59.000+09:00"), true},
+                {-1.1, OffsetTime.parse("08:59:58.9+09:00"), true},
+                {0d, OffsetTime.parse("09:00:00.000+09:00"), true},
+                {1d, OffsetTime.parse("09:00:01.000+09:00"), true},
+                {1.1d, OffsetTime.parse("09:00:01.1+09:00"), true},
+                {1.01d, OffsetTime.parse("09:00:01.01+09:00"), true},
+                {1.002d, OffsetTime.parse("09:00:01.002+09:00"), true},   // skipped 1.001 because of double's imprecision
+        });
+        TEST_DB.put(pair(BigInteger.class, OffsetTime.class), new Object[][]{  // nanos
+                {BigInteger.valueOf(-1), OffsetTime.parse("08:59:59.999999999+09:00"), true},
+                {BigInteger.valueOf(0), OffsetTime.parse("09:00:00+09:00"), true},
+                {BigInteger.valueOf(1), OffsetTime.parse("09:00:00.000000001+09:00"), true},
+                {BigInteger.valueOf(1000000000), OffsetTime.parse("09:00:01+09:00"), true},
+                {BigInteger.valueOf(1000000001), OffsetTime.parse("09:00:01.000000001+09:00"), true},
+        });
+        TEST_DB.put(pair(BigDecimal.class, OffsetTime.class), new Object[][]{  // seconds & fractional seconds
+                {BigDecimal.valueOf(-1), OffsetTime.parse("08:59:59+09:00"), true},
+                {BigDecimal.valueOf(-1.1), OffsetTime.parse("08:59:58.9+09:00"), true},
+                {BigDecimal.valueOf(0), OffsetTime.parse("09:00:00+09:00"), true},
+                {BigDecimal.valueOf(1), OffsetTime.parse("09:00:01+09:00"), true},
+                {BigDecimal.valueOf(1.1), OffsetTime.parse("09:00:01.1+09:00"), true},
+                {BigDecimal.valueOf(1.01), OffsetTime.parse("09:00:01.01+09:00"), true},
+                {BigDecimal.valueOf(1.001), OffsetTime.parse("09:00:01.001+09:00"), true},    // no imprecision with BigDecimal
+        });
+        TEST_DB.put(pair(AtomicInteger.class, OffsetTime.class), new Object[][]{        // millis
+                {new AtomicInteger(-1), OffsetTime.parse("08:59:59.999+09:00"), true},
+                {new AtomicInteger(0), OffsetTime.parse("09:00:00.000+09:00"), true},
+                {new AtomicInteger(1), OffsetTime.parse("09:00:00.001+09:00"), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, OffsetTime.class), new Object[][]{           // millis
+                {new AtomicLong(-1), OffsetTime.parse("08:59:59.999+09:00"), true},
+                {new AtomicLong(0), OffsetTime.parse("09:00:00.000+09:00"), true},
+                {new AtomicLong(1), OffsetTime.parse("09:00:00.001+09:00"), true},
+        });
         TEST_DB.put(pair(OffsetTime.class, OffsetTime.class), new Object[][]{
-                {OffsetTime.parse("00:00+09:00"), OffsetTime.parse("00:00:00+09:00")},
+                {OffsetTime.parse("00:00+09:00"), OffsetTime.parse("00:00:00+09:00"), true},
         });
         TEST_DB.put(pair(String.class, OffsetTime.class), new Object[][]{
                 {"", null},
@@ -462,18 +502,18 @@ class ConverterEverythingTest {
                 {"10:15:30+01:00.001", new IllegalArgumentException("Unable to parse '10:15:30+01:00.001' as an OffsetTime")},
         });
         TEST_DB.put(pair(Map.class, OffsetTime.class), new Object[][]{
-                {mapOf(TIME, "00:00+09:00"), OffsetTime.parse("00:00+09:00"), true},
-                {mapOf(TIME, "00:00+09:01:23"), OffsetTime.parse("00:00+09:01:23"), true},
-                {mapOf(TIME, "00:00+09:01:23.1"), new IllegalArgumentException("Unable to parse '00:00+09:01:23.1' as an OffsetTime")},
-                {mapOf(TIME, "00:00-09:00"), OffsetTime.parse("00:00-09:00"), true},
-                {mapOf(TIME, "00:00:00+09:00"), OffsetTime.parse("00:00+09:00")},       // no reverse
-                {mapOf(TIME, "00:00:00+09:00:00"), OffsetTime.parse("00:00+09:00")},    // no reverse
-                {mapOf(TIME, "garbage"), new IllegalArgumentException("Unable to parse 'garbage' as an OffsetTime")},    // no reverse
-                {mapOf(HOUR, 1, MINUTE,30), new IllegalArgumentException("Map to 'OffsetTime' the map must include: [time], [hour, minute, second (optional), nanos (optional), offsetHour, offsetMinute], [value], or [_v] as keys with associated values")},
-                {mapOf(HOUR, 1, MINUTE,30, SECOND, 59), new IllegalArgumentException("Map to 'OffsetTime' the map must include: [time], [hour, minute, second (optional), nanos (optional), offsetHour, offsetMinute], [value], or [_v] as keys with associated values")},
-                {mapOf(HOUR, 1, MINUTE,30, SECOND, 59, NANOS, 123456789), new IllegalArgumentException("Map to 'OffsetTime' the map must include: [time], [hour, minute, second (optional), nanos (optional), offsetHour, offsetMinute], [value], or [_v] as keys with associated values")},
-                {mapOf(HOUR, 1, MINUTE,30, SECOND, 59, NANOS, 123456789, OFFSET_HOUR, -5, OFFSET_MINUTE, -30), OffsetTime.parse("01:30:59.123456789-05:30")},
-                {mapOf(HOUR, 1, MINUTE,30, SECOND, 59, NANOS, 123456789, OFFSET_HOUR, -5, OFFSET_MINUTE, 30), new IllegalArgumentException("Offset 'hour' and 'minute' are not correct")},
+                {mapOf(OFFSET_TIME, "00:00+09:00"), OffsetTime.parse("00:00+09:00"), true},
+                {mapOf(OFFSET_TIME, "00:00+09:01:23"), OffsetTime.parse("00:00+09:01:23"), true},
+                {mapOf(OFFSET_TIME, "00:00+09:01:23.1"), new IllegalArgumentException("Unable to parse '00:00+09:01:23.1' as an OffsetTime")},
+                {mapOf(OFFSET_TIME, "00:00-09:00"), OffsetTime.parse("00:00-09:00"), true},
+                {mapOf(OFFSET_TIME, "00:00:00+09:00"), OffsetTime.parse("00:00+09:00")},       // no reverse
+                {mapOf(OFFSET_TIME, "00:00:00+09:00:00"), OffsetTime.parse("00:00+09:00")},    // no reverse
+                {mapOf(OFFSET_TIME, "garbage"), new IllegalArgumentException("Unable to parse 'garbage' as an OffsetTime")},    // no reverse
+                {mapOf(OFFSET_TIME, "01:30"), new IllegalArgumentException("Unable to parse '01:30' as an OffsetTime")},
+                {mapOf(OFFSET_TIME, "01:30:59"), new IllegalArgumentException("Unable to parse '01:30:59' as an OffsetTime")},
+                {mapOf(OFFSET_TIME, "01:30:59.123456789"), new IllegalArgumentException("Unable to parse '01:30:59.123456789' as an OffsetTime")},
+                {mapOf(OFFSET_TIME, "01:30:59.123456789-05:30"), OffsetTime.parse("01:30:59.123456789-05:30")},
+                {mapOf(OFFSET_TIME, "01:30:59.123456789-05:3x"), new IllegalArgumentException("Unable to parse '01:30:59.123456789-05:3x' as an OffsetTime")},
                 {mapOf(VALUE, "16:20:00-05:00"), OffsetTime.parse("16:20:00-05:00") },
         });
         TEST_DB.put(pair(OffsetDateTime.class, OffsetTime.class), new Object[][]{
@@ -1057,7 +1097,7 @@ class ConverterEverythingTest {
                 { new AtomicInteger(86400000), new IllegalArgumentException("value [86400000]")},
         });
         TEST_DB.put(pair(AtomicLong.class, LocalTime.class), new Object[][]{
-                { new AtomicLong(-1), new IllegalArgumentException("value [-1]")},
+                { new AtomicLong(-1), new IllegalArgumentException("Input value [-1] for conversion to LocalTime must be >= 0 && <= 86399999")},
                 { new AtomicLong(0), LocalTime.parse("00:00:00"), true},
                 { new AtomicLong(1), LocalTime.parse("00:00:00.001"), true},
                 { new AtomicLong(86399999), LocalTime.parse("23:59:59.999"), true},
@@ -1243,8 +1283,11 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Timestamp.class, Timestamp.class), new Object[][]{
                 {timestamp("1970-01-01T00:00:00Z"), timestamp("1970-01-01T00:00:00Z")},
         });
+        TEST_DB.put(pair(String.class, Timestamp.class), new Object[][]{
+                {"0000-01-01T00:00:00Z", new IllegalArgumentException("Cannot convert to Timestamp")},
+        });
         TEST_DB.put(pair(AtomicLong.class, Timestamp.class), new Object[][]{
-                {new AtomicLong(-62167219200000L), timestamp("0000-01-01T00:00:00.000Z"), true},
+                {new AtomicLong(-62135596800000L), timestamp("0001-01-01T00:00:00.000Z"), true},
                 {new AtomicLong(-62131377719000L), timestamp("0001-02-18T19:58:01.000Z"), true},
                 {new AtomicLong(-1000), timestamp("1969-12-31T23:59:59.000000000Z"), true},
                 {new AtomicLong(-999), timestamp("1969-12-31T23:59:59.001Z"), true},
@@ -1260,8 +1303,8 @@ class ConverterEverythingTest {
                 {new AtomicLong(253374983881000L), timestamp("9999-02-18T19:58:01.000Z"), true},
         });
         TEST_DB.put(pair(BigDecimal.class, Timestamp.class), new Object[][]{
-                {new BigDecimal("-62167219200"), timestamp("0000-01-01T00:00:00Z"), true},
-                {new BigDecimal("-62167219199.999999999"), timestamp("0000-01-01T00:00:00.000000001Z"), true},
+                {new BigDecimal("-62135596800"), timestamp("0001-01-01T00:00:00Z"), true},
+                {new BigDecimal("-62135596799.999999999"), timestamp("0001-01-01T00:00:00.000000001Z"), true},
                 {new BigDecimal("-1.000000001"), timestamp("1969-12-31T23:59:58.999999999Z"), true},
                 {new BigDecimal("-1"), timestamp("1969-12-31T23:59:59Z"), true},
                 {new BigDecimal("-0.00000001"), timestamp("1969-12-31T23:59:59.99999999Z"), true},
@@ -1275,17 +1318,17 @@ class ConverterEverythingTest {
                 {cal(now), new Timestamp(now), true},
         });
         TEST_DB.put(pair(LocalDate.class, Timestamp.class), new Object[][] {
-                {LocalDate.parse("0000-01-01"), timestamp("0000-01-01T00:00:00Z"), true },
-                {LocalDate.parse("0000-01-02"), timestamp("0000-01-02T00:00:00Z"), true },
+                {LocalDate.parse("0001-01-01"), timestamp("0001-01-01T00:00:00Z"), true },
+                {LocalDate.parse("0001-01-02"), timestamp("0001-01-02T00:00:00Z"), true },
                 {LocalDate.parse("1969-12-31"), timestamp("1969-12-31T00:00:00Z"), true },
                 {LocalDate.parse("1970-01-01"), timestamp("1970-01-01T00:00:00Z"), true },
                 {LocalDate.parse("1970-01-02"), timestamp("1970-01-02T00:00:00Z"), true },
         });
         TEST_DB.put(pair(LocalDateTime.class, Timestamp.class), new Object[][]{
-                {zdt("0000-01-01T00:00:00Z").toLocalDateTime(), new Timestamp(-62167219200000L), true},
-                {zdt("0000-01-01T00:00:00.001Z").toLocalDateTime(), new Timestamp(-62167219199999L), true},
-                {zdt("0000-01-01T00:00:00.000000001Z").toLocalDateTime(), (Supplier<Timestamp>) () -> {
-                    Timestamp ts = new Timestamp(-62167219200000L);
+                {zdt("0001-01-01T00:00:00Z").toLocalDateTime(), new Timestamp(-62135596800000L), true},
+                {zdt("0001-01-01T00:00:00.001Z").toLocalDateTime(), new Timestamp(-62135596799999L), true},
+                {zdt("0001-01-01T00:00:00.000000001Z").toLocalDateTime(), (Supplier<Timestamp>) () -> {
+                    Timestamp ts = new Timestamp(-62135596800000L);
                     ts.setNanos(1);
                     return ts;
                 }, true},
@@ -1306,8 +1349,8 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.999Z").toLocalDateTime(), new Timestamp(999L), true},
         });
         TEST_DB.put(pair(Duration.class, Timestamp.class), new Object[][]{
-                {Duration.ofSeconds(-62167219200L), timestamp("0000-01-01T00:00:00Z"), true},
-                {Duration.ofSeconds(-62167219200L, 1), timestamp("0000-01-01T00:00:00.000000001Z"), true},
+                {Duration.ofSeconds(-62135596800L), timestamp("0001-01-01T00:00:00Z"), true},
+                {Duration.ofSeconds(-62135596800L, 1), timestamp("0001-01-01T00:00:00.000000001Z"), true},
                 {Duration.ofNanos(-1000000001), timestamp("1969-12-31T23:59:58.999999999Z"), true},
                 {Duration.ofNanos(-1000000000), timestamp("1969-12-31T23:59:59.000000000Z"), true},
                 {Duration.ofNanos(-999999999), timestamp("1969-12-31T23:59:59.000000001Z"), true},
@@ -1323,8 +1366,8 @@ class ConverterEverythingTest {
                 {Duration.ofNanos(2682374400000000001L), timestamp("2055-01-01T00:00:00.000000001Z"), true},
         });
         TEST_DB.put(pair(Instant.class, Timestamp.class), new Object[][]{
-                {Instant.ofEpochSecond(-62167219200L), timestamp("0000-01-01T00:00:00Z"), true},
-                {Instant.ofEpochSecond(-62167219200L, 1), timestamp("0000-01-01T00:00:00.000000001Z"), true},
+                {Instant.ofEpochSecond(-62135596800L), timestamp("0001-01-01T00:00:00Z"), true},
+                {Instant.ofEpochSecond(-62135596800L, 1), timestamp("0001-01-01T00:00:00.000000001Z"), true},
                 {Instant.ofEpochSecond(0, -1), timestamp("1969-12-31T23:59:59.999999999Z"), true},
                 {Instant.ofEpochSecond(0, 0), timestamp("1970-01-01T00:00:00.000000000Z"), true},
                 {Instant.ofEpochSecond(0, 1), timestamp("1970-01-01T00:00:00.000000001Z"), true},
@@ -1673,10 +1716,37 @@ class ConverterEverythingTest {
                 {BigInteger.valueOf(Long.MIN_VALUE), Duration.ofNanos(Long.MIN_VALUE), true},
         });
         TEST_DB.put(pair(Map.class, Duration.class), new Object[][] {
+                // Standard seconds/nanos format
                 { mapOf(SECONDS, -1L, NANOS, 999000000), Duration.ofMillis(-1), true},
                 { mapOf(SECONDS, 0L, NANOS, 0), Duration.ofMillis(0), true},
                 { mapOf(SECONDS, 0L, NANOS, 1000000), Duration.ofMillis(1), true},
-                { mapOf(VALUE, 16000L), Duration.ofSeconds(16)},        // VALUE is in milliseconds
+
+                // Numeric strings for seconds/nanos
+                { mapOf(SECONDS, "123", NANOS, "456000000"), Duration.ofSeconds(123, 456000000)},
+                { mapOf(SECONDS, "-123", NANOS, "456000000"), Duration.ofSeconds(-123, 456000000)},
+
+                // ISO 8601 format in value field
+                { mapOf(VALUE, "PT15M"), Duration.ofMinutes(15)},
+                { mapOf(VALUE, "PT1H30M"), Duration.ofMinutes(90)},
+                { mapOf(VALUE, "-PT1H30M"), Duration.ofMinutes(-90)},
+                { mapOf(VALUE, "PT1.5S"), Duration.ofMillis(1500)},
+
+                // Different value field keys
+                { mapOf(VALUE, 16L), Duration.ofSeconds(16)},
+                { mapOf("_v", 16L), Duration.ofSeconds(16)},
+                { mapOf("value", 16L), Duration.ofSeconds(16)},
+
+                // Edge cases
+                { mapOf(SECONDS, Long.MAX_VALUE, NANOS, 999999999), Duration.ofSeconds(Long.MAX_VALUE, 999999999)},
+                { mapOf(SECONDS, Long.MIN_VALUE, NANOS, 0), Duration.ofSeconds(Long.MIN_VALUE, 0)},
+
+                // Mixed formats
+                { mapOf(SECONDS, "PT1H", NANOS, 0), Duration.ofHours(1)},  // ISO string in seconds field
+                { mapOf(SECONDS, "1.5", NANOS, 0), Duration.ofMillis(1500)}, // Decimal string in seconds field
+
+                // Optional nanos
+                { mapOf(SECONDS, 123L), Duration.ofSeconds(123)},
+                { mapOf(SECONDS, "123"), Duration.ofSeconds(123)}
         });
     }
 
@@ -1982,7 +2052,8 @@ class ConverterEverythingTest {
                 {odt("1970-01-01T00:00:00.001Z"), cal(1), true},
         });
         TEST_DB.put(pair(String.class, Calendar.class), new Object[][]{
-                { "", null}, 
+                { "", null},
+                {"0000-01-01T00:00:00Z", new IllegalArgumentException("Cannot convert to Calendar"), false},
                 {"1970-01-01T08:59:59.999+09:00[Asia/Tokyo]", cal(-1), true},
                 {"1970-01-01T09:00:00+09:00[Asia/Tokyo]", cal(0), true},
                 {"1970-01-01T09:00:00.001+09:00[Asia/Tokyo]", cal(1), true},
@@ -2038,13 +2109,12 @@ class ConverterEverythingTest {
                 {cal(now), Instant.ofEpochMilli(now), true }
         });
         TEST_DB.put(pair(Date.class, Instant.class), new Object[][] {
-                {new Date(Long.MIN_VALUE), Instant.ofEpochMilli(Long.MIN_VALUE), true },
+                {new Date(-62135596800000L), Instant.ofEpochMilli(-62135596800000L), true },  // 0001-01-01
                 {new Date(-1), Instant.ofEpochMilli(-1), true },
-                {new Date(0), Instant.ofEpochMilli(0), true },
+                {new Date(0), Instant.ofEpochMilli(0), true },                                 // 1970-01-01
                 {new Date(1), Instant.ofEpochMilli(1), true },
-                {new Date(Long.MAX_VALUE), Instant.ofEpochMilli(Long.MAX_VALUE), true },
+                {new Date(253402300799999L), Instant.ofEpochMilli(253402300799999L), true },  // 9999-12-31 23:59:59.999
         });
-
         TEST_DB.put(pair(LocalDate.class, Instant.class), new Object[][] {  // Tokyo time zone is 9 hours offset (9 + 15 = 24)
                 {LocalDate.parse("1969-12-31"), Instant.parse("1969-12-30T15:00:00Z"), true},
                 {LocalDate.parse("1970-01-01"), Instant.parse("1969-12-31T15:00:00Z"), true},
@@ -3825,6 +3895,7 @@ class ConverterEverythingTest {
      *
      * Need to wait for json-io 4.34.0 to enable.
      */
+    @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testConvertJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
@@ -3927,6 +3998,11 @@ class ConverterEverythingTest {
                 assert actualExceptionReturnValue.getClass().equals(target.getClass());
                 updateStat(pair(sourceClass, targetClass), true);
             } catch (Throwable e) {
+                if (!e.getMessage().contains(t.getMessage())) {
+                    System.out.println(e.getMessage());
+                    System.out.println(t.getMessage());
+                    System.out.println();
+                }
                 assert e.getMessage().contains(t.getMessage());
                 assert e.getClass().equals(t.getClass());
             }

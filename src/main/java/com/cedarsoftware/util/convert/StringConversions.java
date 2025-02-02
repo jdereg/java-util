@@ -293,10 +293,25 @@ final class StringConversions {
     }
 
     static Duration toDuration(Object from, Converter converter) {
+        String str = (String) from;
         try {
-            return Duration.parse((String) from);
+            // Check if string is a decimal number pattern (optional minus, digits, optional dot and digits)
+            if (str.matches("-?\\d+(\\.\\d+)?")) {
+                // Parse as decimal seconds
+                BigDecimal seconds = new BigDecimal(str);
+                long wholeSecs = seconds.longValue();
+                long nanos = seconds.subtract(BigDecimal.valueOf(wholeSecs))
+                        .multiply(BigDecimalConversions.BILLION)
+                        .longValue();
+                return Duration.ofSeconds(wholeSecs, nanos);
+            }
+            // Not a decimal number, try ISO-8601 format
+            return Duration.parse(str);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to parse '" + from + "' as a Duration.", e);
+            throw new IllegalArgumentException(
+                    "Unable to parse '" + str + "' as a Duration. Expected either:\n" +
+                            "  - Decimal seconds (e.g., '123.456')\n" +
+                            "  - ISO-8601 duration (e.g., 'PT1H2M3.456S')", e);
         }
     }
 
@@ -389,7 +404,18 @@ final class StringConversions {
 
     static Timestamp toTimestamp(Object from, Converter converter) {
         Instant instant = toInstant(from, converter);
-        return instant == null ? null : Timestamp.from(instant);
+        if (instant == null) {
+            return null;
+        }
+
+        // Check if the year is before 0001
+        if (instant.getEpochSecond() < -62135596800L) {  // 0001-01-01T00:00:00Z
+            throw new IllegalArgumentException(
+                    "Cannot convert to Timestamp: date " + instant + " has year before 0001. " +
+                            "java.sql.Timestamp does not support dates before year 0001.");
+        }
+
+        return Timestamp.from(instant);
     }
 
     static TimeZone toTimeZone(Object from, Converter converter) {
@@ -405,6 +431,12 @@ final class StringConversions {
         ZonedDateTime zdt = toZonedDateTime(from, converter);
         if (zdt == null) {
             return null;
+        }
+
+        if (zdt.getYear() < 2) {
+            throw new IllegalArgumentException(
+                    "Cannot convert to Calendar: date " + zdt + " has year less than 2. " +
+                            "Due to Calendar implementation limitations, years 0 and 1 cannot be reliably represented.");
         }
 
         TimeZone timeZone = TimeZone.getTimeZone(zdt.getZone());

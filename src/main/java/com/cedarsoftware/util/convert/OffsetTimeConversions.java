@@ -1,9 +1,15 @@
 package com.cedarsoftware.util.convert;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -31,9 +37,55 @@ final class OffsetTimeConversions {
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {
-        OffsetTime offsetTime = (OffsetTime) from;
+        OffsetTime ot = (OffsetTime) from;
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put(MapConversions.TIME, offsetTime.toString());
+        map.put(MapConversions.OFFSET_TIME, ot.toString());
         return map;
+    }
+
+    static int toInteger(Object from, Converter converter) {
+        return (int) toLong(from, converter);
+    }
+
+    static long toLong(Object from, Converter converter) {
+        OffsetTime ot = (OffsetTime) from;
+        return ot.atDate(LocalDate.of(1970, 1, 1))
+                .toInstant()
+                .toEpochMilli();
+    }
+
+    static double toDouble(Object from, Converter converter) {
+        OffsetTime ot = (OffsetTime) from;
+        Instant epoch = getEpoch(ot);
+        return epoch.getEpochSecond() + (epoch.getNano() / 1_000_000_000.0);
+    }
+
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        OffsetTime ot = (OffsetTime) from;
+        Instant epoch = getEpoch(ot);
+        return BigInteger.valueOf(epoch.getEpochSecond())
+                .multiply(BigIntegerConversions.BILLION)
+                .add(BigInteger.valueOf(epoch.getNano()));
+    }
+
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        OffsetTime ot = (OffsetTime) from;
+        Instant epoch = getEpoch(ot);
+        BigDecimal seconds = BigDecimal.valueOf(epoch.getEpochSecond());
+        BigDecimal nanos = BigDecimal.valueOf(epoch.getNano())
+                .divide(BigDecimalConversions.BILLION);
+        return seconds.add(nanos);
+    }
+
+    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
+        return new AtomicInteger((int) toLong(from, converter));
+    }
+
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
+        return new AtomicLong(toLong(from, converter));
+    }
+
+    private static Instant getEpoch(OffsetTime ot) {
+        return ot.atDate(LocalDate.of(1970, 1, 1)).toInstant();
     }
 }

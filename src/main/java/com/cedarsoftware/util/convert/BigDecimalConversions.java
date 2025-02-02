@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -75,6 +76,20 @@ final class BigDecimalConversions {
         return toZonedDateTime(from, converter).toLocalDateTime();
     }
 
+    static OffsetTime toOffsetTime(Object from, Converter converter) {
+        BigDecimal seconds = (BigDecimal) from;
+        try {
+            long wholeSecs = seconds.longValue(); // gets the integer part
+            BigDecimal frac = seconds.subtract(BigDecimal.valueOf(wholeSecs)); // gets just the fractional part
+            long nanos = frac.multiply(BILLION).longValue(); // converts fraction to nanos
+
+            Instant instant = Instant.ofEpochSecond(wholeSecs, nanos);
+            return OffsetTime.ofInstant(instant, converter.getOptions().getZoneId());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Input value [" + seconds.toPlainString() + "] for conversion to LocalTime must be >= 0 && <= 86399.999999999", e);
+        }
+    }
+    
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toOffsetDateTime();
     }

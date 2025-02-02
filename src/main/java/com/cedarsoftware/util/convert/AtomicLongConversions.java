@@ -1,6 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import java.time.LocalTime;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -27,10 +26,5 @@ final class AtomicLongConversions {
     static AtomicLong toAtomicLong(Object from, Converter converter) {
         AtomicLong atomicLong = (AtomicLong) from;
         return new AtomicLong(atomicLong.get());
-    }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        AtomicLong atomicLong = (AtomicLong) from;
-        return LongConversions.toLocalTime(atomicLong.get(), converter);
     }
 }

@@ -64,9 +64,13 @@ final class MapConversions {
     static final String DATE = "date";
     static final String SQL_DATE = "sqlDate";
     static final String CALENDAR = "calendar";
-    static final String TIME = "time";
     static final String TIMESTAMP = "timestamp";
     static final String DURATION = "duration";
+    static final String INSTANT = "instant";
+    static final String MONTH_DAY = "monthDay";
+    static final String YEAR_MONTH = "yearMonth";
+    static final String PERIOD = "period";
+    static final String ZONE_OFFSET = "zoneOffset";
     static final String LOCAL_DATE = "localDate";
     static final String LOCAL_TIME = "localTime";
     static final String LOCAL_DATE_TIME = "localDateTime";
@@ -75,24 +79,13 @@ final class MapConversions {
     static final String ZONED_DATE_TIME = "zonedDateTime";
     static final String ZONE = "zone";
     static final String YEAR = "year";
-    static final String YEARS = "years";
-    static final String MONTH = "month";
-    static final String MONTHS = "months";
-    static final String DAY = "day";
-    static final String DAYS = "days";
-    static final String HOUR = "hour";
     static final String HOURS = "hours";
-    static final String MINUTE = "minute";
     static final String MINUTES = "minutes";
-    static final String SECOND = "second";
     static final String SECONDS = "seconds";
     static final String EPOCH_MILLIS = "epochMillis";
     static final String NANOS = "nanos";
     static final String MOST_SIG_BITS = "mostSigBits";
     static final String LEAST_SIG_BITS = "leastSigBits";
-    static final String OFFSET = "offset";
-    static final String OFFSET_HOUR = "offsetHour";
-    static final String OFFSET_MINUTE = "offsetMinute";
     static final String ID = "id";
     static final String LANGUAGE = "language";
     static final String COUNTRY = "country";
@@ -395,6 +388,30 @@ final class MapConversions {
         return fromMap(from, converter, LocalTime.class, new String[]{LOCAL_TIME});
     }
 
+    private static final String[] LDT_KEYS = {LOCAL_DATE_TIME, VALUE, V, EPOCH_MILLIS};
+
+    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
+        Map<String, Object> map = (Map<String, Object>) from;
+        Object value = null;
+        for (String key : LDT_KEYS) {
+            value = map.get(key);
+            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
+                break;
+            }
+        }
+
+        // If the 'offsetDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (value instanceof String && StringUtilities.hasContent((String) value)) {
+            return StringConversions.toLocalDateTime(value, converter);
+        }
+
+        if (value instanceof Number) {
+            return NumberConversions.toLocalDateTime(value, converter);
+        }
+
+        return fromMap(from, converter, LocalDateTime.class, new String[] {LOCAL_DATE_TIME}, new String[] {EPOCH_MILLIS});
+    }
+
     private static final String[] OFFSET_TIME_KEYS = {OFFSET_TIME, VALUE, V};
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
@@ -442,30 +459,6 @@ final class MapConversions {
         }
         
         return fromMap(from, converter, OffsetDateTime.class, new String[] {OFFSET_DATE_TIME}, new String[] {EPOCH_MILLIS});
-    }
-
-    private static final String[] LDT_KEYS = {LOCAL_DATE_TIME, VALUE, V, EPOCH_MILLIS};
-
-    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : LDT_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'offsetDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toLocalDateTime(value, converter);
-        }
-
-        if (value instanceof Number) {
-            return NumberConversions.toLocalDateTime(value, converter);
-        }
-
-        return fromMap(from, converter, LocalDateTime.class, new String[] {LOCAL_DATE_TIME}, new String[] {EPOCH_MILLIS});
     }
 
     private static final String[] ZDT_KEYS = {ZONED_DATE_TIME, VALUE, V, EPOCH_MILLIS};
@@ -522,54 +515,84 @@ final class MapConversions {
         return fromMap(from, converter, Duration.class, new String[] {SECONDS, NANOS + OPTIONAL});
     }
 
+    private static final String[] INSTANT_KEYS = {INSTANT, VALUE, V};
+
     static Instant toInstant(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object seconds = map.get(SECONDS);
-        if (seconds != null) {
-            long sec = converter.convert(seconds, long.class);
-            long nanos = converter.convert(map.get(NANOS), long.class);
-            return Instant.ofEpochSecond(sec, nanos);
+        Object value = null;
+        for (String key : INSTANT_KEYS) {
+            value = map.get(key);
+            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
+                break;
+            }
         }
-        return fromMap(from, converter, Instant.class, new String[] {SECONDS, NANOS + OPTIONAL});
+
+        // If the 'instant' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (value instanceof String && StringUtilities.hasContent((String) value)) {
+            return StringConversions.toInstant(value, converter);
+        }
+
+        return fromMap(from, converter, Instant.class, new String[] {INSTANT});
     }
+
+    private static final String[] MONTH_DAY_KEYS = {MONTH_DAY, VALUE, V};
 
     static MonthDay toMonthDay(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object month = map.get(MONTH);
-        Object day = map.get(DAY);
-        if (month != null && day != null) {
-            int m = converter.convert(month, int.class);
-            int d = converter.convert(day, int.class);
-            return MonthDay.of(m, d);
+        Object value = null;
+        for (String key : MONTH_DAY_KEYS) {
+            value = map.get(key);
+            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
+                break;
+            }
         }
-        return fromMap(from, converter, MonthDay.class, new String[] {MONTH, DAY});
+
+        // If the 'monthDay' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (value instanceof String && StringUtilities.hasContent((String) value)) {
+            return StringConversions.toMonthDay(value, converter);
+        }
+
+        return fromMap(from, converter, MonthDay.class, new String[] {MONTH_DAY});
     }
+
+    private static final String[] YEAR_MONTH_KEYS = {YEAR_MONTH, VALUE, V};
 
     static YearMonth toYearMonth(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        Object year = map.get(YEAR);
-        Object month = map.get(MONTH);
-        if (year != null && month != null) {
-            int y = converter.convert(year, int.class);
-            int m = converter.convert(month, int.class);
-            return YearMonth.of(y, m);
+        Object value = null;
+        for (String key : YEAR_MONTH_KEYS) {
+            value = map.get(key);
+            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
+                break;
+            }
         }
-        return fromMap(from, converter, YearMonth.class, new String[] {YEAR, MONTH});
+
+        // If the 'yearMonth' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (value instanceof String && StringUtilities.hasContent((String) value)) {
+            return StringConversions.toYearMonth(value, converter);
+        }
+
+        return fromMap(from, converter, YearMonth.class, new String[] {YEAR_MONTH});
     }
 
+    private static final String[] PERIOD_KEYS = {PERIOD, VALUE, V};
+
     static Period toPeriod(Object from, Converter converter) {
-
         Map<String, Object> map = (Map<String, Object>) from;
-
-        if (map.containsKey(VALUE) || map.containsKey(V)) {
-            return fromMap(from, converter, Period.class, new String[] {YEARS, MONTHS, DAYS});
+        Object value = null;
+        for (String key : PERIOD_KEYS) {
+            value = map.get(key);
+            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
+                break;
+            }
         }
 
-        Number years = converter.convert(map.getOrDefault(YEARS, 0), int.class);
-        Number months = converter.convert(map.getOrDefault(MONTHS, 0), int.class);
-        Number days = converter.convert(map.getOrDefault(DAYS, 0), int.class);
+        // If the 'zonedDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (value instanceof String && StringUtilities.hasContent((String) value)) {
+            return StringConversions.toPeriod(value, converter);
+        }
 
-        return Period.of(years.intValue(), months.intValue(), days.intValue());
+        return fromMap(from, converter, Period.class, new String[] {PERIOD});
     }
 
     static ZoneId toZoneId(Object from, Converter converter) {
@@ -585,15 +608,24 @@ final class MapConversions {
         return fromMap(from, converter, ZoneId.class, new String[] {ZONE}, new String[] {ID});
     }
 
+    private static final String[] ZONE_OFFSET_KEYS = {ZONE_OFFSET, VALUE, V};
+
     static ZoneOffset toZoneOffset(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-        if (map.containsKey(HOURS)) {
-            int hours = converter.convert(map.get(HOURS), int.class);
-            int minutes = converter.convert(map.getOrDefault(MINUTES, 0), int.class);  // optional
-            int seconds = converter.convert(map.getOrDefault(SECONDS, 0), int.class);  // optional
-            return ZoneOffset.ofHoursMinutesSeconds(hours, minutes, seconds);
+        Object value = null;
+        for (String key : ZONE_OFFSET_KEYS) {
+            value = map.get(key);
+            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
+                break;
+            }
         }
-        return fromMap(from, converter, ZoneOffset.class, new String[] {HOURS, MINUTES + OPTIONAL, SECONDS + OPTIONAL});
+
+        // If the 'zonedDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
+        if (value instanceof String && StringUtilities.hasContent((String) value)) {
+            return StringConversions.toZoneOffset(value, converter);
+        }
+
+        return fromMap(from, converter, ZoneOffset.class, new String[] {ZONE_OFFSET});
     }
 
     static Year toYear(Object from, Converter converter) {

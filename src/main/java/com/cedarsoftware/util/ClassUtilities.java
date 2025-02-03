@@ -766,17 +766,19 @@ public class ClassUtilities
         Objects.requireNonNull(clazz, "Class cannot be null");
         Objects.requireNonNull(candidateClasses, "CandidateClasses classes map cannot be null");
 
+        // First try exact match
+        T exactMatch = candidateClasses.get(clazz);
+        if (exactMatch != null) {
+            return exactMatch;
+        }
+
+        // If no exact match, then look for closest inheritance match
         T closest = defaultClass;
         int minDistance = Integer.MAX_VALUE;
-        Class<?> closestClass = null;  // Track the actual class for tie-breaking
+        Class<?> closestClass = null;
 
         for (Map.Entry<Class<?>, T> entry : candidateClasses.entrySet()) {
             Class<?> candidateClass = entry.getKey();
-            // Direct match - return immediately
-            if (candidateClass == clazz) {
-                return entry.getValue();
-            }
-
             int distance = ClassUtilities.computeInheritanceDistance(clazz, candidateClass);
             if (distance != -1 && (distance < minDistance ||
                     (distance == minDistance && shouldPreferNewCandidate(candidateClass, closestClass)))) {

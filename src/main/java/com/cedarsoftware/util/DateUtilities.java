@@ -122,10 +122,10 @@ import java.util.regex.Pattern;
  *         limitations under the License.
  */
 public final class DateUtilities {
-    private static final Pattern allDigits = Pattern.compile("^\\d+$");
+    private static final Pattern allDigits = Pattern.compile("^-?\\d+$");
     private static final String days = "monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun"; // longer before shorter matters
     private static final String mos = "January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec";
-    private static final String yr = "[+-]?\\d{4,5}\\b";
+    private static final String yr = "[+-]?\\d{4,9}\\b";
     private static final String d1or2 = "\\d{1,2}";
     private static final String d2 = "\\d{2}";
     private static final String ord = "st|nd|rd|th";
@@ -556,18 +556,23 @@ public final class DateUtilities {
             return ZoneId.ofOffset("GMT", offset);
         }
 
-        // 2) Check custom abbreviation map first
+        // 2) Handle GMT explicitly to normalize to Etc/GMT
+        if (tz.equals("GMT")) {
+            return ZoneId.of("Etc/GMT");
+        }
+
+        // 3) Check custom abbreviation map first
         String mappedZone = ABBREVIATION_TO_TIMEZONE.get(tz.toUpperCase());
         if (mappedZone != null) {
             // e.g. "EST" => "America/New_York"
             return ZoneId.of(mappedZone);
         }
 
-        // 3) Try ZoneId.of(tz) for full region IDs like "Europe/Paris"
+        // 4) Try ZoneId.of(tz) for full region IDs like "Europe/Paris"
         try {
             return ZoneId.of(tz);
         } catch (Exception zoneIdEx) {
-            // 4) Fallback to TimeZone for weird short IDs or older JDK
+            // 5) Fallback to TimeZone for weird short IDs or older JDK
             TimeZone timeZone = TimeZone.getTimeZone(tz);
             if (timeZone.getID().equals("GMT") && !tz.toUpperCase().equals("GMT")) {
                 // Means the JDK didn't recognize 'tz' (it fell back to "GMT")

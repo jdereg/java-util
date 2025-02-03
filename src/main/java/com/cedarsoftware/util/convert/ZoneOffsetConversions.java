@@ -2,14 +2,11 @@ package com.cedarsoftware.util.convert;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
 
-import com.cedarsoftware.util.CompactMap;
-
-import static com.cedarsoftware.util.convert.MapConversions.HOURS;
-import static com.cedarsoftware.util.convert.MapConversions.MINUTES;
-import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
+import static com.cedarsoftware.util.convert.MapConversions.ZONE_OFFSET;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -35,18 +32,8 @@ final class ZoneOffsetConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         ZoneOffset offset = (ZoneOffset) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        int totalSeconds = offset.getTotalSeconds();
-
-        // Calculate hours, minutes, and seconds
-        int hours = totalSeconds / 3600;
-        int minutes = (totalSeconds % 3600) / 60;
-        int seconds = totalSeconds % 60;
-        target.put(HOURS, hours);
-        target.put(MINUTES, minutes);
-        if (seconds != 0) {
-            target.put(SECONDS, seconds);
-        }
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(ZONE_OFFSET, offset.getId());  // Uses ISO-8601 format (+HH:MM, +HH:MM:SS, or Z)
         return target;
     }
 

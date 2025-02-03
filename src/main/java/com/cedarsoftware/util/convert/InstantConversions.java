@@ -12,11 +12,12 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactMap;
+import static com.cedarsoftware.util.convert.MapConversions.INSTANT;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -38,13 +39,11 @@ import com.cedarsoftware.util.CompactMap;
 final class InstantConversions {
 
     private InstantConversions() {}
-    
+
     static Map toMap(Object from, Converter converter) {
-        long sec = ((Instant) from).getEpochSecond();
-        int nanos = ((Instant) from).getNano();
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        target.put("seconds", sec);
-        target.put("nanos", nanos);
+        Instant instant = (Instant) from;
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(INSTANT, instant.toString());  // Uses ISO-8601 format
         return target;
     }
     

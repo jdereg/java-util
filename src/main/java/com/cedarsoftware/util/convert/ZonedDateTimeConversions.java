@@ -111,7 +111,7 @@ final class ZonedDateTimeConversions {
 
     static String toString(Object from, Converter converter) {
         ZonedDateTime zonedDateTime = (ZonedDateTime) from;
-        return zonedDateTime.format(DateTimeFormatter.ISO_DATE_TIME);
+        return zonedDateTime.format(DateTimeFormatter.ISO_ZONED_DATE_TIME);
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {

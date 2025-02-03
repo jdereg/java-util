@@ -1,9 +1,10 @@
 package com.cedarsoftware.util.convert;
 
 import java.time.YearMonth;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactMap;
+import static com.cedarsoftware.util.convert.MapConversions.YEAR_MONTH;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -28,9 +29,7 @@ final class YearMonthConversions {
 
     static Map toMap(Object from, Converter converter) {
         YearMonth yearMonth = (YearMonth) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        target.put("year", yearMonth.getYear());
-        target.put("month", yearMonth.getMonthValue());
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(YEAR_MONTH, yearMonth.toString());
         return target;
-    }
-}
+    }}

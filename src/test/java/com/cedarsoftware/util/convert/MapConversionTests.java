@@ -29,11 +29,19 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import static com.cedarsoftware.util.convert.MapConversions.CALENDAR;
+import static com.cedarsoftware.util.convert.MapConversions.INSTANT;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
+import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.MONTH_DAY;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.PERIOD;
+import static com.cedarsoftware.util.convert.MapConversions.YEAR_MONTH;
+import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.ZONE_OFFSET;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -212,7 +220,7 @@ class MapConversionTests {
     @Test
     public void testToTimeZone() {
         Map<String, Object> map = new HashMap<>();
-        map.put("zone", "UTC");
+        map.put(ZONE, "UTC");
         assertEquals(TimeZone.getTimeZone("UTC"), MapConversions.toTimeZone(map, converter));
     }
 
@@ -220,7 +228,7 @@ class MapConversionTests {
     public void testToCalendar() {
         Map<String, Object> map = new HashMap<>();
         long currentTime = System.currentTimeMillis();
-        map.put("calendar", currentTime);
+        map.put(CALENDAR, currentTime);
         Calendar cal = MapConversions.toCalendar(map, converter);
         assertEquals(currentTime, cal.getTimeInMillis());
     }
@@ -332,7 +340,7 @@ class MapConversionTests {
     @Test
     public void testToLocalDateTime() {
         Map<String, Object> map = new HashMap<>();
-        map.put("localDateTime", "2024-01-01T12:00:00");
+        map.put(LOCAL_DATE_TIME, "2024-01-01T12:00:00");
         LocalDateTime expected = LocalDateTime.of(2024, 1, 1, 12, 0);
         assertEquals(expected, MapConversions.toLocalDateTime(map, converter));
     }
@@ -364,8 +372,7 @@ class MapConversionTests {
     @Test
     public void testToInstant() {
         Map<String, Object> map = new HashMap<>();
-        map.put("seconds", 1234567890L);
-        map.put("nanos", 123456789);
+        map.put(INSTANT, "2009-02-13T23:31:30.123456789Z");  // This is 1234567890 seconds, 123456789 nanos
         Instant expected = Instant.ofEpochSecond(1234567890L, 123456789);
         assertEquals(expected, MapConversions.toInstant(map, converter));
     }
@@ -373,40 +380,35 @@ class MapConversionTests {
     @Test
     public void testToMonthDay() {
         Map<String, Object> map = new HashMap<>();
-        map.put("month", 12);
-        map.put("day", 25);
+        map.put(MONTH_DAY, "12-25");
         assertEquals(MonthDay.of(12, 25), MapConversions.toMonthDay(map, converter));
     }
 
     @Test
     public void testToYearMonth() {
         Map<String, Object> map = new HashMap<>();
-        map.put("year", 2024);
-        map.put("month", 1);
+        map.put(YEAR_MONTH, "2024-01");
         assertEquals(YearMonth.of(2024, 1), MapConversions.toYearMonth(map, converter));
     }
 
     @Test
     public void testToPeriod() {
         Map<String, Object> map = new HashMap<>();
-        map.put("years", 1);
-        map.put("months", 6);
-        map.put("days", 15);
+        map.put(PERIOD, "P1Y6M15D");
         assertEquals(Period.of(1, 6, 15), MapConversions.toPeriod(map, converter));
     }
 
     @Test
     public void testToZoneId() {
         Map<String, Object> map = new HashMap<>();
-        map.put("zone", "America/New_York");
+        map.put(ZONE, "America/New_York");
         assertEquals(ZoneId.of("America/New_York"), MapConversions.toZoneId(map, converter));
     }
 
     @Test
     public void testToZoneOffset() {
         Map<String, Object> map = new HashMap<>();
-        map.put("hours", 5);
-        map.put("minutes", 30);
+        map.put(ZONE_OFFSET, "+05:30");
         assertEquals(ZoneOffset.ofHoursMinutes(5, 30), MapConversions.toZoneOffset(map, converter));
     }
 

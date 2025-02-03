@@ -71,19 +71,20 @@ import static com.cedarsoftware.util.convert.MapConversions.CLASS;
 import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
-import static com.cedarsoftware.util.convert.MapConversions.HOURS;
 import static com.cedarsoftware.util.convert.MapConversions.ID;
+import static com.cedarsoftware.util.convert.MapConversions.INSTANT;
 import static com.cedarsoftware.util.convert.MapConversions.LANGUAGE;
 import static com.cedarsoftware.util.convert.MapConversions.LEAST_SIG_BITS;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
-import static com.cedarsoftware.util.convert.MapConversions.MINUTES;
+import static com.cedarsoftware.util.convert.MapConversions.MONTH_DAY;
 import static com.cedarsoftware.util.convert.MapConversions.MOST_SIG_BITS;
 import static com.cedarsoftware.util.convert.MapConversions.NANOS;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.PERIOD;
 import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
 import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
 import static com.cedarsoftware.util.convert.MapConversions.SQL_DATE;
@@ -92,8 +93,10 @@ import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.V;
 import static com.cedarsoftware.util.convert.MapConversions.VARIANT;
+import static com.cedarsoftware.util.convert.MapConversions.YEAR_MONTH;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
+import static com.cedarsoftware.util.convert.MapConversions.ZONE_OFFSET;
 import static org.assertj.core.api.Fail.fail;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -431,11 +434,12 @@ class ConverterEverythingTest {
                 {"GMT+05:00", TimeZone.getTimeZone(ZoneId.of("+05:00")), true},
                 {"America/Denver", TimeZone.getTimeZone(ZoneId.of("America/Denver")), true},
                 {"American/FunkyTown", TimeZone.getTimeZone("GMT")},    // Per javadoc's
+                {"GMT", TimeZone.getTimeZone("GMT"), true},            // Added
         });
         TEST_DB.put(pair(Map.class, TimeZone.class), new Object[][]{
-                { mapOf(ZONE, "GMT"), TimeZone.getTimeZone("GMT"), true},
-                { mapOf(ZONE, "America/New_York"), TimeZone.getTimeZone("America/New_York"), true},
-                { mapOf(ZONE, "Asia/Tokyo"), TimeZone.getTimeZone("Asia/Tokyo"), true},
+                {mapOf(ZONE, "GMT"), TimeZone.getTimeZone("GMT"), true},
+                {mapOf(ZONE, "America/New_York"), TimeZone.getTimeZone("America/New_York"), true},
+                {mapOf(ZONE, "Asia/Tokyo"), TimeZone.getTimeZone("Asia/Tokyo"), true},
         });
     }
 
@@ -868,9 +872,64 @@ class ConverterEverythingTest {
                 {new Timestamp(1), "1970-01-01T00:00:00.001Z", true},
         });
         TEST_DB.put(pair(ZonedDateTime.class, String.class), new Object[][]{
-                {ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z"), "1969-12-31T23:59:59.999999999Z", true},
-                {ZonedDateTime.parse("1970-01-01T00:00:00Z"), "1970-01-01T00:00:00Z", true},
-                {ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z"), "1970-01-01T00:00:00.000000001Z", true},
+                // UTC/Zero offset cases
+                {ZonedDateTime.parse("1969-12-31T23:59:59.999999999Z[UTC]"), "1969-12-31T23:59:59.999999999Z[UTC]", true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00Z[UTC]"), "1970-01-01T00:00:00Z[UTC]", true},
+                {ZonedDateTime.parse("1970-01-01T00:00:00.000000001Z[UTC]"), "1970-01-01T00:00:00.000000001Z[UTC]", true},
+
+                // Different time zones and offsets
+                {ZonedDateTime.parse("2024-02-02T15:30:00+05:30[Asia/Kolkata]"), "2024-02-02T15:30:00+05:30[Asia/Kolkata]", true},
+                {ZonedDateTime.parse("2024-02-02T10:00:00-05:00[America/New_York]"), "2024-02-02T10:00:00-05:00[America/New_York]", true},
+                {ZonedDateTime.parse("2024-02-02T19:00:00+09:00[Asia/Tokyo]"), "2024-02-02T19:00:00+09:00[Asia/Tokyo]", true},
+
+                // DST transition times (non-ambiguous)
+                {ZonedDateTime.parse("2024-03-10T01:59:59-05:00[America/New_York]"), "2024-03-10T01:59:59-05:00[America/New_York]", true},  // Just before spring forward
+                {ZonedDateTime.parse("2024-03-10T03:00:00-04:00[America/New_York]"), "2024-03-10T03:00:00-04:00[America/New_York]", true},  // Just after spring forward
+                {ZonedDateTime.parse("2024-11-03T00:59:59-04:00[America/New_York]"), "2024-11-03T00:59:59-04:00[America/New_York]", true},  // Before fall back
+                {ZonedDateTime.parse("2024-11-03T02:00:00-05:00[America/New_York]"), "2024-11-03T02:00:00-05:00[America/New_York]", true},  // After fall back
+
+                // Different precisions
+                {ZonedDateTime.parse("2024-02-02T12:00:00+01:00[Europe/Paris]"), "2024-02-02T12:00:00+01:00[Europe/Paris]", true},
+                {ZonedDateTime.parse("2024-02-02T12:00:00.123+01:00[Europe/Paris]"), "2024-02-02T12:00:00.123+01:00[Europe/Paris]", true},
+                {ZonedDateTime.parse("2024-02-02T12:00:00.123456789+01:00[Europe/Paris]"), "2024-02-02T12:00:00.123456789+01:00[Europe/Paris]", true},
+
+                // Extreme dates
+                {ZonedDateTime.parse("+999999999-12-31T23:59:59.999999999Z[UTC]"), "+999999999-12-31T23:59:59.999999999Z[UTC]", true},
+                {ZonedDateTime.parse("-999999999-01-01T00:00:00Z[UTC]"), "-999999999-01-01T00:00:00Z[UTC]", true},
+
+                // Special zones
+                {ZonedDateTime.parse("2024-02-02T12:00:00+00:00[Etc/GMT]"), "2024-02-02T12:00:00Z[Etc/GMT]", true},
+                {ZonedDateTime.parse("2024-02-02T12:00:00+00:00[Etc/UTC]"), "2024-02-02T12:00:00Z[Etc/UTC]", true},
+
+                // Zones with unusual offsets
+                {ZonedDateTime.parse("2024-02-02T12:00:00+05:45[Asia/Kathmandu]"), "2024-02-02T12:00:00+05:45[Asia/Kathmandu]", true},
+                {ZonedDateTime.parse("2024-02-02T12:00:00+13:00[Pacific/Apia]"), "2024-02-02T12:00:00+13:00[Pacific/Apia]", true},
+
+                {ZonedDateTime.parse("2024-11-03T01:00:00-04:00[America/New_York]"), "2024-11-03T01:00:00-04:00[America/New_York]", true},  // Before transition
+                {ZonedDateTime.parse("2024-11-03T02:00:00-05:00[America/New_York]"), "2024-11-03T02:00:00-05:00[America/New_York]", true},  // After transition
+
+                // International Date Line cases
+                {ZonedDateTime.parse("2024-02-02T23:59:59+14:00[Pacific/Kiritimati]"), "2024-02-02T23:59:59+14:00[Pacific/Kiritimati]", true},
+                {ZonedDateTime.parse("2024-02-02T00:00:00-11:00[Pacific/Niue]"), "2024-02-02T00:00:00-11:00[Pacific/Niue]", true},
+
+                // Historical timezone changes (after standardization)
+                {ZonedDateTime.parse("1920-01-01T12:00:00-05:00[America/New_York]"), "1920-01-01T12:00:00-05:00[America/New_York]", true},
+
+                // Leap second potential dates (even though Java doesn't handle leap seconds)
+                {ZonedDateTime.parse("2016-12-31T23:59:59Z[UTC]"), "2016-12-31T23:59:59Z[UTC]", true},
+                {ZonedDateTime.parse("2017-01-01T00:00:00Z[UTC]"), "2017-01-01T00:00:00Z[UTC]", true},
+
+                // Military time zones
+                {ZonedDateTime.parse("2024-02-02T12:00:00Z[Etc/GMT-0]"), "2024-02-02T12:00:00Z[Etc/GMT-0]", true},
+                {ZonedDateTime.parse("2024-02-02T12:00:00+01:00[Etc/GMT-1]"), "2024-02-02T12:00:00+01:00[Etc/GMT-1]", true},
+
+                // More precision variations
+                {ZonedDateTime.parse("2024-02-02T12:00:00.1+01:00[Europe/Paris]"), "2024-02-02T12:00:00.1+01:00[Europe/Paris]", true},
+                {ZonedDateTime.parse("2024-02-02T12:00:00.12+01:00[Europe/Paris]"), "2024-02-02T12:00:00.12+01:00[Europe/Paris]", true},
+                
+                // Year boundary cases
+                {ZonedDateTime.parse("2024-12-31T23:59:59.999999999-05:00[America/New_York]"), "2024-12-31T23:59:59.999999999-05:00[America/New_York]", true},
+                {ZonedDateTime.parse("2025-01-01T00:00:00-05:00[America/New_York]"), "2025-01-01T00:00:00-05:00[America/New_York]", true},
         });
         TEST_DB.put(pair(Map.class, String.class), new Object[][]{
                 {mapOf("_v", "alpha"), "alpha"},
@@ -915,16 +974,15 @@ class ConverterEverythingTest {
                 {"America/New_York", new IllegalArgumentException("Unknown time-zone offset: 'America/New_York'")},
         });
         TEST_DB.put(pair(Map.class, ZoneOffset.class), new Object[][]{
-                {mapOf(HOURS, 5, MINUTES, 30, SECONDS, 16), ZoneOffset.of("+05:30:16"), true},
-                {mapOf(HOURS, 5, MINUTES, 30, SECONDS, 16), ZoneOffset.of("+05:30:16"), true},
-                {mapOf("_v", "-10"), ZoneOffset.of("-10:00")},
-                {mapOf(HOURS, -10L), ZoneOffset.of("-10:00")},
-                {mapOf(HOURS, -10, MINUTES, 0), ZoneOffset.of("-10:00"), true},
-                {mapOf("hrs", -10L, "mins", "0"), new IllegalArgumentException("Map to 'ZoneOffset' the map must include: [hours, minutes (optional), seconds (optional)], [value], or [_v] as keys with associated values")},
-                {mapOf(HOURS, -10L, MINUTES, "0", SECONDS, 0), ZoneOffset.of("-10:00")},
-                {mapOf(HOURS, "-10", MINUTES, (byte) -15, SECONDS, "-1"), ZoneOffset.of("-10:15:01")},
-                {mapOf(HOURS, "10", MINUTES, (byte) 15, SECONDS, true), ZoneOffset.of("+10:15:01")},
-                {mapOf(HOURS, mapOf("_v", "10"), MINUTES, mapOf("_v", (byte) 15), SECONDS, mapOf("_v", true)), ZoneOffset.of("+10:15:01")}, // full recursion
+                {mapOf(ZONE_OFFSET, "+05:30:16"), ZoneOffset.of("+05:30:16"), true},
+                {mapOf(ZONE_OFFSET, "+05:30:16"), ZoneOffset.of("+05:30:16"), true},
+                {mapOf(VALUE, "-10:00"), ZoneOffset.of("-10:00")},
+                {mapOf(V, "-10:00"), ZoneOffset.of("-10:00")},
+                {mapOf(ZONE_OFFSET, "-10:00"), ZoneOffset.of("-10:00"), true},
+                {mapOf("invalid", "-10:00"), new IllegalArgumentException("'ZoneOffset' the map must include: [zoneOffset], [value], or [_v]")},
+                {mapOf(ZONE_OFFSET, "-10:00"), ZoneOffset.of("-10:00")},
+                {mapOf(ZONE_OFFSET, "-10:15:01"), ZoneOffset.of("-10:15:01")},
+                {mapOf(ZONE_OFFSET, "+10:15:01"), ZoneOffset.of("+10:15:01")},
         });
     }
 
@@ -988,6 +1046,14 @@ class ConverterEverythingTest {
                 {ldt("1969-12-31T23:59:59.999999999"), zdt("1969-12-31T23:59:59.999999999+09:00"), true},
                 {ldt("1970-01-01T00:00:00"), zdt("1970-01-01T00:00:00+09:00"), true},
                 {ldt("1970-01-01T00:00:00.000000001"), zdt("1970-01-01T00:00:00.000000001+09:00"), true},
+
+                // DST transitions (adjusted for Asia/Tokyo being +09:00)
+                {ldt("2024-03-10T15:59:59"), zdt("2024-03-10T01:59:59-05:00"), true},  // DST transition
+                {ldt("2024-11-03T14:00:00"), zdt("2024-11-03T01:00:00-04:00"), true},  // Fall back
+
+                // Extreme dates (adjusted for Asia/Tokyo)
+                {ldt("1888-01-01T09:00:00"), zdt("1888-01-01T00:00:00Z"), true},  // Earliest reliable date for Asia/Tokyo
+                {ldt("9999-01-01T08:59:59.999999999"), zdt("9998-12-31T23:59:59.999999999Z"), true}  // Far future
         });
         TEST_DB.put(pair(Map.class, ZonedDateTime.class), new Object[][]{
                 {mapOf(VALUE, new AtomicLong(now)), Instant.ofEpochMilli(now).atZone(TOKYO_Z)},
@@ -995,6 +1061,11 @@ class ConverterEverythingTest {
                 {mapOf(ZONED_DATE_TIME, "1969-12-31T23:59:59.999999999+09:00[Asia/Tokyo]"), zdt("1969-12-31T23:59:59.999999999+09:00"), true},
                 {mapOf(ZONED_DATE_TIME, "1970-01-01T00:00:00+09:00[Asia/Tokyo]"), zdt("1970-01-01T00:00:00+09:00"), true},
                 {mapOf(ZONED_DATE_TIME, "1970-01-01T00:00:00.000000001+09:00[Asia/Tokyo]"), zdt("1970-01-01T00:00:00.000000001+09:00"), true},
+                {mapOf(ZONED_DATE_TIME, "2024-03-10T15:59:59+09:00[Asia/Tokyo]"), zdt("2024-03-10T01:59:59-05:00"), true},
+                {mapOf(ZONED_DATE_TIME, "2024-11-03T14:00:00+09:00[Asia/Tokyo]"), zdt("2024-11-03T01:00:00-04:00"), true},
+                {mapOf(ZONED_DATE_TIME, "1970-01-01T09:00:00+09:00[Asia/Tokyo]"), zdt("1970-01-01T00:00:00Z"), true},
+                {mapOf(VALUE, "1970-01-01T09:00:00+09:00[Asia/Tokyo]"), zdt("1970-01-01T00:00:00Z")},
+                {mapOf(V, "1970-01-01T09:00:00+09:00[Asia/Tokyo]"), zdt("1970-01-01T00:00:00Z")}
         });
     }
 
@@ -1524,11 +1595,11 @@ class ConverterEverythingTest {
 
         });
         TEST_DB.put(pair(Map.class, Period.class), new Object[][]{
-                {mapOf("_v", "P0D"), Period.of(0, 0, 0)},
-                {mapOf("value", "P1Y1M1D"), Period.of(1, 1, 1)},
-                {mapOf("years", "2", "months", 2, "days", 2.0), Period.of(2, 2, 2)},
-                {mapOf("years", mapOf("_v", (byte) 2), "months", mapOf("_v", 2.0f), "days", mapOf("_v", new AtomicInteger(2))), Period.of(2, 2, 2)},   // recursion
-                {mapOf("years", 2, "months", 5, "days", 16), Period.of(2, 5, 16), true},
+                {mapOf(V, "P0D"), Period.of(0, 0, 0)},
+                {mapOf(VALUE, "P1Y1M1D"), Period.of(1, 1, 1)},
+                {mapOf(PERIOD, "P2Y2M2D"), Period.of(2, 2, 2), true},
+                {mapOf(PERIOD, "P2Y5M16D"), Period.of(2, 5, 16), true},
+                {mapOf("x", ""), new IllegalArgumentException("map must include: [period], [value], or [_v]")},
         });
     }
 
@@ -1556,14 +1627,9 @@ class ConverterEverythingTest {
                 {"05:45 2024-12-31", YearMonth.of(2024, 12)},
         });
         TEST_DB.put(pair(Map.class, YearMonth.class), new Object[][]{
-                {mapOf("_v", "2024-01"), YearMonth.of(2024, 1)},
-                {mapOf("value", "2024-01"), YearMonth.of(2024, 1)},
-                {mapOf("year", 2024, "month", 12), YearMonth.of(2024, 12), true},
-                {mapOf("year", "2024", "month", 12), YearMonth.of(2024, 12)},
-                {mapOf("year", new BigInteger("2024"), "month", "12"), YearMonth.of(2024, 12)},
-                {mapOf("year", mapOf("_v", 2024), "month", "12"), YearMonth.of(2024, 12)},    // prove recursion on year
-                {mapOf("year", 2024, "month", mapOf("_v", "12")), YearMonth.of(2024, 12)},    // prove recursion on month
-                {mapOf("year", 2024, "month", mapOf("_v", mapOf("_v", "12"))), YearMonth.of(2024, 12)},    // prove multiple recursive calls
+                {mapOf(V, "2024-01"), YearMonth.of(2024, 1)},
+                {mapOf(VALUE, "2024-01"), YearMonth.of(2024, 1)},
+                {mapOf(YEAR_MONTH, "2024-12"), YearMonth.of(2024, 12), true},
         });
     }
 
@@ -1595,22 +1661,22 @@ class ConverterEverythingTest {
                 {"--6-30", new IllegalArgumentException("Unable to extract Month-Day from string: --6-30")},
         });
         TEST_DB.put(pair(Map.class, MonthDay.class), new Object[][]{
-                {mapOf("_v", "1-1"), MonthDay.of(1, 1)},
-                {mapOf("value", "1-1"), MonthDay.of(1, 1)},
-                {mapOf("_v", "01-01"), MonthDay.of(1, 1)},
-                {mapOf("_v", "--01-01"), MonthDay.of(1, 1)},
-                {mapOf("_v", "--1-1"), new IllegalArgumentException("Unable to extract Month-Day from string: --1-1")},
-                {mapOf("_v", "12-31"), MonthDay.of(12, 31)},
-                {mapOf("_v", "--12-31"), MonthDay.of(12, 31)},
-                {mapOf("_v", "-12-31"), new IllegalArgumentException("Unable to extract Month-Day from string: -12-31")},
-                {mapOf("_v", "6-30"), MonthDay.of(6, 30)},
-                {mapOf("_v", "06-30"), MonthDay.of(6, 30)},
-                {mapOf("_v", "--06-30"), MonthDay.of(6, 30)},
-                {mapOf("_v", "--6-30"), new IllegalArgumentException("Unable to extract Month-Day from string: --6-30")},
-                {mapOf("month", 6, "day", 30), MonthDay.of(6, 30), true},
-                {mapOf("month", 6L, "day", "30"), MonthDay.of(6, 30)},
-                {mapOf("month", mapOf("_v", 6L), "day", "30"), MonthDay.of(6, 30)},    // recursive on "month"
-                {mapOf("month", 6L, "day", mapOf("_v", "30")), MonthDay.of(6, 30)},    // recursive on "day"
+                {mapOf(MONTH_DAY, "1-1"), MonthDay.of(1, 1)},
+                {mapOf(VALUE, "1-1"), MonthDay.of(1, 1)},
+                {mapOf(V, "01-01"), MonthDay.of(1, 1)},
+                {mapOf(MONTH_DAY, "--01-01"), MonthDay.of(1, 1)},
+                {mapOf(MONTH_DAY, "--1-1"), new IllegalArgumentException("Unable to extract Month-Day from string: --1-1")},
+                {mapOf(MONTH_DAY, "12-31"), MonthDay.of(12, 31)},
+                {mapOf(MONTH_DAY, "--12-31"), MonthDay.of(12, 31)},
+                {mapOf(MONTH_DAY, "-12-31"), new IllegalArgumentException("Unable to extract Month-Day from string: -12-31")},
+                {mapOf(MONTH_DAY, "6-30"), MonthDay.of(6, 30)},
+                {mapOf(MONTH_DAY, "06-30"), MonthDay.of(6, 30)},
+                {mapOf(MONTH_DAY, "--06-30"), MonthDay.of(6, 30)},
+                {mapOf(MONTH_DAY, "--6-30"), new IllegalArgumentException("Unable to extract Month-Day from string: --6-30")},
+                {mapOf(MONTH_DAY, "--06-30"), MonthDay.of(6, 30), true},
+                {mapOf(MONTH_DAY, "--06-30"), MonthDay.of(6, 30)},
+                {mapOf(MONTH_DAY, mapOf("_v", "--06-30")), MonthDay.of(6, 30)},    // recursive on monthDay
+                {mapOf(VALUE, "--06-30"), MonthDay.of(6, 30)},                      // using VALUE key
         });
     }
 
@@ -2138,13 +2204,13 @@ class ConverterEverythingTest {
                 {odt("2024-12-31T23:59:59.999999999Z"), Instant.parse("2024-12-31T23:59:59.999999999Z"), true},
         });
         TEST_DB.put(pair(Map.class, Instant.class), new Object[][] {
-                { mapOf(SECONDS, 1710068820L, NANOS, 123456789), Instant.parse("2024-03-10T11:07:00.123456789Z"), true},
-                { mapOf(SECONDS, -1L, NANOS, 999999999), Instant.parse("1969-12-31T23:59:59.999999999Z"), true},
-                { mapOf(SECONDS, 0L, NANOS, 0), Instant.parse("1970-01-01T00:00:00Z"), true},
-                { mapOf(SECONDS, 0L, NANOS, 1), Instant.parse("1970-01-01T00:00:00.000000001Z"), true},
-                { mapOf(VALUE, -1L), Instant.parse("1969-12-31T23:59:59.999Z")},
-                { mapOf(VALUE, 0L), Instant.parse("1970-01-01T00:00:00Z")},
-                { mapOf(VALUE, 1L), Instant.parse("1970-01-01T00:00:00.001Z")},
+                { mapOf(INSTANT, "2024-03-10T11:07:00.123456789Z"), Instant.parse("2024-03-10T11:07:00.123456789Z"), true},
+                { mapOf(INSTANT, "1969-12-31T23:59:59.999999999Z"), Instant.parse("1969-12-31T23:59:59.999999999Z"), true},
+                { mapOf(INSTANT, "1970-01-01T00:00:00Z"), Instant.parse("1970-01-01T00:00:00Z"), true},
+                { mapOf(INSTANT, "1970-01-01T00:00:00.000000001Z"), Instant.parse("1970-01-01T00:00:00.000000001Z"), true},
+                { mapOf(VALUE, "1969-12-31T23:59:59.999Z"), Instant.parse("1969-12-31T23:59:59.999Z")},
+                { mapOf(VALUE, "1970-01-01T00:00:00Z"), Instant.parse("1970-01-01T00:00:00Z")},
+                { mapOf(V, "1970-01-01T00:00:00.001Z"), Instant.parse("1970-01-01T00:00:00.001Z")},
         });
     }
 
@@ -3952,7 +4018,13 @@ class ConverterEverythingTest {
 //            System.out.println("target = " + target);
 //            System.out.println("restored = " + restored);
 //            System.out.println("*****");
-            assert DeepEquals.deepEquals(restored, target);
+            Map<String, Object> options = new HashMap<>();
+            if (!DeepEquals.deepEquals(restored, target, options)) {
+                System.out.println("restored = " + restored);
+                System.out.println("target   = " + target);
+                System.out.println("diff     = " + options.get("diff"));
+                assert DeepEquals.deepEquals(restored, target);
+            }
             updateStat(pair(sourceClass, targetClass), true);
         }
     }

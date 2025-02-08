@@ -3,10 +3,9 @@ package com.cedarsoftware.util.convert;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
-
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -31,7 +30,7 @@ final class ZoneIdConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         ZoneId zoneID = (ZoneId) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
+        Map<String, Object> target = new LinkedHashMap<>();
         target.put("zone", zoneID.toString());
         return target;
     }

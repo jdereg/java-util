@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Currency;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,6 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import com.cedarsoftware.io.JsonIo;
@@ -57,7 +59,6 @@ import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -68,31 +69,27 @@ import static com.cedarsoftware.util.convert.MapConversions.CALENDAR;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.CLASS;
-import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
 import static com.cedarsoftware.util.convert.MapConversions.DATE;
+import static com.cedarsoftware.util.convert.MapConversions.DURATION;
 import static com.cedarsoftware.util.convert.MapConversions.EPOCH_MILLIS;
 import static com.cedarsoftware.util.convert.MapConversions.ID;
 import static com.cedarsoftware.util.convert.MapConversions.INSTANT;
-import static com.cedarsoftware.util.convert.MapConversions.LANGUAGE;
 import static com.cedarsoftware.util.convert.MapConversions.LEAST_SIG_BITS;
+import static com.cedarsoftware.util.convert.MapConversions.LOCALE;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.MONTH_DAY;
 import static com.cedarsoftware.util.convert.MapConversions.MOST_SIG_BITS;
-import static com.cedarsoftware.util.convert.MapConversions.NANOS;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.OFFSET_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.PERIOD;
-import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
-import static com.cedarsoftware.util.convert.MapConversions.SECONDS;
 import static com.cedarsoftware.util.convert.MapConversions.SQL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.TIMESTAMP;
 import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.V;
-import static com.cedarsoftware.util.convert.MapConversions.VARIANT;
 import static com.cedarsoftware.util.convert.MapConversions.YEAR_MONTH;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
@@ -274,7 +271,7 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Map.class, UUID.class), new Object[][]{
                 {mapOf("UUID", "f0000000-0000-0000-0000-000000000001"), UUID.fromString("f0000000-0000-0000-0000-000000000001"), true},
                 {mapOf("UUID", "f0000000-0000-0000-0000-00000000000x"), new IllegalArgumentException("Unable to convert 'f0000000-0000-0000-0000-00000000000x' to UUID")},
-                {mapOf("xyz", "f0000000-0000-0000-0000-000000000000"), new IllegalArgumentException("Map to 'UUID' the map must include: [UUID], [mostSigBits, leastSigBits], [value], or [_v] as keys with associated values")},
+                {mapOf("xyz", "f0000000-0000-0000-0000-000000000000"), new IllegalArgumentException("Map to 'UUID' the map must include: [UUID], [value], [_v], or [mostSigBits, leastSigBits] as key with associated value")},
                 {mapOf(MOST_SIG_BITS, "1", LEAST_SIG_BITS, "2"), UUID.fromString("00000000-0000-0001-0000-000000000002")},
         });
         TEST_DB.put(pair(String.class, UUID.class), new Object[][]{
@@ -535,26 +532,26 @@ class ConverterEverythingTest {
                 {null, null}
         });
         TEST_DB.put(pair(Locale.class, Locale.class), new Object[][]{
-                {new Locale.Builder().setLanguage("en").setRegion("US").build(), new Locale.Builder().setLanguage("en").setRegion("US").build()},
+                {Locale.forLanguageTag("en-US"), Locale.forLanguageTag("en-US")},
         });
         TEST_DB.put(pair(String.class, Locale.class), new Object[][]{
                 { "", null},
-                { "en-Latn-US-POSIX", new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build(), true},
-                { "en-Latn-US", new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").build(), true},
-                { "en-US", new Locale.Builder().setLanguage("en").setRegion("US").build(), true},
-                { "en", new Locale.Builder().setLanguage("en").build(), true},
+                { "en-Latn-US-POSIX", Locale.forLanguageTag("en-Latn-US-POSIX"), true},
+                { "en-Latn-US", Locale.forLanguageTag("en-Latn-US"), true},
+                { "en-US", Locale.forLanguageTag("en-US"), true},
+                { "en", Locale.forLanguageTag("en"), true},
         });
         TEST_DB.put(pair(Map.class, Locale.class), new Object[][]{
-                {mapOf(LANGUAGE, "joker 75", COUNTRY, "US", SCRIPT, "Latn", VARIANT, "POSIX"), new IllegalArgumentException("joker")},
-                {mapOf(LANGUAGE, "en", COUNTRY, "Amerika", SCRIPT, "Latn", VARIANT, "POSIX"), new IllegalArgumentException("Amerika")},
-                {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Jello", VARIANT, "POSIX"), new IllegalArgumentException("Jello")},
-                {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Latn", VARIANT, "Monkey @!#!# "), new IllegalArgumentException("Monkey")},
-                {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Latn", VARIANT, "POSIX"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build(), true},
-                {mapOf(LANGUAGE, "en", COUNTRY, "US", SCRIPT, "Latn"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").build(), true},
-                {mapOf(LANGUAGE, "en", COUNTRY, "US"), new Locale.Builder().setLanguage("en").setRegion("US").build(), true},
-                {mapOf(LANGUAGE, "en"), new Locale.Builder().setLanguage("en").build(), true},
-                {mapOf(V, "en-Latn-US-POSIX"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build()},   // no reverse
-                {mapOf(VALUE, "en-Latn-US-POSIX"), new Locale.Builder().setLanguage("en").setRegion("US").setScript("Latn").setVariant("POSIX").build()},   // no reverse
+                {mapOf(LOCALE, "joker 75-Latn-US-POSIX"), Locale.forLanguageTag("joker 75-Latn-US-POSIX")},
+                {mapOf(LOCALE, "en-Amerika-Latn-POSIX"), Locale.forLanguageTag("en-Amerika-Latn-POSIX")},
+                {mapOf(LOCALE, "en-US-Jello-POSIX"), Locale.forLanguageTag("en-US-Jello-POSIX")},
+                {mapOf(LOCALE, "en-Latn-US-Monkey @!#!# "), Locale.forLanguageTag("en-Latn-US-Monkey @!#!# ")},
+                {mapOf(LOCALE, "en-Latn-US-POSIX"), Locale.forLanguageTag("en-Latn-US-POSIX"), true},
+                {mapOf(LOCALE, "en-Latn-US"), Locale.forLanguageTag("en-Latn-US"), true},
+                {mapOf(LOCALE, "en-US"), Locale.forLanguageTag("en-US"), true},
+                {mapOf(LOCALE, "en"), Locale.forLanguageTag("en"), true},
+                {mapOf(V, "en-Latn-US-POSIX"), Locale.forLanguageTag("en-Latn-US-POSIX")},   // no reverse
+                {mapOf(VALUE, "en-Latn-US-POSIX"), Locale.forLanguageTag("en-Latn-US-POSIX")},   // no reverse
         });
     }
 
@@ -948,6 +945,22 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(StringBuilder.class, String.class), new Object[][]{
                 {new StringBuilder("buildy"), "buildy"},
         });
+        TEST_DB.put(pair(Pattern.class, String.class), new Object[][] {
+                {Pattern.compile("\\d+"), "\\d+", false},
+                {Pattern.compile("\\w+"), "\\w+", false},
+                {Pattern.compile("[a-zA-Z]+"), "[a-zA-Z]+", false},
+                {Pattern.compile("\\s*"), "\\s*", false},
+                {Pattern.compile("^abc$"), "^abc$", false},
+                {Pattern.compile("(foo|bar)"), "(foo|bar)", false},
+                {Pattern.compile("a{1,3}"), "a{1,3}", false},
+                {Pattern.compile("[^\\s]+"), "[^\\s]+", false}
+        });
+        TEST_DB.put(pair(String.class, Currency.class), new Object[][] {
+                {"USD", Currency.getInstance("USD"), true},
+                {"EUR", Currency.getInstance("EUR"), true},
+                {"JPY", Currency.getInstance("JPY"), true},
+                {" USD ", Currency.getInstance("USD"), false}  // one-way due to trimming
+        });
     }
 
     /**
@@ -1093,13 +1106,12 @@ class ConverterEverythingTest {
                 }, ldt("2024-03-02T22:54:17"), true},
         });
         TEST_DB.put(pair(java.sql.Date.class, LocalDateTime.class), new Object[][]{
-                {new java.sql.Date(-62167219200000L), zdt("0000-01-01T00:00:00Z").toLocalDateTime(), true},
-                {new java.sql.Date(-62167219199999L), zdt("0000-01-01T00:00:00.001Z").toLocalDateTime(), true},
-                {new java.sql.Date(-1000L), zdt("1969-12-31T23:59:59Z").toLocalDateTime(), true},
-                {new java.sql.Date(-1L), zdt("1969-12-31T23:59:59.999Z").toLocalDateTime(), true},
-                {new java.sql.Date(0L), zdt("1970-01-01T00:00:00Z").toLocalDateTime(), true},
-                {new java.sql.Date(1L), zdt("1970-01-01T00:00:00.001Z").toLocalDateTime(), true},
-                {new java.sql.Date(999L), zdt("1970-01-01T00:00:00.999Z").toLocalDateTime(), true},
+                {java.sql.Date.valueOf("1970-01-01"),
+                        LocalDateTime.of(1970, 1, 1, 0, 0), true},  // Simple case
+                {java.sql.Date.valueOf("2024-02-06"),
+                        LocalDateTime.of(2024, 2, 6, 0, 0), true},  // Current date
+                {java.sql.Date.valueOf("0001-01-01"),
+                        LocalDateTime.of(1, 1, 1, 0, 0), true},     // Very old date
         });
         TEST_DB.put(pair(Instant.class, LocalDateTime.class), new Object[][] {
                 {Instant.parse("0000-01-01T00:00:00Z"), zdt("0000-01-01T00:00:00Z").toLocalDateTime(), true},
@@ -1208,14 +1220,6 @@ class ConverterEverythingTest {
                 { new Date(1001L), LocalTime.parse("09:00:01.001")},
                 { new Date(86399999L), LocalTime.parse("08:59:59.999")},
                 { new Date(86400000L), LocalTime.parse("09:00:00")},
-        });
-        TEST_DB.put(pair(java.sql.Date.class, LocalTime.class), new Object[][]{
-                { new java.sql.Date(-1L), LocalTime.parse("08:59:59.999")},
-                { new java.sql.Date(0L), LocalTime.parse("09:00:00")},
-                { new java.sql.Date(1L), LocalTime.parse("09:00:00.001")},
-                { new java.sql.Date(1001L), LocalTime.parse("09:00:01.001")},
-                { new java.sql.Date(86399999L), LocalTime.parse("08:59:59.999")},
-                { new java.sql.Date(86400000L), LocalTime.parse("09:00:00")},
         });
         TEST_DB.put(pair(Timestamp.class, LocalTime.class), new Object[][]{
                 { new Timestamp(-1), LocalTime.parse("08:59:59.999")},
@@ -1461,7 +1465,7 @@ class ConverterEverythingTest {
                     ts.setNanos(152000001);
                     return ts;
                 }, true},
-                { mapOf("bad key", "2024-03-18T07:28:55.152", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Map to 'Timestamp' the map must include: [timestamp], [epochMillis], [value], or [_v] as keys with associated values")},
+                { mapOf("bad key", "2024-03-18T07:28:55.152", ZONE, TOKYO_Z.toString()), new IllegalArgumentException("Map to 'Timestamp' the map must include: [timestamp], [value], [_v], or [epochMillis] as key with associated value")},
         });
     }
 
@@ -1740,7 +1744,7 @@ class ConverterEverythingTest {
                 { mapOf(OFFSET_DATE_TIME, "1970-01-01T00:00:00+09:00"), OffsetDateTime.parse("1970-01-01T00:00+09:00"), true},
                 { mapOf(OFFSET_DATE_TIME, "1970-01-01T00:00:00.000000001+09:00"), OffsetDateTime.parse("1970-01-01T00:00:00.000000001+09:00"), true},
                 { mapOf(OFFSET_DATE_TIME, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00"), true},
-                { mapOf("foo", "2024-03-10T11:07:00.123456789+00:00"), new IllegalArgumentException("Map to 'OffsetDateTime' the map must include: [offsetDateTime], [epochMillis], [value], or [_v] as keys with associated values")},
+                { mapOf("foo", "2024-03-10T11:07:00.123456789+00:00"), new IllegalArgumentException("Map to 'OffsetDateTime' the map must include: [offsetDateTime], [value], [_v], or [epochMillis] as key with associated value")},
                 { mapOf(OFFSET_DATE_TIME, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
                 { mapOf(VALUE, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
                 { mapOf(V, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
@@ -1782,37 +1786,38 @@ class ConverterEverythingTest {
                 {BigInteger.valueOf(Long.MIN_VALUE), Duration.ofNanos(Long.MIN_VALUE), true},
         });
         TEST_DB.put(pair(Map.class, Duration.class), new Object[][] {
-                // Standard seconds/nanos format
-                { mapOf(SECONDS, -1L, NANOS, 999000000), Duration.ofMillis(-1), true},
-                { mapOf(SECONDS, 0L, NANOS, 0), Duration.ofMillis(0), true},
-                { mapOf(SECONDS, 0L, NANOS, 1000000), Duration.ofMillis(1), true},
+                // Standard seconds/nanos format (the default key is "seconds", expecting a BigDecimal or numeric value)
+                { mapOf(DURATION, "-0.001"), Duration.ofMillis(-1) },   // not reversible
+                { mapOf(DURATION, "PT-0.001S"), Duration.ofSeconds(-1, 999_000_000), true },
+                { mapOf(DURATION, "PT0S"),       Duration.ofMillis(0), true },
+                { mapOf(DURATION, "PT0.001S"),   Duration.ofMillis(1), true },
 
-                // Numeric strings for seconds/nanos
-                { mapOf(SECONDS, "123", NANOS, "456000000"), Duration.ofSeconds(123, 456000000)},
-                { mapOf(SECONDS, "-123", NANOS, "456000000"), Duration.ofSeconds(-123, 456000000)},
+                // Numeric strings for seconds/nanos (key "seconds" gets a BigDecimal representing seconds.nanos)
+                { mapOf(DURATION, new BigDecimal("123.456000000")), Duration.ofSeconds(123, 456000000) },
+                { mapOf(DURATION, new BigDecimal("-123.456000000")), Duration.ofSeconds(-124, 544_000_000) },
 
-                // ISO 8601 format in value field
-                { mapOf(VALUE, "PT15M"), Duration.ofMinutes(15)},
-                { mapOf(VALUE, "PT1H30M"), Duration.ofMinutes(90)},
-                { mapOf(VALUE, "-PT1H30M"), Duration.ofMinutes(-90)},
-                { mapOf(VALUE, "PT1.5S"), Duration.ofMillis(1500)},
+                // ISO 8601 format (the key "value" is expected to hold a String in ISO 8601 format)
+                { mapOf(VALUE, "PT15M"), Duration.ofMinutes(15) },
+                { mapOf(VALUE, "PT1H30M"), Duration.ofMinutes(90) },
+                { mapOf(VALUE, "-PT1H30M"), Duration.ofMinutes(-90) },
+                { mapOf(VALUE, "PT1.5S"), Duration.ofMillis(1500) },
 
-                // Different value field keys
-                { mapOf(VALUE, 16L), Duration.ofSeconds(16)},
-                { mapOf("_v", 16L), Duration.ofSeconds(16)},
-                { mapOf("value", 16L), Duration.ofSeconds(16)},
+                // Different value field keys (if the key is "value" or its alias then the value must be ISO 8601)
+                { mapOf(VALUE, "PT16S"), Duration.ofSeconds(16) },
+                { mapOf(V, "PT16S"), Duration.ofSeconds(16) },
+                { mapOf(VALUE, "PT16S"), Duration.ofSeconds(16) },
 
-                // Edge cases
-                { mapOf(SECONDS, Long.MAX_VALUE, NANOS, 999999999), Duration.ofSeconds(Long.MAX_VALUE, 999999999)},
-                { mapOf(SECONDS, Long.MIN_VALUE, NANOS, 0), Duration.ofSeconds(Long.MIN_VALUE, 0)},
+                // Edge cases (using the "seconds" key with a BigDecimal value)
+                { mapOf(DURATION, new BigDecimal(Long.toString(Long.MAX_VALUE) + ".999999999")), Duration.ofSeconds(Long.MAX_VALUE, 999999999) },
+                { mapOf(DURATION, new BigDecimal(Long.toString(Long.MIN_VALUE))), Duration.ofSeconds(Long.MIN_VALUE, 0) },
 
-                // Mixed formats
-                { mapOf(SECONDS, "PT1H", NANOS, 0), Duration.ofHours(1)},  // ISO string in seconds field
-                { mapOf(SECONDS, "1.5", NANOS, 0), Duration.ofMillis(1500)}, // Decimal string in seconds field
+                // Mixed formats:
+                { mapOf(DURATION, "PT1H"), Duration.ofHours(1) },   // ISO string in seconds field (converter should detect the ISO 8601 pattern)
+                { mapOf(DURATION, new BigDecimal("1.5")), Duration.ofMillis(1500) }, // Decimal value in seconds field
 
-                // Optional nanos
-                { mapOf(SECONDS, 123L), Duration.ofSeconds(123)},
-                { mapOf(SECONDS, "123"), Duration.ofSeconds(123)}
+                // Optional nanos (when only seconds are provided using the "seconds" key)
+                { mapOf(DURATION, new BigDecimal("123")), Duration.ofSeconds(123) },
+                { mapOf(DURATION, new BigDecimal("123")), Duration.ofSeconds(123) }
         });
     }
 
@@ -1827,105 +1832,188 @@ class ConverterEverythingTest {
                 { new java.sql.Date(0), new java.sql.Date(0) },
         });
         TEST_DB.put(pair(Double.class, java.sql.Date.class), new Object[][]{
-                {-62167219200.0, sqlDate("0000-01-01T00:00:00Z"), true},
-                {-62167219199.999, sqlDate("0000-01-01T00:00:00.001Z"), true},
-                {-1.002, sqlDate("1969-12-31T23:59:58.998Z"), true},
-                {-1.0, sqlDate("1969-12-31T23:59:59Z"), true},
-                {-0.002, sqlDate("1969-12-31T23:59:59.998Z"), true},
-                {-0.001, sqlDate("1969-12-31T23:59:59.999Z"), true},
-                {0.0, sqlDate("1970-01-01T00:00:00.000000000Z"), true},
-                {0.001, sqlDate("1970-01-01T00:00:00.001Z"), true},
-                {0.999, sqlDate("1970-01-01T00:00:00.999Z"), true},
-                {1.0, sqlDate("1970-01-01T00:00:01Z"), true},
+                // --------------------------------------------------------------------
+                // Bidirectional tests:
+                // The input double value is exactly the seconds corresponding to Tokyo midnight.
+                // Thus, converting to java.sql.Date (by truncating any fractional part) yields the
+                // date whose "start of day" in Tokyo corresponds to that exact second value.
+                // --------------------------------------------------------------------
+                { -32400.0,      java.sql.Date.valueOf("1970-01-01"), true },
+                { 54000.0,       java.sql.Date.valueOf("1970-01-02"), true },
+                { 140400.0,      java.sql.Date.valueOf("1970-01-03"), true },
+                { 31503600.0,    java.sql.Date.valueOf("1971-01-01"), true },
+                { 946652400.0,   java.sql.Date.valueOf("2000-01-01"), true },
+                { 1577804400.0,  java.sql.Date.valueOf("2020-01-01"), true },
+                { -1988182800.0, java.sql.Date.valueOf("1907-01-01"), true },
+
+                // --------------------------------------------------------------------
+                // Unidirectional tests:
+                // The input double value is not exactly the midnight seconds value.
+                // Although converting to Date yields the correct local day, the reverse conversion
+                // (which always yields the Tokyo midnight value) will differ.
+                // --------------------------------------------------------------------
+                { 0.0,             java.sql.Date.valueOf("1970-01-01"), false },
+                { -0.001,          java.sql.Date.valueOf("1970-01-01"), false },
+                { 0.001,           java.sql.Date.valueOf("1970-01-01"), false },
+                { -32399.5,        java.sql.Date.valueOf("1970-01-01"), false },
+                { -1988182800.987, java.sql.Date.valueOf("1907-01-01"), false },
+                { 1577804400.123,  java.sql.Date.valueOf("2020-01-01"), false }
         });
         TEST_DB.put(pair(AtomicLong.class, java.sql.Date.class), new Object[][]{
-                {new AtomicLong(-62167219200000L), sqlDate("0000-01-01T00:00:00Z"), true},
-                {new AtomicLong(-62167219199999L), sqlDate("0000-01-01T00:00:00.001Z"), true},
-                {new AtomicLong(-1001), sqlDate("1969-12-31T23:59:58.999Z"), true},
-                {new AtomicLong(-1000), sqlDate("1969-12-31T23:59:59Z"), true},
-                {new AtomicLong(-1), sqlDate("1969-12-31T23:59:59.999Z"), true},
-                {new AtomicLong(0), sqlDate("1970-01-01T00:00:00Z"), true},
-                {new AtomicLong(1), sqlDate("1970-01-01T00:00:00.001Z"), true},
-                {new AtomicLong(999), sqlDate("1970-01-01T00:00:00.999Z"), true},
-                {new AtomicLong(1000), sqlDate("1970-01-01T00:00:01Z"), true},
-        });
-        TEST_DB.put(pair(BigDecimal.class, java.sql.Date.class), new Object[][]{
-                {new BigDecimal("-62167219200"), sqlDate("0000-01-01T00:00:00Z"), true},
-                {new BigDecimal("-62167219199.999"), sqlDate("0000-01-01T00:00:00.001Z"), true},
-                {new BigDecimal("-1.001"), sqlDate("1969-12-31T23:59:58.999Z"), true},
-                {new BigDecimal("-1"), sqlDate("1969-12-31T23:59:59Z"), true},
-                {new BigDecimal("-0.001"), sqlDate("1969-12-31T23:59:59.999Z"), true},
-                {BigDecimal.ZERO, sqlDate("1970-01-01T00:00:00.000000000Z"), true},
-                {new BigDecimal("0.001"), sqlDate("1970-01-01T00:00:00.001Z"), true},
-                {new BigDecimal(".999"), sqlDate("1970-01-01T00:00:00.999Z"), true},
-                {new BigDecimal("1"), sqlDate("1970-01-01T00:00:01Z"), true},
+                // --------------------------------------------------------------------
+                // BIDIRECTIONAL tests: the input millisecond value equals the epoch
+                // value for the local midnight of the given date in Asia/Tokyo.
+                // (i.e. x == date.atStartOfDay(ZoneId.of("Asia/Tokyo")).toInstant().toEpochMilli())
+                // --------------------------------------------------------------------
+                // For 1970-01-01: midnight in Tokyo is 1970-01-01T00:00 JST, which in UTC is 1969-12-31T15:00Z,
+                // i.e. -9 hours in ms = -32400000.
+                { new AtomicLong(-32400000L),      java.sql.Date.valueOf("1970-01-01"), true },
+
+                // For 1970-01-02: midnight in Tokyo is 1970-01-02T00:00 JST = 1970-01-01T15:00Z,
+                // which is -32400000 + 86400000 = 54000000.
+                { new AtomicLong(54000000L),       java.sql.Date.valueOf("1970-01-02"), true },
+
+                // For 1970-01-03: midnight in Tokyo is 1970-01-03T00:00 JST = 1970-01-02T15:00Z,
+                // which is 54000000 + 86400000 = 140400000.
+                { new AtomicLong(140400000L),      java.sql.Date.valueOf("1970-01-03"), true },
+
+                // For 1971-01-01: 1970-01-01 midnight in Tokyo is -32400000; add 365 days:
+                // 365*86400000 = 31536000000, so -32400000 + 31536000000 = 31503600000.
+                { new AtomicLong(31503600000L),    java.sql.Date.valueOf("1971-01-01"), true },
+
+                // For 2000-01-01: 2000-01-01T00:00 JST equals 1999-12-31T15:00Z.
+                // Since 2000-01-01T00:00Z is 946684800000, subtract 9 hours (32400000) to get:
+                // 946684800000 - 32400000 = 946652400000.
+                { new AtomicLong(946652400000L),   java.sql.Date.valueOf("2000-01-01"), true },
+
+                // For 2020-01-01: 2020-01-01T00:00 JST equals 2019-12-31T15:00Z.
+                // (Epoch for 2020-01-01T00:00Z is 1577836800000, minus 32400000 equals 1577804400000.)
+                { new AtomicLong(1577804400000L),  java.sql.Date.valueOf("2020-01-01"), true },
+
+                // A far‐past date – for example, 1907-01-01.
+                // (Compute: 1907-01-01T00:00 JST equals 1906-12-31T15:00Z.
+                //  From 1907-01-01 to 1970-01-01 is 23011 days; 23011*86400000 = 1,988,150,400,000.
+                //  Then: -32400000 - 1,988,150,400,000 = -1,988,182,800,000.)
+                { new AtomicLong(-1988182800000L), java.sql.Date.valueOf("1907-01-01"), true },
+
+                // --------------------------------------------------------------------
+                // UNIDIRECTIONAL tests: the input millisecond value is not at local midnight.
+                // Although converting to Date yields the correct local day, if you convert back
+                // you will get the epoch value for midnight (i.e. the “rounded‐down” value).
+                // --------------------------------------------------------------------
+                // -1L:  1969-12-31T23:59:59.999Z → in Tokyo becomes 1970-01-01T08:59:59.999, so date is 1970-01-01.
+                { new AtomicLong(-1L),            java.sql.Date.valueOf("1970-01-01"), false },
+
+                // 1L: 1970-01-01T00:00:00.001Z → in Tokyo 1970-01-01T09:00:00.001 → still 1970-01-01.
+                { new AtomicLong(1L),             java.sql.Date.valueOf("1970-01-01"), false },
+
+                // 43,200,000L: 12 hours after epoch: 1970-01-01T12:00:00Z → in Tokyo 1970-01-01T21:00:00 → date: 1970-01-01.
+                { new AtomicLong(43200000L),      java.sql.Date.valueOf("1970-01-01"), false },
+
+                // 86,399,999L: 1 ms before 86400000; 1970-01-01T23:59:59.999Z → in Tokyo 1970-01-02T08:59:59.999 → date: 1970-01-02.
+                { new AtomicLong(86399999L),      java.sql.Date.valueOf("1970-01-02"), false },
+
+                // 86,401,000L: (86400000 + 1000) ms → 1970-01-02T00:00:01Z → in Tokyo 1970-01-02T09:00:01 → date: 1970-01-02.
+                { new AtomicLong(86400000L + 1000),java.sql.Date.valueOf("1970-01-02"), false },
+                { new AtomicLong(10000000000L),   java.sql.Date.valueOf("1970-04-27"), false },
+                { new AtomicLong(1577836800001L), java.sql.Date.valueOf("2020-01-01"), false },
         });
         TEST_DB.put(pair(Date.class, java.sql.Date.class), new Object[][] {
-                {new Date(Long.MIN_VALUE), new java.sql.Date(Long.MIN_VALUE), true },
-                {new Date(-1), new java.sql.Date(-1), true },
-                {new Date(0), new java.sql.Date(0), true },
-                {new Date(1), new java.sql.Date(1), true },
-                {new Date(Long.MAX_VALUE), new java.sql.Date(Long.MAX_VALUE), true },
+                // Bidirectional tests (true) - using dates that represent midnight in Tokyo
+                {date("1888-01-01T15:00:00Z"), java.sql.Date.valueOf("1888-01-02"), true},  // 1888-01-02 00:00 Tokyo
+                {date("1969-12-30T15:00:00Z"), java.sql.Date.valueOf("1969-12-31"), true},  // 1969-12-31 00:00 Tokyo
+                {date("1969-12-31T15:00:00Z"), java.sql.Date.valueOf("1970-01-01"), true},  // 1970-01-01 00:00 Tokyo
+                {date("1970-01-01T15:00:00Z"), java.sql.Date.valueOf("1970-01-02"), true},  // 1970-01-02 00:00 Tokyo
+                {date("2023-06-14T15:00:00Z"), java.sql.Date.valueOf("2023-06-15"), true},  // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - proving time portion is dropped
+                {date("2023-06-15T08:30:45.123Z"), java.sql.Date.valueOf("2023-06-15"), false},  // 17:30 Tokyo
+                {date("2023-06-15T14:59:59.999Z"), java.sql.Date.valueOf("2023-06-15"), false},  // 23:59:59.999 Tokyo
+                {date("2023-06-15T00:00:00.001Z"), java.sql.Date.valueOf("2023-06-15"), false}   // 09:00:00.001 Tokyo
         });
         TEST_DB.put(pair(OffsetDateTime.class, java.sql.Date.class), new Object[][]{
-                {odt("1969-12-31T23:59:59Z"), new java.sql.Date(-1000), true},
-                {odt("1969-12-31T23:59:59.999Z"), new java.sql.Date(-1), true},
-                {odt("1970-01-01T00:00:00Z"), new java.sql.Date(0), true},
-                {odt("1970-01-01T00:00:00.001Z"), new java.sql.Date(1), true},
-                {odt("1970-01-01T00:00:00.999Z"), new java.sql.Date(999), true},
+                // Bidirectional tests (true) - all at midnight Tokyo time (UTC+9)
+                {odt("1969-12-31T15:00:00Z"), java.sql.Date.valueOf("1970-01-01"), true},    // Jan 1, 00:00 Tokyo time
+                {odt("1970-01-01T15:00:00Z"), java.sql.Date.valueOf("1970-01-02"), true},    // Jan 2, 00:00 Tokyo time
+                {odt("2023-06-14T15:00:00Z"), java.sql.Date.valueOf("2023-06-15"), true},    // Jun 15, 00:00 Tokyo time
+
+                // One-way tests (false) - various times that should truncate to midnight Tokyo time
+                {odt("1970-01-01T03:30:00Z"), java.sql.Date.valueOf("1970-01-01"), false},           // Jan 1, 12:30 Tokyo
+                {odt("1970-01-01T14:59:59.999Z"), java.sql.Date.valueOf("1970-01-01"), false},       // Jan 1, 23:59:59.999 Tokyo
+                {odt("1970-01-01T15:00:00.001Z"), java.sql.Date.valueOf("1970-01-02"), false},       // Jan 2, 00:00:00.001 Tokyo
+                {odt("2023-06-14T18:45:30Z"), java.sql.Date.valueOf("2023-06-15"), false},           // Jun 15, 03:45:30 Tokyo
+                {odt("2023-06-14T23:30:00+09:00"), java.sql.Date.valueOf("2023-06-14"), false},      // Jun 15, 23:30 Tokyo
         });
         TEST_DB.put(pair(Timestamp.class, java.sql.Date.class), new Object[][]{
-//                {new Timestamp(Long.MIN_VALUE), new java.sql.Date(Long.MIN_VALUE), true},
-                {new Timestamp(Integer.MIN_VALUE), new java.sql.Date(Integer.MIN_VALUE), true},
-                {new Timestamp(now), new java.sql.Date(now), true},
-                {new Timestamp(-1), new java.sql.Date(-1), true},
-                {new Timestamp(0), new java.sql.Date(0), true},
-                {new Timestamp(1), new java.sql.Date(1), true},
-                {new Timestamp(Integer.MAX_VALUE), new java.sql.Date(Integer.MAX_VALUE), true},
-//                {new Timestamp(Long.MAX_VALUE), new java.sql.Date(Long.MAX_VALUE), true},
-                {timestamp("1969-12-31T23:59:59.999Z"), new java.sql.Date(-1), true},
-                {timestamp("1970-01-01T00:00:00.000Z"), new java.sql.Date(0), true},
-                {timestamp("1970-01-01T00:00:00.001Z"), new java.sql.Date(1), true},
+                // Bidirectional tests (true) - all at midnight Tokyo time
+                {timestamp("1888-01-01T15:00:00Z"), java.sql.Date.valueOf("1888-01-02"), true},  // 1888-01-02 00:00 Tokyo
+                {timestamp("1969-12-30T15:00:00Z"), java.sql.Date.valueOf("1969-12-31"), true},  // 1969-12-31 00:00 Tokyo
+                {timestamp("1969-12-31T15:00:00Z"), java.sql.Date.valueOf("1970-01-01"), true},  // 1970-01-01 00:00 Tokyo
+                {timestamp("1970-01-01T15:00:00Z"), java.sql.Date.valueOf("1970-01-02"), true},  // 1970-01-02 00:00 Tokyo
+                {timestamp("2023-06-14T15:00:00Z"), java.sql.Date.valueOf("2023-06-15"), true},  // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - proving time portion is dropped
+                {timestamp("1970-01-01T12:30:45.123Z"), java.sql.Date.valueOf("1970-01-01"), false},
+                {timestamp("2023-06-15T00:00:00.000Z"), java.sql.Date.valueOf("2023-06-15"), false},
+                {timestamp("2023-06-15T14:59:59.999Z"), java.sql.Date.valueOf("2023-06-15"), false},
+                {timestamp("2023-06-15T15:00:00.000Z"), java.sql.Date.valueOf("2023-06-16"), false}
         });
         TEST_DB.put(pair(LocalDate.class, java.sql.Date.class), new Object[][] {
-                {zdt("0000-01-01T00:00:00Z").toLocalDate(), new java.sql.Date(-62167252739000L), true},
-                {zdt("0000-01-01T00:00:00.001Z").toLocalDate(), new java.sql.Date(-62167252739000L), true},
-                {zdt("1969-12-31T14:59:59.999Z").toLocalDate(), new java.sql.Date(-118800000L), true},
-                {zdt("1969-12-31T15:00:00Z").toLocalDate(), new java.sql.Date(-32400000L), true},
-                {zdt("1969-12-31T23:59:59.999Z").toLocalDate(), new java.sql.Date(-32400000L), true},
-                {zdt("1970-01-01T00:00:00Z").toLocalDate(), new java.sql.Date(-32400000L), true},
-                {zdt("1970-01-01T00:00:00.001Z").toLocalDate(), new java.sql.Date(-32400000L), true},
-                {zdt("1970-01-01T00:00:00.999Z").toLocalDate(), new java.sql.Date(-32400000L), true},
-                {zdt("1970-01-01T00:00:00.999Z").toLocalDate(), new java.sql.Date(-32400000L), true},
+                // Bidirectional tests (true)
+                {LocalDate.of(1888, 1, 2), java.sql.Date.valueOf("1888-01-02"), true},
+                {LocalDate.of(1969, 12, 31), java.sql.Date.valueOf("1969-12-31"), true},
+                {LocalDate.of(1970, 1, 1), java.sql.Date.valueOf("1970-01-01"), true},
+                {LocalDate.of(1970, 1, 2), java.sql.Date.valueOf("1970-01-02"), true},
+                {LocalDate.of(2023, 6, 15), java.sql.Date.valueOf("2023-06-15"), true},
+
+                // One-way tests (false) - though for LocalDate, all conversions should be bidirectional
+                // since both types represent dates without time components
+                {LocalDate.of(1970, 1, 1), java.sql.Date.valueOf("1970-01-01"), false},
+                {LocalDate.of(2023, 12, 31), java.sql.Date.valueOf("2023-12-31"), false}
         });
         TEST_DB.put(pair(Calendar.class, java.sql.Date.class), new Object[][] {
-                {cal(now), new java.sql.Date(now), true},
-                {cal(0), new java.sql.Date(0), true}
+                // Bidirectional tests (true) - all at midnight Tokyo time
+                {createCalendar(1888, 1, 2, 0, 0, 0), java.sql.Date.valueOf("1888-01-02"), true},
+                {createCalendar(1969, 12, 31, 0, 0, 0), java.sql.Date.valueOf("1969-12-31"), true},
+                {createCalendar(1970, 1, 1, 0, 0, 0), java.sql.Date.valueOf("1970-01-01"), true},
+                {createCalendar(1970, 1, 2, 0, 0, 0), java.sql.Date.valueOf("1970-01-02"), true},
+                {createCalendar(2023, 6, 15, 0, 0, 0), java.sql.Date.valueOf("2023-06-15"), true},
+
+                // One-way tests (false) - proving time portion is dropped
+                {createCalendar(1970, 1, 1, 12, 30, 45), java.sql.Date.valueOf("1970-01-01"), false},
+                {createCalendar(2023, 6, 15, 23, 59, 59), java.sql.Date.valueOf("2023-06-15"), false},
+                {createCalendar(2023, 6, 15, 1, 0, 1), java.sql.Date.valueOf("2023-06-15"), false}
         });
         TEST_DB.put(pair(Instant.class, java.sql.Date.class), new Object[][]{
-                {Instant.parse("0000-01-01T00:00:00Z"), new java.sql.Date(-62167219200000L), true},
-                {Instant.parse("0000-01-01T00:00:00.001Z"), new java.sql.Date(-62167219199999L), true},
-                {Instant.parse("1969-12-31T23:59:59Z"), new java.sql.Date(-1000L), true},
-                {Instant.parse("1969-12-31T23:59:59.999Z"), new java.sql.Date(-1L), true},
-                {Instant.parse("1970-01-01T00:00:00Z"), new java.sql.Date(0L), true},
-                {Instant.parse("1970-01-01T00:00:00.001Z"), new java.sql.Date(1L), true},
-                {Instant.parse("1970-01-01T00:00:00.999Z"), new java.sql.Date(999L), true},
+                // These instants, when viewed in Asia/Tokyo, yield the local date "0000-01-01"
+                { Instant.parse("0000-01-01T00:00:00Z"),       java.sql.Date.valueOf("0000-01-01"), false },
+                { Instant.parse("0000-01-01T00:00:00.001Z"),     java.sql.Date.valueOf("0000-01-01"), false },
+
+                // These instants, when viewed in Asia/Tokyo, yield the local date "1970-01-01"
+                { Instant.parse("1969-12-31T23:59:59Z"),         java.sql.Date.valueOf("1970-01-01"), false },
+                { Instant.parse("1969-12-31T23:59:59.999Z"),      java.sql.Date.valueOf("1970-01-01"), false },
+                { Instant.parse("1970-01-01T00:00:00Z"),         java.sql.Date.valueOf("1970-01-01"), false },
+                { Instant.parse("1970-01-01T00:00:00.001Z"),      java.sql.Date.valueOf("1970-01-01"), false },
+                { Instant.parse("1970-01-01T00:00:00.999Z"),      java.sql.Date.valueOf("1970-01-01"), false },
         });
         TEST_DB.put(pair(ZonedDateTime.class, java.sql.Date.class), new Object[][]{
-                {zdt("0000-01-01T00:00:00Z"), new java.sql.Date(-62167219200000L), true},
-                {zdt("0000-01-01T00:00:00.001Z"), new java.sql.Date(-62167219199999L), true},
-                {zdt("1969-12-31T23:59:59Z"), new java.sql.Date(-1000), true},
-                {zdt("1969-12-31T23:59:59.999Z"), new java.sql.Date(-1), true},
-                {zdt("1970-01-01T00:00:00Z"), new java.sql.Date(0), true},
-                {zdt("1970-01-01T00:00:00.001Z"), new java.sql.Date(1), true},
-                {zdt("1970-01-01T00:00:00.999Z"), new java.sql.Date(999), true},
+                // When it's midnight in Tokyo (UTC+9), it's 15:00 the previous day in UTC
+                {zdt("1888-01-01T15:00:00+00:00"), java.sql.Date.valueOf("1888-01-02"), true},
+                {zdt("1969-12-31T15:00:00+00:00"), java.sql.Date.valueOf("1970-01-01"), true},
+                {zdt("1970-01-01T15:00:00+00:00"), java.sql.Date.valueOf("1970-01-02"), true},
+
+                // One-way tests (false) - various times that should truncate to Tokyo midnight
+                {zdt("1969-12-31T14:59:59+00:00"), java.sql.Date.valueOf("1969-12-31"), false},  // Just before Tokyo midnight
+                {zdt("1969-12-31T15:00:01+00:00"), java.sql.Date.valueOf("1970-01-01"), false},  // Just after Tokyo midnight
+                {zdt("1970-01-01T03:30:00+00:00"), java.sql.Date.valueOf("1970-01-01"), false},  // Middle of Tokyo day
+                {zdt("1970-01-01T14:59:59+00:00"), java.sql.Date.valueOf("1970-01-01"), false},  // End of Tokyo day
         });
         TEST_DB.put(pair(Map.class, java.sql.Date.class), new Object[][] {
                 { mapOf(SQL_DATE, 1703043551033L), java.sql.Date.valueOf("2023-12-20")},
-                { mapOf(EPOCH_MILLIS, -1L), java.sql.Date.valueOf("1969-12-31")},
+                { mapOf(EPOCH_MILLIS, -1L), java.sql.Date.valueOf("1970-01-01")},
                 { mapOf(EPOCH_MILLIS, 0L), java.sql.Date.valueOf("1970-01-01")},
                 { mapOf(EPOCH_MILLIS, 1L), java.sql.Date.valueOf("1970-01-01")},
-                { mapOf(EPOCH_MILLIS, 1710714535152L), new java.sql.Date(1710714535152L)},
+                { mapOf(EPOCH_MILLIS, 1710714535152L), java.sql.Date.valueOf("2024-03-18") },
                 { mapOf(SQL_DATE, "1969-12-31"), java.sql.Date.valueOf("1969-12-31"), true},  // One day before epoch
                 { mapOf(SQL_DATE, "1970-01-01"), java.sql.Date.valueOf("1970-01-01"), true},  // Epoch
                 { mapOf(SQL_DATE, "1970-01-02"), java.sql.Date.valueOf("1970-01-02"), true},  // One day after epoch
@@ -1933,8 +2021,16 @@ class ConverterEverythingTest {
                 { mapOf(SQL_DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(SQL_DATE, "1970-01-01T00:00bad zone"), new IllegalArgumentException("Issue parsing date-time, other characters present: zone")},
                 { mapOf(SQL_DATE, "1970-01-01 00:00:00Z"), java.sql.Date.valueOf("1970-01-01")},
-                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'java.sql.Date' the map must include: [sqlDate], [epochMillis], [value], or [_v] as keys with associated values")},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'java.sql.Date' the map must include: [sqlDate], [value], [_v], or [epochMillis] as key with associated value")},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'java.sql.Date' the map must include: [sqlDate], [value], [_v], or [epochMillis] as key with associated value")},
         });
+    }
+
+    private static Calendar createCalendar(int year, int month, int day, int hour, int minute, int second) {
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Tokyo"));
+        cal.clear();
+        cal.set(year, month - 1, day, hour, minute, second);  // month is 0-based in Calendar
+        return cal;
     }
 
     /**
@@ -2025,7 +2121,7 @@ class ConverterEverythingTest {
                 { mapOf(DATE, "X1970-01-01 00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(DATE, "X1970-01-01T00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
                 { mapOf(DATE, "1970-01-01X00:00:00Z"), new IllegalArgumentException("Issue parsing date-time, other characters present: X")},
-                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'Date' the map must include: [date], [epochMillis], [value], or [_v] as keys with associated values")},
+                { mapOf("foo", "bar"), new IllegalArgumentException("Map to 'Date' the map must include: [date], [value], [_v], or [epochMillis] as key with associated value")},
         });
     }
 
@@ -2357,16 +2453,21 @@ class ConverterEverythingTest {
                 {date("9999-02-18T19:58:01Z"), new BigInteger("253374983881000000000"), true},
         });
         TEST_DB.put(pair(java.sql.Date.class, BigInteger.class), new Object[][]{
-                {sqlDate("0000-01-01T00:00:00Z"), new BigInteger("-62167219200000000000"), true},
-                {sqlDate("0001-02-18T19:58:01Z"), new BigInteger("-62131377719000000000"), true},
-                {sqlDate("1969-12-31T23:59:59Z"), BigInteger.valueOf(-1_000_000_000), true},
-                {sqlDate("1969-12-31T23:59:59.1Z"), BigInteger.valueOf(-900000000), true},
-                {sqlDate("1969-12-31T23:59:59.9Z"), BigInteger.valueOf(-100000000), true},
-                {sqlDate("1970-01-01T00:00:00Z"), BigInteger.ZERO, true},
-                {sqlDate("1970-01-01T00:00:00.1Z"), BigInteger.valueOf(100000000), true},
-                {sqlDate("1970-01-01T00:00:00.9Z"), BigInteger.valueOf(900000000), true},
-                {sqlDate("1970-01-01T00:00:01Z"), BigInteger.valueOf(1000000000), true},
-                {sqlDate("9999-02-18T19:58:01Z"), new BigInteger("253374983881000000000"), true},
+                // Bidirectional tests (true) - all at midnight Tokyo time
+                {java.sql.Date.valueOf("1888-01-02"),
+                        BigInteger.valueOf(Instant.parse("1888-01-01T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true},  // 1888-01-02 00:00 Tokyo
+
+                {java.sql.Date.valueOf("1969-12-31"),
+                        BigInteger.valueOf(Instant.parse("1969-12-30T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true},  // 1969-12-31 00:00 Tokyo
+
+                {java.sql.Date.valueOf("1970-01-01"),
+                        BigInteger.valueOf(Instant.parse("1969-12-31T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true},  // 1970-01-01 00:00 Tokyo
+
+                {java.sql.Date.valueOf("1970-01-02"),
+                        BigInteger.valueOf(Instant.parse("1970-01-01T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true},  // 1970-01-02 00:00 Tokyo
+
+                {java.sql.Date.valueOf("2023-06-15"),
+                        BigInteger.valueOf(Instant.parse("2023-06-14T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true}   // 2023-06-15 00:00 Tokyo
         });
         TEST_DB.put(pair(Timestamp.class, BigInteger.class), new Object[][]{
                 // Timestamp uses a proleptic Gregorian calendar starting at year 1, hence no 0000 tests.
@@ -3099,12 +3200,28 @@ class ConverterEverythingTest {
                 {new Date(Long.MAX_VALUE), Long.MAX_VALUE, true},
         });
         TEST_DB.put(pair(java.sql.Date.class, Long.class), new Object[][]{
-                {new java.sql.Date(Long.MIN_VALUE), Long.MIN_VALUE, true},
-                {new java.sql.Date(Integer.MIN_VALUE), (long) Integer.MIN_VALUE, true},
-                {new java.sql.Date(now), now, true},
-                {new java.sql.Date(0), 0L, true},
-                {new java.sql.Date(Integer.MAX_VALUE), (long) Integer.MAX_VALUE, true},
-                {new java.sql.Date(Long.MAX_VALUE), Long.MAX_VALUE, true},
+                // --------------------------------------------------------------------
+                // BIDIRECTIONAL tests: the date was created from the exact Tokyo midnight value.
+                // Converting the date back will yield the same epoch millis.
+                // --------------------------------------------------------------------
+                { java.sql.Date.valueOf("1970-01-01"), -32400000L,      true },
+                { java.sql.Date.valueOf("1970-01-02"),  54000000L,      true },
+                { java.sql.Date.valueOf("1970-01-03"), 140400000L,      true },
+                { java.sql.Date.valueOf("1971-01-01"), 31503600000L,    true },
+                { java.sql.Date.valueOf("2000-01-01"), 946652400000L,   true },
+                { java.sql.Date.valueOf("2020-01-01"), 1577804400000L,  true },
+                { java.sql.Date.valueOf("1907-01-01"), -1988182800000L, true },
+
+                // --------------------------------------------------------------------
+                // UNIDIRECTIONAL tests: the date was produced from a non–midnight long value.
+                // Although converting to Date yields the correct local day, converting back will
+                // always produce the Tokyo midnight epoch value (i.e. “rounded down”).
+                // --------------------------------------------------------------------
+                // These tests correspond to original forward tests that used non-midnight values.
+                { java.sql.Date.valueOf("1970-01-01"), -32400000L,      false }, // from original long -1L
+                { java.sql.Date.valueOf("1970-01-02"),  54000000L,      false }, // from original long (86400000 + 1000)
+                { java.sql.Date.valueOf("1970-04-27"),  9990000000L,    false }, // from original long 10000000000L
+                { java.sql.Date.valueOf("2020-01-01"), 1577804400000L,  false }  // from original long 1577836800001L
         });
         TEST_DB.put(pair(Timestamp.class, Long.class), new Object[][]{
 //                {new Timestamp(Long.MIN_VALUE), Long.MIN_VALUE, true},
@@ -3112,7 +3229,7 @@ class ConverterEverythingTest {
                 {new Timestamp(now), now, true},
                 {new Timestamp(0), 0L, true},
                 {new Timestamp(Integer.MAX_VALUE), (long) Integer.MAX_VALUE, true},
-//                {new Timestamp(Long.MAX_VALUE), Long.MAX_VALUE, true},
+                {new Timestamp(Long.MAX_VALUE), Long.MAX_VALUE, true},
         });
         TEST_DB.put(pair(Duration.class, Long.class), new Object[][]{
                 {Duration.ofMillis(Long.MIN_VALUE / 2), Long.MIN_VALUE / 2, true},
@@ -3961,11 +4078,44 @@ class ConverterEverythingTest {
      *
      * Need to wait for json-io 4.34.0 to enable.
      */
-    @Disabled
+//    @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testConvertJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
         if (shortNameSource.equals("Void")) {
+            return;
+        }
+
+        // Special case for java.sql.Date comparisons
+        if ((sourceClass.equals(java.sql.Date.class) && targetClass.equals(Date.class)) ||
+                (sourceClass.equals(Date.class) && targetClass.equals(java.sql.Date.class)) ||
+                (sourceClass.equals(java.sql.Date.class) && targetClass.equals(java.sql.Date.class))) {
+            WriteOptions writeOptions = new WriteOptionsBuilder().build();
+            ReadOptions readOptions = new ReadOptionsBuilder().setZoneId(TOKYO_Z).build();
+            String json = JsonIo.toJson(source, writeOptions);
+            Object restored = JsonIo.toObjects(json, readOptions, targetClass);
+
+            // Compare dates by LocalDate
+            LocalDate restoredDate = (restored instanceof java.sql.Date) ?
+                    ((java.sql.Date) restored).toLocalDate() :
+                    Instant.ofEpochMilli(((Date) restored).getTime())
+                            .atZone(TOKYO_Z)
+                            .toLocalDate();
+
+            LocalDate targetDate = (target instanceof java.sql.Date) ?
+                    ((java.sql.Date) target).toLocalDate() :
+                    Instant.ofEpochMilli(((Date) target).getTime())
+                            .atZone(TOKYO_Z)
+                            .toLocalDate();
+
+            if (!restoredDate.equals(targetDate)) {
+                System.out.println("Conversion failed for: " + shortNameSource + " ==> " + shortNameTarget);
+                System.out.println("restored = " + restored);
+                System.out.println("target   = " + target);
+                System.out.println("diff     = [value mismatch] ▶ Date: " + restoredDate + " vs " + targetDate);
+                fail();
+            }
+            updateStat(pair(sourceClass, targetClass), true);
             return;
         }
 
@@ -3984,10 +4134,6 @@ class ConverterEverythingTest {
         }
         boolean skip4 = sourceClass.equals(Map.class) && targetClass.equals(Throwable.class);
         if (skip4) {
-            return;
-        }
-        boolean skip5 = sourceClass.equals(java.sql.Date.class) || targetClass.equals(java.sql.Date.class);
-        if (skip5) {
             return;
         }
         WriteOptions writeOptions = new WriteOptionsBuilder().build();
@@ -4020,16 +4166,17 @@ class ConverterEverythingTest {
 //            System.out.println("*****");
             Map<String, Object> options = new HashMap<>();
             if (!DeepEquals.deepEquals(restored, target, options)) {
+                System.out.println("Conversion failed for: " + shortNameSource + " ==> " + shortNameTarget);
                 System.out.println("restored = " + restored);
                 System.out.println("target   = " + target);
                 System.out.println("diff     = " + options.get("diff"));
-                assert DeepEquals.deepEquals(restored, target);
+                fail();
             }
             updateStat(pair(sourceClass, targetClass), true);
         }
     }
 
-    @Disabled
+//    @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParamsInReverse")
     void testConvertReverseJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
@@ -4109,10 +4256,10 @@ class ConverterEverythingTest {
                     }
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(java.sql.Date.class)) {
-                    // Compare java.sql.Date values using their toString() values,
-                    // since we treat them as literal "yyyy-MM-dd" values.
                     if (actual != null) {
-                        assertEquals(target.toString(), actual.toString());
+                        java.sql.Date actualDate = java.sql.Date.valueOf(((java.sql.Date) actual).toLocalDate());
+                        java.sql.Date targetDate = java.sql.Date.valueOf(((java.sql.Date) target).toLocalDate());
+                        assertEquals(targetDate, actualDate);
                     }
                     updateStat(pair(sourceClass, targetClass), true);
                 } else {
@@ -4151,10 +4298,6 @@ class ConverterEverythingTest {
 
     private static Date date(String s) {
         return Date.from(Instant.parse(s));
-    }
-
-    private static java.sql.Date sqlDate(String s) {
-        return new java.sql.Date(Instant.parse(s).toEpochMilli());
     }
 
     private static Timestamp timestamp(String s) {

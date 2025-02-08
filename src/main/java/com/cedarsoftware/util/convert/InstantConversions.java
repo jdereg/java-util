@@ -78,9 +78,13 @@ final class InstantConversions {
     static Timestamp toTimestamp(Object from, Converter converter) {
         return Timestamp.from((Instant) from);
     }
-    
+
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toLong(from, converter));
+        return java.sql.Date.valueOf(
+                ((Instant) from)
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static Date toDate(Object from, Converter converter) {

@@ -3,9 +3,8 @@ package com.cedarsoftware.util.convert;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
-
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -30,7 +29,7 @@ final class EnumConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         Enum<?> enumInstance = (Enum<?>) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
+        Map<String, Object> target = new LinkedHashMap<>();
         target.put("name", enumInstance.name());
         return target;
     }

@@ -46,9 +46,13 @@ final class DoubleConversions {
         return new Date((long)(d * 1000));
     }
 
-    static Date toSqlDate(Object from, Converter converter) {
-        double d = (Double) from;
-        return new java.sql.Date((long)(d * 1000));
+    static java.sql.Date toSqlDate(Object from, Converter converter) {
+        double seconds = (Double) from;
+        return java.sql.Date.valueOf(
+                Instant.ofEpochSecond((long) seconds)
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static Calendar toCalendar(Object from, Converter converter) {

@@ -2,11 +2,9 @@ package com.cedarsoftware.util.convert;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
-import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
-import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
-import static com.cedarsoftware.util.convert.MapConversions.CLASS;
-import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
+import static com.cedarsoftware.util.convert.MapConversions.VALUE;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -25,19 +23,16 @@ import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-final class ThrowableConversions {
+final class PatternConversions {
 
-    private ThrowableConversions() {}
+    static String toString(Object from, Converter converter) {
+        return ((Pattern) from).pattern();
+    }
 
-    static Map<String, Object> toMap(Object from, Converter converter) {
-        Throwable throwable = (Throwable) from;
-        Map<String, Object> target = new LinkedHashMap<>();
-        target.put(CLASS, throwable.getClass().getName());
-        target.put(MESSAGE, throwable.getMessage());
-        if (throwable.getCause() != null) {
-            target.put(CAUSE, throwable.getCause().getClass().getName());
-            target.put(CAUSE_MESSAGE, throwable.getCause().getMessage());
-        }
-        return target;
+    static Map<?, ?> toMap(Object from, Converter converter) {
+        Pattern pattern = (Pattern) from;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(VALUE, pattern.pattern());
+        return map;
     }
 }

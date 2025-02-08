@@ -32,4 +32,5 @@ final class YearMonthConversions {
         Map<String, Object> target = new LinkedHashMap<>();
         target.put(YEAR_MONTH, yearMonth.toString());
         return target;
-    }}
+    }
+}

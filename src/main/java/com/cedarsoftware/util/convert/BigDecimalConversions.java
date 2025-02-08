@@ -103,7 +103,11 @@ final class BigDecimalConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toInstant(from, converter).toEpochMilli());
+        Instant instant = toInstant(from, converter);
+        // Convert the Instant to a LocalDate using the converter's zoneId.
+        LocalDate ld = instant.atZone(converter.getOptions().getZoneId()).toLocalDate();
+        // Return a java.sql.Date that represents that LocalDate (normalized to midnight).
+        return java.sql.Date.valueOf(ld);
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

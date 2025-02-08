@@ -2,10 +2,9 @@ package com.cedarsoftware.util.convert;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
-
-import com.cedarsoftware.util.CompactMap;
 
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 
@@ -40,7 +39,7 @@ final class TimeZoneConversions {
     
     static Map<String, Object> toMap(Object from, Converter converter) {
         TimeZone tz = (TimeZone) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
+        Map<String, Object> target = new LinkedHashMap<>();
         target.put(ZONE, tz.getID());
         return target;
     }

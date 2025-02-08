@@ -5,10 +5,11 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.cedarsoftware.util.CompactMap;
+import static com.cedarsoftware.util.convert.MapConversions.DURATION;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -32,11 +33,9 @@ final class DurationConversions {
     private DurationConversions() {}
 
     static Map toMap(Object from, Converter converter) {
-        long sec = ((Duration) from).getSeconds();
-        int nanos = ((Duration) from).getNano();
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
-        target.put("seconds", sec);
-        target.put("nanos", nanos);
+        Duration duration = (Duration) from;
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(DURATION, duration.toString());
         return target;
     }
 

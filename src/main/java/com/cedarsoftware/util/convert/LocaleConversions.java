@@ -1,44 +1,40 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import com.cedarsoftware.util.CompactMap;
-import com.cedarsoftware.util.StringUtilities;
+import static com.cedarsoftware.util.convert.MapConversions.LOCALE;
 
-import static com.cedarsoftware.util.convert.MapConversions.COUNTRY;
-import static com.cedarsoftware.util.convert.MapConversions.LANGUAGE;
-import static com.cedarsoftware.util.convert.MapConversions.SCRIPT;
-import static com.cedarsoftware.util.convert.MapConversions.VARIANT;
-
+/**
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
+ */
 public final class LocaleConversions {
     private LocaleConversions() {}
 
     static String toString(Object from, Converter converter) {
-        return ((Locale)from).toLanguageTag();
+        Locale locale = (Locale)from;
+        return locale.toLanguageTag();
     }
 
     static Map<?, ?> toMap(Object from, Converter converter) {
         Locale locale = (Locale) from;
-        Map<String, Object> map = CompactMap.<String, Object>builder().insertionOrder().build();
-
-        String language = locale.getLanguage();
-        map.put(LANGUAGE, language);
-
-        String country = locale.getCountry();
-        if (StringUtilities.hasContent(country)) {
-            map.put(COUNTRY, country);
-        }
-
-        String script = locale.getScript();
-        if (StringUtilities.hasContent(script)) {
-            map.put(SCRIPT, script);
-        }
-
-        String variant = locale.getVariant();
-        if (StringUtilities.hasContent(variant)) {
-            map.put(VARIANT, variant);
-        }
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(LOCALE, toString(locale, converter));
         return map;
     }
 }

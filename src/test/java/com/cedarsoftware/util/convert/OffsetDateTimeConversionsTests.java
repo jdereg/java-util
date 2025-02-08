@@ -72,7 +72,7 @@ public class OffsetDateTimeConversionsTests {
     void toSqlDate_differentZones_sameEpochMilli(String input) {
         OffsetDateTime initial = OffsetDateTime.parse(input);
         java.sql.Date actual = converter.convert(initial, java.sql.Date.class);
-        assertThat(actual.getTime()).isEqualTo(1687622249729L);
+        assertThat(actual.getTime()).isEqualTo(1687579200000L); // Midnight of the same day (Converter always makes sure java.sql.Date is at midnight of the same day)
     }
 
     @ParameterizedTest
@@ -113,7 +113,7 @@ public class OffsetDateTimeConversionsTests {
     @MethodSource("offsetDateTime_withMultipleOffset_sameEpochMilli")
     void toSqlDate_differentZones_sameEpochMilli(OffsetDateTime initial) {
         java.sql.Date actual = converter.convert(initial, java.sql.Date.class);
-        assertThat(actual.getTime()).isEqualTo(1687622249729L);
+        assertThat(actual.getTime()).isEqualTo(1687579200000L);
     }
 
     @ParameterizedTest
@@ -122,7 +122,4 @@ public class OffsetDateTimeConversionsTests {
         Timestamp actual = converter.convert(initial, Timestamp.class);
         assertThat(actual.getTime()).isEqualTo(1687622249729L);
     }
-
-
-
 }

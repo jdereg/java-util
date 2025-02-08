@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Calendar;
+import java.util.Currency;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -292,12 +293,17 @@ final class StringConversions {
         }
     }
 
+    // Precompile the pattern for decimal numbers: optional minus, digits, optional decimal point with digits.
+    private static final Pattern DECIMAL_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
+
     static Duration toDuration(Object from, Converter converter) {
-        String str = (String) from;
+        if (!(from instanceof String)) {
+            throw new IllegalArgumentException("Expected a String, but got: " + from);
+        }
+        String str = ((String) from).trim();
         try {
-            // Check if string is a decimal number pattern (optional minus, digits, optional dot and digits)
-            if (str.matches("-?\\d+(\\.\\d+)?")) {
-                // Parse as decimal seconds
+            // If the string matches a plain decimal number, treat it as seconds.
+            if (DECIMAL_PATTERN.matcher(str).matches()) {
                 BigDecimal seconds = new BigDecimal(str);
                 long wholeSecs = seconds.longValue();
                 long nanos = seconds.subtract(BigDecimal.valueOf(wholeSecs))
@@ -305,7 +311,7 @@ final class StringConversions {
                         .longValue();
                 return Duration.ofSeconds(wholeSecs, nanos);
             }
-            // Not a decimal number, try ISO-8601 format
+            // Otherwise, try ISO-8601 parsing.
             return Duration.parse(str);
         } catch (Exception e) {
             throw new IllegalArgumentException(
@@ -385,20 +391,27 @@ final class StringConversions {
         return Date.from(zdt.toInstant());
     }
 
+    private static final Pattern SIMPLE_DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         String dateStr = ((String) from).trim();
 
-        try {
+        // First try simple date format (yyyy-MM-dd)
+        if (!dateStr.contains("T") && SIMPLE_DATE.matcher(dateStr).matches()) {
             return java.sql.Date.valueOf(dateStr);
-        } catch (Exception e) {
-            // If direct conversion fails, try parsing using DateUtilities.
+        }
+
+        // Handle ISO 8601 format
+        try {
+            // Parse any ISO format (with or without zone) and convert to converter's timezone
+            Instant instant = dateStr.endsWith("Z") ?
+                    Instant.parse(dateStr) :
+                    ZonedDateTime.parse(dateStr).toInstant();
+            return java.sql.Date.valueOf(instant.atZone(converter.getOptions().getZoneId()).toLocalDate());
+        } catch (DateTimeParseException e) {
+            // If not ISO 8601, try other formats using DateUtilities
             ZonedDateTime zdt = DateUtilities.parseDate(dateStr, converter.getOptions().getZoneId(), true);
-            if (zdt == null) {
-                return null;
-            }
-            LocalDate ld = zdt.toLocalDate();
-            // Now, create a normalized java.sql.Date whose underlying millisecond value represents midnight.
-            return java.sql.Date.valueOf(ld.toString());
+            return zdt == null ? null : java.sql.Date.valueOf(zdt.toLocalDate());
         }
     }
 
@@ -478,11 +491,13 @@ final class StringConversions {
         }
     }
 
+    // In StringConversion.toLocale():
     static Locale toLocale(Object from, Converter converter) {
         String str = (String)from;
         if (StringUtilities.isEmpty(str)) {
             return null;
         }
+        // Parse the string into components
         return Locale.forLanguageTag(str);
     }
 
@@ -618,5 +633,14 @@ final class StringConversions {
                 throw new IllegalArgumentException("Unable to parse 4-digit year from '" + str + "'", e);
             }
         }
+    }
+
+    static Pattern toPattern(Object from, Converter converter) {
+        return Pattern.compile(((String) from).trim());
+    }
+
+    static Currency toCurrency(Object from, Converter converter) {
+        String code = ((String) from).trim();
+        return Currency.getInstance(code);
     }
 }

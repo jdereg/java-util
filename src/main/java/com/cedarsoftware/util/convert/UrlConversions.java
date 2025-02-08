@@ -2,9 +2,8 @@ package com.cedarsoftware.util.convert;
 
 import java.net.URI;
 import java.net.URL;
+import java.util.LinkedHashMap;
 import java.util.Map;
-
-import com.cedarsoftware.util.CompactMap;
 
 import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
 
@@ -31,7 +30,7 @@ final class UrlConversions {
 
     static Map<String, Object> toMap(Object from, Converter converter) {
         URL url = (URL) from;
-        Map<String, Object> target = CompactMap.<String, Object>builder().insertionOrder().build();
+        Map<String, Object> target = new LinkedHashMap<>();
         target.put(URL_KEY, url.toString());
         return target;
     }

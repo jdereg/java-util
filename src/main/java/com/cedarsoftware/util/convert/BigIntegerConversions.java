@@ -74,7 +74,12 @@ final class BigIntegerConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toInstant(from, converter).toEpochMilli());
+        BigInteger nanos = (BigInteger) from;
+        return java.sql.Date.valueOf(
+                Instant.ofEpochMilli(nanos.divide(MILLION).longValue())
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

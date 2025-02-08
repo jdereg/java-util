@@ -7,8 +7,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -47,6 +50,27 @@ final class OffsetDateTimeConversions {
         return toInstant(from, converter).toEpochMilli();
     }
 
+    static AtomicLong toAtomicLong(Object from, Converter converter) {
+        return new AtomicLong(toLong(from, converter));
+    }
+
+    static double toDouble(Object from, Converter converter) {
+        OffsetDateTime odt = (OffsetDateTime) from;
+        Instant instant = odt.toInstant();
+        return BigDecimalConversions.secondsAndNanosToDouble(instant.getEpochSecond(), instant.getNano()).doubleValue();
+    }
+
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        Instant instant = toInstant(from, converter);
+        return InstantConversions.toBigInteger(instant, converter);
+    }
+
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        OffsetDateTime offsetDateTime = (OffsetDateTime) from;
+        Instant instant = offsetDateTime.toInstant();
+        return InstantConversions.toBigDecimal(instant, converter);
+    }
+
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDateTime();
     }
@@ -57,10 +81,6 @@ final class OffsetDateTimeConversions {
 
     static LocalTime toLocalTime(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalTime();
-    }
-
-    static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return new AtomicLong(toLong(from, converter));
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {
@@ -75,7 +95,11 @@ final class OffsetDateTimeConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toLong(from, converter));
+        return java.sql.Date.valueOf(
+                ((OffsetDateTime) from)
+                        .atZoneSameInstant(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
@@ -86,20 +110,33 @@ final class OffsetDateTimeConversions {
         return new Date(toLong(from, converter));
     }
 
-    static BigInteger toBigInteger(Object from, Converter converter) {
-        Instant instant = toInstant(from, converter);
-        return InstantConversions.toBigInteger(instant, converter);
-    }
-
-    static BigDecimal toBigDecimal(Object from, Converter converter) {
-        OffsetDateTime offsetDateTime = (OffsetDateTime) from;
-        Instant instant = offsetDateTime.toInstant();
-        return InstantConversions.toBigDecimal(instant, converter);
-    }
-
     static OffsetTime toOffsetTime(Object from, Converter converter) {
         OffsetDateTime dateTime = (OffsetDateTime) from;
         return dateTime.toOffsetTime();
+    }
+
+    static Year toYear(Object from, Converter converter) {
+        return Year.from(
+                ((OffsetDateTime) from)
+                        .atZoneSameInstant(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static YearMonth toYearMonth(Object from, Converter converter) {
+        return YearMonth.from(
+                ((OffsetDateTime) from)
+                        .atZoneSameInstant(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static MonthDay toMonthDay(Object from, Converter converter) {
+        return MonthDay.from(
+                ((OffsetDateTime) from)
+                        .atZoneSameInstant(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static String toString(Object from, Converter converter) {
@@ -111,11 +148,5 @@ final class OffsetDateTimeConversions {
         Map<String, Object> target = new LinkedHashMap<>();
         target.put(MapConversions.OFFSET_DATE_TIME, toString(from, converter));
         return target;
-    }
-
-    static double toDouble(Object from, Converter converter) {
-        OffsetDateTime odt = (OffsetDateTime) from;
-        Instant instant = odt.toInstant();
-        return BigDecimalConversions.secondsAndNanosToDouble(instant.getEpochSecond(), instant.getNano()).doubleValue();
     }
 }

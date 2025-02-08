@@ -3,12 +3,11 @@ package com.cedarsoftware.util.convert;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Year;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.cedarsoftware.util.CompactMap;
 
 import static com.cedarsoftware.util.convert.MapConversions.YEAR;
 
@@ -78,7 +77,7 @@ final class YearConversions {
 
     static Map<?, ?> toMap(Object from, Converter converter) {
         Year year = (Year) from;
-        Map<String, Integer> map = CompactMap.<String, Integer>builder().insertionOrder().build();
+        Map<String, Integer> map = new LinkedHashMap<>();
         map.put(YEAR, year.getValue());
         return map;
     }

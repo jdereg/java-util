@@ -1,10 +1,10 @@
 package com.cedarsoftware.util.convert;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.TimeZone;
+import java.util.Currency;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-import org.junit.jupiter.api.Test;
+import static com.cedarsoftware.util.convert.MapConversions.VALUE;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -23,12 +23,16 @@ import org.junit.jupiter.api.Test;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-class DateConversionTests {
-    @Test
-    void testDateToCalendarTimeZone() {
-        Date date = new Date();
-        TimeZone timeZone = TimeZone.getTimeZone("America/New_York");
-        Calendar cal = Calendar.getInstance(timeZone);
-        cal.setTime(date);
+final class CurrencyConversions {
+
+    static String toString(Object from, Converter converter) {
+        return ((Currency) from).getCurrencyCode();
+    }
+
+    static Map<?, ?> toMap(Object from, Converter converter) {
+        Currency currency = (Currency) from;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(VALUE, currency.getCurrencyCode());
+        return map;
     }
 }

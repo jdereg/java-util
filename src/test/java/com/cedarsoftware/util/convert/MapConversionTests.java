@@ -30,7 +30,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import static com.cedarsoftware.util.convert.MapConversions.CALENDAR;
+import static com.cedarsoftware.util.convert.MapConversions.DURATION;
 import static com.cedarsoftware.util.convert.MapConversions.INSTANT;
+import static com.cedarsoftware.util.convert.MapConversions.LOCALE;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE_TIME;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_TIME;
@@ -189,7 +191,7 @@ class MapConversionTests {
         long currentTime = System.currentTimeMillis();
         map.put("epochMillis", currentTime);
         LocalDate expectedLD = Instant.ofEpochMilli(currentTime)
-                .atZone(ZoneOffset.UTC)
+                .atZone(ZoneOffset.systemDefault())
                 .toLocalDate();
         java.sql.Date expected = java.sql.Date.valueOf(expectedLD.toString());
         assertEquals(expected, MapConversions.toSqlDate(map, converter));
@@ -236,8 +238,7 @@ class MapConversionTests {
     @Test
     public void testToLocale() {
         Map<String, Object> map = new HashMap<>();
-        map.put("language", "en");
-        map.put("country", "US");
+        map.put(LOCALE, "en-US");
         assertEquals(Locale.US, MapConversions.toLocale(map, converter));
     }
 
@@ -363,8 +364,10 @@ class MapConversionTests {
     @Test
     public void testToDuration() {
         Map<String, Object> map = new HashMap<>();
-        map.put("seconds", 3600L);
-        map.put("nanos", 123456789);
+        // Instead of putting separate "seconds" and "nanos", provide a single BigDecimal.
+        BigDecimal durationValue = new BigDecimal("3600.123456789");
+        map.put(DURATION, durationValue);
+
         Duration expected = Duration.ofSeconds(3600, 123456789);
         assertEquals(expected, MapConversions.toDuration(map, converter));
     }

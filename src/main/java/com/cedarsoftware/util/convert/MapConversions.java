@@ -23,6 +23,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Currency;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,11 +35,14 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
+
+import static com.cedarsoftware.util.convert.Converter.getShortName;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -67,6 +71,7 @@ final class MapConversions {
     static final String TIMESTAMP = "timestamp";
     static final String DURATION = "duration";
     static final String INSTANT = "instant";
+    static final String LOCALE = "locale";
     static final String MONTH_DAY = "monthDay";
     static final String YEAR_MONTH = "yearMonth";
     static final String PERIOD = "period";
@@ -79,18 +84,12 @@ final class MapConversions {
     static final String ZONED_DATE_TIME = "zonedDateTime";
     static final String ZONE = "zone";
     static final String YEAR = "year";
-    static final String HOURS = "hours";
-    static final String MINUTES = "minutes";
     static final String SECONDS = "seconds";
     static final String EPOCH_MILLIS = "epochMillis";
     static final String NANOS = "nanos";
     static final String MOST_SIG_BITS = "mostSigBits";
     static final String LEAST_SIG_BITS = "leastSigBits";
     static final String ID = "id";
-    static final String LANGUAGE = "language";
-    static final String COUNTRY = "country";
-    static final String SCRIPT = "script";
-    static final String VARIANT = "variant";
     static final String URI_KEY = "URI";
     static final String URL_KEY = "URL";
     static final String UUID = "UUID";
@@ -99,17 +98,27 @@ final class MapConversions {
     static final String DETAIL_MESSAGE = "detailMessage";
     static final String CAUSE = "cause";
     static final String CAUSE_MESSAGE = "causeMessage";
-    static final String OPTIONAL = " (optional)";
+    private static final Object NO_MATCH = new Object();
 
     private MapConversions() {}
-    
+
+    private static final String[] VALUE_KEYS = {VALUE, V};
+
+    /**
+     * The common dispatch method. It extracts the value (using getValue) from the map
+     * and, if found, converts it to the target type. Otherwise, it calls fromMap()
+     * to throw an exception.
+     */
+    private static <T> T dispatch(Object from, Converter converter, Class<T> clazz, String[] keys) {
+        Object value = getValue((Map<String, Object>) from, keys);
+        if (value != NO_MATCH) {
+            return converter.convert(value, clazz);
+        }
+        return fromMap(clazz, keys);
+    }
+
     static Object toUUID(Object from, Converter converter) {
         Map<String, Object> map = (Map<String, Object>) from;
-
-        Object uuid = map.get(UUID);
-        if (uuid != null) {
-            return converter.convert(uuid, UUID.class);
-        }
 
         Object mostSigBits = map.get(MOST_SIG_BITS);
         Object leastSigBits = map.get(LEAST_SIG_BITS);
@@ -119,526 +128,216 @@ final class MapConversions {
             return new UUID(most, least);
         }
 
-        return fromMap(from, converter, UUID.class, new String[]{UUID}, new String[]{MOST_SIG_BITS, LEAST_SIG_BITS});
+        return dispatch(from, converter, UUID.class, new String[]{UUID, VALUE, V, MOST_SIG_BITS + ", " + LEAST_SIG_BITS});
     }
 
     static Byte toByte(Object from, Converter converter) {
-        return fromMap(from, converter, Byte.class);
+        return dispatch(from, converter, Byte.class, VALUE_KEYS);
     }
 
     static Short toShort(Object from, Converter converter) {
-        return fromMap(from, converter, Short.class);
+        return dispatch(from, converter, Short.class, VALUE_KEYS);
     }
 
     static Integer toInt(Object from, Converter converter) {
-        return fromMap(from, converter, Integer.class);
+        return dispatch(from, converter, Integer.class, VALUE_KEYS);
     }
 
     static Long toLong(Object from, Converter converter) {
-        return fromMap(from, converter, Long.class);
+        return dispatch(from, converter, Long.class, VALUE_KEYS);
     }
 
     static Float toFloat(Object from, Converter converter) {
-        return fromMap(from, converter, Float.class);
+        return dispatch(from, converter, Float.class, VALUE_KEYS);
     }
 
     static Double toDouble(Object from, Converter converter) {
-        return fromMap(from, converter, Double.class);
+        return dispatch(from, converter, Double.class, VALUE_KEYS);
     }
 
     static Boolean toBoolean(Object from, Converter converter) {
-        return fromMap(from, converter, Boolean.class);
+        return dispatch(from, converter, Boolean.class, VALUE_KEYS);
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        return fromMap(from, converter, BigDecimal.class);
+        return dispatch(from, converter, BigDecimal.class, VALUE_KEYS);
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return fromMap(from, converter, BigInteger.class);
+        return dispatch(from, converter, BigInteger.class, VALUE_KEYS);
     }
 
     static String toString(Object from, Converter converter) {
-        return fromMap(from, converter, String.class);
+        return dispatch(from, converter, String.class, VALUE_KEYS);
     }
 
     static StringBuffer toStringBuffer(Object from, Converter converter) {
-        return fromMap(from, converter, StringBuffer.class);
+        return dispatch(from, converter, StringBuffer.class, VALUE_KEYS);
     }
 
     static StringBuilder toStringBuilder(Object from, Converter converter) {
-        return fromMap(from, converter, StringBuilder.class);
+        return dispatch(from, converter, StringBuilder.class, VALUE_KEYS);
     }
 
     static Character toCharacter(Object from, Converter converter) {
-        return fromMap(from, converter, char.class);
+        return dispatch(from, converter, char.class, VALUE_KEYS);
     }
 
     static AtomicInteger toAtomicInteger(Object from, Converter converter) {
-        return fromMap(from, converter, AtomicInteger.class);
+        return dispatch(from, converter, AtomicInteger.class, VALUE_KEYS);
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
-        return fromMap(from, converter, AtomicLong.class);
+        return dispatch(from, converter, AtomicLong.class, VALUE_KEYS);
     }
 
     static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
-        return fromMap(from, converter, AtomicBoolean.class);
+        return dispatch(from, converter, AtomicBoolean.class, VALUE_KEYS);
+    }
+
+    static Pattern toPattern(Object from, Converter converter) {
+        return dispatch(from, converter, Pattern.class, VALUE_KEYS);
+    }
+
+    static Currency toCurrency(Object from, Converter converter) {
+        return dispatch(from, converter, Currency.class, VALUE_KEYS);
     }
 
     private static final String[] SQL_DATE_KEYS = {SQL_DATE, VALUE, V, EPOCH_MILLIS};
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-
-        for (String key : SQL_DATE_KEYS) {
-            Object candidate = map.get(key);
-            if (candidate != null && (!(candidate instanceof String) || StringUtilities.hasContent((String) candidate))) {
-                value = candidate;
-                break;
-            }
-        }
-
-        // Handle strings by delegating to the String conversion method.
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toSqlDate(value, converter);
-        }
-
-        // Handle numeric values as UTC-based
-        if (value instanceof Number) {
-            long num = ((Number) value).longValue();
-            LocalDate ld = Instant.ofEpochMilli(num)
-                    .atZone(ZoneOffset.UTC)
-                    .toLocalDate();
-            return java.sql.Date.valueOf(ld.toString());
-        }
-
-        // Fallback conversion if no valid key/value is found.
-        return fromMap(from, converter, java.sql.Date.class, new String[]{SQL_DATE}, new String[]{EPOCH_MILLIS});
+        return dispatch(from, converter, java.sql.Date.class, SQL_DATE_KEYS);
     }
-    
+
     private static final String[] DATE_KEYS = {DATE, VALUE, V, EPOCH_MILLIS};
 
     static Date toDate(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object time = null;
-        for (String key : DATE_KEYS) {
-            time = map.get(key);
-            if (time != null && (!(time instanceof String) || StringUtilities.hasContent((String)time))) {
-                break;
-            }
-        }
-
-        if (time instanceof String && StringUtilities.hasContent((String)time)) {
-            return StringConversions.toDate(time, converter);
-        }
-
-        // Handle case where value is a number (epoch millis)
-        if (time instanceof Number) {
-            return NumberConversions.toDate(time, converter);
-        }
-
-        // Map.Entry<Long, Integer> return has key of epoch-millis
-        return fromMap(from, converter, Date.class, new String[]{DATE}, new String[]{EPOCH_MILLIS});
+        return dispatch(from, converter, Date.class, DATE_KEYS);
     }
 
     private static final String[] TIMESTAMP_KEYS = {TIMESTAMP, VALUE, V, EPOCH_MILLIS};
 
-    /**
-     * If the time String contains seconds resolution better than milliseconds, it will be kept.  For example,
-     * If the time was "08.37:16.123456789" the sub-millisecond portion here will take precedence over a separate
-     * key/value of "nanos" mapped to a value.  However, if "nanos" is specific as a key/value, and the time does
-     * not include nanosecond resolution, then a value > 0 specified in the "nanos" key will be incorporated into
-     * the resolution of the time.
-     */
     static Timestamp toTimestamp(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : TIMESTAMP_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'time' value is a non-empty String, parse it
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toTimestamp(value, converter);
-        }
-
-        if (value instanceof Number) {
-            return NumberConversions.toTimestamp(value, converter);
-        }
-
-        // Fallback conversion if none of the above worked
-        return fromMap(from, converter, Timestamp.class, new String[]{TIMESTAMP}, new String[]{EPOCH_MILLIS});
+        return dispatch(from, converter, Timestamp.class, TIMESTAMP_KEYS);
     }
 
+    // Assuming ZONE_KEYS is defined as follows:
+    private static final String[] ZONE_KEYS = {ZONE, ID, VALUE, V};
+
     static TimeZone toTimeZone(Object from, Converter converter) {
-        return fromMap(from, converter, TimeZone.class, new String[]{ZONE});
+        return dispatch(from, converter, TimeZone.class, ZONE_KEYS);
     }
 
     private static final String[] CALENDAR_KEYS = {CALENDAR, VALUE, V, EPOCH_MILLIS};
 
     static Calendar toCalendar(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        
-        Object value = null;
-        for (String key : CALENDAR_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String)value))) {
-                break;
-            }
-        }
-        if (value instanceof String && StringUtilities.hasContent((String)value)) {
-            return StringConversions.toCalendar(value, converter);
-        }
-        if (value instanceof Number) {
-            return NumberConversions.toCalendar(value, converter);
-        }
-
-        return fromMap(from, converter, Calendar.class, new String[]{CALENDAR});
+        return dispatch(from, converter, Calendar.class, CALENDAR_KEYS);
     }
-    
+
+    private static final String[] LOCALE_KEYS = {LOCALE, VALUE, V};
+
     static Locale toLocale(Object from, Converter converter) {
-        Map<String, String> map = (Map<String, String>) from;
-
-        String language = converter.convert(map.get(LANGUAGE), String.class);
-        if (StringUtilities.isEmpty(language)) {
-            return fromMap(from, converter, Locale.class, new String[] {LANGUAGE, COUNTRY + OPTIONAL, SCRIPT + OPTIONAL, VARIANT + OPTIONAL});
-        }
-        String country = converter.convert(map.get(COUNTRY), String.class);
-        String script = converter.convert(map.get(SCRIPT), String.class);
-        String variant = converter.convert(map.get(VARIANT), String.class);
-
-        Locale.Builder builder = new Locale.Builder();
-        try {
-            builder.setLanguage(language);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Locale language '" + language + "' invalid.", e);
-        }
-        if (StringUtilities.hasContent(country)) {
-            try {
-                builder.setRegion(country);
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Locale region '" + country + "' invalid.", e);
-            }
-        }
-        if (StringUtilities.hasContent(script)) {
-            try {
-                builder.setScript(script);
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Locale script '" + script + "' invalid.", e);
-            }
-        }
-        if (StringUtilities.hasContent(variant)) {
-            try {
-                builder.setVariant(variant);
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Locale variant '" + variant + "' invalid.", e);
-            }
-        }
-        return builder.build();
+        return dispatch(from, converter, Locale.class, LOCALE_KEYS);
     }
 
     private static final String[] LOCAL_DATE_KEYS = {LOCAL_DATE, VALUE, V};
 
     static LocalDate toLocalDate(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : LOCAL_DATE_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toLocalDate(value, converter);
-        }
-
-        if (value instanceof Number) {
-            return NumberConversions.toLocalDate(value, converter);
-        }
-
-        return fromMap(from, converter, LocalDate.class, new String[]{LOCAL_DATE});
+        return dispatch(from, converter, LocalDate.class, LOCAL_DATE_KEYS);
     }
 
     private static final String[] LOCAL_TIME_KEYS = {LOCAL_TIME, VALUE, V};
 
     static LocalTime toLocalTime(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : LOCAL_TIME_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toLocalTime(value, converter);
-        }
-
-        if (value instanceof Number) {
-            return NumberConversions.toLocalTime(((Number)value).longValue(), converter);
-        }
-
-        return fromMap(from, converter, LocalTime.class, new String[]{LOCAL_TIME});
+        return dispatch(from, converter, LocalTime.class, LOCAL_TIME_KEYS);
     }
 
     private static final String[] LDT_KEYS = {LOCAL_DATE_TIME, VALUE, V, EPOCH_MILLIS};
 
     static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : LDT_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'offsetDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toLocalDateTime(value, converter);
-        }
-
-        if (value instanceof Number) {
-            return NumberConversions.toLocalDateTime(value, converter);
-        }
-
-        return fromMap(from, converter, LocalDateTime.class, new String[] {LOCAL_DATE_TIME}, new String[] {EPOCH_MILLIS});
+        return dispatch(from, converter, LocalDateTime.class, LDT_KEYS);
     }
 
     private static final String[] OFFSET_TIME_KEYS = {OFFSET_TIME, VALUE, V};
 
     static OffsetTime toOffsetTime(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : OFFSET_TIME_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toOffsetTime(value, converter);
-        }
-
-        if (value instanceof Number) {
-            return NumberConversions.toOffsetTime(value, converter);
-        }
-
-        return fromMap(from, converter, OffsetTime.class, new String[]{OFFSET_TIME});
+        return dispatch(from, converter, OffsetTime.class, OFFSET_TIME_KEYS);
     }
 
     private static final String[] OFFSET_KEYS = {OFFSET_DATE_TIME, VALUE, V, EPOCH_MILLIS};
 
     static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : OFFSET_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'offsetDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toOffsetDateTime(value, converter);
-        }
-
-        // Otherwise, if epoch_millis is provided, use it with the nanos (if any)
-        if (value instanceof Number) {
-            long ms = converter.convert(value, long.class);
-            return NumberConversions.toOffsetDateTime(ms, converter);
-        }
-        
-        return fromMap(from, converter, OffsetDateTime.class, new String[] {OFFSET_DATE_TIME}, new String[] {EPOCH_MILLIS});
+        return dispatch(from, converter, OffsetDateTime.class, OFFSET_KEYS);
     }
 
     private static final String[] ZDT_KEYS = {ZONED_DATE_TIME, VALUE, V, EPOCH_MILLIS};
 
     static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : ZDT_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'zonedDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toZonedDateTime(value, converter);
-        }
-
-        // Otherwise, if epoch_millis is provided, use it with the nanos (if any)
-        if (value instanceof Number) {
-            return NumberConversions.toZonedDateTime(value, converter);
-        }
-
-        return fromMap(from, converter, ZonedDateTime.class, new String[] {ZONED_DATE_TIME}, new String[] {EPOCH_MILLIS});
+        return dispatch(from, converter, ZonedDateTime.class, ZDT_KEYS);
     }
+
+    private static final String[] CLASS_KEYS = {CLASS, VALUE, V};
 
     static Class<?> toClass(Object from, Converter converter) {
-        return fromMap(from, converter, Class.class);
+        return dispatch(from, converter, Class.class, CLASS_KEYS);
     }
 
-    private static final String[] DURATION_KEYS = {SECONDS, DURATION, VALUE, V};
+    private static final String[] DURATION_KEYS = {DURATION, VALUE, V};
 
     static Duration toDuration(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : DURATION_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        if (value != null) {
-            if (value instanceof Number || (value instanceof String && ((String)value).matches("-?\\d+"))) {
-                long sec = converter.convert(value, long.class);
-                long nanos = converter.convert(map.get(NANOS), long.class);
-                return Duration.ofSeconds(sec, nanos);
-            } else if (value instanceof String) {
-                // Has non-numeric characters, likely ISO 8601
-                return StringConversions.toDuration(value, converter);
-            }
-        }
-        return fromMap(from, converter, Duration.class, new String[] {SECONDS, NANOS + OPTIONAL});
+        return dispatch(from, converter, Duration.class, DURATION_KEYS);
     }
 
     private static final String[] INSTANT_KEYS = {INSTANT, VALUE, V};
 
     static Instant toInstant(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : INSTANT_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'instant' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toInstant(value, converter);
-        }
-
-        return fromMap(from, converter, Instant.class, new String[] {INSTANT});
+        return dispatch(from, converter, Instant.class, INSTANT_KEYS);
     }
 
     private static final String[] MONTH_DAY_KEYS = {MONTH_DAY, VALUE, V};
 
     static MonthDay toMonthDay(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : MONTH_DAY_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'monthDay' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toMonthDay(value, converter);
-        }
-
-        return fromMap(from, converter, MonthDay.class, new String[] {MONTH_DAY});
+        return dispatch(from, converter, MonthDay.class, MONTH_DAY_KEYS);
     }
 
     private static final String[] YEAR_MONTH_KEYS = {YEAR_MONTH, VALUE, V};
 
     static YearMonth toYearMonth(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : YEAR_MONTH_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'yearMonth' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toYearMonth(value, converter);
-        }
-
-        return fromMap(from, converter, YearMonth.class, new String[] {YEAR_MONTH});
+        return dispatch(from, converter, YearMonth.class, YEAR_MONTH_KEYS);
     }
 
     private static final String[] PERIOD_KEYS = {PERIOD, VALUE, V};
 
     static Period toPeriod(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : PERIOD_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'zonedDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toPeriod(value, converter);
-        }
-
-        return fromMap(from, converter, Period.class, new String[] {PERIOD});
+        return dispatch(from, converter, Period.class, PERIOD_KEYS);
     }
 
     static ZoneId toZoneId(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object zone = map.get(ZONE);
-        if (zone != null) {
-            return converter.convert(zone, ZoneId.class);
-        }
-        Object id = map.get(ID);
-        if (id != null) {
-            return converter.convert(id, ZoneId.class);
-        }
-        return fromMap(from, converter, ZoneId.class, new String[] {ZONE}, new String[] {ID});
+        return dispatch(from, converter, ZoneId.class, ZONE_KEYS);
     }
 
     private static final String[] ZONE_OFFSET_KEYS = {ZONE_OFFSET, VALUE, V};
 
     static ZoneOffset toZoneOffset(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        Object value = null;
-        for (String key : ZONE_OFFSET_KEYS) {
-            value = map.get(key);
-            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
-                break;
-            }
-        }
-
-        // If the 'zonedDateTime' value is a non-empty String, parse it (allows for value, _v, epochMillis as String)
-        if (value instanceof String && StringUtilities.hasContent((String) value)) {
-            return StringConversions.toZoneOffset(value, converter);
-        }
-
-        return fromMap(from, converter, ZoneOffset.class, new String[] {ZONE_OFFSET});
+        return dispatch(from, converter, ZoneOffset.class, ZONE_OFFSET_KEYS);
     }
+
+    private static final String[] YEAR_KEYS = {YEAR, VALUE, V};
 
     static Year toYear(Object from, Converter converter) {
-        return fromMap(from, converter, Year.class, new String[] {YEAR});
+        return dispatch(from, converter, Year.class, YEAR_KEYS);
     }
 
+    private static final String[] URL_KEYS = {URL_KEY, VALUE, V};
+
     static URL toURL(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        String url = (String) map.get(URL_KEY);
-        if (StringUtilities.hasContent(url)) {
-            return converter.convert(url, URL.class);
-        }
-        return fromMap(from, converter, URL.class, new String[] {URL_KEY});
+        return dispatch(from, converter, URL.class, URL_KEYS);
+    }
+
+    private static final String[] URI_KEYS = {URI_KEY, VALUE, V};
+
+    static URI toURI(Object from, Converter converter) {
+        return dispatch(from, converter, URI.class, URI_KEYS);
     }
 
     static Throwable toThrowable(Object from, Converter converter, Class<?> target) {
@@ -696,7 +395,7 @@ final class MapConversions {
 
             // Clear the stackTrace
             exception.setStackTrace(new StackTraceElement[0]);
-            
+
             return exception;
         } catch (Exception e) {
             throw new IllegalArgumentException("Unable to reconstruct exception instance from map: " + map, e);
@@ -718,7 +417,7 @@ final class MapConversions {
             String fieldName = entry.getKey();
             Object value = entry.getValue();
             Field field = fieldMap.get(fieldName);
-            
+
             if (field != null) {
                 try {
                     // Convert value to field type if needed
@@ -733,15 +432,6 @@ final class MapConversions {
             }
         }
     }
-    
-    static URI toURI(Object from, Converter converter) {
-        Map<String, Object> map = (Map<String, Object>) from;
-        String uri = (String) map.get(URI_KEY);
-        if (StringUtilities.hasContent(uri)) {
-            return converter.convert(map.get(URI_KEY), URI.class);
-        }
-        return fromMap(from, converter, URI.class, new String[] {URI_KEY});
-    }
 
     static Map<String, ?> initMap(Object from, Converter converter) {
         Map<String, Object> map = new LinkedHashMap<>();
@@ -749,42 +439,84 @@ final class MapConversions {
         return map;
     }
 
-    private static <T> T fromMap(Object from, Converter converter, Class<T> type, String[]...keySets) {
-        Map<String, Object> map = (Map<String, Object>) from;
+    /**
+     * Throws an IllegalArgumentException that tells the user which keys are needed.
+     *
+     * @param type the target type for conversion
+     * @param keys one or more arrays of alternative keys (e.g. {"value", "_v"})
+     * @param <T> target type (unused because the method always throws)
+     * @return nothing—it always throws.
+     */
+    private static <T> T fromMap(Class<T> type, String[] keys) {
+        // Build the message.
+        StringBuilder builder = new StringBuilder();
+        builder.append("To convert from Map to '")
+                .append(getShortName(type))
+                .append("' the map must include: ");
+        builder.append(formatKeys(keys));
+        builder.append(" as key with associated value.");
 
-        // For any single-key Map types, convert them
-        for (String[] keys : keySets) {
-            if (keys.length == 1) {
-                String key = keys[0];
-                if (map.containsKey(key)) {
-                    return converter.convert(map.get(key), type);
+        throw new IllegalArgumentException(builder.toString());
+    }
+
+    /**
+     * Formats an array of keys into a natural-language list.
+     * <ul>
+     *   <li>1 key: [oneKey]</li>
+     *   <li>2 keys: [oneKey] or [twoKey]</li>
+     *   <li>3+ keys: [oneKey], [twoKey], or [threeKey]</li>
+     * </ul>
+     *
+     * @param keys an array of keys
+     * @return a formatted String with each key in square brackets
+     */
+    private static String formatKeys(String[] keys) {
+        if (keys == null || keys.length == 0) {
+            return "";
+        }
+        if (keys.length == 1) {
+            return "[" + keys[0] + "]";
+        }
+        if (keys.length == 2) {
+            return "[" + keys[0] + "] or [" + keys[1] + "]";
+        }
+        // For 3 or more keys:
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < keys.length; i++) {
+            if (i > 0) {
+                // Before the last element, prepend ", or " (if it is the last) or ", " (if not)
+                if (i == keys.length - 1) {
+                    sb.append(", or ");
+                } else {
+                    sb.append(", ");
                 }
             }
+            sb.append("[").append(keys[i]).append("]");
         }
-        
-        if (map.containsKey(V)) {
-            return converter.convert(map.get(V), type);
+        return sb.toString();
+    }
+
+    private static Object getValue(Map<String, Object> map, String[] keys) {
+        String hadKey = null;
+        Object value;
+
+        for (String key : keys) {
+            value = map.get(key);
+
+            // Pick best value (if a String, it has content, if not a String, non-null)
+            if (value != null && (!(value instanceof String) || StringUtilities.hasContent((String) value))) {
+                return value;
+            }
+
+            // Record if there was an entry for the key
+            if (map.containsKey(key)) {
+                hadKey = key;
+            }
         }
 
-        if (map.containsKey(VALUE)) {
-            return converter.convert(map.get(VALUE), type);
+        if (hadKey != null) {
+            return map.get(hadKey);
         }
-
-        StringBuilder builder = new StringBuilder("To convert from Map to '" + Converter.getShortName(type) + "' the map must include: ");
-
-        for (String[] keySet : keySets) {
-            builder.append("[");
-            // Convert the inner String[] to a single string, joined by ", "
-            builder.append(String.join(", ", keySet));
-            builder.append("]");
-            builder.append(", ");
-        }
-
-        builder.append("[value]");
-        if (keySets.length > 0) {
-            builder.append(",");
-        }
-        builder.append(" or [_v] as keys with associated values.");
-        throw new IllegalArgumentException(builder.toString());
+        return NO_MATCH;
     }
 }

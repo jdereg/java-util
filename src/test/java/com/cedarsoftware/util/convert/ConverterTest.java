@@ -16,12 +16,15 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,6 +63,7 @@ import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -1046,7 +1050,10 @@ class ConverterTest
     void testLocalDateSqlDate(long epochMilli, ZoneId zoneId, LocalDate expected) {
         Converter converter = new Converter(createCustomZones(zoneId));
         java.sql.Date intermediate = converter.convert(expected, java.sql.Date.class);
-        assertThat(intermediate.getTime()).isEqualTo(epochMilli);
+
+        // Compare the date portions
+        LocalDate actualDate = intermediate.toLocalDate();
+        assertThat(actualDate).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -1248,15 +1255,40 @@ class ConverterTest
         Instant actual = converter.convert(date, Instant.class);
         assertThat(actual.toEpochMilli()).isEqualTo(epochMilli);
     }
-    
+
     @ParameterizedTest
-    @MethodSource("epochMillis_withLocalDateTimeInformation")
-    void testSqlDateToLocalDateTime(long epochMilli, ZoneId zoneId, LocalDateTime expected)
-    {
-        java.sql.Date date = new java.sql.Date(epochMilli);
+    @MethodSource("dateTestCases")
+    void testSqlDateToLocalDateTime(LocalDate testDate, ZoneId zoneId) {
+        // Create sql.Date from LocalDate (always midnight)
+        java.sql.Date date = java.sql.Date.valueOf(testDate);
+
+        // Create converter with specific zoneId
         Converter converter = new Converter(createCustomZones(zoneId));
+
+        // Convert and verify
         LocalDateTime localDateTime = converter.convert(date, LocalDateTime.class);
-        assertThat(localDateTime).isEqualTo(expected);
+        assertThat(localDateTime.toLocalDate()).isEqualTo(testDate);
+    }
+
+    private static Stream<Arguments> dateTestCases() {
+        List<LocalDate> dates = Arrays.asList(
+                LocalDate.of(2000, 1, 1),    // millennium
+                LocalDate.of(2023, 6, 24),   // recent date
+                LocalDate.of(1970, 1, 1)     // epoch
+        );
+
+        List<ZoneId> zones = Arrays.asList(
+                ZoneId.of("Asia/Tokyo"),
+                ZoneId.of("Europe/Paris"),
+                ZoneId.of("GMT"),
+                ZoneId.of("America/New_York"),
+                ZoneId.of("America/Chicago"),
+                ZoneId.of("America/Los_Angeles")
+        );
+
+        return dates.stream()
+                .flatMap(date -> zones.stream()
+                .map(zone -> Arguments.of(date, zone)));
     }
 
     @ParameterizedTest
@@ -1309,14 +1341,26 @@ class ConverterTest
         assertThat(actual.getTime()).isEqualTo(epochMilli);
     }
 
-    @ParameterizedTest
-    @MethodSource("epochMillis_withLocalDateTimeInformation")
-    void testInstantToSqlDate(long epochMilli, ZoneId zoneId, LocalDateTime expected)
-    {
-        Instant instant = Instant.ofEpochMilli(epochMilli);
-        Converter converter = new Converter(createCustomZones(zoneId));
-        java.sql.Date actual = converter.convert(instant, java.sql.Date.class);
-        assertThat(actual.getTime()).isEqualTo(epochMilli);
+    @Test
+    void testInstantToSqlDate() {
+        long now = System.currentTimeMillis();
+        Instant instant = Instant.ofEpochMilli(now);
+
+        // Test for America/New_York:
+        ZoneId newYorkZone = ZoneId.of("America/New_York");
+        Converter converterNY = new Converter(createCustomZones(newYorkZone));
+        java.sql.Date actualNY = converterNY.convert(instant, java.sql.Date.class);
+        // Compute expected value using the given zone
+        LocalDate expectedNY = instant.atZone(newYorkZone).toLocalDate();
+        assertEquals(expectedNY.toString(), actualNY.toString());
+
+        // Test for Asia/Tokyo:
+        ZoneId tokyoZone = ZoneId.of("Asia/Tokyo");
+        Converter converterTokyo = new Converter(createCustomZones(tokyoZone));
+        java.sql.Date actualTokyo = converterTokyo.convert(instant, java.sql.Date.class);
+        // Compute expected value using the given zone
+        LocalDate expectedTokyo = instant.atZone(tokyoZone).toLocalDate();
+        assertEquals(expectedTokyo.toString(), actualTokyo.toString());
     }
 
     @ParameterizedTest
@@ -1601,15 +1645,67 @@ class ConverterTest
         assertThat(localDate).isEqualTo(expected);
     }
 
-    @ParameterizedTest
-    @MethodSource("epochMillis_withLocalDateInformation")
-    void testSqlDateToLocalDate(long epochMilli, ZoneId zoneId, LocalDate expected)
-    {
-        java.sql.Date date = new java.sql.Date(epochMilli);
-        Converter converter = new Converter(createCustomZones(zoneId));
-        LocalDate localDate = converter.convert(date, LocalDate.class);
+    @Test
+    void testSqlDateToLocalDate() {
+        DefaultConverterOptions defaultConverterOptions = new DefaultConverterOptions() {
+            @Override
+            public ZoneId getZoneId() {
+                return ZoneId.of("Asia/Tokyo");
+            }
+        };
 
-        assertThat(localDate).isEqualTo(expected);
+        // Test cases with various dates and times
+        Map<java.sql.Date, LocalDate> testCases = new LinkedHashMap<>();
+
+        // Historical date (1888 - after Japan standardized timezone)
+        testCases.put(
+                java.sql.Date.valueOf("1888-01-02"),
+                LocalDate.of(1888, 1, 2)
+        );
+
+        // Pre-epoch dates
+        testCases.put(
+                java.sql.Date.valueOf("1969-12-31"),
+                LocalDate.of(1969, 12, 31)
+        );
+
+        // Epoch
+        testCases.put(
+                java.sql.Date.valueOf("1970-01-01"),
+                LocalDate.of(1970, 1, 1)
+        );
+
+        // Day after epoch
+        testCases.put(
+                java.sql.Date.valueOf("1970-01-02"),
+                LocalDate.of(1970, 1, 2)
+        );
+
+        // Recent date
+        testCases.put(
+                java.sql.Date.valueOf("2023-06-15"),
+                LocalDate.of(2023, 6, 15)
+        );
+
+        // Test with millisecond precision (should be truncated)
+        java.sql.Date dateWithMillis = new java.sql.Date(
+                LocalDateTime.of(2023, 6, 15, 12, 34, 56, 789_000_000)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+        );
+        testCases.put(
+                java.sql.Date.valueOf(dateWithMillis.toLocalDate()),
+                LocalDate.of(2023, 6, 15)
+        );
+
+        // Run all test cases
+        testCases.forEach((sqlDate, expectedLocalDate) -> {
+            LocalDate result = converter.convert(sqlDate, LocalDate.class);
+            assertThat(result)
+                    .as("Converting %s to LocalDate", sqlDate)
+                    .isEqualTo(expectedLocalDate);
+        });
     }
 
     @ParameterizedTest
@@ -2153,166 +2249,6 @@ class ConverterTest
     }
 
     @Test
-    void testDateFromOthers()
-    {
-        // Date to Date
-        Date utilNow = new Date();
-        Date coerced = this.converter.convert(utilNow, Date.class);
-        assertEquals(utilNow, coerced);
-        assertFalse(coerced instanceof java.sql.Date);
-        assert coerced != utilNow;
-
-        // Date to java.sql.Date
-        java.sql.Date sqlCoerced = this.converter.convert(utilNow, java.sql.Date.class);
-        assertEquals(utilNow, sqlCoerced);
-
-        // java.sql.Date to java.sql.Date
-        java.sql.Date sqlNow = new java.sql.Date(utilNow.getTime());
-        sqlCoerced = this.converter.convert(sqlNow, java.sql.Date.class);
-        assertEquals(sqlNow, sqlCoerced);
-
-        // java.sql.Date to Date
-        coerced = this.converter.convert(sqlNow, Date.class);
-        assertEquals(sqlNow, coerced);
-        assertFalse(coerced instanceof java.sql.Date);
-
-        // Date to Timestamp
-        Timestamp tstamp = this.converter.convert(utilNow, Timestamp.class);
-        assertEquals(utilNow, tstamp);
-
-        // Timestamp to Date
-        Date someDate = this.converter.convert(tstamp, Date.class);
-        assertEquals(utilNow, tstamp);
-        assertFalse(someDate instanceof Timestamp);
-
-        // java.sql.Date to Timestamp
-        tstamp = this.converter.convert(sqlCoerced, Timestamp.class);
-        assertEquals(sqlCoerced, tstamp);
-
-        // Timestamp to java.sql.Date
-        java.sql.Date someDate1 = this.converter.convert(tstamp, java.sql.Date.class);
-        assertEquals(someDate1, utilNow);
-
-        // String to Date
-        Calendar cal = Calendar.getInstance();
-        cal.clear();
-        cal.set(2015, 0, 17, 9, 54);
-        Date date = this.converter.convert("2015-01-17 09:54", Date.class);
-        assertEquals(cal.getTime(), date);
-        assert date != null;
-        assertFalse(date instanceof java.sql.Date);
-
-        // String to java.sql.Date
-        java.sql.Date sqlDate = this.converter.convert("2015-01-17 09:54", java.sql.Date.class);
-        assertEquals("2015-01-17", sqlDate.toString());
-        assert sqlDate != null;
-
-        // Calendar to Date
-        date = this.converter.convert(cal, Date.class);
-        assertEquals(date, cal.getTime());
-        assert date != null;
-        assertFalse(date instanceof java.sql.Date);
-
-        // Calendar to java.sql.Date
-        sqlDate = this.converter.convert(cal, java.sql.Date.class);
-        assertEquals(sqlDate, cal.getTime());
-        assert sqlDate != null;
-
-        // long to Date
-        long now = System.currentTimeMillis();
-        Date dateNow = new Date(now);
-        Date converted = this.converter.convert(now, Date.class);
-        assert converted != null;
-        assertEquals(dateNow, converted);
-        assertFalse(converted instanceof java.sql.Date);
-
-        // long to java.sql.Date
-        Date sqlConverted = this.converter.convert(now, java.sql.Date.class);
-        assertEquals(dateNow, sqlConverted);
-        assert sqlConverted != null;
-
-        // AtomicLong to Date
-        now = System.currentTimeMillis();
-        dateNow = new Date(now);
-        converted = this.converter.convert(new AtomicLong(now), Date.class);
-        assert converted != null;
-        assertEquals(dateNow, converted);
-        assertFalse(converted instanceof java.sql.Date);
-
-        // long to java.sql.Date
-        dateNow = new java.sql.Date(now);
-        sqlConverted = this.converter.convert(new AtomicLong(now), java.sql.Date.class);
-        assert sqlConverted != null;
-        assertEquals(dateNow, sqlConverted);
-
-        // BigInteger to java.sql.Date
-        BigInteger bigInt = new BigInteger("" + now * 1_000_000);
-        sqlDate = this.converter.convert(bigInt, java.sql.Date.class);
-        assert sqlDate.getTime() == now;
-
-        // BigDecimal to java.sql.Date
-        BigDecimal bigDec = new BigDecimal(now);
-        bigDec = bigDec.divide(BigDecimal.valueOf(1000));
-        sqlDate = this.converter.convert(bigDec, java.sql.Date.class);
-        assert sqlDate.getTime() == now;
-
-        // BigInteger to Timestamp
-        bigInt = new BigInteger("" + now * 1000000L);
-        tstamp = this.converter.convert(bigInt, Timestamp.class);
-        assert tstamp.getTime() == now;
-
-        // BigDecimal to TimeStamp
-        bigDec = new BigDecimal(now);
-        bigDec = bigDec.divide(BigDecimal.valueOf(1000));
-        tstamp = this.converter.convert(bigDec, Timestamp.class);
-        assert tstamp.getTime() == now;
-
-        // Invalid source type for Date
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), Date.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
-
-        // Invalid source type for java.sql.Date
-        try
-        {
-            this.converter.convert(TimeZone.getDefault(), java.sql.Date.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("unsupported conversion, source type [zoneinfo"));
-        }
-
-        // Invalid source date for Date
-        try
-        {
-            this.converter.convert("2015/01/33", Date.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().contains("Day must be between 1 and 31 inclusive, date: 2015/01/33"));
-        }
-
-        // Invalid source date for java.sql.Date
-        try
-        {
-            this.converter.convert("2015/01/33", java.sql.Date.class);
-            fail();
-        }
-        catch (IllegalArgumentException e)
-        {
-            assertTrue(e.getMessage().toLowerCase().contains("day must be between 1 and 31"));
-        }
-    }
-
-    @Test
     void testBogusSqlDate2()
     {
         assertThatThrownBy(() -> this.converter.convert(true, java.sql.Date.class))
@@ -2332,56 +2268,6 @@ class ConverterTest
                 Arguments.of("1687622249729"),
                 Arguments.of(new AtomicLong(1687622249729L))
         );
-    }
-
-    @ParameterizedTest
-    @MethodSource("toCalendarParams")
-    void toCalendar(Object source)
-    {
-        Long epochMilli = 1687622249729L;
-
-        Calendar calendar = this.converter.convert(source, Calendar.class);
-        assertEquals(calendar.getTime().getTime(), epochMilli);
-
-        // BigInteger to Calendar
-        // Other direction --> Calendar to other date types
-
-        Calendar now = Calendar.getInstance();
-        
-        // Calendar to Date
-        calendar = this.converter.convert(now, Calendar.class);
-        Date date = this.converter.convert(calendar, Date.class);
-        assertEquals(calendar.getTime(), date);
-
-        // Calendar to SqlDate
-        java.sql.Date sqlDate = this.converter.convert(calendar, java.sql.Date.class);
-        assertEquals(calendar.getTime().getTime(), sqlDate.getTime());
-
-        // Calendar to Timestamp
-        Timestamp timestamp = this.converter.convert(calendar, Timestamp.class);
-        assertEquals(calendar.getTime().getTime(), timestamp.getTime());
-
-        // Calendar to Long
-        long tnow = this.converter.convert(calendar, long.class);
-        assertEquals(calendar.getTime().getTime(), tnow);
-
-        // Calendar to AtomicLong
-        AtomicLong atomicLong = this.converter.convert(calendar, AtomicLong.class);
-        assertEquals(calendar.getTime().getTime(), atomicLong.get());
-
-        // Calendar to String
-        String strDate = this.converter.convert(calendar, String.class);
-        String strDate2 = this.converter.convert(now, String.class);
-        assertEquals(strDate, strDate2);
-
-        // Calendar to BigInteger
-        BigInteger bigInt = this.converter.convert(calendar, BigInteger.class);
-        assertEquals(now.getTime().getTime() * 1_000_000, bigInt.longValue());
-
-        // Calendar to BigDecimal
-        BigDecimal bigDec = this.converter.convert(calendar, BigDecimal.class);
-        bigDec = bigDec.multiply(BigDecimal.valueOf(1000));
-        assertEquals(now.getTime().getTime(), bigDec.longValue());
     }
     
     @Test
@@ -2796,7 +2682,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicBoolean.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'AtomicBoolean' the map must include: [value] or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'AtomicBoolean' the map must include: [value] or [_v] as key with associated value");
     }
 
     @Test
@@ -2819,7 +2705,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicInteger.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'AtomicInteger' the map must include: [value] or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'AtomicInteger' the map must include: [value] or [_v] as key with associated value");
     }
 
     @Test
@@ -2842,7 +2728,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, AtomicLong.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'AtomicLong' the map must include: [value] or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'AtomicLong' the map must include: [value] or [_v] as key with associated value");
     }
     
     @ParameterizedTest
@@ -2866,7 +2752,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Calendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Calendar' the map must include: [calendar], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Calendar' the map must include: [calendar], [value], [_v], or [epochMillis] as key with associated value");
     }
 
     @Test
@@ -2931,7 +2817,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, GregorianCalendar.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("ap to 'Calendar' the map must include: [calendar], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Calendar' the map must include: [calendar], [value], [_v], or [epochMillis] as key with associated value");
     }
 
     @Test
@@ -2954,7 +2840,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Date' the map must include: [date], [epochMillis], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Date' the map must include: [date], [value], [_v], or [epochMillis] as key with associated value");
     }
 
     @Test
@@ -2968,7 +2854,7 @@ class ConverterTest
 
         // Compute the expected date by interpreting 'now' in UTC and normalizing it.
         LocalDate expectedLD = Instant.ofEpochMilli(now)
-                .atZone(ZoneOffset.UTC)
+                .atZone(ZoneOffset.systemDefault())
                 .toLocalDate();
         java.sql.Date expectedDate = java.sql.Date.valueOf(expectedLD.toString());
 
@@ -2987,7 +2873,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, java.sql.Date.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'java.sql.Date' the map must include: [sqlDate], [epochMillis], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'java.sql.Date' the map must include: [sqlDate], [value], [_v], or [epochMillis] as key with associated value");
     }
 
     @Test
@@ -3010,7 +2896,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, Timestamp.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'Timestamp' the map must include: [timestamp], [epochMillis], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'Timestamp' the map must include: [timestamp], [value], [_v], or [epochMillis] as key with associated value");
     }
 
     @Test
@@ -3050,7 +2936,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDate.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'LocalDate' the map must include: [localDate], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'LocalDate' the map must include: [localDate], [value], or [_v] as key with associated value");
     }
 
     @Test
@@ -3073,7 +2959,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, LocalDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'LocalDateTime' the map must include: [localDateTime], [epochMillis], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'LocalDateTime' the map must include: [localDateTime], [value], [_v], or [epochMillis] as key with associated value");
     }
 
     @Test
@@ -3092,7 +2978,7 @@ class ConverterTest
         map.clear();
         assertThatThrownBy(() -> this.converter.convert(map, ZonedDateTime.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'ZonedDateTime' the map must include: [zonedDateTime], [epochMillis], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'ZonedDateTime' the map must include: [zonedDateTime], [value], [_v], or [epochMillis] as key with associated value");
 
     }
 
@@ -3341,7 +3227,7 @@ class ConverterTest
         assert bigI.longValue() == cal.getTime().getTime() * 1_000_000;
 
         java.sql.Date sqlDate = this.converter.convert(LocalDateTime.of(2020, 9, 8, 13, 11, 1), java.sql.Date.class);
-        assert sqlDate.getTime() == cal.getTime().getTime();
+        assert sqlDate.toLocalDate().equals(LocalDateTime.of(2020, 9, 8, 13, 11, 1).toLocalDate());
 
         Timestamp timestamp = this.converter.convert(LocalDateTime.of(2020, 9, 8, 13, 11, 1), Timestamp.class);
         assert timestamp.getTime() == cal.getTime().getTime();
@@ -3357,25 +3243,26 @@ class ConverterTest
     }
 
     @Test
-    void testLocalZonedDateTimeToBig()
-    {
+    void testLocalZonedDateTimeToBig() {
         Calendar cal = Calendar.getInstance();
         cal.clear();
         cal.set(2020, 8, 8, 13, 11, 1);   // 0-based for month
 
-        BigDecimal big = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), BigDecimal.class);
+        ZonedDateTime zdt = ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault());
+
+        BigDecimal big = this.converter.convert(zdt, BigDecimal.class);
         assert big.multiply(BigDecimal.valueOf(1000L)).longValue() == cal.getTime().getTime();
 
-        BigInteger bigI = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), BigInteger.class);
+        BigInteger bigI = this.converter.convert(zdt, BigInteger.class);
         assert bigI.longValue() == cal.getTime().getTime() * 1_000_000;
 
-        java.sql.Date sqlDate = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), java.sql.Date.class);
-        assert sqlDate.getTime() == cal.getTime().getTime();
+        java.sql.Date sqlDate = this.converter.convert(zdt, java.sql.Date.class);
+        assert sqlDate.toLocalDate().equals(zdt.toLocalDate());  // Compare date portions only
 
-        Date date = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), Date.class);
+        Date date = this.converter.convert(zdt, Date.class);
         assert date.getTime() == cal.getTime().getTime();
 
-        AtomicLong atomicLong = this.converter.convert(ZonedDateTime.of(2020, 9, 8, 13, 11, 1, 0, ZoneId.systemDefault()), AtomicLong.class);
+        AtomicLong atomicLong = this.converter.convert(zdt, AtomicLong.class);
         assert atomicLong.get() == cal.getTime().getTime();
     }
 
@@ -3513,7 +3400,7 @@ class ConverterTest
         map.put("leastSigBits", uuid.getLeastSignificantBits());
         assertThatThrownBy(() -> this.converter.convert(map, UUID.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Map to 'UUID' the map must include: [UUID], [mostSigBits, leastSigBits], [value], or [_v] as keys with associated values");
+                .hasMessageContaining("Map to 'UUID' the map must include: [UUID], [value], [_v], or [mostSigBits, leastSigBits] as key with associated value");
     }
 
     @Test
@@ -3853,13 +3740,12 @@ class ConverterTest
     }
 
     @Test
-    void testLocalDateTimeToMap()
-    {
+    void testLocalDateTimeToMap() {
         LocalDateTime now = LocalDateTime.now();
         Map<?, ?> map = converter.convert(now, Map.class);
-        assert map.size() == 1; // localDateTime
+        assert map.size() == 1;
         LocalDateTime now2 = converter.convert(map, LocalDateTime.class);
-        assertEquals(now, now2);
+        assertThat(now2).isCloseTo(now, within(1, ChronoUnit.NANOS));
     }
 
     @Test

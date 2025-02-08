@@ -7,7 +7,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -91,7 +94,11 @@ final class LocalDateTimeConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toLong(from, converter));
+        LocalDateTime ldt = (LocalDateTime) from;
+        return java.sql.Date.valueOf(
+                ldt.atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -106,6 +113,30 @@ final class LocalDateTimeConversions {
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Instant instant = toInstant(from, converter);
         return InstantConversions.toBigDecimal(instant, converter);
+    }
+
+    static Year toYear(Object from, Converter converter) {
+        return Year.from(
+                ((LocalDateTime) from)
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static YearMonth toYearMonth(Object from, Converter converter) {
+        return YearMonth.from(
+                ((LocalDateTime) from)
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static MonthDay toMonthDay(Object from, Converter converter) {
+        return MonthDay.from(
+                ((LocalDateTime) from)
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static String toString(Object from, Converter converter) {

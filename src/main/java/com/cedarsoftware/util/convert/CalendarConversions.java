@@ -7,7 +7,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -44,52 +47,18 @@ final class CalendarConversions {
 
     private CalendarConversions() {}
 
-    static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
-        Calendar calendar = (Calendar)from;
-        return calendar.toInstant().atZone(calendar.getTimeZone().toZoneId());
-    }
-
     static Long toLong(Object from, Converter converter) {
         return ((Calendar) from).getTime().getTime();
-    }
-
-    static double toDouble(Object from, Converter converter) {
-        Calendar calendar = (Calendar) from;
-        long epochMillis = calendar.getTime().getTime();
-        return epochMillis / 1000.0;
-    }
-    
-    static Date toDate(Object from, Converter converter) {
-        return ((Calendar) from).getTime();
-    }
-
-    static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(((Calendar) from).getTime().getTime());
-    }
-
-    static Timestamp toTimestamp(Object from, Converter converter) {
-        return new Timestamp(((Calendar) from).getTimeInMillis());
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
         return new AtomicLong(((Calendar) from).getTime().getTime());
     }
 
-    static Instant toInstant(Object from, Converter converter) {
+    static double toDouble(Object from, Converter converter) {
         Calendar calendar = (Calendar) from;
-        return calendar.toInstant();
-    }
-
-    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDateTime();
-    }
-
-    static LocalDate toLocalDate(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalDate();
-    }
-
-    static LocalTime toLocalTime(Object from, Converter converter) {
-        return toZonedDateTime(from, converter).toLocalTime();
+        long epochMillis = calendar.getTime().getTime();
+        return epochMillis / 1000.0;
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
@@ -100,6 +69,50 @@ final class CalendarConversions {
 
     static BigInteger toBigInteger(Object from, Converter converter) {
         return BigInteger.valueOf(((Calendar) from).getTime().getTime() * 1_000_000L);
+    }
+
+    static Date toDate(Object from, Converter converter) {
+        return ((Calendar) from).getTime();
+    }
+
+    static java.sql.Date toSqlDate(Object from, Converter converter) {
+        return java.sql.Date.valueOf(
+                ((Calendar) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static Timestamp toTimestamp(Object from, Converter converter) {
+        return new Timestamp(((Calendar) from).getTimeInMillis());
+    }
+
+    static Instant toInstant(Object from, Converter converter) {
+        Calendar calendar = (Calendar) from;
+        return calendar.toInstant();
+    }
+
+    static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
+        Calendar calendar = (Calendar)from;
+        return calendar.toInstant().atZone(calendar.getTimeZone().toZoneId());
+    }
+
+    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalDateTime();
+    }
+
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        Calendar cal = (Calendar) from;
+        OffsetDateTime offsetDateTime = cal.toInstant().atOffset(ZoneOffset.ofTotalSeconds(cal.getTimeZone().getOffset(cal.getTimeInMillis()) / 1000));
+        return offsetDateTime;
+    }
+
+    static LocalDate toLocalDate(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalDate();
+    }
+
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        return toZonedDateTime(from, converter).toLocalTime();
     }
 
     static Calendar clone(Object from, Converter converter) {
@@ -113,6 +126,30 @@ final class CalendarConversions {
         cal.clear();
         cal.setTimeInMillis(epochMilli);
         return cal;
+    }
+
+    static Year toYear(Object from, Converter converter) {
+        return Year.from(
+                ((Calendar) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static YearMonth toYearMonth(Object from, Converter converter) {
+        return YearMonth.from(
+                ((Calendar) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static MonthDay toMonthDay(Object from, Converter converter) {
+        return MonthDay.from(
+                ((Calendar) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static String toString(Object from, Converter converter) {
@@ -146,12 +183,6 @@ final class CalendarConversions {
                     .toFormatter();
             return zoneFormatter.format(zdt);
         }
-    }
-
-    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
-        Calendar cal = (Calendar) from;
-        OffsetDateTime offsetDateTime = cal.toInstant().atOffset(ZoneOffset.ofTotalSeconds(cal.getTimeZone().getOffset(cal.getTimeInMillis()) / 1000));
-        return offsetDateTime;
     }
 
     static Map<String, Object> toMap(Object from, Converter converter) {

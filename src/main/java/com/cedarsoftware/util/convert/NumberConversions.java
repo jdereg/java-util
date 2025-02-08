@@ -168,7 +168,43 @@ final class NumberConversions {
     }
 
     static Duration toDuration(Object from, Converter converter) {
-        return Duration.ofMillis(toLong(from, converter));
+        Number num = (Number) from;
+
+        // For whole number types, interpret the value as milliseconds.
+        if (num instanceof Long
+                || num instanceof Integer
+                || num instanceof BigInteger
+                || num instanceof AtomicLong
+                || num instanceof AtomicInteger) {
+            return Duration.ofMillis(num.longValue());
+        }
+        // For BigDecimal, interpret the value as seconds (with fractional seconds).
+        else if (num instanceof BigDecimal) {
+            BigDecimal seconds = (BigDecimal) num;
+            long wholeSecs = seconds.longValue();
+            long nanos = seconds.subtract(BigDecimal.valueOf(wholeSecs))
+                    .multiply(BigDecimal.valueOf(1_000_000_000L))
+                    .longValue();
+            return Duration.ofSeconds(wholeSecs, nanos);
+        }
+        // For Double and Float, interpret as seconds with fractional seconds.
+        else if (num instanceof Double || num instanceof Float) {
+            BigDecimal seconds = BigDecimal.valueOf(num.doubleValue());
+            long wholeSecs = seconds.longValue();
+            long nanos = seconds.subtract(BigDecimal.valueOf(wholeSecs))
+                    .multiply(BigDecimal.valueOf(1_000_000_000L))
+                    .longValue();
+            return Duration.ofSeconds(wholeSecs, nanos);
+        }
+        // Fallback: use the number's string representation as seconds.
+        else {
+            BigDecimal seconds = new BigDecimal(num.toString());
+            long wholeSecs = seconds.longValue();
+            long nanos = seconds.subtract(BigDecimal.valueOf(wholeSecs))
+                    .multiply(BigDecimal.valueOf(1_000_000_000L))
+                    .longValue();
+            return Duration.ofSeconds(wholeSecs, nanos);
+        }
     }
 
     static Instant toInstant(Object from, Converter converter) {
@@ -176,7 +212,11 @@ final class NumberConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toLong(from, converter));
+        return java.sql.Date.valueOf(
+                Instant.ofEpochMilli(((Number) from).longValue())
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static Timestamp toTimestamp(Object from, Converter converter) {

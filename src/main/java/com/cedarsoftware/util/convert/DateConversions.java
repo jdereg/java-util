@@ -8,7 +8,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -57,7 +60,11 @@ final class DateConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toLong(from, converter));
+        return java.sql.Date.valueOf(
+                ((Date) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -120,29 +127,40 @@ final class DateConversions {
         return new AtomicLong(toLong(from, converter));
     }
 
+    static Year toYear(Object from, Converter converter) {
+        return Year.from(
+                ((Date) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static YearMonth toYearMonth(Object from, Converter converter) {
+        return YearMonth.from(
+                ((Date) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static MonthDay toMonthDay(Object from, Converter converter) {
+        return MonthDay.from(
+                ((Date) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+    
     static String toString(Object from, Converter converter) {
         Date date = (Date) from;
         Instant instant = date.toInstant();   // Convert legacy Date to Instant
         return MILLIS_FMT.format(instant);
     }
 
-    static String toSqlDateString(Object from, Converter converter) {
-        java.sql.Date sqlDate = (java.sql.Date) from;
-        // java.sql.Date.toString() returns the date in "yyyy-MM-dd" format.
-        return sqlDate.toString();
-    }
-    
     static Map<String, Object> toMap(Object from, Converter converter) {
-        Date date = (Date) from;
         Map<String, Object> map = new LinkedHashMap<>();
-
-        if (date instanceof java.sql.Date) {
-            map.put(MapConversions.SQL_DATE, toSqlDateString(date, converter));
-        } else {
-            // Regular util.Date - format with time
-            map.put(MapConversions.DATE, toString(from, converter));
-        }
-
+        // Regular util.Date - format with time
+        map.put(MapConversions.DATE, toString(from, converter));
         return map;
     }
 }

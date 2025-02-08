@@ -7,7 +7,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
@@ -20,6 +23,7 @@ import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
+ * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -92,7 +96,11 @@ final class ZonedDateTimeConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toLong(from, converter));
+        return java.sql.Date.valueOf(
+                ((ZonedDateTime) from)
+                        .withZoneSameInstant(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -107,6 +115,30 @@ final class ZonedDateTimeConversions {
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Instant instant = toInstant(from, converter);
         return InstantConversions.toBigDecimal(instant, converter);
+    }
+
+    static Year toYear(Object from, Converter converter) {
+        return Year.from(
+                ((ZonedDateTime) from)
+                        .withZoneSameInstant(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static YearMonth toYearMonth(Object from, Converter converter) {
+        return YearMonth.from(
+                ((ZonedDateTime) from)
+                        .withZoneSameInstant(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static MonthDay toMonthDay(Object from, Converter converter) {
+        return MonthDay.from(
+                ((ZonedDateTime) from)
+                        .withZoneSameInstant(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static String toString(Object from, Converter converter) {

@@ -6,7 +6,10 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -83,8 +86,11 @@ final class TimestampConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        Timestamp timestamp = (Timestamp) from;
-        return new java.sql.Date(timestamp.getTime());
+        return java.sql.Date.valueOf(
+                ((Timestamp) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
     }
 
     static long toLong(Object from, Converter converter) {
@@ -92,6 +98,30 @@ final class TimestampConversions {
         return timestamp.getTime();
     }
 
+    static Year toYear(Object from, Converter converter) {
+        return Year.from(
+                ((Timestamp) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static YearMonth toYearMonth(Object from, Converter converter) {
+        return YearMonth.from(
+                ((Timestamp) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+
+    static MonthDay toMonthDay(Object from, Converter converter) {
+        return MonthDay.from(
+                ((Timestamp) from).toInstant()
+                        .atZone(converter.getOptions().getZoneId())
+                        .toLocalDate()
+        );
+    }
+    
     static String toString(Object from, Converter converter) {
         Timestamp timestamp = (Timestamp) from;
         int nanos = timestamp.getNanos();
@@ -112,7 +142,7 @@ final class TimestampConversions {
                 .atZone(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ofPattern(pattern));
     }
-    
+
     static Map<String, Object> toMap(Object from, Converter converter) {
         String formatted = toString(from, converter);
         Map<String, Object> map = new LinkedHashMap<>();

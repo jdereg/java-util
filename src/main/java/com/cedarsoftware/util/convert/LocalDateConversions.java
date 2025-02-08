@@ -7,7 +7,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -84,7 +87,7 @@ final class LocalDateConversions {
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        return new java.sql.Date(toLong(from, converter));
+        return java.sql.Date.valueOf((LocalDate) from);
     }
 
     static Date toDate(Object from, Converter converter) {
@@ -99,6 +102,18 @@ final class LocalDateConversions {
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Instant instant = toInstant(from, converter);
         return InstantConversions.toBigDecimal(instant, converter);
+    }
+
+    static Year toYear(Object from, Converter converter) {
+        return Year.from((LocalDate) from);
+    }
+
+    static YearMonth toYearMonth(Object from, Converter converter) {
+        return YearMonth.from((LocalDate) from);
+    }
+
+    static MonthDay toMonthDay(Object from, Converter converter) {
+        return MonthDay.from((LocalDate) from);
     }
 
     static String toString(Object from, Converter converter) {

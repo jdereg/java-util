@@ -1,8 +1,14 @@
 ### Revision History
 #### 3.0.3
-> * `Date` conversion - Timezone is always specified now, so no risk of system default Timezone being used. Would only use system default timezone if tz not specified, which could only happen if older version sending older format JSON.
-> * Conversion enabled that ensures all conversions go from instance, to JSON, and JSON, back to instance, through all conversion types supported. `java-util` uses `json-io` as a test dependency only.
+> * `java.sql.Date` conversion - considered a timeless "date", like a birthday, and not shifted due to time zones. Example, `2025-02-07T23:59:59[America/New_York]` coverage effective date, will remain `2025-02-07` when converted to any time zone.
+> * `Currency` conversions added (toString, toMap and vice-versa)
+> * `Pattern` conversions added (toString, toMap and vice-versa)
+> * `YearMonth` conversions added (all date-time types to `YearMonth`)
+> * `Year` conversions added (all date-time types to `Year`)
+> * `MonthDay` conversions added (all date-time types to `MonthDay`)
+> * All Temporal classes, when converted to a Map, will typically use a single String to represent the Temporal object. Uses the ISO 8601 formats for dates, other ISO formats for Currency, etc.
 #### 3.0.2
+> 
 > * Conversion test added that ensures all conversions go from instance, to JSON, and JSON, back to instance, through all conversion types supported. `java-util` uses `json-io` as a test dependency only.
 > * `Timestamp` conversion improvements (better honoring of nanos) and Timezone is always specified now, so no risk of system default Timezone being used.  Would only use system default timezone if tz not specified, which could only happen if older version sending older format JSON.
 #### 3.0.1

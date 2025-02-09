@@ -65,7 +65,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import static com.cedarsoftware.util.MapUtilities.mapOf;
-import static com.cedarsoftware.util.convert.Converter.VALUE;
 import static com.cedarsoftware.util.convert.MapConversions.CALENDAR;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE;
 import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
@@ -91,6 +90,7 @@ import static com.cedarsoftware.util.convert.MapConversions.TIMESTAMP;
 import static com.cedarsoftware.util.convert.MapConversions.URI_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.URL_KEY;
 import static com.cedarsoftware.util.convert.MapConversions.V;
+import static com.cedarsoftware.util.convert.MapConversions.VALUE;
 import static com.cedarsoftware.util.convert.MapConversions.YEAR_MONTH;
 import static com.cedarsoftware.util.convert.MapConversions.ZONE;
 import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
@@ -221,6 +221,8 @@ class ConverterEverythingTest {
         loadUuidTests();
         loadEnumTests();
         loadThrowableTests();
+        loadCurrencyTests();
+        loadPatternTests();
     }
 
     /**
@@ -233,6 +235,39 @@ class ConverterEverythingTest {
     static Map.Entry<Class<?>, Class<?>> pair(Class<?> source, Class<?> target) {
         return new AbstractMap.SimpleImmutableEntry<>(source, target);
     }
+
+    /**
+     * Currency
+     */
+    private static void loadPatternTests() {
+        TEST_DB.put(pair(Void.class, Pattern.class), new Object[][]{
+                {null, null},
+        });
+    }
+
+    /**
+     * Currency
+     */
+    private static void loadCurrencyTests() {
+        TEST_DB.put(pair(Void.class, Currency.class), new Object[][]{
+                { null, null},
+        });
+        TEST_DB.put(pair(Currency.class, Currency.class), new Object[][]{
+                { Currency.getInstance("USD"), Currency.getInstance("USD") },
+                { Currency.getInstance("JPY"), Currency.getInstance("JPY") },
+        });
+        TEST_DB.put(pair(Map.class, Currency.class), new Object[][] {
+                // Bidirectional tests (true) - major currencies
+                {mapOf(VALUE, "USD"), Currency.getInstance("USD"), true},
+                {mapOf(VALUE, "EUR"), Currency.getInstance("EUR"), true},
+                {mapOf(VALUE, "JPY"), Currency.getInstance("JPY"), true},
+                {mapOf(VALUE, "GBP"), Currency.getInstance("GBP"), true},
+
+                // One-way tests (false) - with whitespace that should be trimmed
+                {mapOf(V, " USD "), Currency.getInstance("USD"), false},
+                {mapOf(VALUE, " EUR "), Currency.getInstance("EUR"), false},
+                {mapOf(VALUE, "\tJPY\n"), Currency.getInstance("JPY"), false}
+        });    }
 
     /**
      * Enum
@@ -571,7 +606,7 @@ class ConverterEverythingTest {
                 {"NoWayJose", new IllegalArgumentException("not found")},
         });
         TEST_DB.put(pair(Map.class, Class.class), new Object[][]{
-                { mapOf(VALUE, Long.class), Long.class, true},
+                { mapOf(V, Long.class), Long.class, true},
                 { mapOf(VALUE, "not a class"), new IllegalArgumentException("Cannot convert String 'not a class' to class.  Class not found")},
         });
     }
@@ -582,6 +617,9 @@ class ConverterEverythingTest {
     private static void loadMapTests() {
         TEST_DB.put(pair(Void.class, Map.class), new Object[][]{
                 {null, null}
+        });
+        TEST_DB.put(pair(Pattern.class, Map.class), new Object[][]{
+                {Pattern.compile("(foo|bar)"), mapOf(VALUE, "(foo|bar)")},
         });
         TEST_DB.put(pair(Map.class, Map.class), new Object[][]{
                 { new HashMap<>(), new IllegalArgumentException("Unsupported conversion") }
@@ -1526,6 +1564,100 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Year.class, Year.class), new Object[][]{
                 {Year.of(1970), Year.of(1970), true},
         });
+        TEST_DB.put(pair(Calendar.class, Year.class), new Object[][] {
+                {createCalendar(1888, 1, 2, 0, 0, 0), Year.of(1888), false},
+                {createCalendar(1969, 12, 31, 0, 0, 0), Year.of(1969), false},
+                {createCalendar(1970, 1, 1, 0, 0, 0), Year.of(1970), false},
+                {createCalendar(2023, 6, 15, 0, 0, 0), Year.of(2023), false},
+                {createCalendar(2023, 6, 15, 12, 30, 45), Year.of(2023), false},
+                {createCalendar(2023, 12, 31, 23, 59, 59), Year.of(2023), false},
+                {createCalendar(2023, 1, 1, 1, 0, 1), Year.of(2023), false}
+        });
+        TEST_DB.put(pair(Date.class, Year.class), new Object[][] {
+                {date("1888-01-01T15:00:00Z"), Year.of(1888), false},    // 1888-01-02 00:00 Tokyo
+                {date("1969-12-30T15:00:00Z"), Year.of(1969), false},    // 1969-12-31 00:00 Tokyo
+                {date("1969-12-31T15:00:00Z"), Year.of(1970), false},    // 1970-01-01 00:00 Tokyo
+                {date("2023-06-14T15:00:00Z"), Year.of(2023), false},    // 2023-06-15 00:00 Tokyo
+                {date("2023-06-15T12:30:45Z"), Year.of(2023), false},   // 2023-06-15 21:30:45 Tokyo
+                {date("2023-06-15T14:59:59Z"), Year.of(2023), false},   // 2023-06-15 23:59:59 Tokyo
+                {date("2023-06-15T00:00:01Z"), Year.of(2023), false}    // 2023-06-15 09:00:01 Tokyo
+        });
+        TEST_DB.put(pair(java.sql.Date.class, Year.class), new Object[][] {
+                {java.sql.Date.valueOf("1888-01-02"), Year.of(1888), false},
+                {java.sql.Date.valueOf("1969-12-31"), Year.of(1969), false},
+                {java.sql.Date.valueOf("1970-01-01"), Year.of(1970), false},
+                {java.sql.Date.valueOf("2023-06-15"), Year.of(2023), false},
+                {java.sql.Date.valueOf("2023-01-01"), Year.of(2023), false},
+                {java.sql.Date.valueOf("2023-12-31"), Year.of(2023), false}
+        });
+        TEST_DB.put(pair(LocalDate.class, Year.class), new Object[][] {
+                {LocalDate.of(1888, 1, 2), Year.of(1888), false},
+                {LocalDate.of(1969, 12, 31), Year.of(1969), false},
+                {LocalDate.of(1970, 1, 1), Year.of(1970), false},
+                {LocalDate.of(2023, 6, 15), Year.of(2023), false},
+                {LocalDate.of(2023, 1, 1), Year.of(2023), false},
+                {LocalDate.of(2023, 12, 31), Year.of(2023), false}
+        });
+        TEST_DB.put(pair(LocalDateTime.class, Year.class), new Object[][] {
+                {LocalDateTime.of(1888, 1, 2, 0, 0), Year.of(1888), false},
+                {LocalDateTime.of(1969, 12, 31, 0, 0), Year.of(1969), false},
+                {LocalDateTime.of(1970, 1, 1, 0, 0), Year.of(1970), false},
+                {LocalDateTime.of(2023, 6, 15, 0, 0), Year.of(2023), false},
+
+                // One-way tests (false) - various times on same date
+                {LocalDateTime.of(2023, 6, 15, 12, 30, 45), Year.of(2023), false},
+                {LocalDateTime.of(2023, 6, 15, 23, 59, 59, 999_999_999), Year.of(2023), false},
+                {LocalDateTime.of(2023, 6, 15, 0, 0, 0, 1), Year.of(2023), false},
+
+                // One-way tests (false) - different dates in same year
+                {LocalDateTime.of(2023, 1, 1, 12, 0), Year.of(2023), false},
+                {LocalDateTime.of(2023, 12, 31, 12, 0), Year.of(2023), false}
+        });
+        TEST_DB.put(pair(OffsetDateTime.class, Year.class), new Object[][] {
+                {odt("1888-01-01T15:00:00Z"), Year.of(1888), false},    // 1888-01-02 00:00 Tokyo
+                {odt("1969-12-30T15:00:00Z"), Year.of(1969), false},    // 1969-12-31 00:00 Tokyo
+                {odt("1969-12-31T15:00:00Z"), Year.of(1970), false},    // 1970-01-01 00:00 Tokyo
+                {odt("2023-06-14T15:00:00Z"), Year.of(2023), false},    // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - various times before Tokyo midnight
+                {odt("2023-06-15T12:30:45Z"), Year.of(2023), false},       // 21:30:45 Tokyo
+                {odt("2023-06-15T14:59:59.999Z"), Year.of(2023), false},   // 23:59:59.999 Tokyo
+                {odt("2023-06-15T00:00:01Z"), Year.of(2023), false},       // 09:00:01 Tokyo
+
+                // One-way tests (false) - same date in different offset
+                {odt("2023-06-15T00:00:00+09:00"), Year.of(2023), false},  // Tokyo local time
+                {odt("2023-06-15T00:00:00-05:00"), Year.of(2023), false}   // US Eastern time
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, Year.class), new Object[][] {
+                {zdt("1888-01-01T15:00:00Z"), Year.of(1888), false},    // 1888-01-02 00:00 Tokyo
+                {zdt("1969-12-30T15:00:00Z"), Year.of(1969), false},    // 1969-12-31 00:00 Tokyo
+                {zdt("1969-12-31T15:00:00Z"), Year.of(1970), false},    // 1970-01-01 00:00 Tokyo
+                {zdt("2023-06-14T15:00:00Z"), Year.of(2023), false},    // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - various times before Tokyo midnight
+                {zdt("2023-06-15T12:30:45Z"), Year.of(2023), false},       // 21:30:45 Tokyo
+                {zdt("2023-06-15T14:59:59.999Z"), Year.of(2023), false},   // 23:59:59.999 Tokyo
+                {zdt("2023-06-15T00:00:01Z"), Year.of(2023), false},       // 09:00:01 Tokyo
+
+                // One-way tests (false) - same time in different zones
+                {ZonedDateTime.of(2023, 6, 15, 0, 0, 0, 0, ZoneId.of("Asia/Tokyo")), Year.of(2023), false},
+                {ZonedDateTime.of(2023, 6, 15, 0, 0, 0, 0, ZoneId.of("America/New_York")), Year.of(2023), false}
+        });
+        TEST_DB.put(pair(Timestamp.class, Year.class), new Object[][] {
+                // Bidirectional tests (true) - all at midnight Tokyo (+09:00)
+                {timestamp("1888-01-01T15:00:00Z"), Year.of(1888), false},    // 1888-01-02 00:00 Tokyo
+                {timestamp("1969-12-30T15:00:00Z"), Year.of(1969), false},    // 1969-12-31 00:00 Tokyo
+                {timestamp("1969-12-31T15:00:00Z"), Year.of(1970), false},    // 1970-01-01 00:00 Tokyo
+                {timestamp("2023-06-14T15:00:00Z"), Year.of(2023), false},    // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - various times before Tokyo midnight
+                {timestamp("2023-06-15T12:30:45.123Z"), Year.of(2023), false},     // 21:30:45 Tokyo
+                {timestamp("2023-06-15T14:59:59.999Z"), Year.of(2023), false},     // 23:59:59.999 Tokyo
+                {timestamp("2023-06-15T00:00:00.001Z"), Year.of(2023), false},     // 09:00:00.001 Tokyo
+
+                // One-way tests (false) - with nanosecond precision
+                {timestamp("2023-06-15T12:00:00.123456789Z"), Year.of(2023), false}  // 21:00:00.123456789 Tokyo
+        });
         TEST_DB.put(pair(String.class, Year.class), new Object[][]{
                 {"", null},
                 {"2024-03-23T04:10", Year.of(2024)},
@@ -1620,6 +1752,101 @@ class ConverterEverythingTest {
                 {YearMonth.of(1970, 1), YearMonth.of(1970, 1), true},
                 {YearMonth.of(1999, 6), YearMonth.of(1999, 6), true},
         });
+        TEST_DB.put(pair(Date.class, YearMonth.class), new Object[][] {
+                {date("1888-01-01T15:00:00Z"), YearMonth.of(1888, 1), false},    // 1888-01-02 00:00 Tokyo
+                {date("1969-12-30T15:00:00Z"), YearMonth.of(1969, 12), false},   // 1969-12-31 00:00 Tokyo
+                {date("1969-12-31T15:00:00Z"), YearMonth.of(1970, 1), false},    // 1970-01-01 00:00 Tokyo
+                {date("2023-06-14T15:00:00Z"), YearMonth.of(2023, 6), false},    // 2023-06-15 00:00 Tokyo
+                {date("2023-06-15T12:30:45Z"), YearMonth.of(2023, 6), false},   // 2023-06-15 21:30:45 Tokyo
+                {date("2023-06-15T14:59:59Z"), YearMonth.of(2023, 6), false},   // 2023-06-15 23:59:59 Tokyo
+                {date("2023-06-15T00:00:01Z"), YearMonth.of(2023, 6), false}    // 2023-06-15 09:00:01 Tokyo
+        });
+        TEST_DB.put(pair(java.sql.Date.class, YearMonth.class), new Object[][] {
+                {java.sql.Date.valueOf("1888-01-02"), YearMonth.of(1888, 1), false},
+                {java.sql.Date.valueOf("1969-12-31"), YearMonth.of(1969, 12), false},
+                {java.sql.Date.valueOf("1970-01-01"), YearMonth.of(1970, 1), false},
+                {java.sql.Date.valueOf("2023-06-15"), YearMonth.of(2023, 6), false},
+                {java.sql.Date.valueOf("2023-06-01"), YearMonth.of(2023, 6), false},
+                {java.sql.Date.valueOf("2023-06-30"), YearMonth.of(2023, 6), false}
+        });
+        TEST_DB.put(pair(LocalDate.class, YearMonth.class), new Object[][] {
+                {LocalDate.of(1888, 1, 2), YearMonth.of(1888, 1), false},
+                {LocalDate.of(1969, 12, 31), YearMonth.of(1969, 12), false},
+                {LocalDate.of(1970, 1, 1), YearMonth.of(1970, 1), false},
+                {LocalDate.of(2023, 6, 15), YearMonth.of(2023, 6), false},
+                {LocalDate.of(2023, 6, 1), YearMonth.of(2023, 6), false},
+                {LocalDate.of(2023, 6, 30), YearMonth.of(2023, 6), false}
+        });
+        TEST_DB.put(pair(LocalDateTime.class, YearMonth.class), new Object[][] {
+                {LocalDateTime.of(1888, 1, 2, 0, 0), YearMonth.of(1888, 1), false},
+                {LocalDateTime.of(1969, 12, 31, 0, 0), YearMonth.of(1969, 12), false},
+                {LocalDateTime.of(1970, 1, 1, 0, 0), YearMonth.of(1970, 1), false},
+                {LocalDateTime.of(2023, 6, 15, 0, 0), YearMonth.of(2023, 6), false},
+
+                // One-way tests (false) - various times on same date
+                {LocalDateTime.of(2023, 6, 15, 12, 30, 45), YearMonth.of(2023, 6), false},
+                {LocalDateTime.of(2023, 6, 15, 23, 59, 59, 999_999_999), YearMonth.of(2023, 6), false},
+                {LocalDateTime.of(2023, 6, 15, 0, 0, 0, 1), YearMonth.of(2023, 6), false},
+
+                // One-way tests (false) - different days in same month
+                {LocalDateTime.of(2023, 6, 1, 12, 0), YearMonth.of(2023, 6), false},
+                {LocalDateTime.of(2023, 6, 30, 12, 0), YearMonth.of(2023, 6), false}
+        });
+        TEST_DB.put(pair(OffsetDateTime.class, YearMonth.class), new Object[][] {
+                // Bidirectional tests (true) - all at midnight Tokyo (+09:00)
+                {odt("1888-01-01T15:00:00Z"), YearMonth.of(1888, 1), false},    // 1888-01-02 00:00 Tokyo
+                {odt("1969-12-30T15:00:00Z"), YearMonth.of(1969, 12), false},   // 1969-12-31 00:00 Tokyo
+                {odt("1969-12-31T15:00:00Z"), YearMonth.of(1970, 1), false},    // 1970-01-01 00:00 Tokyo
+                {odt("2023-06-14T15:00:00Z"), YearMonth.of(2023, 6), false},    // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - various times before Tokyo midnight
+                {odt("2023-06-15T12:30:45Z"), YearMonth.of(2023, 6), false},       // 21:30:45 Tokyo
+                {odt("2023-06-15T14:59:59.999Z"), YearMonth.of(2023, 6), false},   // 23:59:59.999 Tokyo
+                {odt("2023-06-15T00:00:01Z"), YearMonth.of(2023, 6), false},       // 09:00:01 Tokyo
+
+                // One-way tests (false) - same date in different offset
+                {odt("2023-06-15T00:00:00+09:00"), YearMonth.of(2023, 6), false},  // Tokyo local time
+                {odt("2023-06-15T00:00:00-05:00"), YearMonth.of(2023, 6), false}   // US Eastern time
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, YearMonth.class), new Object[][] {
+                {zdt("1888-01-01T15:00:00Z"), YearMonth.of(1888, 1), false},    // 1888-01-02 00:00 Tokyo
+                {zdt("1969-12-30T15:00:00Z"), YearMonth.of(1969, 12), false},   // 1969-12-31 00:00 Tokyo
+                {zdt("1969-12-31T15:00:00Z"), YearMonth.of(1970, 1), false},    // 1970-01-01 00:00 Tokyo
+                {zdt("2023-06-14T15:00:00Z"), YearMonth.of(2023, 6), false},    // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - various times before Tokyo midnight
+                {zdt("2023-06-15T12:30:45Z"), YearMonth.of(2023, 6), false},       // 21:30:45 Tokyo
+                {zdt("2023-06-15T14:59:59.999Z"), YearMonth.of(2023, 6), false},   // 23:59:59.999 Tokyo
+                {zdt("2023-06-15T00:00:01Z"), YearMonth.of(2023, 6), false},       // 09:00:01 Tokyo
+
+                // One-way tests (false) - same time in different zones
+                {ZonedDateTime.of(2023, 6, 15, 0, 0, 0, 0, ZoneId.of("Asia/Tokyo")), YearMonth.of(2023, 6), false},
+                {ZonedDateTime.of(2023, 6, 15, 0, 0, 0, 0, ZoneId.of("America/New_York")), YearMonth.of(2023, 6), false}
+        });
+        TEST_DB.put(pair(Timestamp.class, YearMonth.class), new Object[][] {
+                // Bidirectional tests (true) - all at midnight Tokyo (+09:00)
+                {timestamp("1888-01-01T15:00:00Z"), YearMonth.of(1888, 1), false},    // 1888-01-02 00:00 Tokyo
+                {timestamp("1969-12-30T15:00:00Z"), YearMonth.of(1969, 12), false},   // 1969-12-31 00:00 Tokyo
+                {timestamp("1969-12-31T15:00:00Z"), YearMonth.of(1970, 1), false},    // 1970-01-01 00:00 Tokyo
+                {timestamp("2023-06-14T15:00:00Z"), YearMonth.of(2023, 6), false},    // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - various times before Tokyo midnight
+                {timestamp("2023-06-15T12:30:45.123Z"), YearMonth.of(2023, 6), false},     // 21:30:45 Tokyo
+                {timestamp("2023-06-15T14:59:59.999Z"), YearMonth.of(2023, 6), false},     // 23:59:59.999 Tokyo
+                {timestamp("2023-06-15T00:00:00.001Z"), YearMonth.of(2023, 6), false},     // 09:00:00.001 Tokyo
+
+                // One-way tests (false) - with nanosecond precision
+                {timestamp("2023-06-15T12:00:00.123456789Z"), YearMonth.of(2023, 6), false}  // 21:00:00.123456789 Tokyo
+        });
+        TEST_DB.put(pair(Calendar.class, YearMonth.class), new Object[][] {
+                {createCalendar(1888, 1, 2, 0, 0, 0), YearMonth.of(1888, 1), false},
+                {createCalendar(1969, 12, 31, 0, 0, 0), YearMonth.of(1969, 12), false},
+                {createCalendar(1970, 1, 1, 0, 0, 0), YearMonth.of(1970, 1), false},
+                {createCalendar(2023, 6, 15, 0, 0, 0), YearMonth.of(2023, 6), false},
+                {createCalendar(2023, 6, 15, 12, 30, 45), YearMonth.of(2023, 6), false},
+                {createCalendar(2023, 12, 31, 23, 59, 59), YearMonth.of(2023, 12), false},
+                {createCalendar(2023, 1, 1, 1, 0, 1), YearMonth.of(2023, 1), false}
+        });
         TEST_DB.put(pair(String.class, YearMonth.class), new Object[][]{
                 {"", null},
                 {"2024-01", YearMonth.of(2024, 1), true},
@@ -1649,6 +1876,97 @@ class ConverterEverythingTest {
                 {MonthDay.of(1, 1), MonthDay.of(1, 1)},
                 {MonthDay.of(12, 31), MonthDay.of(12, 31)},
                 {MonthDay.of(6, 30), MonthDay.of(6, 30)},
+        });
+        TEST_DB.put(pair(Calendar.class, MonthDay.class), new Object[][] {
+                {createCalendar(1888, 1, 2, 0, 0, 0), MonthDay.of(1, 2), false},
+                {createCalendar(1969, 12, 31, 0, 0, 0), MonthDay.of(12, 31), false},
+                {createCalendar(1970, 1, 1, 0, 0, 0), MonthDay.of(1, 1), false},
+                {createCalendar(2023, 6, 15, 0, 0, 0), MonthDay.of(6, 15), false},
+                {createCalendar(2023, 6, 15, 12, 30, 45), MonthDay.of(6, 15), false},
+                {createCalendar(2023, 6, 15, 23, 59, 59), MonthDay.of(6, 15), false},
+                {createCalendar(2023, 6, 15, 1, 0, 1), MonthDay.of(6, 15), false}
+        });
+        TEST_DB.put(pair(Date.class, MonthDay.class), new Object[][] {
+                {date("1888-01-02T00:00:00Z"), MonthDay.of(1, 2), false},
+                {date("1969-12-31T00:00:00Z"), MonthDay.of(12, 31), false},
+                {date("1970-01-01T00:00:00Z"), MonthDay.of(1, 1), false},
+                {date("2023-06-15T00:00:00Z"), MonthDay.of(6, 15), false},
+                {date("2023-06-15T12:30:45Z"), MonthDay.of(6, 15), false},
+                {date("2023-06-14T23:59:59Z"), MonthDay.of(6, 15), false},
+                {date("2023-06-15T00:00:01Z"), MonthDay.of(6, 15), false}
+        });
+        TEST_DB.put(pair(java.sql.Date.class, MonthDay.class), new Object[][] {
+                // Bidirectional tests (true) - dates represent same month/day regardless of timezone
+                {java.sql.Date.valueOf("1888-01-02"), MonthDay.of(1, 2), false},
+                {java.sql.Date.valueOf("1969-12-31"), MonthDay.of(12, 31), false},
+                {java.sql.Date.valueOf("1970-01-01"), MonthDay.of(1, 1), false},
+                {java.sql.Date.valueOf("2023-06-15"), MonthDay.of(6, 15), false}
+        });
+        TEST_DB.put(pair(LocalDate.class, MonthDay.class), new Object[][] {
+                {LocalDate.of(1888, 1, 2), MonthDay.of(1, 2), false},
+                {LocalDate.of(1969, 12, 31), MonthDay.of(12, 31), false},
+                {LocalDate.of(1970, 1, 1), MonthDay.of(1, 1), false},
+                {LocalDate.of(2023, 6, 15), MonthDay.of(6, 15), false},
+                {LocalDate.of(2022, 6, 15), MonthDay.of(6, 15), false},
+                {LocalDate.of(2024, 6, 15), MonthDay.of(6, 15), false}
+        });
+        TEST_DB.put(pair(LocalDateTime.class, MonthDay.class), new Object[][] {
+                // One-way
+                {LocalDateTime.of(1888, 1, 2, 0, 0), MonthDay.of(1, 2), false},
+                {LocalDateTime.of(1969, 12, 31, 0, 0), MonthDay.of(12, 31), false},
+                {LocalDateTime.of(1970, 1, 1, 0, 0), MonthDay.of(1, 1), false},
+                {LocalDateTime.of(2023, 6, 15, 0, 0), MonthDay.of(6, 15), false},
+
+                // One-way tests (false) - various times on same date
+                {LocalDateTime.of(2023, 6, 15, 12, 30, 45), MonthDay.of(6, 15), false},
+                {LocalDateTime.of(2023, 6, 15, 23, 59, 59, 999_999_999), MonthDay.of(6, 15), false},
+                {LocalDateTime.of(2023, 6, 15, 0, 0, 0, 1), MonthDay.of(6, 15), false},
+
+                // One-way tests (false) - same month-day in different years
+                {LocalDateTime.of(2022, 6, 15, 12, 0), MonthDay.of(6, 15), false},
+                {LocalDateTime.of(2024, 6, 15, 12, 0), MonthDay.of(6, 15), false}
+        });
+        TEST_DB.put(pair(OffsetDateTime.class, MonthDay.class), new Object[][] {
+                {odt("1888-01-01T15:00:00Z"), MonthDay.of(1, 2), false},    // 1888-01-02 00:00 Tokyo
+                {odt("1969-12-30T15:00:00Z"), MonthDay.of(12, 31), false},  // 1969-12-31 00:00 Tokyo
+                {odt("1969-12-31T15:00:00Z"), MonthDay.of(1, 1), false},    // 1970-01-01 00:00 Tokyo
+                {odt("2023-06-14T15:00:00Z"), MonthDay.of(6, 15), false},   // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - various times before Tokyo midnight
+                {odt("2023-06-15T12:30:45Z"), MonthDay.of(6, 15), false},  // 21:30:45 Tokyo
+                {odt("2023-06-15T14:59:59.999Z"), MonthDay.of(6, 15), false},  // 23:59:59.999 Tokyo
+                {odt("2023-06-15T00:00:01Z"), MonthDay.of(6, 15), false},  // 09:00:01 Tokyo
+
+                // One-way tests (false) - same date in different offset
+                {odt("2023-06-15T00:00:00+09:00"), MonthDay.of(6, 15), false},  // Tokyo local time
+                {odt("2023-06-15T00:00:00-05:00"), MonthDay.of(6, 15), false}   // US Eastern time
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, MonthDay.class), new Object[][] {
+                {zdt("1888-01-01T15:00:00Z"), MonthDay.of(1, 2), false},    // 1888-01-02 00:00 Tokyo
+                {zdt("1969-12-30T15:00:00Z"), MonthDay.of(12, 31), false},  // 1969-12-31 00:00 Tokyo
+                {zdt("1969-12-31T15:00:00Z"), MonthDay.of(1, 1), false},    // 1970-01-01 00:00 Tokyo
+                {zdt("2023-06-14T15:00:00Z"), MonthDay.of(6, 15), false},   // 2023-06-15 00:00 Tokyo
+                {zdt("2023-06-15T12:30:45Z"), MonthDay.of(6, 15), false},       // 21:30:45 Tokyo
+                {zdt("2023-06-15T14:59:59.999Z"), MonthDay.of(6, 15), false},   // 23:59:59.999 Tokyo
+                {zdt("2023-06-15T00:00:01Z"), MonthDay.of(6, 15), false},       // 09:00:01 Tokyo
+
+                // One-way tests (false) - same time in different zones
+                {ZonedDateTime.of(2023, 6, 15, 0, 0, 0, 0, ZoneId.of("Asia/Tokyo")), MonthDay.of(6, 15), false},
+                {ZonedDateTime.of(2023, 6, 15, 0, 0, 0, 0, ZoneId.of("America/New_York")), MonthDay.of(6, 15), false}
+        });
+        TEST_DB.put(pair(Timestamp.class, MonthDay.class), new Object[][] {
+                {timestamp("1888-01-01T15:00:00Z"), MonthDay.of(1, 2), false},    // 1888-01-02 00:00 Tokyo
+                {timestamp("1969-12-30T15:00:00Z"), MonthDay.of(12, 31), false},  // 1969-12-31 00:00 Tokyo
+                {timestamp("1969-12-31T15:00:00Z"), MonthDay.of(1, 1), false},    // 1970-01-01 00:00 Tokyo
+                {timestamp("2023-06-14T15:00:00Z"), MonthDay.of(6, 15), false},   // 2023-06-15 00:00 Tokyo
+
+                // One-way tests (false) - various times before Tokyo midnight
+                {timestamp("2023-06-15T12:30:45.123Z"), MonthDay.of(6, 15), false},     // 21:30:45 Tokyo
+                {timestamp("2023-06-15T14:59:59.999Z"), MonthDay.of(6, 15), false},     // 23:59:59.999 Tokyo
+                {timestamp("2023-06-15T00:00:00.001Z"), MonthDay.of(6, 15), false},     // 09:00:00.001 Tokyo
+
+                // One-way tests (false) - with nanosecond precision
+                {timestamp("2023-06-15T12:00:00.123456789Z"), MonthDay.of(6, 15), false}  // 21:00:00.123456789 Tokyo
         });
         TEST_DB.put(pair(String.class, MonthDay.class), new Object[][]{
                 {"", null},
@@ -1997,6 +2315,13 @@ class ConverterEverythingTest {
                 { Instant.parse("1970-01-01T00:00:00.001Z"),      java.sql.Date.valueOf("1970-01-01"), false },
                 { Instant.parse("1970-01-01T00:00:00.999Z"),      java.sql.Date.valueOf("1970-01-01"), false },
         });
+        TEST_DB.put(pair(java.sql.Date.class, Instant.class), new Object[][] {
+                // Bidirectional tests (true) - all at midnight Tokyo
+                {java.sql.Date.valueOf("1888-01-02"), Instant.parse("1888-01-01T15:00:00Z"), true},    // 1888-01-02 00:00 Tokyo
+                {java.sql.Date.valueOf("1969-12-31"), Instant.parse("1969-12-30T15:00:00Z"), true},    // 1969-12-31 00:00 Tokyo
+                {java.sql.Date.valueOf("1970-01-01"), Instant.parse("1969-12-31T15:00:00Z"), true},    // 1970-01-01 00:00 Tokyo
+                {java.sql.Date.valueOf("2023-06-15"), Instant.parse("2023-06-14T15:00:00Z"), true},    // 2023-06-15 00:00 Tokyo
+        });
         TEST_DB.put(pair(ZonedDateTime.class, java.sql.Date.class), new Object[][]{
                 // When it's midnight in Tokyo (UTC+9), it's 15:00 the previous day in UTC
                 {zdt("1888-01-01T15:00:00+00:00"), java.sql.Date.valueOf("1888-01-02"), true},
@@ -2342,6 +2667,31 @@ class ConverterEverythingTest {
                 {date("1970-01-01T00:00:00Z"), BigDecimal.ZERO, true},
                 {date("1970-01-01T00:00:00.001Z"), new BigDecimal("0.001"), true},
         });
+        TEST_DB.put(pair(BigDecimal.class, java.sql.Date.class), new Object[][] {
+                // Bidirectional tests (true) - all representing midnight Tokyo time
+                {new BigDecimal("1686754800"), java.sql.Date.valueOf("2023-06-15"), true},  // 2023-06-15 00:00 Tokyo
+                {new BigDecimal("-32400"), java.sql.Date.valueOf("1970-01-01"), true},      // 1970-01-01 00:00 Tokyo
+                {new BigDecimal("-118800"), java.sql.Date.valueOf("1969-12-31"), true},     // 1969-12-31 00:00 Tokyo
+
+                // Pre-epoch dates
+                {new BigDecimal("-86400"), java.sql.Date.valueOf("1969-12-31"), false},    // 1 day before epoch
+                {new BigDecimal("-172800"), java.sql.Date.valueOf("1969-12-30"), false},   // 2 days before epoch
+
+                // Epoch
+                {new BigDecimal("0"), java.sql.Date.valueOf("1970-01-01"), false},         // epoch
+                {new BigDecimal("86400"), java.sql.Date.valueOf("1970-01-02"), false},     // 1 day after epoch
+
+                // Recent dates
+                {new BigDecimal("1686787200"), java.sql.Date.valueOf("2023-06-15"), false},
+
+                // Fractional seconds (should truncate to same date)
+                {new BigDecimal("86400.123"), java.sql.Date.valueOf("1970-01-02"), false},
+                {new BigDecimal("86400.999"), java.sql.Date.valueOf("1970-01-02"), false},
+
+                // Scientific notation
+                {new BigDecimal("8.64E4"), java.sql.Date.valueOf("1970-01-02"), false},    // 1 day after epoch
+                {new BigDecimal("1.686787200E9"), java.sql.Date.valueOf("2023-06-15"), false}
+        });
         TEST_DB.put(pair(LocalDateTime.class, BigDecimal.class), new Object[][]{
                 {zdt("0000-01-01T00:00:00Z").toLocalDateTime(), new BigDecimal("-62167219200.0"), true},
                 {zdt("0000-01-01T00:00:00.000000001Z").toLocalDateTime(), new BigDecimal("-62167219199.999999999"), true},
@@ -2641,11 +2991,11 @@ class ConverterEverythingTest {
                 {mapOf("_v", mapOf("_v", 65535)), (char) 65535},
                 {mapOf("_v", "0"), (char) 48},
                 {mapOf("_v", 65536), new IllegalArgumentException("Value '65536' out of range to be converted to character")},
-                {mapOf(VALUE, (char)0), (char) 0, true},
-                {mapOf(VALUE, (char)1), (char) 1, true},
-                {mapOf(VALUE, (char)65535), (char) 65535, true},
-                {mapOf(VALUE, '0'), (char) 48, true},
-                {mapOf(VALUE, '1'), (char) 49, true},
+                {mapOf(V, (char)0), (char) 0, true},
+                {mapOf(V, (char)1), (char) 1, true},
+                {mapOf(V, (char)65535), (char) 65535, true},
+                {mapOf(V, '0'), (char) 48, true},
+                {mapOf(V, '1'), (char) 49, true},
         });
         TEST_DB.put(pair(String.class, Character.class), new Object[][]{
                 {"", (char) 0},
@@ -2762,13 +3112,13 @@ class ConverterEverythingTest {
                 {BigDecimal.valueOf(2L), true},
         });
         TEST_DB.put(pair(Map.class, Boolean.class), new Object[][]{
-                {mapOf("_v", 16), true},
-                {mapOf("_v", 0), false},
-                {mapOf("_v", "0"), false},
-                {mapOf("_v", "1"), true},
-                {mapOf("_v", mapOf("_v", 5.0)), true},
-                {mapOf(VALUE, true), true, true},
-                {mapOf(VALUE, false), false, true},
+                {mapOf(V, 16), true},
+                {mapOf(V, 0), false},
+                {mapOf(V, "0"), false},
+                {mapOf(V, "1"), true},
+                {mapOf(V, mapOf(V, 5.0)), true},
+                {mapOf(V, true), true, true},
+                {mapOf(V, false), false, true},
         });
         TEST_DB.put(pair(String.class, Boolean.class), new Object[][]{
                 {"0", false},
@@ -3140,9 +3490,9 @@ class ConverterEverythingTest {
                 {new BigDecimal("9223372036854775808"), Long.MIN_VALUE},        // wrap around
         });
         TEST_DB.put(pair(Map.class, Long.class), new Object[][]{
-                {mapOf("_v", "-1"), -1L},
-                {mapOf("_v", -1L), -1L, true},
-                {mapOf("value", "-1"), -1L},
+                {mapOf(V, "-1"), -1L},
+                {mapOf(V, -1L), -1L, true},
+                {mapOf(V, "-1"), -1L},
                 {mapOf("value", -1L), -1L},
 
                 {mapOf("_v", "0"), 0L},
@@ -3766,29 +4116,33 @@ class ConverterEverythingTest {
                 {new BigDecimal("128"), Byte.MIN_VALUE},
         });
         TEST_DB.put(pair(Map.class, Byte.class), new Object[][]{
-                {mapOf("_v", "-1"), (byte) -1},
-                {mapOf("_v", -1), (byte) -1},
-                {mapOf("value", "-1"), (byte) -1},
-                {mapOf("value", -1L), (byte) -1},
+                {mapOf(V, "-1"), (byte) -1},
+                {mapOf(V, -1), (byte) -1},
+                {mapOf(VALUE, "-1"), (byte) -1},
+                {mapOf(VALUE, -1L), (byte) -1},
 
-                {mapOf("_v", "0"), (byte) 0},
-                {mapOf("_v", 0), (byte) 0},
+                {mapOf(V, "0"), (byte) 0},
+                {mapOf(V, 0), (byte) 0},
 
-                {mapOf("_v", "1"), (byte) 1},
-                {mapOf("_v", 1), (byte) 1},
+                {mapOf(V, "1"), (byte) 1},
+                {mapOf(V, 1), (byte) 1},
 
-                {mapOf("_v", "-128"), Byte.MIN_VALUE},
-                {mapOf("_v", -128), Byte.MIN_VALUE},
+                {mapOf(V, "-128"), Byte.MIN_VALUE},
+                {mapOf(V, -128), Byte.MIN_VALUE},
 
-                {mapOf("_v", "127"), Byte.MAX_VALUE},
-                {mapOf("_v", 127), Byte.MAX_VALUE},
+                {mapOf(V, "127"), Byte.MAX_VALUE},
+                {mapOf(V, 127), Byte.MAX_VALUE},
 
-                {mapOf("_v", "-129"), new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127")},
-                {mapOf("_v", -129), Byte.MAX_VALUE},
+                {mapOf(V, "-129"), new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127")},
+                {mapOf(V, -129), Byte.MAX_VALUE},
 
-                {mapOf("_v", "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127")},
-                {mapOf("_v", 128), Byte.MIN_VALUE},
-                {mapOf("_v", mapOf("_v", 128L)), Byte.MIN_VALUE},    // Prove use of recursive call to .convert()
+                {mapOf(V, "128"), new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127")},
+                {mapOf(V, 128), Byte.MIN_VALUE},
+                {mapOf(V, mapOf(V, 128L)), Byte.MIN_VALUE},    // Prove use of recursive call to .convert()
+                {mapOf(V, (byte)1), (byte)1, true},
+                {mapOf(V, (byte)2), (byte)2, true},
+                {mapOf(VALUE, "nope"), new IllegalArgumentException("Value 'nope' not parseable as a byte value or outside -128 to 127")},
+
         });
         TEST_DB.put(pair(Year.class, Byte.class), new Object[][]{
                 {Year.of(2024), new IllegalArgumentException("Unsupported conversion, source type [Year (2024)] target type 'Byte'") },
@@ -3812,11 +4166,6 @@ class ConverterEverythingTest {
                 {"crapola54", new IllegalArgumentException("Value 'crapola54' not parseable as a byte value or outside -128 to 127")},
                 {"-129", new IllegalArgumentException("'-129' not parseable as a byte value or outside -128 to 127")},
                 {"128", new IllegalArgumentException("'128' not parseable as a byte value or outside -128 to 127")},
-        });
-        TEST_DB.put(pair(Map.class, Byte.class), new Object[][]{
-                {mapOf(VALUE, (byte)1), (byte)1, true},
-                {mapOf(VALUE, (byte)2), (byte)2, true},
-                {mapOf(VALUE, "nope"), new IllegalArgumentException("Value 'nope' not parseable as a byte value or outside -128 to 127")},
         });
     }
 

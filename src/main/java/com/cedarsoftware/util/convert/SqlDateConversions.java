@@ -11,6 +11,7 @@ import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -72,12 +73,25 @@ public class SqlDateConversions {
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {
+        // Cast to the expected type. (Consider changing the parameter type if possible.)
         java.sql.Date sqlDate = (java.sql.Date) from;
-        return new BigDecimal(sqlDate.toLocalDate()
-                .atStartOfDay(converter.getOptions().getZoneId())
-                .toInstant()
-                .toEpochMilli())
-                .divide(BigDecimal.valueOf(1000), 9, RoundingMode.DOWN);
+
+        // Get the ZoneId from the converter options.
+        ZoneId zone = converter.getOptions().getZoneId();
+
+        // Convert the sqlDate to an Instant (at the start of day in the given zone).
+        Instant instant = sqlDate.toLocalDate().atStartOfDay(zone).toInstant();
+
+        // Convert the epoch millis into seconds.
+        // (We use a division with 9 digits of scale so that if there are fractional parts
+        // they are preserved, then we remove trailing zeros.)
+        BigDecimal seconds = BigDecimal.valueOf(instant.toEpochMilli())
+                .divide(BigDecimal.valueOf(1000), 9, RoundingMode.DOWN)
+                .stripTrailingZeros();
+
+        // Rebuild the BigDecimal from its plain string representation.
+        // This ensures that when you later call toString() it will not use exponential notation.
+        return new BigDecimal(seconds.toPlainString());
     }
 
     static Instant toInstant(Object from, Converter converter) {

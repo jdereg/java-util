@@ -3579,6 +3579,7 @@ export CF_INSTANCE_INDEX=3
 ```
 
 **5. Hostname Hash (automatic fallback)**
+
 **6. Random Number (final fallback)**
 
 ### Implementation Notes

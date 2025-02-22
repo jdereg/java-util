@@ -290,7 +290,7 @@ public class TypeUtilitiesTest {
         Type parentType = TestConcrete.class.getGenericSuperclass();
         Field field = TestGeneric.class.getField("field");
         Type type = field.getGenericType(); // T
-        Type resolved = TypeUtilities.resolveTypeRecursivelyUsingParent(parentType, type);
+        Type resolved = TypeUtilities.resolveType(parentType, type);
         assertEquals(Integer.class, resolved);
     }
 
@@ -299,7 +299,7 @@ public class TypeUtilitiesTest {
         Type parentType = TestConcrete.class.getGenericSuperclass();
         Field field = TestGeneric.class.getField("collectionField");
         Type type = field.getGenericType(); // Collection<T>
-        Type resolved = TypeUtilities.resolveTypeRecursivelyUsingParent(parentType, type);
+        Type resolved = TypeUtilities.resolveType(parentType, type);
         assertTrue(resolved instanceof ParameterizedType);
         ParameterizedType pt = (ParameterizedType) resolved;
         assertEquals(Collection.class, TypeUtilities.getRawClass(pt.getRawType()));
@@ -311,7 +311,7 @@ public class TypeUtilitiesTest {
         Type parentType = TestConcrete.class.getGenericSuperclass();
         Field field = TestGeneric.class.getField("arrayField");
         Type type = field.getGenericType(); // T[]
-        Type resolved = TypeUtilities.resolveTypeRecursivelyUsingParent(parentType, type);
+        Type resolved = TypeUtilities.resolveType(parentType, type);
         // Should resolve to Integer[].
         assertTrue("java.lang.Integer[]".equals(resolved.getTypeName()));
         Class<?> arrayClass = (Class<?>) TypeUtilities.getRawClass(resolved);
@@ -325,7 +325,7 @@ public class TypeUtilitiesTest {
         Field field = TestWildcard.class.getField("numbers");
         ParameterizedType pType = (ParameterizedType) field.getGenericType();
         Type wildcard = pType.getActualTypeArguments()[0];
-        Type resolved = TypeUtilities.resolveTypeRecursivelyUsingParent(parentType, wildcard);
+        Type resolved = TypeUtilities.resolveType(parentType, wildcard);
         // Should remain as ? extends Number.
         assertTrue(resolved instanceof WildcardType);
         assertTrue(resolved.toString().contains("extends " + Number.class.getName()));
@@ -338,7 +338,7 @@ public class TypeUtilitiesTest {
         Type parentType = TestConcrete.class.getGenericSuperclass();
         Field field = TestGeneric.class.getField("field");
         Type type = field.getGenericType(); // T
-        Type resolved = TypeUtilities.resolveFieldTypeUsingParent(parentType, type);
+        Type resolved = TypeUtilities.resolveType(parentType, type);
         assertEquals(Integer.class, resolved);
     }
 
@@ -697,7 +697,7 @@ public class TypeUtilitiesTest {
 
     @Test
     void testResolveTypeUsingInstanceWithNullNull() {
-        assertNull(TypeUtilities.resolveTypeUsingInstance(null, null));
+        assertThrows(IllegalArgumentException.class, () -> TypeUtilities.resolveTypeUsingInstance(null, null));
     }
 
     @Test
@@ -755,7 +755,7 @@ public class TypeUtilitiesTest {
 
         // Call resolveTypeRecursivelyUsingParent. The method will recursively resolve the lower bound T
         // using the parent type, replacing T with Integer.
-        Type resolved = TypeUtilities.resolveTypeRecursivelyUsingParent(parentType, customWildcard);
+        Type resolved = TypeUtilities.resolveType(parentType, customWildcard);
 
         // The resolved type should be a WildcardType with its lower bound resolved to Integer.
         assertTrue(resolved instanceof WildcardType, "Resolved type should be a WildcardType");
@@ -865,5 +865,44 @@ public class TypeUtilitiesTest {
 
         // For List<String>, the expected string is "java.util.List<java.lang.String>"
         assertEquals("java.util.List<java.lang.String>", typeString, "The toString() output is not as expected.");
+    }
+
+    // A generic interface declaring a type variable T.
+    public interface AnInterface<T> {
+        T get();
+    }
+
+    // Grandparent implements the generic interface.
+    public static class Grandparent<T> implements AnInterface<T> {
+        public T value;
+
+        @Override
+        public T get() {
+            return value;
+        }
+    }
+
+    // Parent extends Grandparent, preserving the type variable.
+    public static class Parent<U> extends Grandparent<U> { }
+
+    // Child concretely binds the type variable (via Parent) to Double.
+    public static class Child extends Parent<Double> { }
+
+    @Test
+    public void testResolveTypeUsingGrandparentInterface() throws Exception {
+        // Retrieve the generic return type from AnInterface.get(), which is T.
+        Method getMethod = AnInterface.class.getMethod("get");
+        Type interfaceReturnType = getMethod.getGenericReturnType(); // This is the TypeVariable from AnInterface
+
+        // Use Child.class as the resolution context.
+        // Since Child extends Parent<Double> and Parent extends Grandparent<Double> (which implements AnInterface<Double>),
+        // the type variable T should resolve to Double.
+        Type startingType = Child.class;
+
+        Type resolved = TypeUtilities.resolveType(startingType, interfaceReturnType);
+
+        // The expected resolved type is Double.
+        assertEquals(Double.class, resolved,
+                "Expected the type variable declared in AnInterface (implemented by Grandparent) to resolve to Double");
     }
 }

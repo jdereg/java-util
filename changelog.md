@@ -1,4 +1,6 @@
 ### Revision History
+#### 3.1.0
+> * [TypeUtilities](userguide.md#typeutilities) added. Advanced Java type introspection and generic resolution utilities.
 #### 3.0.3
 > * `java.sql.Date` conversion - considered a timeless "date", like a birthday, and not shifted due to time zones. Example, `2025-02-07T23:59:59[America/New_York]` coverage effective date, will remain `2025-02-07` when converted to any time zone.
 > * `Currency` conversions added (toString, toMap and vice-versa)

@@ -70,6 +70,14 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class DeepEqualsTest
 {
     @Test
+    void testBasicNumericCompare()
+    {
+        Map<String, Object> options = new HashMap<>();
+        boolean result = DeepEquals.deepEquals(1.0d, 1, options);
+        assert result;
+    }
+    
+    @Test
     public void testSameObjectEquals()
     {
         Date date1 = new Date();

@@ -243,6 +243,15 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Void.class, Pattern.class), new Object[][]{
                 {null, null},
         });
+        TEST_DB.put(pair(Pattern.class, Pattern.class), new Object[][]{
+                {Pattern.compile("abc"), Pattern.compile("abc")},
+        });
+        TEST_DB.put(pair(String.class, Pattern.class), new Object[][]{
+                {"x.*y", Pattern.compile("x.*y")},
+        });
+        TEST_DB.put(pair(Map.class, Pattern.class), new Object[][]{
+                {mapOf("value", Pattern.compile(".*")), Pattern.compile(".*")},
+        });
     }
 
     /**
@@ -4428,7 +4437,6 @@ class ConverterEverythingTest {
      *
      * Need to wait for json-io 4.34.0 to enable.
      */
-    @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")
     void testConvertJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
@@ -4515,7 +4523,9 @@ class ConverterEverythingTest {
 //            System.out.println("restored = " + restored);
 //            System.out.println("*****");
             Map<String, Object> options = new HashMap<>();
-            if (!DeepEquals.deepEquals(restored, target, options)) {
+            if (restored instanceof Pattern) {
+                assertEquals(restored.toString(), target.toString());
+            } else if (!DeepEquals.deepEquals(restored, target, options)) {
                 System.out.println("Conversion failed for: " + shortNameSource + " ==> " + shortNameTarget);
                 System.out.println("restored = " + restored);
                 System.out.println("target   = " + target);
@@ -4526,7 +4536,6 @@ class ConverterEverythingTest {
         }
     }
 
-    @Disabled
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParamsInReverse")
     void testConvertReverseJsonIo(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
@@ -4540,7 +4549,7 @@ class ConverterEverythingTest {
             Map.Entry<Class<?>, Class<?>> entry = pair(sourceClass, targetClass);
             Boolean alreadyCompleted = STAT_DB.get(entry);
             if (Boolean.TRUE.equals(alreadyCompleted) && !sourceClass.equals(targetClass)) {
-                System.err.println("Duplicate test pair: " + shortNameSource + " ==> " + shortNameTarget);
+//                System.err.println("Duplicate test pair: " + shortNameSource + " ==> " + shortNameTarget);
             }
         }
 
@@ -4581,6 +4590,13 @@ class ConverterEverythingTest {
             try {
                 if (target instanceof CharSequence) {
                     assertEquals(target.toString(), actual.toString());
+                    updateStat(pair(sourceClass, targetClass), true);
+                } else if (targetClass.equals(Pattern.class)) {
+                    if (target == null) {
+                        assert actual == null;
+                    } else {
+                        assertEquals(target.toString(), actual.toString());
+                    }
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(byte[].class)) {
                     assertArrayEquals((byte[]) target, (byte[]) actual);

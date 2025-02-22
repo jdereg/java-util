@@ -32,7 +32,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 To include in your project:
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:3.0.3'
+implementation 'com.cedarsoftware:java-util:3.1.0'
 ```
 
 ##### Maven
@@ -40,7 +40,7 @@ implementation 'com.cedarsoftware:java-util:3.0.3'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>3.0.3</version>
+  <version>3.1.0</version>
 </dependency>
 ```
 ---
@@ -80,6 +80,7 @@ implementation 'com.cedarsoftware:java-util:3.0.3'
 - **[StringUtilities](userguide.md#stringutilities)** - Extended String manipulation operations
 - **[SystemUtilities](userguide.md#systemutilities)** - System and environment interaction utilities
 - **[Traverser](userguide.md#traverser)** - Configurable object graph traversal
+- **[TypeUtilities](userguide.md#typeutilities)** - Advanced Java type introspection and generic resolution utilities
 - **[UniqueIdGenerator](userguide.md#uniqueidgenerator)** - Distributed-safe unique identifier generation
 
 [View detailed documentation](userguide.md)

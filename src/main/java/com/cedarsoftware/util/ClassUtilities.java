@@ -1,8 +1,10 @@
 package com.cedarsoftware.util;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Externalizable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.AccessibleObject;
@@ -1364,7 +1366,7 @@ public class ClassUtilities
 
     /**
      * Returns all equally "lowest" common supertypes (classes or interfaces) shared by both
-     * {@code classA} and {@code classB}, excluding any types specified in {@code skipList}.
+     * {@code classA} and {@code classB}, excluding any types specified in {@code excludeSet}.
      * <p>
      * A "lowest" common supertype is defined as any type {@code T} such that:
      * <ul>
@@ -1376,26 +1378,26 @@ public class ClassUtilities
      *
      * <p>Typically, this method is used to discover the most specific shared classes or
      * interfaces without including certain unwanted types—such as {@code Object.class}
-     * or other "marker" interfaces (e.g. {@code Serializable}, {@code Cloneable},
+     * or other "marker" interfaces (e.g. {@code Serializable}, {@code Cloneable}, {@code Externalizable}
      * {@code Comparable}). If you do not want these in the final result, add them to
-     * {@code skipList}.</p>
+     * {@code excludeSet}.</p>
      *
      * <p>The returned set may contain multiple types if they are "equally specific"
      * and do not extend or implement one another. If the resulting set is empty,
      * then there is no common supertype of {@code classA} and {@code classB} outside
-     * of the skipped types.</p>
+     * of the excluded types.</p>
      *
-     * <p>Example (skipping {@code Object.class}):
+     * <p>Example (excluding {@code Object.class, Serializable.class, Externalizable.class, Cloneable.class}):
      * <pre>{@code
-     * Set<Class<?>> skip = Collections.singleton(Object.class);
-     * Set<Class<?>> supertypes = findLowestCommonSupertypesWithSkip(TreeSet.class, HashSet.class, skip);
+     * Set<Class<?>> excludedSet = Collections.singleton(Object.class, Serializable.class, Externalizable.class, Cloneable.class);
+     * Set<Class<?>> supertypes = findLowestCommonSupertypesExcluding(TreeSet.class, HashSet.class, excludeSet);
      * // supertypes might contain only [Set], since Set is the lowest interface
-     * // they both implement, and we skipped Object.
+     * // they both implement, and we excluded Object.
      * }</pre>
      *
      * @param classA   the first class, may be null
      * @param classB   the second class, may be null
-     * @param skipList a set of classes or interfaces to exclude from the final result
+     * @param excluded a set of classes or interfaces to exclude from the final result
      *                 (e.g. {@code Object.class}, {@code Serializable.class}, etc.).
      *                 May be empty but not null.
      * @return a {@code Set} of the most specific common supertypes of {@code classA}
@@ -1406,14 +1408,14 @@ public class ClassUtilities
      */
     public static Set<Class<?>> findLowestCommonSupertypesExcluding(
             Class<?> classA, Class<?> classB,
-            Set<Class<?>> skipList)
+            Set<Class<?>> excluded)
     {
         if (classA == null || classB == null) {
             return Collections.emptySet();
         }
         if (classA.equals(classB)) {
             // If it's in the skip list, return empty; otherwise return singleton
-            return skipList.contains(classA) ? Collections.emptySet()
+            return excluded.contains(classA) ? Collections.emptySet()
                     : Collections.singleton(classA);
         }
 
@@ -1424,8 +1426,8 @@ public class ClassUtilities
         // 2) Intersect
         allA.retainAll(allB);
 
-        // 3) Remove anything in the skip list, including Object if you like
-        allA.removeAll(skipList);
+        // 3) Remove all excluded (Object, Serializable, etc.)
+        allA.removeAll(excluded);
 
         if (allA.isEmpty()) {
             return Collections.emptySet();
@@ -1462,32 +1464,32 @@ public class ClassUtilities
     /**
      * Returns all equally "lowest" common supertypes (classes or interfaces) that
      * both {@code classA} and {@code classB} share, automatically excluding
-     * {@code Object.class}.
+     * {@code Object, Serializable, Externalizable, Cloneable}.
      * <p>
      * This method is a convenience wrapper around
      * {@link #findLowestCommonSupertypesExcluding(Class, Class, Set)} using a skip list
-     * that includes only {@code Object.class}. In other words, if the only common
+     * that includes {@code Object, Serializable, Externalizable, Cloneable}. In other words, if the only common
      * ancestor is {@code Object.class}, this method returns an empty set.
      * </p>
      *
      * <p>Example:
      * <pre>{@code
      * Set<Class<?>> supertypes = findLowestCommonSupertypes(Integer.class, Double.class);
-     * // Potentially returns [Number, Comparable, Serializable] because those are
+     * // Potentially returns [Number, Comparable] because those are
      * // equally specific and not ancestors of one another, ignoring Object.class.
      * }</pre>
      *
      * @param classA the first class, may be null
      * @param classB the second class, may be null
      * @return a {@code Set} of all equally "lowest" common supertypes, excluding
-     *         {@code Object.class}; or an empty set if none are found beyond {@code Object}
-     *         (or if either input is null)
+     *         {@code Object, Serializable, Externalizable, Cloneable}; or an empty
+     *         set if none are found beyond {@code Object} (or if either input is null)
      * @see #findLowestCommonSupertypesExcluding(Class, Class, Set)
      * @see #getAllSupertypes(Class)
      */
     public static Set<Class<?>> findLowestCommonSupertypes(Class<?> classA, Class<?> classB) {
         return findLowestCommonSupertypesExcluding(classA, classB,
-                CollectionUtilities.setOf(Object.class));
+                CollectionUtilities.setOf(Object.class, Serializable.class, Externalizable.class, Cloneable.class));
     }
 
     /**

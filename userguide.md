@@ -3507,7 +3507,7 @@ A comprehensive utility class for Java type operations, providing methods for ty
 **Type Extraction and Resolution:**
 ```java
 // Extract raw class from a parameterized type
-Type listType = new TypeReference<List<String>>(){}.getType();
+Type listType = new TypeHolder<List<String>>(){}.getType();
 Class<?> raw = TypeUtilities.getRawClass(listType);
 // Expected: java.util.List
 
@@ -3524,7 +3524,7 @@ Type component = TypeUtilities.extractArrayComponentType(String[].class);
 // Expected: java.lang.String
 
 // Check if a type contains unresolved type variables
-boolean hasUnresolved = TypeUtilities.containsUnresolvedType(new TypeReference<List<T>>(){}.getType());
+boolean hasUnresolved = TypeUtilities.containsUnresolvedType(new TypeHolder<List<T>>(){}.getType());
 // Returns true if T is unresolved
 ```
 

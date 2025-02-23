@@ -12,7 +12,7 @@ package com.cedarsoftware.util;
  *   <li>Convert hexadecimal strings to byte arrays ({@link #decode(String)}).</li>
  *   <li>Convert byte arrays to hexadecimal strings ({@link #encode(byte[])}).</li>
  *   <li>Check if a byte array is GZIP-compressed ({@link #isGzipped(byte[])}).</li>
- *   <li>Internally optimized for performance with reusable utilities like {@link #convertDigit(int)}.</li>
+ *   <li>Internally optimized for performance with reusable utilities like {@link #toHexChar(int)}.</li>
  * </ul>
  *
  * <h2>Usage Example</h2>
@@ -62,80 +62,28 @@ package com.cedarsoftware.util;
  *         limitations under the License.
  */
 public final class ByteUtilities {
-    private static final char[] _hex =
-            {
-                    '0', '1', '2', '3', '4', '5', '6', '7',
-                    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-            };
+    // For encode: Array of hex digits.
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+
+    // For decode: Precomputed lookup table for hex digits.
+    // Maps ASCII codes (0–127) to their hex value or -1 if invalid.
+    private static final int[] HEX_LOOKUP = new int[128];
+    static {
+        for (int i = 0; i < HEX_LOOKUP.length; i++) {
+            HEX_LOOKUP[i] = -1;
+        }
+        for (char c = '0'; c <= '9'; c++) {
+            HEX_LOOKUP[c] = c - '0';
+        }
+        for (char c = 'A'; c <= 'F'; c++) {
+            HEX_LOOKUP[c] = 10 + (c - 'A');
+        }
+        for (char c = 'a'; c <= 'f'; c++) {
+            HEX_LOOKUP[c] = 10 + (c - 'a');
+        }
+    }
 
     private ByteUtilities() { }
-
-    /**
-     * Converts a hexadecimal string into a byte array.
-     * <p>
-     * This method interprets each pair of characters in the input string as a hexadecimal number
-     * and converts it to the corresponding byte value. For example, the string "1F" is converted
-     * to the byte value 31 (decimal).
-     * </p>
-     *
-     * <p><strong>Examples:</strong></p>
-     * <pre>{@code
-     * byte[] bytes1 = ByteUtilities.decode("1F8B3C"); // Returns {0x1F, 0x8B, 0x3C}
-     * byte[] bytes2 = ByteUtilities.decode("FFFF");   // Returns {-1, -1}
-     * byte[] bytes3 = ByteUtilities.decode("1");      // Returns null (odd length)
-     * byte[] bytes4 = ByteUtilities.decode("");       // Returns empty byte array
-     * }</pre>
-     *
-     * <p><strong>Requirements:</strong></p>
-     * <ul>
-     *   <li>Input string must have an even number of characters</li>
-     *   <li>All characters must be valid hexadecimal digits (0-9, a-f, A-F)</li>
-     * </ul>
-     *
-     * @param s the hexadecimal string to convert, may be empty but not null
-     * @return a byte array containing the decoded values, or null if:
-     *         <ul>
-     *           <li>the input string has an odd number of characters</li>
-     *           <li>the input string contains non-hexadecimal characters</li>
-     *         </ul>
-     * @throws NullPointerException if the input string is null
-     *
-     * @see #encode(byte[]) for the reverse operation
-     */
-    public static byte[] decode(final String s) {
-        final int len = s.length();
-        if (len % 2 != 0) {
-            return null;
-        }
-
-        byte[] bytes = new byte[len / 2];
-        int pos = 0;
-
-        for (int i = 0; i < len; i += 2) {
-            byte hi = (byte) Character.digit(s.charAt(i), 16);
-            byte lo = (byte) Character.digit(s.charAt(i + 1), 16);
-            bytes[pos++] = (byte) (hi * 16 + lo);
-        }
-
-        return bytes;
-    }
-
-    /**
-     * Convert a byte array into a printable format containing a String of hex
-     * digit characters (two per byte).
-     *
-     * @param bytes array representation
-     * @return String hex digits
-     */
-    public static String encode(final byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int i = 0; i < bytes.length; i++) {
-            int v = bytes[i] & 0xFF;
-            hexChars[i * 2] = _hex[v >>> 4];
-            hexChars[i * 2 + 1] = _hex[v & 0x0F];
-        }
-        return new String(hexChars);
-    }
 
     /**
      * Convert the specified value (0 .. 15) to the corresponding hex digit.
@@ -143,18 +91,56 @@ public final class ByteUtilities {
      * @param value to be converted
      * @return '0'...'F' in char format.
      */
-    private static char convertDigit(final int value) {
-        return _hex[value & 0x0f];
+    public static char toHexChar(final int value) {
+        return HEX_ARRAY[value & 0x0f];
     }
 
     /**
-     * @param bytes byte[] of bytes to test
-     * @return true if bytes are gzip compressed, false otherwise.
+     * Converts a hexadecimal string into a byte array.
+     * Returns null if the string length is odd or any character is non-hex.
+     */
+    public static byte[] decode(final String s) {
+        final int len = s.length();
+        // Must be even length
+        if ((len & 1) != 0) {
+            return null;
+        }
+        byte[] bytes = new byte[len >> 1];
+        for (int i = 0, j = 0; i < len; i += 2) {
+            char c1 = s.charAt(i);
+            char c2 = s.charAt(i + 1);
+            // Check if the characters are within ASCII range
+            if (c1 >= HEX_LOOKUP.length || c2 >= HEX_LOOKUP.length) {
+                return null;
+            }
+            int hi = HEX_LOOKUP[c1];
+            int lo = HEX_LOOKUP[c2];
+            if (hi == -1 || lo == -1) {
+                return null;
+            }
+            bytes[j++] = (byte) ((hi << 4) | lo);
+        }
+        return bytes;
+    }
+
+    /**
+     * Converts a byte array into a string of hex digits.
+     */
+    public static String encode(final byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int i = 0, j = 0; i < bytes.length; i++) {
+            int v = bytes[i] & 0xFF;
+            hexChars[j++] = HEX_ARRAY[v >>> 4];
+            hexChars[j++] = HEX_ARRAY[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
+
+    /**
+     * Checks if the byte array represents gzip-compressed data.
      */
     public static boolean isGzipped(byte[] bytes) {
-        if (ArrayUtilities.size(bytes) < 2) {  // minimum valid GZIP size
-            return false;
-        }
-        return bytes[0] == (byte) 0x1f && bytes[1] == (byte) 0x8b;
+        return (bytes != null && bytes.length >= 2 &&
+                bytes[0] == (byte) 0x1f && bytes[1] == (byte) 0x8b);
     }
 }

@@ -65,12 +65,12 @@ class ClassFinderTest {
     @Test
     void testNullClass() {
         Map<Class<?>, String> map = new HashMap<>();
-        assertThrows(NullPointerException.class, () -> ClassUtilities.findClosest(null, map, "default"));
+        assertThrows(IllegalArgumentException.class, () -> ClassUtilities.findClosest(null, map, "default"));
     }
 
     @Test
     void testNullMap() {
-        assertThrows(NullPointerException.class, () -> ClassUtilities.findClosest(BaseClass.class, null, "default"));
+        assertThrows(IllegalArgumentException.class, () -> ClassUtilities.findClosest(BaseClass.class, null, "default"));
     }
 
     @Test

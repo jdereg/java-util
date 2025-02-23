@@ -177,7 +177,7 @@ public final class Converter {
         private final Class<?> target;
         private final int hash;
 
-        public ConversionPair(Class<?> source, Class<?> target) {
+        private ConversionPair(Class<?> source, Class<?> target) {
             this.source = source;
             this.target = target;
             this.hash = 31 * source.hashCode() + target.hashCode();
@@ -206,7 +206,7 @@ public final class Converter {
     }
 
     // Helper method to get or create a cached key
-    private static ConversionPair pair(Class<?> source, Class<?> target) {
+    public static ConversionPair pair(Class<?> source, Class<?> target) {
         long cacheKey = ((long)System.identityHashCode(source) << 32) | System.identityHashCode(target);
         return KEY_CACHE.computeIfAbsent(cacheKey,
                 k -> new ConversionPair(source, target));
@@ -1375,7 +1375,7 @@ public final class Converter {
                 private final int targetLevel;
 
                 private ConversionPairWithLevel(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
-                    this.pair = new ConversionPair(source, target);
+                    this.pair = Converter.pair(source, target);
                     this.sourceLevel = sourceLevel;
                     this.targetLevel = targetLevel;
                 }

@@ -789,8 +789,8 @@ public class ClassUtilities {
      * @see ClassUtilities#computeInheritanceDistance(Class, Class)
      */
     public static <T> T findClosest(Class<?> clazz, Map<Class<?>, T> candidateClasses, T defaultClass) {
-        Objects.requireNonNull(clazz, "Class cannot be null");
-        Objects.requireNonNull(candidateClasses, "CandidateClasses classes map cannot be null");
+        Convention.throwIfNull(clazz, "Source class cannot be null");
+        Convention.throwIfNull(candidateClasses, "Candidate classes Map cannot be null");
 
         // First try exact match
         T exactMatch = candidateClasses.get(clazz);

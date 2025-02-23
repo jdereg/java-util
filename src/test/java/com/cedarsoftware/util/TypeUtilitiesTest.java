@@ -777,7 +777,7 @@ public class TypeUtilitiesTest {
 
         // Since parentType is not a ParameterizedType, the method should fall through
         // and return typeToResolve unchanged.
-        Type resolved = TypeUtilities.resolveFieldTypeUsingParent(parentType, typeToResolve);
+        Type resolved = TypeUtilities.resolveType(parentType, typeToResolve);
 
         // Verify that the returned type is the same as the original typeToResolve.
         assertEquals(typeToResolve, resolved);
@@ -811,23 +811,7 @@ public class TypeUtilitiesTest {
 
     // A dummy generic class with an unresolved type variable.
     public static class Dummy<T> { }
-
-    @Test
-    public void testResolveTypeVariableReturnsNull() throws Exception {
-        // Obtain the type variable T from Dummy.
-        TypeVariable<?> tv = Dummy.class.getTypeParameters()[0];
-
-        // Use reflection to access the private static method resolveTypeVariable.
-        Method method = TypeUtilities.class.getDeclaredMethod("resolveTypeVariable", Class.class, TypeVariable.class);
-        method.setAccessible(true);
-
-        // Invoke the method with Dummy.class and its type variable.
-        // Since Dummy does not have any parameterized supertypes that map T,
-        // the method should return null.
-        Type result = (Type) method.invoke(null, Dummy.class, tv);
-        assertNull(result, "Expected resolveTypeVariable to return null for unresolved type variable.");
-    }
-
+    
     @Test
     public void testFirstBoundPathInResolveTypeUsingInstance() throws Exception {
         // Retrieve the generic type of the field "field" from TestGeneric (this is a TypeVariable T).

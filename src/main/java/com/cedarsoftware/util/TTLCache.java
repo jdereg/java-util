@@ -52,7 +52,11 @@ public class TTLCache<K, V> implements Map<K, V> {
     private final Node<K, V> tail;
 
     // Static ScheduledExecutorService with a single thread
-    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "TTLCache-Purge-Thread");
+        thread.setDaemon(true);
+        return thread;
+    });
     
     /**
      * Constructs a TTLCache with the specified TTL.

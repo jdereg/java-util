@@ -58,7 +58,12 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     private final AtomicBoolean cleanupScheduled = new AtomicBoolean(false);
 
     // Shared ScheduledExecutorService for all cache instances
-    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    // set thread to daemon so application can shut down properly.
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "LRUCache-Purge-Thread");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     /**
      * Inner class representing a cache node with a key, value, and timestamp for LRU tracking.

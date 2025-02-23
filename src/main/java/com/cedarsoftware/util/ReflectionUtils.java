@@ -629,14 +629,7 @@ public final class ReflectionUtils {
                 if (!fieldFilter.test(field)) {
                     continue;
                 }
-
-                if (!Modifier.isPublic(field.getModifiers())) {
-                    try {
-                        field.setAccessible(true);
-                    } catch(Exception ignored) {
-                        // Even if setAccessible fails, we still include the field
-                    }
-                }
+                ClassUtilities.trySetAccessible(field);
                 filteredList.add(field);
             }
 
@@ -731,7 +724,6 @@ public final class ReflectionUtils {
         // We know we stored a List<Field>, so cast is safe
         return (List<Field>) cached;
     }
-
 
     /**
      * Retrieves all fields from a class and its complete inheritance hierarchy using the default field filter.
@@ -1069,13 +1061,7 @@ public final class ReflectionUtils {
             while (current != null && method == null) {
                 try {
                     method = current.getDeclaredMethod(methodName, types);
-                    if (!Modifier.isPublic(method.getModifiers())) {
-                        try {
-                            method.setAccessible(true);
-                        } catch (SecurityException ignored) {
-                            // We'll still cache and return the method
-                        }
-                    }
+                    ClassUtilities.trySetAccessible(method);
                 } catch (Exception ignored) {
                     // Move on up the superclass chain
                 }
@@ -1171,13 +1157,7 @@ public final class ReflectionUtils {
         Method selected = selectMethod(candidates);
 
         // Attempt to make the method accessible
-        if (!selected.isAccessible()) {
-            try {
-                selected.setAccessible(true);
-            } catch (Exception ignored) {
-                // Return the method even if we can't make it accessible
-            }
-        }
+        ClassUtilities.trySetAccessible(selected);
 
         // Cache the result
         METHOD_CACHE.put(key, selected);
@@ -1257,14 +1237,7 @@ public final class ReflectionUtils {
             try {
                 // Try to fetch the constructor reflectively
                 Constructor<?> ctor = clazz.getDeclaredConstructor(parameterTypes);
-
-                // Only setAccessible(true) if the constructor is not public
-                if (!Modifier.isPublic(ctor.getModifiers())) {
-                    try {
-                        ctor.setAccessible(true);
-                    } catch (Exception ignored) {
-                    }
-                }
+                ClassUtilities.trySetAccessible(ctor);
                 return ctor;
             } catch (Exception ignored) {
                 // If no such constructor exists, store null in the cache
@@ -1272,7 +1245,6 @@ public final class ReflectionUtils {
             }
         });
     }
-
 
     /**
      * Returns all declared constructors for the given class, storing each one in
@@ -1301,13 +1273,7 @@ public final class ReflectionUtils {
 
             // Atomically retrieve or compute the cached Constructor
             Constructor<?> cached = CONSTRUCTOR_CACHE.computeIfAbsent(key, k -> {
-                // Only setAccessible(true) if constructor is not public
-                if (!Modifier.isPublic(ctor.getModifiers())) {
-                    try {
-                        ctor.setAccessible(true);
-                    } catch (Exception ignored) {
-                    }
-                }
+                ClassUtilities.trySetAccessible(ctor);
                 return ctor;  // store this instance
             });
 

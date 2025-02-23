@@ -27,8 +27,10 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -144,8 +146,7 @@ import static java.lang.reflect.Modifier.isPublic;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ClassUtilities
-{
+public class ClassUtilities {
     private static final Set<Class<?>> prims = new HashSet<>();
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();
@@ -158,6 +159,8 @@ public class ClassUtilities
     private static volatile Unsafe unsafe;
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new HashMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
+    private static volatile Map<Class<?>, Set<Class<?>>> SUPER_TYPES_CACHE = new LRUCache<>(300);
+    private static volatile Map<Map.Entry<Class<?>, Class<?>>, Integer> CLASS_DISTANCE_CACHE = new LRUCache<>(1000);
 
     static {
         DIRECT_CLASS_MAPPING.put(Date.class, Date::new);
@@ -248,6 +251,24 @@ public class ClassUtilities
     }
 
     /**
+     * Sets a custom cache implementation for holding results of getAllSuperTypes().
+     * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
+     *             Must be thread-safe and implement Map interface.
+     */
+    public static void setSuperTypesCache(Map<Class<?>, Set<Class<?>>> cache) {
+        SUPER_TYPES_CACHE = cache;
+    }
+
+    /**
+     * Sets a custom cache implementation for holding results of getAllSuperTypes().
+     * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
+     *             Must be thread-safe and implement Map interface.
+     */
+    public static void setClassDistanceCache(Map<Map.Entry<Class<?>, Class<?>>, Integer> cache) {
+        CLASS_DISTANCE_CACHE = cache;
+    }
+
+    /**
      * Registers a permanent alias name for a class to support Class.forName() lookups.
      *
      * @param clazz the class to alias
@@ -281,64 +302,67 @@ public class ClassUtilities
             return 0;
         }
 
-        // Check for primitive types
-        if (source.isPrimitive()) {
+        // Use an immutable Map.Entry as the key
+        Map.Entry<Class<?>, Class<?>> key = new AbstractMap.SimpleImmutableEntry<>(source, destination);
+
+        return CLASS_DISTANCE_CACHE.computeIfAbsent(key, k -> {
+            // Handle primitives first.
+            if (source.isPrimitive()) {
+                if (destination.isPrimitive()) {
+                    return -1;
+                }
+                if (!isPrimitive(destination)) {
+                    return -1;
+                }
+                return comparePrimitiveToWrapper(destination, source);
+            }
             if (destination.isPrimitive()) {
-                // Not equal because source.equals(destination) already checked.
-                return -1;
-            }
-            if (!isPrimitive(destination)) {
-                return -1;
-            }
-            return comparePrimitiveToWrapper(destination, source);
-        }
-
-        if (destination.isPrimitive()) {
-            if (!isPrimitive(source)) {
-                return -1;
-            }
-            return comparePrimitiveToWrapper(source, destination);
-        }
-
-        Queue<Class<?>> queue = new LinkedList<>();
-        Map<Class<?>, String> visited = new IdentityHashMap<>();
-        queue.add(source);
-        visited.put(source, null);
-
-        int distance = 0;
-
-        while (!queue.isEmpty()) {
-            int levelSize = queue.size();
-            distance++;
-
-            for (int i = 0; i < levelSize; i++) {
-                Class<?> current = queue.poll();
-
-                // Check superclass
-                if (current.getSuperclass() != null) {
-                    if (current.getSuperclass().equals(destination)) {
-                        return distance;
-                    }
-                    if (!visited.containsKey(current.getSuperclass())) {
-                        queue.add(current.getSuperclass());
-                        visited.put(current.getSuperclass(), null);
-                    }
+                if (!isPrimitive(source)) {
+                    return -1;
                 }
+                return comparePrimitiveToWrapper(source, destination);
+            }
 
-                // Check interfaces
-                for (Class<?> interfaceClass : current.getInterfaces()) {
-                    if (interfaceClass.equals(destination)) {
-                        return distance;
+            // Use a BFS approach to determine the inheritance distance.
+            Queue<Class<?>> queue = new LinkedList<>();
+            Map<Class<?>, Boolean> visited = new IdentityHashMap<>();
+            queue.add(source);
+            visited.put(source, Boolean.TRUE);
+            int distance = 0;
+
+            while (!queue.isEmpty()) {
+                int levelSize = queue.size();
+                distance++;
+
+                for (int i = 0; i < levelSize; i++) {
+                    Class<?> current = queue.poll();
+
+                    // Check the superclass
+                    Class<?> sup = current.getSuperclass();
+                    if (sup != null) {
+                        if (sup.equals(destination)) {
+                            return distance;
+                        }
+                        if (!visited.containsKey(sup)) {
+                            queue.add(sup);
+                            visited.put(sup, Boolean.TRUE);
+                        }
                     }
-                    if (!visited.containsKey(interfaceClass)) {
-                        queue.add(interfaceClass);
-                        visited.put(interfaceClass, null);
+
+                    // Check all interfaces
+                    for (Class<?> iface : current.getInterfaces()) {
+                        if (iface.equals(destination)) {
+                            return distance;
+                        }
+                        if (!visited.containsKey(iface)) {
+                            queue.add(iface);
+                            visited.put(iface, Boolean.TRUE);
+                        }
                     }
                 }
             }
-        }
-
-        return -1; // No path found
+            return -1; // No path found
+        });
     }
 
     /**
@@ -867,13 +891,6 @@ public class ClassUtilities
         return buffer.toByteArray();
     }
 
-
-    private static void throwIfSecurityConcern(Class<?> securityConcern, Class<?> c) {
-        if (securityConcern.isAssignableFrom(c)) {
-            throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: " + securityConcern.getName());
-        }
-    }
-
     private static Object getArgForType(com.cedarsoftware.util.convert.Converter converter, Class<?> argType) {
         if (isPrimitive(argType)) {
             return converter.convert(null, argType);  // Get the defaults (false, 0, 0.0d, etc.)
@@ -1271,7 +1288,6 @@ public class ClassUtilities
                 Object enclosingInstance = newInstance(converter, c.getEnclosingClass(), Collections.emptyList());
                 Constructor<?> constructor = ReflectionUtils.getConstructor(c, c.getEnclosingClass());
                 if (constructor != null) {
-                    trySetAccessible(constructor);
                     return constructor.newInstance(enclosingInstance);
                 }
             } catch (Exception ignored) {
@@ -1301,12 +1317,10 @@ public class ClassUtilities
 
             // Try with non-null arguments first (prioritize actual values)
             try {
-                trySetAccessible(constructor);
                 return constructor.newInstance(constructorWithValues.argsNonNull);
             } catch (Exception e1) {
                 // If non-null arguments fail, try with null arguments
                 try {
-                    trySetAccessible(constructor);
                     return constructor.newInstance(constructorWithValues.argsNull);
                 } catch (Exception e2) {
                     lastException = e2;
@@ -1508,24 +1522,25 @@ public class ClassUtilities
      * BFS or DFS is fine.  Here is a simple BFS approach:
      */
     public static Set<Class<?>> getAllSupertypes(Class<?> clazz) {
-        Set<Class<?>> results = new HashSet<>();
-        Queue<Class<?>> queue = new ArrayDeque<>();
-        queue.add(clazz);
-        while (!queue.isEmpty()) {
-            Class<?> current = queue.poll();
-            if (current != null && results.add(current)) {
-                // Add its superclass
-                Class<?> sup = current.getSuperclass();
-                if (sup != null) {
-                    queue.add(sup);
-                }
-                // Add all interfaces
-                for (Class<?> ifc : current.getInterfaces()) {
-                    queue.add(ifc);
+        Set<Class<?>> cached = SUPER_TYPES_CACHE.computeIfAbsent(clazz, key -> {
+            Set<Class<?>> results = new LinkedHashSet<>();
+            Queue<Class<?>> queue = new ArrayDeque<>();
+            queue.add(key);
+            while (!queue.isEmpty()) {
+                Class<?> current = queue.poll();
+                if (current != null && results.add(current)) {
+                    // Add its superclass
+                    Class<?> sup = current.getSuperclass();
+                    if (sup != null) {
+                        queue.add(sup);
+                    }
+                    // Add all interfaces
+                    queue.addAll(Arrays.asList(current.getInterfaces()));
                 }
             }
-        }
-        return results;
+            return results;
+        });
+        return new LinkedHashSet<>(cached);
     }
 
     /**

@@ -246,7 +246,7 @@ public class TypeUtilities {
             Class<?> declaringClass = (Class<?>) typeVar.getGenericDeclaration();
             Class<?> currentRaw = getRawClass(currentContext);
 
-            if (resolved == null && (currentRaw == null || !declaringClass.equals(currentRaw))) {
+            if (resolved == null && (!declaringClass.equals(currentRaw))) {
                 ParameterizedType pType = findParameterizedType(rootContext, declaringClass);
 
                 if (pType != null) {
@@ -265,14 +265,14 @@ public class TypeUtilities {
                 resolved = climbGenericHierarchy(rootContext, currentContext, typeVar, visited);
             }
 
-            if (resolved != null && resolved instanceof TypeVariable) {
+            if (resolved instanceof TypeVariable) {
                 resolved = resolveType(rootContext, rootContext, resolved, visited);
             }
 
             if (resolved == null) {
                 // If the resolution was invoked with a raw class as parent,
                 // then leave the type variable unchanged.
-                if (rootContext instanceof Class && rootContext == currentContext && !(rootContext instanceof ParameterizedType)) {
+                if (rootContext instanceof Class && rootContext == currentContext) {
                     resolved = typeVar;
                 } else {
                     resolved = firstBound(typeVar);

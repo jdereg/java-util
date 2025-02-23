@@ -198,32 +198,32 @@ public class TypeUtilitiesTest {
     // --- Tests for containsUnresolvedType ---
 
     @Test
-    public void testContainsUnresolvedTypeWithNull() {
-        assertFalse(TypeUtilities.containsUnresolvedType(null));
+    public void testHasUnresolvedTypeWithNull() {
+        assertFalse(TypeUtilities.hasUnresolvedType(null));
     }
 
     @Test
-    public void testContainsUnresolvedTypeWithResolvedType() throws Exception {
+    public void testHasUnresolvedTypeWithResolvedType() throws Exception {
         Field field = TestParameterized.class.getField("strings");
         Type type = field.getGenericType();
         // List<String> is fully resolved.
-        assertFalse(TypeUtilities.containsUnresolvedType(type));
+        assertFalse(TypeUtilities.hasUnresolvedType(type));
     }
 
     @Test
-    public void testContainsUnresolvedTypeWithUnresolvedType() throws Exception {
+    public void testHasUnresolvedTypeWithUnresolvedType() throws Exception {
         Field field = TestGeneric.class.getField("field");
         Type type = field.getGenericType();
         // T is unresolved.
-        assertTrue(TypeUtilities.containsUnresolvedType(type));
+        assertTrue(TypeUtilities.hasUnresolvedType(type));
     }
 
     @Test
-    public void testContainsUnresolvedTypeWithGenericArrayType() throws Exception {
+    public void testHasUnresolvedTypeWithGenericArrayType() throws Exception {
         Field field = TestGeneric.class.getField("arrayField");
         Type type = field.getGenericType();
         // The component type T is unresolved.
-        assertTrue(TypeUtilities.containsUnresolvedType(type));
+        assertTrue(TypeUtilities.hasUnresolvedType(type));
     }
 
     // --- Tests for resolveTypeUsingInstance ---
@@ -345,43 +345,43 @@ public class TypeUtilitiesTest {
     // --- Tests for resolveSuggestedType ---
 
     @Test
-    public void testResolveSuggestedTypeForMap() throws Exception {
+    public void testInferElementTypeForMap() throws Exception {
         Field field = TestMap.class.getField("map");
         Type suggestedType = field.getGenericType(); // Map<String, Double>
         // For a Map, the method should select the second type argument (the value type).
-        Type resolved = TypeUtilities.resolveSuggestedType(suggestedType, Object.class);
+        Type resolved = TypeUtilities.inferElementType(suggestedType, Object.class);
         assertEquals(Double.class, resolved);
     }
 
     @Test
-    public void testResolveSuggestedTypeForCollection() throws Exception {
+    public void testInferElementTypeForCollection() throws Exception {
         Field field = TestCollection.class.getField("collection");
         Type suggestedType = field.getGenericType(); // Collection<String>
         // For a Collection, the method should select the first (and only) type argument.
-        Type resolved = TypeUtilities.resolveSuggestedType(suggestedType, Object.class);
+        Type resolved = TypeUtilities.inferElementType(suggestedType, Object.class);
         assertEquals(String.class, resolved);
     }
 
     @Test
-    public void testResolveSuggestedTypeForArray() throws Exception {
+    public void testInferElementTypeForArray() throws Exception {
         // Create a custom ParameterizedType whose raw type is an array.
         ParameterizedType arrayType = new CustomParameterizedType(String[].class, new Type[]{String.class}, null);
-        Type resolved = TypeUtilities.resolveSuggestedType(arrayType, Object.class);
+        Type resolved = TypeUtilities.inferElementType(arrayType, Object.class);
         assertEquals(String.class, resolved);
     }
 
     @Test
-    public void testResolveSuggestedTypeForNonParameterizedType() {
+    public void testInferElementTypeForNonParameterizedType() {
         // If suggestedType is not a ParameterizedType, the fieldGenericType should be returned as-is.
-        Type resolved = TypeUtilities.resolveSuggestedType(String.class, Integer.class);
+        Type resolved = TypeUtilities.inferElementType(String.class, Integer.class);
         assertEquals(Integer.class, resolved);
     }
 
     @Test
-    public void testResolveSuggestedTypeForOther() throws Exception {
+    public void testInferElementTypeForOther() throws Exception {
         // For a ParameterizedType that is neither a Map, Collection, nor an array, the method returns Object.class.
         ParameterizedType optionalType = (ParameterizedType) new TypeReference<Optional<String>>(){}.getType();
-        Type resolved = TypeUtilities.resolveSuggestedType(optionalType, Object.class);
+        Type resolved = TypeUtilities.inferElementType(optionalType, Object.class);
         assertEquals(Object.class, resolved);
     }
 
@@ -523,17 +523,17 @@ public class TypeUtilitiesTest {
     }
     
     @Test
-    public void testContainsUnresolvedTypeReturnsTrueForParameterizedTypeWithUnresolvedArg() throws Exception {
+    public void testHasUnresolvedTypeReturnsTrueForParameterizedTypeWithUnresolvedArg() throws Exception {
         // Obtain the ParameterizedType representing Collection<T>
         Field field = TestGeneric.class.getField("collectionField");
         Type type = field.getGenericType();
 
         // The type argument T is unresolved, so containsUnresolvedType should return true.
-        assertTrue(TypeUtilities.containsUnresolvedType(type));
+        assertTrue(TypeUtilities.hasUnresolvedType(type));
     }
 
     @Test
-    public void testContainsUnresolvedTypeForWildcardWithUnresolvedUpperBound() {
+    public void testHasUnresolvedTypeForWildcardWithUnresolvedUpperBound() {
         // Create a dummy GenericDeclaration required by the TypeVariable interface.
         GenericDeclaration dummyDeclaration = new GenericDeclaration() {
             @Override
@@ -611,11 +611,11 @@ public class TypeUtilitiesTest {
 
         // When the wildcard's upper bound is unresolved (i.e. a TypeVariable),
         // containsUnresolvedType should return true.
-        assertTrue(TypeUtilities.containsUnresolvedType(customWildcard));
+        assertTrue(TypeUtilities.hasUnresolvedType(customWildcard));
     }
 
     @Test
-    public void testContainsUnresolvedTypeForWildcardWithUnresolvedLowerBound() {
+    public void testHasUnresolvedTypeForWildcardWithUnresolvedLowerBound() {
         // Create a dummy GenericDeclaration required by the TypeVariable interface.
         GenericDeclaration dummyDeclaration = new GenericDeclaration() {
             @Override
@@ -692,7 +692,7 @@ public class TypeUtilitiesTest {
         };
 
         // The lower bounds contain an unresolved type variable, so containsUnresolvedType should return true.
-        assertTrue(TypeUtilities.containsUnresolvedType(customWildcard));
+        assertTrue(TypeUtilities.hasUnresolvedType(customWildcard));
     }
 
     @Test

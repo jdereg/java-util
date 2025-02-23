@@ -84,6 +84,7 @@ public class FastReader extends Reader {
         }
     }
 
+    @Override
     public int read() throws IOException {
         if (in == null) {
             throw new IOException("FastReader stream is closed.");

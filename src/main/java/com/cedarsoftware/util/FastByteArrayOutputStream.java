@@ -62,6 +62,7 @@ public class FastByteArrayOutputStream extends OutputStream {
         count += 1;
     }
 
+    @Override
     public void write(byte[] b, int off, int len) {
         if ((b == null) || (off < 0) || (len < 0) ||
                 (off > b.length) || (off + len > b.length) || (off + len < 0)) {
@@ -101,6 +102,7 @@ public class FastByteArrayOutputStream extends OutputStream {
         out.write(buf, 0, count);
     }
 
+    @Override
     public void close() throws IOException {
         // No resources to close
     }

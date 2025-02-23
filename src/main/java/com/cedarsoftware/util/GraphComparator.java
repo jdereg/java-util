@@ -238,6 +238,7 @@ public class GraphComparator
             return error;
         }
 
+        @Override
         public String toString(){
             return String.format("%s (%s)", getError(), super.toString());
         }

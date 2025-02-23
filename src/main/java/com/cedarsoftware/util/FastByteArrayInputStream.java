@@ -39,6 +39,7 @@ public class FastByteArrayInputStream extends InputStream {
         return (pos < count) ? (buffer[pos++] & 0xff) : -1;
     }
 
+    @Override
     public int read(byte[] b, int off, int len) {
         if (b == null) {
             throw new NullPointerException();
@@ -60,7 +61,9 @@ public class FastByteArrayInputStream extends InputStream {
         return len;
     }
 
+    @Override
     public long skip(long n) {
+        //  is this intentionally a long?
         long k = count - pos;
         if (n < k) {
             k = n < 0 ? 0 : n;
@@ -70,22 +73,29 @@ public class FastByteArrayInputStream extends InputStream {
         return k;
     }
 
+    @Override
     public int available() {
         return count - pos;
     }
 
+    @Override
+    //  Was leaving off the synchronized intentional here?
     public void mark(int readLimit) {
         mark = pos;
     }
 
+    @Override
+    //  Was leaving off the synchronized intentional here?
     public void reset() {
         pos = mark;
     }
 
+    @Override
     public boolean markSupported() {
         return true;
     }
 
+    @Override
     public void close() throws IOException {
         // Optionally implement if resources need to be released
     }

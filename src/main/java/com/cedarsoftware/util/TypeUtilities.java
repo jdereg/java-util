@@ -44,6 +44,11 @@ public class TypeUtilities {
     }
 
     /**
+     * Made constructor private - this class is static.
+     */
+    private TypeUtilities() {}
+
+    /**
      * Extracts the raw Class from a given Type.
      * For example, for List<String> it returns List.class.
      *
@@ -442,7 +447,7 @@ public class TypeUtilities {
                 if (typeArgs.length >= 1) {
                     fieldGenericType = typeArgs[0];
                 }
-            } else if (raw.isArray()) {
+            } else if (raw != null && raw.isArray()) {
                 // For arrays, expect one type argument.
                 if (typeArgs.length >= 1) {
                     fieldGenericType = typeArgs[0];

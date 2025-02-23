@@ -142,6 +142,8 @@ public class ConcurrentSet<T> implements Set<T> {
                 Object item = iterator.next();
                 return unwrap(item);
             }
+
+            @Override
             public void remove() {
                 iterator.remove();
             }

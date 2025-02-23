@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,7 +40,7 @@ public class CompactMapLegacyConfigTest {
         // This should transition to backing map
         map.put("D", "delta");
         assertEquals(4, map.size());
-        assertTrue(map.val instanceof Map);
+        assertInstanceOf(Map.class, map.val);
     }
 
     @Test

@@ -13,6 +13,7 @@ import javax.tools.ToolProvider;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.AbstractCollection;
 import java.util.AbstractMap;
@@ -1028,20 +1029,24 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return CompactMap.this.size();
             }
 
+            @Override
             public void clear() {
                 CompactMap.this.clear();
             }
 
+            @Override
             public boolean contains(Object o) {
                 return CompactMap.this.containsKey(o);
             }    // faster than inherited method
 
+            @Override
             public boolean remove(Object o) {
                 final int size = size();
                 CompactMap.this.remove(o);
                 return size() != size;
             }
 
+            @Override
             public boolean removeAll(Collection c) {
                 int size = size();
                 for (Object o : c) {
@@ -1050,6 +1055,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return size() != size;
             }
 
+            @Override
             public boolean retainAll(Collection c) {
                 // Create fast-access O(1) to all elements within passed in Collection
                 Map<K, V> other = getNewMap();
@@ -1087,6 +1093,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return CompactMap.this.size();
             }
 
+            @Override
             public void clear() {
                 CompactMap.this.clear();
             }
@@ -1106,6 +1113,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *
      * @return a set view of the mappings contained in this map
      */
+    @Override
     public Set<Entry<K, V>> entrySet() {
         return new AbstractSet<Entry<K, V>>() {
             public Iterator<Entry<K, V>> iterator() {
@@ -1116,10 +1124,12 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return CompactMap.this.size();
             }
 
+            @Override
             public void clear() {
                 CompactMap.this.clear();
             }
 
+            @Override
             public boolean contains(Object o) {   // faster than inherited method
                 if (o instanceof Entry) {
                     Entry<K, V> entry = (Entry<K, V>) o;
@@ -1136,6 +1146,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return false;
             }
 
+            @Override
             public boolean remove(Object o) {
                 if (!(o instanceof Entry)) {
                     return false;
@@ -1151,6 +1162,7 @@ public class CompactMap<K, V> implements Map<K, V> {
              * on iterator solution.  This method is fast because contains()
              * and remove() are both hashed O(1) look-ups.
              */
+            @Override
             public boolean removeAll(Collection c) {
                 final int size = size();
                 for (Object o : c) {
@@ -1159,17 +1171,21 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return size() != size;
             }
 
+            @Override
             public boolean retainAll(Collection c) {
                 // Create fast-access O(1) to all elements within passed in Collection
                 Map<K, V> other = new CompactMap<K, V>() {   // Match outer
+                    @Override
                     protected boolean isCaseInsensitive() {
                         return CompactMap.this.isCaseInsensitive();
                     }
 
+                    @Override
                     protected int compactSize() {
                         return CompactMap.this.compactSize();
                     }
 
+                    @Override
                     protected Map<K, V> getNewMap() {
                         return CompactMap.this.getNewMap();
                     }
@@ -1259,6 +1275,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             super(key, value);
         }
 
+        @Override
         public V setValue(V value) {
             V save = this.getValue();
             super.setValue(value);
@@ -1266,6 +1283,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             return save;
         }
 
+        @Override
         public boolean equals(Object o) {
             if (!(o instanceof Map.Entry)) {
                 return false;
@@ -1278,6 +1296,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             return areKeysEqual(getKey(), e.getKey()) && Objects.equals(getValue(), e.getValue());
         }
 
+        @Override
         public int hashCode() {
             return computeKeyHashCode(getKey()) ^ computeValueHashCode(getValue());
         }
@@ -1656,7 +1675,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             Class<?> templateClass = TemplateGenerator.getOrCreateTemplateClass(options);
 
             // Create new instance
-            CompactMap<K, V> map = (CompactMap<K, V>) templateClass.newInstance();
+            CompactMap<K, V> map = (CompactMap<K, V>) templateClass.getDeclaredConstructor().newInstance();
 
             // Initialize with source map if provided
             Map<K, V> source = (Map<K, V>) options.get(SOURCE_MAP);
@@ -1665,7 +1684,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
 
             return map;
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
             throw new IllegalStateException("Failed to create CompactMap instance", e);
         }
     }
@@ -1738,14 +1757,9 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         // Handle case sensitivity
-        if (!caseSensitive) {
-            // Only wrap in CaseInsensitiveMap if we're not using a sorted/reverse ordered map
-            if (!SORTED.equals(ordering) && !REVERSE.equals(ordering)) {
-                if (mapType != CaseInsensitiveMap.class) {
-                    options.put(INNER_MAP_TYPE, mapType);
-                    options.put(MAP_TYPE, CaseInsensitiveMap.class);
-                }
-            }
+        if (!caseSensitive && (!SORTED.equals(ordering) && !REVERSE.equals(ordering) && (mapType != CaseInsensitiveMap.class))) {
+            options.put(INNER_MAP_TYPE, mapType);
+            options.put(MAP_TYPE, CaseInsensitiveMap.class);
         }
 
         // Final default resolution
@@ -1816,7 +1830,7 @@ public class CompactMap<K, V> implements Map<K, V> {
                     EnumMap.class.isAssignableFrom(rawMapType)) {
                 ordering = INSERTION;
             } else if (SortedMap.class.isAssignableFrom(rawMapType)) {
-                ordering = rawMapType.getName().toLowerCase().contains("reverse") ||
+                ordering = rawMapType.getName().toLowerCase().contains(REVERSE) ||
                         rawMapType.getName().toLowerCase().contains("descending")
                         ? REVERSE : SORTED;
             } else {
@@ -2720,6 +2734,7 @@ public class CompactMap<K, V> implements Map<K, V> {
             super(parent);
         }
 
+        @Override
         public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
             // 1. Check if we already loaded it
             Class<?> c = findLoadedClass(name);

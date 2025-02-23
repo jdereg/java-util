@@ -53,6 +53,7 @@ public class FastWriter extends Writer {
         nextChar = 0;
     }
 
+    @Override
     public void write(int c) throws IOException {
         if (out == null) {
             throw new IOException("FastWriter stream is closed.");
@@ -87,6 +88,7 @@ public class FastWriter extends Writer {
         nextChar += len;
     }
 
+    @Override
     public void write(String str, int off, int len) throws IOException {
         if (out == null) {
             throw new IOException("FastWriter stream is closed.");

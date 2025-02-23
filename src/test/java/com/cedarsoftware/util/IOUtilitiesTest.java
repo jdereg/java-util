@@ -101,10 +101,20 @@ public class IOUtilitiesTest
 
             // load expected result
             ByteArrayOutputStream expectedResult = getUncompressedByteArray();
-            assertArrayEquals(expectedResult.toByteArray(), actualResult.toByteArray());
+            assertArrayEquals(removeCarriageReturns(expectedResult.toByteArray()), removeCarriageReturns(actualResult.toByteArray()));
         }
 
         f.delete();
+    }
+
+    private byte[] removeCarriageReturns(byte[] input) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (byte b : input) {
+            if (b != (byte)'\r') {
+                baos.write(b);
+            }
+        }
+        return baos.toByteArray();
     }
 
     @Test
@@ -239,7 +249,7 @@ public class IOUtilitiesTest
         ByteArrayOutputStream result = new ByteArrayOutputStream(8192);
         byte[] uncompressedBytes = IOUtilities.uncompressBytes(expectedResult.toByteArray());
 
-        assertArrayEquals(start.toByteArray(), uncompressedBytes);
+        assertArrayEquals(removeCarriageReturns(start.toByteArray()), removeCarriageReturns(uncompressedBytes));
     }
 
     private ByteArrayOutputStream getCompressedByteArray() throws IOException

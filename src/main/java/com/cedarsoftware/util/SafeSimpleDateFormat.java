@@ -83,21 +83,25 @@ public class SafeSimpleDateFormat extends DateFormat
         return getDateFormat(_format).parse(source, pos);
     }
 
+    @Override
     public void setTimeZone(TimeZone tz)
     {
         getDateFormat(_format).setTimeZone(tz);
     }
 
+    @Override
     public void setCalendar(Calendar cal)
     {
         getDateFormat(_format).setCalendar(cal);
     }
 
+    @Override
     public void setNumberFormat(NumberFormat format)
     {
         getDateFormat(_format).setNumberFormat(format);
     }
 
+    @Override
     public void setLenient(boolean lenient)
     {
         getDateFormat(_format).setLenient(lenient);
@@ -117,10 +121,12 @@ public class SafeSimpleDateFormat extends DateFormat
         return _format.toString();
     }
 
+    @Override
     public boolean equals(Object other) {
         return getDateFormat(_format).equals(other);
     }
 
+    @Override
     public int hashCode() {
         return getDateFormat(_format).hashCode();
     }

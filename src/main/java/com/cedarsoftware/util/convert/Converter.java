@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.io.Externalizable;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -167,7 +168,8 @@ public final class Converter {
     private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private final ConverterOptions options;
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new HashMap<>();
-    private static final Map<Long, ConversionPair> KEY_CACHE = new LRUCache<>(2000, LRUCache.StrategyType.THREADED);
+    private static final Map<Long, ConversionPair> KEY_CACHE = new LRUCache<>(3000, LRUCache.StrategyType.THREADED);
+    private static final Map<ConversionPair, Convert<?>> INHERITED_CONVERTER_CACHE = new ConcurrentHashMap<>();
 
     // Efficient key that combines two Class instances for fast creation and lookup
     public static final class ConversionPair {
@@ -1264,15 +1266,15 @@ public final class Converter {
 
         // Check user added conversions (allows overriding factory conversions)
         ConversionPair key = pair(sourceType, toType);
-        Convert<?> converter = USER_DB.get(key);
-        if (converter != null && converter != UNSUPPORTED) {
-            return (T) converter.convert(from, this, toType);
+        Convert<?> conversionMethod = USER_DB.get(key);
+        if (conversionMethod != null && conversionMethod != UNSUPPORTED) {
+            return (T) conversionMethod.convert(from, this, toType);
         }
 
         // Check factory conversion database
-        converter = CONVERSION_DB.get(key);
-        if (converter != null && converter != UNSUPPORTED) {
-            return (T) converter.convert(from, this, toType);
+        conversionMethod = CONVERSION_DB.get(key);
+        if (conversionMethod != null && conversionMethod != UNSUPPORTED) {
+            return (T) conversionMethod.convert(from, this, toType);
         }
 
         if (EnumSet.class.isAssignableFrom(toType)) {
@@ -1280,13 +1282,9 @@ public final class Converter {
         }
 
         // Always attempt inheritance-based conversion
-        converter = getInheritedConverter(sourceType, toType);
-        if (converter != null && converter != UNSUPPORTED) {
-            // Fast lookup next time.
-            if (!isDirectConversionSupported(sourceType, toType)) {
-                addConversion(sourceType, toType, converter);
-            }
-            return (T) converter.convert(from, this, toType);
+        conversionMethod = getInheritedConverter(sourceType, toType);
+        if (conversionMethod != null && conversionMethod != UNSUPPORTED) {
+            return (T) conversionMethod.convert(from, this, toType);
         }
 
         throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) + "] target type '" + getShortName(toType) + "'");
@@ -1360,85 +1358,85 @@ public final class Converter {
      * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
     private Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
-        Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
-        sourceTypes.add(new ClassLevel(sourceType, 0));
-        Set<ClassLevel> targetTypes = new TreeSet<>(getSuperClassesAndInterfaces(toType));
-        targetTypes.add(new ClassLevel(toType, 0));
+        ConversionPair key = pair(sourceType, toType);
 
-        // Create pairs of source/target types with their levels
-        final class ConversionPairWithLevel {
-            private final ConversionPair pair;
-            private final int sourceLevel;
-            private final int targetLevel;
+        return INHERITED_CONVERTER_CACHE.computeIfAbsent(key, k -> {
+            // Build the complete set of source types (including sourceType itself) with levels.
+            Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
+            sourceTypes.add(new ClassLevel(sourceType, 0));
+            // Build the complete set of target types (including toType itself) with levels.
+            Set<ClassLevel> targetTypes = new TreeSet<>(getSuperClassesAndInterfaces(toType));
+            targetTypes.add(new ClassLevel(toType, 0));
 
-            private ConversionPairWithLevel(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
-                this.pair = new ConversionPair(source, target);
-                this.sourceLevel = sourceLevel;
-                this.targetLevel = targetLevel;
-            }
-        }
+            // Create pairs of source/target types with their associated levels.
+            class ConversionPairWithLevel {
+                private final ConversionPair pair;
+                private final int sourceLevel;
+                private final int targetLevel;
 
-        List<ConversionPairWithLevel> pairs = new ArrayList<>();
-        for (ClassLevel source : sourceTypes) {
-            for (ClassLevel target : targetTypes) {
-                pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, source.level, target.level));
-            }
-        }
-
-        // Sort pairs by combined inheritance distance with type safety priority
-        pairs.sort((p1, p2) -> {
-            // First prioritize exact target type matches
-            boolean p1ExactTarget = p1.pair.getTarget() == toType;
-            boolean p2ExactTarget = p2.pair.getTarget() == toType;
-            if (p1ExactTarget != p2ExactTarget) {
-                return p1ExactTarget ? -1 : 1;
-            }
-
-            // Then check assignability to target type if different
-            if (p1.pair.getTarget() != p2.pair.getTarget()) {
-                boolean p1AssignableToP2 = p2.pair.getTarget().isAssignableFrom(p1.pair.getTarget());
-                boolean p2AssignableToP1 = p1.pair.getTarget().isAssignableFrom(p2.pair.getTarget());
-                if (p1AssignableToP2 != p2AssignableToP1) {
-                    return p1AssignableToP2 ? -1 : 1;
+                private ConversionPairWithLevel(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
+                    this.pair = new ConversionPair(source, target);
+                    this.sourceLevel = sourceLevel;
+                    this.targetLevel = targetLevel;
                 }
             }
 
-            // Then consider inheritance distance
-            int dist1 = p1.sourceLevel + p1.targetLevel;
-            int dist2 = p2.sourceLevel + p2.targetLevel;
-            if (dist1 != dist2) {
-                return dist1 - dist2;
+            List<ConversionPairWithLevel> pairs = new ArrayList<>();
+            for (ClassLevel source : sourceTypes) {
+                for (ClassLevel target : targetTypes) {
+                    pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, source.level, target.level));
+                }
             }
 
-            // Finally prefer concrete classes over interfaces
-            boolean p1FromInterface = p1.pair.getSource().isInterface();
-            boolean p2FromInterface = p2.pair.getSource().isInterface();
-            if (p1FromInterface != p2FromInterface) {
-                return p1FromInterface ? 1 : -1;
+            // Sort the pairs by a composite of rules:
+            // - Exact target matches first.
+            // - Then by assignability of the target types.
+            // - Then by combined inheritance distance.
+            // - Finally, prefer concrete classes over interfaces.
+            pairs.sort((p1, p2) -> {
+                boolean p1ExactTarget = p1.pair.getTarget() == toType;
+                boolean p2ExactTarget = p2.pair.getTarget() == toType;
+                if (p1ExactTarget != p2ExactTarget) {
+                    return p1ExactTarget ? -1 : 1;
+                }
+                if (p1.pair.getTarget() != p2.pair.getTarget()) {
+                    boolean p1AssignableToP2 = p2.pair.getTarget().isAssignableFrom(p1.pair.getTarget());
+                    boolean p2AssignableToP1 = p1.pair.getTarget().isAssignableFrom(p2.pair.getTarget());
+                    if (p1AssignableToP2 != p2AssignableToP1) {
+                        return p1AssignableToP2 ? -1 : 1;
+                    }
+                }
+                int dist1 = p1.sourceLevel + p1.targetLevel;
+                int dist2 = p2.sourceLevel + p2.targetLevel;
+                if (dist1 != dist2) {
+                    return dist1 - dist2;
+                }
+                boolean p1FromInterface = p1.pair.getSource().isInterface();
+                boolean p2FromInterface = p2.pair.getSource().isInterface();
+                if (p1FromInterface != p2FromInterface) {
+                    return p1FromInterface ? 1 : -1;
+                }
+                boolean p1ToInterface = p1.pair.getTarget().isInterface();
+                boolean p2ToInterface = p2.pair.getTarget().isInterface();
+                if (p1ToInterface != p2ToInterface) {
+                    return p1ToInterface ? 1 : -1;
+                }
+                return 0;
+            });
+
+            // Iterate over sorted pairs and check the converter databases.
+            for (ConversionPairWithLevel pairWithLevel : pairs) {
+                Convert<?> tempConverter = USER_DB.get(pairWithLevel.pair);
+                if (tempConverter != null) {
+                    return tempConverter;
+                }
+                tempConverter = CONVERSION_DB.get(pairWithLevel.pair);
+                if (tempConverter != null) {
+                    return tempConverter;
+                }
             }
-            boolean p1ToInterface = p1.pair.getTarget().isInterface();
-            boolean p2ToInterface = p2.pair.getTarget().isInterface();
-            if (p1ToInterface != p2ToInterface) {
-                return p1ToInterface ? 1 : -1;
-            }
-            return 0;
+            return null;
         });
-
-        // Check pairs in sorted order
-        for (ConversionPairWithLevel pairWithLevel : pairs) {
-            // Check USER_DB first
-            Convert<?> tempConverter = USER_DB.get(pairWithLevel.pair);
-            if (tempConverter != null) {
-                return tempConverter;
-            }
-
-            tempConverter = CONVERSION_DB.get(pairWithLevel.pair);
-            if (tempConverter != null) {
-                return tempConverter;
-            }
-        }
-
-        return null;
     }
     
     /**
@@ -1450,15 +1448,25 @@ public final class Converter {
      * @param clazz The class for which to retrieve superclasses and interfaces.
      * @return A {@link Set} of {@link ClassLevel} instances representing the superclasses and interfaces of the specified class.
      */
-    private static Set<ClassLevel> getSuperClassesAndInterfaces(Class<?> clazz) {
-        SortedSet<ClassLevel> parentTypes = cacheParentTypes.get(clazz);
-        if (parentTypes != null) {
+    private static SortedSet<ClassLevel> getSuperClassesAndInterfaces(Class<?> clazz) {
+        return cacheParentTypes.computeIfAbsent(clazz, key -> {
+            SortedSet<ClassLevel> parentTypes = new TreeSet<>();
+            // Instead of passing a level, we can iterate over the cached supertypes
+            Set<Class<?>> allSupertypes = ClassUtilities.getAllSupertypes(key);
+            for (Class<?> superType : allSupertypes) {
+                // Skip marker interfaces if needed
+                if (superType == Serializable.class || superType == Cloneable.class || superType == Comparable.class || superType == Externalizable.class) {
+                    continue;
+                }
+                // Compute distance from the original class
+                int distance = ClassUtilities.computeInheritanceDistance(key, superType);
+                // Only add if a valid distance was found (>0)
+                if (distance > 0) {
+                    parentTypes.add(new ClassLevel(superType, distance));
+                }
+            }
             return parentTypes;
-        }
-        parentTypes = new TreeSet<>();
-        addSuperClassesAndInterfaces(clazz, parentTypes, 1);
-        cacheParentTypes.put(clazz, parentTypes);
-        return parentTypes;
+        });
     }
 
     /**
@@ -1508,35 +1516,6 @@ public final class Converter {
         @Override
         public int hashCode() {
             return clazz.hashCode() * 31 + level;
-        }
-    }
-
-    /**
-     * Recursively adds all superclasses and interfaces of the specified class to the result set.
-     * <p>
-     * This method excludes general marker interfaces such as {@link Serializable}, {@link Cloneable}, and {@link Comparable}
-     * to prevent unnecessary or irrelevant conversions.
-     * </p>
-     *
-     * @param clazz  The class whose superclasses and interfaces are to be added.
-     * @param result The set where the superclasses and interfaces are collected.
-     * @param level  The current hierarchy level, used for ordering purposes.
-     */
-    private static void addSuperClassesAndInterfaces(Class<?> clazz, SortedSet<ClassLevel> result, int level) {
-        // Add all superinterfaces
-        for (Class<?> iface : clazz.getInterfaces()) {
-            // Performance speed up, skip interfaces that are too general
-            if (iface != Serializable.class && iface != Cloneable.class && iface != Comparable.class) {
-                result.add(new ClassLevel(iface, level));
-                addSuperClassesAndInterfaces(iface, result, level + 1);
-            }
-        }
-
-        // Add superclass
-        Class<?> superClass = clazz.getSuperclass();
-        if (superClass != null && superClass != Object.class) {
-            result.add(new ClassLevel(superClass, level));
-            addSuperClassesAndInterfaces(superClass, result, level + 1);
         }
     }
 
@@ -1899,13 +1878,13 @@ public final class Converter {
      *
      * @param source             The source class (type) to convert from.
      * @param target             The target class (type) to convert to.
-     * @param conversionFunction A function that converts an instance of the source type to an instance of the target type.
-     * @return The previous conversion function associated with the source and target types, or {@code null} if no conversion existed.
+     * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
+     * @return The previous conversion method associated with the source and target types, or {@code null} if no conversion existed.
      */
-    public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
+    public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
-        return USER_DB.put(pair(source, target), conversionFunction);
+        return USER_DB.put(pair(source, target), conversionMethod);
     }
     
     /**

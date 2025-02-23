@@ -6,6 +6,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -31,6 +32,17 @@ import java.util.Set;
  *         limitations under the License.
  */
 public class TypeUtilities {
+    private static volatile Map<Map.Entry<Type, Type>, Type> TYPE_RESOLVE_CACHE = new LRUCache<>(2000);
+
+    /**
+     * Sets a custom cache implementation for holding results of getAllSuperTypes().
+     * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
+     *             Must be thread-safe and implement Map interface.
+     */
+    public static void setTypeResolveCache(Map<Map.Entry<Type, Type>, Type> cache) {
+        TYPE_RESOLVE_CACHE = cache;
+    }
+
     /**
      * Extracts the raw Class from a given Type.
      * For example, for List<String> it returns List.class.
@@ -167,7 +179,8 @@ public class TypeUtilities {
      * which should be the most concrete type (for example, Child.class).
      */
     public static Type resolveType(Type rootContext, Type typeToResolve) {
-        return resolveType(rootContext, rootContext, typeToResolve, new HashSet<>());
+        Map.Entry<Type, Type> key = new AbstractMap.SimpleImmutableEntry<>(rootContext, typeToResolve);
+        return TYPE_RESOLVE_CACHE.computeIfAbsent(key, k -> resolveType(rootContext, rootContext, typeToResolve, new HashSet<>()));
     }
 
     /**

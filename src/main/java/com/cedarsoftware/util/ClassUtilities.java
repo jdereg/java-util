@@ -871,7 +871,7 @@ public class ClassUtilities {
         }
     }
 
-    private static final int BUFFER_SIZE = 8192;
+    private static final int BUFFER_SIZE = 65536;
 
     /**
      * Reads an InputStream fully and returns its content as a byte array.
@@ -881,7 +881,7 @@ public class ClassUtilities {
      * @throws IOException if an I/O error occurs.
      */
     private static byte[] readInputStreamFully(InputStream inputStream) throws IOException {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream(8192);
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream(BUFFER_SIZE);
         byte[] data = new byte[BUFFER_SIZE];
         int nRead;
         while ((nRead = inputStream.read(data, 0, data.length)) != -1) {

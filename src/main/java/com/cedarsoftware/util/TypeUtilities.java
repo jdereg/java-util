@@ -255,7 +255,6 @@ public class TypeUtilities {
                     for (int i = 0; i < declaredVars.length; i++) {
                         if (declaredVars[i].getName().equals(typeVar.getName())) {
                             resolved = pType.getActualTypeArguments()[i];
-                            System.out.println("Resolved from root context: " + resolved);
                             break;
                         }
                     }

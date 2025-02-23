@@ -3491,20 +3491,37 @@ This implementation provides a robust object graph traversal utility with rich f
 ## TypeUtilities
 [Source](/src/main/java/com/cedarsoftware/util/TypeUtilities.java)
 
-A comprehensive utility class for Java type operations, providing methods for type introspection, generic resolution, and manipulation of Java’s Type system. TypeUtilities offers robust support for resolving type variables, parameterized types, generic arrays, and wildcards, making it easier to work with complex generic structures.
+A comprehensive utility class for Java type operations, providing methods for type introspection, generic resolution, and manipulation of Java’s Type system. `TypeUtilities` offers robust support for resolving type variables, parameterized types, generic arrays, and wildcards, making it easier to work with complex generic structures.
 
-### Key Features
-- Extraction of raw classes from generic types
-- Resolution of type variables and parameterized types
-- Handling of generic array types and component extraction
-- Wildcard type processing with upper and lower bound resolution
-- Recursive resolution of nested generic types
-- Suggested type resolution for collections, maps, and arrays
-- Fallback to safe defaults when resolution is incomplete
+### **Key Features**
+- **Extraction of raw classes** from generic types
+- **Resolution of type variables** and parameterized types
+- **Handling of generic array types** and component extraction
+- **Wildcard type processing** with upper and lower bound resolution
+- **Recursive resolution** of nested generic types
+- **Efficient caching** of resolved types for improved performance
+- **Detection of unresolved type variables** for debugging and validation
 
-### Usage Examples
+### **Public API**
+```java
+// Type extraction and introspection
+public static Class<?> getRawClass(Type type);
+public static Type extractArrayComponentType(Type type);
+public static boolean hasUnresolvedType(Type type);
 
-**Type Extraction and Resolution:**
+// Generic type resolution
+public static Type resolveTypeUsingInstance(Object target, Type typeToResolve);
+public static Type resolveType(Type rootContext, Type typeToResolve);
+
+// Caching support
+public static void setTypeResolveCache(Map<Map.Entry<Type, Type>, Type> cache);
+```
+
+---
+
+### **Usage Examples**
+
+#### **Type Extraction and Resolution**
 ```java
 // Extract raw class from a parameterized type
 Type listType = new TypeHolder<List<String>>(){}.getType();
@@ -3517,51 +3534,65 @@ Type resolved = TypeUtilities.resolveTypeUsingInstance(instance, TestGeneric.cla
 // If T is resolved to Integer in TestConcrete, resolved == Integer.class
 ```
 
-**Generic Array and Wildcard Handling:**
-```Java
+#### **Generic Array and Wildcard Handling**
+```java
 // Extract component type from an array type
 Type component = TypeUtilities.extractArrayComponentType(String[].class);
 // Expected: java.lang.String
 
 // Check if a type contains unresolved type variables
-boolean hasUnresolved = TypeUtilities.containsUnresolvedType(new TypeHolder<List<T>>(){}.getType());
+boolean hasUnresolved = TypeUtilities.hasUnresolvedType(new TypeHolder<List<T>>(){}.getType());
 // Returns true if T is unresolved
 ```
 
-**Recursive Resolution Using Parent Type:**
-```Java
+#### **Recursive Resolution Using Parent Type**
+```java
 // Resolve generic types recursively using a parent type context
 Type parentType = TestConcrete.class.getGenericSuperclass();
-Type resolvedGeneric = TypeUtilities.resolveTypeRecursivelyUsingParent(
+Type resolvedGeneric = TypeUtilities.resolveType(
     parentType, TestGeneric.class.getField("collectionField").getGenericType());
 // T in collectionField is replaced by the concrete type from TestConcrete
 ```
 
-### Performance Characteristics
-- Caching of resolved types for improved efficiency
-- Optimized recursive type resolution even for nested generics
-- Minimal overhead for reflection-based type analysis
+---
 
-### Implementation Notes
-- Thread-safe and null-safe operations throughout
-- Comprehensive support for Java's Type interface and its subinterfaces
--  Works seamlessly with raw types, parameterized types, arrays, wildcards, and type variables
-- Fallbacks to safe defaults when type resolution is not possible
-- Designed for extensibility to support advanced generic scenarios
+### **Performance Characteristics**
+- **LRU caching of resolved types** for improved efficiency
+- **Optimized recursive type resolution**, even for deeply nested generics
+- **Minimal overhead** for reflection-based type analysis
+- **Avoids infinite recursion** through cycle detection
 
-### Best Practices
-```Java
+---
+
+### **Implementation Notes**
+- **Thread-safe and null-safe** operations throughout
+- **Full support for Java's `Type` interface** and its subinterfaces
+- **Works seamlessly with**:
+    - Raw types
+    - Parameterized types
+    - Arrays
+    - Wildcards
+    - Type variables
+- **Fails safely** when type resolution is not possible
+- **Designed for extensibility** to support advanced generic scenarios
+
+---
+
+### **Best Practices**
+```java
 // Prefer providing concrete types to improve resolution accuracy
 Type resolved = TypeUtilities.resolveTypeUsingInstance(myInstance, genericType);
 
 // Check for unresolved type variables after resolution
-if (TypeUtilities.containsUnresolvedType(resolved)) {
+if (TypeUtilities.hasUnresolvedType(resolved)) {
     // Handle or log unresolved types accordingly
 }
 ```
 
-### Security Considerations
-```Java
+---
+
+### **Security Considerations**
+```java
 // Validate type resolution to avoid exposing sensitive class details
 try {
     Type type = TypeUtilities.resolveTypeUsingInstance(instance, field.getGenericType());
@@ -3569,22 +3600,31 @@ try {
     // Securely handle unexpected type structures
 }
 ```
-### Advanced Features
-```Java
+
+---
+
+### **Advanced Features**
+```java
 // Perform deep resolution of complex generic types
-Type deepResolved = TypeUtilities.resolveTypeRecursivelyUsingParent(parentType, complexGenericType);
+Type deepResolved = TypeUtilities.resolveType(parentType, complexGenericType);
 
 // Suggest types for collections and maps dynamically
-Type suggested = TypeUtilities.resolveSuggestedType(suggestedType, fieldType);
+Type suggested = TypeUtilities.inferElementType(suggestedType, fieldType);
 ```
 
-### Common Use Cases
-- Generic type introspection for reflection-based frameworks
-- Dynamic type conversion and mapping in serialization libraries
-- Proxy generation and runtime method invocation based on generic types
-- Analysis and transformation of parameterized types in API development
-- Enhancing type safety and resolution in dynamic environments
-- TypeUtilities provides a robust set of tools to simplify the challenges of working with Java’s complex type system, ensuring reliable and efficient type manipulation in diverse runtime scenarios.
+---
+
+### **Common Use Cases**
+- **Generic type introspection** for reflection-based frameworks
+- **Dynamic type conversion and mapping** in serialization libraries
+- **Proxy generation** and runtime method invocation based on generic types
+- **Analysis and transformation of parameterized types** in API development
+- **Enhancing type safety** and resolution in dynamic environments
+
+---
+
+### **Final Thoughts**
+`TypeUtilities` provides a robust set of tools to simplify the challenges of working with Java’s complex type system. With **efficient caching, deep recursive resolution, and cycle detection**, it ensures reliable and efficient type manipulation in diverse runtime scenarios.
 
 ---
 ## UniqueIdGenerator

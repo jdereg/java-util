@@ -35,7 +35,8 @@ public class TypeUtilities {
     private static volatile Map<Map.Entry<Type, Type>, Type> TYPE_RESOLVE_CACHE = new LRUCache<>(2000);
 
     /**
-     * Sets a custom cache implementation for holding results of getAllSuperTypes().
+     * Sets a custom cache implementation for holding results of getAllSuperTypes(). The Map implementation must be
+     * thread-safe, like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
      * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
      *             Must be thread-safe and implement Map interface.
      */

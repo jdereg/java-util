@@ -152,9 +152,8 @@ public class ClassUtilities {
     private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap = new HashMap<>();
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
+    private static final ConcurrentHashMapNullSafe<Class<?>, ClassLoader> osgiClassLoaders = new ConcurrentHashMapNullSafe<>();
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
-    private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ConcurrentHashMap<>();
-    private static final Set<Class<?>> osgiChecked = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private static volatile boolean useUnsafe = false;
     private static volatile Unsafe unsafe;
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new HashMap<>();
@@ -251,7 +250,8 @@ public class ClassUtilities {
     }
 
     /**
-     * Sets a custom cache implementation for holding results of getAllSuperTypes().
+     * Sets a custom cache implementation for holding results of getAllSuperTypes(). The Set implementation must be
+     * thread-safe, like ConcurrentSet, ConcurrentSkipListSet, etc.
      * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
      *             Must be thread-safe and implement Map interface.
      */
@@ -260,7 +260,8 @@ public class ClassUtilities {
     }
 
     /**
-     * Sets a custom cache implementation for holding results of getAllSuperTypes().
+     * Sets a custom cache implementation for holding results of getAllSuperTypes(). The Map implementation must be
+     * thread-safe, like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
      * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
      *             Must be thread-safe and implement Map interface.
      */
@@ -701,22 +702,7 @@ public class ClassUtilities {
      * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
      */
     private static ClassLoader getOSGiClassLoader(final Class<?> classFromBundle) {
-        if (osgiChecked.contains(classFromBundle)) {
-            return osgiClassLoaders.get(classFromBundle);
-        }
-
-        synchronized (ClassUtilities.class) {
-            if (osgiChecked.contains(classFromBundle)) {
-                return osgiClassLoaders.get(classFromBundle);
-            }
-
-            ClassLoader loader = getOSGiClassLoader0(classFromBundle);
-            if (loader != null) {
-                osgiClassLoaders.put(classFromBundle, loader);
-            }
-            osgiChecked.add(classFromBundle);
-            return loader;
-        }
+        return osgiClassLoaders.computeIfAbsent(classFromBundle, ClassUtilities::getOSGiClassLoader0);
     }
 
     /**

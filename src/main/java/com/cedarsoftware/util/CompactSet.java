@@ -303,10 +303,6 @@ public class CompactSet<E> implements Set<E> {
         }
     }
 
-    /* ----------------------------------------------------------------- */
-    /*         Optional: Legacy hooks (as in your existing code)         */
-    /* ----------------------------------------------------------------- */
-
     /**
      * @deprecated Use {@link Builder#compactSize(int)} instead.
      * Maintained for backward compatibility with existing subclasses.

@@ -55,7 +55,8 @@ public final class ReflectionUtils {
     private static volatile Map<MethodAnnotationCacheKey, Annotation> METHOD_ANNOTATION_CACHE = new LRUCache<>(CACHE_SIZE);
 
     /**
-     * Sets a custom cache implementation for method lookups.
+     * Sets a custom cache implementation for method lookups. The Map implementation must be thread-safe,
+     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -70,7 +71,8 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for field lookups.
+     * Sets a custom cache implementation for field lookups. The Map implementation must be thread-safe,
+     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -85,7 +87,8 @@ public final class ReflectionUtils {
     }
     
     /**
-     * Sets a custom cache implementation for field lookups.
+     * Sets a custom cache implementation for field lookups. The Map implementation must be thread-safe,
+     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -100,7 +103,8 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for class annotation lookups.
+     * Sets a custom cache implementation for class annotation lookups. The Map implementation must be thread-safe,
+     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -115,7 +119,8 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for method annotation lookups.
+     * Sets a custom cache implementation for method annotation lookups. The Map implementation must be thread-safe,
+     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -130,7 +135,8 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for constructor lookups.
+     * Sets a custom cache implementation for constructor lookups. The Map implementation must be thread-safe,
+     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement

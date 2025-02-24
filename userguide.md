@@ -1516,6 +1516,43 @@ A comprehensive utility class for Java class operations, providing methods for c
 - Constructor caching
 - Unsafe instantiation support
 
+### Public API
+```java
+// Install your own cache
+public static void setSuperTypesCache(Map<Class<?>, Set<Class<?>>> cache)
+public static void setClassDistanceCache(Map<Map.Entry<Class<?>, Class<?>>, Integer> cache)
+
+// Class locating    
+public static Class<?> forName(String name, ClassLoader classLoader)
+public static void addPermanentClassAlias(Class<?> clazz, String alias)
+public static void removePermanentClassAlias(String alias)
+    
+// Class instantiation    
+public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues)
+public static void setUseUnsafe(boolean state)
+    
+// Class information      
+public static boolean isClassFinal(Class<?> c)
+public static boolean areAllConstructorsPrivate(Class<?> c)
+public static Class<?> getClassIfEnum(Class<?> c)
+
+// Primitive wrappers    
+public static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass)
+public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y)
+public static boolean isPrimitive(Class<?> c) // true for primitive and primitive wrapper
+    
+// ClassLoader (OSGi and JPMS friendly)    
+public static ClassLoader getClassLoader()
+public static ClassLoader getClassLoader(final Class<?> anchorClass)
+
+// Class relationships    
+public static int computeInheritanceDistance(Class<?> source, Class<?> destination)
+public static boolean haveCommonAncestor(Class<?> a, Class<?> b)
+public static Set<Class<?>> getAllSupertypes(Class<?> clazz)
+public static Set<Class<?>> findLowestCommonSupertypesExcluding(Class<?> classA, Class<?> classB, Set<Class<?>> excluded)
+public static Set<Class<?>> findLowestCommonSupertypes(Class<?> classA, Class<?> classB)
+public static Class<?> findLowestCommonSupertype(Class<?> classA, Class<?> classB)
+```
 ### Usage Examples
 
 **Class Analysis:**
@@ -2133,6 +2170,39 @@ A comprehensive utility class for I/O operations, providing robust stream handli
 - Progress tracking
 - XML stream support
 - Buffer optimization
+
+### Public API
+
+```java
+// Streaming
+public static void transfer(InputStream s, File f, TransferCallback cb) throws Exception
+public static void transfer(InputStream in, OutputStream out, TransferCallback cb) throws IOException
+public static void transfer(InputStream in, byte[] bytes) throws IOException
+public static void transfer(InputStream in, OutputStream out) throws IOException
+public static void transfer(File f, URLConnection c, TransferCallback cb) throws Exception
+public static void transfer(File file, OutputStream out) throws IOException
+public static void transfer(URLConnection c, File f, TransferCallback cb) throws Exception
+public static void transfer(URLConnection c, byte[] bytes) throws IOException
+public static byte[] inputStreamToBytes(InputStream in)
+public static InputStream getInputStream(URLConnection c) throws IOException
+    
+// Stream close    
+public static void close(XMLStreamReader reader)
+public static void close(XMLStreamWriter writer)
+public static void close(Closeable c)
+    
+// Stream flush    
+public static void flush(Flushable f)
+public static void flush(XMLStreamWriter writer)
+    
+// Compression     
+public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException
+public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException
+public static byte[] compressBytes(byte[] bytes)
+public static byte[] compressBytes(byte[] bytes, int offset, int len)
+public static byte[] uncompressBytes(byte[] bytes)
+public static byte[] uncompressBytes(byte[] bytes, int offset, int len) 
+```
 
 ### Usage Examples
 
@@ -2876,6 +2946,47 @@ A high-performance reflection utility providing cached access to fields, methods
 - Class bytecode analysis
 - Thread-safe implementation
 
+### Public API
+```java
+// Cache control
+public static void setMethodCache(Map<Object, Method> cache)
+public static void setClassFieldsCache(Map<Object, Collection<Field>> cache)
+public static void setFieldCache(Map<Object, Field> cache)
+public static void setClassAnnotationCache(Map<Object, Annotation> cache)
+public static void setMethodAnnotationCache(Map<Object, Annotation> cache)
+public static void setConstructorCache(Map<Object, Constructor<?>> cache)
+    
+// Annotations
+public static <T extends Annotation> T getClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass)
+public static <T extends Annotation> T getMethodAnnotation(final Method method, final Class<T> annoClass)
+
+// Class
+public static String getClassName(Object o)
+public static String getClassNameFromByteCode(byte[] byteCode) throws IOException
+
+// Fields    
+public static Field getField(Class<?> c, String fieldName)
+public static List<Field> getDeclaredFields(final Class<?> c, final Predicate<Field> fieldFilter)
+public static List<Field> getDeclaredFields(final Class<?> c)
+public static List<Field> getAllDeclaredFields(final Class<?> c, final Predicate<Field> fieldFilter)
+public static List<Field> getAllDeclaredFields(final Class<?> c)
+public static Map<String, Field> getAllDeclaredFieldsMap(Class<?> c, Predicate<Field> fieldFilter)
+public static Map<String, Field> getAllDeclaredFieldsMap(Class<?> c)
+    
+// Methods     
+public static Method getMethod(Class<?> c, String methodName, Class<?>... types)
+public static Method getMethod(Object instance, String methodName, int argCount)
+public static Method getNonOverloadedMethod(Class<?> clazz, String methodName)
+
+// Constructors    
+public static Constructor<?> getConstructor(Class<?> clazz, Class<?>... parameterTypes)
+public static Constructor<?>[] getAllConstructors(Class<?> clazz)
+    
+// Execution    
+public static Object call(Object instance, Method method, Object... args)
+public static Object call(Object instance, String methodName, Object... args)
+```
+
 ### Cache Management
 
 **Custom Cache Configuration (optional - use if you want to use your own cache):**
@@ -3046,6 +3157,66 @@ A comprehensive utility class providing enhanced string manipulation, comparison
 - Random string generation
 - Hex encoding/decoding
 
+### Public API
+```java
+// Equality
+public static boolean equals(CharSequence cs1, CharSequence cs2)
+public static boolean equals(String s1, String s2)
+public static boolean equalsIgnoreCase(CharSequence cs1, CharSequence cs2)
+public static boolean equalsIgnoreCase(String s1, String s2)
+public static boolean equalsWithTrim(String s1, String s2)
+public static boolean equalsIgnoreCaseWithTrim(String s1, String s2)
+    
+// Content    
+public static boolean isEmpty(CharSequence cs)
+public static boolean isEmpty(String s)
+public static boolean isWhitespace(CharSequence cs)
+public static boolean hasContent(String s)
+    
+// Length    
+public static int length(CharSequence cs)
+public static int length(String s)
+public static int trimLength(String s)
+public static int lastIndexOf(String path, char ch)
+    
+// ASCII Hex     
+public static byte[] decode(String s)
+public static String encode(byte[] bytes)
+    
+// Occurrence     
+public static int count(String s, char c)
+public static int count(CharSequence content, CharSequence token)
+    
+// Regex    
+public static String wildcardToRegexString(String wildcard)
+    
+// Comparison    
+public static int levenshteinDistance(CharSequence s, CharSequence t)
+public static int damerauLevenshteinDistance(CharSequence source, CharSequence target)
+    
+// Data generation    
+public static String getRandomString(Random random, int minLen, int maxLen)
+public static String getRandomChar(Random random, boolean upper)
+
+// Encoding    
+public static byte[] getBytes(String s, String encoding)
+public static String createUtf8String(byte[] bytes)
+public static byte[] getUTF8Bytes(String s)
+public static String createString(byte[] bytes, String encoding)
+public static String createUTF8String(byte[] bytes)
+    
+// Trimming     
+public static String trim(String str)
+public static String trimToEmpty(String value)
+public static String trimToNull(String value)
+public static String trimEmptyToDefault(String value, String defaultValue)
+public static String removeLeadingAndTrailingQuotes(String input)
+
+// Utility
+public static int hashCodeIgnoreCase(String s)
+public static Set<String> commaSeparatedStringToSet(String commaSeparatedString)
+```
+
 ### Basic Operations
 
 **String Comparison:**
@@ -3191,6 +3362,23 @@ A comprehensive utility class providing system-level operations and information 
 - Process management
 - Runtime environment analysis
 - Temporary file handling
+
+### Public API
+
+```java
+public static String getExternalVariable(String var)
+public static int getAvailableProcessors()
+public static MemoryInfo getMemoryInfo()
+public static double getSystemLoadAverage()
+public static boolean isJavaVersionAtLeast(int major, int minor)
+public static long getCurrentProcessId()
+public static File createTempDirectory(String prefix) throws IOException
+public static TimeZone getSystemTimeZone()
+public static boolean hasAvailableMemory(long requiredBytes)
+public static Map<String, String> getEnvironmentVariables(Predicate<String> filter)
+public static List<NetworkInfo> getNetworkInterfaces() throws SocketException
+public static void addShutdownHook(Runnable hook)
+```
 
 ### System Constants
 
@@ -3502,7 +3690,7 @@ A comprehensive utility class for Java type operations, providing methods for ty
 - **Efficient caching** of resolved types for improved performance
 - **Detection of unresolved type variables** for debugging and validation
 
-### **Public API**
+### Public API
 ```java
 // Type extraction and introspection
 public static Class<?> getRawClass(Type type);
@@ -3638,6 +3826,18 @@ UniqueIdGenerator is a utility class that generates guaranteed unique, time-base
 - Cluster-aware with configurable server IDs
 - Two ID formats for different use cases
 
+### Public API
+```java
+// Main API to fetch unique ID
+public static long getUniqueId()        // up to 1,000 per ms
+public static long getUniqueId19()      // up to 10,000 per 1ms
+
+// Extract creation time to nearest millisecond
+public static Date getDate(long uniqueId)
+public static Date getDate19(long uniqueId19)
+public static Instant getInstant(long uniqueId)
+public static Instant getInstant19(long uniqueId19)
+```
 ### Basic Usage
 
 **Standard ID Generation**
@@ -3645,7 +3845,7 @@ UniqueIdGenerator is a utility class that generates guaranteed unique, time-base
 // Generate a standard unique ID
 long id = UniqueIdGenerator.getUniqueId();
 // Format: timestampMs(13-14 digits).sequence(3 digits).serverId(2 digits)
-// Example: 1234567890123456.789.99
+// Example: 12345678901234.999.99
 
 // Get timestamp from ID
 Date date = UniqueIdGenerator.getDate(id);
@@ -3673,7 +3873,7 @@ Characteristics:
 - Sequence: Counts from 000-999 within each millisecond
 - Rate: Up to 1,000 IDs per millisecond
 - Range: Until year 5138
-- Example: 1234567890123456.789.99
+- Example: 12345678901234.999.99
 ```
 
 **High-Throughput Format (getUniqueId19)**

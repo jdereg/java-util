@@ -29,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -348,7 +347,7 @@ public class IOUtilitiesTest
     @Test
     public void transferInputStreamToBytesWithNull()
     {
-        assertNull(IOUtilities.inputStreamToBytes(null));
+        assertThrows(IllegalArgumentException.class, () -> IOUtilities.inputStreamToBytes(null));
     }
 
     @Test

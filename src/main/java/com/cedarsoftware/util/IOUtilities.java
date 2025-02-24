@@ -8,6 +8,7 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.Flushable;
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.io.OutputStream;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPInputStream;
@@ -75,8 +77,7 @@ import java.util.zip.InflaterInputStream;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class IOUtilities
-{
+public final class IOUtilities {
     private static final int TRANSFER_BUFFER = 32768;
 
     private IOUtilities() { }
@@ -99,6 +100,7 @@ public final class IOUtilities
      * @throws IOException if an I/O error occurs
      */
     public static InputStream getInputStream(URLConnection c) throws IOException {
+        Convention.throwIfNull(c, "URLConnection cannot be null");
         InputStream is = c.getInputStream();
         String enc = c.getContentEncoding();
 
@@ -117,21 +119,17 @@ public final class IOUtilities
      * Progress can be monitored and the transfer can be cancelled through the callback interface.
      * </p>
      *
-     * @param f the source File to transfer
-     * @param c the destination URLConnection
+     * @param f  the source File to transfer
+     * @param c  the destination URLConnection
      * @param cb optional callback for progress monitoring and cancellation (may be null)
      * @throws Exception if any error occurs during the transfer
      */
     public static void transfer(File f, URLConnection c, TransferCallback cb) throws Exception {
-        InputStream in = null;
-        OutputStream out = null;
-        try {
-            in = new BufferedInputStream(Files.newInputStream(f.toPath()));
-            out = new BufferedOutputStream(c.getOutputStream());
+        Convention.throwIfNull(f, "File cannot be null");
+        Convention.throwIfNull(c, "URLConnection cannot be null");
+        try (InputStream in = new BufferedInputStream(Files.newInputStream(f.toPath()));
+             OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             transfer(in, out, cb);
-        } finally {
-            close(in);
-            close(out);
         }
     }
 
@@ -142,18 +140,16 @@ public final class IOUtilities
      * Automatically handles compressed streams.
      * </p>
      *
-     * @param c the source URLConnection
-     * @param f the destination File
+     * @param c  the source URLConnection
+     * @param f  the destination File
      * @param cb optional callback for progress monitoring and cancellation (may be null)
      * @throws Exception if any error occurs during the transfer
      */
     public static void transfer(URLConnection c, File f, TransferCallback cb) throws Exception {
-        InputStream in = null;
-        try {
-            in = getInputStream(c);
+        Convention.throwIfNull(c, "URLConnection cannot be null");
+        Convention.throwIfNull(f, "File cannot be null");
+        try (InputStream in = getInputStream(c)) {
             transfer(in, f, cb);
-        } finally {
-            close(in);
         }
     }
 
@@ -164,12 +160,14 @@ public final class IOUtilities
      * The output stream is automatically buffered for optimal performance.
      * </p>
      *
-     * @param s the source InputStream
-     * @param f the destination File
+     * @param s  the source InputStream
+     * @param f  the destination File
      * @param cb optional callback for progress monitoring and cancellation (may be null)
      * @throws Exception if any error occurs during the transfer
      */
     public static void transfer(InputStream s, File f, TransferCallback cb) throws Exception {
+        Convention.throwIfNull(s, "InputStream cannot be null");
+        Convention.throwIfNull(f, "File cannot be null");
         try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(f.toPath()))) {
             transfer(s, out, cb);
         }
@@ -182,18 +180,20 @@ public final class IOUtilities
      * Progress can be monitored and the transfer can be cancelled through the callback interface.
      * </p>
      *
-     * @param in the source InputStream
+     * @param in  the source InputStream
      * @param out the destination OutputStream
-     * @param cb optional callback for progress monitoring and cancellation (may be null)
+     * @param cb  optional callback for progress monitoring and cancellation (may be null)
      * @throws IOException if an I/O error occurs during transfer
      */
     public static void transfer(InputStream in, OutputStream out, TransferCallback cb) throws IOException {
-        byte[] bytes = new byte[TRANSFER_BUFFER];
+        Convention.throwIfNull(in, "InputStream cannot be null");
+        Convention.throwIfNull(out, "OutputStream cannot be null");
+        byte[] buffer = new byte[TRANSFER_BUFFER];
         int count;
-        while ((count = in.read(bytes)) != -1) {
-            out.write(bytes, 0, count);
+        while ((count = in.read(buffer)) != -1) {
+            out.write(buffer, 0, count);
             if (cb != null) {
-                cb.bytesTransferred(bytes, count);
+                cb.bytesTransferred(buffer, count);
                 if (cb.isCancelled()) {
                     break;
                 }
@@ -205,25 +205,19 @@ public final class IOUtilities
      * Reads exactly the specified number of bytes from an InputStream into a byte array.
      * <p>
      * This method will continue reading until either the byte array is full or the end of the stream is reached.
+     * Uses DataInputStream.readFully for a simpler implementation.
      * </p>
      *
-     * @param in the InputStream to read from
+     * @param in    the InputStream to read from
      * @param bytes the byte array to fill
      * @throws IOException if the stream ends before the byte array is filled or if any other I/O error occurs
      */
     public static void transfer(InputStream in, byte[] bytes) throws IOException {
-        // Read in the bytes
-        int offset = 0;
-        int numRead;
-        while (offset < bytes.length && (numRead = in.read(bytes, offset, bytes.length - offset)) >= 0) {
-            offset += numRead;
-        }
-
-        if (offset < bytes.length) {
-            throw new IOException("Retry:  Not all bytes were transferred correctly.");
-        }
+        Convention.throwIfNull(in, "InputStream cannot be null");
+        Convention.throwIfNull(bytes, "byte array cannot be null");
+        new DataInputStream(in).readFully(bytes);
     }
-    
+
     /**
      * Transfers all bytes from an input stream to an output stream.
      * <p>
@@ -231,15 +225,17 @@ public final class IOUtilities
      * Uses an internal buffer for efficient transfer.
      * </p>
      *
-     * @param in the source InputStream
+     * @param in  the source InputStream
      * @param out the destination OutputStream
      * @throws IOException if an I/O error occurs during transfer
      */
     public static void transfer(InputStream in, OutputStream out) throws IOException {
-        byte[] bytes = new byte[TRANSFER_BUFFER];
+        Convention.throwIfNull(in, "InputStream cannot be null");
+        Convention.throwIfNull(out, "OutputStream cannot be null");
+        byte[] buffer = new byte[TRANSFER_BUFFER];
         int count;
-        while ((count = in.read(bytes)) != -1) {
-            out.write(bytes, 0, count);
+        while ((count = in.read(buffer)) != -1) {
+            out.write(buffer, 0, count);
         }
     }
 
@@ -251,10 +247,12 @@ public final class IOUtilities
      * </p>
      *
      * @param file the source File
-     * @param out the destination OutputStream
+     * @param out  the destination OutputStream
      * @throws IOException if an I/O error occurs during transfer
      */
     public static void transfer(File file, OutputStream out) throws IOException {
+        Convention.throwIfNull(file, "File cannot be null");
+        Convention.throwIfNull(out, "OutputStream cannot be null");
         try (InputStream in = new BufferedInputStream(Files.newInputStream(file.toPath()), TRANSFER_BUFFER)) {
             transfer(in, out);
         } finally {
@@ -268,11 +266,12 @@ public final class IOUtilities
      * @param reader the XMLStreamReader to close (may be null)
      */
     public static void close(XMLStreamReader reader) {
-        try {
-            if (reader != null) {
+        if (reader != null) {
+            try {
                 reader.close();
+            } catch (XMLStreamException ignore) {
+                // silently ignore
             }
-        } catch (XMLStreamException ignore) {
         }
     }
 
@@ -282,11 +281,12 @@ public final class IOUtilities
      * @param writer the XMLStreamWriter to close (may be null)
      */
     public static void close(XMLStreamWriter writer) {
-        try {
-            if (writer != null) {
+        if (writer != null) {
+            try {
                 writer.close();
+            } catch (XMLStreamException ignore) {
+                // silently ignore
             }
-        } catch (XMLStreamException ignore) {
         }
     }
 
@@ -296,25 +296,27 @@ public final class IOUtilities
      * @param c the Closeable resource to close (may be null)
      */
     public static void close(Closeable c) {
-        try {
-            if (c != null) {
+        if (c != null) {
+            try {
                 c.close();
+            } catch (IOException ignore) {
+                // silently ignore
             }
-        } catch (IOException ignore) {
         }
     }
-    
+
     /**
      * Safely flushes any Flushable resource, suppressing any exceptions.
      *
      * @param f the Flushable resource to flush (may be null)
      */
     public static void flush(Flushable f) {
-        try {
-            if (f != null) {
+        if (f != null) {
+            try {
                 f.flush();
+            } catch (IOException ignore) {
+                // silently ignore
             }
-        } catch (IOException ignore) {
         }
     }
 
@@ -324,11 +326,12 @@ public final class IOUtilities
      * @param writer the XMLStreamWriter to flush (may be null)
      */
     public static void flush(XMLStreamWriter writer) {
-        try {
-            if (writer != null) {
+        if (writer != null) {
+            try {
                 writer.flush();
+            } catch (XMLStreamException ignore) {
+                // silently ignore
             }
-        } catch (XMLStreamException ignore) {
         }
     }
 
@@ -343,8 +346,8 @@ public final class IOUtilities
      * @return the byte array containing the stream's contents, or null if an error occurs
      */
     public static byte[] inputStreamToBytes(InputStream in) {
-        try {
-            FastByteArrayOutputStream out = new FastByteArrayOutputStream(16384);
+        Convention.throwIfNull(in,"Inputstream cannot be null");
+        try (FastByteArrayOutputStream out = new FastByteArrayOutputStream(16384)) {
             transfer(in, out);
             return out.toByteArray();
         } catch (Exception e) {
@@ -358,11 +361,13 @@ public final class IOUtilities
      * The output stream is automatically buffered for optimal performance and properly closed after transfer.
      * </p>
      *
-     * @param c the URLConnection to write to
+     * @param c     the URLConnection to write to
      * @param bytes the byte array to transfer
      * @throws IOException if an I/O error occurs during transfer
      */
     public static void transfer(URLConnection c, byte[] bytes) throws IOException {
+        Convention.throwIfNull(c, "URLConnection cannot be null");
+        Convention.throwIfNull(bytes, "byte array cannot be null");
         try (OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             out.write(bytes);
         }
@@ -374,15 +379,17 @@ public final class IOUtilities
      * Uses BEST_SPEED compression level for optimal performance.
      * </p>
      *
-     * @param original the ByteArrayOutputStream containing the data to compress
+     * @param original   the ByteArrayOutputStream containing the data to compress
      * @param compressed the ByteArrayOutputStream to receive the compressed data
      * @throws IOException if an I/O error occurs during compression
      */
     public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException {
-        DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED);
-        original.writeTo(gzipStream);
-        gzipStream.flush();
-        gzipStream.close();
+        Convention.throwIfNull(original, "Original ByteArrayOutputStream cannot be null");
+        Convention.throwIfNull(compressed, "Compressed ByteArrayOutputStream cannot be null");
+        try (DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED)) {
+            original.writeTo(gzipStream);
+            gzipStream.flush();
+        }
     }
 
     /**
@@ -391,15 +398,17 @@ public final class IOUtilities
      * Uses BEST_SPEED compression level for optimal performance.
      * </p>
      *
-     * @param original the FastByteArrayOutputStream containing the data to compress
+     * @param original   the FastByteArrayOutputStream containing the data to compress
      * @param compressed the FastByteArrayOutputStream to receive the compressed data
      * @throws IOException if an I/O error occurs during compression
      */
     public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException {
-        DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED);
-        gzipStream.write(original.toByteArray(), 0, original.size());
-        gzipStream.flush();
-        gzipStream.close();
+        Convention.throwIfNull(original, "Original FastByteArrayOutputStream cannot be null");
+        Convention.throwIfNull(compressed, "Compressed FastByteArrayOutputStream cannot be null");
+        try (DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(compressed, Deflater.BEST_SPEED)) {
+            gzipStream.write(original.toByteArray(), 0, original.size());
+            gzipStream.flush();
+        }
     }
 
     /**
@@ -416,13 +425,14 @@ public final class IOUtilities
     /**
      * Compresses a portion of a byte array using GZIP compression.
      *
-     * @param bytes the source byte array
+     * @param bytes  the source byte array
      * @param offset the starting position in the source array
-     * @param len the number of bytes to compress
+     * @param len    the number of bytes to compress
      * @return a new byte array containing the compressed data
      * @throws RuntimeException if compression fails
      */
     public static byte[] compressBytes(byte[] bytes, int offset, int len) {
+        Convention.throwIfNull(bytes, "Byte array cannot be null");
         try (FastByteArrayOutputStream byteStream = new FastByteArrayOutputStream()) {
             try (DeflaterOutputStream gzipStream = new AdjustableGZIPOutputStream(byteStream, Deflater.BEST_SPEED)) {
                 gzipStream.write(bytes, offset, len);
@@ -454,18 +464,18 @@ public final class IOUtilities
      * If the input is not GZIP-compressed, returns the original array unchanged.
      * </p>
      *
-     * @param bytes the compressed byte array
+     * @param bytes  the compressed byte array
      * @param offset the starting position in the source array
-     * @param len the number of bytes to uncompress
+     * @param len    the number of bytes to uncompress
      * @return the uncompressed byte array, or the original array if not compressed
      * @throws RuntimeException if decompression fails
      */
     public static byte[] uncompressBytes(byte[] bytes, int offset, int len) {
+        Objects.requireNonNull(bytes, "Byte array cannot be null");
         if (ByteUtilities.isGzipped(bytes)) {
-            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len)) {
-                try (GZIPInputStream gzipStream = new GZIPInputStream(byteStream, 16384)) {
-                    return inputStreamToBytes(gzipStream);
-                }
+            try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len);
+                 GZIPInputStream gzipStream = new GZIPInputStream(byteStream, TRANSFER_BUFFER)) {
+                return inputStreamToBytes(gzipStream);
             } catch (Exception e) {
                 throw new RuntimeException("Error uncompressing bytes", e);
             }
@@ -476,6 +486,7 @@ public final class IOUtilities
     /**
      * Callback interface for monitoring and controlling byte transfers.
      */
+    @FunctionalInterface
     public interface TransferCallback {
         /**
          * Called when bytes are transferred during an operation.
@@ -487,9 +498,12 @@ public final class IOUtilities
 
         /**
          * Checks if the transfer operation should be cancelled.
+         * Default implementation returns false.
          *
          * @return true if the transfer should be cancelled, false to continue
          */
-        boolean isCancelled();
+        default boolean isCancelled() {
+            return false;
+        }
     }
 }

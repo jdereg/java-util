@@ -178,8 +178,8 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
                 cache.put(key, newNode);
                 addToHead(newNode);
                 if (cache.size() > capacity) {
-                    Node<K, V> tail = removeTail();
-                    cache.remove(tail.key);
+                    Node<K, V> tailToRemove = removeTail();
+                    cache.remove(tailToRemove.key);
                 }
                 return null;
             }

@@ -1,7 +1,6 @@
 package com.cedarsoftware.util;
 
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -658,17 +657,16 @@ public final class StringUtilities {
             throw new IllegalArgumentException(String.format("Encoding (%s) is not supported by your JVM", encoding), e);
         }
     }
-
-
-    //  TODO: The following two methods are exactly the same other than the case of the method.
-    //  TODO: deprecate one and remove next major version.
+    
     /**
      * Convert a byte[] into a UTF-8 String.  Preferable used when the encoding
      * is one of the guaranteed Java types and you don't want to have to catch
      * the UnsupportedEncodingException required by Java
      *
      * @param bytes bytes to encode into a string
+     * @deprecated 
      */
+    @Deprecated
     public static String createUtf8String(byte[] bytes) {
         return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
     }

@@ -569,19 +569,19 @@ public class StringUtilitiesTest
     @Test
     void testCreateUtf8String()
     {
-        assertEquals("foo", StringUtilities.createUtf8String(new byte[] {102, 111, 111}));
+        assertEquals("foo", StringUtilities.createUTF8String(new byte[] {102, 111, 111}));
     }
 
     @Test
     void testCreateUtf8StringWithNull()
     {
-        assertNull(null, StringUtilities.createUtf8String(null));
+        assertNull(null, StringUtilities.createUTF8String(null));
     }
 
     @Test
     void testCreateUtf8StringWithEmptyArray()
     {
-        assertEquals("", StringUtilities.createUtf8String(new byte[]{}));
+        assertEquals("", StringUtilities.createUTF8String(new byte[]{}));
     }
 
     @Test

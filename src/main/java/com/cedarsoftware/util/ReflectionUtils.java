@@ -360,8 +360,8 @@ public final class ReflectionUtils {
             return false;
         }
 
-        return !declaringClass.isAssignableFrom(Enum.class) ||
-                (!"hash".equals(fieldName) && !"ordinal".equals(fieldName));
+        return !(declaringClass.isAssignableFrom(Enum.class) &&
+                (fieldName.equals("hash") || fieldName.equals("ordinal")));
     };
     
     /**

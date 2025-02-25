@@ -147,6 +147,10 @@ import static java.lang.reflect.Modifier.isPublic;
  *         limitations under the License.
  */
 public class ClassUtilities {
+
+    private ClassUtilities() {
+    }
+
     private static final Set<Class<?>> prims = new HashSet<>();
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();

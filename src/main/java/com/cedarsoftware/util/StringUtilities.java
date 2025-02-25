@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -115,7 +117,7 @@ import static java.lang.Character.toLowerCase;
  *         limitations under the License.
  */
 public final class StringUtilities {
-    private static char[] _hex = {
+    private static final char[] _hex = {
             '0', '1', '2', '3', '4', '5', '6', '7',
             '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
     };
@@ -636,7 +638,7 @@ public final class StringUtilities {
 
     public static String getRandomChar(Random random, boolean upper) {
         int r = random.nextInt(26);
-        return upper ? EMPTY + (char) ((int) 'A' + r) : EMPTY + (char) ((int) 'a' + r);
+        return upper ? EMPTY + (char) ('A' + r) : EMPTY + (char) ('a' + r);
     }
 
     /**
@@ -658,6 +660,8 @@ public final class StringUtilities {
     }
 
 
+    //  TODO: The following two methods are exactly the same other than the case of the method.
+    //  TODO: deprecate one and remove next major version.
     /**
      * Convert a byte[] into a UTF-8 String.  Preferable used when the encoding
      * is one of the guaranteed Java types and you don't want to have to catch
@@ -666,7 +670,16 @@ public final class StringUtilities {
      * @param bytes bytes to encode into a string
      */
     public static String createUtf8String(byte[] bytes) {
-        return createString(bytes, "UTF-8");
+        return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Convert a byte[] into a UTF-8 encoded String.
+     *
+     * @param bytes bytes to encode into a string
+     */
+    public static String createUTF8String(byte[] bytes) {
+        return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
     }
 
     /**
@@ -675,7 +688,7 @@ public final class StringUtilities {
      * @param s string to encode into bytes
      */
     public static byte[] getUTF8Bytes(String s) {
-        return getBytes(s, "UTF-8");
+        return s == null ? null : s.getBytes(StandardCharsets.UTF_8);
     }
 
     /**
@@ -694,15 +707,6 @@ public final class StringUtilities {
         catch (UnsupportedEncodingException e) {
             throw new IllegalArgumentException(String.format("Encoding (%s) is not supported by your JVM", encoding), e);
         }
-    }
-
-    /**
-     * Convert a byte[] into a UTF-8 encoded String.
-     *
-     * @param bytes bytes to encode into a string
-     */
-    public static String createUTF8String(byte[] bytes) {
-        return createString(bytes, "UTF-8");
     }
 
     /**

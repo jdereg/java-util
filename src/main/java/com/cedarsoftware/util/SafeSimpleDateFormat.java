@@ -118,7 +118,7 @@ public class SafeSimpleDateFormat extends DateFormat
     }
 
     public String toString() {
-        return _format.toString();
+        return _format;
     }
 
     @Override

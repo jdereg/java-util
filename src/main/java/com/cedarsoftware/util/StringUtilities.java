@@ -10,6 +10,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.cedarsoftware.util.ByteUtilities.HEX_ARRAY;
 import static java.lang.Character.toLowerCase;
 
 /**
@@ -116,10 +117,6 @@ import static java.lang.Character.toLowerCase;
  *         limitations under the License.
  */
 public final class StringUtilities {
-    private static final char[] _hex = {
-            '0', '1', '2', '3', '4', '5', '6', '7',
-            '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-    };
     public static String FOLDER_SEPARATOR = "/";
 
     public static String EMPTY = "";
@@ -404,7 +401,7 @@ public final class StringUtilities {
      * @return '0'..'F' in char format.
      */
     private static char convertDigit(int value) {
-        return _hex[value & 0x0f];
+        return HEX_ARRAY[value & 0x0f];
     }
 
     public static int count(String s, char c) {

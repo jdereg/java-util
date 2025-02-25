@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.util.Arrays;
+
 /**
  * A utility class providing static methods for operations on byte arrays and hexadecimal representations.
  * <p>
@@ -63,15 +65,13 @@ package com.cedarsoftware.util;
  */
 public final class ByteUtilities {
     // For encode: Array of hex digits.
-    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
     // For decode: Precomputed lookup table for hex digits.
     // Maps ASCII codes (0–127) to their hex value or -1 if invalid.
     private static final int[] HEX_LOOKUP = new int[128];
     static {
-        for (int i = 0; i < HEX_LOOKUP.length; i++) {
-            HEX_LOOKUP[i] = -1;
-        }
+        Arrays.fill(HEX_LOOKUP, -1);
         for (char c = '0'; c <= '9'; c++) {
             HEX_LOOKUP[c] = c - '0';
         }

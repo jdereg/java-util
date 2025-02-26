@@ -204,8 +204,8 @@ public class ClassUtilities {
     private static volatile Unsafe unsafe;
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new HashMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
-    private static volatile Map<Class<?>, Set<Class<?>>> SUPER_TYPES_CACHE = new LRUCache<>(300);
-    private static volatile Map<Map.Entry<Class<?>, Class<?>>, Integer> CLASS_DISTANCE_CACHE = new LRUCache<>(1000);
+    private static volatile Map<Class<?>, Set<Class<?>>> SUPER_TYPES_CACHE = new LRUCache<>(500);
+    private static volatile Map<Map.Entry<Class<?>, Class<?>>, Integer> CLASS_DISTANCE_CACHE = new LRUCache<>(2000);
     private static final Set<Class<?>> SECURITY_BLOCKED_CLASSES = CollectionUtilities.setOf(
             ProcessBuilder.class, Process.class, ClassLoader.class,
             Constructor.class, Method.class, Field.class, MethodHandle.class);
@@ -450,6 +450,7 @@ public class ClassUtilities {
 
     /**
      * Computes the inheritance distance between two classes/interfaces/primitive types.
+     * Results are cached for performance.
      *
      * @param source      The source class, interface, or primitive type.
      * @param destination The destination class, interface, or primitive type.
@@ -466,66 +467,77 @@ public class ClassUtilities {
         // Use an immutable Map.Entry as the key
         Map.Entry<Class<?>, Class<?>> key = new AbstractMap.SimpleImmutableEntry<>(source, destination);
 
-        return CLASS_DISTANCE_CACHE.computeIfAbsent(key, k -> {
-            // Handle primitives first.
-            if (source.isPrimitive()) {
-                if (destination.isPrimitive()) {
-                    return -1;
-                }
-                if (!isPrimitive(destination)) {
-                    return -1;
-                }
-                return comparePrimitiveToWrapper(destination, source);
-            }
-            if (destination.isPrimitive()) {
-                if (!isPrimitive(source)) {
-                    return -1;
-                }
-                return comparePrimitiveToWrapper(source, destination);
-            }
-
-            // Use a BFS approach to determine the inheritance distance.
-            Queue<Class<?>> queue = new LinkedList<>();
-            Map<Class<?>, Boolean> visited = new IdentityHashMap<>();
-            queue.add(source);
-            visited.put(source, Boolean.TRUE);
-            int distance = 0;
-
-            while (!queue.isEmpty()) {
-                int levelSize = queue.size();
-                distance++;
-
-                for (int i = 0; i < levelSize; i++) {
-                    Class<?> current = queue.poll();
-
-                    // Check the superclass
-                    Class<?> sup = current.getSuperclass();
-                    if (sup != null) {
-                        if (sup.equals(destination)) {
-                            return distance;
-                        }
-                        if (!visited.containsKey(sup)) {
-                            queue.add(sup);
-                            visited.put(sup, Boolean.TRUE);
-                        }
-                    }
-
-                    // Check all interfaces
-                    for (Class<?> iface : current.getInterfaces()) {
-                        if (iface.equals(destination)) {
-                            return distance;
-                        }
-                        if (!visited.containsKey(iface)) {
-                            queue.add(iface);
-                            visited.put(iface, Boolean.TRUE);
-                        }
-                    }
-                }
-            }
-            return -1; // No path found
-        });
+        // Retrieve from cache or compute if absent
+        return CLASS_DISTANCE_CACHE.computeIfAbsent(key, k ->
+                computeInheritanceDistanceInternal(source, destination));
     }
 
+    /**
+     * Internal implementation of inheritance distance calculation.
+     *
+     * @param source      The source class, interface, or primitive type.
+     * @param destination The destination class, interface, or primitive type.
+     * @return The number of steps from the source to the destination, or -1 if no path exists.
+     */
+    private static int computeInheritanceDistanceInternal(Class<?> source, Class<?> destination) {
+        // Handle primitives first.
+        if (source.isPrimitive()) {
+            if (destination.isPrimitive()) {
+                return -1;
+            }
+            if (!isPrimitive(destination)) {
+                return -1;
+            }
+            return comparePrimitiveToWrapper(destination, source);
+        }
+        if (destination.isPrimitive()) {
+            if (!isPrimitive(source)) {
+                return -1;
+            }
+            return comparePrimitiveToWrapper(source, destination);
+        }
+
+        // Use a BFS approach to determine the inheritance distance.
+        Queue<Class<?>> queue = new LinkedList<>();
+        Map<Class<?>, Boolean> visited = new IdentityHashMap<>();
+        queue.add(source);
+        visited.put(source, Boolean.TRUE);
+        int distance = 0;
+
+        while (!queue.isEmpty()) {
+            int levelSize = queue.size();
+            distance++;
+
+            for (int i = 0; i < levelSize; i++) {
+                Class<?> current = queue.poll();
+
+                // Check the superclass
+                Class<?> sup = current.getSuperclass();
+                if (sup != null) {
+                    if (sup.equals(destination)) {
+                        return distance;
+                    }
+                    if (!visited.containsKey(sup)) {
+                        queue.add(sup);
+                        visited.put(sup, Boolean.TRUE);
+                    }
+                }
+
+                // Check all interfaces
+                for (Class<?> iface : current.getInterfaces()) {
+                    if (iface.equals(destination)) {
+                        return distance;
+                    }
+                    if (!visited.containsKey(iface)) {
+                        queue.add(iface);
+                        visited.put(iface, Boolean.TRUE);
+                    }
+                }
+            }
+        }
+        return -1; // No path found
+    }
+    
     /**
      * @param c Class to test
      * @return boolean true if the passed in class is a Java primitive, false otherwise.  The Wrapper classes

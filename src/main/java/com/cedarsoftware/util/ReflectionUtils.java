@@ -47,6 +47,8 @@ import java.util.function.Predicate;
 public final class ReflectionUtils {
     private static final int CACHE_SIZE = 1500;
 
+    // Add a new cache for storing the sorted constructor arrays
+    private static volatile Map<SortedConstructorsCacheKey, Constructor<?>[]> SORTED_CONSTRUCTORS_CACHE = new LRUCache<>(CACHE_SIZE);
     private static volatile Map<ConstructorCacheKey, Constructor<?>> CONSTRUCTOR_CACHE = new LRUCache<>(CACHE_SIZE);
     private static volatile Map<MethodCacheKey, Method> METHOD_CACHE = new LRUCache<>(CACHE_SIZE);
     private static volatile Map<FieldsCacheKey, Collection<Field>> FIELDS_CACHE = new LRUCache<>(CACHE_SIZE);
@@ -55,8 +57,7 @@ public final class ReflectionUtils {
     private static volatile Map<MethodAnnotationCacheKey, Annotation> METHOD_ANNOTATION_CACHE = new LRUCache<>(CACHE_SIZE);
 
     /**
-     * Sets a custom cache implementation for method lookups. The Map implementation must be thread-safe,
-     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
+     * Sets a custom cache implementation for method lookups. 
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -71,8 +72,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for field lookups. The Map implementation must be thread-safe,
-     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
+     * Sets a custom cache implementation for field lookups.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -87,8 +87,7 @@ public final class ReflectionUtils {
     }
     
     /**
-     * Sets a custom cache implementation for field lookups. The Map implementation must be thread-safe,
-     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
+     * Sets a custom cache implementation for field lookups.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -103,8 +102,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for class annotation lookups. The Map implementation must be thread-safe,
-     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
+     * Sets a custom cache implementation for class annotation lookups.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -119,8 +117,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for method annotation lookups. The Map implementation must be thread-safe,
-     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
+     * Sets a custom cache implementation for method annotation lookups.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -135,8 +132,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Sets a custom cache implementation for constructor lookups. The Map implementation must be thread-safe,
-     * like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
+     * Sets a custom cache implementation for constructor lookups.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -150,6 +146,21 @@ public final class ReflectionUtils {
         CONSTRUCTOR_CACHE = (Map) cache;
     }
     
+    /**
+     * Sets a custom cache implementation for sorted constructors lookup.
+     * <p>
+     * This method allows switching out the default LRUCache implementation with a custom
+     * cache implementation. The provided cache must be thread-safe and should implement
+     * the Map interface. This method is typically called once during application initialization.
+     * </p>
+     *
+     * @param cache The custom cache implementation to use for storing constructor lookups.
+     *             Must be thread-safe and implement Map interface.
+     */
+    public static void setSortedConstructorsCache(Map<Object, Constructor<?>[]> cache) {
+        SORTED_CONSTRUCTORS_CACHE = (Map) cache;
+    }
+
     private ReflectionUtils() { }
 
     private static final class ClassAnnotationCacheKey {
@@ -246,6 +257,33 @@ public final class ReflectionUtils {
         }
     }
 
+    // Add this class definition with the other cache keys
+    private static final class SortedConstructorsCacheKey {
+        private final String classLoaderName;
+        private final String className;
+        private final int hash;
+
+        SortedConstructorsCacheKey(Class<?> clazz) {
+            this.classLoaderName = getClassLoaderName(clazz);
+            this.className = clazz.getName();
+            this.hash = Objects.hash(classLoaderName, className);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof SortedConstructorsCacheKey)) return false;
+            SortedConstructorsCacheKey that = (SortedConstructorsCacheKey) o;
+            return Objects.equals(classLoaderName, that.classLoaderName) &&
+                    Objects.equals(className, that.className);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+    }
+    
     private static final class FieldNameCacheKey {
         private final String classLoaderName;
         private final String className;
@@ -363,7 +401,7 @@ public final class ReflectionUtils {
         return !(declaringClass.isAssignableFrom(Enum.class) &&
                 (fieldName.equals("hash") || fieldName.equals("ordinal")));
     };
-    
+
     /**
      * Searches for a specific annotation on a class, examining the entire inheritance hierarchy.
      * Results (including misses) are cached for performance.
@@ -1249,42 +1287,82 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Returns all declared constructors for the given class, storing each one in
-     * the existing CONSTRUCTOR_CACHE (keyed by (classLoader + className + paramTypes)).
-     * <p>
-     * If the constructor is not yet in the cache, we setAccessible(true) when possible
-     * and store it. Subsequent calls will retrieve the same Constructor from the cache.
+     * Returns all constructors for a class, ordered optimally for instantiation.
+     * Constructors are ordered by accessibility (public, protected, package, private)
+     * and within each level by parameter count (most specific first).
      *
-     * @param clazz The class whose constructors we want.
-     * @return An array of all declared constructors for that class.
+     * @param clazz The class to get constructors for
+     * @return Array of constructors in optimal order
      */
     public static Constructor<?>[] getAllConstructors(Class<?> clazz) {
         if (clazz == null) {
             return new Constructor<?>[0];
         }
 
+        // Create proper cache key with classloader information
+        SortedConstructorsCacheKey key = new SortedConstructorsCacheKey(clazz);
+
+        // Use the cache to avoid repeated sorting
+        return SORTED_CONSTRUCTORS_CACHE.computeIfAbsent(key,
+                k -> getAllConstructorsInternal(clazz));
+    }
+    
+    /**
+     * Worker method that retrieves and sorts constructors.
+     * This method ensures all constructors are accessible and cached individually.
+     */
+    private static Constructor<?>[] getAllConstructorsInternal(Class<?> clazz) {
+        // Get the declared constructors
         Constructor<?>[] declared = clazz.getDeclaredConstructors();
         if (declared.length == 0) {
             return declared;
         }
 
+        // Cache each constructor individually and ensure they're accessible
         for (int i = 0; i < declared.length; i++) {
             final Constructor<?> ctor = declared[i];
             Class<?>[] paramTypes = ctor.getParameterTypes();
             ConstructorCacheKey key = new ConstructorCacheKey(clazz, paramTypes);
 
-            // Atomically retrieve or compute the cached Constructor
-            Constructor<?> cached = CONSTRUCTOR_CACHE.computeIfAbsent(key, k -> {
+            // Retrieve from cache or add to cache
+            declared[i] = CONSTRUCTOR_CACHE.computeIfAbsent(key, k -> {
                 ClassUtilities.trySetAccessible(ctor);
-                return ctor;  // store this instance
+                return ctor;
             });
-
-            // Replace declared[i] with the cached reference (ensures consistency)
-            declared[i] = cached;
         }
-        return declared;
+
+        // Create a sorted copy of the constructors
+        Constructor<?>[] result = new Constructor<?>[declared.length];
+        System.arraycopy(declared, 0, result, 0, declared.length);
+
+        // Sort the constructors in optimal order if there's more than one
+        if (result.length > 1) {
+            Arrays.sort(result, (c1, c2) -> {
+                // Compare by accessibility level
+                int mod1 = c1.getModifiers();
+                int mod2 = c2.getModifiers();
+
+                // Public > Protected > Package-private > Private
+                if (Modifier.isPublic(mod1) != Modifier.isPublic(mod2)) {
+                    return Modifier.isPublic(mod1) ? -1 : 1;
+                }
+
+                if (Modifier.isProtected(mod1) != Modifier.isProtected(mod2)) {
+                    return Modifier.isProtected(mod1) ? -1 : 1;
+                }
+
+                if (Modifier.isPrivate(mod1) != Modifier.isPrivate(mod2)) {
+                    return Modifier.isPrivate(mod1) ? 1 : -1; // Note: private gets lower priority
+                }
+
+                // Within same accessibility, prefer more parameters (more specific constructor)
+                return Integer.compare(c2.getParameterCount(), c1.getParameterCount());
+            });
+        }
+
+        return result;
     }
-    
+
     private static String makeParamKey(Class<?>... parameterTypes) {
         if (parameterTypes == null || parameterTypes.length == 0) {
             return "";
@@ -1301,7 +1379,7 @@ public final class ReflectionUtils {
         }
         return builder.toString();
     }
-
+    
     /**
      * Fetches a no-argument method from the specified class, caching the result for subsequent lookups.
      * This is intended for methods that are not overloaded and require no arguments

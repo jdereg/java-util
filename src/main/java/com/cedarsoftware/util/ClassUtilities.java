@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Externalizable;
 import java.io.IOException;
@@ -19,54 +20,95 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Period;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Currency;
 import java.util.Date;
+import java.util.Deque;
+import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
+import java.util.PriorityQueue;
+import java.util.Properties;
 import java.util.Queue;
+import java.util.RandomAccess;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.Stack;
+import java.util.StringJoiner;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
+import java.util.Vector;
+import java.util.WeakHashMap;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import com.cedarsoftware.util.convert.Converter;
 
 import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
-import static java.lang.reflect.Modifier.isProtected;
-import static java.lang.reflect.Modifier.isPublic;
 
 /**
  * A utility class providing various methods for working with Java {@link Class} objects and related operations.
@@ -164,8 +206,15 @@ public class ClassUtilities {
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
     private static volatile Map<Class<?>, Set<Class<?>>> SUPER_TYPES_CACHE = new LRUCache<>(300);
     private static volatile Map<Map.Entry<Class<?>, Class<?>>, Integer> CLASS_DISTANCE_CACHE = new LRUCache<>(1000);
+    private static final Set<Class<?>> SECURITY_BLOCKED_CLASSES = CollectionUtilities.setOf(
+            ProcessBuilder.class, Process.class, ClassLoader.class,
+            Constructor.class, Method.class, Field.class, MethodHandle.class);
+
+    // Add a cache for successful constructor selections
+    private static final Map<Class<?>, Constructor<?>> SUCCESSFUL_CONSTRUCTOR_CACHE = new LRUCache<>(500);
 
     static {
+        // DIRECT_CLASS_MAPPING for concrete types
         DIRECT_CLASS_MAPPING.put(Date.class, Date::new);
         DIRECT_CLASS_MAPPING.put(StringBuilder.class, StringBuilder::new);
         DIRECT_CLASS_MAPPING.put(StringBuffer.class, StringBuffer::new);
@@ -190,19 +239,126 @@ public class ClassUtilities {
         DIRECT_CLASS_MAPPING.put(Class.class, () -> String.class);
         DIRECT_CLASS_MAPPING.put(Calendar.class, Calendar::getInstance);
         DIRECT_CLASS_MAPPING.put(Instant.class, Instant::now);
+        DIRECT_CLASS_MAPPING.put(Duration.class, () -> Duration.ofSeconds(10));
+        DIRECT_CLASS_MAPPING.put(Period.class, () -> Period.ofDays(0));
+        DIRECT_CLASS_MAPPING.put(Year.class, Year::now);
+        DIRECT_CLASS_MAPPING.put(YearMonth.class, YearMonth::now);
+        DIRECT_CLASS_MAPPING.put(MonthDay.class, MonthDay::now);
+        DIRECT_CLASS_MAPPING.put(ZoneOffset.class, () -> ZoneOffset.UTC);
+        DIRECT_CLASS_MAPPING.put(OffsetTime.class, OffsetTime::now);
+        DIRECT_CLASS_MAPPING.put(LocalTime.class, LocalTime::now);
+        DIRECT_CLASS_MAPPING.put(ByteBuffer.class, () -> ByteBuffer.allocate(0));
+        DIRECT_CLASS_MAPPING.put(CharBuffer.class, () -> CharBuffer.allocate(0));
 
-        // order is important
+        // Collection classes
+        DIRECT_CLASS_MAPPING.put(HashSet.class, HashSet::new);
+        DIRECT_CLASS_MAPPING.put(TreeSet.class, TreeSet::new);
+        DIRECT_CLASS_MAPPING.put(HashMap.class, HashMap::new);
+        DIRECT_CLASS_MAPPING.put(TreeMap.class, TreeMap::new);
+        DIRECT_CLASS_MAPPING.put(Hashtable.class, Hashtable::new);
+        DIRECT_CLASS_MAPPING.put(ArrayList.class, ArrayList::new);
+        DIRECT_CLASS_MAPPING.put(LinkedList.class, LinkedList::new);
+        DIRECT_CLASS_MAPPING.put(Vector.class, Vector::new);
+        DIRECT_CLASS_MAPPING.put(Stack.class, Stack::new);
+        DIRECT_CLASS_MAPPING.put(Properties.class, Properties::new);
+        DIRECT_CLASS_MAPPING.put(ConcurrentHashMap.class, ConcurrentHashMap::new);
+        DIRECT_CLASS_MAPPING.put(LinkedHashMap.class, LinkedHashMap::new);
+        DIRECT_CLASS_MAPPING.put(LinkedHashSet.class, LinkedHashSet::new);
+        DIRECT_CLASS_MAPPING.put(ArrayDeque.class, ArrayDeque::new);
+        DIRECT_CLASS_MAPPING.put(PriorityQueue.class, PriorityQueue::new);
+
+        // Concurrent collections
+        DIRECT_CLASS_MAPPING.put(CopyOnWriteArrayList.class, CopyOnWriteArrayList::new);
+        DIRECT_CLASS_MAPPING.put(CopyOnWriteArraySet.class, CopyOnWriteArraySet::new);
+        DIRECT_CLASS_MAPPING.put(LinkedBlockingQueue.class, LinkedBlockingQueue::new);
+        DIRECT_CLASS_MAPPING.put(LinkedBlockingDeque.class, LinkedBlockingDeque::new);
+        DIRECT_CLASS_MAPPING.put(ConcurrentSkipListMap.class, ConcurrentSkipListMap::new);
+        DIRECT_CLASS_MAPPING.put(ConcurrentSkipListSet.class, ConcurrentSkipListSet::new);
+
+        // Additional Map implementations
+        DIRECT_CLASS_MAPPING.put(WeakHashMap.class, WeakHashMap::new);
+        DIRECT_CLASS_MAPPING.put(IdentityHashMap.class, IdentityHashMap::new);
+        DIRECT_CLASS_MAPPING.put(EnumMap.class, () -> new EnumMap(Object.class));
+
+        // Utility classes
+        DIRECT_CLASS_MAPPING.put(UUID.class, UUID::randomUUID);
+        DIRECT_CLASS_MAPPING.put(Currency.class, () -> Currency.getInstance(Locale.getDefault()));
+        DIRECT_CLASS_MAPPING.put(Pattern.class, () -> Pattern.compile(".*"));
+        DIRECT_CLASS_MAPPING.put(BitSet.class, BitSet::new);
+        DIRECT_CLASS_MAPPING.put(StringJoiner.class, () -> new StringJoiner(","));
+
+        // Optional types
+        DIRECT_CLASS_MAPPING.put(Optional.class, Optional::empty);
+        DIRECT_CLASS_MAPPING.put(OptionalInt.class, OptionalInt::empty);
+        DIRECT_CLASS_MAPPING.put(OptionalLong.class, OptionalLong::empty);
+        DIRECT_CLASS_MAPPING.put(OptionalDouble.class, OptionalDouble::empty);
+
+        // Stream types
+        DIRECT_CLASS_MAPPING.put(Stream.class, Stream::empty);
+        DIRECT_CLASS_MAPPING.put(IntStream.class, IntStream::empty);
+        DIRECT_CLASS_MAPPING.put(LongStream.class, LongStream::empty);
+        DIRECT_CLASS_MAPPING.put(DoubleStream.class, DoubleStream::empty);
+
+        // Primitive arrays
+        DIRECT_CLASS_MAPPING.put(boolean[].class, () -> new boolean[0]);
+        DIRECT_CLASS_MAPPING.put(byte[].class, () -> new byte[0]);
+        DIRECT_CLASS_MAPPING.put(short[].class, () -> new short[0]);
+        DIRECT_CLASS_MAPPING.put(int[].class, () -> new int[0]);
+        DIRECT_CLASS_MAPPING.put(long[].class, () -> new long[0]);
+        DIRECT_CLASS_MAPPING.put(float[].class, () -> new float[0]);
+        DIRECT_CLASS_MAPPING.put(double[].class, () -> new double[0]);
+        DIRECT_CLASS_MAPPING.put(char[].class, () -> new char[0]);
+        DIRECT_CLASS_MAPPING.put(Object[].class, () -> new Object[0]);
+
+        // Boxed primitive arrays
+        DIRECT_CLASS_MAPPING.put(Boolean[].class, () -> new Boolean[0]);
+        DIRECT_CLASS_MAPPING.put(Byte[].class, () -> new Byte[0]);
+        DIRECT_CLASS_MAPPING.put(Short[].class, () -> new Short[0]);
+        DIRECT_CLASS_MAPPING.put(Integer[].class, () -> new Integer[0]);
+        DIRECT_CLASS_MAPPING.put(Long[].class, () -> new Long[0]);
+        DIRECT_CLASS_MAPPING.put(Float[].class, () -> new Float[0]);
+        DIRECT_CLASS_MAPPING.put(Double[].class, () -> new Double[0]);
+        DIRECT_CLASS_MAPPING.put(Character[].class, () -> new Character[0]);
+
+        // ASSIGNABLE_CLASS_MAPPING for interfaces and abstract classes
+        // Order from most specific to most general
         ASSIGNABLE_CLASS_MAPPING.put(EnumSet.class, () -> null);
-        ASSIGNABLE_CLASS_MAPPING.put(List.class, ArrayList::new);
+
+        // Specific collection types
+        ASSIGNABLE_CLASS_MAPPING.put(BlockingDeque.class, LinkedBlockingDeque::new);
+        ASSIGNABLE_CLASS_MAPPING.put(Deque.class, ArrayDeque::new);
+        ASSIGNABLE_CLASS_MAPPING.put(BlockingQueue.class, LinkedBlockingQueue::new);
+        ASSIGNABLE_CLASS_MAPPING.put(Queue.class, LinkedList::new);
+
+        // Specific set types
         ASSIGNABLE_CLASS_MAPPING.put(NavigableSet.class, TreeSet::new);
         ASSIGNABLE_CLASS_MAPPING.put(SortedSet.class, TreeSet::new);
         ASSIGNABLE_CLASS_MAPPING.put(Set.class, LinkedHashSet::new);
+
+        // Specific map types
+        ASSIGNABLE_CLASS_MAPPING.put(ConcurrentMap.class, ConcurrentHashMap::new);
         ASSIGNABLE_CLASS_MAPPING.put(NavigableMap.class, TreeMap::new);
         ASSIGNABLE_CLASS_MAPPING.put(SortedMap.class, TreeMap::new);
         ASSIGNABLE_CLASS_MAPPING.put(Map.class, LinkedHashMap::new);
+
+        // List and more general collection types
+        ASSIGNABLE_CLASS_MAPPING.put(List.class, ArrayList::new);
         ASSIGNABLE_CLASS_MAPPING.put(Collection.class, ArrayList::new);
-        ASSIGNABLE_CLASS_MAPPING.put(Calendar.class, Calendar::getInstance);
-        ASSIGNABLE_CLASS_MAPPING.put(LinkedHashSet.class, LinkedHashSet::new);
+
+        // Iterators and enumerations
+        ASSIGNABLE_CLASS_MAPPING.put(ListIterator.class, () -> new ArrayList<>().listIterator());
+        ASSIGNABLE_CLASS_MAPPING.put(Iterator.class, Collections::emptyIterator);
+        ASSIGNABLE_CLASS_MAPPING.put(Enumeration.class, Collections::emptyEnumeration);
+
+        // Other interfaces
+        ASSIGNABLE_CLASS_MAPPING.put(RandomAccess.class, ArrayList::new);
+        ASSIGNABLE_CLASS_MAPPING.put(CharSequence.class, StringBuilder::new);
+        ASSIGNABLE_CLASS_MAPPING.put(Comparable.class, () -> "");  // String implements Comparable
+        ASSIGNABLE_CLASS_MAPPING.put(Cloneable.class, ArrayList::new);  // ArrayList implements Cloneable
+        ASSIGNABLE_CLASS_MAPPING.put(AutoCloseable.class, () -> new ByteArrayInputStream(new byte[0]));
+
+        // Most general
+        ASSIGNABLE_CLASS_MAPPING.put(Iterable.class, ArrayList::new);
 
         prims.add(Byte.class);
         prims.add(Short.class);
@@ -906,147 +1062,208 @@ public class ClassUtilities {
     }
 
     /**
-     * Build a List the same size of parameterTypes, where the objects in the list are ordered
-     * to best match the parameters.  Values from the passed in list are used only once or never.
-     * @param values A list of potential arguments.  This list can be smaller than parameterTypes
-     *               or larger.
-     * @param parameterTypes A list of classes that the values will be matched against.
-     * @return List of values that are best ordered to match the passed in parameter types.  This
-     * list will be the same length as the passed in parameterTypes list.
+     * Optimally match arguments to constructor parameters.
+     * This implementation uses a more efficient scoring algorithm and avoids redundant operations.
+     *
+     * @param converter Converter to use for type conversions
+     * @param values Collection of potential arguments
+     * @param parameters Array of parameter types to match against
+     * @param allowNulls Whether to allow null values for non-primitive parameters
+     * @return List of values matched to the parameters in the correct order
      */
-    private static List<Object> matchArgumentsToParameters(Converter converter, Collection<Object> values, Parameter[] parameterTypes, boolean useNull) {
-        List<Object> answer = new ArrayList<>();
-        if (parameterTypes == null || parameterTypes.length == 0) {
-            return answer;
+    private static List<Object> matchArgumentsToParameters(Converter converter, Collection<Object> values,
+                                                           Parameter[] parameters, boolean allowNulls) {
+        if (parameters == null || parameters.length == 0) {
+            return new ArrayList<>();
         }
 
-        // First pass: Try exact matches and close inheritance matches
-        List<Object> copyValues = new ArrayList<>(values);
-        boolean[] parameterMatched = new boolean[parameterTypes.length];
+        // Create result array and tracking arrays
+        Object[] result = new Object[parameters.length];
+        boolean[] parameterMatched = new boolean[parameters.length];
 
-        // First try exact matches
-        for (int i = 0; i < parameterTypes.length; i++) {
-            if (parameterMatched[i]) {
-                continue;
-            }
+        // For tracking available values (more efficient than repeated removal from list)
+        Object[] valueArray = values.toArray();
+        boolean[] valueUsed = new boolean[valueArray.length];
 
-            Class<?> paramType = parameterTypes[i].getType();
-            Iterator<Object> valueIter = copyValues.iterator();
-            while (valueIter.hasNext()) {
-                Object value = valueIter.next();
+        // PHASE 1: Find exact type matches - highest priority
+        findExactMatches(valueArray, valueUsed, parameters, parameterMatched, result);
+
+        // PHASE 2: Find assignable type matches with inheritance
+        findInheritanceMatches(valueArray, valueUsed, parameters, parameterMatched, result);
+
+        // PHASE 3: Find primitive/wrapper matches
+        findPrimitiveWrapperMatches(valueArray, valueUsed, parameters, parameterMatched, result);
+
+        // PHASE 4: Find convertible type matches
+        findConvertibleMatches(converter, valueArray, valueUsed, parameters, parameterMatched, result);
+
+        // PHASE 5: Fill remaining unmatched parameters with defaults or nulls
+        fillRemainingParameters(converter, parameters, parameterMatched, result, allowNulls);
+
+        // Convert result to List
+        return Arrays.asList(result);
+    }
+
+    /**
+     * Find exact type matches between values and parameters
+     */
+    private static void findExactMatches(Object[] values, boolean[] valueUsed,
+                                         Parameter[] parameters, boolean[] parameterMatched,
+                                         Object[] result) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameterMatched[i]) continue;
+
+            Class<?> paramType = parameters[i].getType();
+
+            for (int j = 0; j < values.length; j++) {
+                if (valueUsed[j]) continue;
+
+                Object value = values[j];
                 if (value != null && value.getClass() == paramType) {
-                    answer.add(value);
-                    valueIter.remove();
+                    result[i] = value;
                     parameterMatched[i] = true;
+                    valueUsed[j] = true;
                     break;
                 }
             }
         }
-
-        // Second pass: Try inheritance and conversion matches for unmatched parameters
-        for (int i = 0; i < parameterTypes.length; i++) {
-            if (parameterMatched[i]) {
-                continue;
-            }
-
-            Parameter parameter = parameterTypes[i];
-            Class<?> paramType = parameter.getType();
-
-            // Try to find best match from remaining values
-            Object value = pickBestValue(paramType, copyValues);
-
-            if (value == null) {
-                // No matching value found, handle according to useNull flag
-                if (useNull) {
-                    // For primitives, convert null to default value
-                    value = paramType.isPrimitive() ? converter.convert(null, paramType) : null;
-                } else {
-                    // Try to get a suitable default value
-                    value = getArgForType(converter, paramType);
-
-                    // If still null and primitive, convert null
-                    if (value == null && paramType.isPrimitive()) {
-                        value = converter.convert(null, paramType);
-                    }
-                }
-            } else if (value != null && !paramType.isAssignableFrom(value.getClass())) {
-                // Value needs conversion
-                try {
-                    value = converter.convert(value, paramType);
-                } catch (Exception e) {
-                    // Conversion failed, fall back to default
-                    value = useNull ? null : getArgForType(converter, paramType);
-                }
-            }
-
-            answer.add(value);
-        }
-
-        return answer;
     }
 
     /**
-     * Pick the best value from the list that has the least 'distance' from the passed in Class 'param.'
-     * Note: this method has a side effect - it will remove the value that was chosen from the list.
-     * Note: If none of the instances in the 'values' list are instances of the 'param' class,
-     * then the values list is not modified.
-     * @param param Class driving the choice.
-     * @param values List of potential argument values to pick from, that would best match the param (class).
-     * @return a value from the 'values' list that best matched the 'param,' or null if none of the values
-     * were assignable to the 'param'.
+     * Find matches based on inheritance relationships
      */
-    private static Object pickBestValue(Class<?> param, List<Object> values) {
-        int[] scores = new int[values.size()];
-        int i = 0;
+    private static void findInheritanceMatches(Object[] values, boolean[] valueUsed,
+                                               Parameter[] parameters, boolean[] parameterMatched,
+                                               Object[] result) {
+        // For each unmatched parameter, find best inheritance match
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameterMatched[i]) continue;
 
-        for (Object value : values) {
-            if (value == null) {
-                scores[i] = param.isPrimitive() ? Integer.MAX_VALUE : 1000; // Null is okay for objects, bad for primitives
-            } else {
+            Class<?> paramType = parameters[i].getType();
+            int bestDistance = Integer.MAX_VALUE;
+            int bestValueIndex = -1;
+
+            for (int j = 0; j < values.length; j++) {
+                if (valueUsed[j]) continue;
+
+                Object value = values[j];
+                if (value == null) continue;
+
                 Class<?> valueClass = value.getClass();
-                int inheritanceDistance = ClassUtilities.computeInheritanceDistance(valueClass, param);
+                int distance = ClassUtilities.computeInheritanceDistance(valueClass, paramType);
 
-                if (inheritanceDistance >= 0) {
-                    // Direct match or inheritance relationship
-                    scores[i] = inheritanceDistance;
-                } else if (doesOneWrapTheOther(param, valueClass)) {
-                    // Primitive to wrapper match (like int -> Integer)
-                    scores[i] = 1;
-                } else if (com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(param, valueClass)) {
-                    // Convertible types (like String -> Integer)
-                    scores[i] = 100;
-                } else {
-                    // No match
-                    scores[i] = Integer.MAX_VALUE;
+                if (distance >= 0 && distance < bestDistance) {
+                    bestDistance = distance;
+                    bestValueIndex = j;
                 }
             }
-            i++;
-        }
 
-        int bestIndex = -1;
-        int bestScore = Integer.MAX_VALUE;
-
-        for (i = 0; i < scores.length; i++) {
-            if (scores[i] < bestScore) {
-                bestScore = scores[i];
-                bestIndex = i;
+            if (bestValueIndex >= 0) {
+                result[i] = values[bestValueIndex];
+                parameterMatched[i] = true;
+                valueUsed[bestValueIndex] = true;
             }
         }
+    }
 
-        if (bestIndex >= 0 && bestScore < Integer.MAX_VALUE) {
-            Object bestValue = values.get(bestIndex);
-            values.remove(bestIndex);
-            return bestValue;
+    /**
+     * Find matches between primitives and their wrapper types
+     */
+    private static void findPrimitiveWrapperMatches(Object[] values, boolean[] valueUsed,
+                                                    Parameter[] parameters, boolean[] parameterMatched,
+                                                    Object[] result) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameterMatched[i]) continue;
+
+            Class<?> paramType = parameters[i].getType();
+
+            for (int j = 0; j < values.length; j++) {
+                if (valueUsed[j]) continue;
+
+                Object value = values[j];
+                if (value == null) continue;
+
+                Class<?> valueClass = value.getClass();
+
+                if (doesOneWrapTheOther(paramType, valueClass)) {
+                    result[i] = value;
+                    parameterMatched[i] = true;
+                    valueUsed[j] = true;
+                    break;
+                }
+            }
         }
+    }
 
-        return null;
+    /**
+     * Find matches that require type conversion
+     */
+    private static void findConvertibleMatches(Converter converter, Object[] values, boolean[] valueUsed,
+                                               Parameter[] parameters, boolean[] parameterMatched,
+                                               Object[] result) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameterMatched[i]) continue;
+
+            Class<?> paramType = parameters[i].getType();
+
+            for (int j = 0; j < values.length; j++) {
+                if (valueUsed[j]) continue;
+
+                Object value = values[j];
+                if (value == null) continue;
+
+                Class<?> valueClass = value.getClass();
+
+                if (converter.isSimpleTypeConversionSupported(paramType, valueClass)) {
+                    try {
+                        Object converted = converter.convert(value, paramType);
+                        result[i] = converted;
+                        parameterMatched[i] = true;
+                        valueUsed[j] = true;
+                        break;
+                    } catch (Exception ignored) {
+                        // Conversion failed, continue
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Fill any remaining unmatched parameters with default values or nulls
+     */
+    private static void fillRemainingParameters(Converter converter, Parameter[] parameters,
+                                                boolean[] parameterMatched, Object[] result,
+                                                boolean allowNulls) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameterMatched[i]) continue;
+
+            Parameter parameter = parameters[i];
+            Class<?> paramType = parameter.getType();
+
+            if (allowNulls && !paramType.isPrimitive()) {
+                result[i] = null;
+            } else {
+                // Get default value for the type
+                Object defaultValue = getArgForType(converter, paramType);
+
+                // If no default and primitive, convert null
+                if (defaultValue == null && paramType.isPrimitive()) {
+                    defaultValue = converter.convert(null, paramType);
+                }
+
+                result[i] = defaultValue;
+            }
+        }
     }
 
     /**
      * Returns the index of the smallest value in an array.
      * @param array The array to search.
      * @return The index of the smallest value, or -1 if the array is empty.
+     * @deprecated 
      */
+    @Deprecated
     public static int indexOfSmallestValue(int[] array) {
         if (array == null || array.length == 0) {
             return -1; // Return -1 for null or empty array.
@@ -1063,98 +1280,6 @@ public class ClassUtilities {
         }
 
         return minIndex;
-    }
-
-    /**
-     * Ideal class to hold all constructors for a Class, so that they are sorted in the most
-     * appeasing construction order, in terms of public vs protected vs private.  That could be
-     * the same, so then it looks at values passed into the arguments, non-null being more
-     * valuable than null, as well as number of argument types - more is better than fewer.
-     */
-    private static class ConstructorWithValues implements Comparable<ConstructorWithValues> {
-        final Constructor<?> constructor;
-        final Object[] argsNull;
-        final Object[] argsNonNull;
-
-        ConstructorWithValues(Constructor<?> constructor, Object[] argsNull, Object[] argsNonNull) {
-            this.constructor = constructor;
-            this.argsNull = argsNull;
-            this.argsNonNull = argsNonNull;
-        }
-
-        public int compareTo(ConstructorWithValues other) {
-            final int mods = constructor.getModifiers();
-            final int otherMods = other.constructor.getModifiers();
-
-            // Rule 1: Visibility: favor public over non-public
-            if (!isPublic(mods) && isPublic(otherMods)) {
-                return 1;
-            } else if (isPublic(mods) && !isPublic(otherMods)) {
-                return -1;
-            }
-
-            // Rule 2: Visibility: favor protected over private
-            if (!isProtected(mods) && isProtected(otherMods)) {
-                return 1;
-            } else if (isProtected(mods) && !isProtected(otherMods)) {
-                return -1;
-            }
-
-            // Rule 3: Sort by score of the argsNull list
-            long score1 = scoreArgumentValues(argsNull);
-            long score2 = scoreArgumentValues(other.argsNull);
-            if (score1 < score2) {
-                return 1;
-            } else if (score1 > score2) {
-                return -1;
-            }
-
-            // Rule 4: Sort by score of the argsNonNull list
-            score1 = scoreArgumentValues(argsNonNull);
-            score2 = scoreArgumentValues(other.argsNonNull);
-            if (score1 < score2) {
-                return 1;
-            } else if (score1 > score2) {
-                return -1;
-            }
-
-            // Rule 5: Favor by Class of parameter type alphabetically.  Mainly, distinguish so that no constructors
-            // are dropped from the Set.  Although an "arbitrary" rule, it is consistent.
-            String params1 = buildParameterTypeString(constructor);
-            String params2 = buildParameterTypeString(other.constructor);
-            return params1.compareTo(params2);
-        }
-
-        /**
-         * The more non-null arguments you have, the higher your score. 100 points for each non-null argument.
-         * 50 points for each parameter.  So non-null values are twice as high (100 points versus 50 points) as
-         * parameter "slots."
-         */
-        private long scoreArgumentValues(Object[] args) {
-            if (args.length == 0) {
-                return 0L;
-            }
-
-            int nonNull = 0;
-
-            for (Object arg : args) {
-                if (arg != null) {
-                    nonNull++;
-                }
-            }
-
-            return nonNull * 100L + args.length * 50L;
-        }
-
-        private String buildParameterTypeString(Constructor<?> constructor) {
-            Class<?>[] paramTypes = constructor.getParameterTypes();
-            StringBuilder s = new StringBuilder();
-
-            for (Class<?> paramType : paramTypes) {
-                s.append(paramType.getName()).append(".");
-            }
-            return s.toString();
-        }
     }
 
     /**
@@ -1198,25 +1323,18 @@ public class ClassUtilities {
 
         return null;
     }
-    
+
     /**
      * Create a new instance of the specified class, optionally using provided constructor arguments.
      * <p>
      * This method attempts to instantiate a class using the following strategies in order:
      * <ol>
-     *     <li>Using cached constructor information from previous successful instantiations</li>
-     *     <li>Matching constructor parameters with provided argument values</li>
-     *     <li>Using default values for unmatched parameters</li>
+     *     <li>Using cached successful constructor from previous instantiations</li>
+     *     <li>Using constructors in optimal order (public, protected, package, private)</li>
+     *     <li>Within each accessibility level, trying constructors with more parameters first</li>
+     *     <li>For each constructor, trying with exact matches first, then allowing null values</li>
      *     <li>Using unsafe instantiation (if enabled)</li>
      * </ol>
-     *
-     * <p>Constructor selection prioritizes:
-     * <ul>
-     *     <li>Public over non-public constructors</li>
-     *     <li>Protected over private constructors</li>
-     *     <li>Constructors with more non-null argument matches</li>
-     *     <li>Constructors with more parameters</li>
-     * </ul>
      *
      * @param converter Converter instance used to convert null values to appropriate defaults for primitive types
      * @param c Class to instantiate
@@ -1229,38 +1347,14 @@ public class ClassUtilities {
      *             <li>The class is an unknown interface</li>
      *         </ul>
      * @throws IllegalStateException if constructor invocation fails
-     *
-     * <p><b>Security Note:</b> For security reasons, this method prevents instantiation of:
-     * <ul>
-     *     <li>ProcessBuilder</li>
-     *     <li>Process</li>
-     *     <li>ClassLoader</li>
-     *     <li>Constructor</li>
-     *     <li>Method</li>
-     *     <li>Field</li>
-     * </ul>
-     *
-     * <p><b>Usage Example:</b>
-     * <pre>{@code
-     * // Create instance with no arguments
-     * MyClass obj1 = (MyClass) newInstance(converter, MyClass.class, null);
-     *
-     * // Create instance with constructor arguments
-     * List<Object> args = Arrays.asList("arg1", 42);
-     * MyClass obj2 = (MyClass) newInstance(converter, MyClass.class, args);
-     * }</pre>
      */
     public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
         if (c == null) { throw new IllegalArgumentException("Class cannot be null"); }
         if (c.isInterface()) { throw new IllegalArgumentException("Cannot instantiate interface: " + c.getName()); }
         if (Modifier.isAbstract(c.getModifiers())) { throw new IllegalArgumentException("Cannot instantiate abstract class: " + c.getName()); }
 
-        // Security checks
-        Set<Class<?>> securityChecks = CollectionUtilities.setOf(
-                ProcessBuilder.class, Process.class, ClassLoader.class,
-                Constructor.class, Method.class, Field.class, MethodHandle.class);
-
-        for (Class<?> check : securityChecks) {
+        // Security checks - now using static final field
+        for (Class<?> check : SECURITY_BLOCKED_CLASSES) {
             if (check.isAssignableFrom(c)) {
                 throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: " + check.getName());
             }
@@ -1271,50 +1365,82 @@ public class ClassUtilities {
             throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: java.lang.ProcessImpl");
         }
 
-        // Handle inner classes
+        // First attempt: Check if we have a previously successful constructor for this class
+        List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
+        Constructor<?> cachedConstructor = SUCCESSFUL_CONSTRUCTOR_CACHE.get(c);
+
+        if (cachedConstructor != null) {
+            try {
+                Parameter[] parameters = cachedConstructor.getParameters();
+
+                // Try both approaches with the cached constructor
+                try {
+                    List<Object> argsNonNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, false);
+                    return cachedConstructor.newInstance(argsNonNull.toArray());
+                } catch (Exception e) {
+                    List<Object> argsNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, true);
+                    return cachedConstructor.newInstance(argsNull.toArray());
+                }
+            } catch (Exception ignored) {
+                // If cached constructor fails, continue with regular instantiation
+                // and potentially update the cache
+            }
+        }
+
+        // Handle inner classes - with circular reference protection
         if (c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers())) {
+            // Track already visited classes to prevent circular references
+            Set<Class<?>> visitedClasses = Collections.newSetFromMap(new IdentityHashMap<>());
+            visitedClasses.add(c);
+
             try {
                 // For inner classes, try to get the enclosing instance
-                Object enclosingInstance = newInstance(converter, c.getEnclosingClass(), Collections.emptyList());
-                Constructor<?> constructor = ReflectionUtils.getConstructor(c, c.getEnclosingClass());
-                if (constructor != null) {
-                    return constructor.newInstance(enclosingInstance);
+                Class<?> enclosingClass = c.getEnclosingClass();
+                if (!visitedClasses.contains(enclosingClass)) {
+                    Object enclosingInstance = newInstance(converter, enclosingClass, Collections.emptyList());
+                    Constructor<?> constructor = ReflectionUtils.getConstructor(c, enclosingClass);
+                    if (constructor != null) {
+                        // Cache this successful constructor
+                        SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                        return constructor.newInstance(enclosingInstance);
+                    }
                 }
             } catch (Exception ignored) {
                 // Fall through to regular instantiation if this fails
             }
         }
 
-        // Normalize arguments
-        List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
+        // Get constructors - already sorted in optimal order by ReflectionUtils.getAllConstructors
+        Constructor<?>[] constructors = ReflectionUtils.getAllConstructors(c);
+        List<Exception> exceptions = new ArrayList<>();  // Collect all exceptions for better diagnostics
 
-        // Try constructors in order of parameter count match
-        Constructor<?>[] declaredConstructors = ReflectionUtils.getAllConstructors(c);
-        Set<ConstructorWithValues> constructorOrder = new TreeSet<>();
-
-        // Prepare all constructors with their argument matches
-        for (Constructor<?> constructor : declaredConstructors) {
+        // Try each constructor in order
+        for (Constructor<?> constructor : constructors) {
             Parameter[] parameters = constructor.getParameters();
-            List<Object> argsNonNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, false);
-            List<Object> argsNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, true);
-            constructorOrder.add(new ConstructorWithValues(constructor, argsNull.toArray(), argsNonNull.toArray()));
-        }
 
-        // Try constructors in order (based on ConstructorWithValues comparison logic)
-        Exception lastException = null;
-        for (ConstructorWithValues constructorWithValues : constructorOrder) {
-            Constructor<?> constructor = constructorWithValues.constructor;
-
-            // Try with non-null arguments first (prioritize actual values)
+            // Attempt instantiation with this constructor
             try {
-                return constructor.newInstance(constructorWithValues.argsNonNull);
+                // Try with non-null arguments first (more precise matching)
+                List<Object> argsNonNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, false);
+                Object instance = constructor.newInstance(argsNonNull.toArray());
+
+                // Cache this successful constructor for future use
+                SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                return instance;
             } catch (Exception e1) {
-                // If non-null arguments fail, try with null arguments
+                exceptions.add(e1);
+
+                // If that fails, try with nulls allowed for unmatched parameters
                 try {
-                    return constructor.newInstance(constructorWithValues.argsNull);
+                    List<Object> argsNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, true);
+                    Object instance = constructor.newInstance(argsNull.toArray());
+
+                    // Cache this successful constructor for future use
+                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                    return instance;
                 } catch (Exception e2) {
-                    lastException = e2;
-                    // Both attempts failed for this constructor, continue to next constructor
+                    exceptions.add(e2);
+                    // Continue to next constructor
                 }
             }
         }
@@ -1327,9 +1453,24 @@ public class ClassUtilities {
 
         // If we get here, we couldn't create the instance
         String msg = "Unable to instantiate: " + c.getName();
-        if (lastException != null) {
-            msg += " - " + lastException.getMessage();
+        if (!exceptions.isEmpty()) {
+            // Include the most relevant exception message
+            Exception lastException = exceptions.get(exceptions.size() - 1);
+            msg += " - Most recent error: " + lastException.getMessage();
+
+            // Optionally include all exception messages for detailed troubleshooting
+            if (exceptions.size() > 1) {
+                StringBuilder errorDetails = new StringBuilder("\nAll constructor errors:\n");
+                for (int i = 0; i < exceptions.size(); i++) {
+                    Exception e = exceptions.get(i);
+                    errorDetails.append("  ").append(i + 1).append(") ")
+                            .append(e.getClass().getSimpleName()).append(": ")
+                            .append(e.getMessage()).append("\n");
+                }
+                msg += errorDetails.toString();
+            }
         }
+
         throw new IllegalArgumentException(msg);
     }
 

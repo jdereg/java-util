@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
-import java.lang.invoke.MethodHandle;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -38,7 +37,6 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -196,7 +194,8 @@ public class ClassUtilities {
     private static final Set<Class<?>> prims = new HashSet<>();
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();
-    private static final Map<Class<?>, Class<?>> wrapperMap = new HashMap<>();
+    private static final Map<Class<?>, Class<?>> wrapperMap;
+
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
     private static final ConcurrentHashMapNullSafe<Class<?>, ClassLoader> osgiClassLoaders = new ConcurrentHashMapNullSafe<>();
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
@@ -204,14 +203,25 @@ public class ClassUtilities {
     private static volatile Unsafe unsafe;
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new HashMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
-    private static volatile Map<Class<?>, Set<Class<?>>> SUPER_TYPES_CACHE = new LRUCache<>(500);
-    private static volatile Map<Map.Entry<Class<?>, Class<?>>, Integer> CLASS_DISTANCE_CACHE = new LRUCache<>(2000);
-    private static final Set<Class<?>> SECURITY_BLOCKED_CLASSES = CollectionUtilities.setOf(
-            ProcessBuilder.class, Process.class, ClassLoader.class,
-            Constructor.class, Method.class, Field.class, MethodHandle.class);
+    /**
+     * A cache that maps a Class<?> to its associated enum type (if any).
+     */
+    private static final ClassValue<Class<?>> ENUM_CLASS_CACHE = new ClassValue<Class<?>>() {
+        @Override
+        protected Class<?> computeValue(Class<?> type) {
+            return computeEnum(type);
+        }
+    };
 
-    // Add a cache for successful constructor selections
+    /**
+     * Add a cache for successful constructor selections
+     */
     private static final Map<Class<?>, Constructor<?>> SUCCESSFUL_CONSTRUCTOR_CACHE = new LRUCache<>(500);
+
+    /**
+     * Cache for class hierarchy information
+     */
+    private static final ConcurrentHashMap<Class<?>, ClassHierarchyInfo> CLASS_HIERARCHY_CACHE = new ConcurrentHashMap<>();
 
     static {
         // DIRECT_CLASS_MAPPING for concrete types
@@ -391,42 +401,38 @@ public class ClassUtilities {
         primitiveToWrapper.put(short.class, Short.class);
         primitiveToWrapper.put(void.class, Void.class);
 
-        wrapperMap.put(int.class, Integer.class);
-        wrapperMap.put(Integer.class, int.class);
-        wrapperMap.put(char.class, Character.class);
-        wrapperMap.put(Character.class, char.class);
-        wrapperMap.put(byte.class, Byte.class);
-        wrapperMap.put(Byte.class, byte.class);
-        wrapperMap.put(short.class, Short.class);
-        wrapperMap.put(Short.class, short.class);
-        wrapperMap.put(long.class, Long.class);
-        wrapperMap.put(Long.class, long.class);
-        wrapperMap.put(float.class, Float.class);
-        wrapperMap.put(Float.class, float.class);
-        wrapperMap.put(double.class, Double.class);
-        wrapperMap.put(Double.class, double.class);
-        wrapperMap.put(boolean.class, Boolean.class);
-        wrapperMap.put(Boolean.class, boolean.class);
+
+        Map<Class<?>, Class<?>> map = new HashMap<>();
+        map.put(int.class, Integer.class);
+        map.put(Integer.class, int.class);
+        map.put(char.class, Character.class);
+        map.put(Character.class, char.class);
+        map.put(byte.class, Byte.class);
+        map.put(Byte.class, byte.class);
+        map.put(short.class, Short.class);
+        map.put(Short.class, short.class);
+        map.put(long.class, Long.class);
+        map.put(Long.class, long.class);
+        map.put(float.class, Float.class);
+        map.put(Float.class, float.class);
+        map.put(double.class, Double.class);
+        map.put(Double.class, double.class);
+        map.put(boolean.class, Boolean.class);
+        map.put(Boolean.class, boolean.class);
+        wrapperMap = Collections.unmodifiableMap(map);
     }
 
     /**
-     * Sets a custom cache implementation for holding results of getAllSuperTypes(). The Set implementation must be
-     * thread-safe, like ConcurrentSet, ConcurrentSkipListSet, etc.
-     * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
-     *             Must be thread-safe and implement Map interface.
+     * Container for class hierarchy information to avoid redundant calculations
      */
-    public static void setSuperTypesCache(Map<Class<?>, Set<Class<?>>> cache) {
-        SUPER_TYPES_CACHE = cache;
-    }
+    public static class ClassHierarchyInfo {
+        final Set<Class<?>> allSupertypes;
+        public final Map<Class<?>, Integer> distanceMap;
 
-    /**
-     * Sets a custom cache implementation for holding results of getAllSuperTypes(). The Map implementation must be
-     * thread-safe, like ConcurrentHashMap, LRUCache, ConcurrentSkipListMap, etc.
-     * @param cache The custom cache implementation to use for storing results of getAllSuperTypes().
-     *             Must be thread-safe and implement Map interface.
-     */
-    public static void setClassDistanceCache(Map<Map.Entry<Class<?>, Class<?>>, Integer> cache) {
-        CLASS_DISTANCE_CACHE = cache;
+        ClassHierarchyInfo(Set<Class<?>> supertypes, Map<Class<?>, Integer> distances) {
+            this.allSupertypes = supertypes;
+            this.distanceMap = distances;
+        }
     }
 
     /**
@@ -456,6 +462,14 @@ public class ClassUtilities {
      * @param destination The destination class, interface, or primitive type.
      * @return The number of steps from the source to the destination, or -1 if no path exists.
      */
+    /**
+     * Computes the inheritance distance between two classes/interfaces/primitive types.
+     * Results are cached for performance.
+     *
+     * @param source      The source class, interface, or primitive type.
+     * @param destination The destination class, interface, or primitive type.
+     * @return The number of steps from the source to the destination, or -1 if no path exists.
+     */
     public static int computeInheritanceDistance(Class<?> source, Class<?> destination) {
         if (source == null || destination == null) {
             return -1;
@@ -464,78 +478,57 @@ public class ClassUtilities {
             return 0;
         }
 
-        // Use an immutable Map.Entry as the key
-        Map.Entry<Class<?>, Class<?>> key = new AbstractMap.SimpleImmutableEntry<>(source, destination);
+        // Handle primitives specially
+        if (source.isPrimitive() || isPrimitive(source)) {
+            if (destination.isPrimitive() || isPrimitive(destination)) {
+                return comparePrimitives(source, destination);
+            }
+        }
 
-        // Retrieve from cache or compute if absent
-        return CLASS_DISTANCE_CACHE.computeIfAbsent(key, k ->
-                computeInheritanceDistanceInternal(source, destination));
+        // Use the cached hierarchy info for non-primitive cases
+        return getClassHierarchyInfo(source).distanceMap.getOrDefault(destination, -1);
     }
 
     /**
-     * Internal implementation of inheritance distance calculation.
-     *
-     * @param source      The source class, interface, or primitive type.
-     * @param destination The destination class, interface, or primitive type.
-     * @return The number of steps from the source to the destination, or -1 if no path exists.
+     * Compare two primitive or wrapper types to see if they represent the same primitive type.
      */
-    private static int computeInheritanceDistanceInternal(Class<?> source, Class<?> destination) {
-        // Handle primitives first.
-        if (source.isPrimitive()) {
-            if (destination.isPrimitive()) {
-                return -1;
-            }
-            if (!isPrimitive(destination)) {
-                return -1;
-            }
-            return comparePrimitiveToWrapper(destination, source);
-        }
-        if (destination.isPrimitive()) {
-            if (!isPrimitive(source)) {
-                return -1;
-            }
-            return comparePrimitiveToWrapper(source, destination);
+    private static int comparePrimitives(Class<?> source, Class<?> destination) {
+        // If both are primitive, only same type matches
+        if (source.isPrimitive() && destination.isPrimitive()) {
+            return source.equals(destination) ? 0 : -1;
         }
 
-        // Use a BFS approach to determine the inheritance distance.
-        Queue<Class<?>> queue = new LinkedList<>();
-        Map<Class<?>, Boolean> visited = new IdentityHashMap<>();
-        queue.add(source);
-        visited.put(source, Boolean.TRUE);
-        int distance = 0;
-
-        while (!queue.isEmpty()) {
-            int levelSize = queue.size();
-            distance++;
-
-            for (int i = 0; i < levelSize; i++) {
-                Class<?> current = queue.poll();
-
-                // Check the superclass
-                Class<?> sup = current.getSuperclass();
-                if (sup != null) {
-                    if (sup.equals(destination)) {
-                        return distance;
-                    }
-                    if (!visited.containsKey(sup)) {
-                        queue.add(sup);
-                        visited.put(sup, Boolean.TRUE);
-                    }
-                }
-
-                // Check all interfaces
-                for (Class<?> iface : current.getInterfaces()) {
-                    if (iface.equals(destination)) {
-                        return distance;
-                    }
-                    if (!visited.containsKey(iface)) {
-                        queue.add(iface);
-                        visited.put(iface, Boolean.TRUE);
-                    }
-                }
+        // If source is wrapper, destination is primitive
+        if (isPrimitive(source) && !source.isPrimitive() && destination.isPrimitive()) {
+            try {
+                return source.getField("TYPE").get(null).equals(destination) ? 0 : -1;
+            } catch (Exception e) {
+                return -1;
             }
         }
-        return -1; // No path found
+
+        // If destination is wrapper, source is primitive
+        if (isPrimitive(destination) && !destination.isPrimitive() && source.isPrimitive()) {
+            try {
+                return destination.getField("TYPE").get(null).equals(source) ? 0 : -1;
+            } catch (Exception e) {
+                return -1;
+            }
+        }
+
+        // If both are wrappers
+        if (isPrimitive(source) && !source.isPrimitive() &&
+                isPrimitive(destination) && !destination.isPrimitive()) {
+            try {
+                Object sourceType = source.getField("TYPE").get(null);
+                Object destType = destination.getField("TYPE").get(null);
+                return sourceType.equals(destType) ? 0 : -1;
+            } catch (Exception e) {
+                return -1;
+            }
+        }
+
+        return -1;
     }
     
     /**
@@ -548,19 +541,6 @@ public class ClassUtilities {
     }
 
     /**
-     * Compare two primitives.
-     *
-     * @return 0 if they are the same, -1 if not.  Primitive wrapper classes are consider the same as primitive classes.
-     */
-    private static int comparePrimitiveToWrapper(Class<?> source, Class<?> destination) {
-        try {
-            return source.getField("TYPE").get(null).equals(destination) ? 0 : -1;
-        } catch (Exception e) {
-            return -1;
-        }
-    }
-
-    /**
      * Given the passed in String class name, return the named JVM class.
      *
      * @param name        String name of a JVM class.
@@ -568,7 +548,7 @@ public class ClassUtilities {
      * @return Class instance of the named JVM class or null if not found.
      */
     public static Class<?> forName(String name, ClassLoader classLoader) {
-        if (name == null || name.isEmpty()) {
+        if (StringUtilities.isEmpty(name)) {
             return null;
         }
 
@@ -593,17 +573,16 @@ public class ClassUtilities {
         if (c != null) {
             return c;
         }
+
+        // Check name before loading (quick rejection)
+        if (SecurityChecker.isSecurityBlockedName(name)) {
+            throw new SecurityException("For security reasons, cannot load: " + name);
+        }
+
         c = loadClass(name, classLoader);
 
-        // TODO: This should be in newInstance() call?
-        if (ClassLoader.class.isAssignableFrom(c) ||
-                ProcessBuilder.class.isAssignableFrom(c) ||
-                Process.class.isAssignableFrom(c) ||
-                Constructor.class.isAssignableFrom(c) ||
-                Method.class.isAssignableFrom(c) ||
-                Field.class.isAssignableFrom(c)) {
-            throw new SecurityException("For security reasons, cannot instantiate: " + c.getName());
-        }
+        // Perform full security check on loaded class
+        SecurityChecker.verifyClass(c);
 
         nameToClass.put(name, c);
         return c;
@@ -891,7 +870,7 @@ public class ClassUtilities {
             // Get the getBundle(Class<?>) method
             Method getBundleMethod = frameworkUtilClass.getMethod("getBundle", Class.class);
 
-            // Invoke FrameworkUtil.getBundle(thisClass) to get the Bundle instance
+            // Invoke FrameworkUtil.getBundle(classFromBundle) to get the Bundle instance
             Object bundle = getBundleMethod.invoke(null, classFromBundle);
 
             if (bundle != null) {
@@ -917,10 +896,9 @@ public class ClassUtilities {
                 }
             }
         } catch (Exception e) {
-            // OSGi environment not detected or error occurred
+            // OSGi environment not detected or an error occurred
             // Silently ignore as this is expected in non-OSGi environments
         }
-
         return null;
     }
     
@@ -1147,7 +1125,7 @@ public class ClassUtilities {
     private static void findInheritanceMatches(Object[] values, boolean[] valueUsed,
                                                Parameter[] parameters, boolean[] parameterMatched,
                                                Object[] result) {
-        // For each unmatched parameter, find best inheritance match
+        // For each unmatched parameter, find the best inheritance match
         for (int i = 0; i < parameters.length; i++) {
             if (parameterMatched[i]) continue;
 
@@ -1295,39 +1273,43 @@ public class ClassUtilities {
     }
 
     /**
-     * Determines if a class is an enum or is related to an enum through inheritance or enclosure.
-     * <p>
-     * This method searches for an enum class in two ways:
-     * <ol>
-     *     <li>Checks if the input class or any of its superclasses is an enum</li>
-     *     <li>If no enum is found in the inheritance hierarchy, checks if any enclosing (outer) classes are enums</li>
-     * </ol>
-     * Note: This method specifically excludes java.lang.Enum itself from the results.
+     * Returns the related enum class for the provided class, if one exists.
      *
-     * @param c The class to check (may be null)
-     * @return The related enum class if found, null otherwise
-     *
-     * @see Class#isEnum()
-     * @see Class#getEnclosingClass()
+     * @param c the class to check; may be null
+     * @return the related enum class, or null if none is found
      */
     public static Class<?> getClassIfEnum(Class<?> c) {
         if (c == null) {
             return null;
         }
+        return ENUM_CLASS_CACHE.get(c);
+    }
 
-        // Step 1: Traverse up the class hierarchy
-        Class<?> current = c;
-        while (current != null && current != Object.class) {
-            if (current.isEnum() && !Enum.class.equals(current)) {
-                return current;
-            }
-            current = current.getSuperclass();
+    /**
+     * Computes the enum type for a given class by first checking if the class itself is an enum,
+     * then traversing its superclass hierarchy, and finally its enclosing classes.
+     *
+     * @param c the class to check; not null
+     * @return the related enum class if found, or null otherwise
+     */
+    private static Class<?> computeEnum(Class<?> c) {
+        // Fast path: if the class itself is an enum (and not java.lang.Enum), return it immediately.
+        if (c.isEnum() && c != Enum.class) {
+            return c;
         }
 
-        // Step 2: Traverse the enclosing classes
+        // Traverse the superclass chain.
+        Class<?> current = c;
+        while ((current = current.getSuperclass()) != null) {
+            if (current.isEnum() && current != Enum.class) {
+                return current;
+            }
+        }
+
+        // Traverse the enclosing class chain.
         current = c.getEnclosingClass();
         while (current != null) {
-            if (current.isEnum() && !Enum.class.equals(current)) {
+            if (current.isEnum() && current != Enum.class) {
                 return current;
             }
             current = current.getEnclosingClass();
@@ -1365,18 +1347,9 @@ public class ClassUtilities {
         if (c.isInterface()) { throw new IllegalArgumentException("Cannot instantiate interface: " + c.getName()); }
         if (Modifier.isAbstract(c.getModifiers())) { throw new IllegalArgumentException("Cannot instantiate abstract class: " + c.getName()); }
 
-        // Security checks - now using static final field
-        for (Class<?> check : SECURITY_BLOCKED_CLASSES) {
-            if (check.isAssignableFrom(c)) {
-                throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: " + check.getName());
-            }
-        }
-
-        // Additional security check for ProcessImpl
-        if ("java.lang.ProcessImpl".equals(c.getName())) {
-            throw new IllegalArgumentException("For security reasons, json-io does not allow instantiation of: java.lang.ProcessImpl");
-        }
-
+        // Single cached security check
+        SecurityChecker.verifyClass(c);        // Security checks - now using static final field
+        
         // First attempt: Check if we have a previously successful constructor for this class
         List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
         Constructor<?> cachedConstructor = SUCCESSFUL_CONSTRUCTOR_CACHE.get(c);
@@ -1659,34 +1632,6 @@ public class ClassUtilities {
     }
 
     /**
-     * Gather all superclasses and all interfaces (recursively) of 'clazz',
-     * including clazz itself.
-     * <p>
-     * BFS or DFS is fine.  Here is a simple BFS approach:
-     */
-    public static Set<Class<?>> getAllSupertypes(Class<?> clazz) {
-        Set<Class<?>> cached = SUPER_TYPES_CACHE.computeIfAbsent(clazz, key -> {
-            Set<Class<?>> results = new LinkedHashSet<>();
-            Queue<Class<?>> queue = new ArrayDeque<>();
-            queue.add(key);
-            while (!queue.isEmpty()) {
-                Class<?> current = queue.poll();
-                if (current != null && results.add(current)) {
-                    // Add its superclass
-                    Class<?> sup = current.getSuperclass();
-                    if (sup != null) {
-                        queue.add(sup);
-                    }
-                    // Add all interfaces
-                    queue.addAll(Arrays.asList(current.getInterfaces()));
-                }
-            }
-            return results;
-        });
-        return new LinkedHashSet<>(cached);
-    }
-
-    /**
      * Returns distance of 'clazz' from Object.class in its *class* hierarchy
      * (not counting interfaces).  This is a convenience for sorting by depth.
      */
@@ -1699,8 +1644,140 @@ public class ClassUtilities {
         return depth;
     }
 
+    /**
+     * Gets the complete hierarchy information for a class, including all supertypes
+     * and their inheritance distances from the source class.
+     *
+     * @param clazz The class to analyze
+     * @return ClassHierarchyInfo containing all supertypes and distances
+     */
+    /**
+     * Modified getClassHierarchyInfo that doesn't try to handle primitives specially
+     */
+    public static ClassHierarchyInfo getClassHierarchyInfo(Class<?> clazz) {
+        return CLASS_HIERARCHY_CACHE.computeIfAbsent(clazz, key -> {
+            // Compute all supertypes and their distances in one pass
+            Set<Class<?>> allSupertypes = new LinkedHashSet<>();
+            Map<Class<?>, Integer> distanceMap = new HashMap<>();
+
+            // BFS to find all supertypes and compute distances in one pass
+            Queue<Class<?>> queue = new ArrayDeque<>();
+            queue.add(key);
+            distanceMap.put(key, 0); // Distance to self is 0
+
+            while (!queue.isEmpty()) {
+                Class<?> current = queue.poll();
+                int currentDistance = distanceMap.get(current);
+
+                if (current != null && allSupertypes.add(current)) {
+                    // Add superclass with distance+1
+                    Class<?> superclass = current.getSuperclass();
+                    if (superclass != null && !distanceMap.containsKey(superclass)) {
+                        distanceMap.put(superclass, currentDistance + 1);
+                        queue.add(superclass);
+                    }
+
+                    // Add interfaces with distance+1
+                    for (Class<?> iface : current.getInterfaces()) {
+                        if (!distanceMap.containsKey(iface)) {
+                            distanceMap.put(iface, currentDistance + 1);
+                            queue.add(iface);
+                        }
+                    }
+                }
+            }
+
+            return new ClassHierarchyInfo(Collections.unmodifiableSet(allSupertypes),
+                    Collections.unmodifiableMap(distanceMap));
+        });
+    }
+    
+    /**
+     * Gets all supertypes of a class (classes and interfaces).
+     * This is optimized to use the cached hierarchy information.
+     *
+     * @param clazz The class to get supertypes for
+     * @return Set of all supertypes, including the class itself
+     */
+    public static Set<Class<?>> getAllSupertypes(Class<?> clazz) {
+        return getClassHierarchyInfo(clazz).allSupertypes;
+    }
+    
     // Convenience boolean method
     public static boolean haveCommonAncestor(Class<?> a, Class<?> b) {
         return !findLowestCommonSupertypes(a, b).isEmpty();
+    }
+
+    public static class SecurityChecker {
+        // Combine all security-sensitive classes in one place
+        private static final Set<Class<?>> SECURITY_BLOCKED_CLASSES = new HashSet<>(Arrays.asList(
+                ClassLoader.class,
+                ProcessBuilder.class,
+                Process.class,
+                Constructor.class,
+                Method.class,
+                Field.class,
+                Runtime.class,
+                System.class
+        ));
+
+        // Add specific class names that might be loaded dynamically
+        private static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(Arrays.asList(
+                "java.lang.ProcessImpl"
+                // Add any other specific class names
+        ));
+
+        private static final ClassValue<Boolean> SECURITY_CHECK_CACHE = new ClassValue<Boolean>() {
+            @Override
+            protected Boolean computeValue(Class<?> type) {
+                // Check against blocked classes
+                for (Class<?> check : SECURITY_BLOCKED_CLASSES) {
+                    if (check.isAssignableFrom(type)) {
+                        return Boolean.TRUE; // Security issue found
+                    }
+                }
+
+                // Check specific class name
+                if (SECURITY_BLOCKED_CLASS_NAMES.contains(type.getName())) {
+                    return Boolean.TRUE; // Security issue found
+                }
+
+                return Boolean.FALSE; // No security issues
+            }
+        };
+
+        /**
+         * Checks if a class is blocked for security reasons.
+         *
+         * @param clazz The class to check
+         * @return true if the class is blocked, false otherwise
+         */
+        public static boolean isSecurityBlocked(Class<?> clazz) {
+            return SECURITY_CHECK_CACHE.get(clazz);
+        }
+
+        /**
+         * Checks if a class name is directly in the blocked list.
+         * Used before class loading.
+         *
+         * @param className The class name to check
+         * @return true if the class name is blocked, false otherwise
+         */
+        public static boolean isSecurityBlockedName(String className) {
+            return SECURITY_BLOCKED_CLASS_NAMES.contains(className);
+        }
+
+        /**
+         * Throws an exception if the class is blocked for security reasons.
+         *
+         * @param clazz The class to verify
+         * @throws SecurityException if the class is blocked
+         */
+        public static void verifyClass(Class<?> clazz) {
+            if (isSecurityBlocked(clazz)) {
+                throw new SecurityException(
+                        "For security reasons, json-io does not allow instantiation of: " + clazz.getName());
+            }
+        }
     }
 }

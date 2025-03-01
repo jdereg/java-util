@@ -196,7 +196,9 @@ public class ClassUtilities {
     private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
     private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap;
-
+    private static final Map<Class<?>, Class<?>> WRAPPER_TO_PRIMITIVE_MAP = new HashMap<>();
+    private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER_MAP = new HashMap<>();
+    
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
     private static final ConcurrentHashMapNullSafe<Class<?>, ClassLoader> osgiClassLoaders = new ConcurrentHashMapNullSafe<>();
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
@@ -402,6 +404,27 @@ public class ClassUtilities {
         primitiveToWrapper.put(short.class, Short.class);
         primitiveToWrapper.put(void.class, Void.class);
 
+        // Initialize primitive mappings
+        PRIMITIVE_TO_WRAPPER_MAP.put(boolean.class, Boolean.class);
+        PRIMITIVE_TO_WRAPPER_MAP.put(byte.class, Byte.class);
+        PRIMITIVE_TO_WRAPPER_MAP.put(char.class, Character.class);
+        PRIMITIVE_TO_WRAPPER_MAP.put(short.class, Short.class);
+        PRIMITIVE_TO_WRAPPER_MAP.put(int.class, Integer.class);
+        PRIMITIVE_TO_WRAPPER_MAP.put(long.class, Long.class);
+        PRIMITIVE_TO_WRAPPER_MAP.put(float.class, Float.class);
+        PRIMITIVE_TO_WRAPPER_MAP.put(double.class, Double.class);
+        PRIMITIVE_TO_WRAPPER_MAP.put(void.class, Void.class);
+
+        // Initialize wrapper mappings
+        WRAPPER_TO_PRIMITIVE_MAP.put(Boolean.class, boolean.class);
+        WRAPPER_TO_PRIMITIVE_MAP.put(Byte.class, byte.class);
+        WRAPPER_TO_PRIMITIVE_MAP.put(Character.class, char.class);
+        WRAPPER_TO_PRIMITIVE_MAP.put(Short.class, short.class);
+        WRAPPER_TO_PRIMITIVE_MAP.put(Integer.class, int.class);
+        WRAPPER_TO_PRIMITIVE_MAP.put(Long.class, long.class);
+        WRAPPER_TO_PRIMITIVE_MAP.put(Float.class, float.class);
+        WRAPPER_TO_PRIMITIVE_MAP.put(Double.class, double.class);
+        WRAPPER_TO_PRIMITIVE_MAP.put(Void.class, void.class);
 
         Map<Class<?>, Class<?>> map = new HashMap<>();
         map.put(int.class, Integer.class);
@@ -430,10 +453,20 @@ public class ClassUtilities {
     public static class ClassHierarchyInfo {
         private final Set<Class<?>> allSupertypes;
         private final Map<Class<?>, Integer> distanceMap;
-
-        ClassHierarchyInfo(Set<Class<?>> supertypes, Map<Class<?>, Integer> distances) {
+        private final int depth; // Store depth as a field
+        
+        ClassHierarchyInfo(Set<Class<?>> supertypes, Map<Class<?>, Integer> distances, Class<?> sourceClass) {
             this.allSupertypes = Collections.unmodifiableSet(supertypes);
             this.distanceMap = Collections.unmodifiableMap(distances);
+
+            // Calculate the depth during construction
+            int maxDepth = 0;
+            Class<?> current = sourceClass;
+            while (current != null) {
+                current = current.getSuperclass();
+                maxDepth++;
+            }
+            this.depth = maxDepth - 1; // -1 because we counted steps, not classes
         }
 
         public Map<Class<?>, Integer> getDistanceMap() {
@@ -449,21 +482,7 @@ public class ClassUtilities {
         }
 
         public int getDepth() {
-            int maxDepth = 0;
-
-            for (Class<?> cls : this.allSupertypes) {
-                if (cls.isInterface()) continue; // Skip interfaces
-
-                int depth = 0;
-                Class<?> temp = cls;
-                while (temp != null) {
-                    temp = temp.getSuperclass();
-                    depth++;
-                }
-                maxDepth = Math.max(maxDepth, depth);
-            }
-
-            return maxDepth;
+            return depth;
         }
     }
 
@@ -494,14 +513,6 @@ public class ClassUtilities {
      * @param destination The destination class, interface, or primitive type.
      * @return The number of steps from the source to the destination, or -1 if no path exists.
      */
-    /**
-     * Computes the inheritance distance between two classes/interfaces/primitive types.
-     * Results are cached for performance.
-     *
-     * @param source      The source class, interface, or primitive type.
-     * @param destination The destination class, interface, or primitive type.
-     * @return The number of steps from the source to the destination, or -1 if no path exists.
-     */
     public static int computeInheritanceDistance(Class<?> source, Class<?> destination) {
         if (source == null || destination == null) {
             return -1;
@@ -513,7 +524,7 @@ public class ClassUtilities {
         // Handle primitives specially
         if (source.isPrimitive() || isPrimitive(source)) {
             if (destination.isPrimitive() || isPrimitive(destination)) {
-                return comparePrimitives(source, destination);
+                return areSamePrimitiveType(source, destination) ? 0 : -1;
             }
         }
 
@@ -522,45 +533,29 @@ public class ClassUtilities {
     }
 
     /**
-     * Compare two primitive or wrapper types to see if they represent the same primitive type.
+     * Determines if two primitive or wrapper types represent the same primitive type.
+     *
+     * @param source The source type to compare
+     * @param destination The destination type to compare
+     * @return true if both types represent the same primitive type, false otherwise
      */
-    private static int comparePrimitives(Class<?> source, Class<?> destination) {
-        // If both are primitive, only same type matches
+    private static boolean areSamePrimitiveType(Class<?> source, Class<?> destination) {
+        // If both are primitive, they must be exactly the same type
         if (source.isPrimitive() && destination.isPrimitive()) {
-            return source.equals(destination) ? 0 : -1;
+            return source.equals(destination);
         }
 
-        // If source is wrapper, destination is primitive
-        if (isPrimitive(source) && !source.isPrimitive() && destination.isPrimitive()) {
-            try {
-                return source.getField("TYPE").get(null).equals(destination) ? 0 : -1;
-            } catch (Exception e) {
-                return -1;
-            }
+        // Get normalized primitive types (if they are wrappers, get the primitive equivalent)
+        Class<?> sourcePrimitive = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE_MAP.get(source);
+        Class<?> destPrimitive = destination.isPrimitive() ? destination : WRAPPER_TO_PRIMITIVE_MAP.get(destination);
+
+        // If either conversion failed, they're not compatible
+        if (sourcePrimitive == null || destPrimitive == null) {
+            return false;
         }
 
-        // If destination is wrapper, source is primitive
-        if (isPrimitive(destination) && !destination.isPrimitive() && source.isPrimitive()) {
-            try {
-                return destination.getField("TYPE").get(null).equals(source) ? 0 : -1;
-            } catch (Exception e) {
-                return -1;
-            }
-        }
-
-        // If both are wrappers
-        if (isPrimitive(source) && !source.isPrimitive() &&
-                isPrimitive(destination) && !destination.isPrimitive()) {
-            try {
-                Object sourceType = source.getField("TYPE").get(null);
-                Object destType = destination.getField("TYPE").get(null);
-                return sourceType.equals(destType) ? 0 : -1;
-            } catch (Exception e) {
-                return -1;
-            }
-        }
-
-        return -1;
+        // Check if they represent the same primitive type (e.g., int.class and Integer.class)
+        return sourcePrimitive.equals(destPrimitive);
     }
     
     /**
@@ -1677,7 +1672,7 @@ public class ClassUtilities {
             }
 
             return new ClassHierarchyInfo(Collections.unmodifiableSet(allSupertypes),
-                    Collections.unmodifiableMap(distanceMap));
+                    Collections.unmodifiableMap(distanceMap), key);
         });
     }
     

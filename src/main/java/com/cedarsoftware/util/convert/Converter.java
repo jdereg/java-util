@@ -47,7 +47,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.LRUCache;
 
 
 /**
@@ -168,7 +167,6 @@ public final class Converter {
     private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private final ConverterOptions options;
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new HashMap<>();
-    private static final Map<Long, ConversionPair> KEY_CACHE = new LRUCache<>(3000, LRUCache.StrategyType.THREADED);
     private static final Map<ConversionPair, Convert<?>> INHERITED_CONVERTER_CACHE = new ConcurrentHashMap<>();
 
     // Efficient key that combines two Class instances for fast creation and lookup
@@ -1438,15 +1436,6 @@ public final class Converter {
     }
     
     /**
-     * Retrieves all superclasses and interfaces of the specified class, excluding general marker interfaces.
-     * <p>
-     * This method utilizes caching to improve performance by storing previously computed class hierarchies.
-     * </p>
-     *
-     * @param clazz The class for which to retrieve superclasses and interfaces.
-     * @return A {@link Set} of {@link ClassLevel} instances representing the superclasses and interfaces of the specified class.
-     */
-    /**
      * Gets a sorted set of all superclasses and interfaces for a class,
      * with their inheritance distances.
      *
@@ -1458,7 +1447,7 @@ public final class Converter {
             SortedSet<ClassLevel> parentTypes = new TreeSet<>();
             ClassUtilities.ClassHierarchyInfo info = ClassUtilities.getClassHierarchyInfo(key);
 
-            for (Map.Entry<Class<?>, Integer> entry : info.distanceMap.entrySet()) {
+            for (Map.Entry<Class<?>, Integer> entry : info.getDistanceMap().entrySet()) {
                 Class<?> type = entry.getKey();
                 int distance = entry.getValue();
 
@@ -1476,6 +1465,7 @@ public final class Converter {
             return parentTypes;
         });
     }
+
     /**
      * Represents a class along with its hierarchy level for ordering purposes.
      * <p>

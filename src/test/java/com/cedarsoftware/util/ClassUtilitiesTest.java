@@ -200,12 +200,12 @@ class ClassUtilitiesTest {
         };
 
         for (Class<?> sensitiveClass : sensitiveClasses) {
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
                     () -> ClassUtilities.newInstance(converter, sensitiveClass, null)
             );
             assertTrue(exception.getMessage().contains("not"));
-            assertInstanceOf(IllegalArgumentException.class, exception);
+            assertInstanceOf(SecurityException.class, exception);
         }
     }
 

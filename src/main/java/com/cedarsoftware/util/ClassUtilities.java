@@ -94,6 +94,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -288,7 +289,7 @@ public class ClassUtilities {
         // Additional Map implementations
         DIRECT_CLASS_MAPPING.put(WeakHashMap.class, WeakHashMap::new);
         DIRECT_CLASS_MAPPING.put(IdentityHashMap.class, IdentityHashMap::new);
-        DIRECT_CLASS_MAPPING.put(EnumMap.class, () -> new EnumMap(Object.class));
+        DIRECT_CLASS_MAPPING.put(EnumMap.class, () -> new EnumMap<>(TimeUnit.class));
 
         // Utility classes
         DIRECT_CLASS_MAPPING.put(UUID.class, UUID::randomUUID);
@@ -424,14 +425,45 @@ public class ClassUtilities {
 
     /**
      * Container for class hierarchy information to avoid redundant calculations
+     * Not considered API.  Do not use this class in your code.
      */
     public static class ClassHierarchyInfo {
-        final Set<Class<?>> allSupertypes;
-        public final Map<Class<?>, Integer> distanceMap;
+        private final Set<Class<?>> allSupertypes;
+        private final Map<Class<?>, Integer> distanceMap;
 
         ClassHierarchyInfo(Set<Class<?>> supertypes, Map<Class<?>, Integer> distances) {
-            this.allSupertypes = supertypes;
-            this.distanceMap = distances;
+            this.allSupertypes = Collections.unmodifiableSet(supertypes);
+            this.distanceMap = Collections.unmodifiableMap(distances);
+        }
+
+        public Map<Class<?>, Integer> getDistanceMap() {
+            return distanceMap;
+        }
+
+        Set<Class<?>> getAllSupertypes() {
+            return allSupertypes;
+        }
+        
+        int getDistance(Class<?> type) {
+            return distanceMap.getOrDefault(type, -1);
+        }
+
+        public int getDepth() {
+            int maxDepth = 0;
+
+            for (Class<?> cls : this.allSupertypes) {
+                if (cls.isInterface()) continue; // Skip interfaces
+
+                int depth = 0;
+                Class<?> temp = cls;
+                while (temp != null) {
+                    temp = temp.getSuperclass();
+                    depth++;
+                }
+                maxDepth = Math.max(maxDepth, depth);
+            }
+
+            return maxDepth;
         }
     }
 
@@ -486,7 +518,7 @@ public class ClassUtilities {
         }
 
         // Use the cached hierarchy info for non-primitive cases
-        return getClassHierarchyInfo(source).distanceMap.getOrDefault(destination, -1);
+        return getClassHierarchyInfo(source).getDistance(destination);
     }
 
     /**
@@ -1343,12 +1375,18 @@ public class ClassUtilities {
      * @throws IllegalStateException if constructor invocation fails
      */
     public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
-        if (c == null) { throw new IllegalArgumentException("Class cannot be null"); }
-        if (c.isInterface()) { throw new IllegalArgumentException("Cannot instantiate interface: " + c.getName()); }
-        if (Modifier.isAbstract(c.getModifiers())) { throw new IllegalArgumentException("Cannot instantiate abstract class: " + c.getName()); }
+        Convention.throwIfNull(c, "Class cannot be null");
 
-        // Single cached security check
-        SecurityChecker.verifyClass(c);        // Security checks - now using static final field
+        // Do security check FIRST
+        SecurityChecker.verifyClass(c);
+
+        // Then do other validation
+        if (c.isInterface()) {
+            throw new IllegalArgumentException("Cannot instantiate interface: " + c.getName());
+        }
+        if (Modifier.isAbstract(c.getModifiers())) {
+            throw new IllegalArgumentException("Cannot instantiate abstract class: " + c.getName());
+        }
         
         // First attempt: Check if we have a previously successful constructor for this class
         List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
@@ -1497,44 +1535,11 @@ public class ClassUtilities {
     /**
      * Returns all equally "lowest" common supertypes (classes or interfaces) shared by both
      * {@code classA} and {@code classB}, excluding any types specified in {@code excludeSet}.
-     * <p>
-     * A "lowest" common supertype is defined as any type {@code T} such that:
-     * <ul>
-     *   <li>{@code T} is a supertype of both {@code classA} and {@code classB} (either
-     *       via inheritance or interface implementation), and</li>
-     *   <li>{@code T} is not a superclass (or superinterface) of any other common supertype
-     *       in the result. In other words, no other returned type is a subtype of {@code T}.</li>
-     * </ul>
-     *
-     * <p>Typically, this method is used to discover the most specific shared classes or
-     * interfaces without including certain unwanted types—such as {@code Object.class}
-     * or other "marker" interfaces (e.g. {@code Serializable}, {@code Cloneable}, {@code Externalizable}
-     * {@code Comparable}). If you do not want these in the final result, add them to
-     * {@code excludeSet}.</p>
-     *
-     * <p>The returned set may contain multiple types if they are "equally specific"
-     * and do not extend or implement one another. If the resulting set is empty,
-     * then there is no common supertype of {@code classA} and {@code classB} outside
-     * of the excluded types.</p>
-     *
-     * <p>Example (excluding {@code Object.class, Serializable.class, Externalizable.class, Cloneable.class}):
-     * <pre>{@code
-     * Set<Class<?>> excludedSet = Collections.singleton(Object.class, Serializable.class, Externalizable.class, Cloneable.class);
-     * Set<Class<?>> supertypes = findLowestCommonSupertypesExcluding(TreeSet.class, HashSet.class, excludeSet);
-     * // supertypes might contain only [Set], since Set is the lowest interface
-     * // they both implement, and we excluded Object.
-     * }</pre>
      *
      * @param classA   the first class, may be null
      * @param classB   the second class, may be null
      * @param excluded a set of classes or interfaces to exclude from the final result
-     *                 (e.g. {@code Object.class}, {@code Serializable.class}, etc.).
-     *                 May be empty but not null.
-     * @return a {@code Set} of the most specific common supertypes of {@code classA}
-     *         and {@code classB}, excluding any in {@code skipList}; if either class
-     *         is {@code null} or the entire set is excluded, an empty set is returned
-     * @see #findLowestCommonSupertypes(Class, Class)
-     * @see #getAllSupertypes(Class)
+     * @return a {@code Set} of the most specific common supertypes, excluding any in excluded set
      */
     public static Set<Class<?>> findLowestCommonSupertypesExcluding(
             Class<?> classA, Class<?> classB,
@@ -1544,48 +1549,49 @@ public class ClassUtilities {
             return Collections.emptySet();
         }
         if (classA.equals(classB)) {
-            // If it's in the skip list, return empty; otherwise return singleton
+            // If it's in the excluded list, return empty; otherwise return singleton
             return excluded.contains(classA) ? Collections.emptySet()
                     : Collections.singleton(classA);
         }
 
-        // 1) Gather all supertypes of A and B
-        Set<Class<?>> allA = getAllSupertypes(classA);
-        Set<Class<?>> allB = getAllSupertypes(classB);
+        // 1) Get unmodifiable views for better performance
+        Set<Class<?>> allA = getClassHierarchyInfo(classA).getAllSupertypes();
+        Set<Class<?>> allB = getClassHierarchyInfo(classB).getAllSupertypes();
 
-        // 2) Intersect
-        allA.retainAll(allB);
+        // 2) Create a modifiable copy of the intersection, filtering excluded items
+        Set<Class<?>> common = new LinkedHashSet<>();
+        for (Class<?> type : allA) {
+            if (allB.contains(type) && !excluded.contains(type)) {
+                common.add(type);
+            }
+        }
 
-        // 3) Remove all excluded (Object, Serializable, etc.)
-        allA.removeAll(excluded);
-
-        if (allA.isEmpty()) {
+        if (common.isEmpty()) {
             return Collections.emptySet();
         }
 
-        // 4) Sort by descending depth
-        List<Class<?>> candidates = new ArrayList<>(allA);
+        // 3) Sort by descending depth
+        List<Class<?>> candidates = new ArrayList<>(common);
         candidates.sort((x, y) -> {
-            int dx = getDepth(x);
-            int dy = getDepth(y);
+            int dx = getClassHierarchyInfo(x).getDepth();
+            int dy = getClassHierarchyInfo(y).getDepth();
             return Integer.compare(dy, dx); // descending
         });
 
-        // 5) Identify "lowest"
+        // 4) Identify "lowest" types
         Set<Class<?>> lowest = new LinkedHashSet<>();
         Set<Class<?>> unionOfAncestors = new HashSet<>();
 
-        for (Class<?> T : candidates) {
-            if (unionOfAncestors.contains(T)) {
-                // T is an ancestor of something in 'lowest'
+        for (Class<?> type : candidates) {
+            if (unionOfAncestors.contains(type)) {
+                // type is an ancestor of something already in 'lowest'
                 continue;
             }
-            // T is indeed a "lowest" so far
-            lowest.add(T);
+            // type is indeed a "lowest" so far
+            lowest.add(type);
 
-            // Add all T's supertypes to the union set
-            Set<Class<?>> ancestorsOfT = getAllSupertypes(T);
-            unionOfAncestors.addAll(ancestorsOfT);
+            // Add all type's supertypes to the union set
+            unionOfAncestors.addAll(getClassHierarchyInfo(type).getAllSupertypes());
         }
 
         return lowest;
@@ -1615,7 +1621,6 @@ public class ClassUtilities {
      *         {@code Object, Serializable, Externalizable, Cloneable}; or an empty
      *         set if none are found beyond {@code Object} (or if either input is null)
      * @see #findLowestCommonSupertypesExcluding(Class, Class, Set)
-     * @see #getAllSupertypes(Class)
      */
     public static Set<Class<?>> findLowestCommonSupertypes(Class<?> classA, Class<?> classB) {
         return findLowestCommonSupertypesExcluding(classA, classB,
@@ -1632,27 +1637,11 @@ public class ClassUtilities {
     }
 
     /**
-     * Returns distance of 'clazz' from Object.class in its *class* hierarchy
-     * (not counting interfaces).  This is a convenience for sorting by depth.
-     */
-    private static int getDepth(Class<?> clazz) {
-        int depth = 0;
-        while (clazz != null) {
-            clazz = clazz.getSuperclass();
-            depth++;
-        }
-        return depth;
-    }
-
-    /**
      * Gets the complete hierarchy information for a class, including all supertypes
      * and their inheritance distances from the source class.
      *
      * @param clazz The class to analyze
      * @return ClassHierarchyInfo containing all supertypes and distances
-     */
-    /**
-     * Modified getClassHierarchyInfo that doesn't try to handle primitives specially
      */
     public static ClassHierarchyInfo getClassHierarchyInfo(Class<?> clazz) {
         return CLASS_HIERARCHY_CACHE.computeIfAbsent(clazz, key -> {
@@ -1690,17 +1679,6 @@ public class ClassUtilities {
             return new ClassHierarchyInfo(Collections.unmodifiableSet(allSupertypes),
                     Collections.unmodifiableMap(distanceMap));
         });
-    }
-    
-    /**
-     * Gets all supertypes of a class (classes and interfaces).
-     * This is optimized to use the cached hierarchy information.
-     *
-     * @param clazz The class to get supertypes for
-     * @return Set of all supertypes, including the class itself
-     */
-    public static Set<Class<?>> getAllSupertypes(Class<?> clazz) {
-        return getClassHierarchyInfo(clazz).allSupertypes;
     }
     
     // Convenience boolean method

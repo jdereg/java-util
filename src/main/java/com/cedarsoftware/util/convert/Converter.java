@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.ClassValueMap;
 
 
 /**
@@ -162,11 +163,11 @@ import com.cedarsoftware.util.ClassUtilities;
 public final class Converter {
     private static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
-    private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
     private static final Map<ConversionPair, Convert<?>> CONVERSION_DB = new HashMap<>(860, 0.8f);
     private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private final ConverterOptions options;
-    private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new HashMap<>();
+    private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
     private static final Map<ConversionPair, Convert<?>> INHERITED_CONVERTER_CACHE = new ConcurrentHashMap<>();
 
     // Efficient key that combines two Class instances for fast creation and lookup

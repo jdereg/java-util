@@ -192,20 +192,19 @@ public class ClassUtilities {
     private ClassUtilities() {
     }
 
-    private static final Set<Class<?>> prims = new HashSet<>();
-    private static final Map<Class<?>, Class<?>> primitiveToWrapper = new HashMap<>(20, .8f);
+    private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
     private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap;
-    private static final Map<Class<?>, Class<?>> WRAPPER_TO_PRIMITIVE_MAP = new HashMap<>();
-    private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER_MAP = new HashMap<>();
-    
+    private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER = new ClassValueMap<>();
+    private static final Map<Class<?>, Class<?>> WRAPPER_TO_PRIMITIVE = new ClassValueMap<>();
+
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
-    private static final ConcurrentHashMapNullSafe<Class<?>, ClassLoader> osgiClassLoaders = new ConcurrentHashMapNullSafe<>();
+    private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ClassValueMap<>();
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
     private static volatile boolean useUnsafe = false;
     private static volatile Unsafe unsafe;
-    private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new HashMap<>();
-    private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
+    private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
+    private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new ClassValueMap<>();
     /**
      * A cache that maps a Class<?> to its associated enum type (if any).
      */
@@ -219,12 +218,12 @@ public class ClassUtilities {
     /**
      * Add a cache for successful constructor selections
      */
-    private static final Map<Class<?>, Constructor<?>> SUCCESSFUL_CONSTRUCTOR_CACHE = new LRUCache<>(500);
+    private static final Map<Class<?>, Constructor<?>> SUCCESSFUL_CONSTRUCTOR_CACHE = new ClassValueMap<>();
 
     /**
      * Cache for class hierarchy information
      */
-    private static final ConcurrentHashMap<Class<?>, ClassHierarchyInfo> CLASS_HIERARCHY_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, ClassHierarchyInfo> CLASS_HIERARCHY_CACHE = new ClassValueMap<>();
 
     static {
         // DIRECT_CLASS_MAPPING for concrete types
@@ -373,15 +372,6 @@ public class ClassUtilities {
         // Most general
         ASSIGNABLE_CLASS_MAPPING.put(Iterable.class, ArrayList::new);
 
-        prims.add(Byte.class);
-        prims.add(Short.class);
-        prims.add(Integer.class);
-        prims.add(Long.class);
-        prims.add(Float.class);
-        prims.add(Double.class);
-        prims.add(Character.class);
-        prims.add(Boolean.class);
-
         nameToClass.put("boolean", Boolean.TYPE);
         nameToClass.put("char", Character.TYPE);
         nameToClass.put("byte", Byte.TYPE);
@@ -394,55 +384,30 @@ public class ClassUtilities {
         nameToClass.put("date", Date.class);
         nameToClass.put("class", Class.class);
 
-        primitiveToWrapper.put(int.class, Integer.class);
-        primitiveToWrapper.put(long.class, Long.class);
-        primitiveToWrapper.put(double.class, Double.class);
-        primitiveToWrapper.put(float.class, Float.class);
-        primitiveToWrapper.put(boolean.class, Boolean.class);
-        primitiveToWrapper.put(char.class, Character.class);
-        primitiveToWrapper.put(byte.class, Byte.class);
-        primitiveToWrapper.put(short.class, Short.class);
-        primitiveToWrapper.put(void.class, Void.class);
-
-        // Initialize primitive mappings
-        PRIMITIVE_TO_WRAPPER_MAP.put(boolean.class, Boolean.class);
-        PRIMITIVE_TO_WRAPPER_MAP.put(byte.class, Byte.class);
-        PRIMITIVE_TO_WRAPPER_MAP.put(char.class, Character.class);
-        PRIMITIVE_TO_WRAPPER_MAP.put(short.class, Short.class);
-        PRIMITIVE_TO_WRAPPER_MAP.put(int.class, Integer.class);
-        PRIMITIVE_TO_WRAPPER_MAP.put(long.class, Long.class);
-        PRIMITIVE_TO_WRAPPER_MAP.put(float.class, Float.class);
-        PRIMITIVE_TO_WRAPPER_MAP.put(double.class, Double.class);
-        PRIMITIVE_TO_WRAPPER_MAP.put(void.class, Void.class);
+        PRIMITIVE_TO_WRAPPER.put(int.class, Integer.class);
+        PRIMITIVE_TO_WRAPPER.put(long.class, Long.class);
+        PRIMITIVE_TO_WRAPPER.put(double.class, Double.class);
+        PRIMITIVE_TO_WRAPPER.put(float.class, Float.class);
+        PRIMITIVE_TO_WRAPPER.put(boolean.class, Boolean.class);
+        PRIMITIVE_TO_WRAPPER.put(char.class, Character.class);
+        PRIMITIVE_TO_WRAPPER.put(byte.class, Byte.class);
+        PRIMITIVE_TO_WRAPPER.put(short.class, Short.class);
+        PRIMITIVE_TO_WRAPPER.put(void.class, Void.class);
 
         // Initialize wrapper mappings
-        WRAPPER_TO_PRIMITIVE_MAP.put(Boolean.class, boolean.class);
-        WRAPPER_TO_PRIMITIVE_MAP.put(Byte.class, byte.class);
-        WRAPPER_TO_PRIMITIVE_MAP.put(Character.class, char.class);
-        WRAPPER_TO_PRIMITIVE_MAP.put(Short.class, short.class);
-        WRAPPER_TO_PRIMITIVE_MAP.put(Integer.class, int.class);
-        WRAPPER_TO_PRIMITIVE_MAP.put(Long.class, long.class);
-        WRAPPER_TO_PRIMITIVE_MAP.put(Float.class, float.class);
-        WRAPPER_TO_PRIMITIVE_MAP.put(Double.class, double.class);
-        WRAPPER_TO_PRIMITIVE_MAP.put(Void.class, void.class);
+        WRAPPER_TO_PRIMITIVE.put(Boolean.class, boolean.class);
+        WRAPPER_TO_PRIMITIVE.put(Byte.class, byte.class);
+        WRAPPER_TO_PRIMITIVE.put(Character.class, char.class);
+        WRAPPER_TO_PRIMITIVE.put(Short.class, short.class);
+        WRAPPER_TO_PRIMITIVE.put(Integer.class, int.class);
+        WRAPPER_TO_PRIMITIVE.put(Long.class, long.class);
+        WRAPPER_TO_PRIMITIVE.put(Float.class, float.class);
+        WRAPPER_TO_PRIMITIVE.put(Double.class, double.class);
+        WRAPPER_TO_PRIMITIVE.put(Void.class, void.class);
 
-        Map<Class<?>, Class<?>> map = new HashMap<>();
-        map.put(int.class, Integer.class);
-        map.put(Integer.class, int.class);
-        map.put(char.class, Character.class);
-        map.put(Character.class, char.class);
-        map.put(byte.class, Byte.class);
-        map.put(Byte.class, byte.class);
-        map.put(short.class, Short.class);
-        map.put(Short.class, short.class);
-        map.put(long.class, Long.class);
-        map.put(Long.class, long.class);
-        map.put(float.class, Float.class);
-        map.put(Float.class, float.class);
-        map.put(double.class, Double.class);
-        map.put(Double.class, double.class);
-        map.put(boolean.class, Boolean.class);
-        map.put(Boolean.class, boolean.class);
+        Map<Class<?>, Class<?>> map = new ClassValueMap<>();
+        map.putAll(PRIMITIVE_TO_WRAPPER);
+        map.putAll(WRAPPER_TO_PRIMITIVE);
         wrapperMap = Collections.unmodifiableMap(map);
     }
 
@@ -546,8 +511,8 @@ public class ClassUtilities {
         }
 
         // Get normalized primitive types (if they are wrappers, get the primitive equivalent)
-        Class<?> sourcePrimitive = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE_MAP.get(source);
-        Class<?> destPrimitive = destination.isPrimitive() ? destination : WRAPPER_TO_PRIMITIVE_MAP.get(destination);
+        Class<?> sourcePrimitive = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE.get(source);
+        Class<?> destPrimitive = destination.isPrimitive() ? destination : WRAPPER_TO_PRIMITIVE.get(destination);
 
         // If either conversion failed, they're not compatible
         if (sourcePrimitive == null || destPrimitive == null) {
@@ -564,7 +529,7 @@ public class ClassUtilities {
      * Integer, Long, Boolean, etc. are considered primitives by this method.
      */
     public static boolean isPrimitive(Class<?> c) {
-        return c.isPrimitive() || prims.contains(c);
+        return c.isPrimitive() || WRAPPER_TO_PRIMITIVE.containsKey(c);
     }
 
     /**
@@ -775,7 +740,7 @@ public class ClassUtilities {
             return primitiveClass;
         }
 
-        Class<?> c = primitiveToWrapper.get(primitiveClass);
+        Class<?> c = PRIMITIVE_TO_WRAPPER.get(primitiveClass);
 
         if (c == null) {
             throw new IllegalArgumentException("Passed in class: " + primitiveClass + " is not a primitive class");
@@ -1079,19 +1044,18 @@ public class ClassUtilities {
     }
 
     /**
-     * Optimally match arguments to constructor parameters.
-     * This implementation uses a more efficient scoring algorithm and avoids redundant operations.
+     * Optimally match arguments to constructor parameters with minimal collection creation.
      *
      * @param converter Converter to use for type conversions
      * @param values Collection of potential arguments
      * @param parameters Array of parameter types to match against
      * @param allowNulls Whether to allow null values for non-primitive parameters
-     * @return List of values matched to the parameters in the correct order
+     * @return Array of values matched to the parameters in the correct order
      */
-    private static List<Object> matchArgumentsToParameters(Converter converter, Collection<Object> values,
-                                                           Parameter[] parameters, boolean allowNulls) {
+    private static Object[] matchArgumentsToParameters(Converter converter, Collection<?> values,
+                                                       Parameter[] parameters, boolean allowNulls) {
         if (parameters == null || parameters.length == 0) {
-            return new ArrayList<>();
+            return EMPTY_OBJECT_ARRAY; // Reuse a static empty array
         }
 
         // Create result array and tracking arrays
@@ -1117,8 +1081,7 @@ public class ClassUtilities {
         // PHASE 5: Fill remaining unmatched parameters with defaults or nulls
         fillRemainingParameters(converter, parameters, parameterMatched, result, allowNulls);
 
-        // Convert result to List
-        return Arrays.asList(result);
+        return result;
     }
 
     /**
@@ -1393,11 +1356,11 @@ public class ClassUtilities {
 
                 // Try both approaches with the cached constructor
                 try {
-                    List<Object> argsNonNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, false);
-                    return cachedConstructor.newInstance(argsNonNull.toArray());
+                    Object[] argsNonNull = matchArgumentsToParameters(converter, normalizedArgs, parameters, false);
+                    return cachedConstructor.newInstance(argsNonNull);
                 } catch (Exception e) {
-                    List<Object> argsNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, true);
-                    return cachedConstructor.newInstance(argsNull.toArray());
+                    Object[] argsNull = matchArgumentsToParameters(converter, normalizedArgs, parameters, true);
+                    return cachedConstructor.newInstance(argsNull);
                 }
             } catch (Exception ignored) {
                 // If cached constructor fails, continue with regular instantiation
@@ -1439,8 +1402,8 @@ public class ClassUtilities {
             // Attempt instantiation with this constructor
             try {
                 // Try with non-null arguments first (more precise matching)
-                List<Object> argsNonNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, false);
-                Object instance = constructor.newInstance(argsNonNull.toArray());
+                Object[] argsNonNull = matchArgumentsToParameters(converter, normalizedArgs, parameters, false);
+                Object instance = constructor.newInstance(argsNonNull);
 
                 // Cache this successful constructor for future use
                 SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
@@ -1450,8 +1413,8 @@ public class ClassUtilities {
 
                 // If that fails, try with nulls allowed for unmatched parameters
                 try {
-                    List<Object> argsNull = matchArgumentsToParameters(converter, new ArrayList<>(normalizedArgs), parameters, true);
-                    Object instance = constructor.newInstance(argsNull.toArray());
+                    Object[] argsNull = matchArgumentsToParameters(converter, normalizedArgs, parameters, true);
+                    Object instance = constructor.newInstance(argsNull);
 
                     // Cache this successful constructor for future use
                     SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
@@ -1503,8 +1466,7 @@ public class ClassUtilities {
     private static Object tryUnsafeInstantiation(Class<?> c) {
         if (useUnsafe) {
             try {
-                Object o = unsafe.allocateInstance(c);
-                return o;
+                return unsafe.allocateInstance(c);
             } catch (Exception ignored) {
             }
         }
@@ -1695,7 +1657,7 @@ public class ClassUtilities {
         ));
 
         // Add specific class names that might be loaded dynamically
-        private static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(Arrays.asList(
+        private static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(Collections.singletonList(
                 "java.lang.ProcessImpl"
                 // Add any other specific class names
         ));

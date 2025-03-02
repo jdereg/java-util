@@ -334,6 +334,85 @@ Iterator<String> it = set.descendingIterator();
 - Maintains consistency during range-view operations
 
 ---
+## ClassValueSet
+
+[View Source](/src/main/java/com/cedarsoftware/util/ClassValueSet.java)
+
+A high-performance `Set` implementation for `Class` objects that leverages Java's built-in `ClassValue` mechanism for extremely fast membership tests.
+
+### Key Features
+
+- **Ultra-fast membership tests**: 2-10x faster than `HashSet` and 3-15x faster than `ConcurrentHashMap.keySet()` for `contains()` operations
+- **Thread-safe**: Fully concurrent support for all operations
+- **Complete Set interface**: Implements the full `Set` contract
+- **Null support**: Null elements are properly supported
+- **Optimized for Class elements**: Specially designed for sets of `Class` objects
+
+### Usage Examples
+
+```java
+// Create a set of security-sensitive classes
+ClassValueSet blockedClasses = ClassValueSet.of(
+    ClassLoader.class,
+    Runtime.class,
+    ProcessBuilder.class,
+    System.class
+);
+
+// Fast membership check in security-sensitive code
+public void verifyClass(Class<?> clazz) {
+    if (blockedClasses.contains(clazz)) {
+        throw new SecurityException("Access to " + clazz.getName() + " is not allowed");
+    }
+}
+
+// Factory methods for convenient creation
+ClassValueSet typeSet = ClassValueSet.of(String.class, Integer.class, List.class);
+ClassValueSet fromCollection = ClassValueSet.from(existingCollection);
+```
+
+### Performance Characteristics
+
+The `ClassValueSet` provides dramatically improved membership testing performance:
+
+- **contains()**: 2-10x faster than standard sets due to JVM-optimized `ClassValue` caching
+- **add() / remove()**: Comparable to ConcurrentHashMap-backed sets (standard performance)
+- **Best for**: Read-heavy workloads where membership tests vastly outnumber modifications
+
+### Implementation Notes
+
+- Internally uses `ClassValue` for optimized lookups
+- Thread-local caching eliminates contention for membership tests
+- All standard `Set` operations are supported
+- Thread-safe - no external synchronization required
+
+### Important Performance Warning
+
+Wrapping this class with standard collection wrappers will destroy the performance benefits:
+
+```java
+// DO NOT DO THIS - destroys performance benefits!
+Set<Class<?>> slowSet = Collections.unmodifiableSet(blockedClasses);
+
+// Instead, use the built-in unmodifiable view method
+Set<Class<?>> fastSet = blockedClasses.unmodifiableView();
+```
+
+### Ideal Use Cases
+
+- Security blocklists for checking forbidden classes
+- Feature flags based on class membership
+- Type filtering in reflection operations
+- Capability checking systems
+- Any system with frequent `Class` membership tests
+
+### Thread Safety
+
+This implementation is fully thread-safe for all operations:
+- Concurrent reads are lock-free
+- Mutating operations use atomic operations where possible
+- Thread-local caching eliminates contention for membership tests
+---
 ## CompactMap
 [Source](/src/main/java/com/cedarsoftware/util/CompactMap.java)
 
@@ -1107,7 +1186,82 @@ map.tailMap(fromKey, inclusive);
 Map.Entry<K,V> first = map.pollFirstEntry();
 Map.Entry<K,V> last = map.pollLastEntry();
 ```
+---
+## ClassValueMap
 
+[View Source](/src/main/java/com/cedarsoftware/util/ClassValueMap.java)
+
+A high-performance `Map` implementation keyed on `Class` objects that leverages Java's built-in `ClassValue` mechanism for extremely fast lookups.
+
+### Key Features
+
+- **Ultra-fast lookups**: 2-10x faster than `HashMap` and 3-15x faster than `ConcurrentHashMap` for `get()` operations
+- **Thread-safe**: Fully concurrent support for all operations
+- **Drop-in replacement**: Completely implements `ConcurrentMap` interface
+- **Null support**: Both null keys and null values are supported
+- **Optimized for Class keys**: Specially designed for maps where `Class` objects are keys
+
+### Usage Examples
+
+```java
+// Create a map of handlers for different types
+ClassValueMap<Handler> handlerRegistry = new ClassValueMap<>();
+
+// Register handlers for various types
+handlerRegistry.put(String.class, new StringHandler());
+handlerRegistry.put(Integer.class, new IntegerHandler());
+handlerRegistry.put(List.class, new ListHandler());
+
+// Ultra-fast lookup in performance-critical code
+public void process(Object object) {
+    Handler handler = handlerRegistry.get(object.getClass());
+    if (handler != null) {
+        handler.handle(object);
+    }
+}
+```
+
+### Performance Characteristics
+
+The `ClassValueMap` provides dramatically improved lookup performance:
+
+- **get() / containsKey()**: 2-10x faster than standard maps due to JVM-optimized `ClassValue` caching
+- **put() / remove()**: Comparable to `ConcurrentHashMap` (standard performance)
+- **Best for**: Read-heavy workloads where lookups vastly outnumber modifications
+
+### Implementation Notes
+
+- Internally uses a combination of `ClassValue` and `ConcurrentHashMap`
+- `ClassValue` provides thread-local caching and identity-based lookup optimization
+- All standard Map operations are supported, including bulk operations
+- Thread-safe - no external synchronization required
+
+### Important Performance Warning
+
+Wrapping this class with standard collection wrappers will destroy the performance benefits:
+
+```java
+// DO NOT DO THIS - destroys performance benefits!
+Map<Class<?>, Handler> slowMap = Collections.unmodifiableMap(handlerRegistry);
+
+// Instead, use the built-in unmodifiable view method
+Map<Class<?>, Handler> fastMap = handlerRegistry.unmodifiableView();
+```
+
+### Ideal Use Cases
+
+- Type registries in frameworks (serializers, converters, validators)
+- Class-keyed caches where lookup performance is critical
+- Dispatching systems based on object types
+- Service locators keyed by interface or class
+- Any system with frequent Class→value lookups
+
+### Thread Safety
+
+This implementation is fully thread-safe for all operations and implements `ConcurrentMap`:
+- Concurrent reads are lock-free
+- Mutating operations use atomic operations where possible
+- Thread-local caching eliminates contention for read operations
 ---
 ## ConcurrentList
 [Source](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)

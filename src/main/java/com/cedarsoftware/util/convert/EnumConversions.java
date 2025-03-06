@@ -35,7 +35,7 @@ final class EnumConversions {
     }
 
     @SuppressWarnings("unchecked")
-    static <T extends Enum<T>> EnumSet<T> toEnumSet(Object from, Converter converter, Class<?> target) {
+    static <T extends Enum<T>> EnumSet<T> toEnumSet(Object from, Class<?> target) {
         if (!target.isEnum()) {
             throw new IllegalArgumentException("target type " + target.getName() + " must be an Enum, which instructs the EnumSet type to create.");
         }

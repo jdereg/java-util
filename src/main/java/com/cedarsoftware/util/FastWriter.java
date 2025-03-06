@@ -93,15 +93,38 @@ public class FastWriter extends Writer {
         if (out == null) {
             throw new IOException("FastWriter stream is closed.");
         }
-        int b = off, t = off + len;
-        while (b < t) {
-            int d = Math.min(cb.length - nextChar, t - b);
-            str.getChars(b, b + d, cb, nextChar);
-            b += d;
-            nextChar += d;
-            if (nextChar >= cb.length) {
-                flushBuffer();
-            }
+
+        // Return early for empty strings
+        if (len == 0) return;
+
+        // Fast path for short strings that fit in buffer
+        if (nextChar + len <= cb.length) {
+            str.getChars(off, off + len, cb, nextChar);
+            nextChar += len;
+            return;
+        }
+
+        // Medium path: fill what we can, flush, then continue
+        int available = cb.length - nextChar;
+        if (available > 0) {
+            str.getChars(off, off + available, cb, nextChar);
+            off += available;
+            len -= available;
+            flushBuffer();
+        }
+
+        // Write full buffer chunks directly - ensures buffer alignment
+        while (len >= cb.length) {
+            str.getChars(off, off + cb.length, cb, 0);
+            off += cb.length;
+            len -= cb.length;
+            out.write(cb, 0, cb.length);
+        }
+
+        // Write final fragment into buffer (won't overflow by definition)
+        if (len > 0) {
+            str.getChars(off, off + len, cb, 0);
+            nextChar = len;
         }
     }
 

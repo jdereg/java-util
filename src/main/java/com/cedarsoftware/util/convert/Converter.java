@@ -49,7 +49,6 @@ import java.util.regex.Pattern;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
 
-
 /**
  * Instance conversion utility for converting objects between various types.
  * <p>
@@ -165,10 +164,10 @@ public final class Converter {
     static final String VALUE = "_v";
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
     private static final Map<ConversionPair, Convert<?>> CONVERSION_DB = new HashMap<>(860, 0.8f);
-    private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
-    private final ConverterOptions options;
+    private static final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
+    private static final ClassValueMap<ClassValueMap<Convert<?>>> FULL_CONVERSION_CACHE = new ClassValueMap<>();
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
-    private static final Map<ConversionPair, Convert<?>> INHERITED_CONVERTER_CACHE = new ConcurrentHashMap<>();
+    private final ConverterOptions options;
 
     // Efficient key that combines two Class instances for fast creation and lookup
     public static final class ConversionPair {
@@ -1243,48 +1242,71 @@ public final class Converter {
         if (toType == null) {
             throw new IllegalArgumentException("toType cannot be null");
         }
+
         Class<?> sourceType;
         if (from == null) {
-            // Allow for primitives to support convert(null, int.class) return 0, or convert(null, boolean.class) return false
+            // For null inputs, use Void.class so that e.g. convert(null, int.class) returns 0.
             sourceType = Void.class;
+            // Also check the cache for (Void.class, toType) to avoid redundant lookups.
+            Convert<?> cached = getCachedConverter(sourceType, toType);
+            if (cached != null) {
+                return (T) cached.convert(from, this, toType);
+            }
         } else {
             sourceType = from.getClass();
+            // For non-null inputs, if toType is primitive, normalize it to its wrapper.
             if (toType.isPrimitive()) {
-                // Eliminates need to define the primitives in the CONVERSION_DB table (would add hundreds of entries)
                 toType = (Class<T>) ClassUtilities.toPrimitiveWrapperClass(toType);
             }
-
-            // Try collection conversion first
+            Convert<?> cached = getCachedConverter(sourceType, toType);
+            if (cached != null) {
+                return (T) cached.convert(from, this, toType);
+            }
+            // Try collection conversion first.
             T result = attemptCollectionConversion(from, sourceType, toType);
             if (result != null) {
                 return result;
             }
         }
 
-        // Check user added conversions (allows overriding factory conversions)
+        // Prepare a conversion key.
         ConversionPair key = pair(sourceType, toType);
+
+        // Check user-added conversions first.
         Convert<?> conversionMethod = USER_DB.get(key);
-        if (conversionMethod != null && conversionMethod != UNSUPPORTED) {
+        if (isValidConversion(conversionMethod)) {
+            cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
         }
 
-        // Check factory conversion database
+        // Then check the factory conversion database.
         conversionMethod = CONVERSION_DB.get(key);
-        if (conversionMethod != null && conversionMethod != UNSUPPORTED) {
+        if (isValidConversion(conversionMethod)) {
+            cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
         }
 
-        if (EnumSet.class.isAssignableFrom(toType)) {
-            throw new IllegalArgumentException("To convert to EnumSet, specify the Enum class to convert to. See convert() Javadoc for example.");
-        }
-
-        // Always attempt inheritance-based conversion
+        // Always attempt inheritance-based conversion as a last resort.
         conversionMethod = getInheritedConverter(sourceType, toType);
-        if (conversionMethod != null && conversionMethod != UNSUPPORTED) {
+        if (isValidConversion(conversionMethod)) {
+            cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
         }
 
-        throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) + "] target type '" + getShortName(toType) + "'");
+        throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) +
+                "] target type '" + getShortName(toType) + "'");
+    }
+
+    private static Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
+        ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
+        if (targetMap != null) {
+            return targetMap.get(target);
+        }
+        return null;
+    }
+
+    private static void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
+        FULL_CONVERSION_CACHE.computeIfAbsent(source, s -> new ClassValueMap<>()).put(target, converter);
     }
 
     @SuppressWarnings("unchecked")
@@ -1303,7 +1325,7 @@ public final class Converter {
         if (toType.isEnum()) {
             // When target is something like Day.class, we're actually creating an EnumSet<Day>
             if (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType)) {
-                return (T) EnumConversions.toEnumSet(from, this, toType);
+                return (T) EnumConversions.toEnumSet(from, toType);
             }
         } else if (EnumSet.class.isAssignableFrom(sourceType)) {
             if (Collection.class.isAssignableFrom(toType)) {
@@ -1354,86 +1376,109 @@ public final class Converter {
      * @param toType The target type to convert to
      * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
-    private Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
-        ConversionPair key = pair(sourceType, toType);
+//    private static final ClassValueMap<ClassValueMap<Convert<?>>> INHERITED_CONVERTER_CACHE = new ClassValueMap<>();
+//
+//    /**
+//     * Retrieves the most suitable converter for converting from the specified source type to the desired target type.
+//     * Results are cached in a two-level ClassValueMap for improved performance.
+//     *
+//     * @param sourceType The source type to convert from
+//     * @param toType The target type to convert to
+//     * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
+//     */
+//    private static Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
+//        // Get or create the target map for this source type
+//        ClassValueMap<Convert<?>> targetMap = INHERITED_CONVERTER_CACHE.computeIfAbsent(
+//                sourceType, k -> new ClassValueMap<>());
+//
+//        // Check if we already have a cached converter for this target type
+//        Convert<?> cachedConverter = targetMap.get(toType);
+//        if (cachedConverter != null) {
+//            return cachedConverter;
+//        }
+//
+//        // Cache miss - compute and store the converter
+//        Convert<?> converter = getInheritedConverterInternal(sourceType, toType);
+//        targetMap.put(toType, converter);
+//        return converter;
+//    }
 
-        return INHERITED_CONVERTER_CACHE.computeIfAbsent(key, k -> {
-            // Build the complete set of source types (including sourceType itself) with levels.
-            Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
-            sourceTypes.add(new ClassLevel(sourceType, 0));
-            // Build the complete set of target types (including toType itself) with levels.
-            Set<ClassLevel> targetTypes = new TreeSet<>(getSuperClassesAndInterfaces(toType));
-            targetTypes.add(new ClassLevel(toType, 0));
+    private static Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
+        // Build the complete set of source types (including sourceType itself) with levels.
+        Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
+        sourceTypes.add(new ClassLevel(sourceType, 0));
+        // Build the complete set of target types (including toType itself) with levels.
+        Set<ClassLevel> targetTypes = new TreeSet<>(getSuperClassesAndInterfaces(toType));
+        targetTypes.add(new ClassLevel(toType, 0));
 
-            // Create pairs of source/target types with their associated levels.
-            class ConversionPairWithLevel {
-                private final ConversionPair pair;
-                private final int sourceLevel;
-                private final int targetLevel;
+        // Create pairs of source/target types with their associated levels.
+        class ConversionPairWithLevel {
+            private final ConversionPair pair;
+            private final int sourceLevel;
+            private final int targetLevel;
 
-                private ConversionPairWithLevel(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
-                    this.pair = Converter.pair(source, target);
-                    this.sourceLevel = sourceLevel;
-                    this.targetLevel = targetLevel;
+            private ConversionPairWithLevel(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
+                this.pair = Converter.pair(source, target);
+                this.sourceLevel = sourceLevel;
+                this.targetLevel = targetLevel;
+            }
+        }
+
+        List<ConversionPairWithLevel> pairs = new ArrayList<>();
+        for (ClassLevel source : sourceTypes) {
+            for (ClassLevel target : targetTypes) {
+                pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, source.level, target.level));
+            }
+        }
+
+        // Sort the pairs by a composite of rules:
+        // - Exact target matches first.
+        // - Then by assignability of the target types.
+        // - Then by combined inheritance distance.
+        // - Finally, prefer concrete classes over interfaces.
+        pairs.sort((p1, p2) -> {
+            boolean p1ExactTarget = p1.pair.getTarget() == toType;
+            boolean p2ExactTarget = p2.pair.getTarget() == toType;
+            if (p1ExactTarget != p2ExactTarget) {
+                return p1ExactTarget ? -1 : 1;
+            }
+            if (p1.pair.getTarget() != p2.pair.getTarget()) {
+                boolean p1AssignableToP2 = p2.pair.getTarget().isAssignableFrom(p1.pair.getTarget());
+                boolean p2AssignableToP1 = p1.pair.getTarget().isAssignableFrom(p2.pair.getTarget());
+                if (p1AssignableToP2 != p2AssignableToP1) {
+                    return p1AssignableToP2 ? -1 : 1;
                 }
             }
-
-            List<ConversionPairWithLevel> pairs = new ArrayList<>();
-            for (ClassLevel source : sourceTypes) {
-                for (ClassLevel target : targetTypes) {
-                    pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, source.level, target.level));
-                }
+            int dist1 = p1.sourceLevel + p1.targetLevel;
+            int dist2 = p2.sourceLevel + p2.targetLevel;
+            if (dist1 != dist2) {
+                return dist1 - dist2;
             }
-
-            // Sort the pairs by a composite of rules:
-            // - Exact target matches first.
-            // - Then by assignability of the target types.
-            // - Then by combined inheritance distance.
-            // - Finally, prefer concrete classes over interfaces.
-            pairs.sort((p1, p2) -> {
-                boolean p1ExactTarget = p1.pair.getTarget() == toType;
-                boolean p2ExactTarget = p2.pair.getTarget() == toType;
-                if (p1ExactTarget != p2ExactTarget) {
-                    return p1ExactTarget ? -1 : 1;
-                }
-                if (p1.pair.getTarget() != p2.pair.getTarget()) {
-                    boolean p1AssignableToP2 = p2.pair.getTarget().isAssignableFrom(p1.pair.getTarget());
-                    boolean p2AssignableToP1 = p1.pair.getTarget().isAssignableFrom(p2.pair.getTarget());
-                    if (p1AssignableToP2 != p2AssignableToP1) {
-                        return p1AssignableToP2 ? -1 : 1;
-                    }
-                }
-                int dist1 = p1.sourceLevel + p1.targetLevel;
-                int dist2 = p2.sourceLevel + p2.targetLevel;
-                if (dist1 != dist2) {
-                    return dist1 - dist2;
-                }
-                boolean p1FromInterface = p1.pair.getSource().isInterface();
-                boolean p2FromInterface = p2.pair.getSource().isInterface();
-                if (p1FromInterface != p2FromInterface) {
-                    return p1FromInterface ? 1 : -1;
-                }
-                boolean p1ToInterface = p1.pair.getTarget().isInterface();
-                boolean p2ToInterface = p2.pair.getTarget().isInterface();
-                if (p1ToInterface != p2ToInterface) {
-                    return p1ToInterface ? 1 : -1;
-                }
-                return 0;
-            });
-
-            // Iterate over sorted pairs and check the converter databases.
-            for (ConversionPairWithLevel pairWithLevel : pairs) {
-                Convert<?> tempConverter = USER_DB.get(pairWithLevel.pair);
-                if (tempConverter != null) {
-                    return tempConverter;
-                }
-                tempConverter = CONVERSION_DB.get(pairWithLevel.pair);
-                if (tempConverter != null) {
-                    return tempConverter;
-                }
+            boolean p1FromInterface = p1.pair.getSource().isInterface();
+            boolean p2FromInterface = p2.pair.getSource().isInterface();
+            if (p1FromInterface != p2FromInterface) {
+                return p1FromInterface ? 1 : -1;
             }
-            return null;
+            boolean p1ToInterface = p1.pair.getTarget().isInterface();
+            boolean p2ToInterface = p2.pair.getTarget().isInterface();
+            if (p1ToInterface != p2ToInterface) {
+                return p1ToInterface ? 1 : -1;
+            }
+            return 0;
         });
+
+        // Iterate over sorted pairs and check the converter databases.
+        for (ConversionPairWithLevel pairWithLevel : pairs) {
+            Convert<?> tempConverter = USER_DB.get(pairWithLevel.pair);
+            if (tempConverter != null) {
+                return tempConverter;
+            }
+            tempConverter = CONVERSION_DB.get(pairWithLevel.pair);
+            if (tempConverter != null) {
+                return tempConverter;
+            }
+        }
+        return null;
     }
     
     /**
@@ -1585,7 +1630,7 @@ public final class Converter {
      * @return true if a collection-based conversion is supported between the types, false otherwise
      * @throws IllegalArgumentException if target is EnumSet.class (caller should specify specific Enum type instead)
      */
-    public boolean isCollectionConversionSupported(Class<?> sourceType, Class<?> target) {
+    public static boolean isCollectionConversionSupported(Class<?> sourceType, Class<?> target) {
         // Quick check: If the source is not an array, a Collection, or an EnumSet, no conversion is supported here.
         if (!(sourceType.isArray() || Collection.class.isAssignableFrom(sourceType) || EnumSet.class.isAssignableFrom(sourceType))) {
             return false;
@@ -1663,68 +1708,44 @@ public final class Converter {
      * @return {@code true} if a non-collection conversion exists between the types,
      *         {@code false} if either type is an array/collection or no conversion exists
      * @see #isConversionSupportedFor(Class, Class)
-     * @see #isDirectConversionSupported(Class, Class)
      */
     public boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
-        // Check both source and target for array/collection types
-        if (source.isArray() || Collection.class.isAssignableFrom(source) ||
-                target.isArray() || Collection.class.isAssignableFrom(target)) {
+        // First, try to get the converter from the FULL_CONVERSION_CACHE.
+        Convert<?> cached = getCachedConverter(source, target);
+        if (cached != null) {
+            return cached != UNSUPPORTED;
+        }
+
+        // If either source or target is a collection/array type, this method is not applicable.
+        if (source.isArray() || target.isArray() ||
+                Collection.class.isAssignableFrom(source) || Collection.class.isAssignableFrom(target)) {
             return false;
         }
 
-        // Special case: Number.class as source
+        // Special case: When source is Number, delegate using Long.
         if (source.equals(Number.class)) {
-            return isConversionInMap(Long.class, target);
+            Convert<?> method = getConversionFromDBs(Long.class, target);
+            cacheConverter(source, target, method);
+            return isValidConversion(method);
         }
 
-        // Direct conversion check first (fastest)
-        if (isConversionInMap(source, target)) {
+        // Next, check direct conversion support in the primary databases.
+
+        Convert<?> method = getConversionFromDBs(source, target);
+        if (isValidConversion(method)) {
+            cacheConverter(source, target, method);
             return true;
         }
 
-        // Check inheritance-based conversions
-        Convert<?> method = getInheritedConverter(source, target);
-        return method != null && method != UNSUPPORTED;
-    }
-    
-    /**
-     * Determines whether a direct conversion from the specified source type to the target type is supported,
-     * without considering inheritance hierarchies. For array-to-array conversions, verifies that both array
-     * conversion and component type conversions are directly supported.
-     *
-     * <p>The method checks:</p>
-     * <ol>
-     *   <li>User-defined and built-in direct conversions</li>
-     *   <li>Collection/Array/EnumSet conversions - for array-to-array conversions, also verifies
-     *       that component type conversions are directly supported</li>
-     * </ol>
-     *
-     * <p>For array conversions, performs a deep check to ensure both the array types and their
-     * component types can be converted directly. For example, when checking if a String[] can be
-     * converted to Integer[], verifies both:</p>
-     * <ul>
-     *   <li>That array-to-array conversion is supported</li>
-     *   <li>That String-to-Integer conversion is directly supported</li>
-     * </ul>
-     *
-     * @param source The source class type
-     * @param target The target class type
-     * @return {@code true} if a direct conversion exists (including component type conversions for arrays),
-     *         {@code false} otherwise
-     */
-    public boolean isDirectConversionSupported(Class<?> source, Class<?> target) {
-        // First check if there's a direct conversion defined in the maps
-        if (isConversionInMap(source, target)) {
+        // Finally, attempt an inheritance-based lookup.
+        method = getInheritedConverter(source, target);
+        if (isValidConversion(method)) {
+            cacheConverter(source, target, method);
             return true;
         }
-        // If not found in the maps, check if collection/array/enum set conversions are possible
-        if (isCollectionConversionSupported(source, target)) {
-            // For array-to-array conversions, verify we can convert the component types
-            if (source.isArray() && target.isArray()) {
-                return isDirectConversionSupported(source.getComponentType(), target.getComponentType());
-            }
-            return true;
-        }
+
+        // Cache the failure result so that subsequent lookups are fast.
+        cacheConverter(source, target, UNSUPPORTED);
         return false;
     }
     
@@ -1755,26 +1776,42 @@ public final class Converter {
      *         false otherwise
      */
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
-        // Try simple type conversion first
-        if (isConversionInMap(source, target)) {
+        // First, check the FULL_CONVERSION_CACHE.
+        Convert<?> cached = getCachedConverter(source, target);
+        if (cached != null) {
+            return cached != UNSUPPORTED;
+        }
+
+        // Check direct conversion support in the primary databases.
+        Convert<?> method = getConversionFromDBs(source, target);
+        if (isValidConversion(method)) {
+            cacheConverter(source, target, method);
             return true;
         }
 
-        // Handle collection/array conversions
+        // Handle collection/array conversions.
         if (isCollectionConversionSupported(source, target)) {
-            // Only need special handling for array-to-array conversions
+            // Special handling for array-to-array conversions:
             if (source.isArray() && target.isArray()) {
                 return target.getComponentType() == Object.class ||
                         isConversionSupportedFor(source.getComponentType(), target.getComponentType());
             }
-            return true;  // All other collection conversions are supported
+            return true;  // All other collection conversions are supported.
         }
 
-        // Try inheritance-based conversion as last resort
-        Convert<?> method = getInheritedConverter(source, target);
+        // Finally, attempt inheritance-based conversion.
+        method = getInheritedConverter(source, target);
+        if (isValidConversion(method)) {
+            cacheConverter(source, target, method);
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isValidConversion(Convert<?> method) {
         return method != null && method != UNSUPPORTED;
     }
-    
+
     /**
      * Private helper method to check if a conversion exists directly in USER_DB or CONVERSION_DB.
      *
@@ -1782,16 +1819,19 @@ public final class Converter {
      * @param target Class of target type.
      * @return boolean true if a direct conversion exists, false otherwise.
      */
-    private boolean isConversionInMap(Class<?> source, Class<?> target) {
+    private static Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
         ConversionPair key = pair(source, target);
         Convert<?> method = USER_DB.get(key);
-        if (method != null && method != UNSUPPORTED) {
-            return true;
+        if (isValidConversion(method)) {
+            return method;
         }
         method = CONVERSION_DB.get(key);
-        return method != null && method != UNSUPPORTED;
+        if (isValidConversion(method)) {
+            return method;
+        }
+        return UNSUPPORTED;
     }
 
     /**
@@ -1803,7 +1843,7 @@ public final class Converter {
      *
      * @return A {@code Map<Class<?>, Set<Class<?>>>} representing all supported conversions.
      */
-    public Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
+    public static Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
         Map<Class<?>, Set<Class<?>>> toFrom = new TreeMap<>(Comparator.comparing(Class::getName));
         addSupportedConversion(CONVERSION_DB, toFrom);
         addSupportedConversion(USER_DB, toFrom);
@@ -1819,7 +1859,7 @@ public final class Converter {
      *
      * @return A {@code Map<String, Set<String>>} representing all supported conversions by class names.
      */
-    public Map<String, Set<String>> getSupportedConversions() {
+    public static Map<String, Set<String>> getSupportedConversions() {
         Map<String, Set<String>> toFrom = new TreeMap<>(String::compareTo);
         addSupportedConversionName(CONVERSION_DB, toFrom);
         addSupportedConversionName(USER_DB, toFrom);
@@ -1879,9 +1919,11 @@ public final class Converter {
      * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
      * @return The previous conversion method associated with the source and target types, or {@code null} if no conversion existed.
      */
-    public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
+    public static Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
+        // Clear any cached converter for these types.
+        clearCachesForType(source, target);
         return USER_DB.put(pair(source, target), conversionMethod);
     }
     
@@ -1907,5 +1949,13 @@ public final class Converter {
      */
     private static <T> T unsupported(T from, Converter converter) {
         return null;
+    }
+
+    private static void clearCachesForType(Class<?> source, Class<?> target) {
+        // Remove from FULL_CONVERSION_CACHE if it exists.
+        ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
+        if (targetMap != null) {
+            targetMap.remove(target);
+        }
     }
 }

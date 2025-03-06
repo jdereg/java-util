@@ -3815,11 +3815,9 @@ class ConverterTest
         assert !this.converter.isConversionSupportedFor(int.class, LocalDate.class);
         assert !this.converter.isConversionSupportedFor(Integer.class, LocalDate.class);
 
-        assert !this.converter.isDirectConversionSupported(byte.class, LocalDate.class);
         assert !this.converter.isConversionSupportedFor(byte.class, LocalDate.class);
 
         assert !this.converter.isConversionSupportedFor(Byte.class, LocalDate.class);
-        assert !this.converter.isDirectConversionSupported(Byte.class, LocalDate.class);
         assert !this.converter.isConversionSupportedFor(LocalDate.class, byte.class);
         assert !this.converter.isConversionSupportedFor(LocalDate.class, Byte.class);
 
@@ -3947,7 +3945,6 @@ class ConverterTest
     void testDumbNumberToUUIDProvesInheritance()
     {
         assert this.converter.isConversionSupportedFor(DumbNumber.class, UUID.class);
-        assert !this.converter.isDirectConversionSupported(DumbNumber.class, UUID.class);
 
         DumbNumber dn = new DumbNumber("1000");
 
@@ -3969,7 +3966,6 @@ class ConverterTest
         assert uuid.toString().equals("00000000-0000-0000-0000-0000000003e8");
 
         assert this.converter.isConversionSupportedFor(DumbNumber.class, UUID.class);
-        assert this.converter.isDirectConversionSupported(DumbNumber.class, UUID.class);
     }
 
     @Test

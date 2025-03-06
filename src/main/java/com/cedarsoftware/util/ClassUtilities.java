@@ -192,7 +192,6 @@ public class ClassUtilities {
     private ClassUtilities() {
     }
 
-    private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
     private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap;
     private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER = new ClassValueMap<>();
@@ -320,7 +319,7 @@ public class ClassUtilities {
         DIRECT_CLASS_MAPPING.put(float[].class, () -> new float[0]);
         DIRECT_CLASS_MAPPING.put(double[].class, () -> new double[0]);
         DIRECT_CLASS_MAPPING.put(char[].class, () -> new char[0]);
-        DIRECT_CLASS_MAPPING.put(Object[].class, () -> new Object[0]);
+        DIRECT_CLASS_MAPPING.put(Object[].class, () -> ArrayUtilities.EMPTY_OBJECT_ARRAY);
 
         // Boxed primitive arrays
         DIRECT_CLASS_MAPPING.put(Boolean[].class, () -> new Boolean[0]);
@@ -409,6 +408,19 @@ public class ClassUtilities {
         map.putAll(PRIMITIVE_TO_WRAPPER);
         map.putAll(WRAPPER_TO_PRIMITIVE);
         wrapperMap = Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Converts a wrapper class to its corresponding primitive type.
+     *
+     * @param toType The wrapper class to convert to its primitive equivalent.
+     *               Must be one of the standard Java wrapper classes (e.g., Integer.class, Boolean.class).
+     * @return The primitive class corresponding to the provided wrapper class or null if toType is not a primitive wrapper.
+     * @throws IllegalArgumentException If toType is null
+     */
+    public static Class<?> getPrimitiveFromWrapper(Class<?> toType) {
+        Convention.throwIfNull(toType, "toType cannot be null");
+        return WRAPPER_TO_PRIMITIVE.get(toType);
     }
 
     /**
@@ -1055,7 +1067,7 @@ public class ClassUtilities {
     private static Object[] matchArgumentsToParameters(Converter converter, Collection<?> values,
                                                        Parameter[] parameters, boolean allowNulls) {
         if (parameters == null || parameters.length == 0) {
-            return EMPTY_OBJECT_ARRAY; // Reuse a static empty array
+            return ArrayUtilities.EMPTY_OBJECT_ARRAY; // Reuse a static empty array
         }
 
         // Create result array and tracking arrays
@@ -1090,12 +1102,14 @@ public class ClassUtilities {
     private static void findExactMatches(Object[] values, boolean[] valueUsed,
                                          Parameter[] parameters, boolean[] parameterMatched,
                                          Object[] result) {
-        for (int i = 0; i < parameters.length; i++) {
+        int valLen = values.length;
+        int paramLen = parameters.length;
+        for (int i = 0; i < paramLen; i++) {
             if (parameterMatched[i]) continue;
 
             Class<?> paramType = parameters[i].getType();
 
-            for (int j = 0; j < values.length; j++) {
+            for (int j = 0; j < valLen; j++) {
                 if (valueUsed[j]) continue;
 
                 Object value = values[j];
@@ -1643,9 +1657,63 @@ public class ClassUtilities {
         return !findLowestCommonSupertypes(a, b).isEmpty();
     }
 
+    // Static fields for the SecurityChecker class
+    private static final ClassValueSet BLOCKED_CLASSES = new ClassValueSet();
+    private static final Set<String> BLOCKED_CLASS_NAMES_SET = new HashSet<>(SecurityChecker.SECURITY_BLOCKED_CLASS_NAMES);
+
+    // Cache for classes that have been checked and found to be inheriting from blocked classes
+    private static final ClassValueSet INHERITS_FROM_BLOCKED = new ClassValueSet();
+    // Cache for classes that have been checked and found to be safe
+    private static final ClassValueSet VERIFIED_SAFE_CLASSES = new ClassValueSet();
+
+    static {
+        // Pre-populate with all blocked classes
+        for (Class<?> blockedClass : SecurityChecker.SECURITY_BLOCKED_CLASSES) {
+            BLOCKED_CLASSES.add(blockedClass);
+        }
+    }
+
+    private static final ClassValue<Boolean> SECURITY_CHECK_CACHE = new ClassValue<Boolean>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            // Direct blocked class check (ultra-fast with ClassValueSet)
+            if (BLOCKED_CLASSES.contains(type)) {
+                return Boolean.TRUE;
+            }
+
+            // Fast name-based check
+            if (BLOCKED_CLASS_NAMES_SET.contains(type.getName())) {
+                return Boolean.TRUE;
+            }
+
+            // Check if already verified as inheriting from blocked
+            if (INHERITS_FROM_BLOCKED.contains(type)) {
+                return Boolean.TRUE;
+            }
+
+            // Check if already verified as safe
+            if (VERIFIED_SAFE_CLASSES.contains(type)) {
+                return Boolean.FALSE;
+            }
+
+            // Need to check inheritance - use ClassHierarchyInfo
+            for (Class<?> superType : getClassHierarchyInfo(type).getAllSupertypes()) {
+                if (BLOCKED_CLASSES.contains(superType)) {
+                    // Cache for future checks
+                    INHERITS_FROM_BLOCKED.add(type);
+                    return Boolean.TRUE;
+                }
+            }
+
+            // Class is safe
+            VERIFIED_SAFE_CLASSES.add(type);
+            return Boolean.FALSE;
+        }
+    };
+
     public static class SecurityChecker {
         // Combine all security-sensitive classes in one place
-        private static final Set<Class<?>> SECURITY_BLOCKED_CLASSES = new HashSet<>(Arrays.asList(
+        static final Set<Class<?>> SECURITY_BLOCKED_CLASSES = new ClassValueSet(Arrays.asList(
                 ClassLoader.class,
                 ProcessBuilder.class,
                 Process.class,
@@ -1657,29 +1725,10 @@ public class ClassUtilities {
         ));
 
         // Add specific class names that might be loaded dynamically
-        private static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(Collections.singletonList(
+        static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(Collections.singletonList(
                 "java.lang.ProcessImpl"
                 // Add any other specific class names
         ));
-
-        private static final ClassValue<Boolean> SECURITY_CHECK_CACHE = new ClassValue<Boolean>() {
-            @Override
-            protected Boolean computeValue(Class<?> type) {
-                // Check against blocked classes
-                for (Class<?> check : SECURITY_BLOCKED_CLASSES) {
-                    if (check.isAssignableFrom(type)) {
-                        return Boolean.TRUE; // Security issue found
-                    }
-                }
-
-                // Check specific class name
-                if (SECURITY_BLOCKED_CLASS_NAMES.contains(type.getName())) {
-                    return Boolean.TRUE; // Security issue found
-                }
-
-                return Boolean.FALSE; // No security issues
-            }
-        };
 
         /**
          * Checks if a class is blocked for security reasons.
@@ -1699,7 +1748,7 @@ public class ClassUtilities {
          * @return true if the class name is blocked, false otherwise
          */
         public static boolean isSecurityBlockedName(String className) {
-            return SECURITY_BLOCKED_CLASS_NAMES.contains(className);
+            return BLOCKED_CLASS_NAMES_SET.contains(className);
         }
 
         /**

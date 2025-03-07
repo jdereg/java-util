@@ -13,7 +13,7 @@ import java.util.TimeZone;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -241,7 +241,7 @@ public class SimpleDateFormatTest
         assertEquals(expectedDate.get(Calendar.SECOND), cal.get(Calendar.SECOND));
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testConcurrencyWillFail() throws Exception
     {
@@ -328,7 +328,7 @@ public class SimpleDateFormatTest
 //        System.out.println("t = " + t[0]);
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testConcurrencyWontFail() throws Exception
     {

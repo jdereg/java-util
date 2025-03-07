@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -1660,7 +1660,7 @@ class CaseInsensitiveMapTest
         return current;
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testGenHash() {
         HashMap<Integer, CaseInsensitiveMap.CaseInsensitiveString> hs = new HashMap<>();
@@ -1699,7 +1699,7 @@ class CaseInsensitiveMapTest
         assert ciMap.get("KEY4") == "qux";
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testPerformance()
     {
@@ -1730,7 +1730,7 @@ class CaseInsensitiveMapTest
         System.out.println("dupe CI map 100,000 times: " + (stop - start) / 1000000);
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testPerformance2()
     {

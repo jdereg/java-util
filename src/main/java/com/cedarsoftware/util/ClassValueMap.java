@@ -142,6 +142,25 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
         }
     };
 
+    /**
+     * Creates a ClassValueMap
+     */
+    public ClassValueMap() {
+    }
+
+    /**
+     * Creates a ClassValueMap containing the mappings from the specified map.
+     *
+     * @param map the map whose mappings are to be placed in this map
+     * @throws NullPointerException if the specified map is null
+     */
+    public ClassValueMap(Map<? extends Class<?>, ? extends V> map) {
+        if (map == null) {
+            throw new NullPointerException("Map cannot be null");
+        }
+        putAll(map);
+    }
+
     @Override
     public V get(Object key) {
         if (key == null) {
@@ -193,11 +212,15 @@ public class ClassValueMap<V> extends AbstractMap<Class<?>, V> implements Concur
 
     @Override
     public void clear() {
+        // Save the keys before clearing the map
+        Set<Class<?>> keysToInvalidate = new HashSet<>(backingMap.keySet());
+
+        // Now clear the map and null key value
         backingMap.clear();
         nullKeyValue.set(null);
-        // Invalidate cache entries. (Since ClassValue doesn't provide a bulk-clear,
-        // we remove entries for the keys in our backingMap.)
-        for (Class<?> key : backingMap.keySet()) {
+
+        // Invalidate cache entries for all the saved keys
+        for (Class<?> key : keysToInvalidate) {
             cache.remove(key);
         }
     }

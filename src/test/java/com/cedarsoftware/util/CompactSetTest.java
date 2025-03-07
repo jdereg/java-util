@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -376,7 +376,7 @@ public class CompactSetTest
         clearViaIterator(copy);
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     public void testPerformance()
     {

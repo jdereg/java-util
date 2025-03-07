@@ -1668,7 +1668,7 @@ public class ClassUtilities {
 
     static {
         // Pre-populate with all blocked classes
-        for (Class<?> blockedClass : SecurityChecker.SECURITY_BLOCKED_CLASSES) {
+        for (Class<?> blockedClass : SecurityChecker.SECURITY_BLOCKED_CLASSES.toSet()) {
             BLOCKED_CLASSES.add(blockedClass);
         }
     }
@@ -1713,7 +1713,7 @@ public class ClassUtilities {
 
     public static class SecurityChecker {
         // Combine all security-sensitive classes in one place
-        static final Set<Class<?>> SECURITY_BLOCKED_CLASSES = new ClassValueSet(Arrays.asList(
+        static final ClassValueSet SECURITY_BLOCKED_CLASSES = new ClassValueSet(Arrays.asList(
                 ClassLoader.class,
                 ProcessBuilder.class,
                 Process.class,

@@ -146,17 +146,17 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     }
 
     @Override
-    public boolean add(Class<?> clazz) {
-        if (clazz == null) {
-            boolean changed = !containsNull.get();
-            containsNull.set(true);
-            return changed;
+    public boolean add(Class<?> cls) {
+        if (cls == null) {
+            return !containsNull.getAndSet(true);
         }
-        boolean changed = backingSet.add(clazz);
-        if (changed) {
-            // No need to invalidate cache for additions - the next contains call will compute the new value
+
+        boolean added = backingSet.add(cls);
+        if (added) {
+            // Force cache recomputation on next get
+            membershipCache.remove(cls);
         }
-        return changed;
+        return added;
     }
 
     @Override
@@ -178,13 +178,20 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         return changed;
     }
 
+    /**
+     * Removes all classes from this set.
+     */
     @Override
     public void clear() {
+        // Save keys for cache invalidation
+        Set<Class<?>> keysToInvalidate = new HashSet<>(backingSet);
+
         backingSet.clear();
         containsNull.set(false);
-        // Since ClassValue doesn't provide a bulk-clear, we need to remove entries one by one
-        for (Class<?> key : backingSet) {
-            membershipCache.remove(key);
+
+        // Invalidate cache for all previous members
+        for (Class<?> cls : keysToInvalidate) {
+            membershipCache.remove(cls);
         }
     }
 
@@ -198,13 +205,115 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         return backingSet.isEmpty() && !containsNull.get();
     }
 
+    /**
+     * Returns true if this set equals another object.
+     * For sets, equality means they contain the same elements.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof Set)) {
+            return false;
+        }
+
+        Set<?> other = (Set<?>) o;
+        if (other.size() != size()) {
+            return false;
+        }
+
+        try {
+            // Check if other set has all our elements
+            if (containsNull.get() && !other.contains(null)) {
+                return false;
+            }
+
+            for (Class<?> cls : backingSet) {
+                if (!other.contains(cls)) {
+                    return false;
+                }
+            }
+
+            // Check if we have all other set's elements
+            for (Object element : other) {
+                if (element != null) {
+                    if (!(element instanceof Class) || !contains(element)) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        } catch (ClassCastException | NullPointerException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Returns the hash code value for this set.
+     * The hash code of a set is the sum of the hash codes of its elements.
+     */
+    @Override
+    public int hashCode() {
+        int h = 0;
+        for (Class<?> cls : backingSet) {
+            h += (cls != null ? cls.hashCode() : 0);
+        }
+        if (containsNull.get()) {
+            h += 0; // null element's hash code is 0
+        }
+        return h;
+    }
+
+    /**
+     * Retains only the elements in this set that are contained in the specified collection.
+     *
+     * @param c collection containing elements to be retained in this set
+     * @return true if this set changed as a result of the call
+     * @throws NullPointerException if the specified collection is null
+     */
+    @Override
+    public boolean retainAll(Collection<?> c) {
+        Convention.throwIfNull(c, "Collection cannot be null");
+
+        boolean modified = false;
+
+        // Handle null element specially
+        if (containsNull.get() && !c.contains(null)) {
+            containsNull.set(false);
+            modified = true;
+        }
+
+        // Create a set of classes to remove
+        Set<Class<?>> toRemove = new HashSet<>();
+        for (Class<?> cls : backingSet) {
+            if (!c.contains(cls)) {
+                toRemove.add(cls);
+            }
+        }
+
+        // Remove elements and invalidate cache
+        for (Class<?> cls : toRemove) {
+            backingSet.remove(cls);
+            membershipCache.remove(cls);
+            modified = true;
+        }
+
+        return modified;
+    }
+
     @Override
     public Iterator<Class<?>> iterator() {
         final boolean hasNull = containsNull.get();
-        final Iterator<Class<?>> backingIterator = backingSet.iterator();
+        // Make a snapshot of the backing set to avoid ConcurrentModificationException
+        final Iterator<Class<?>> backingIterator = new HashSet<>(backingSet).iterator();
 
         return new Iterator<Class<?>>() {
             private boolean nullReturned = !hasNull;
+            private Class<?> lastReturned = null;
+            private boolean canRemove = false;
 
             @Override
             public boolean hasNext() {
@@ -215,18 +324,35 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
             public Class<?> next() {
                 if (!nullReturned) {
                     nullReturned = true;
+                    lastReturned = null;
+                    canRemove = true;
                     return null;
                 }
-                return backingIterator.next();
+
+                lastReturned = backingIterator.next();
+                canRemove = true;
+                return lastReturned;
             }
 
             @Override
             public void remove() {
-                throw new UnsupportedOperationException("Removal not supported via iterator");
+                if (!canRemove) {
+                    throw new IllegalStateException("next() has not been called, or remove() has already been called after the last call to next()");
+                }
+
+                canRemove = false;
+
+                if (lastReturned == null) {
+                    // Removing the null element
+                    containsNull.set(false);
+                } else {
+                    // Removing a class element
+                    ClassValueSet.this.remove(lastReturned);
+                }
             }
         };
     }
-
+    
     /**
      * Returns a new set containing all elements from this set
      *

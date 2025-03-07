@@ -8,7 +8,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static com.cedarsoftware.util.DeepEquals.deepEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -62,7 +62,7 @@ class ConcurrentListTest {
         assertFalse(list.contains(1), "List should not contain removed element");
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testConcurrency() throws InterruptedException {
         List<Integer> list = new ConcurrentList<>();

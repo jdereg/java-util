@@ -13,8 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -221,7 +220,7 @@ public class LRUCacheTest {
         }
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @ParameterizedTest
     @MethodSource("strategies")
     void testConcurrency(LRUCache.StrategyType strategy) throws InterruptedException {
@@ -261,7 +260,7 @@ public class LRUCacheTest {
         assertTrue(service.awaitTermination(1, TimeUnit.MINUTES));
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @ParameterizedTest
     @MethodSource("strategies")
     void testConcurrency2(LRUCache.StrategyType strategy) throws InterruptedException {
@@ -422,7 +421,7 @@ public class LRUCacheTest {
         assertNull(lruCache.get(2));
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @ParameterizedTest
     @MethodSource("strategies")
     void testCacheBlast(LRUCache.StrategyType strategy) {
@@ -490,7 +489,7 @@ public class LRUCacheTest {
         assertTrue(cache1.equals(cache2));
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @ParameterizedTest
     @MethodSource("strategies")
     void testSpeed(LRUCache.StrategyType strategy) {

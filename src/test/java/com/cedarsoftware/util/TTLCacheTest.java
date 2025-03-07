@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -42,7 +42,7 @@ public class TTLCacheTest {
         assertEquals("C", ttlCache.get(3));
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testEntryExpiration() throws InterruptedException {
         ttlCache = new TTLCache<>(200, -1, 100); // TTL of 1 second, no LRU
@@ -198,7 +198,7 @@ public class TTLCacheTest {
         }
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testConcurrency() throws InterruptedException {
         ttlCache = new TTLCache<>(10000, 10000);
@@ -379,7 +379,7 @@ public class TTLCacheTest {
         assertEquals(cache1, cache2);
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testSpeed() {
         long startTime = System.currentTimeMillis();
@@ -391,7 +391,7 @@ public class TTLCacheTest {
         System.out.println("TTLCache speed: " + (endTime - startTime) + "ms");
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testTTLWithoutLRU() throws InterruptedException {
         ttlCache = new TTLCache<>(2000, -1); // TTL of 2 seconds, no LRU
@@ -409,7 +409,7 @@ public class TTLCacheTest {
         assertNull(ttlCache.get(1), "Entry should have expired after TTL");
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testTTLWithLRU() throws InterruptedException {
         ttlCache = new TTLCache<>(2000, 2); // TTL of 2 seconds, max size of 2
@@ -467,7 +467,7 @@ public class TTLCacheTest {
         assertFalse(ttlCache.containsKey(2));
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testExpirationDuringIteration() throws InterruptedException {
         ttlCache = new TTLCache<>(1000, -1, 100);
@@ -487,7 +487,7 @@ public class TTLCacheTest {
 
     // Use this test to "See" the pattern, by adding a System.out.println(toString()) of the cache contents to the top
     // of the purgeExpiredEntries() method.
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testTwoIndependentCaches()
     {

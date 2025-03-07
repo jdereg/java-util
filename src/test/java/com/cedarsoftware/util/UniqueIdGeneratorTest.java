@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate;
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate19;
@@ -120,7 +120,7 @@ public class UniqueIdGeneratorTest
         }
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void speedTest()
     {
@@ -133,7 +133,7 @@ public class UniqueIdGeneratorTest
         out.println("count = " + count);
     }
 
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testConcurrency()
     {

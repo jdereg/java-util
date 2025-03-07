@@ -21,7 +21,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static com.cedarsoftware.util.CompactMap.CASE_SENSITIVE;
 import static com.cedarsoftware.util.CompactMap.COMPACT_SIZE;
@@ -3492,7 +3492,7 @@ public class CompactMapTest
         assertEquals(4, compactMap.get("zed"), "Initial value for 'zed' should be 4.");
     }
     
-    @EnabledIf("com.cedarsoftware.util.TestUtil#isReleaseMode")
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     public void testPerformance()
     {

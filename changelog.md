@@ -1,10 +1,11 @@
 ### Revision History
-#### 3.1.0
-> * [TypeUtilities](userguide.md#typeutilities) added. Advanced Java type introspection and generic resolution utilities.
+#### 3.1.1
 > * [ClassValueMap](userguide.md#classvaluemap) added. High-performance `Map` optimized for ultra-fast `Class` key lookups using JVM-optimized `ClassValue`
 > * [ClassValueSet](userguide.md#classvalueset) added. High-performance `Set` optimized for ultra-fast `Class` membership testing using JVM-optimized `ClassValue`
+> * Performance improvements: Converter's `convert(),` `isConversionSupported(),` `isSimpleTypeConversion()` are faster via improved caching.
+#### 3.1.0
+> * [TypeUtilities](userguide.md#typeutilities) added. Advanced Java type introspection and generic resolution utilities.
 > * Currency and Pattern support added to Converter.
-> * Performance improvements: Converter's convert(), isConversionSupported(), isSimpleTypeConversion() are faster via improved caching.
 > * Performance improvements: ClassUtilities caches the results of distance between classes and fetching all supertypes.
 > * Bug fix: On certain windows machines, applications would not exit because of non-daenmon thread used for scheduler in LRUCache/TTLCache. Fixed by @kpartlow.
 #### 3.0.3

@@ -661,4 +661,150 @@ class ClassValueSetTest {
         Set<Class<?>> standardUnmodifiable = Collections.unmodifiableSet(performanceTest);
         assertTrue(standardUnmodifiable.contains(String.class));
     }
+
+    @Test
+    void testIteratorRemove() {
+        // Create a set with multiple elements
+        ClassValueSet set = new ClassValueSet();
+        set.add(String.class);
+        set.add(Integer.class);
+        set.add(Double.class);
+        set.add(null);
+        assertEquals(4, set.size());
+
+        // Use iterator to remove elements
+        Iterator<Class<?>> iterator = set.iterator();
+
+        // Remove the first element (should be null based on implementation)
+        assertTrue(iterator.hasNext());
+        assertNull(iterator.next());
+        iterator.remove();
+        assertEquals(3, set.size());
+        assertFalse(set.contains(null));
+
+        // Remove another element
+        assertTrue(iterator.hasNext());
+        Class<?> element = iterator.next();
+        iterator.remove();
+        assertEquals(2, set.size());
+        assertFalse(set.contains(element));
+
+        // Verify that calling remove twice without calling next() throws exception
+        assertThrows(IllegalStateException.class, iterator::remove);
+
+        // Continue iteration and verify remaining elements
+        assertTrue(iterator.hasNext());
+        element = iterator.next();
+        assertTrue(set.contains(element));
+
+        assertTrue(iterator.hasNext());
+        element = iterator.next();
+        assertTrue(set.contains(element));
+
+        // Verify iteration is complete
+        assertFalse(iterator.hasNext());
+
+        // Create a new iterator to test removing all elements
+        set.clear();
+        set.add(String.class);
+        iterator = set.iterator();
+        assertTrue(iterator.hasNext());
+        assertEquals(String.class, iterator.next());
+        iterator.remove();
+        assertEquals(0, set.size());
+        assertTrue(set.isEmpty());
+    }
+
+    @Test
+    void testEqualsMethod() {
+        // Create two identical sets
+        ClassValueSet set1 = new ClassValueSet();
+        set1.add(String.class);
+        set1.add(Integer.class);
+        set1.add(null);
+
+        ClassValueSet set2 = new ClassValueSet();
+        set2.add(String.class);
+        set2.add(Integer.class);
+        set2.add(null);
+
+        // Create a set with different contents
+        ClassValueSet set3 = new ClassValueSet();
+        set3.add(String.class);
+        set3.add(Double.class);
+        set3.add(null);
+
+        // Create a set with same classes but no null
+        ClassValueSet set4 = new ClassValueSet();
+        set4.add(String.class);
+        set4.add(Integer.class);
+
+        // Test equality with itself
+        assertEquals(set1, set1, "A set should equal itself");
+
+        // Test equality with an identical set
+        assertEquals(set1, set2, "Sets with identical elements should be equal");
+        assertEquals(set2, set1, "Set equality should be symmetric");
+
+        // Test inequality with a different set
+        assertNotEquals(set1, set3, "Sets with different elements should not be equal");
+
+        // Test inequality with a set missing null
+        assertNotEquals(set1, set4, "Sets with/without null should not be equal");
+
+        // Test equality with a standard HashSet containing the same elements
+        Set<Class<?>> standardSet = new HashSet<>();
+        standardSet.add(String.class);
+        standardSet.add(Integer.class);
+        standardSet.add(null);
+
+        assertEquals(set1, standardSet, "Should equal a standard Set with same elements");
+        assertEquals(standardSet, set1, "Standard Set should equal ClassValueSet with same elements");
+
+        // Test inequality with non-Set objects
+        assertNotEquals(null, set1, "Set should not equal null");
+        assertNotEquals("Not a set", set1, "Set should not equal a non-Set object");
+        assertNotEquals(set1, Arrays.asList(String.class, Integer.class, null), "Set should not equal a List with same elements");
+
+        // Test with empty sets
+        ClassValueSet emptySet1 = new ClassValueSet();
+        ClassValueSet emptySet2 = new ClassValueSet();
+
+        assertEquals(emptySet1, emptySet2, "Empty sets should be equal");
+        assertNotEquals(emptySet1, set1, "Empty set should not equal non-empty set");
+
+        // Test hashCode consistency
+        assertEquals(set1.hashCode(), set2.hashCode(), "Equal sets should have equal hash codes");
+        assertEquals(emptySet1.hashCode(), emptySet2.hashCode(), "Empty sets should have equal hash codes");
+    }
+
+    @Test
+    void testEqualsWithNullElements() {
+        // Create sets with only null
+        ClassValueSet nullSet1 = new ClassValueSet();
+        nullSet1.add(null);
+
+        ClassValueSet nullSet2 = new ClassValueSet();
+        nullSet2.add(null);
+
+        // Test equality
+        assertEquals(nullSet1, nullSet2, "Sets with only null should be equal");
+
+        // Test with standard HashSet
+        Set<Class<?>> standardNullSet = new HashSet<>();
+        standardNullSet.add(null);
+
+        assertEquals(nullSet1, standardNullSet, "Should equal a standard Set with only null");
+        assertEquals(standardNullSet, nullSet1, "Standard Set with only null should equal ClassValueSet with only null");
+
+        // Test hashCode for null-only sets
+        assertEquals(nullSet1.hashCode(), nullSet2.hashCode(), "Sets with only null should have equal hash codes");
+
+        // Add classes to one set
+        nullSet1.add(String.class);
+
+        // Should no longer be equal
+        assertNotEquals(nullSet1, nullSet2, "Sets with different elements should not be equal");
+        assertNotEquals(nullSet2, nullSet1, "Sets with different elements should not be equal (symmetric)");
+    }
 }

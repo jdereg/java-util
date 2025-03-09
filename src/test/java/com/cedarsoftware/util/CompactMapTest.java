@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -18,8 +19,10 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import com.cedarsoftware.io.JsonIo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
@@ -28,9 +31,14 @@ import static com.cedarsoftware.util.CompactMap.COMPACT_SIZE;
 import static com.cedarsoftware.util.CompactMap.MAP_TYPE;
 import static com.cedarsoftware.util.CompactMap.ORDERING;
 import static com.cedarsoftware.util.CompactMap.SORTED;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -3490,6 +3498,356 @@ public class CompactMapTest
         assertEquals(1, compactMap.get("apple"), "Initial value for 'apple' should be 1.");
         assertEquals(3, compactMap.get("cherry"), "Initial value for 'cherry' should be 3.");
         assertEquals(4, compactMap.get("zed"), "Initial value for 'zed' should be 4.");
+    }
+
+    /**
+     * Test CompactMap with String keys and values that need to be resolved
+     */
+    @Test
+    public void testStringKeysWithResolvedValues() {
+        // Create a CompactMap with String keys and complex values
+        CompactMap<String, Object> map = CompactMap.<String, Object>builder()
+                .caseSensitive(true)
+                .compactSize(30)
+                .sortedOrder()
+                .singleValueKey("id")
+                .build();
+
+        // Add entries with String keys and values that need resolution
+        Person person1 = new Person("John", 30);
+        Person person2 = new Person("Alice", 25);
+
+        map.put("person1", person1);
+        map.put("person2", person2);
+        map.put("circular", person1);  // Add circular reference
+
+        // Serialize and deserialize
+        String json = JsonIo.toJson(map, null);
+        CompactMap<String, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+
+        // Verify the map was properly restored
+        assertEquals(3, restoredMap.size());
+        assertTrue(restoredMap.containsKey("person1"));
+        assertTrue(restoredMap.containsKey("person2"));
+        assertTrue(restoredMap.containsKey("circular"));
+
+        Person restoredPerson1 = (Person) restoredMap.get("person1");
+        Person restoredPerson2 = (Person) restoredMap.get("person2");
+        Person restoredCircular = (Person) restoredMap.get("circular");
+
+        assertEquals("John", restoredPerson1.getName());
+        assertEquals(30, restoredPerson1.getAge());
+        assertEquals("Alice", restoredPerson2.getName());
+        assertEquals(25, restoredPerson2.getAge());
+
+        // Verify circular reference was properly resolved
+        assertSame(restoredPerson1, restoredCircular);
+    }
+
+    /**
+     * Test CompactMap with non-String keys that need to be resolved
+     */
+    @Test
+    public void testNonStringKeysWithSimpleValues() {
+        // Create a CompactMap with non-String keys and simple values
+        CompactMap<Object, String> map = CompactMap.<Object, String>builder()
+                .caseSensitive(true)
+                .compactSize(30)
+                .sortedOrder()
+                .build();
+
+        // Add entries with complex keys and String values
+        Date date1 = new Date();
+        UUID uuid1 = UUID.randomUUID();
+        int[] array1 = {1, 2, 3};
+
+        map.put(date1, "date value");
+        map.put(uuid1, "uuid value");
+        map.put(array1, "array value");
+
+        // Serialize and deserialize
+        String json = JsonIo.toJson(map, null);
+        CompactMap<Object, String> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+
+        // Verify the map was properly restored
+        assertEquals(3, restoredMap.size());
+
+        // Find and verify the date key
+        boolean foundDate = false;
+        boolean foundUuid = false;
+        boolean foundArray = false;
+
+        for (Map.Entry<Object, String> entry : restoredMap.entrySet()) {
+            if (entry.getKey() instanceof Date) {
+                assertEquals("date value", entry.getValue());
+                foundDate = true;
+            } else if (entry.getKey() instanceof UUID) {
+                assertEquals("uuid value", entry.getValue());
+                foundUuid = true;
+            } else if (entry.getKey() instanceof int[]) {
+                assertEquals("array value", entry.getValue());
+                int[] restoredArray = (int[]) entry.getKey();
+                assertArrayEquals(array1, restoredArray);
+                foundArray = true;
+            }
+        }
+
+        assertTrue(foundDate, "Date key was not found");
+        assertTrue(foundUuid, "UUID key was not found");
+        assertTrue(foundArray, "Array key was not found");
+    }
+
+    /**
+     * Test CompactMap with various key and value types
+     */
+    @Test
+    public void testNonStringKeysAndValuesWithResolution() {
+        // Create a CompactMap
+        CompactMap<Object, Object> map = CompactMap.builder()
+                .caseSensitive(true)
+                .compactSize(30)
+                .insertionOrder()
+                .build();
+
+        // Create test objects
+        Person person1 = new Person("John", 30);
+        Date date1 = new Date();
+        UUID uuid1 = UUID.randomUUID();
+        int[] array1 = {1, 2, 3};
+
+        // Add various combinations to test different scenarios
+        map.put("stringKey", "stringValue");          // String key, String value
+        map.put("personKey", person1);                // String key, Object value
+        map.put(date1, "dateValue");                  // Object key, String value
+        map.put(uuid1, array1);                       // Object key, Array value
+
+        // Serialize and deserialize
+        String json = JsonIo.toJson(map, null);
+//        System.out.println("JSON: " + json);
+        CompactMap<Object, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+
+        // Verify map size
+        assertEquals(4, restoredMap.size(), "Map should have 4 entries");
+
+        // Verify each entry type is restored correctly
+        boolean foundStringKeyStringValue = false;
+        boolean foundStringKeyPersonValue = false;
+        boolean foundDateKeyStringValue = false;
+        boolean foundUuidKeyArrayValue = false;
+
+        for (Map.Entry<Object, Object> entry : restoredMap.entrySet()) {
+//            System.out.println("Key type: " + entry.getKey().getClass().getName() +
+//                    ", Value type: " + (entry.getValue() == null ? "null" : entry.getValue().getClass().getName()));
+
+            if (entry.getKey() instanceof String) {
+                String key = (String) entry.getKey();
+                if ("stringKey".equals(key)) {
+                    assertEquals("stringValue", entry.getValue(), "String key 'stringKey' should have string value");
+                    foundStringKeyStringValue = true;
+                } else if ("personKey".equals(key)) {
+                    assertTrue(entry.getValue() instanceof Person, "String key 'personKey' should have Person value");
+                    Person p = (Person) entry.getValue();
+                    assertEquals("John", p.getName(), "Person should have name 'John'");
+                    assertEquals(30, p.getAge(), "Person should have age 30");
+                    foundStringKeyPersonValue = true;
+                }
+            } else if (entry.getKey() instanceof Date) {
+                assertEquals("dateValue", entry.getValue(), "Date key should have string value 'dateValue'");
+                foundDateKeyStringValue = true;
+            } else if (entry.getKey() instanceof UUID) {
+                assertTrue(entry.getValue() instanceof int[], "UUID key should have int[] value");
+                int[] arr = (int[]) entry.getValue();
+                assertArrayEquals(new int[]{1, 2, 3}, arr, "Array should contain [1,2,3]");
+                foundUuidKeyArrayValue = true;
+            }
+        }
+
+        // Verify all combinations were found
+        assertTrue(foundStringKeyStringValue, "Should find string key with string value");
+        assertTrue(foundStringKeyPersonValue, "Should find string key with Person value");
+        assertTrue(foundDateKeyStringValue, "Should find Date key with string value");
+        assertTrue(foundUuidKeyArrayValue, "Should find UUID key with array value");
+    }
+
+    /**
+     * Test circular references with non-string keys
+     */
+    @Test
+    public void testCircularReferencesWithNonStringKeys() {
+        // Create a CompactMap
+        CompactMap<Object, Object> map = CompactMap.builder()
+                .caseSensitive(true)
+                .compactSize(30)
+                .insertionOrder()
+                .build();
+
+        // Create test objects
+        Person person = new Person("John", 30);
+        UUID uuid = UUID.randomUUID();
+
+        // Create circular reference: person → uuid → person
+        map.put(person, uuid);
+        map.put(uuid, person);
+
+        // Add a marker to help identify objects
+        map.put("personKey", person);  // Same person instance
+        map.put("uuidKey", uuid);     // Same UUID instance
+
+        // Serialize and deserialize
+        String json = JsonIo.toJson(map, null);
+        // System.out.println("Circular reference JSON: " + json);
+        CompactMap<Object, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+
+        // Get reference objects
+        Person personFromMarker = (Person) restoredMap.get("personKey");
+        UUID uuidFromMarker = (UUID) restoredMap.get("uuidKey");
+
+        assertNotNull(personFromMarker, "Person reference should be restored");
+        assertNotNull(uuidFromMarker, "UUID reference should be restored");
+
+        // Find the objects used as keys
+        Person personAsKey = null;
+        UUID uuidAsKey = null;
+
+        for (Object key : restoredMap.keySet()) {
+            if (key instanceof Person) {
+                personAsKey = (Person) key;
+            } else if (key instanceof UUID) {
+                uuidAsKey = (UUID) key;
+            }
+        }
+
+        assertNotNull(personAsKey, "Person should be used as key");
+        assertNotNull(uuidAsKey, "UUID should be used as key");
+
+        // Find the objects used as values in the circular reference
+        Object valueForPersonKey = restoredMap.get(personAsKey);
+        Object valueForUuidKey = restoredMap.get(uuidAsKey);
+
+        assertInstanceOf(UUID.class, valueForPersonKey, "Value for Person key should be UUID");
+        assertInstanceOf(Person.class, valueForUuidKey, "Value for UUID key should be Person");
+
+        // Check value equality
+        assertEquals(uuidFromMarker.toString(), valueForPersonKey.toString(), "UUID values should be equal");
+        assertEquals(personFromMarker.getName(), ((Person)valueForUuidKey).getName(), "Person names should be equal");
+
+        // Now the critical test: check reference equality
+        // If reference tracking works perfectly, these should be the same instances
+        // System.out.println("personFromMarker == personAsKey: " + (personFromMarker == personAsKey));
+        // System.out.println("personFromMarker == valueForUuidKey: " + (personFromMarker == valueForUuidKey));
+        // System.out.println("uuidFromMarker == uuidAsKey: " + (uuidFromMarker == uuidAsKey));
+        // System.out.println("uuidFromMarker == valueForPersonKey: " + (uuidFromMarker == valueForPersonKey));
+
+        // Check reference equality between string-referenced objects and key/value objects
+        assertSame(personFromMarker, personAsKey, "Person from string key should be same as Person used as key");
+        assertSame(personFromMarker, valueForUuidKey, "Person from string key should be same as Person used as value");
+
+        // For UUID value equality (correct)
+        assertEquals(uuidFromMarker, uuidAsKey, "UUID from string key should equal UUID used as key");
+        assertEquals(uuidFromMarker, valueForPersonKey, "UUID from string key should equal UUID used as value");
+
+        // For UUID reference equality (expected to be different instances)
+        assertNotSame(uuidFromMarker, uuidAsKey, "UUID from string key should be different instance than UUID used as key");
+        assertNotSame(uuidFromMarker, valueForPersonKey, "UUID from string key should be different instance than UUID used as value");    }
+
+    /**
+     * Test reference handling with both referenceable and non-referenceable types
+     */
+    @Test
+    public void testReferenceHandling() {
+        // Create a CompactMap
+        CompactMap<Object, Object> map = CompactMap.builder()
+                .caseSensitive(true)
+                .compactSize(30)
+                .insertionOrder()
+                .build();
+
+        // Create test objects
+        Person person = new Person("John", 30);  // Referenceable (custom class)
+        UUID uuid = UUID.randomUUID();          // Non-referenceable (in the list)
+
+        // Create circular reference pattern
+        map.put(person, uuid);
+        map.put(uuid, person);
+
+        // Add markers to help identify objects
+        map.put("personKey", person);
+        map.put("uuidKey", uuid);
+
+        // Serialize and deserialize
+        String json = JsonIo.toJson(map, null);
+        CompactMap<Object, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
+
+        // Get reference objects
+        Person personFromMarker = (Person) restoredMap.get("personKey");
+        UUID uuidFromMarker = (UUID) restoredMap.get("uuidKey");
+
+        // Find objects used as keys
+        Person personAsKey = null;
+        UUID uuidAsKey = null;
+
+        for (Object key : restoredMap.keySet()) {
+            if (key instanceof Person) {
+                personAsKey = (Person) key;
+            } else if (key instanceof UUID) {
+                uuidAsKey = (UUID) key;
+            }
+        }
+
+        // Find objects used as values
+        Object valueForPersonKey = restoredMap.get(personAsKey);
+        Object valueForUuidKey = restoredMap.get(uuidAsKey);
+
+        // Verify referenceable type (Person) maintains reference equality
+        assertSame(personFromMarker, personAsKey,
+                "Person accessed via string key should be same instance as Person used as key");
+        assertSame(personFromMarker, valueForUuidKey,
+                "Person accessed via string key should be same instance as Person used as value");
+
+        // Verify non-referenceable type (UUID) maintains value equality but not reference equality
+        assertEquals(uuidFromMarker, uuidAsKey,
+                "UUID accessed via string key should have equal value to UUID used as key");
+        assertEquals(uuidFromMarker, valueForPersonKey,
+                "UUID accessed via string key should have equal value to UUID used as value");
+
+        // Document the intended behavior for non-referenceable types
+        assertNotSame(uuidFromMarker, uuidAsKey,
+                "UUID instances should be different objects (by design for non-referenceable types)");
+        assertNotSame(uuidFromMarker, valueForPersonKey,
+                "UUID instances should be different objects (by design for non-referenceable types)");
+    }
+
+    /**
+     * Test class for serialization
+     */
+    public static class Person {
+        private String name;
+        private int age;
+
+        // Required for deserialization
+        public Person() {
+        }
+
+        public Person(String name, int age) {
+            this.name = name;
+            this.age = age;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public int getAge() {
+            return age;
+        }
+
+        public void setAge(int age) {
+            this.age = age;
+        }
     }
     
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")

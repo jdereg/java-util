@@ -51,7 +51,7 @@ implementation 'com.cedarsoftware:java-util:3.1.1'
 - **[CaseInsensitiveSet](userguide.md#caseinsensitiveset)** - Set implementation with case-insensitive String handling
 - **[ConcurrentSet](userguide.md#concurrentset)** - Thread-safe Set supporting null elements
 - **[ConcurrentNavigableSetNullSafe](userguide.md#concurrentnavigablesetnullsafe)** - Thread-safe NavigableSet supporting null elements
-- **[ClassValueSet](userguide.md#classvalueset)** - High-performance Set optimized for ultra-fast Class membership testing using JVM-optimized `ClassValue`
+- **[ClassValueSet](userguide.md#classvalueset)** - High-performance Set optimized for fast Class membership testing using JVM-optimized ClassValue
 
 ### Maps
 - **[CompactMap](userguide.md#compactmap)** - Memory-efficient Map that dynamically adapts its storage structure based on size
@@ -61,7 +61,7 @@ implementation 'com.cedarsoftware:java-util:3.1.1'
 - **[TrackingMap](userguide.md#trackingmap)** - Map that monitors key access patterns for optimization
 - **[ConcurrentHashMapNullSafe](userguide.md#concurrenthashmapnullsafe)** - Thread-safe HashMap supporting null keys and values
 - **[ConcurrentNavigableMapNullSafe](userguide.md#concurrentnavigablemapnullsafe)** - Thread-safe NavigableMap supporting null keys and values
-- **[ClassValueMap](userguide.md#classvaluemap)** - High-performance Map optimized for ultra-fast Class key lookups using JVM-optimized `ClassValue`
+- **[ClassValueMap](userguide.md#classvaluemap)** - High-performance Map optimized for fast Class key lookups using JVM-optimized ClassValue
 
 ### Lists
 - **[ConcurrentList](userguide.md#concurrentlist)** - Thread-safe List implementation with flexible wrapping options

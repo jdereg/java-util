@@ -2,15 +2,22 @@ package com.cedarsoftware.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -568,7 +575,327 @@ public class CompactSetTest
         assert !converted.contains("APPLE");
         assert !converted.contains("MONKEY");
     }
+
+    @Test
+    public void testGetConfig() {
+        // Create a CompactSet with specific configuration
+        CompactSet<String> set = CompactSet.<String>builder()
+                .compactSize(50)
+                .caseSensitive(false)
+                .sortedOrder()
+                .build();
+
+        // Add some elements
+        set.add("apple");
+        set.add("banana");
+
+        // Get the configuration
+        Map<String, Object> config = set.getConfig();
+
+        // Verify the configuration values
+        assertEquals(50, config.get(CompactMap.COMPACT_SIZE));
+        assertEquals(false, config.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(CompactMap.SORTED, config.get(CompactMap.ORDERING));
+
+        // Verify the map is unmodifiable
+        assertThrows(UnsupportedOperationException.class, () -> config.put("test", "value"));
+
+        // Make sure only the expected keys are present
+        assertEquals(3, config.size());
+        assertTrue(config.containsKey(CompactMap.COMPACT_SIZE));
+        assertTrue(config.containsKey(CompactMap.CASE_SENSITIVE));
+        assertTrue(config.containsKey(CompactMap.ORDERING));
+
+        // Make sure MAP_TYPE and SINGLE_KEY are not exposed
+        assertFalse(config.containsKey(CompactMap.MAP_TYPE));
+        assertFalse(config.containsKey(CompactMap.SINGLE_KEY));
+    }
+
+    @Test
+    public void testWithConfig() {
+        // Create a CompactSet with default configuration and add some elements
+        CompactSet<String> originalSet = new CompactSet<>();
+        originalSet.add("apple");
+        originalSet.add("banana");
+        originalSet.add("cherry");
+
+        // Get the original configuration
+        Map<String, Object> originalConfig = originalSet.getConfig();
+
+        // Create a new configuration
+        Map<String, Object> newConfig = new HashMap<>();
+        newConfig.put(CompactMap.COMPACT_SIZE, 30);
+        newConfig.put(CompactMap.CASE_SENSITIVE, false);
+        newConfig.put(CompactMap.ORDERING, CompactMap.SORTED);
+
+        // Create a new set with the new configuration
+        CompactSet<String> newSet = originalSet.withConfig(newConfig);
+
+        // Verify the new configuration was applied
+        Map<String, Object> retrievedConfig = newSet.getConfig();
+        assertEquals(30, retrievedConfig.get(CompactMap.COMPACT_SIZE));
+        assertEquals(false, retrievedConfig.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(CompactMap.SORTED, retrievedConfig.get(CompactMap.ORDERING));
+
+        // Verify the elements were copied
+        assertEquals(3, newSet.size());
+        assertTrue(newSet.contains("apple"));
+        assertTrue(newSet.contains("banana"));
+        assertTrue(newSet.contains("cherry"));
+
+        // Verify the original set is unchanged
+        assertNotEquals(30, originalConfig.get(CompactMap.COMPACT_SIZE));
+
+        // Check that case-insensitivity works in the new set
+        assertTrue(newSet.contains("APPle"));
+
+        // Verify the ordering is respected in the new set
+        Iterator<String> iterator = newSet.iterator();
+        String first = iterator.next();
+        String second = iterator.next();
+        String third = iterator.next();
+
+        // Elements should be in sorted order: apple, banana, cherry
+        assertEquals("apple", first);
+        assertEquals("banana", second);
+        assertEquals("cherry", third);
+    }
+
+    @Test
+    public void testWithConfigPartial() {
+        // Create a CompactSet with specific configuration
+        CompactSet<String> originalSet = CompactSet.<String>builder()
+                .compactSize(40)
+                .caseSensitive(true)
+                .insertionOrder()
+                .build();
+
+        // Add elements in a specific order
+        originalSet.add("cherry");
+        originalSet.add("apple");
+        originalSet.add("banana");
+
+        // Create a partial configuration change
+        Map<String, Object> partialConfig = new HashMap<>();
+        partialConfig.put(CompactMap.COMPACT_SIZE, 25);
+        // Keep other settings the same
+
+        // Apply the partial config
+        CompactSet<String> newSet = originalSet.withConfig(partialConfig);
+
+        // Verify only the compact size changed
+        Map<String, Object> newConfig = newSet.getConfig();
+        assertEquals(25, newConfig.get(CompactMap.COMPACT_SIZE));
+        assertEquals(true, newConfig.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(CompactMap.INSERTION, newConfig.get(CompactMap.ORDERING));
+
+        // Verify original insertion order is maintained
+        Iterator<String> iterator = newSet.iterator();
+        assertEquals("cherry", iterator.next());
+        assertEquals("apple", iterator.next());
+        assertEquals("banana", iterator.next());
+    }
+
+    @Test
+    public void testWithConfigOrderingChange() {
+        // Create a set with unordered elements
+        CompactSet<String> originalSet = CompactSet.<String>builder()
+                .noOrder()
+                .build();
+
+        originalSet.add("banana");
+        originalSet.add("apple");
+        originalSet.add("cherry");
+
+        // Change to sorted order
+        Map<String, Object> orderConfig = new HashMap<>();
+        orderConfig.put(CompactMap.ORDERING, CompactMap.SORTED);
+
+        CompactSet<String> sortedSet = originalSet.withConfig(orderConfig);
+
+        // Verify elements are now in sorted order
+        Iterator<String> iterator = sortedSet.iterator();
+        assertEquals("apple", iterator.next());
+        assertEquals("banana", iterator.next());
+        assertEquals("cherry", iterator.next());
+
+        // Change to reverse order
+        orderConfig.put(CompactMap.ORDERING, CompactMap.REVERSE);
+        CompactSet<String> reversedSet = originalSet.withConfig(orderConfig);
+
+        // Verify elements are now in reverse order
+        iterator = reversedSet.iterator();
+        assertEquals("cherry", iterator.next());
+        assertEquals("banana", iterator.next());
+        assertEquals("apple", iterator.next());
+    }
+
+    @Test
+    public void testWithConfigCaseSensitivityChange() {
+        // Create a case-sensitive set
+        CompactSet<String> originalSet = CompactSet.<String>builder()
+                .caseSensitive(true)
+                .build();
+
+        originalSet.add("Apple");
+        originalSet.add("Banana");
+
+        // Verify case-sensitivity
+        assertTrue(originalSet.contains("Apple"));
+        assertFalse(originalSet.contains("apple"));
+
+        // Change to case-insensitive
+        Map<String, Object> config = new HashMap<>();
+        config.put(CompactMap.CASE_SENSITIVE, false);
+
+        CompactSet<String> caseInsensitiveSet = originalSet.withConfig(config);
+
+        // Verify the change
+        assertTrue(caseInsensitiveSet.contains("Apple"));
+        assertTrue(caseInsensitiveSet.contains("apple"));
+        assertTrue(caseInsensitiveSet.contains("APPLE"));
+    }
+
+    @Test
+    public void testWithConfigHandlesNullValues() {
+        // Create a set with known configuration for testing
+        CompactSet<String> originalSet = CompactSet.<String>builder()
+                .compactSize(50)
+                .caseSensitive(false)
+                .sortedOrder()
+                .build();
+        originalSet.add("apple");
+        originalSet.add("banana");
+
+        // Get original configuration for comparison
+        Map<String, Object> originalConfig = originalSet.getConfig();
+
+        // Test with null configuration map
+        Exception ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> originalSet.withConfig(null)
+        );
+        assertEquals("config cannot be null", ex.getMessage());
+
+        // Test with configuration containing null COMPACT_SIZE
+        Map<String, Object> configWithNullCompactSize = new HashMap<>();
+        configWithNullCompactSize.put(CompactMap.COMPACT_SIZE, null);
+
+        CompactSet<String> setWithNullCompactSize = originalSet.withConfig(configWithNullCompactSize);
+
+        // Should fall back to original compact size, not null
+        assertEquals(
+                originalConfig.get(CompactMap.COMPACT_SIZE),
+                setWithNullCompactSize.getConfig().get(CompactMap.COMPACT_SIZE)
+        );
+
+        // Verify other settings remain unchanged
+        assertEquals(originalConfig.get(CompactMap.CASE_SENSITIVE), setWithNullCompactSize.getConfig().get(CompactMap.CASE_SENSITIVE));
+        assertEquals(originalConfig.get(CompactMap.ORDERING), setWithNullCompactSize.getConfig().get(CompactMap.ORDERING));
+
+        // Test with configuration containing null CASE_SENSITIVE
+        Map<String, Object> configWithNullCaseSensitive = new HashMap<>();
+        configWithNullCaseSensitive.put(CompactMap.CASE_SENSITIVE, null);
+
+        CompactSet<String> setWithNullCaseSensitive = originalSet.withConfig(configWithNullCaseSensitive);
+
+        // Should fall back to original case sensitivity, not null
+        assertEquals(
+                originalConfig.get(CompactMap.CASE_SENSITIVE),
+                setWithNullCaseSensitive.getConfig().get(CompactMap.CASE_SENSITIVE)
+        );
+
+        // Test with configuration containing null ORDERING
+        Map<String, Object> configWithNullOrdering = new HashMap<>();
+        configWithNullOrdering.put(CompactMap.ORDERING, null);
+
+        CompactSet<String> setWithNullOrdering = originalSet.withConfig(configWithNullOrdering);
+
+        // Should fall back to original ordering, not null
+        assertEquals(
+                originalConfig.get(CompactMap.ORDERING),
+                setWithNullOrdering.getConfig().get(CompactMap.ORDERING)
+        );
+
+        // Test with configuration containing ALL null values
+        Map<String, Object> configWithAllNulls = new HashMap<>();
+        configWithAllNulls.put(CompactMap.COMPACT_SIZE, null);
+        configWithAllNulls.put(CompactMap.CASE_SENSITIVE, null);
+        configWithAllNulls.put(CompactMap.ORDERING, null);
+        // Also include irrelevant keys that should be ignored
+        configWithAllNulls.put(CompactMap.SINGLE_KEY, null);
+        configWithAllNulls.put(CompactMap.MAP_TYPE, null);
+        configWithAllNulls.put("randomKey", null);
+
+        CompactSet<String> setWithAllNulls = originalSet.withConfig(configWithAllNulls);
+
+        // All settings should fall back to original values
+        assertEquals(originalConfig.get(CompactMap.COMPACT_SIZE), setWithAllNulls.getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(originalConfig.get(CompactMap.CASE_SENSITIVE), setWithAllNulls.getConfig().get(CompactMap.CASE_SENSITIVE));
+        assertEquals(originalConfig.get(CompactMap.ORDERING), setWithAllNulls.getConfig().get(CompactMap.ORDERING));
+
+        // Verify elements were properly copied in all cases
+        assertEquals(2, setWithNullCompactSize.size());
+        assertEquals(2, setWithNullCaseSensitive.size());
+        assertEquals(2, setWithNullOrdering.size());
+        assertEquals(2, setWithAllNulls.size());
+
+        // Verify element content
+        assertTrue(setWithNullCompactSize.contains("apple"));
+        assertTrue(setWithNullCompactSize.contains("banana"));
+
+        // Verify ordering was preserved (if using sorted order)
+        if (CompactMap.SORTED.equals(originalConfig.get(CompactMap.ORDERING))) {
+            Iterator<String> iterator = setWithAllNulls.iterator();
+            assertEquals("apple", iterator.next());
+            assertEquals("banana", iterator.next());
+        }
+
+        // Verify case sensitivity was preserved
+        if (Boolean.FALSE.equals(originalConfig.get(CompactMap.CASE_SENSITIVE))) {
+            assertTrue(setWithAllNulls.contains("APPLE"));
+            assertTrue(setWithAllNulls.contains("Banana"));
+        }
+
+        // Test that irrelevant keys in config are ignored
+        Map<String, Object> configWithIrrelevantKeys = new HashMap<>();
+        configWithIrrelevantKeys.put("someRandomKey", "value");
+        configWithIrrelevantKeys.put(CompactMap.SINGLE_KEY, "id"); // Should be ignored for CompactSet
+        configWithIrrelevantKeys.put(CompactMap.MAP_TYPE, HashMap.class); // Should be ignored for CompactSet
+
+        CompactSet<String> setWithIrrelevantConfig = originalSet.withConfig(configWithIrrelevantKeys);
+
+        // Configuration should be unchanged since no relevant keys were changed
+        assertEquals(originalConfig.get(CompactMap.COMPACT_SIZE), setWithIrrelevantConfig.getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(originalConfig.get(CompactMap.CASE_SENSITIVE), setWithIrrelevantConfig.getConfig().get(CompactMap.CASE_SENSITIVE));
+        assertEquals(originalConfig.get(CompactMap.ORDERING), setWithIrrelevantConfig.getConfig().get(CompactMap.ORDERING));
+    }
     
+    @Test
+    public void testWithConfigIgnoresUnrelatedKeys() {
+        CompactSet<String> originalSet = new CompactSet<>();
+        originalSet.add("test");
+
+        // Create a config with both relevant and irrelevant keys
+        Map<String, Object> mixedConfig = new HashMap<>();
+        mixedConfig.put(CompactMap.COMPACT_SIZE, 25);
+        mixedConfig.put("someRandomKey", "value");
+        mixedConfig.put(CompactMap.MAP_TYPE, HashMap.class); // Should be ignored
+        mixedConfig.put(CompactMap.SINGLE_KEY, "id");        // Should be ignored
+
+        // Apply the config
+        CompactSet<String> newSet = originalSet.withConfig(mixedConfig);
+
+        // Verify only relevant keys were applied
+        Map<String, Object> newConfig = newSet.getConfig();
+        assertEquals(25, newConfig.get(CompactMap.COMPACT_SIZE));
+
+        // Verify the irrelevant keys were ignored
+        assertFalse(newConfig.containsKey("someRandomKey"));
+        assertFalse(newConfig.containsKey(CompactMap.MAP_TYPE));
+        assertFalse(newConfig.containsKey(CompactMap.SINGLE_KEY));
+    }
+
     private void clearViaIterator(Set set)
     {
         Iterator i = set.iterator();

@@ -1229,7 +1229,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         throw new UnsupportedOperationException("Unsupported operation [plus] or [+] between Maps.  Use putAll() instead.");
     }
 
-    protected enum LogicalValueType {
+    public enum LogicalValueType {
         EMPTY, OBJECT, ENTRY, MAP, ARRAY
     }
 
@@ -1243,7 +1243,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *
      * @return the LogicalValueType enum representing current storage state
      */
-    protected LogicalValueType getLogicalValueType() {
+    public LogicalValueType getLogicalValueType() {
         if (val instanceof Object[]) {   // 2 to compactSize
             return LogicalValueType.ARRAY;
         } else if (val instanceof Map) {   // > compactSize
@@ -1407,6 +1407,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     protected Map<K, V> getNewMap() {
         return new HashMap<>();
     }
+    
     /**
      * Determines if String keys are compared case-insensitively.
      * <p>
@@ -1450,6 +1451,124 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     protected String getOrdering() {
         return UNORDERED;
+    }
+    
+    /**
+     * Returns the configuration settings of this CompactMap.
+     * <p>
+     * The returned map contains the following keys:
+     * <ul>
+     *   <li>{@link #COMPACT_SIZE} - Maximum size before switching to backing map</li>
+     *   <li>{@link #CASE_SENSITIVE} - Whether string keys are case-sensitive</li>
+     *   <li>{@link #ORDERING} - Key ordering strategy</li>
+     *   <li>{@link #SINGLE_KEY} - Key for optimized single-entry storage</li>
+     *   <li>{@link #MAP_TYPE} - Class of backing map implementation</li>
+     * </ul>
+     * </p>
+     *
+     * @return an unmodifiable map containing the configuration settings
+     */
+    public Map<String, Object> getConfig() {
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put(COMPACT_SIZE, compactSize());
+        config.put(CASE_SENSITIVE, !isCaseInsensitive());
+        config.put(ORDERING, getOrdering());
+        config.put(SINGLE_KEY, getSingleValueKey());
+        Map<?, ?> map = getNewMap();
+        if (map instanceof CaseInsensitiveMap) {
+            map = ((CaseInsensitiveMap<?, ?>) map).getWrappedMap();
+        }
+        config.put(MAP_TYPE, map.getClass());
+        return Collections.unmodifiableMap(config);
+    }
+
+    /**
+     * Creates a new CompactMap with the same entries but different configuration.
+     * <p>
+     * This is useful for changing the configuration of a CompactMap without
+     * having to manually copy all entries.
+     * </p>
+     *
+     * @param config a map containing configuration options to change
+     * @return a new CompactMap with the specified configuration and the same entries
+     */
+    public CompactMap<K, V> withConfig(Map<String, Object> config) {
+        Convention.throwIfNull(config, "config cannot be null");
+
+        // Start with a builder
+        Builder<K, V> builder = CompactMap.builder();
+
+        // ISSUE 1: getOrDefault() has same problem with COMPACT_SIZE and CASE_SENSITIVE
+        // Let's fix the priority ordering for all configuration settings
+
+        // Handle compactSize with proper priority
+        Integer configCompactSize = (Integer) config.get(COMPACT_SIZE);
+        int compactSizeToUse = (configCompactSize != null) ? configCompactSize : compactSize();
+        builder.compactSize(compactSizeToUse);
+
+        // Handle caseSensitive with proper priority
+        Boolean configCaseSensitive = (Boolean) config.get(CASE_SENSITIVE);
+        boolean caseSensitiveToUse = (configCaseSensitive != null) ? configCaseSensitive : !isCaseInsensitive();
+        builder.caseSensitive(caseSensitiveToUse);
+
+        // Handle ordering with proper priority
+        String configOrdering = (String) config.get(ORDERING);
+        String orderingToUse = (configOrdering != null) ? configOrdering : getOrdering();
+
+        // Apply the determined ordering
+        switch (orderingToUse) {
+            case SORTED:
+                builder.sortedOrder();
+                break;
+            case REVERSE:
+                builder.reverseOrder();
+                break;
+            case INSERTION:
+                builder.insertionOrder();
+                break;
+            default:
+                builder.noOrder();
+        }
+
+        // Handle singleValueKey (this part looks good as fixed)
+        String thisSingleKeyValue = (String) getSingleValueKey();
+        String defaultSingleKeyValue = DEFAULT_SINGLE_KEY;
+        String configSingleKeyValue = (String) config.get(SINGLE_KEY);
+
+        String priorityKey;
+        if (configSingleKeyValue != null) {
+            priorityKey = configSingleKeyValue;
+        } else if (thisSingleKeyValue != null) {
+            priorityKey = thisSingleKeyValue;
+        } else {
+            priorityKey = defaultSingleKeyValue;
+        }
+        builder.singleValueKey((K) priorityKey);
+
+        // ISSUE 2: MAP_TYPE has same getOrDefault issue
+        Class<? extends Map> configMapType = (Class<? extends Map>) config.get(MAP_TYPE);
+        Map<?, ?> thisMap = getNewMap();
+        Class<? extends Map> thisMapType = thisMap.getClass();
+
+        // Handle CaseInsensitiveMap special case
+        if (thisMapType == CaseInsensitiveMap.class && thisMap instanceof CaseInsensitiveMap) {
+            thisMapType = ((CaseInsensitiveMap<?, ?>) thisMap).getWrappedMap().getClass();
+        }
+
+        Class<? extends Map> mapTypeToUse;
+        if (configMapType != null) {
+            mapTypeToUse = configMapType;
+        } else if (thisMapType != null) {
+            mapTypeToUse = thisMapType;
+        } else {
+            mapTypeToUse = (Class<? extends Map>) DEFAULT_MAP_TYPE;
+        }
+        builder.mapType(mapTypeToUse);
+
+        // Build and populate the new map
+        CompactMap<K, V> newMap = builder.build();
+        newMap.putAll(this);
+        return newMap;
     }
     
     /* ------------------------------------------------------------ */
@@ -2157,6 +2276,8 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
     }
 
+    // -----------------------------------------------------------------------------------------------------------------
+    
     /**
      * Internal class that handles dynamic generation of specialized CompactMap implementations.
      * <p>
@@ -2415,35 +2536,21 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         /**
          * Generates code to create a sorted map instance (TreeMap or similar).
-         * <p>
-         * Attempts to use comparator constructor if available, falling back to
-         * capacity-based constructor if not. Generated code handles:
-         * <ul>
-         *     <li>Case sensitivity for String keys</li>
-         *     <li>Natural or reverse ordering</li>
-         *     <li>Constructor fallback logic</li>
-         * </ul>
-         *
-         * @param mapType the Class object for the map implementation
-         * @param caseSensitive whether String keys should be case-sensitive
-         * @param ordering the ordering type (SORTED or REVERSE)
-         * @param options additional configuration options including compactSize
-         * @return String containing Java code to create the map instance
          */
         private static String getSortedMapCreationCode(Class<?> mapType, boolean caseSensitive,
-                                                      String ordering, Map<String, Object> options) {
+                                                       String ordering, Map<String, Object> options) {
             // Template for comparator-based constructor
             String comparatorTemplate =
                     "map = new %s(new CompactMapComparator(%b, %b));";
 
-            // Template for capacity-based constructor with fallback
-            String capacityTemplate =
+            // Check if capacity constructor exists using ReflectionUtils
+            boolean hasCapacityConstructor = ReflectionUtils.getConstructor(mapType, int.class) != null;
+
+            // Template based on available constructors
+            String capacityTemplate = hasCapacityConstructor ?
                     "map = new %s();\n" +
-                            "try {\n" +
-                            "    map = new %s(%d);\n" +
-                            "} catch (Exception e) {\n" +
-                            "    // Fallback to default constructor already done\n" +
-                            "}";
+                            "map = new %s(%d);" :
+                    "map = new %s();";
 
             if (hasComparatorConstructor(mapType)) {
                 return String.format(comparatorTemplate,
@@ -2452,40 +2559,54 @@ public class CompactMap<K, V> implements Map<K, V> {
                         REVERSE.equals(ordering));
             } else {
                 int compactSize = (Integer) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
-                return String.format(capacityTemplate,
-                        getMapClassName(mapType),
-                        getMapClassName(mapType),
-                        compactSize + 1);  // Use compactSize + 1 as initial capacity (that is the trigger point for expansion)
+                if (hasCapacityConstructor) {
+                    return String.format(capacityTemplate,
+                            getMapClassName(mapType),
+                            getMapClassName(mapType),
+                            compactSize + 1);  // Use compactSize + 1 as capacity
+                } else {
+                    return String.format(capacityTemplate, getMapClassName(mapType));
+                }
             }
         }
 
         /**
          * Generates code to create a standard (non-sorted) map instance.
-         * <p>
-         * Creates code that attempts to use capacity constructor first,
-         * falling back to default constructor if unavailable. Initial
-         * capacity is set to compactSize + 1 to avoid immediate resize
-         * when transitioning from compact storage.
-         *
-         * @param mapType the Class object for the map implementation
-         * @param options configuration options containing compactSize
-         * @return String containing Java code to create the map instance
          */
         private static String getStandardMapCreationCode(Class<?> mapType, Map<String, Object> options) {
-            String template =
+            // Check if capacity constructor exists using ReflectionUtils
+            boolean hasCapacityConstructor = ReflectionUtils.getConstructor(mapType, int.class) != null;
+
+            // Template based on available constructors
+            String template = hasCapacityConstructor ?
                     "map = new %s();\n" +
-                            "try {\n" +
-                            "    map = new %s(%d);\n" +
-                            "} catch (Exception e) {\n" +
-                            "    // Fallback to default constructor already done\n" +
-                            "}";
+                            "map = new %s(%d);" :
+                    "map = new %s();";
 
             String mapClassName = getMapClassName(mapType);
             int compactSize = (Integer) options.getOrDefault(COMPACT_SIZE, DEFAULT_COMPACT_SIZE);
-            return String.format(template,
-                    mapClassName,
-                    mapClassName,
-                    compactSize + 1);  // Use compactSize + 1 as initial capacity (that is the trigger point for expansion)
+
+            if (hasCapacityConstructor) {
+                return String.format(template,
+                        mapClassName,
+                        mapClassName,
+                        compactSize + 1);  // Use compactSize + 1 as initial capacity
+            } else {
+                return String.format(template, mapClassName);
+            }
+        }
+
+        /**
+         * Checks if the map class has a constructor that accepts a Comparator.
+         * <p>
+         * Used to determine if a sorted map can be created with a custom
+         * comparator (e.g., case-insensitive or reverse order).
+         *
+         * @param mapType the Class object for the map implementation
+         * @return true if the class has a Comparator constructor, false otherwise
+         */
+        private static boolean hasComparatorConstructor(Class<?> mapType) {
+            return ReflectionUtils.getConstructor(mapType, Comparator.class) != null;
         }
 
         /**
@@ -2511,24 +2632,6 @@ public class CompactMap<K, V> implements Map<K, V> {
                 return mapType.getName().replace('$', '.');
             }
             return mapType.getName();
-        }
-
-        /**
-         * Checks if the map class has a constructor that accepts a Comparator.
-         * <p>
-         * Used to determine if a sorted map can be created with a custom
-         * comparator (e.g., case-insensitive or reverse order).
-         *
-         * @param mapType the Class object for the map implementation
-         * @return true if the class has a Comparator constructor, false otherwise
-         */
-        private static boolean hasComparatorConstructor(Class<?> mapType) {
-            try {
-                mapType.getConstructor(Comparator.class);
-                return true;
-            } catch (NoSuchMethodException ignored) {
-                return false;
-            }
         }
 
         /**

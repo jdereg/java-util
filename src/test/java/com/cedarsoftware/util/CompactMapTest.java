@@ -28,9 +28,11 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static com.cedarsoftware.util.CompactMap.CASE_SENSITIVE;
 import static com.cedarsoftware.util.CompactMap.COMPACT_SIZE;
+import static com.cedarsoftware.util.CompactMap.INSERTION;
 import static com.cedarsoftware.util.CompactMap.MAP_TYPE;
 import static com.cedarsoftware.util.CompactMap.ORDERING;
 import static com.cedarsoftware.util.CompactMap.SORTED;
+import static com.cedarsoftware.util.CompactMap.UNORDERED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -3817,6 +3819,363 @@ public class CompactMapTest
                 "UUID instances should be different objects (by design for non-referenceable types)");
     }
 
+    @Test
+    void testGetConfig() {
+        // Create a CompactMap with specific configuration
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+                .compactSize(5)
+                .caseSensitive(false)
+                .sortedOrder()
+                .singleValueKey("singleKey")
+                .build();
+
+        // Get the configuration
+        Map<String, Object> config = map.getConfig();
+
+        // Verify the configuration values
+        assertEquals(5, config.get(CompactMap.COMPACT_SIZE));
+        assertEquals(false, config.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(SORTED, config.get(CompactMap.ORDERING));
+        assertEquals("singleKey", config.get(CompactMap.SINGLE_KEY));
+        assertEquals(TreeMap.class, config.get(CompactMap.MAP_TYPE));
+
+        // Verify the map is unmodifiable
+        assertThrows(UnsupportedOperationException.class, () -> config.put("test", "value"));
+    }
+
+    @Test
+    void testGetConfig2() {
+        // Create a CompactMap with specific configuration
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+                .compactSize(5)
+                .caseSensitive(false)
+                .insertionOrder()
+                .singleValueKey("singleKey")
+                .build();
+
+        // Get the configuration
+        Map<String, Object> config = map.getConfig();
+
+        // Verify the configuration values
+        assertEquals(5, config.get(CompactMap.COMPACT_SIZE));
+        assertEquals(false, config.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(INSERTION, config.get(CompactMap.ORDERING));
+        assertEquals("singleKey", config.get(CompactMap.SINGLE_KEY));
+        assertEquals(LinkedHashMap.class, config.get(CompactMap.MAP_TYPE));
+
+        // Verify the map is unmodifiable
+        assertThrows(UnsupportedOperationException.class, () -> config.put("test", "value"));
+    }
+
+    @Test
+    void testGetConfig3() {
+        // Create a CompactMap with specific configuration
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+                .compactSize(5)
+                .caseSensitive(false)
+                .noOrder()
+                .singleValueKey("singleKey")
+                .build();
+
+        // Get the configuration
+        Map<String, Object> config = map.getConfig();
+
+        // Verify the configuration values
+        assertEquals(5, config.get(CompactMap.COMPACT_SIZE));
+        assertEquals(false, config.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(UNORDERED, config.get(CompactMap.ORDERING));
+        assertEquals("singleKey", config.get(CompactMap.SINGLE_KEY));
+        assertEquals(HashMap.class, config.get(CompactMap.MAP_TYPE));
+
+        // Verify the map is unmodifiable
+        assertThrows(UnsupportedOperationException.class, () -> config.put("test", "value"));
+    }
+
+    @Test
+    void testGetConfig4() {
+        // Create a CompactMap with specific configuration
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+                .compactSize(5)
+                .caseSensitive(false)
+                .sortedOrder()
+                .singleValueKey("singleKey")
+                .mapType(ConcurrentSkipListMap.class)
+                .build();
+
+        // Get the configuration
+        Map<String, Object> config = map.getConfig();
+
+        // Verify the configuration values
+        assertEquals(5, config.get(CompactMap.COMPACT_SIZE));
+        assertEquals(false, config.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(SORTED, config.get(CompactMap.ORDERING));
+        assertEquals("singleKey", config.get(CompactMap.SINGLE_KEY));
+        assertEquals(ConcurrentSkipListMap.class, config.get(CompactMap.MAP_TYPE));
+
+        // Verify the map is unmodifiable
+        assertThrows(UnsupportedOperationException.class, () -> config.put("test", "value"));
+    }
+
+    @Test
+    void testGetConfig5() {
+        // Create a CompactMap with specific configuration
+        CompactMap<String, Integer> map = CompactMap.<String, Integer>builder()
+                .compactSize(5)
+                .caseSensitive(true)
+                .sortedOrder()
+                .singleValueKey("singleKey")
+                .mapType(ConcurrentSkipListMap.class)
+                .build();
+
+        // Get the configuration
+        Map<String, Object> config = map.getConfig();
+
+        // Verify the configuration values
+        assertEquals(5, config.get(CompactMap.COMPACT_SIZE));
+        assertEquals(true, config.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(SORTED, config.get(CompactMap.ORDERING));
+        assertEquals("singleKey", config.get(CompactMap.SINGLE_KEY));
+        assertEquals(ConcurrentSkipListMap.class, config.get(CompactMap.MAP_TYPE));
+
+        // Verify the map is unmodifiable
+        assertThrows(UnsupportedOperationException.class, () -> config.put("test", "value"));
+    }
+
+    @Test
+    void testWithConfig() {
+        // Create a CompactMap with default configuration and add some entries
+        CompactMap<String, Integer> originalMap = new CompactMap<>();
+        originalMap.put("one", 1);
+        originalMap.put("two", 2);
+        originalMap.put("three", 3);
+
+        // Create a new configuration
+        Map<String, Object> newConfig = new HashMap<>();
+        newConfig.put(CompactMap.COMPACT_SIZE, 10);
+        newConfig.put(CompactMap.CASE_SENSITIVE, false);
+        newConfig.put(CompactMap.ORDERING, CompactMap.UNORDERED);
+        newConfig.put(CompactMap.SINGLE_KEY, "specialKey");
+        newConfig.put(CompactMap.MAP_TYPE, LinkedHashMap.class);
+
+        // Create a new map with the new configuration
+        CompactMap<String, Integer> newMap = originalMap.withConfig(newConfig);
+
+        // Verify the new configuration was applied
+        Map<String, Object> retrievedConfig = newMap.getConfig();
+        assertEquals(10, retrievedConfig.get(CompactMap.COMPACT_SIZE));
+        assertEquals(false, retrievedConfig.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(CompactMap.UNORDERED, retrievedConfig.get(CompactMap.ORDERING));
+        assertEquals("specialKey", retrievedConfig.get(CompactMap.SINGLE_KEY));
+        assertEquals(LinkedHashMap.class, retrievedConfig.get(CompactMap.MAP_TYPE));
+
+        // Verify the entries were copied
+        assertEquals(3, newMap.size());
+        assertEquals(Integer.valueOf(1), newMap.get("one"));
+        assertEquals(Integer.valueOf(2), newMap.get("two"));
+        assertEquals(Integer.valueOf(3), newMap.get("three"));
+
+        // Verify the original map is unchanged
+        Map<String, Object> originalConfig = originalMap.getConfig();
+        assertNotEquals(10, originalConfig.get(CompactMap.COMPACT_SIZE));
+        assertNotEquals(LinkedHashMap.class, originalConfig.get(CompactMap.MAP_TYPE));
+
+        // Verify case insensitivity works in the new map
+        assertEquals(Integer.valueOf(1), newMap.get("ONE"));
+
+        // Test with partial configuration changes
+        Map<String, Object> partialConfig = new HashMap<>();
+        partialConfig.put(CompactMap.COMPACT_SIZE, 15);
+
+        CompactMap<String, Integer> partiallyChangedMap = originalMap.withConfig(partialConfig);
+        Map<String, Object> partiallyChangedConfig = partiallyChangedMap.getConfig();
+        assertEquals(15, partiallyChangedConfig.get(CompactMap.COMPACT_SIZE));
+        assertEquals(originalConfig.get(CompactMap.CASE_SENSITIVE), partiallyChangedConfig.get(CompactMap.CASE_SENSITIVE));
+        assertEquals(originalConfig.get(CompactMap.ORDERING), partiallyChangedConfig.get(CompactMap.ORDERING));
+    }
+
+    @Test
+    void testWithConfigHandlesNullValues() {
+        // Create a map with known configuration for testing
+        CompactMap<String, Integer> originalMap = CompactMap.<String, Integer>builder()
+                .compactSize(50)
+                .caseSensitive(true)
+                .singleValueKey("id")
+                .sortedOrder()
+                .build();
+        originalMap.put("one", 1);
+        originalMap.put("two", 2);
+
+        // Get original configuration for comparison
+        Map<String, Object> originalConfig = originalMap.getConfig();
+
+        // Test with null configuration map
+        Exception ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> originalMap.withConfig(null)
+        );
+        assertEquals("config cannot be null", ex.getMessage());
+
+        // Test with configuration containing null SINGLE_KEY
+        Map<String, Object> configWithNullSingleKey = new HashMap<>();
+        configWithNullSingleKey.put(CompactMap.SINGLE_KEY, null);
+
+        CompactMap<String, Integer> mapWithNullSingleKey = originalMap.withConfig(configWithNullSingleKey);
+
+        // Should fall back to original single key, not null
+        assertEquals(
+                originalConfig.get(CompactMap.SINGLE_KEY),
+                mapWithNullSingleKey.getConfig().get(CompactMap.SINGLE_KEY)
+        );
+
+        // Verify other settings remain unchanged
+        assertEquals(originalConfig.get(CompactMap.COMPACT_SIZE), mapWithNullSingleKey.getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(originalConfig.get(CompactMap.CASE_SENSITIVE), mapWithNullSingleKey.getConfig().get(CompactMap.CASE_SENSITIVE));
+        assertEquals(originalConfig.get(CompactMap.ORDERING), mapWithNullSingleKey.getConfig().get(CompactMap.ORDERING));
+
+        // Test with configuration containing null MAP_TYPE
+        Map<String, Object> configWithNullMapType = new HashMap<>();
+        configWithNullMapType.put(CompactMap.MAP_TYPE, null);
+
+        CompactMap<String, Integer> mapWithNullMapType = originalMap.withConfig(configWithNullMapType);
+
+        // Should fall back to original map type, not null
+        assertEquals(
+                originalConfig.get(CompactMap.MAP_TYPE),
+                mapWithNullMapType.getConfig().get(CompactMap.MAP_TYPE)
+        );
+
+        // Test with configuration containing null COMPACT_SIZE
+        Map<String, Object> configWithNullCompactSize = new HashMap<>();
+        configWithNullCompactSize.put(CompactMap.COMPACT_SIZE, null);
+
+        CompactMap<String, Integer> mapWithNullCompactSize = originalMap.withConfig(configWithNullCompactSize);
+
+        // Should fall back to original compact size, not null
+        assertEquals(
+                originalConfig.get(CompactMap.COMPACT_SIZE),
+                mapWithNullCompactSize.getConfig().get(CompactMap.COMPACT_SIZE)
+        );
+
+        // Test with configuration containing null CASE_SENSITIVE
+        Map<String, Object> configWithNullCaseSensitive = new HashMap<>();
+        configWithNullCaseSensitive.put(CompactMap.CASE_SENSITIVE, null);
+
+        CompactMap<String, Integer> mapWithNullCaseSensitive = originalMap.withConfig(configWithNullCaseSensitive);
+
+        // Should fall back to original case sensitivity, not null
+        assertEquals(
+                originalConfig.get(CompactMap.CASE_SENSITIVE),
+                mapWithNullCaseSensitive.getConfig().get(CompactMap.CASE_SENSITIVE)
+        );
+
+        // Test with configuration containing null ORDERING
+        Map<String, Object> configWithNullOrdering = new HashMap<>();
+        configWithNullOrdering.put(CompactMap.ORDERING, null);
+
+        CompactMap<String, Integer> mapWithNullOrdering = originalMap.withConfig(configWithNullOrdering);
+
+        // Should fall back to original ordering, not null
+        assertEquals(
+                originalConfig.get(CompactMap.ORDERING),
+                mapWithNullOrdering.getConfig().get(CompactMap.ORDERING)
+        );
+
+        // Test with configuration containing ALL null values
+        Map<String, Object> configWithAllNulls = new HashMap<>();
+        configWithAllNulls.put(CompactMap.SINGLE_KEY, null);
+        configWithAllNulls.put(CompactMap.MAP_TYPE, null);
+        configWithAllNulls.put(CompactMap.COMPACT_SIZE, null);
+        configWithAllNulls.put(CompactMap.CASE_SENSITIVE, null);
+        configWithAllNulls.put(CompactMap.ORDERING, null);
+
+        CompactMap<String, Integer> mapWithAllNulls = originalMap.withConfig(configWithAllNulls);
+
+        // All settings should fall back to original values
+        assertEquals(originalConfig.get(CompactMap.SINGLE_KEY), mapWithAllNulls.getConfig().get(CompactMap.SINGLE_KEY));
+        assertEquals(originalConfig.get(CompactMap.MAP_TYPE), mapWithAllNulls.getConfig().get(CompactMap.MAP_TYPE));
+        assertEquals(originalConfig.get(CompactMap.COMPACT_SIZE), mapWithAllNulls.getConfig().get(CompactMap.COMPACT_SIZE));
+        assertEquals(originalConfig.get(CompactMap.CASE_SENSITIVE), mapWithAllNulls.getConfig().get(CompactMap.CASE_SENSITIVE));
+        assertEquals(originalConfig.get(CompactMap.ORDERING), mapWithAllNulls.getConfig().get(CompactMap.ORDERING));
+
+        // Verify entries were properly copied in all cases
+        assertEquals(2, mapWithNullSingleKey.size());
+        assertEquals(2, mapWithNullMapType.size());
+        assertEquals(2, mapWithNullCompactSize.size());
+        assertEquals(2, mapWithNullCaseSensitive.size());
+        assertEquals(2, mapWithNullOrdering.size());
+        assertEquals(2, mapWithAllNulls.size());
+    }
+
+    @Test
+    void testWithConfigEdgeCases() {
+        CompactMap<String, Integer> emptyMap = new CompactMap<>();
+
+        // Empty configuration should create effectively identical map
+        Map<String, Object> emptyConfig = new HashMap<>();
+        CompactMap<String, Integer> newEmptyConfigMap = emptyMap.withConfig(emptyConfig);
+        assertEquals(emptyMap.getConfig(), newEmptyConfigMap.getConfig());
+
+        // Test boundary values
+        Map<String, Object> boundaryConfig = new HashMap<>();
+        boundaryConfig.put(CompactMap.COMPACT_SIZE, 2);
+
+        CompactMap<String, Integer> boundaryMap = emptyMap.withConfig(boundaryConfig);
+        assertEquals(2, boundaryMap.getConfig().get(CompactMap.COMPACT_SIZE));
+
+        // Test invalid configuration values
+        Map<String, Object> invalidConfig = new HashMap<>();
+        invalidConfig.put(CompactMap.COMPACT_SIZE, -1);
+
+        // This might throw an exception depending on implementation
+        // If negative values are allowed, adjust test accordingly
+        try {
+            CompactMap<String, Integer> invalidMap = emptyMap.withConfig(invalidConfig);
+            // If we get here, check the behavior is reasonable
+            Map<String, Object> resultConfig = invalidMap.getConfig();
+            assertEquals(-1, resultConfig.get(CompactMap.COMPACT_SIZE));
+        } catch (IllegalArgumentException e) {
+            // This is also acceptable if negative values aren't allowed
+        }
+    }
+
+    @Test
+    void testConfigRoundTrip() {
+        // Create a map with custom configuration
+        CompactMap<String, Integer> originalMap = CompactMap.<String, Integer>builder()
+                .compactSize(7)
+                .caseSensitive(false)
+                .noOrder()
+                .singleValueKey("primaryKey")
+                .build();
+        
+        originalMap.put("a", 1);
+        originalMap.put("b", 2);
+
+        // Get its config
+        Map<String, Object> config = originalMap.getConfig();
+
+        // Create a new map with that config
+        CompactMap<String, Integer> newMap = new CompactMap<String, Integer>().withConfig(config);
+
+        // Add the same entries
+        newMap.put("a", 1);
+        newMap.put("b", 2);
+
+        // The configurations should be identical
+        assertEquals(config, newMap.getConfig());
+
+        // And the maps should behave the same
+        assertEquals(originalMap.get("A"), newMap.get("A")); // Case insensitivity
+        assertEquals(originalMap.size(), newMap.size());
+
+        // Test that the ordering is preserved if that's part of the configuration
+        if (CompactMap.UNORDERED.equals(config.get(CompactMap.ORDERING))) {
+            List<String> originalKeys = new ArrayList<>(originalMap.keySet());
+            List<String> newKeys = new ArrayList<>(newMap.keySet());
+            assertEquals(originalKeys, newKeys);
+        }
+    }
+    
     /**
      * Test class for serialization
      */

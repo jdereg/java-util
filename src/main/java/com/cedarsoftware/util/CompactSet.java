@@ -1,8 +1,11 @@
 package com.cedarsoftware.util;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -329,5 +332,87 @@ public class CompactSet<E> implements Set<E> {
     @Deprecated
     protected Set<E> getNewSet() {
         return new LinkedHashSet<>(2);
+    }
+
+    /**
+     * Returns the configuration settings of this CompactSet.
+     * <p>
+     * The returned map contains the following keys:
+     * <ul>
+     *   <li>{@link CompactMap#COMPACT_SIZE} - Maximum size before switching to backing map</li>
+     *   <li>{@link CompactMap#CASE_SENSITIVE} - Whether string elements are case-sensitive</li>
+     *   <li>{@link CompactMap#ORDERING} - Element ordering strategy</li>
+     * </ul>
+     * </p>
+     *
+     * @return an unmodifiable map containing the configuration settings
+     */
+    public Map<String, Object> getConfig() {
+        // Get the underlying map's config but filter out map-specific details
+        Map<String, Object> mapConfig = map.getConfig();
+
+        // Create a new map with only the Set-relevant configuration
+        Map<String, Object> setConfig = new LinkedHashMap<>();
+        setConfig.put(CompactMap.COMPACT_SIZE, mapConfig.get(CompactMap.COMPACT_SIZE));
+        setConfig.put(CompactMap.CASE_SENSITIVE, mapConfig.get(CompactMap.CASE_SENSITIVE));
+        setConfig.put(CompactMap.ORDERING, mapConfig.get(CompactMap.ORDERING));
+
+        return Collections.unmodifiableMap(setConfig);
+    }
+
+    public CompactSet<E> withConfig(Map<String, Object> config) {
+        Convention.throwIfNull(config, "config cannot be null");
+
+        // Start with a builder
+        Builder<E> builder = CompactSet.<E>builder();
+
+        // Get current configuration from the underlying map
+        Map<String, Object> currentConfig = map.getConfig();
+
+        // Handle compactSize with proper priority
+        Integer configCompactSize = (Integer) config.get(CompactMap.COMPACT_SIZE);
+        Integer currentCompactSize = (Integer) currentConfig.get(CompactMap.COMPACT_SIZE);
+        int compactSizeToUse = (configCompactSize != null) ? configCompactSize : currentCompactSize;
+        builder.compactSize(compactSizeToUse);
+
+        // Handle caseSensitive with proper priority
+        Boolean configCaseSensitive = (Boolean) config.get(CompactMap.CASE_SENSITIVE);
+        Boolean currentCaseSensitive = (Boolean) currentConfig.get(CompactMap.CASE_SENSITIVE);
+        boolean caseSensitiveToUse = (configCaseSensitive != null) ? configCaseSensitive : currentCaseSensitive;
+        builder.caseSensitive(caseSensitiveToUse);
+
+        // Handle ordering with proper priority
+        String configOrdering = (String) config.get(CompactMap.ORDERING);
+        String currentOrdering = (String) currentConfig.get(CompactMap.ORDERING);
+        String orderingToUse = (configOrdering != null) ? configOrdering : currentOrdering;
+
+        // Apply the determined ordering
+        applyOrdering(builder, orderingToUse);
+
+        // Build and populate the new set
+        CompactSet<E> newSet = builder.build();
+        newSet.addAll(this);
+        return newSet;
+    }
+
+    private void applyOrdering(Builder<E> builder, String ordering) {
+        if (ordering == null) {
+            builder.noOrder(); // Default to no order if somehow null
+            return;
+        }
+
+        switch (ordering) {
+            case CompactMap.SORTED:
+                builder.sortedOrder();
+                break;
+            case CompactMap.REVERSE:
+                builder.reverseOrder();
+                break;
+            case CompactMap.INSERTION:
+                builder.insertionOrder();
+                break;
+            default:
+                builder.noOrder();
+        }
     }
 }

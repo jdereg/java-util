@@ -1,7 +1,8 @@
 ### Revision History
 #### 3.2.0
 > * [CompactMap](userguide.md#compactmap) and [CompactSet](userguide.md#compactset) have new APIs that allow you get the configuration they were built with, and to create a new `CompactMap` with that configuration: `Map config = cmap.getConfig(). cmap = withConfig(config).` Same for `CompactSet.`
-> * If you decide to use a non JDK Map for the Map instance used by `CompactMap`, you are no longer required to have both a default constructor and a constructor that takes an initialize size.
+> * If you decide to use a non-JDK `Map` for the `Map` instance used by `CompactMap`, you are no longer required to have both a default constructor and a constructor that takes an initialize size.
+> * Deprecated `shutdown` API on `LRUCache` as it now uses a Daemon thread for the scheduler.  This means that the thread will not prevent the JVM from exiting.
 #### 3.1.1
 > * [ClassValueMap](userguide.md#classvaluemap) added. High-performance `Map` optimized for ultra-fast `Class` key lookups using JVM-optimized `ClassValue`
 > * [ClassValueSet](userguide.md#classvalueset) added. High-performance `Set` optimized for ultra-fast `Class` membership testing using JVM-optimized `ClassValue`

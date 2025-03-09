@@ -11,8 +11,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -37,12 +35,7 @@ public class LRUCacheTest {
     void setUp(LRUCache.StrategyType strategyType) {
         lruCache = new LRUCache<>(3, strategyType);
     }
-
-    @AfterAll
-    static void tearDown() {
-        ThreadedLRUCacheStrategy.shutdown();
-    }
-
+    
     @ParameterizedTest
     @MethodSource("strategies")
     void testPutAndGet(LRUCache.StrategyType strategy) {

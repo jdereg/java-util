@@ -288,19 +288,4 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
     public String toString() {
         return MapUtilities.mapToString(this);
     }
-
-    /**
-     * Shuts down the shared scheduler. Call this method when your application is terminating.
-     */
-    public static void shutdown() {
-        scheduler.shutdown();
-        try {
-            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-                scheduler.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            scheduler.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-    }
 }

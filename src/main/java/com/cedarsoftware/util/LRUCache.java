@@ -186,9 +186,12 @@ public class LRUCache<K, V> implements Map<K, V> {
         return strategy.equals(other);
     }
 
+    /**
+     * This method is no longer needed as the ThreadedLRUCacheStrategy will automatically end because it uses a
+     * daemon thread.
+     * @deprecated 
+     */
+    @Deprecated
     public void shutdown() {
-        if (strategy instanceof ThreadedLRUCacheStrategy) {
-            ThreadedLRUCacheStrategy.shutdown();
-        }
     }
 }

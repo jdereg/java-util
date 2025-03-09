@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>bundle</packaging>
-    <version>3.1.2-SNAPSHOT</version>
+    <version>3.2.0</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 

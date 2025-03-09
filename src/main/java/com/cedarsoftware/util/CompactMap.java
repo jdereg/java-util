@@ -1498,9 +1498,6 @@ public class CompactMap<K, V> implements Map<K, V> {
         // Start with a builder
         Builder<K, V> builder = CompactMap.builder();
 
-        // ISSUE 1: getOrDefault() has same problem with COMPACT_SIZE and CASE_SENSITIVE
-        // Let's fix the priority ordering for all configuration settings
-
         // Handle compactSize with proper priority
         Integer configCompactSize = (Integer) config.get(COMPACT_SIZE);
         int compactSizeToUse = (configCompactSize != null) ? configCompactSize : compactSize();
@@ -1532,7 +1529,6 @@ public class CompactMap<K, V> implements Map<K, V> {
 
         // Handle singleValueKey (this part looks good as fixed)
         String thisSingleKeyValue = (String) getSingleValueKey();
-        String defaultSingleKeyValue = DEFAULT_SINGLE_KEY;
         String configSingleKeyValue = (String) config.get(SINGLE_KEY);
 
         String priorityKey;
@@ -1541,12 +1537,12 @@ public class CompactMap<K, V> implements Map<K, V> {
         } else if (thisSingleKeyValue != null) {
             priorityKey = thisSingleKeyValue;
         } else {
-            priorityKey = defaultSingleKeyValue;
+            priorityKey = DEFAULT_SINGLE_KEY;
         }
         builder.singleValueKey((K) priorityKey);
 
         // ISSUE 2: MAP_TYPE has same getOrDefault issue
-        Class<? extends Map> configMapType = (Class<? extends Map>) config.get(MAP_TYPE);
+        Class<? extends Map<String, Object>> configMapType = (Class<? extends Map<String, Object>>) config.get(MAP_TYPE);
         Map<?, ?> thisMap = getNewMap();
         Class<? extends Map> thisMapType = thisMap.getClass();
 
@@ -1558,10 +1554,8 @@ public class CompactMap<K, V> implements Map<K, V> {
         Class<? extends Map> mapTypeToUse;
         if (configMapType != null) {
             mapTypeToUse = configMapType;
-        } else if (thisMapType != null) {
-            mapTypeToUse = thisMapType;
         } else {
-            mapTypeToUse = (Class<? extends Map>) DEFAULT_MAP_TYPE;
+            mapTypeToUse = thisMapType;
         }
         builder.mapType(mapTypeToUse);
 

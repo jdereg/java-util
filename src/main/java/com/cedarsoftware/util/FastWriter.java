@@ -110,6 +110,7 @@ public class FastWriter extends Writer {
             str.getChars(off, off + available, cb, nextChar);
             off += available;
             len -= available;
+            nextChar = cb.length;
             flushBuffer();
         }
 

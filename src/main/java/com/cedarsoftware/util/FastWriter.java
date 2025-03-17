@@ -101,6 +101,9 @@ public class FastWriter extends Writer {
         if (nextChar + len <= cb.length) {
             str.getChars(off, off + len, cb, nextChar);
             nextChar += len;
+            if (nextChar == cb.length) {
+                flushBuffer();
+            }
             return;
         }
 

@@ -98,6 +98,22 @@ public class TestIO
     }
 
     @Test
+    void fastWriterBufferSizeIsEqualToLimit() throws IOException {
+        final String line511 = IntStream.range(0, 64).mapToObj(it -> "a").collect(Collectors.joining());
+        final String nextLine = "Tbbb";
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8), 64);
+        out.write(line511);
+        out.write(nextLine);
+        out.close();
+
+        final String actual = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+
+        Assertions.assertEquals(line511+nextLine, actual);
+    }
+
+    @Test
     public void testFastWriterCharBuffer() throws Exception
     {
         String content = TestUtil.fetchResource("prettyPrint.json");

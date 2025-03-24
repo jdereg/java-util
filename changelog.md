@@ -1,7 +1,12 @@
 ### Revision History
+#### 3.3.0 New Features and Improvements
+> * `CompactCIHashSet, CompactCILinkedSet, CompactLinkedSet, CompactCIHashMap, CompactCILinkedMap, CompactLinkedMap` are no longer deprecated. Subclassing `CompactMap` or `CompactSet` is a viable option if you need to serialize the derived class with libraries other than `json-io,` like Jackson, Gson, etc.
+> * Added `CharBuffer to Map,` `ByteBuffer to Map,` and vice-versa conversions.
+> * `DEFAULT_FIELD_FILTER` in `ReflectionUtils` made public.
+> * Bug fix: `FastWriter` missing characters on buffer limit #115 by @ozhelezniak-talend.
 #### 3.2.0 New Features and Improvements
 > * **Added `getConfig()` and `withConfig()` methods to `CompactMap` and `CompactSet`**
->   - These methods allow easy inspectiion of `CompactMap/CompactSet` configurations
+>   - These methods allow easy inspection of `CompactMap/CompactSet` configurations
 >   - Provides alternative API for creating a duplicate of a `CompactMap/CompactSet` with the same configuration
 >   -  If you decide to use a non-JDK `Map` for the `Map` instance used by `CompactMap`, you are no longer required to have both a default constructor and a constructor that takes an initialize size.**
 > * **Deprecated** `shutdown` API on `LRUCache` as it now uses a Daemon thread for the scheduler.  This means that the thread will not prevent the JVM from exiting.

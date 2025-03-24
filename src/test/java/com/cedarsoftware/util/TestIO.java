@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -10,6 +11,8 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class TestIO
 {
@@ -76,6 +79,38 @@ public class TestIO
         out.close();
 
         assert content.equals(new String(baos.toByteArray(), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void fastWriterBufferLimitValue() throws IOException {
+        final String line511 = IntStream.range(0, 63).mapToObj(it -> "a").collect(Collectors.joining());
+        final String nextLine = "Tbbb";
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8), 64);
+        out.write(line511);
+        out.write(nextLine);
+        out.close();
+
+        final String actual = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+
+        Assertions.assertEquals(line511+nextLine, actual);
+    }
+
+    @Test
+    void fastWriterBufferSizeIsEqualToLimit() throws IOException {
+        final String line511 = IntStream.range(0, 64).mapToObj(it -> "a").collect(Collectors.joining());
+        final String nextLine = "Tbbb";
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8), 64);
+        out.write(line511);
+        out.write(nextLine);
+        out.close();
+
+        final String actual = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+
+        Assertions.assertEquals(line511+nextLine, actual);
     }
 
     @Test

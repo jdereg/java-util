@@ -51,10 +51,19 @@ Choose from three ordering strategies:
 - Allows fine-tuning of memory usage vs performance tradeoff
 
 ### Implementation Notes
-
 - Built on top of `CompactMap` for memory efficiency
-- Maintains proper Set semantics while optimizing storage
+- Maintains proper `Set` semantics while optimizing storage
 - Thread-safe when properly synchronized externally
+
+### Pre-built Classes
+We provide several pre-built classes for common use cases:
+- `CompactCIHashSet`
+- `CompactCILinkedSet`
+- `CompactLinkedSet`
+
+### Serialization
+`CompactSet` and its subclasses serialize in JSON with the same format as a standard Set. `CompactSets` constructed with the "builder" pattern have a different JSON format with `json-io.` If you want a standard format, subclass `CompactSet` (see `CompactLinkedSet`) to set your configuration options.
+
 ---
 ## CaseInsensitiveSet
 
@@ -502,6 +511,15 @@ CompactMap<String, Object> configured = CompactMap.<String, Object>builder()
 - Use Collections.synchronizedMap() for thread safety
 - Iterator operations require external synchronization
 - Atomic operations not guaranteed without synchronization
+
+### Pre-built Classes
+We provide several pre-built classes for common use cases:
+- `CompactCIHashMap`
+- `CompactCILinkedMap`
+- `CompactLinkedMap`
+
+### Serialization
+`CompactMap` and its subclasses serialize in JSON with the same format as a standard `Map.` `CompactMaps` constructed with the "builder" pattern have a different JSON format with `json-io.` If you want a standard format, subclass `CompactMap` (see `CompactLinkedMap`) to set your configuration options.
 
 ---
 ## CaseInsensitiveMap

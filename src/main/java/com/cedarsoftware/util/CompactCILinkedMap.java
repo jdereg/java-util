@@ -6,23 +6,9 @@ import java.util.Map;
 
 /**
  * A case-insensitive Map implementation that uses a compact internal representation
- * for small maps.
- *
- * @deprecated As of Cedar Software java-util 2.19.0, replaced by CompactMap with builder pattern configuration.
- * <p>
- * Example replacement:<br>
- * Instead of: {@code Map<String, String> map = new CompactCILinkedMap<>();}<br>
- * Use: {@code Map<String, String> map = CompactMap.newMap(80, false, 16, CompactMap.INSERTION);}
- * </p>
- * <p>
- * This creates a CompactMap with:
- * <ul>
- *   <li>compactSize = 80 (same as CompactCIHashMap)</li>
- *   <li>caseSensitive = false (case-insensitive behavior)</li>
- *   <li>capacity = 16 (default initial capacity)</li>
- *   <li>ordering = UNORDERED (standard hash map behavior)</li>
- * </ul>
- * </p>
+ * for small maps.  This Map exists to simplify JSON serialization. No custom reader nor
+ * writer is needed to serialize this map.  It is a drop-in replacement for LinkedHashMap and
+ * if you want case-insensitive behavior for String keys and compactness.
  *
  * @param <K> the type of keys maintained by this map
  * @param <V> the type of mapped values
@@ -43,7 +29,6 @@ import java.util.Map;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-@Deprecated
 public class CompactCILinkedMap<K, V> extends CompactMap<K, V>
 {
     public CompactCILinkedMap() { }

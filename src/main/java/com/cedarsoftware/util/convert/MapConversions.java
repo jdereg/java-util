@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -22,6 +24,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
@@ -84,9 +87,7 @@ final class MapConversions {
     static final String ZONED_DATE_TIME = "zonedDateTime";
     static final String ZONE = "zone";
     static final String YEAR = "year";
-    static final String SECONDS = "seconds";
     static final String EPOCH_MILLIS = "epochMillis";
-    static final String NANOS = "nanos";
     static final String MOST_SIG_BITS = "mostSigBits";
     static final String LEAST_SIG_BITS = "leastSigBits";
     static final String ID = "id";
@@ -338,6 +339,47 @@ final class MapConversions {
 
     static URI toURI(Object from, Converter converter) {
         return dispatch(from, converter, URI.class, URI_KEYS);
+    }
+
+    /**
+     * Converts a Map to a ByteBuffer by decoding a Base64-encoded string value.
+     *
+     * @param from The Map containing a Base64-encoded string under "value" or "_v" key
+     * @param converter The Converter instance for configuration access
+     * @return A ByteBuffer containing the decoded bytes
+     * @throws IllegalArgumentException If the map is missing required keys or contains invalid data
+     * @throws NullPointerException If the map or its required values are null
+     */
+    static ByteBuffer toByteBuffer(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+
+        // Check for the value in preferred order (VALUE first, then V)
+        Object valueObj = map.containsKey(VALUE) ? map.get(VALUE) : map.get(V);
+
+        if (valueObj == null) {
+            throw new IllegalArgumentException("Unable to convert map to ByteBuffer: Missing or null 'value' or '_v' field");
+        }
+
+        if (!(valueObj instanceof String)) {
+            throw new IllegalArgumentException("Unable to convert map to ByteBuffer: Value must be a Base64-encoded String, found: "
+                    + valueObj.getClass().getName());
+        }
+
+        String base64 = (String) valueObj;
+
+        try {
+            // Decode the Base64 string into a byte array
+            byte[] decoded = Base64.getDecoder().decode(base64);
+
+            // Wrap the byte array with a ByteBuffer (creates a backed array that can be gc'd when no longer referenced)
+            return ByteBuffer.wrap(decoded);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unable to convert map to ByteBuffer: Invalid Base64 encoding", e);
+        }
+    }
+
+    static CharBuffer toCharBuffer(Object from, Converter converter) {
+        return dispatch(from, converter, CharBuffer.class, VALUE_KEYS);
     }
 
     static Throwable toThrowable(Object from, Converter converter, Class<?> target) {

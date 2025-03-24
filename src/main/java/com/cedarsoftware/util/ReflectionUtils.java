@@ -380,7 +380,7 @@ public final class ReflectionUtils {
         }
     }
 
-    private static final Predicate<Field> DEFAULT_FIELD_FILTER = field -> {
+    public static final Predicate<Field> DEFAULT_FIELD_FILTER = field -> {
         if (Modifier.isStatic(field.getModifiers())) {
             return false;
         }
@@ -868,7 +868,7 @@ public final class ReflectionUtils {
      * (like "this$"). If you need the old behavior, filter the additional fields:
      * <pre>{@code
      * // Get fields excluding transient and synthetic fields
-     * List<Field> fields = getAllDeclaredFields(MyClass.class, field ->
+     * Map<String, Field> fields = getAllDeclaredFields(MyClass.class, field ->
      *     DEFAULT_FIELD_FILTER.test(field) &&
      *     !Modifier.isTransient(field.getModifiers()) &&
      *     !field.isSynthetic()

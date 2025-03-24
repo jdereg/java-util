@@ -2,8 +2,12 @@ package com.cedarsoftware.util.convert;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
+import static com.cedarsoftware.util.convert.MapConversions.VALUE;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -65,5 +69,44 @@ final class ByteBufferConversions {
 
     static StringBuilder toStringBuilder(Object from, Converter converter) {
         return new StringBuilder(toCharBuffer(from, converter));
+    }
+    
+    static Map<?, ?> toMap(Object from, Converter converter) {
+        ByteBuffer bytes = (ByteBuffer) from;
+
+        // We'll store our final encoded string here
+        String encoded;
+
+        if (bytes.hasArray()) {
+            // If the buffer is array-backed, we can avoid a copy by using the array offset/length
+            int offset = bytes.arrayOffset() + bytes.position();
+            int length = bytes.remaining();
+
+            // Java 11+ supports an encodeToString overload with offset/length
+            // encoded = Base64.getEncoder().encodeToString(bytes.array(), offset, length);
+
+            // Make a minimal copy of exactly the slice
+            byte[] slice = new byte[length];
+            System.arraycopy(bytes.array(), offset, slice, 0, length);
+
+            encoded = Base64.getEncoder().encodeToString(slice);
+        } else {
+            // Otherwise, we have to copy
+            // Save the current position so we can restore it later
+            int originalPosition = bytes.position();
+            try {
+                byte[] tmp = new byte[bytes.remaining()];
+                bytes.get(tmp);
+                encoded = Base64.getEncoder().encodeToString(tmp);
+            } finally {
+                // Restore the original position to avoid side-effects
+                bytes.position(originalPosition);
+            }
+        }
+
+
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(VALUE, encoded);
+        return map;
     }
 }

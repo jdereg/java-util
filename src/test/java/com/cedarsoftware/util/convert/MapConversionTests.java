@@ -72,7 +72,7 @@ class MapConversionTests {
     private final Converter converter = new Converter(new DefaultConverterOptions());  // Assuming default constructor exists
 
     @Test
-    public void testToUUID() {
+    void testToUUID() {
         // Test with UUID string format
         Map<String, Object> map = new HashMap<>();
         UUID uuid = UUID.randomUUID();
@@ -87,7 +87,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToByte() {
+    void testToByte() {
         Map<String, Object> map = new HashMap<>();
         byte value = 127;
         map.put("value", value);
@@ -99,7 +99,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToShort() {
+    void testToShort() {
         Map<String, Object> map = new HashMap<>();
         short value = 32767;
         map.put("value", value);
@@ -107,7 +107,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToInt() {
+    void testToInt() {
         Map<String, Object> map = new HashMap<>();
         int value = Integer.MAX_VALUE;
         map.put("value", value);
@@ -115,7 +115,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToLong() {
+    void testToLong() {
         Map<String, Object> map = new HashMap<>();
         long value = Long.MAX_VALUE;
         map.put("value", value);
@@ -123,7 +123,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToFloat() {
+    void testToFloat() {
         Map<String, Object> map = new HashMap<>();
         float value = 3.14159f;
         map.put("value", value);
@@ -131,7 +131,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToDouble() {
+    void testToDouble() {
         Map<String, Object> map = new HashMap<>();
         double value = Math.PI;
         map.put("value", value);
@@ -139,14 +139,14 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToBoolean() {
+    void testToBoolean() {
         Map<String, Object> map = new HashMap<>();
         map.put("value", true);
         assertTrue(MapConversions.toBoolean(map, converter));
     }
 
     @Test
-    public void testToBigDecimal() {
+    void testToBigDecimal() {
         Map<String, Object> map = new HashMap<>();
         BigDecimal value = new BigDecimal("123.456");
         map.put("value", value);
@@ -154,7 +154,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToBigInteger() {
+    void testToBigInteger() {
         Map<String, Object> map = new HashMap<>();
         BigInteger value = new BigInteger("123456789");
         map.put("value", value);
@@ -162,7 +162,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToCharacter() {
+    void testToCharacter() {
         Map<String, Object> map = new HashMap<>();
         char value = 'A';
         map.put("value", value);
@@ -170,7 +170,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToAtomicTypes() {
+    void testToAtomicTypes() {
         // AtomicInteger
         Map<String, Object> map = new HashMap<>();
         map.put("value", 42);
@@ -186,7 +186,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToSqlDate() {
+    void testToSqlDate() {
         Map<String, Object> map = new HashMap<>();
         long currentTime = System.currentTimeMillis();
         map.put("epochMillis", currentTime);
@@ -203,7 +203,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToDate() {
+    void testToDate() {
         Map<String, Object> map = new HashMap<>();
         long currentTime = System.currentTimeMillis();
         map.put("epochMillis", currentTime);
@@ -211,7 +211,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToTimestamp() {
+    void testToTimestamp() {
         // Test case 2: Time string with sub-millisecond precision
         Map<String, Object> map = new HashMap<>();
         map.put("timestamp", "2024-01-01T08:37:16.987654321Z");  // ISO-8601 format at UTC "Z"
@@ -220,14 +220,14 @@ class MapConversionTests {
     }
     
     @Test
-    public void testToTimeZone() {
+    void testToTimeZone() {
         Map<String, Object> map = new HashMap<>();
         map.put(ZONE, "UTC");
         assertEquals(TimeZone.getTimeZone("UTC"), MapConversions.toTimeZone(map, converter));
     }
 
     @Test
-    public void testToCalendar() {
+    void testToCalendar() {
         Map<String, Object> map = new HashMap<>();
         long currentTime = System.currentTimeMillis();
         map.put(CALENDAR, currentTime);
@@ -236,21 +236,21 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToLocale() {
+    void testToLocale() {
         Map<String, Object> map = new HashMap<>();
         map.put(LOCALE, "en-US");
         assertEquals(Locale.US, MapConversions.toLocale(map, converter));
     }
 
     @Test
-    public void testToLocalDate() {
+    void testToLocalDate() {
         Map<String, Object> map = new HashMap<>();
         map.put(LOCAL_DATE, "2024/1/1");
         assertEquals(LocalDate.of(2024, 1, 1), MapConversions.toLocalDate(map, converter));
     }
 
     @Test
-    public void testToLocalTime() {
+    void testToLocalTime() {
         Map<String, Object> map = new HashMap<>();
         map.put(LOCAL_TIME, "12:30:45.123456789");
         assertEquals(
@@ -260,7 +260,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToOffsetTime() {
+    void testToOffsetTime() {
         Map<String, Object> map = new HashMap<>();
         map.put(OFFSET_TIME, "12:30:45.123456789+01:00");
         assertEquals(
@@ -273,7 +273,7 @@ class MapConversionTests {
      * Test converting a valid ISO-8601 offset date time string.
      */
     @Test
-    public void testToOffsetDateTime_withValidString() {
+    void testToOffsetDateTime_withValidString() {
         Map<String, Object> map = new HashMap<>();
         String timeString = "2024-01-01T12:00:00+01:00";
         map.put(OFFSET_DATE_TIME, timeString);
@@ -289,7 +289,7 @@ class MapConversionTests {
      * Test converting when the value is already an OffsetDateTime.
      */
     @Test
-    public void testToOffsetDateTime_withExistingOffsetDateTime() {
+    void testToOffsetDateTime_withExistingOffsetDateTime() {
         Map<String, Object> map = new HashMap<>();
         OffsetDateTime now = OffsetDateTime.now();
         map.put(OFFSET_DATE_TIME, now);
@@ -304,7 +304,7 @@ class MapConversionTests {
      * Test converting when the value is a ZonedDateTime.
      */
     @Test
-    public void testToOffsetDateTime_withZonedDateTime() {
+    void testToOffsetDateTime_withZonedDateTime() {
         Map<String, Object> map = new HashMap<>();
         ZonedDateTime zonedDateTime = ZonedDateTime.now();
         map.put(OFFSET_DATE_TIME, zonedDateTime);
@@ -319,7 +319,7 @@ class MapConversionTests {
     /**
      * Test that an invalid value type causes an exception.
      */
-    public void testToOffsetDateTime_withInvalidValue() {
+    void testToOffsetDateTime_withInvalidValue() {
         Map<String, Object> map = new HashMap<>();
         // An invalid type (e.g., an integer) should not be accepted.
         map.put(OFFSET_DATE_TIME, 12345);
@@ -332,14 +332,14 @@ class MapConversionTests {
      * Test that when the key is absent, the method returns null.
      */
     @Test
-    public void testToOffsetDateTime_whenKeyAbsent() {
+    void testToOffsetDateTime_whenKeyAbsent() {
         Map<String, Object> map = new HashMap<>();
         // Do not put any value for OFFSET_DATE_TIME
         assertThrows(IllegalArgumentException.class, () -> MapConversions.toOffsetDateTime(map, converter));
     }
 
     @Test
-    public void testToLocalDateTime() {
+    void testToLocalDateTime() {
         Map<String, Object> map = new HashMap<>();
         map.put(LOCAL_DATE_TIME, "2024-01-01T12:00:00");
         LocalDateTime expected = LocalDateTime.of(2024, 1, 1, 12, 0);
@@ -347,7 +347,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToZonedDateTime() {
+    void testToZonedDateTime() {
         Map<String, Object> map = new HashMap<>();
         map.put(ZONED_DATE_TIME, "2024-01-01T12:00:00Z[UTC]");
         ZonedDateTime expected = ZonedDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneId.of("UTC"));
@@ -355,14 +355,14 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToClass() {
+    void testToClass() {
         Map<String, Object> map = new HashMap<>();
         map.put("value", "java.lang.String");
         assertEquals(String.class, MapConversions.toClass(map, converter));
     }
 
     @Test
-    public void testToDuration() {
+    void testToDuration() {
         Map<String, Object> map = new HashMap<>();
         // Instead of putting separate "seconds" and "nanos", provide a single BigDecimal.
         BigDecimal durationValue = new BigDecimal("3600.123456789");
@@ -373,7 +373,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToInstant() {
+    void testToInstant() {
         Map<String, Object> map = new HashMap<>();
         map.put(INSTANT, "2009-02-13T23:31:30.123456789Z");  // This is 1234567890 seconds, 123456789 nanos
         Instant expected = Instant.ofEpochSecond(1234567890L, 123456789);
@@ -381,63 +381,63 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToMonthDay() {
+    void testToMonthDay() {
         Map<String, Object> map = new HashMap<>();
         map.put(MONTH_DAY, "12-25");
         assertEquals(MonthDay.of(12, 25), MapConversions.toMonthDay(map, converter));
     }
 
     @Test
-    public void testToYearMonth() {
+    void testToYearMonth() {
         Map<String, Object> map = new HashMap<>();
         map.put(YEAR_MONTH, "2024-01");
         assertEquals(YearMonth.of(2024, 1), MapConversions.toYearMonth(map, converter));
     }
 
     @Test
-    public void testToPeriod() {
+    void testToPeriod() {
         Map<String, Object> map = new HashMap<>();
         map.put(PERIOD, "P1Y6M15D");
         assertEquals(Period.of(1, 6, 15), MapConversions.toPeriod(map, converter));
     }
 
     @Test
-    public void testToZoneId() {
+    void testToZoneId() {
         Map<String, Object> map = new HashMap<>();
         map.put(ZONE, "America/New_York");
         assertEquals(ZoneId.of("America/New_York"), MapConversions.toZoneId(map, converter));
     }
 
     @Test
-    public void testToZoneOffset() {
+    void testToZoneOffset() {
         Map<String, Object> map = new HashMap<>();
         map.put(ZONE_OFFSET, "+05:30");
         assertEquals(ZoneOffset.ofHoursMinutes(5, 30), MapConversions.toZoneOffset(map, converter));
     }
 
     @Test
-    public void testToYear() {
+    void testToYear() {
         Map<String, Object> map = new HashMap<>();
         map.put("year", 2024);
         assertEquals(Year.of(2024), MapConversions.toYear(map, converter));
     }
 
     @Test
-    public void testToURL() throws Exception {
+    void testToURL() throws Exception {
         Map<String, Object> map = new HashMap<>();
         map.put("URL", "https://example.com");
         assertEquals(new URL("https://example.com"), MapConversions.toURL(map, converter));
     }
 
     @Test
-    public void testToURI() throws Exception {
+    void testToURI() throws Exception {
         Map<String, Object> map = new HashMap<>();
         map.put("URI", "https://example.com");
         assertEquals(new URI("https://example.com"), MapConversions.toURI(map, converter));
     }
 
     @Test
-    public void testToThrowable() {
+    void testToThrowable() {
         Map<String, Object> map = new HashMap<>();
         map.put("class", "java.lang.RuntimeException");
         map.put("message", "Test exception");
@@ -455,7 +455,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToString() {
+    void testToString() {
         Map<String, Object> map = new HashMap<>();
         String value = "test string";
 
@@ -475,7 +475,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToStringBuffer() {
+    void testToStringBuffer() {
         Map<String, Object> map = new HashMap<>();
         String value = "test string buffer";
         StringBuffer expected = new StringBuffer(value);
@@ -496,7 +496,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testToStringBuilder() {
+    void testToStringBuilder() {
         Map<String, Object> map = new HashMap<>();
         String value = "test string builder";
         StringBuilder expected = new StringBuilder(value);
@@ -517,7 +517,7 @@ class MapConversionTests {
     }
 
     @Test
-    public void testInitMap() {
+    void testInitMap() {
         // Test with String
         String stringValue = "test value";
         Map<String, ?> stringMap = MapConversions.initMap(stringValue, converter);

@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -59,7 +60,6 @@ import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -632,6 +632,14 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, Map.class), new Object[][]{
                 { new HashMap<>(), new IllegalArgumentException("Unsupported conversion") }
+        });
+        TEST_DB.put(pair(ByteBuffer.class, Map.class), new Object[][]{
+                {ByteBuffer.wrap("ABCD\0\0zyxw".getBytes(StandardCharsets.UTF_8)), mapOf(VALUE, "QUJDRAAAenl4dw==")},
+                {ByteBuffer.wrap("\0\0foo\0\0".getBytes(StandardCharsets.UTF_8)), mapOf(VALUE, "AABmb28AAA==")},
+        });
+        TEST_DB.put(pair(CharBuffer.class, Map.class), new Object[][]{
+                {CharBuffer.wrap("ABCD\0\0zyxw"), mapOf(VALUE, "ABCD\0\0zyxw")},
+                {CharBuffer.wrap("\0\0foo\0\0"), mapOf(VALUE, "\0\0foo\0\0")},
         });
         TEST_DB.put(pair(Throwable.class, Map.class), new Object[][]{
                 { new Throwable("divide by 0", new IllegalArgumentException("root issue")), mapOf(MESSAGE, "divide by 0", CLASS, Throwable.class.getName(), CAUSE, IllegalArgumentException.class.getName(), CAUSE_MESSAGE, "root issue")},
@@ -4234,6 +4242,10 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(StringBuilder.class, ByteBuffer.class), new Object[][]{
                 {new StringBuilder("hi"), ByteBuffer.wrap(new byte[]{'h', 'i'}), true},
         });
+        TEST_DB.put(pair(Map.class, ByteBuffer.class), new Object[][]{
+                {mapOf(VALUE, "QUJDRAAAenl4dw=="), ByteBuffer.wrap(new byte[]{'A', 'B', 'C', 'D', 0, 0, 'z', 'y', 'x', 'w'})},
+                {mapOf(V, "AABmb28AAA=="), ByteBuffer.wrap(new byte[]{0, 0, 'f', 'o', 'o', 0, 0})},
+        });
     }
 
     /**
@@ -4254,6 +4266,10 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(StringBuilder.class, CharBuffer.class), new Object[][]{
                 {new StringBuilder("hi"), CharBuffer.wrap(new char[]{'h', 'i'}), true},
+        });
+        TEST_DB.put(pair(Map.class, CharBuffer.class), new Object[][]{
+                {mapOf(VALUE, "Claude"), CharBuffer.wrap("Claude")},
+                {mapOf(V, "Anthropic"), CharBuffer.wrap("Anthropic")},
         });
     }
 

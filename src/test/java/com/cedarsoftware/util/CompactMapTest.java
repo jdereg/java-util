@@ -4215,8 +4215,8 @@ public class CompactMapTest
     {
         int maxSize = 1000;
         final int[] compactSize = new int[1];
-        int lower = 50;
-        int upper = 100;
+        int lower = 10;
+        int upper = 70;
         long totals[] = new long[upper - lower + 1];
 
         for (int x = 0; x < 2000; x++)

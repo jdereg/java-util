@@ -248,10 +248,10 @@ public class CompactMap<K, V> implements Map<K, V> {
     public static final String REVERSE = "reverse";
 
     // Default values
-    private static final int DEFAULT_COMPACT_SIZE = 70;
-    private static final boolean DEFAULT_CASE_SENSITIVE = true;
-    private static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
-    private static final String DEFAULT_SINGLE_KEY = "id";
+    public static final int DEFAULT_COMPACT_SIZE = 40;
+    public static final boolean DEFAULT_CASE_SENSITIVE = true;
+    public static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
+    public static final String DEFAULT_SINGLE_KEY = "id";
     private static final String INNER_MAP_TYPE = "innerMapType";
     private static final TemplateClassLoader templateClassLoader = new TemplateClassLoader(ClassUtilities.getClassLoader(CompactMap.class));
     private static final Map<String, ReentrantLock> CLASS_LOCKS = new ConcurrentHashMap<>();
@@ -301,6 +301,31 @@ public class CompactMap<K, V> implements Map<K, V> {
     public CompactMap(Map<K, V> other) {
         this();
         putAll(other);
+    }
+
+    public boolean isDefaultCompactMap() {
+        // 1. Check that compactSize() is 40
+        if (compactSize() != DEFAULT_COMPACT_SIZE) {
+            return false;
+        }
+
+        // 2. Check that the map is case-sensitive, meaning isCaseInsensitive() should be false.
+        if (isCaseInsensitive()) {
+            return false;
+        }
+
+        // 3. Check that the ordering is "unordered"
+        if (!"unordered".equals(getOrdering())) {
+            return false;
+        }
+
+        // 4. Check that the single key is "id"
+        if (!DEFAULT_SINGLE_KEY.equals(getSingleValueKey())) {
+            return false;
+        }
+
+        // 5. Check that the backing map is a HashMap.
+        return HashMap.class.equals(getNewMap().getClass());
     }
 
     /**
@@ -1485,9 +1510,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     /**
      * Creates a new CompactMap with the same entries but different configuration.
      * <p>
-     * This is useful for changing the configuration of a CompactMap without
-     * having to manually copy all entries.
-     * </p>
+     * This is useful for creating a new CompactMap with the same configuration as another compactMap.
      *
      * @param config a map containing configuration options to change
      * @return a new CompactMap with the specified configuration and the same entries

@@ -2,8 +2,11 @@ package com.cedarsoftware.util.convert;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
+import static com.cedarsoftware.util.convert.MapConversions.VALUE;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -64,5 +67,11 @@ final class CharBufferConversions {
 
     static StringBuilder toStringBuilder(Object from, Converter converter) {
         return new StringBuilder(toCharBuffer(from, converter));
+    }
+
+    static Map<?, ?> toMap(Object from, Converter converter) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(VALUE, toString(from, converter));
+        return map;
     }
 }

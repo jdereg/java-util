@@ -2,9 +2,9 @@ package com.cedarsoftware.util;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -118,6 +118,31 @@ public class CompactSet<E> implements Set<E> {
         addAll(c);
     }
 
+    public boolean isDefaultCompactSet() {
+        // 1. Check that compactSize() is 40
+        if (map.compactSize() != CompactMap.DEFAULT_COMPACT_SIZE) {
+            return false;
+        }
+
+        // 2. Check that the set is case-sensitive, meaning isCaseInsensitive() should be false.
+        if (map.isCaseInsensitive()) {
+            return false;
+        }
+
+        // 3. Check that the ordering is "unordered"
+        if (!"unordered".equals(map.getOrdering())) {
+            return false;
+        }
+
+        // 4. Check that the single key is "id"
+        if (!CompactMap.DEFAULT_SINGLE_KEY.equals(map.getSingleValueKey())) {
+            return false;
+        }
+        
+        // 5. Check that the backing map is a HashMap.
+        return HashMap.class.equals(map.getNewMap().getClass());
+    }
+    
     /* ----------------------------------------------------------------- */
     /*                Implementation of Set<E> methods                   */
     /* ----------------------------------------------------------------- */
@@ -197,7 +222,6 @@ public class CompactSet<E> implements Set<E> {
     }
 
     @Override
-    @SuppressWarnings("SuspiciousToArrayCall")
     public <T> T[] toArray(T[] a) {
         return map.keySet().toArray(a);
     }
@@ -307,31 +331,28 @@ public class CompactSet<E> implements Set<E> {
     }
 
     /**
-     * @deprecated Use {@link Builder#compactSize(int)} instead.
-     * Maintained for backward compatibility with existing subclasses.
+     * Allow concrete subclasses to specify the compact size.  Concrete subclasses are useful to simplify
+     * serialization.
      */
-    @Deprecated
     protected int compactSize() {
-        // Typically 70 is the default. You can override as needed.
-        return 70;
+        // Typically 40 is the default. You can override as needed.
+        return CompactMap.DEFAULT_COMPACT_SIZE;
     }
 
     /**
-     * @deprecated Use {@link Builder#caseSensitive(boolean)} instead.
-     * Maintained for backward compatibility with existing subclasses.
+     * Allow concrete subclasses to specify the case-sensitivity.  Concrete subclasses are useful to simplify
+     * serialization.
      */
-    @Deprecated
     protected boolean isCaseInsensitive() {
         return false;  // default to case-sensitive, for legacy
     }
 
     /**
-     * @deprecated Legacy method. Subclasses should configure CompactSet using the builder pattern instead.
-     * Maintained for backward compatibility with existing subclasses.
+     * Allow concrete subclasses to specify the internal set to use when larger than compactSize.  Concrete
+     * subclasses are useful to simplify serialization.
      */
-    @Deprecated
     protected Set<E> getNewSet() {
-        return new LinkedHashSet<>(2);
+        return null;
     }
 
     /**
@@ -364,7 +385,7 @@ public class CompactSet<E> implements Set<E> {
         Convention.throwIfNull(config, "config cannot be null");
 
         // Start with a builder
-        Builder<E> builder = CompactSet.<E>builder();
+        Builder<E> builder = CompactSet.builder();
 
         // Get current configuration from the underlying map
         Map<String, Object> currentConfig = map.getConfig();

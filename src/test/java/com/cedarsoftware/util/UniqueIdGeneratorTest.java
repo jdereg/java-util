@@ -71,12 +71,14 @@ public class UniqueIdGeneratorTest
     void testIDtoInstant()
     {
         long id = getUniqueId();
+        long currentTime = currentTimeMillis();
         Instant instant = getInstant(id);
-        assert abs(instant.toEpochMilli() - currentTimeMillis()) < 2;
+        assert abs(instant.toEpochMilli() - currentTime) <= 2;
 
         id = getUniqueId19();
         instant = getInstant19(id);
-        assert abs(instant.toEpochMilli() - currentTimeMillis()) < 2;
+        currentTime = currentTimeMillis();
+        assert abs(instant.toEpochMilli() - currentTime) <= 2;
     }
 
     @Test

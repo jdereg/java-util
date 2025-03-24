@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.cedarsoftware.io.JsonIo;
+import com.cedarsoftware.io.TypeHolder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
@@ -37,10 +39,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CompactSetTest
+class CompactSetTest
 {
     @Test
-    public void testSimpleCases()
+    void testSimpleCases()
     {
         Set<String> set = new CompactSet<>();
         assert set.isEmpty();
@@ -59,7 +61,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testSimpleCases2()
+    void testSimpleCases2()
     {
         Set<String> set = new CompactSet<>();
         assert set.isEmpty();
@@ -77,7 +79,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testBadNoArgConstructor()
+    void testBadNoArgConstructor()
     {
         try
         {
@@ -88,7 +90,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testBadConstructor()
+    void testBadConstructor()
     {
         Set<String> treeSet = new TreeSet<>();
         treeSet.add("foo");
@@ -100,7 +102,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testSize()
+    void testSize()
     {
         CompactSet<Integer> set = new CompactSet<>();
         for (int i=0; i < set.compactSize() + 5; i++)
@@ -117,7 +119,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testHeterogeneuousItems()
+    void testHeterogeneuousItems()
     {
         CompactSet<Object> set = new CompactSet<>();
         assert set.add(16);
@@ -150,7 +152,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testClear()
+    void testClear()
     {
         CompactSet<Object> set = new CompactSet<>();
 
@@ -174,7 +176,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testRemove()
+    void testRemove()
     {
         CompactSet<String> set = new CompactSet<>();
 
@@ -205,7 +207,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testCaseInsensitivity()
+    void testCaseInsensitivity()
     {
         CompactSet<String> set = new CompactSet<String>()
         {
@@ -229,7 +231,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testCaseSensitivity()
+    void testCaseSensitivity()
     {
         CompactSet<String> set = new CompactSet<>();
 
@@ -249,7 +251,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testCaseInsensitivity2()
+    void testCaseInsensitivity2()
     {
         CompactSet<String> set = new CompactSet<String>()
         {
@@ -272,7 +274,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testCaseSensitivity2()
+    void testCaseSensitivity2()
     {
         CompactSet<String> set = new CompactSet<>();
 
@@ -291,7 +293,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testCompactLinkedSet()
+    void testCompactLinkedSet()
     {
         Set<String> set = CompactSet.<String>builder().insertionOrder().build();
         set.add("foo");
@@ -310,7 +312,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testCompactCIHashSet()
+    void testCompactCIHashSet()
     {
         CompactSet<String> set = CompactSet.<String>builder()
                 .caseSensitive(false)  // This replaces isCaseInsensitive() == true
@@ -348,7 +350,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testCompactCILinkedSet()
+    void testCompactCILinkedSet()
     {
         CompactSet<String> set = CompactSet.<String>builder().caseSensitive(false).insertionOrder().build();
 
@@ -385,7 +387,7 @@ public class CompactSetTest
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
-    public void testPerformance()
+    void testPerformance()
     {
         int maxSize = 1000;
         int lower = 50;
@@ -452,7 +454,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testSortedOrder() {
+    void testSortedOrder() {
         CompactSet<String> set = CompactSet.<String>builder()
                 .sortedOrder()
                 .build();
@@ -469,7 +471,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testReverseOrder() {
+    void testReverseOrder() {
         CompactSet<String> set = CompactSet.<String>builder()
                 .reverseOrder()
                 .build();
@@ -486,7 +488,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testInsertionOrder() {
+    void testInsertionOrder() {
         CompactSet<String> set = CompactSet.<String>builder()
                 .insertionOrder()
                 .build();
@@ -503,7 +505,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testUnorderedBehavior() {
+    void testUnorderedBehavior() {
         CompactSet<String> set1 = CompactSet.<String>builder()
                 .noOrder()
                 .build();
@@ -549,7 +551,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testConvertWithCompactSet() {
+    void testConvertWithCompactSet() {
         // Create a CompactSet with specific configuration
         CompactSet<String> original = CompactSet.<String>builder()
                 .caseSensitive(false)
@@ -577,7 +579,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testGetConfig() {
+    void testGetConfig() {
         // Create a CompactSet with specific configuration
         CompactSet<String> set = CompactSet.<String>builder()
                 .compactSize(50)
@@ -612,7 +614,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testWithConfig() {
+    void testWithConfig() {
         // Create a CompactSet with default configuration and add some elements
         CompactSet<String> originalSet = new CompactSet<>();
         originalSet.add("apple");
@@ -662,7 +664,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testWithConfigPartial() {
+    void testWithConfigPartial() {
         // Create a CompactSet with specific configuration
         CompactSet<String> originalSet = CompactSet.<String>builder()
                 .compactSize(40)
@@ -697,7 +699,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testWithConfigOrderingChange() {
+    void testWithConfigOrderingChange() {
         // Create a set with unordered elements
         CompactSet<String> originalSet = CompactSet.<String>builder()
                 .noOrder()
@@ -731,7 +733,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testWithConfigCaseSensitivityChange() {
+    void testWithConfigCaseSensitivityChange() {
         // Create a case-sensitive set
         CompactSet<String> originalSet = CompactSet.<String>builder()
                 .caseSensitive(true)
@@ -757,7 +759,7 @@ public class CompactSetTest
     }
 
     @Test
-    public void testWithConfigHandlesNullValues() {
+    void testWithConfigHandlesNullValues() {
         // Create a set with known configuration for testing
         CompactSet<String> originalSet = CompactSet.<String>builder()
                 .compactSize(50)
@@ -872,7 +874,7 @@ public class CompactSetTest
     }
     
     @Test
-    public void testWithConfigIgnoresUnrelatedKeys() {
+    void testWithConfigIgnoresUnrelatedKeys() {
         CompactSet<String> originalSet = new CompactSet<>();
         originalSet.add("test");
 
@@ -896,6 +898,59 @@ public class CompactSetTest
         assertFalse(newConfig.containsKey(CompactMap.SINGLE_KEY));
     }
 
+    @Test
+    void testCompactCIHashSetWithJsonIo() {
+        Set<String> set = new CompactCIHashSet<>();
+        set.add("apple");
+        set.add("banana");
+        set.add("cherry");
+        set.add("Apple");
+        assert set.size() == 3;  // Case-insensitive (one apple)
+        assert set.contains("APPLE");
+
+        String json = JsonIo.toJson(set, null);
+        Set<String> set2 = JsonIo.toJava(json, null).asType(new TypeHolder<Set<String>>(){});
+        assert DeepEquals.deepEquals(set, set2);
+        // TODO: Update this to ComactCIHashSet once tests are using 4.52.0 of json-io
+        assert set2.getClass().equals(CompactSet.class);
+    }
+
+    @Test
+    void testCompactCILinkedSetWithJsonIo() {
+        Set<String> set = new CompactCILinkedSet<>();
+        set.add("apple");
+        set.add("banana");
+        set.add("cherry");
+        set.add("Apple");
+        assert set.size() == 3;  // Case-insensitive (one apple)
+        assert set.contains("APPLE");
+
+        String json = JsonIo.toJson(set, null);
+        Set<String> set2 = JsonIo.toJava(json, null).asType(new TypeHolder<Set<String>>(){});
+        assert DeepEquals.deepEquals(set, set2);
+        // TODO: Update this to ComactCIHashSet once tests are using 4.52.0 of json-io
+        assert set2.getClass().equals(CompactSet.class);
+    }
+
+    @Test
+    void testCompactLinkedSetWithJsonIo() {
+        Set<String> set = new CompactLinkedSet<>();
+        set.add("apple");
+        set.add("banana");
+        set.add("cherry");
+        set.add("Apple");
+        assert set.size() == 4;  // Case-insensitive (one apple)
+        assert set.contains("apple");
+        assert set.contains("Apple");
+        assert !set.contains("APPLE");
+        
+        String json = JsonIo.toJson(set, null);
+        Set<String> set2 = JsonIo.toJava(json, null).asType(new TypeHolder<Set<String>>(){});
+        assert DeepEquals.deepEquals(set, set2);
+        // TODO: Update this to ComactCIHashSet once tests are using 4.52.0 of json-io
+        assert set2.getClass().equals(CompactSet.class);
+    }
+
     private void clearViaIterator(Set set)
     {
         Iterator i = set.iterator();
@@ -904,7 +959,6 @@ public class CompactSetTest
             i.next();
             i.remove();
         }
-        assert set.size() == 0;
         assert set.isEmpty();
     }
 }

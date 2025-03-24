@@ -4,34 +4,9 @@ import java.util.Collection;
 import java.util.Set;
 
 /**
- * @deprecated As of release 2.19.0, replaced by {@link CompactSet} with builder configurations.
- *             This class is no longer recommended for use and may be removed in future releases.
- *             <p>
- *             Similar to {@link CompactSet}, but it is configured to be case-insensitive.
- *             Instead of using this subclass, please utilize {@link CompactSet} with the builder
- *             to configure case insensitivity, sequence order, and other desired behaviors.
- *             </p>
- *             <p>
- *             Example migration:
- *             </p>
- *             <pre>{@code
- * // Deprecated usage:
- * CompactCILinkedSet<String> linkedSet = new CompactLinkedSet<>();
- * linkedSet.add("Apple");
- * assert !linkedSet.contains("APPLE");
- * assert linkedSet.contains("Apple");
- *
- * // Recommended replacement:
- * CompactSet<String> compactSet = CompactSet.<String>builder()
- *     .caseSensitive(true)
- *     .insertionOrder()
- *     .build();
- * }</pre>
- *
- * <p>
- * This approach reduces the need for multiple specialized subclasses and leverages the
- * flexible builder pattern to achieve the desired configurations.
- * </p>
+ * A case-insensitive Set implementation that uses a compact internal representation
+ * for small sets.  This Set exists to simplify JSON serialization. No custom reader nor
+ * writer is needed to serialize this set.  It is a drop-in replacement for LinkedHashSet.
  *
  * @param <E> the type of elements maintained by this set
  *
@@ -57,7 +32,6 @@ import java.util.Set;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-@Deprecated
 public class CompactLinkedSet<E> extends CompactSet<E> {
 
     /**
@@ -87,11 +61,7 @@ public class CompactLinkedSet<E> extends CompactSet<E> {
      * @throws IllegalArgumentException if {@link #compactSize()} returns a value less than 2
      */
     public CompactLinkedSet(Collection<E> other) {
-        // Initialize the superclass with a pre-configured CompactMap using the builder
-        super(CompactMap.<E, Object>builder()
-                .caseSensitive(true)
-                .insertionOrder()
-                .build());
+        this();
         // Add all elements from the provided collection
         addAll(other);
     }
@@ -106,17 +76,8 @@ public class CompactLinkedSet<E> extends CompactSet<E> {
         return true;
     }
 
-    /**
-     * @deprecated This method is no longer used and has been removed.
-     *             It is retained here only to maintain backward compatibility with existing subclasses.
-     *             New implementations should use the builder pattern to configure {@link CompactSet}.
-     *
-     * @return {@code null} as this method is deprecated and no longer functional
-     */
-    @Deprecated
     @Override
     protected Set<E> getNewSet() {
-        // Deprecated method; no longer used in the new CompactSet implementation.
         // Returning null to indicate it has no effect.
         return null;
     }

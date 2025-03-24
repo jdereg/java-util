@@ -1000,6 +1000,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(CharBuffer.class, CharBuffer.class), CharBufferConversions::toCharBuffer);
         CONVERSION_DB.put(pair(char[].class, CharBuffer.class), CharArrayConversions::toCharBuffer);
         CONVERSION_DB.put(pair(byte[].class, CharBuffer.class), ByteArrayConversions::toCharBuffer);
+        CONVERSION_DB.put(pair(Map.class, CharBuffer.class), MapConversions::toCharBuffer);
 
         // toByteBuffer
         CONVERSION_DB.put(pair(Void.class, ByteBuffer.class), VoidConversions::toNull);
@@ -1010,6 +1011,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(CharBuffer.class, ByteBuffer.class), CharBufferConversions::toByteBuffer);
         CONVERSION_DB.put(pair(char[].class, ByteBuffer.class), CharArrayConversions::toByteBuffer);
         CONVERSION_DB.put(pair(byte[].class, ByteBuffer.class), ByteArrayConversions::toByteBuffer);
+        CONVERSION_DB.put(pair(Map.class, ByteBuffer.class), MapConversions::toByteBuffer);
 
         // toYear
         CONVERSION_DB.put(pair(Void.class, Year.class), VoidConversions::toNull);
@@ -1082,6 +1084,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(Throwable.class, Map.class), ThrowableConversions::toMap);
         CONVERSION_DB.put(pair(Pattern.class, Map.class), PatternConversions::toMap);
         CONVERSION_DB.put(pair(Currency.class, Map.class), CurrencyConversions::toMap);
+        CONVERSION_DB.put(pair(ByteBuffer.class, Map.class), ByteBufferConversions::toMap);
+        CONVERSION_DB.put(pair(CharBuffer.class, Map.class), CharBufferConversions::toMap);
     }
 
     /**

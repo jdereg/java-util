@@ -58,12 +58,13 @@ public class FastWriter extends Writer {
         if (out == null) {
             throw new IOException("FastWriter stream is closed.");
         }
-        if (nextChar >= cb.length) {
+        if (nextChar + 1 >= cb.length) {
             flushBuffer();
         }
         cb[nextChar++] = (char) c;
     }
 
+    @Override
     public void write(char[] cbuf, int off, int len) throws IOException {
         if (out == null) {
             throw new IOException("FastWriter stream is closed.");
@@ -95,7 +96,9 @@ public class FastWriter extends Writer {
         }
 
         // Return early for empty strings
-        if (len == 0) return;
+        if (len == 0) {
+            return;
+        }
 
         // Fast path for short strings that fit in buffer
         if (nextChar + len <= cb.length) {
@@ -132,11 +135,13 @@ public class FastWriter extends Writer {
         }
     }
 
+    @Override
     public void flush() throws IOException {
         flushBuffer();
         out.flush();
     }
 
+    @Override
     public void close() throws IOException {
         if (out == null) {
             return;

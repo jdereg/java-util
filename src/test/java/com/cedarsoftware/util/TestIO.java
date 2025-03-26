@@ -14,21 +14,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class TestIO
-{
+public class TestIO {
     @Test
-    public void testFastReader() throws Exception
-    {
+    public void testFastReader() throws Exception {
         String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
-        FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024,10);
-        assert reader.read() == '{';
+        FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024, 10);
+        Assertions.assertEquals('{', reader.read());
         int c;
         boolean done = false;
-        while ((c = reader.read()) != -1 && !done)
-        {
-            if (c == '{')
-            {
+        while ((c = reader.read()) != -1 && !done) {
+            if (c == '{') {
                 assert reader.getLine() == 4;
                 assert reader.getCol() == 11;
                 reader.pushback('n');
@@ -36,10 +32,10 @@ public class TestIO
                 reader.pushback('o');
                 reader.pushback('j');
                 StringBuilder sb = new StringBuilder();
-                sb.append((char)reader.read());
-                sb.append((char)reader.read());
-                sb.append((char)reader.read());
-                sb.append((char)reader.read());
+                sb.append((char) reader.read());
+                sb.append((char) reader.read());
+                sb.append((char) reader.read());
+                sb.append((char) reader.read());
                 assert sb.toString().equals("john");
 
                 Set<Character> chars = new HashSet<>();
@@ -59,19 +55,17 @@ public class TestIO
     }
 
     @Test
-    public void testFastWriter() throws Exception
-    {
+    public void testFastWriter() throws Exception {
         String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
-        FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024,10);
+        FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024, 10);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
 
         int c;
         boolean done = false;
-        while ((c = reader.read()) != -1 && !done)
-        {
+        while ((c = reader.read()) != -1 && !done) {
             out.write(c);
         }
         reader.close();
@@ -87,14 +81,14 @@ public class TestIO
         final String nextLine = "Tbbb";
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8), 64);
-        out.write(line511);
-        out.write(nextLine);
-        out.close();
+        try (FastWriter out = newFastWriter(baos, 64)) {
+            out.write(line511);
+            out.write(nextLine);
+        }
 
         final String actual = new String(baos.toByteArray(), StandardCharsets.UTF_8);
 
-        Assertions.assertEquals(line511+nextLine, actual);
+        Assertions.assertEquals(line511 + nextLine, actual);
     }
 
     @Test
@@ -103,26 +97,43 @@ public class TestIO
         final String nextLine = "Tbbb";
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8), 64);
-        out.write(line511);
-        out.write(nextLine);
-        out.close();
+        try (FastWriter out = newFastWriter(baos, 64)) {
+            out.write(line511);
+            out.write(nextLine);
+        }
 
         final String actual = new String(baos.toByteArray(), StandardCharsets.UTF_8);
 
-        Assertions.assertEquals(line511+nextLine, actual);
+        Assertions.assertEquals(line511 + nextLine, actual);
     }
 
     @Test
-    public void testFastWriterCharBuffer() throws Exception
-    {
+    void fastWriterBufferNotFlushedByCharacterMethod() throws IOException {
+        final String line63 = IntStream.range(0, 63).mapToObj(it -> "a").collect(Collectors.joining());
+        final char expectedChar = ',';
+        final String nextLine = "Tbbb";
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (FastWriter out = newFastWriter(baos, 64)) {
+            out.write(line63);
+            out.write(expectedChar);
+            out.write(nextLine);
+        }
+
+        final String actual = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+
+        Assertions.assertEquals(line63 + expectedChar + nextLine, actual);
+    }
+
+    @Test
+    public void testFastWriterCharBuffer() throws Exception {
         String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
-        FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024,10);
+        FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024, 10);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
-        
+
         char buffer[] = new char[100];
         reader.read(buffer);
         out.write(buffer, 0, 100);
@@ -130,18 +141,16 @@ public class TestIO
         out.flush();
         out.close();
 
-        for (int i=0; i < 100; i++)
-        {
+        for (int i = 0; i < 100; i++) {
             assert content.charAt(i) == buffer[i];
         }
     }
 
     @Test
-    public void testFastWriterString() throws Exception
-    {
+    public void testFastWriterString() throws Exception {
         String content = TestUtil.fetchResource("prettyPrint.json");
         ByteArrayInputStream bin = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
-        FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024,10);
+        FastReader reader = new FastReader(new InputStreamReader(bin, StandardCharsets.UTF_8), 1024, 10);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         FastWriter out = new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
@@ -154,20 +163,21 @@ public class TestIO
         out.flush();
         out.close();
 
-        for (int i=0; i < 100; i++)
-        {
+        for (int i = 0; i < 100; i++) {
             assert content.charAt(i) == s.charAt(i);
         }
     }
 
-    private int readUntil(FastReader input, Set<Character> chars) throws IOException
-    {
+    private int readUntil(FastReader input, Set<Character> chars) throws IOException {
         FastReader in = input;
         int c;
-        do
-        {
+        do {
             c = in.read();
-        } while (!chars.contains((char)c) && c != -1);
+        } while (!chars.contains((char) c) && c != -1);
         return c;
+    }
+
+    private static FastWriter newFastWriter(final ByteArrayOutputStream baos, final int bufferSize) {
+        return new FastWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8), bufferSize);
     }
 }

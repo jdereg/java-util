@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLConnection;
+import java.net.HttpURLConnection;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Objects;
@@ -85,15 +86,13 @@ public final class IOUtilities {
     /**
      * Gets an appropriate InputStream from a URLConnection, handling compression if necessary.
      * <p>
-     * This method automatically detects and handles various compression encodings:
+     * This method automatically detects and handles various compression encodings
+     * and optimizes connection performance with appropriate buffer sizing and connection parameters.
      * </p>
      * <ul>
      *   <li>GZIP ("gzip" or "x-gzip")</li>
      *   <li>DEFLATE ("deflate")</li>
      * </ul>
-     * <p>
-     * The returned stream is always buffered for optimal performance.
-     * </p>
      *
      * @param c the URLConnection to get the input stream from
      * @return a buffered InputStream, potentially wrapped with a decompressing stream
@@ -101,16 +100,49 @@ public final class IOUtilities {
      */
     public static InputStream getInputStream(URLConnection c) throws IOException {
         Convention.throwIfNull(c, "URLConnection cannot be null");
-        InputStream is = c.getInputStream();
+
+        // Optimize connection parameters before getting the stream
+        optimizeConnection(c);
+
+        // Cache content encoding before opening the stream to avoid additional HTTP header lookups
         String enc = c.getContentEncoding();
 
-        if ("gzip".equalsIgnoreCase(enc) || "x-gzip".equalsIgnoreCase(enc)) {
-            is = new GZIPInputStream(is, TRANSFER_BUFFER);
-        } else if ("deflate".equalsIgnoreCase(enc)) {
-            is = new InflaterInputStream(is, new Inflater(), TRANSFER_BUFFER);
+        // Get the input stream - this is the slow operation
+        InputStream is = c.getInputStream();
+
+        // Apply decompression based on encoding
+        if (enc != null) {
+            if ("gzip".equalsIgnoreCase(enc) || "x-gzip".equalsIgnoreCase(enc)) {
+                is = new GZIPInputStream(is, TRANSFER_BUFFER);
+            } else if ("deflate".equalsIgnoreCase(enc)) {
+                is = new InflaterInputStream(is, new Inflater(), TRANSFER_BUFFER);
+            }
         }
 
-        return new BufferedInputStream(is);
+        return new BufferedInputStream(is, TRANSFER_BUFFER);
+    }
+
+    /**
+     * Optimizes a URLConnection for faster input stream access.
+     *
+     * @param c the URLConnection to optimize
+     */
+    private static void optimizeConnection(URLConnection c) {
+        // Only apply HTTP-specific optimizations to HttpURLConnection
+        if (c instanceof HttpURLConnection) {
+            HttpURLConnection http = (HttpURLConnection) c;
+
+            // Set to true to allow HTTP redirects
+            http.setInstanceFollowRedirects(true);
+
+            // Disable caching to avoid disk operations
+            http.setUseCaches(false);
+            http.setConnectTimeout(5000); // 5 seconds connect timeout
+            http.setReadTimeout(30000);   // 30 seconds read timeout
+            
+            // Apply general URLConnection optimizations
+            c.setRequestProperty("Accept-Encoding", "gzip, x-gzip, deflate");
+        }
     }
 
     /**

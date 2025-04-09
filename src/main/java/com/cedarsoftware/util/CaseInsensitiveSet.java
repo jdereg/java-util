@@ -324,9 +324,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @return {@code true} if this set did not already contain the specified element
      */
     public boolean add(E e) {
-        int size = map.size();
-        map.put(e, PRESENT);
-        return map.size() != size;
+        return map.putIfAbsent(e, PRESENT) == null;
     }
 
     /**
@@ -341,9 +339,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @return {@code true} if this set contained the specified element
      */
     public boolean remove(Object o) {
-        int size = map.size();
-        map.remove(o);
-        return map.size() != size;
+        return map.remove(o) != null;
     }
 
     /**
@@ -381,11 +377,13 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @throws NullPointerException if the specified collection is {@code null} or contains {@code null} elements
      */
     public boolean addAll(Collection<? extends E> c) {
-        int size = map.size();
+        boolean modified = false;
         for (E elem : c) {
-            map.put(elem, PRESENT);
+            if (add(elem)) {  // Reuse the efficient add() method
+                modified = true;
+            }
         }
-        return map.size() != size;
+        return modified;
     }
 
     /**
@@ -409,14 +407,15 @@ public class CaseInsensitiveSet<E> implements Set<E> {
         }
 
         Iterator<E> iterator = map.keySet().iterator();
-        int originalSize = map.size();
+        boolean modified = false;
         while (iterator.hasNext()) {
             E elem = iterator.next();
             if (!other.containsKey(elem)) {
                 iterator.remove();
+                modified = true;
             }
         }
-        return map.size() != originalSize;
+        return modified;
     }
 
     /**

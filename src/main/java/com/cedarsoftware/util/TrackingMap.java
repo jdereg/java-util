@@ -260,4 +260,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @return the wrapped {@link Map}
      */
     public Map<K, V> getWrappedMap() { return internalMap; }
+
+    public void setWrappedMap(Map<K, V> map) {
+        Convention.throwIfNull(map, "Cannot set a TrackingMap() with null");
+        clear();
+        putAll(map);
+    }
 }

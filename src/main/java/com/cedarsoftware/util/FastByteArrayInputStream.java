@@ -79,13 +79,11 @@ public class FastByteArrayInputStream extends InputStream {
     }
 
     @Override
-    //  Was leaving off the synchronized intentional here?
     public void mark(int readLimit) {
         mark = pos;
     }
 
     @Override
-    //  Was leaving off the synchronized intentional here?
     public void reset() {
         pos = mark;
     }

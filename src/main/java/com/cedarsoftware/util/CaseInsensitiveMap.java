@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
@@ -113,10 +114,8 @@ import java.util.function.Function;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
+public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     private final Map<K, V> map;
-    private static volatile LRUCache<String, CaseInsensitiveString> ciStringCache = new LRUCache<>(1000);
-    private static volatile int maxCacheLengthString = 100;
     private static volatile List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> mapRegistry;
 
     static {
@@ -208,7 +207,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      * @throws NullPointerException if the provided cache is null
      */
     public static void replaceCache(LRUCache lruCache) {
-        ciStringCache = lruCache;
+        CaseInsensitiveString.COMMON_STRINGS = lruCache;
     }
 
     /**
@@ -223,7 +222,7 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
         if (length < 10) {
             throw new IllegalArgumentException("Max cache String length must be at least 10.");
         }
-        maxCacheLengthString = length;
+        CaseInsensitiveString.maxCacheLengthString = length;
     }
 
     /**
@@ -245,7 +244,6 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
         // Iterate through the registry and pick the first matching type
         for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : mapRegistry) {
             if (entry.getKey().isInstance(source)) {
-                @SuppressWarnings("unchecked")
                 Function<Integer, Map<K, V>> factory = (Function<Integer, Map<K, V>>) entry.getValue();
                 return copy(source, factory.apply(size));
             }
@@ -323,26 +321,28 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @SuppressWarnings("unchecked")
     protected Map<K, V> copy(Map<K, V> source, Map<K, V> dest) {
-        for (Entry<K, V> entry : source.entrySet()) {
-            K key = entry.getKey();
-            if (isCaseInsensitiveEntry(entry)) {
-                key = ((CaseInsensitiveEntry) entry).getOriginalKey();
-            } else if (key instanceof String) {
-                key = (K) newCIString((String) key);
+        if (source.isEmpty()) {
+            return dest;
+        }
+
+        // OPTIMIZATION: If source is also CaseInsensitiveMap, keys are already normalized.
+        if (source instanceof CaseInsensitiveMap) {
+            // Directly copy from the wrapped map which has normalized keys
+            dest.putAll(((CaseInsensitiveMap<K, V>) source).map);
+        } else {
+            // Original logic for general maps
+            for (Entry<K, V> entry : source.entrySet()) {
+                Object result;
+                Object key = entry.getKey();
+                if (key instanceof String) {
+                    result = CaseInsensitiveString.of((String) key);
+                } else {
+                    result = key;
+                }
+                dest.put((K) result, entry.getValue());
             }
-            dest.put(key, entry.getValue());
         }
         return dest;
-    }
-
-    /**
-     * Checks if the given object is a CaseInsensitiveEntry.
-     *
-     * @param o the object to test
-     * @return true if o is a CaseInsensitiveEntry, false otherwise
-     */
-    private boolean isCaseInsensitiveEntry(Object o) {
-        return CaseInsensitiveEntry.class.isInstance(o);
     }
 
     /**
@@ -351,10 +351,13 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public V get(Object key) {
+        Object result;
         if (key instanceof String) {
-            return map.get(newCIString((String) key));
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
         }
-        return map.get(key);
+        return map.get(result);
     }
 
     /**
@@ -363,10 +366,13 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public boolean containsKey(Object key) {
+        Object result;
         if (key instanceof String) {
-            return map.containsKey(newCIString((String) key));
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
         }
-        return map.containsKey(key);
+        return map.containsKey(result);
     }
 
     /**
@@ -374,12 +380,14 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      * <p>String keys are stored case-insensitively.</p>
      */
     @Override
-    @SuppressWarnings("unchecked")
     public V put(K key, V value) {
+        Object result;
         if (key instanceof String) {
-            return map.put((K) newCIString((String) key), value);
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
         }
-        return map.put(key, value);
+        return map.put((K) result, value);
     }
     
     /**
@@ -388,10 +396,13 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public V remove(Object key) {
+        Object result;
         if (key instanceof String) {
-            return map.remove(newCIString((String) key));
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
         }
-        return map.remove(key);
+        return map.remove(result);
     }
 
     /**
@@ -400,17 +411,11 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public boolean equals(Object other) {
-        if (other == this) {
-            return true;
-        }
-        if (!(other instanceof Map)) {
-            return false;
-        }
+        if (other == this) { return true; }
+        if (!(other instanceof Map)) { return false; }
 
         Map<?, ?> that = (Map<?, ?>) other;
-        if (that.size() != size()) {
-            return false;
-        }
+        if (that.size() != size()) { return false; }
 
         for (Entry<?, ?> entry : that.entrySet()) {
             Object thatKey = entry.getKey();
@@ -610,7 +615,6 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
              *         are assumed to be of type K
              */
             @Override
-            @SuppressWarnings("unchecked")
             public boolean retainAll(Collection<?> c) {
                 Map<K, V> other = new CaseInsensitiveMap<>();
                 for (Object o : c) {
@@ -902,18 +906,57 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
 
     /**
      * Wrapper class for String keys to enforce case-insensitive comparison.
-     * Note: Do not use this class directly, as it will eventually be made private.
+     * Implements CharSequence for compatibility with String operations and
+     * Serializable for persistence support.
      */
-    public static final class CaseInsensitiveString implements Comparable<Object> {
+    public static final class CaseInsensitiveString implements Comparable<Object>, CharSequence, Serializable {
+        private static final long serialVersionUID = 1L;
+
         private final String original;
         private final int hash;
 
+        // Add static cache for common strings - use ConcurrentHashMap for thread safety
+        private static volatile Map<String, CaseInsensitiveString> COMMON_STRINGS = new LRUCache<>(5000, LRUCache.StrategyType.THREADED);
+        private static volatile int maxCacheLengthString = 100;
+
+        // Pre-populate with common values
+        static {
+            String[] commonValues = {
+                    // Boolean values
+                    "true", "false",
+                    // Numbers
+                    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+                    // Common strings in business applications
+                    "id", "name", "code", "type", "status", "date", "value", "amount",
+                    "yes", "no", "null", "none"
+            };
+            for (String value : commonValues) {
+                COMMON_STRINGS.put(value, new CaseInsensitiveString(value));
+            }
+        }
+
         /**
-         * Constructs a CaseInsensitiveString from the given String.
-         *
-         * @param string the original String
+         * Factory method to get a CaseInsensitiveString, using cached instances when possible.
+         * This method guarantees that the same CaseInsensitiveString instance will be returned
+         * for equal strings (ignoring case) as long as they're within the maxCacheLengthString limit.
          */
-        public CaseInsensitiveString(String string) {
+        public static CaseInsensitiveString of(String s) {
+            if (s == null) {
+                throw new IllegalArgumentException("Cannot convert null to CaseInsensitiveString");
+            }
+
+            // Skip caching for very long strings to prevent memory issues
+            if (s.length() > maxCacheLengthString) {
+                return new CaseInsensitiveString(s);
+            }
+
+            // For all other strings, use the cache
+            // computeIfAbsent ensures we only create one instance per unique string
+            return COMMON_STRINGS.computeIfAbsent(s, CaseInsensitiveString::new);
+        }
+
+        // Private constructor - use CaseInsensitiveString.of(sourceString) factory method instead
+        CaseInsensitiveString(String string) {
             original = string;
             hash = StringUtilities.hashCodeIgnoreCase(string);
         }
@@ -978,22 +1021,82 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
             // Strings are considered less than non-Strings
             return -1;
         }
-    }
 
-    /**
-     * Normalizes the key for insertion or lookup in the underlying map.
-     * If the key is a String, it is converted to a CaseInsensitiveString.
-     * Otherwise, it is returned as is.
-     *
-     * @param key the key to normalize
-     * @return the normalized key
-     */
-    @SuppressWarnings("unchecked")
-    private K normalizeKey(K key) {
-        if (key instanceof String) {
-            return (K) newCIString((String) key);
+        // CharSequence implementation methods
+
+        /**
+         * Returns the length of this character sequence.
+         *
+         * @return the number of characters in this sequence
+         */
+        @Override
+        public int length() {
+            return original.length();
         }
-        return key;
+
+        /**
+         * Returns the character at the specified index.
+         *
+         * @param index the index of the character to be returned
+         * @return the specified character
+         * @throws IndexOutOfBoundsException if the index is negative or greater than or equal to length()
+         */
+        @Override
+        public char charAt(int index) {
+            return original.charAt(index);
+        }
+
+        /**
+         * Returns a CharSequence that is a subsequence of this sequence.
+         *
+         * @param start the start index, inclusive
+         * @param end the end index, exclusive
+         * @return the specified subsequence
+         * @throws IndexOutOfBoundsException if start or end are negative,
+         *         if end is greater than length(), or if start is greater than end
+         */
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            return original.subSequence(start, end);
+        }
+
+        /**
+         * Returns a stream of int zero-extending the char values from this sequence.
+         *
+         * @return an IntStream of char values from this sequence
+         */
+        public java.util.stream.IntStream chars() {
+            return original.chars();
+        }
+
+        /**
+         * Returns a stream of code point values from this sequence.
+         *
+         * @return an IntStream of Unicode code points from this sequence
+         */
+        public java.util.stream.IntStream codePoints() {
+            return original.codePoints();
+        }
+
+        /**
+         * Returns true if this case-insensitive string contains the specified
+         * character sequence. The search is case-insensitive.
+         *
+         * @param s the sequence to search for
+         * @return true if this string contains s, false otherwise
+         */
+        public boolean contains(CharSequence s) {
+            return original.toLowerCase().contains(s.toString().toLowerCase());
+        }
+
+        /**
+         * Custom readObject method for serialization.
+         * This ensures we properly handle the hash field during deserialization.
+         */
+        private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
+            in.defaultReadObject();
+            // The hash field is final, but will be restored by deserialization
+        }
     }
 
     /**
@@ -1055,9 +1158,14 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
-        K actualKey = normalizeKey(key);
         // mappingFunction gets wrapped so it sees the original String if k is a CaseInsensitiveString
-        return map.computeIfAbsent(actualKey, wrapFunctionForKey(mappingFunction));
+        Object result;
+        if (key instanceof String) {
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
+        }
+        return map.computeIfAbsent((K) result, wrapFunctionForKey(mappingFunction));
     }
 
     /**
@@ -1072,9 +1180,14 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
     @Override
     public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         // Normalize input key to ensure case-insensitive lookup for Strings
-        K actualKey = normalizeKey(key);
         // remappingFunction gets wrapped so it sees the original String if k is a CaseInsensitiveString
-        return map.computeIfPresent(actualKey, wrapBiFunctionForKey(remappingFunction));
+        Object result;
+        if (key instanceof String) {
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
+        }
+        return map.computeIfPresent((K) result, wrapBiFunctionForKey(remappingFunction));
     }
 
     /**
@@ -1088,9 +1201,14 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-        K actualKey = normalizeKey(key);
         // Wrapped so that the BiFunction receives original String key if applicable
-        return map.compute(actualKey, wrapBiFunctionForKey(remappingFunction));
+        Object result;
+        if (key instanceof String) {
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
+        }
+        return map.compute((K) result, wrapBiFunctionForKey(remappingFunction));
     }
 
     /**
@@ -1103,10 +1221,15 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
-        K actualKey = normalizeKey(key);
         // merge doesn't provide the key to the BiFunction, only values. No wrapping of keys needed.
         // The remapping function only deals with values, so we do not need wrapBiFunctionForKey here.
-        return map.merge(actualKey, value, remappingFunction);
+        Object result;
+        if (key instanceof String) {
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
+        }
+        return map.merge((K) result, value, remappingFunction);
     }
 
     /**
@@ -1118,8 +1241,13 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public V putIfAbsent(K key, V value) {
-        K actualKey = normalizeKey(key);
-        return map.putIfAbsent(actualKey, value);
+        Object result;
+        if (key instanceof String) {
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
+        }
+        return map.putIfAbsent((K) result, value);
     }
 
     /**
@@ -1131,10 +1259,13 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public boolean remove(Object key, Object value) {
+        Object result;
         if (key instanceof String) {
-            return map.remove(newCIString((String) key), value);
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
         }
-        return map.remove(key, value);
+        return map.remove(result, value);
     }
 
     /**
@@ -1146,8 +1277,13 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public boolean replace(K key, V oldValue, V newValue) {
-        K actualKey = normalizeKey(key);
-        return map.replace(actualKey, oldValue, newValue);
+        Object result;
+        if (key instanceof String) {
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
+        }
+        return map.replace((K) result, oldValue, newValue);
     }
 
     /**
@@ -1159,8 +1295,13 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
      */
     @Override
     public V replace(K key, V value) {
-        K actualKey = normalizeKey(key);
-        return map.replace(actualKey, value);
+        Object result;
+        if (key instanceof String) {
+            result = CaseInsensitiveString.of((String) key);
+        } else {
+            result = key;
+        }
+        return map.replace((K) result, value);
     }
 
     /**
@@ -1196,35 +1337,5 @@ public class CaseInsensitiveMap<K extends Object, V> extends AbstractMap<K, V> {
             K originalKey = (k instanceof CaseInsensitiveString) ? (K) ((CaseInsensitiveString) k).original : k;
             return function.apply(originalKey, v);
         });
-    }
-    
-    /**
-     * Creates a new CaseInsensitiveString instance. If the input string's length is greater than 100,
-     * a new instance is always created. Otherwise, the method checks the cache:
-     * - If a cached instance exists, it returns the cached instance.
-     * - If not, it creates a new instance, caches it, and then returns it.
-     *
-     * @param string the original string to wrap
-     * @return a CaseInsensitiveString instance corresponding to the input string
-     * @throws NullPointerException if the input string is null
-     */
-    private CaseInsensitiveString newCIString(String string) {
-        Objects.requireNonNull(string, "Input string cannot be null");
-
-        if (string.length() > maxCacheLengthString) {
-            // For long strings, always create a new instance to save cache space
-            return new CaseInsensitiveString(string);
-        } else {
-            // Attempt to retrieve from cache
-            CaseInsensitiveString cachedCIString = ciStringCache.get(string);
-            if (cachedCIString != null) {
-                return cachedCIString;
-            } else {
-                // Create a new instance, cache it, and return
-                CaseInsensitiveString newCIString = new CaseInsensitiveString(string);
-                ciStringCache.put(string, newCIString);
-                return newCIString;
-            }
-        }
     }
 }

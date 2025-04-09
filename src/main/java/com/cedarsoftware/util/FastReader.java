@@ -35,7 +35,11 @@ public class FastReader extends Reader {
     private int pushbackPosition; // Current position in the pushback buffer
     private int line = 1;
     private int col = 0;
-    
+
+    public FastReader(Reader in) {
+        this(in, 16384, 16);
+    }
+
     public FastReader(Reader in, int bufferSize, int pushbackBufferSize) {
         super(in);
         if (bufferSize <= 0 || pushbackBufferSize < 0) {

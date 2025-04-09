@@ -5,9 +5,9 @@ import java.io.OutputStream;
 import java.util.Arrays;
 
 /**
- * Faster version of ByteArrayOutputStream that does not have synchronized methods and
- * also provides direct access to its internal buffer so that it does not need to be
- * duplicated when read.
+ * Faster version of ByteArrayOutputStream that does not have synchronized methods.
+ * Like ByteArrayOutputStream, this class is not thread-safe and has a theoerical
+ * limit of handling 1GB.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

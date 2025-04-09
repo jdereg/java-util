@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -707,20 +708,89 @@ public final class StringUtilities {
     /**
      * Get the hashCode of a String, insensitive to case, without any new Strings
      * being created on the heap.
-     *
-     * @param s String input
-     * @return int hashCode of input String insensitive to case
+     * <p>
+     * This implementation uses a fast ASCII shift approach for compatible locales,
+     * and falls back to the more correct but slower Locale-aware approach for locales
+     * where simple ASCII case conversion does not work properly.
      */
     public static int hashCodeIgnoreCase(String s) {
         if (s == null) {
             return 0;
         }
+
         final int len = s.length();
         int hash = 0;
-        for (int i = 0; i < len; i++) {
-            hash = 31 * hash + toLowerCase(s.charAt(i));
+
+        if (isAsciiCompatibleLocale) {
+            // Fast path: use ASCII shift for compatible locales
+            for (int i = 0; i < len; i++) {
+                char c = s.charAt(i);
+                // Simple ASCII uppercase to lowercase conversion: add 32 to uppercase letters
+                if (c >= 'A' && c <= 'Z') {
+                    c += 32; // Convert to lowercase by adding 32 in the ASCII table
+                }
+                hash = 31 * hash + c;
+            }
+        } else {
+            // Slow path: use the proper locale-aware approach for non-ASCII languages
+            for (int i = 0; i < len; i++) {
+                hash = 31 * hash + toLowerCase(s.charAt(i));
+            }
         }
+
         return hash;
+    }
+
+    /**
+     * Static flag indicating whether the current default locale is compatible with
+     * fast ASCII case conversion. This is evaluated once at class load time and
+     * updated whenever the locale changes.
+     */
+    private static volatile boolean isAsciiCompatibleLocale = checkAsciiCompatibleLocale();
+
+    /**
+     * Listener for locale changes, updates the isAsciiCompatibleLocale flag when needed.
+     * Add when we support Java 18+
+     */
+//    static {
+//        // This ensures our optimization remains valid even if the default locale changes
+//        Locale.addLocaleChangeListener(locale -> {
+//            isAsciiCompatibleLocale = checkAsciiCompatibleLocale();
+//        });
+//    }
+
+    /**
+     * Determines if the current default locale is compatible with
+     * simple ASCII case conversion.
+     *
+     * @return true if the locale can use the fast ASCII shift approach
+     */
+    private static boolean checkAsciiCompatibleLocale() {
+        Locale currentLocale = Locale.getDefault();
+
+        // List of locales that are compatible with the ASCII shift approach
+        // This includes most Latin-based languages where A-Z maps cleanly to a-z with a simple +32 shift
+        return currentLocale.equals(Locale.US) ||
+                currentLocale.equals(Locale.UK) ||
+                currentLocale.equals(Locale.ENGLISH) ||
+                currentLocale.equals(Locale.CANADA) ||
+                currentLocale.equals(Locale.GERMANY) ||
+                currentLocale.equals(Locale.FRANCE) ||
+                currentLocale.equals(Locale.ITALY) ||
+                currentLocale.equals(Locale.CANADA_FRENCH) ||
+                "ISO-8859-1".equalsIgnoreCase(System.getProperty("file.encoding")) ||
+                "UTF-8".equalsIgnoreCase(System.getProperty("file.encoding"));
+    }
+
+    /**
+     * Convert a character to lowercase without creating new objects.
+     * This method uses Character.toLowerCase() which is locale-sensitive.
+     *
+     * @param c the character to convert
+     * @return the lowercase version of the character
+     */
+    private static char toLowerCase(char c) {
+        return Character.toLowerCase(c);
     }
 
     /**

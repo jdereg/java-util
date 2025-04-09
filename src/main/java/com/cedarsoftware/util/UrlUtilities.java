@@ -519,7 +519,7 @@ public final class UrlUtilities
         {
             c = getConnection(url, inCookies, true, false, false, allowAllCerts);
 
-            ByteArrayOutputStream out = new ByteArrayOutputStream(16384);
+            FastByteArrayOutputStream out = new FastByteArrayOutputStream(65536);
             InputStream stream = IOUtilities.getInputStream(c);
             IOUtilities.transfer(stream, out);
             stream.close();

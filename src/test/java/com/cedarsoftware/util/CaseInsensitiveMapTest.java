@@ -1300,8 +1300,7 @@ class CaseInsensitiveMapTest
     }
 
     @Test
-    void testRemoveAll2()
-    {
+    void testRemoveAll2() {
         Map<String, String> oldMap = new CaseInsensitiveMap<>();
         Map<String, String> newMap = new CaseInsensitiveMap<>();
 
@@ -1488,7 +1487,7 @@ class CaseInsensitiveMapTest
     void testNotRecreatingCaseInsensitiveStrings()
     {
         Map<String, Object> map = new CaseInsensitiveMap<>();
-        map.put("dog", "eddie");
+        map.put("true", "eddie");
 
         // copy 1st map
         Map<String, Object> newMap = new CaseInsensitiveMap<>(map);

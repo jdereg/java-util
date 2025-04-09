@@ -911,8 +911,7 @@ class CompactSetTest
         String json = JsonIo.toJson(set, null);
         Set<String> set2 = JsonIo.toJava(json, null).asType(new TypeHolder<Set<String>>(){});
         assert DeepEquals.deepEquals(set, set2);
-        // TODO: Update this to ComactCIHashSet once tests are using 4.52.0 of json-io
-        assert set2.getClass().equals(CompactSet.class);
+        assert set2.getClass().equals(CompactCIHashSet.class);
     }
 
     @Test
@@ -928,8 +927,7 @@ class CompactSetTest
         String json = JsonIo.toJson(set, null);
         Set<String> set2 = JsonIo.toJava(json, null).asType(new TypeHolder<Set<String>>(){});
         assert DeepEquals.deepEquals(set, set2);
-        // TODO: Update this to ComactCIHashSet once tests are using 4.52.0 of json-io
-        assert set2.getClass().equals(CompactSet.class);
+        assert set2.getClass().equals(CompactCILinkedSet.class);
     }
 
     @Test
@@ -947,8 +945,7 @@ class CompactSetTest
         String json = JsonIo.toJson(set, null);
         Set<String> set2 = JsonIo.toJava(json, null).asType(new TypeHolder<Set<String>>(){});
         assert DeepEquals.deepEquals(set, set2);
-        // TODO: Update this to ComactCIHashSet once tests are using 4.52.0 of json-io
-        assert set2.getClass().equals(CompactSet.class);
+        assert set2.getClass().equals(CompactLinkedSet.class);
     }
 
     private void clearViaIterator(Set set)

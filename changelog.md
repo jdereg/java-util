@@ -1,4 +1,10 @@
 ### Revision History
+#### 3.3.1 New Features and Improvements
+> * `CaseInsensitiveMap/Set` compute hashCodes slightly faster because of update to `StringUtilities.hashCodeIgnoreCase().`  It takes advantage of ASCII for Locale's that use Latin characters.
+> * `CaseInsensitiveString` inside `CaseInsensitiveMap` implements `CharSequence` and can be used outside `CaseInsensitiveMap` as a case-insensitive but case-retentiative String and passed to methods that take `CharSequence.`
+> * `FastReader/FastWriter` - tests added to bring it to 100% Class, Method, Line, and Branch coverage.
+> * `FastByteArrayInputStream/FastByteArrayOutputStream` - tests added to bring it to 100% Class, Method, Line, and Branch coverage.
+> * `TrackingMap.setWrappedMap()` - added to allow the user to set the wrapped map to a different map.  This is useful for testing purposes.
 #### 3.3.0 New Features and Improvements
 > * `CompactCIHashSet, CompactCILinkedSet, CompactLinkedSet, CompactCIHashMap, CompactCILinkedMap, CompactLinkedMap` are no longer deprecated. Subclassing `CompactMap` or `CompactSet` is a viable option if you need to serialize the derived class with libraries other than `json-io,` like Jackson, Gson, etc.
 > * Added `CharBuffer to Map,` `ByteBuffer to Map,` and vice-versa conversions.

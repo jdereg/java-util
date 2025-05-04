@@ -5,7 +5,7 @@
     <groupId>com.cedarsoftware</groupId>
     <artifactId>java-util</artifactId>
     <packaging>bundle</packaging>
-    <version>3.3.1</version>
+    <version>3.3.2</version>
     <description>Java Utilities</description>
     <url>https://github.com/jdereg/java-util</url>
 
@@ -32,7 +32,7 @@
         <version.junit-jupiter-params>5.11.4</version.junit-jupiter-params>
         <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>
         <version.assertj-core>3.27.3</version.assertj-core>
-        <version.json-io>4.52.0</version.json-io>
+        <version.json-io>4.53.0</version.json-io>
         <version.agrona>1.22.0</version.agrona> <!-- do not increase past 1.22.0 until abandoning JDK 8 support, class file format 52 -->
 
         <!-- Build maven-***-plugins -->
@@ -52,32 +52,53 @@
     </properties>
 
     <profiles>
-        
+
+        <!-- JDK 9 and newer -->
         <profile>
             <id>jdk9-and-above</id>
             <activation>
                 <jdk>[9,)</jdk>
             </activation>
-            <properties>
-                <maven.compiler.release>8</maven.compiler.release>
-                <!-- Remove source and target to prevent conflicts -->
-                <maven.compiler.source></maven.compiler.source>
-                <maven.compiler.target></maven.compiler.target>
-            </properties>
+
+            <!-- only the flags that modern javac needs -->
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${version.maven-compiler-plugin}</version>
+                        <configuration>
+                            <release>8</release>
+                            <testRelease>8</testRelease>
+                            <encoding>${project.build.sourceEncoding}</encoding>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
 
-        <!-- Profile for JDK8 -->
+        <!-- JDK 8 -->
         <profile>
             <id>jdk8</id>
             <activation>
                 <jdk>1.8</jdk>
             </activation>
-            <properties>
-                <maven.compiler.source>1.8</maven.compiler.source>
-                <maven.compiler.target>1.8</maven.compiler.target>
-                <!-- Do not set release for JDK8 -->
-                <maven.compiler.release></maven.compiler.release>
-            </properties>
+
+            <!-- classic - source / target for the legacy tool-chain -->
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${version.maven-compiler-plugin}</version>
+                        <configuration>
+                            <source>1.8</source>
+                            <target>1.8</target>
+                            <encoding>${project.build.sourceEncoding}</encoding>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
 
         <profile>
@@ -200,19 +221,7 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${version.maven-compiler-plugin}</version>
-                <configuration>
-                    <release>${maven.compiler.release}</release>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                    <encoding>${project.build.sourceEncoding}</encoding>
-                </configuration>
-            </plugin>
-
+            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>

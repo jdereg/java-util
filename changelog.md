@@ -1,4 +1,9 @@
 ### Revision History
+#### 3.3.2 JDK 24+ Support
+> * `SystemUtilities.majorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.
+> * Updated tests to support JDK 24+
+>   * EST, MST, HST mapped to fixed offsets (‑05:00, ‑07:00, ‑10:00) when the property sun.timezone.ids.oldmapping=true was set
+>   * The old‑mapping switch was removed and the short IDs are now links to region IDs: EST → America/Panama, MST → America/Phoenix, HST → Pacific/Honolulu
 #### 3.3.1 New Features and Improvements
 > * `CaseInsensitiveMap/Set` compute hashCodes slightly faster because of update to `StringUtilities.hashCodeIgnoreCase().`  It takes advantage of ASCII for Locale's that use Latin characters.
 > * `CaseInsensitiveString` inside `CaseInsensitiveMap` implements `CharSequence` and can be used outside `CaseInsensitiveMap` as a case-insensitive but case-retentiative String and passed to methods that take `CharSequence.`

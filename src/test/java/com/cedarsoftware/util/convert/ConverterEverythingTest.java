@@ -57,6 +57,7 @@ import com.cedarsoftware.io.WriteOptions;
 import com.cedarsoftware.io.WriteOptionsBuilder;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.SystemUtilities;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -1557,7 +1558,7 @@ class ConverterEverythingTest {
                 {"Z", ZoneId.of("Z"), true},
                 {"UTC", ZoneId.of("UTC"), true},
                 {"GMT", ZoneId.of("GMT"), true},
-                {"EST", ZoneId.of("-05:00")},
+                {"EST", SystemUtilities.currentMajor() >= 24 ? ZoneId.of("America/Panama") : ZoneOffset.of("-05:00")},
         });
         TEST_DB.put(pair(Map.class, ZoneId.class), new Object[][]{
                 {mapOf("_v", "America/New_York"), NY_Z},

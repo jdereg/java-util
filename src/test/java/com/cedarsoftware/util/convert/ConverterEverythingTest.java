@@ -1558,7 +1558,7 @@ class ConverterEverythingTest {
                 {"Z", ZoneId.of("Z"), true},
                 {"UTC", ZoneId.of("UTC"), true},
                 {"GMT", ZoneId.of("GMT"), true},
-                {"EST", SystemUtilities.currentMajor() >= 24 ? ZoneId.of("America/Panama") : ZoneOffset.of("-05:00")},
+                {"EST", SystemUtilities.currentJdkMajorVersion() >= 24 ? ZoneId.of("America/Panama") : ZoneOffset.of("-05:00")},
         });
         TEST_DB.put(pair(Map.class, ZoneId.class), new Object[][]{
                 {mapOf("_v", "America/New_York"), NY_Z},

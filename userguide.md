@@ -3543,6 +3543,7 @@ public static int getAvailableProcessors()
 public static MemoryInfo getMemoryInfo()
 public static double getSystemLoadAverage()
 public static boolean isJavaVersionAtLeast(int major, int minor)
+public static int currentJdkMajorVersion()
 public static long getCurrentProcessId()
 public static File createTempDirectory(String prefix) throws IOException
 public static TimeZone getSystemTimeZone()
@@ -3634,9 +3635,13 @@ File tempDir = SystemUtilities.createTempDirectory("prefix-");
 ### Version Management
 
 **Java Version Checking:**
+
 ```java
+import com.cedarsoftware.util.SystemUtilities;
+
 // Check Java version
-boolean isJava11OrHigher = SystemUtilities.isJavaVersionAtLeast(11, 0);
+boolean isJava17OrHigher = SystemUtilities.isJavaVersionAtLeast(17, 0);
+int major = SystemUtilities.currentJdkMajorVersion();
 ```
 
 ### Time Zone Handling

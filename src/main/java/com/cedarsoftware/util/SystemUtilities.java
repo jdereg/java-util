@@ -137,11 +137,9 @@ public final class SystemUtilities
     /**
      * @return current JDK major version
      */
-    public static int currentMajor() {
+    public static int currentJdkMajorVersion() {
         String spec = System.getProperty("java.specification.version");   // "1.8" … "24"
-        int major = spec.startsWith("1.") ? Integer.parseInt(spec.substring(2))
-                : Integer.parseInt(spec);
-        return major;
+        return spec.startsWith("1.") ? Integer.parseInt(spec.substring(2)) : Integer.parseInt(spec);
     }
 
     /**

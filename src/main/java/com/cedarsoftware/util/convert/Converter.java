@@ -1821,7 +1821,7 @@ public final class Converter {
      *
      * @param source Class of source type.
      * @param target Class of target type.
-     * @return boolean true if a direct conversion exists, false otherwise.
+     * @return Convert instance 
      */
     private static Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);

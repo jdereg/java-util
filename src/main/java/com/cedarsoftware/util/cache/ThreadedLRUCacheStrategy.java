@@ -168,6 +168,13 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * @return the maximum number of entries in the cache.
+     */
+    public int getCapacity() {
+        return capacity;
+    }
+
     @Override
     public V get(Object key) {
         Node<K, V> node = cache.get(key);

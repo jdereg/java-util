@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -116,7 +117,7 @@ import java.util.function.Function;
  */
 public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     private final Map<K, V> map;
-    private static volatile List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>> mapRegistry;
+    private static final AtomicReference<List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>>> mapRegistry;
 
     static {
         // Initialize the registry with default map types
@@ -135,8 +136,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
         tempList.add(new AbstractMap.SimpleEntry<>(SortedMap.class, size -> new TreeMap<>()));
 
         validateMappings(tempList);
-        // Convert to unmodifiable list to prevent accidental modifications
-        mapRegistry = Collections.unmodifiableList(tempList);
+
+        // Initialize the atomic reference with the immutable list
+        mapRegistry = new AtomicReference<>(Collections.unmodifiableList(new ArrayList<>(tempList)));
     }
 
     /**
@@ -192,7 +194,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
         validateMappings(newRegistry);
 
         // Replace the registry atomically with an unmodifiable copy
-        mapRegistry = Collections.unmodifiableList(new ArrayList<>(newRegistry));
+        mapRegistry.set(Collections.unmodifiableList(new ArrayList<>(newRegistry)));
     }
 
     /**
@@ -206,6 +208,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      * @param lruCache the new LRUCache instance to use for caching CaseInsensitiveString objects
      * @throws NullPointerException if the provided cache is null
      */
+    @SuppressWarnings("unchecked, rawtypes")
     public static void replaceCache(LRUCache lruCache) {
         CaseInsensitiveString.COMMON_STRINGS = lruCache;
     }
@@ -242,7 +245,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
         int size = source.size();
 
         // Iterate through the registry and pick the first matching type
-        for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : mapRegistry) {
+        for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : mapRegistry.get()) {
             if (entry.getKey().isInstance(source)) {
                 Function<Integer, Map<K, V>> factory = (Function<Integer, Map<K, V>>) entry.getValue();
                 return copy(source, factory.apply(size));
@@ -332,14 +335,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
         } else {
             // Original logic for general maps
             for (Entry<K, V> entry : source.entrySet()) {
-                Object result;
-                Object key = entry.getKey();
-                if (key instanceof String) {
-                    result = CaseInsensitiveString.of((String) key);
-                } else {
-                    result = key;
-                }
-                dest.put((K) result, entry.getValue());
+                dest.put(convertKey(entry.getKey()), entry.getValue());
             }
         }
         return dest;
@@ -351,13 +347,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @Override
     public V get(Object key) {
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.get(result);
+        return map.get(convertKey(key));
     }
 
     /**
@@ -366,13 +356,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @Override
     public boolean containsKey(Object key) {
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.containsKey(result);
+        return map.containsKey(convertKey(key));
     }
 
     /**
@@ -381,13 +365,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @Override
     public V put(K key, V value) {
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.put((K) result, value);
+        return map.put(convertKey(key), value);
     }
     
     /**
@@ -396,13 +374,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @Override
     public V remove(Object key) {
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.remove(result);
+        return map.remove(convertKey(key));
     }
 
     /**
@@ -905,7 +877,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     }
 
     /**
-     * Wrapper class for String keys to enforce case-insensitive comparison.
+     * Wrapper class for String keys to enforce case-ireplnsensitive comparison.
      * Implements CharSequence for compatibility with String operations and
      * Serializable for persistence support.
      */
@@ -950,6 +922,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
                 return new CaseInsensitiveString(s);
             }
 
+            // Circuit breaker to prevent cache thrashing
+            Map<String, CaseInsensitiveString> cache = COMMON_STRINGS;
+
+            if (cache.size() > (((LRUCache)cache).getCapacity() - 10)) { // Approaching capacity
+                if (!cache.containsKey(s)) {
+                    return new CaseInsensitiveString(s);
+                }
+            }
+            
             // For all other strings, use the cache
             // computeIfAbsent ensures we only create one instance per unique string
             return COMMON_STRINGS.computeIfAbsent(s, CaseInsensitiveString::new);
@@ -994,10 +975,13 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
             }
             if (other instanceof CaseInsensitiveString) {
                 CaseInsensitiveString cis = (CaseInsensitiveString) other;
-                return hash == cis.hash && original.equalsIgnoreCase(cis.original);
+                // Only compare strings if hash codes match
+                return hash == cis.hash && (hash == 0 || original.equalsIgnoreCase(cis.original));
             }
             if (other instanceof String) {
-                return original.equalsIgnoreCase((String) other);
+                String str = (String) other;
+                int otherHash = StringUtilities.hashCodeIgnoreCase(str);
+                return hash == otherHash && original.equalsIgnoreCase(str);
             }
             return false;
         }
@@ -1159,13 +1143,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     @Override
     public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
         // mappingFunction gets wrapped so it sees the original String if k is a CaseInsensitiveString
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.computeIfAbsent((K) result, wrapFunctionForKey(mappingFunction));
+        return map.computeIfAbsent(convertKey(key), wrapFunctionForKey(mappingFunction));
     }
 
     /**
@@ -1181,13 +1159,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         // Normalize input key to ensure case-insensitive lookup for Strings
         // remappingFunction gets wrapped so it sees the original String if k is a CaseInsensitiveString
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.computeIfPresent((K) result, wrapBiFunctionForKey(remappingFunction));
+        return map.computeIfPresent(convertKey(key), wrapBiFunctionForKey(remappingFunction));
     }
 
     /**
@@ -1202,13 +1174,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     @Override
     public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         // Wrapped so that the BiFunction receives original String key if applicable
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.compute((K) result, wrapBiFunctionForKey(remappingFunction));
+        return map.compute(convertKey(key), wrapBiFunctionForKey(remappingFunction));
     }
 
     /**
@@ -1223,13 +1189,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         // merge doesn't provide the key to the BiFunction, only values. No wrapping of keys needed.
         // The remapping function only deals with values, so we do not need wrapBiFunctionForKey here.
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.merge((K) result, value, remappingFunction);
+        return map.merge(convertKey(key), value, remappingFunction);
     }
 
     /**
@@ -1241,13 +1201,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @Override
     public V putIfAbsent(K key, V value) {
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.putIfAbsent((K) result, value);
+        return map.putIfAbsent(convertKey(key), value);
     }
 
     /**
@@ -1259,13 +1213,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @Override
     public boolean remove(Object key, Object value) {
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.remove(result, value);
+        return map.remove(convertKey(key), value);
     }
 
     /**
@@ -1277,13 +1225,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @Override
     public boolean replace(K key, V oldValue, V newValue) {
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.replace((K) result, oldValue, newValue);
+        return map.replace(convertKey(key), oldValue, newValue);
     }
 
     /**
@@ -1295,13 +1237,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @Override
     public V replace(K key, V value) {
-        Object result;
-        if (key instanceof String) {
-            result = CaseInsensitiveString.of((String) key);
-        } else {
-            result = key;
-        }
-        return map.replace((K) result, value);
+        return map.replace(convertKey(key), value);
     }
 
     /**
@@ -1337,5 +1273,13 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
             K originalKey = (k instanceof CaseInsensitiveString) ? (K) ((CaseInsensitiveString) k).original : k;
             return function.apply(originalKey, v);
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    private K convertKey(Object key) {
+        if (key instanceof String) {
+            return (K) CaseInsensitiveString.of((String) key);
+        }
+        return (K) key;
     }
 }

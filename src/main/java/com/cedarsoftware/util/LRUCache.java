@@ -104,6 +104,17 @@ public class LRUCache<K, V> implements Map<K, V> {
         strategy = new ThreadedLRUCacheStrategy<>(capacity, cleanupDelayMillis);
     }
 
+    /**
+     * @return the maximum number of entries in the cache.
+     */
+    public int getCapacity() {
+        if (strategy instanceof ThreadedLRUCacheStrategy) {
+            return ((ThreadedLRUCacheStrategy<K, V>) strategy).getCapacity();
+        } else {
+            return ((LockingLRUCacheStrategy<K, V>) strategy).getCapacity();
+        }
+    }
+    
     @Override
     public V get(Object key) {
         return strategy.get(key);

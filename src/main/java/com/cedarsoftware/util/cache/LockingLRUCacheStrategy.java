@@ -130,6 +130,13 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
     }
 
     /**
+     * @return the maximum number of entries in the cache.
+     */
+    public int getCapacity() {
+        return capacity;
+    }
+
+    /**
      * Returns the value associated with the specified key in this cache.
      * If the key exists, attempts to move it to the front of the LRU list
      * using a non-blocking try-lock approach.

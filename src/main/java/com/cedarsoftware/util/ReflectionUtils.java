@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
 /**
@@ -48,16 +50,42 @@ public final class ReflectionUtils {
     private static final int CACHE_SIZE = 1500;
 
     // Add a new cache for storing the sorted constructor arrays
-    private static volatile Map<SortedConstructorsCacheKey, Constructor<?>[]> SORTED_CONSTRUCTORS_CACHE = new LRUCache<>(CACHE_SIZE);
-    private static volatile Map<ConstructorCacheKey, Constructor<?>> CONSTRUCTOR_CACHE = new LRUCache<>(CACHE_SIZE);
-    private static volatile Map<MethodCacheKey, Method> METHOD_CACHE = new LRUCache<>(CACHE_SIZE);
-    private static volatile Map<FieldsCacheKey, Collection<Field>> FIELDS_CACHE = new LRUCache<>(CACHE_SIZE);
-    private static volatile Map<FieldNameCacheKey, Field> FIELD_NAME_CACHE = new LRUCache<>(CACHE_SIZE * 10);
-    private static volatile Map<ClassAnnotationCacheKey, Annotation> CLASS_ANNOTATION_CACHE = new LRUCache<>(CACHE_SIZE);
-    private static volatile Map<MethodAnnotationCacheKey, Annotation> METHOD_ANNOTATION_CACHE = new LRUCache<>(CACHE_SIZE);
+    private static final AtomicReference<Map<? super SortedConstructorsCacheKey, Constructor<?>[]>> SORTED_CONSTRUCTORS_CACHE =
+            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
+
+    private static final AtomicReference<Map<? super ConstructorCacheKey, Constructor<?>>> CONSTRUCTOR_CACHE =
+            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
+
+    private static final AtomicReference<Map<? super MethodCacheKey, Method>> METHOD_CACHE =
+            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
+
+    private static final AtomicReference<Map<? super FieldsCacheKey, Collection<Field>>> FIELDS_CACHE =
+            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
+
+    private static final AtomicReference<Map<? super FieldNameCacheKey, Field>> FIELD_NAME_CACHE =
+            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE * 10)));
+
+    private static final AtomicReference<Map<? super ClassAnnotationCacheKey, Annotation>> CLASS_ANNOTATION_CACHE =
+            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
+
+    private static final AtomicReference<Map<? super MethodAnnotationCacheKey, Annotation>> METHOD_ANNOTATION_CACHE =
+            new AtomicReference<>(ensureThreadSafe(new LRUCache<>(CACHE_SIZE)));
+
+    /** Wrap the map if it is not already concurrent. */
+    private static <K, V> Map<K, V> ensureThreadSafe(Map<K, V> candidate) {
+        if (candidate instanceof ConcurrentMap || candidate instanceof LRUCache) {
+            return candidate;                     // already thread-safe
+        }
+        return Collections.synchronizedMap(candidate);
+    }
+
+    private static <T> void swap(AtomicReference<T> ref, T newValue) {
+        Objects.requireNonNull(newValue, "cache must not be null");
+        ref.set(newValue);                        // atomic & happens-before
+    }
 
     /**
-     * Sets a custom cache implementation for method lookups. 
+     * Sets a custom cache implementation for method lookups.
      * <p>
      * This method allows switching out the default LRUCache implementation with a custom
      * cache implementation. The provided cache must be thread-safe and should implement
@@ -68,7 +96,7 @@ public final class ReflectionUtils {
      *             Must be thread-safe and implement Map interface.
      */
     public static void setMethodCache(Map<Object, Method> cache) {
-        METHOD_CACHE = (Map) cache;
+        swap(METHOD_CACHE, ensureThreadSafe(cache));
     }
 
     /**
@@ -83,9 +111,9 @@ public final class ReflectionUtils {
      *             Must be thread-safe and implement Map interface.
      */
     public static void setClassFieldsCache(Map<Object, Collection<Field>> cache) {
-        FIELDS_CACHE = (Map) cache;
+        swap(FIELDS_CACHE, ensureThreadSafe(cache));
     }
-    
+
     /**
      * Sets a custom cache implementation for field lookups.
      * <p>
@@ -98,7 +126,7 @@ public final class ReflectionUtils {
      *             Must be thread-safe and implement Map interface.
      */
     public static void setFieldCache(Map<Object, Field> cache) {
-        FIELD_NAME_CACHE = (Map) cache;
+        swap(FIELD_NAME_CACHE, ensureThreadSafe(cache));
     }
 
     /**
@@ -113,7 +141,7 @@ public final class ReflectionUtils {
      *             Must be thread-safe and implement Map interface.
      */
     public static void setClassAnnotationCache(Map<Object, Annotation> cache) {
-        CLASS_ANNOTATION_CACHE = (Map) cache;
+        swap(CLASS_ANNOTATION_CACHE, ensureThreadSafe(cache));
     }
 
     /**
@@ -128,7 +156,7 @@ public final class ReflectionUtils {
      *             Must be thread-safe and implement Map interface.
      */
     public static void setMethodAnnotationCache(Map<Object, Annotation> cache) {
-        METHOD_ANNOTATION_CACHE = (Map) cache;
+        swap(METHOD_ANNOTATION_CACHE, ensureThreadSafe(cache));
     }
 
     /**
@@ -143,9 +171,9 @@ public final class ReflectionUtils {
      *             Must be thread-safe and implement Map interface.
      */
     public static void setConstructorCache(Map<Object, Constructor<?>> cache) {
-        CONSTRUCTOR_CACHE = (Map) cache;
+        swap(CONSTRUCTOR_CACHE, ensureThreadSafe(cache));
     }
-    
+
     /**
      * Sets a custom cache implementation for sorted constructors lookup.
      * <p>
@@ -158,7 +186,7 @@ public final class ReflectionUtils {
      *             Must be thread-safe and implement Map interface.
      */
     public static void setSortedConstructorsCache(Map<Object, Constructor<?>[]> cache) {
-        SORTED_CONSTRUCTORS_CACHE = (Map) cache;
+        swap(SORTED_CONSTRUCTORS_CACHE, ensureThreadSafe(cache));
     }
 
     private ReflectionUtils() { }
@@ -283,7 +311,7 @@ public final class ReflectionUtils {
             return hash;
         }
     }
-    
+
     private static final class FieldNameCacheKey {
         private final String classLoaderName;
         private final String className;
@@ -346,7 +374,7 @@ public final class ReflectionUtils {
         }
     }
 
-    public static class MethodCacheKey {
+    private static class MethodCacheKey {
         private final String classLoaderName;
         private final String className;
         private final String methodName;
@@ -447,7 +475,7 @@ public final class ReflectionUtils {
         final ClassAnnotationCacheKey key = new ClassAnnotationCacheKey(classToCheck, annoClass);
 
         // Use computeIfAbsent to ensure only one instance (or null) is stored per key
-        Annotation annotation = CLASS_ANNOTATION_CACHE.computeIfAbsent(key, k -> {
+        Annotation annotation = CLASS_ANNOTATION_CACHE.get().computeIfAbsent(key, k -> {
             // If findClassAnnotation() returns null, that null will be stored in the cache
             return findClassAnnotation(classToCheck, annoClass);
         });
@@ -476,7 +504,7 @@ public final class ReflectionUtils {
         }
         return null;
     }
-    
+
     private static void addInterfaces(final Class<?> classToCheck, final LinkedList<Class<?>> stack) {
         for (Class<?> interFace : classToCheck.getInterfaces()) {
             stack.push(interFace);
@@ -528,7 +556,7 @@ public final class ReflectionUtils {
         final MethodAnnotationCacheKey key = new MethodAnnotationCacheKey(method, annoClass);
 
         // Atomically retrieve or compute the annotation from the cache
-        Annotation annotation = METHOD_ANNOTATION_CACHE.computeIfAbsent(key, k -> {
+        Annotation annotation = METHOD_ANNOTATION_CACHE.get().computeIfAbsent(key, k -> {
             // Search the class hierarchy
             Class<?> currentClass = method.getDeclaringClass();
             while (currentClass != null) {
@@ -567,7 +595,7 @@ public final class ReflectionUtils {
         // Cast result back to T (or null)
         return (T) annotation;
     }
-    
+
     /**
      * Retrieves a specific field from a class by name, searching through the entire class hierarchy
      * (including superclasses). Results are cached for performance.
@@ -601,7 +629,7 @@ public final class ReflectionUtils {
         final FieldNameCacheKey key = new FieldNameCacheKey(c, fieldName);
 
         // Atomically retrieve or compute the field from the cache
-        return FIELD_NAME_CACHE.computeIfAbsent(key, k -> {
+        return FIELD_NAME_CACHE.get().computeIfAbsent(key, k -> {
             Collection<Field> fields = getAllDeclaredFields(c);  // returns all fields in c's hierarchy
             for (Field field : fields) {
                 if (fieldName.equals(field.getName())) {
@@ -661,7 +689,7 @@ public final class ReflectionUtils {
         final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, false);
 
         // Atomically compute and cache the unmodifiable List<Field> if absent
-        Collection<Field> cachedFields = FIELDS_CACHE.computeIfAbsent(key, k -> {
+        Collection<Field> cachedFields = FIELDS_CACHE.get().computeIfAbsent(key, k -> {
             Field[] declared = c.getDeclaredFields();
             List<Field> filteredList = new ArrayList<>(declared.length);
 
@@ -749,7 +777,7 @@ public final class ReflectionUtils {
         final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, true);
 
         // Atomically compute and cache the unmodifiable list, if not already present
-        Collection<Field> cached = FIELDS_CACHE.computeIfAbsent(key, k -> {
+        Collection<Field> cached = FIELDS_CACHE.get().computeIfAbsent(key, k -> {
             // Collect fields from class + superclasses
             List<Field> allFields = new ArrayList<>();
             Class<?> current = c;
@@ -949,7 +977,7 @@ public final class ReflectionUtils {
             ExceptionUtilities.safelyIgnoreException(t);
         }
     }
-    
+
     /**
      * Simplifies reflective method invocation by wrapping checked exceptions into runtime exceptions.
      * This method provides a cleaner API for reflection-based method calls.
@@ -1094,7 +1122,7 @@ public final class ReflectionUtils {
         final MethodCacheKey key = new MethodCacheKey(c, methodName, types);
 
         // Atomically retrieve (or compute) the method
-        return METHOD_CACHE.computeIfAbsent(key, k -> {
+        return METHOD_CACHE.get().computeIfAbsent(key, k -> {
             Method method = null;
             Class<?> current = c;
 
@@ -1111,7 +1139,7 @@ public final class ReflectionUtils {
             return method;
         });
     }
-    
+
     /**
      * Retrieves a method by name and argument count from an object instance, using a
      * deterministic selection strategy when multiple matching methods exist.
@@ -1166,10 +1194,10 @@ public final class ReflectionUtils {
         Class<?>[] types = new Class<?>[argCount];
         Arrays.fill(types, Object.class);
         MethodCacheKey key = new MethodCacheKey(beanClass, methodName, types);
-        
+
         // Check cache first
-        Method cached = METHOD_CACHE.get(key);
-        if (cached != null || METHOD_CACHE.containsKey(key)) {
+        Method cached = METHOD_CACHE.get().get(key);
+        if (cached != null || METHOD_CACHE.get().containsKey(key)) {
             return cached;
         }
 
@@ -1200,7 +1228,7 @@ public final class ReflectionUtils {
         ClassUtilities.trySetAccessible(selected);
 
         // Cache the result
-        METHOD_CACHE.put(key, selected);
+        METHOD_CACHE.get().put(key, selected);
         return selected;
     }
 
@@ -1243,7 +1271,7 @@ public final class ReflectionUtils {
         if (Modifier.isPrivate(modifiers)) return 1;
         return 2; // package-private
     }
-    
+
     /**
      * Gets a constructor for the specified class with the given parameter types,
      * regardless of access level (public, protected, private, or package).
@@ -1273,7 +1301,7 @@ public final class ReflectionUtils {
         final ConstructorCacheKey key = new ConstructorCacheKey(clazz, parameterTypes);
 
         // Atomically retrieve or compute the cached constructor
-        return CONSTRUCTOR_CACHE.computeIfAbsent(key, k -> {
+        return CONSTRUCTOR_CACHE.get().computeIfAbsent(key, k -> {
             try {
                 // Try to fetch the constructor reflectively
                 Constructor<?> ctor = clazz.getDeclaredConstructor(parameterTypes);
@@ -1303,10 +1331,10 @@ public final class ReflectionUtils {
         SortedConstructorsCacheKey key = new SortedConstructorsCacheKey(clazz);
 
         // Use the cache to avoid repeated sorting
-        return SORTED_CONSTRUCTORS_CACHE.computeIfAbsent(key,
+        return SORTED_CONSTRUCTORS_CACHE.get().computeIfAbsent(key,
                 k -> getAllConstructorsInternal(clazz));
     }
-    
+
     /**
      * Worker method that retrieves and sorts constructors.
      * This method ensures all constructors are accessible and cached individually.
@@ -1325,7 +1353,7 @@ public final class ReflectionUtils {
             ConstructorCacheKey key = new ConstructorCacheKey(clazz, paramTypes);
 
             // Retrieve from cache or add to cache
-            declared[i] = CONSTRUCTOR_CACHE.computeIfAbsent(key, k -> {
+            declared[i] = CONSTRUCTOR_CACHE.get().computeIfAbsent(key, k -> {
                 ClassUtilities.trySetAccessible(ctor);
                 return ctor;
             });
@@ -1379,7 +1407,7 @@ public final class ReflectionUtils {
         }
         return builder.toString();
     }
-    
+
     /**
      * Fetches a no-argument method from the specified class, caching the result for subsequent lookups.
      * This is intended for methods that are not overloaded and require no arguments
@@ -1405,7 +1433,7 @@ public final class ReflectionUtils {
         // Create a cache key for a method with no parameters
         MethodCacheKey key = new MethodCacheKey(clazz, methodName);
 
-        return METHOD_CACHE.computeIfAbsent(key, k -> {
+        return METHOD_CACHE.get().computeIfAbsent(key, k -> {
             Method foundMethod = null;
             for (Method m : clazz.getMethods()) {
                 if (methodName.equals(m.getName())) {
@@ -1425,7 +1453,7 @@ public final class ReflectionUtils {
             return foundMethod;
         });
     }
-    
+
     /**
      * Return the name of the class on the object, or "null" if the object is null.
      * @param o Object to get the class name.
@@ -1547,7 +1575,7 @@ public final class ReflectionUtils {
             return className.replace('/', '.');
         }
     }
-    
+
     /**
      * Return a String representation of the class loader, or "bootstrap" if null.
      *

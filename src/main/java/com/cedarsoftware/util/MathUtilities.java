@@ -283,13 +283,14 @@ public final class MathUtilities
      */
     public static Number parseToMinimalNumericType(String numStr) {
         // Handle and preserve negative signs correctly while removing leading zeros
-        boolean isNegative = numStr.startsWith("-");
-        if (isNegative || numStr.startsWith("+")) {
-            char sign = numStr.charAt(0);
-            numStr = sign + numStr.substring(1).replaceFirst("^0+", "");
-        } else {
-            numStr = numStr.replaceFirst("^0+", "");
+        boolean negative = numStr.startsWith("-");
+        boolean hasSign = negative || numStr.startsWith("+");
+        String digits = hasSign ? numStr.substring(1) : numStr;
+        digits = digits.replaceFirst("^0+", "");
+        if (digits.isEmpty()) {
+            digits = "0";
         }
+        numStr = (negative ? "-" : (hasSign ? "+" : "")) + digits;
 
         boolean hasDecimalPoint = false;
         boolean hasExponent = false;

@@ -291,6 +291,13 @@ class MathUtilitiesTest
     }
 
     @Test
+    void testZeroValues() {
+        assertEquals(0L, parseToMinimalNumericType("0"));
+        assertEquals(0L, parseToMinimalNumericType("-0"));
+        assertEquals(0L, parseToMinimalNumericType("+0"));
+    }
+
+    @Test
     void testBeyondMaxLongBoundary() {
         String beyondMaxLong = "9223372036854775808"; // Long.MAX_VALUE + 1
         assertEquals(new BigInteger("9223372036854775808"), parseToMinimalNumericType(beyondMaxLong));

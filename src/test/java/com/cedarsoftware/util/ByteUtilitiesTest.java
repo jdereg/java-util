@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -47,13 +48,15 @@ public class ByteUtilitiesTest
     }
 
     @Test
-	public void testDecode() 
-	{
-		assertArrayEquals(_array1, ByteUtilities.decode(_str1));
-		assertArrayEquals(_array2, ByteUtilities.decode(_str2));
-		assertArrayEquals(null, ByteUtilities.decode("456"));
+        public void testDecode()
+        {
+                assertArrayEquals(_array1, ByteUtilities.decode(_str1));
+                assertArrayEquals(_array2, ByteUtilities.decode(_str2));
+                assertNull(ByteUtilities.decode("456"));
+                assertArrayEquals(new byte[]{-1, 0}, ByteUtilities.decode("ff00"));
+                assertNull(ByteUtilities.decode("GG"));
 
-	}
+        }
 	
 	@Test
 	public void testEncode() 

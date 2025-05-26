@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.SortedMap;
 
 /**
- * Usefule utilities for Maps
+ * Useful utilities for Maps
  *
  * @author Ken Partlow (kpartlow@gmail.com)
  * @author John DeRegnaucourt (jdereg@gmail.com)

@@ -3500,6 +3500,17 @@ public class CompactMapTest
         assertEquals(1, compactMap.get("apple"), "Initial value for 'apple' should be 1.");
         assertEquals(3, compactMap.get("cherry"), "Initial value for 'cherry' should be 3.");
         assertEquals(4, compactMap.get("zed"), "Initial value for 'zed' should be 4.");
+
+        // Trigger iteration which will sort the compact array if needed
+        String[] expectedOrder = {"apple", "banana", "cherry", "zed"};
+        int idx = 0;
+        for (Map.Entry<String, Integer> entry : compactMap.entrySet()) {
+            assertEquals(expectedOrder[idx], entry.getKey(), "Unexpected iteration order");
+            assertEquals(compactMap.get(entry.getKey()), entry.getValue(),
+                    "Key/value pair mismatch after sortCompactArray");
+            idx++;
+        }
+        assertEquals(expectedOrder.length, idx, "Iteration did not visit all entries");
     }
 
     /**

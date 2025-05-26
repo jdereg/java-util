@@ -38,9 +38,7 @@ public class CompactCIHashSet<E> extends CompactSet<E> {
      * @throws IllegalArgumentException if {@link #compactSize()} returns a value less than 2
      */
     public CompactCIHashSet() {
-        super(ReflectionUtils.isJavaCompilerAvailable()
-                ? CompactMap.<E, Object>builder().caseSensitive(false).build()
-                : CompactSet.createSimpleMap(false, CompactMap.DEFAULT_COMPACT_SIZE, CompactMap.UNORDERED));
+        super(CompactSet.createSimpleMap(false, CompactMap.DEFAULT_COMPACT_SIZE, CompactMap.UNORDERED));
     }
 
     /**

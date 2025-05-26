@@ -43,9 +43,7 @@ public class CompactLinkedSet<E> extends CompactSet<E> {
      * @throws IllegalArgumentException if {@link #compactSize()} returns a value less than 2
      */
     public CompactLinkedSet() {
-        super(ReflectionUtils.isJavaCompilerAvailable()
-                ? CompactMap.<E, Object>builder().caseSensitive(true).insertionOrder().build()
-                : CompactSet.createSimpleMap(true, CompactMap.DEFAULT_COMPACT_SIZE, CompactMap.INSERTION));
+        super(CompactSet.createSimpleMap(true, CompactMap.DEFAULT_COMPACT_SIZE, CompactMap.INSERTION));
     }
 
     /**

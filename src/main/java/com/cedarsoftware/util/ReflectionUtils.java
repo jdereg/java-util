@@ -1583,8 +1583,8 @@ public final class ReflectionUtils {
         try {
             Class<?> toolProvider = Class.forName("javax.tools.ToolProvider");
             Object compiler = toolProvider.getMethod("getSystemJavaCompiler").invoke(null);
-            return false;
-//            return compiler != null;
+//            return false;
+            return compiler != null;
         } catch (Throwable t) {
             return false;
         }

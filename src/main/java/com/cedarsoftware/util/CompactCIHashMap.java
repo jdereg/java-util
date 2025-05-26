@@ -12,7 +12,7 @@ import java.util.Map;
  *
  * This creates a CompactMap with:
  * <ul>
- *   <li>compactSize = 40 (same as CompactCIHashMap)</li>
+ *   <li>compactSize = 50 (same as CompactCIHashMap)</li>
  *   <li>caseSensitive = false (case-insensitive behavior)</li>
  *   <li>ordering = UNORDERED (standard HashMap behavior)</li>
  * </ul>

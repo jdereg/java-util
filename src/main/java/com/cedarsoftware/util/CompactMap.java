@@ -105,7 +105,7 @@ import java.util.stream.Collectors;
  *   <tr>
  *     <td>{@code compactSize(int)}</td>
  *     <td>Maximum size before switching to backing map</td>
- *     <td>70</td>
+ *     <td>50</td>
  *   </tr>
  *   <tr>
  *     <td>{@code mapType(Class)}</td>
@@ -196,8 +196,8 @@ import java.util.stream.Collectors;
  *
  * <p>The generated class names encode the configuration settings. For example:</p>
  * <ul>
- *   <li>{@code CompactMap$HashMap_CS_S70_id_Unord} - A case-sensitive, unordered map
- *       with HashMap backing, compact size of 70, and "id" as single value key</li>
+ *   <li>{@code CompactMap$HashMap_CS_S50_id_Unord} - A case-sensitive, unordered map
+ *       with HashMap backing, compact size of 50, and "id" as single value key</li>
  *   <li>{@code CompactMap$TreeMap_CI_S100_UUID_Sort} - A case-insensitive, sorted map
  *       with TreeMap backing, compact size of 100, and "UUID" as single value key</li>
  *   <li>{@code CompactMap$LinkedHashMap_CS_S50_Key_Ins} - A case-sensitive map with
@@ -248,7 +248,12 @@ public class CompactMap<K, V> implements Map<K, V> {
     public static final String REVERSE = "reverse";
 
     // Default values
-    public static final int DEFAULT_COMPACT_SIZE = 40;
+    /**
+     * Default threshold for switching from the internal compact array
+     * representation to the backing {@code Map}.  Empirical testing shows
+     * a value of 50 offers good performance with strong memory savings.
+     */
+    public static final int DEFAULT_COMPACT_SIZE = 50;
     public static final boolean DEFAULT_CASE_SENSITIVE = true;
     public static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
     public static final String DEFAULT_SINGLE_KEY = "id";
@@ -304,7 +309,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     public boolean isDefaultCompactMap() {
-        // 1. Check that compactSize() is 40
+        // 1. Check that compactSize() is the library default (50)
         if (compactSize() != DEFAULT_COMPACT_SIZE) {
             return false;
         }
@@ -1552,7 +1557,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * <p>
      * When size exceeds this value, switches to map storage.
      * When size reduces to this value, returns to array storage.
-     * Default implementation returns 70.
+     * Default implementation returns 50.
      * </p>
      *
      * @return the maximum number of entries for compact array storage
@@ -1869,7 +1874,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *     <td>{@link #COMPACT_SIZE}</td>
      *     <td>Integer</td>
      *     <td>Maximum size before switching to backing map</td>
-     *     <td>70</td>
+     *     <td>50</td>
      *   </tr>
      *   <tr>
      *     <td>{@link #CASE_SENSITIVE}</td>
@@ -2212,7 +2217,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *   <tr>
      *     <td>{@link #compactSize(int)}</td>
      *     <td>Maximum size before switching to backing map</td>
-     *     <td>70</td>
+     *     <td>50</td>
      *   </tr>
      *   <tr>
      *     <td>{@link #mapType(Class)}</td>
@@ -2435,8 +2440,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * <p>
      * This class generates and compiles optimized CompactMap subclasses at runtime based on
      * configuration options. Generated classes are cached for reuse. Class names encode their
-     * configuration, for example: "CompactMap$HashMap_CS_S70_id_Unord" represents a
-     * case-sensitive, unordered map with HashMap backing, compact size of 70, and "id" as
+     * configuration, for example: "CompactMap$HashMap_CS_S50_id_Unord" represents a
+     * case-sensitive, unordered map with HashMap backing, compact size of 50, and "id" as
      * the single value key.
      * <p>
      * This is an implementation detail and not part of the public API.
@@ -2467,11 +2472,11 @@ public class CompactMap<K, V> implements Map<K, V> {
          * Generates a unique class name encoding the configuration options.
          * <p>
          * Format: "CompactMap$[MapType]_[CS/CI]_S[Size]_[SingleKey]_[Order]"
-         * Example: "CompactMap$HashMap_CS_S70_id_Unord" represents:
+         * Example: "CompactMap$HashMap_CS_S50_id_Unord" represents:
          * <ul>
          *     <li>HashMap backing</li>
          *     <li>Case Sensitive (CS)</li>
-         *     <li>Size 70</li>
+         *     <li>Size 50</li>
          *     <li>Single key "id"</li>
          *     <li>Unordered</li>
          * </ul>

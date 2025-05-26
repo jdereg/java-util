@@ -24,7 +24,7 @@ A memory-efficient `Set` implementation that internally uses `CompactMap`. This 
 CompactSet<String> set = CompactSet.<String>builder()
     .caseSensitive(false)
     .sortedOrder()
-    .compactSize(70)
+    .compactSize(50)
     .build();
 
 // Create a CompactSet with insertion ordering
@@ -495,14 +495,14 @@ CompactMap<String, Object> configured = CompactMap.<String, Object>builder()
 
 ### Configuration Options
 - **Case Sensitivity:** Controls String key comparison
-- **Compact Size:** Threshold for switching to backing map (default: 70)
+- **Compact Size:** Threshold for switching to backing map (default: 50)
 - **Map Type:** Backing map implementation (HashMap, TreeMap, etc.)
 - **Single Value Key:** Key for optimized single-entry storage
 - **Ordering:** Unordered, sorted, reverse, or insertion order
 
 ### Performance Characteristics
 - Get/Put/Remove: O(n) for maps < `compactSize()`. Lookups are `O(1)` when no ordering is enforced. For `SORTED` or `REVERSE` orderings, lookups are `O(log n)` because the compact array is maintained in sorted order.
-- `compactSize()` still controls when the structure transitions to the backing map – insertion and removal costs grow quickly on large arrays. Empirical testing shows a value around 60–70 provides strong memory savings with good performance.
+- `compactSize()` still controls when the structure transitions to the backing map – insertion and removal costs grow quickly on large arrays. Empirical testing shows a value around 50 provides strong memory savings with good performance.
 - Memory Usage: Optimized based on size (Maps < compactSize() use minimal memory)
 - Iteration: Maintains configured ordering
 - Thread Safety: Safe when wrapped with Collections.synchronizedMap()

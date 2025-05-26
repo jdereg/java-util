@@ -430,6 +430,59 @@ class CompactOrderingTest {
             fail("Failed to verify backing map types: " + e.getMessage());
         }
     }
+
+    @Test
+    void testBinarySearchMaintainsSortedArray() throws Exception {
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.COMPACT_SIZE, 5);
+        options.put(CompactMap.ORDERING, CompactMap.SORTED);
+        options.put(CompactMap.MAP_TYPE, TreeMap.class);
+        CompactMap<String, Integer> map = CompactMap.newMap(options);
+
+        map.put("delta", 1);
+        map.put("alpha", 2);
+        map.put("charlie", 3);
+        map.put("bravo", 4);
+
+        assertArrayEquals(new String[]{"alpha", "bravo", "charlie", "delta"}, getInternalKeys(map));
+
+        map.remove("charlie");
+        assertArrayEquals(new String[]{"alpha", "bravo", "delta"}, getInternalKeys(map));
+
+        map.put("beta", 5);
+        assertArrayEquals(new String[]{"alpha", "beta", "bravo", "delta"}, getInternalKeys(map));
+    }
+
+    @Test
+    void testBinarySearchCaseInsensitiveReverse() throws Exception {
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.COMPACT_SIZE, 5);
+        options.put(CompactMap.ORDERING, CompactMap.REVERSE);
+        options.put(CompactMap.CASE_SENSITIVE, false);
+        options.put(CompactMap.MAP_TYPE, TreeMap.class);
+        CompactMap<String, Integer> map = CompactMap.newMap(options);
+
+        map.put("aaa", 1);
+        map.put("BBB", 2);
+        map.put("ccc", 3);
+
+        assertArrayEquals(new String[]{"ccc", "BBB", "aaa"}, getInternalKeys(map));
+
+        map.remove("BBB");
+        assertArrayEquals(new String[]{"ccc", "aaa"}, getInternalKeys(map));
+
+        map.put("bbb", 4);
+        assertArrayEquals(new String[]{"ccc", "bbb", "aaa"}, getInternalKeys(map));
+    }
+
+    private String[] getInternalKeys(CompactMap<String, Integer> map) throws Exception {
+        Object[] arr = (Object[]) getBackingMapValue(map);
+        String[] keys = new String[arr.length / 2];
+        for (int i = 0; i < keys.length; i++) {
+            keys[i] = (String) arr[i * 2];
+        }
+        return keys;
+    }
     
     private Object getBackingMapValue(CompactMap<?,?> map) throws Exception {
         Field valField = CompactMap.class.getDeclaredField("val");

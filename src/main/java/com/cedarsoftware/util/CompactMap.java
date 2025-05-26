@@ -628,10 +628,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Only sort if it's a SortedMap
             if (mapInstance instanceof SortedMap) {
-                SortedMap<K,V> sortedMap = (SortedMap<K,V>)mapInstance;
-                boolean reverse = sortedMap.comparator() != null &&
-                        sortedMap.comparator().getClass().getName().toLowerCase().contains("reversecomp");
-
+                boolean reverse = REVERSE.equals(getOrdering());
                 Comparator<Object> comparator = new CompactMapComparator(isCaseInsensitive(), reverse);
                 quickSort(array, 0, pairCount - 1, comparator);
             }

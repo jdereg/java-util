@@ -1580,10 +1580,14 @@ public final class ReflectionUtils {
      * Returns true if the JavaCompiler (JDK) is available at runtime, false if running under a JRE.
      */
     public static boolean isJavaCompilerAvailable() {
+        // Allow tests to simulate running on a JRE by setting a system property.
+        if (Boolean.getBoolean("java.util.force.jre")) {
+            return false;
+        }
+
         try {
             Class<?> toolProvider = Class.forName("javax.tools.ToolProvider");
             Object compiler = toolProvider.getMethod("getSystemJavaCompiler").invoke(null);
-//            return false;
             return compiler != null;
         } catch (Throwable t) {
             return false;

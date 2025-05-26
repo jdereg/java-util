@@ -629,6 +629,20 @@ public class CompactMap<K, V> implements Map<K, V> {
             // Only sort if it's a SortedMap
             if (mapInstance instanceof SortedMap) {
                 boolean reverse = REVERSE.equals(getOrdering());
+
+                // Fall back to detecting a reverse comparator when legacy
+                // subclasses did not override getOrdering().  Older
+                // implementations simply returned a TreeMap constructed with
+                // Collections.reverseOrder(), so check the comparator's class
+                // name for "reverse" to maintain backward compatibility.
+                if (!reverse) {
+                    Comparator<?> legacyComp = ((SortedMap<?, ?>) mapInstance).comparator();
+                    if (legacyComp != null) {
+                        String name = legacyComp.getClass().getName().toLowerCase();
+                        reverse = name.contains("reverse");
+                    }
+                }
+
                 Comparator<Object> comparator = new CompactMapComparator(isCaseInsensitive(), reverse);
                 quickSort(array, 0, pairCount - 1, comparator);
             }

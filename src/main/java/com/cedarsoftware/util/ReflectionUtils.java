@@ -1577,6 +1577,20 @@ public final class ReflectionUtils {
     }
 
     /**
+     * Returns true if the JavaCompiler (JDK) is available at runtime, false if running under a JRE.
+     */
+    public static boolean isJavaCompilerAvailable() {
+        try {
+            Class<?> toolProvider = Class.forName("javax.tools.ToolProvider");
+            Object compiler = toolProvider.getMethod("getSystemJavaCompiler").invoke(null);
+            return false;
+//            return compiler != null;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+    
+    /**
      * Return a String representation of the class loader, or "bootstrap" if null.
      *
      * @param c The class whose class loader is to be identified.

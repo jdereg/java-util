@@ -256,7 +256,7 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static final TemplateClassLoader templateClassLoader = new TemplateClassLoader(ClassUtilities.getClassLoader(CompactMap.class));
     private static final Map<String, ReentrantLock> CLASS_LOCKS = new ConcurrentHashMap<>();
 
-    // The only "state" and why this is a compactMap - one member variable
+    // The only "state" and why this is a compactMap - one-member variable
     protected Object val = EMPTY_MAP;
 
     /**
@@ -1803,6 +1803,15 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @throws IllegalStateException if template generation or instantiation fails
      */
     static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
+        // Ensure JDK Java Compiler is available before proceeding
+        if (!ReflectionUtils.isJavaCompilerAvailable()) {
+            throw new IllegalStateException(
+                    "CompactMap dynamic subclassing requires the Java Compiler (JDK). " +
+                            "You are running on a JRE or in an environment where javax.tools.JavaCompiler is not available. " +
+                            "Use CompactMap as-is, one of the pre-built subclasses, or provide your own subclass instead."
+            );
+        }
+        
         // Validate and finalize options first (existing code)
         validateAndFinalizeOptions(options);
 
@@ -2288,7 +2297,24 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @throws IllegalArgumentException if any configuration options are invalid
          *         or incompatible
          */
+        /**
+         * Creates a new CompactMap instance with the configured options.
+         * <p>
+         * This method validates all options and creates a specialized implementation
+         * based on the configuration. The resulting map is optimized for the
+         * specified combination of options.
+         *
+         * @return a new CompactMap instance
+         * @throws IllegalStateException if JavaCompiler is unavailable at runtime (JRE detected)
+         */
         public CompactMap<K, V> build() {
+            if (!ReflectionUtils.isJavaCompilerAvailable()) {
+                throw new IllegalStateException(
+                        "CompactMap builder pattern requires the Java Compiler (JDK). " +
+                                "You are running on a JRE or in an environment where javax.tools.JavaCompiler is not available. " +
+                                "Use CompactMap as-is, one of the pre-built subclasses, or provide your own subclass instead."
+                );
+            }
             return CompactMap.newMap(options);
         }
     }
@@ -2742,7 +2768,12 @@ public class CompactMap<K, V> implements Map<K, V> {
          * @throws IllegalStateException if compilation fails or JDK compiler unavailable
          */
         private static Class<?> compileClass(String className, String sourceCode) {
-            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+            JavaCompiler compiler;
+            try {
+                compiler = ToolProvider.getSystemJavaCompiler();
+            } catch (Throwable t) {
+                throw new IllegalStateException("No JavaCompiler found (JDK required, not just JRE).", t);
+            }
             if (compiler == null) {
                 throw new IllegalStateException("No JavaCompiler found. Ensure JDK (not just JRE) is being used.");
             }

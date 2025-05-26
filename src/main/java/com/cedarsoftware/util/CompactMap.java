@@ -935,17 +935,24 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
             return save;
         } else {   // Transition to Object[]
-            Object[] entries = new Object[4];
-            K existingKey = getLogicalSingleKey();
-            V existingValue = getLogicalSingleValue();
+            // Create an array with the existing entry and then insert the
+            // new entry using the standard compact array logic. This ensures
+            // that ordering is properly maintained for sorted or reverse
+            // ordered maps and that duplicates are detected correctly.
 
-            // Simply append the entries in order: existing entry first, new entry second
-            entries[0] = existingKey;
-            entries[1] = existingValue;
-            entries[2] = key;
-            entries[3] = value;
+            Object[] entries = new Object[2];
+            entries[0] = getLogicalSingleKey();
+            entries[1] = getLogicalSingleValue();
 
+            // Set the internal storage to the two element array so that
+            // size() and other methods behave correctly when
+            // putInCompactArray() is invoked.
             val = entries;
+
+            // Delegate insertion of the second entry to putInCompactArray()
+            // which will handle ordering (including binary search) and
+            // growth of the array as needed.
+            putInCompactArray(entries, key, value);
             return null;
         }
     }

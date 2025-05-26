@@ -501,8 +501,8 @@ CompactMap<String, Object> configured = CompactMap.<String, Object>builder()
 - **Ordering:** Unordered, sorted, reverse, or insertion order
 
 ### Performance Characteristics
-- Get/Put/Remove: O(n) for maps < compactSize(), O(1) or O(log n) for sorted or reverse
-- compactSize() of 60-70 from emperical testing, provides key memory savings with great performance 
+- Get/Put/Remove: O(n) for maps < `compactSize()`. Lookups are `O(1)` when no ordering is enforced. For `SORTED` or `REVERSE` orderings, lookups are `O(log n)` because the compact array is maintained in sorted order.
+- `compactSize()` still controls when the structure transitions to the backing map – insertion and removal costs grow quickly on large arrays. Empirical testing shows a value around 60–70 provides strong memory savings with good performance.
 - Memory Usage: Optimized based on size (Maps < compactSize() use minimal memory)
 - Iteration: Maintains configured ordering
 - Thread Safety: Safe when wrapped with Collections.synchronizedMap()

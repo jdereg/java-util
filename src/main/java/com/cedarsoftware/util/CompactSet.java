@@ -7,6 +7,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.Comparator;
 
 /**
  * A memory-efficient Set implementation that internally uses {@link CompactMap}.
@@ -81,11 +83,15 @@ public class CompactSet<E> implements Set<E> {
      * @throws IllegalStateException if {@link #compactSize()} returns a value less than 2
      */
     public CompactSet() {
-        // Utilize the overridden compactSize() from subclasses
-        CompactMap<E, Object> defaultMap = CompactMap.<E, Object>builder()
-                .compactSize(this.compactSize())
-                .caseSensitive(!isCaseInsensitive())
-                .build();
+        CompactMap<E, Object> defaultMap;
+        if (ReflectionUtils.isJavaCompilerAvailable()) {
+            defaultMap = CompactMap.<E, Object>builder()
+                    .compactSize(this.compactSize())
+                    .caseSensitive(!isCaseInsensitive())
+                    .build();
+        } else {
+            defaultMap = createSimpleMap(!isCaseInsensitive(), compactSize(), CompactMap.UNORDERED);
+        }
 
         if (defaultMap.compactSize() < 2) {
             throw new IllegalStateException("compactSize() must be >= 2");
@@ -263,9 +269,11 @@ public class CompactSet<E> implements Set<E> {
      */
     public static final class Builder<E> {
         private final CompactMap.Builder<E, Object> mapBuilder;
+        private boolean caseSensitive = CompactMap.DEFAULT_CASE_SENSITIVE;
+        private int compactSize = CompactMap.DEFAULT_COMPACT_SIZE;
+        private String ordering = CompactMap.UNORDERED;
 
         private Builder() {
-            // Build a map for our set
             this.mapBuilder = CompactMap.builder();
         }
 
@@ -274,6 +282,7 @@ public class CompactSet<E> implements Set<E> {
          * @param caseSensitive if false, do case-insensitive compares
          */
         public Builder<E> caseSensitive(boolean caseSensitive) {
+            this.caseSensitive = caseSensitive;
             mapBuilder.caseSensitive(caseSensitive);
             return this;
         }
@@ -282,6 +291,7 @@ public class CompactSet<E> implements Set<E> {
          * Sets the maximum size for compact array storage.
          */
         public Builder<E> compactSize(int size) {
+            this.compactSize = size;
             mapBuilder.compactSize(size);
             return this;
         }
@@ -291,6 +301,7 @@ public class CompactSet<E> implements Set<E> {
          * <p>Requires elements to be {@link Comparable}</p>
          */
         public Builder<E> sortedOrder() {
+            this.ordering = CompactMap.SORTED;
             mapBuilder.sortedOrder();
             return this;
         }
@@ -300,6 +311,7 @@ public class CompactSet<E> implements Set<E> {
          * <p>Requires elements to be {@link Comparable}</p>
          */
         public Builder<E> reverseOrder() {
+            this.ordering = CompactMap.REVERSE;
             mapBuilder.reverseOrder();
             return this;
         }
@@ -308,6 +320,7 @@ public class CompactSet<E> implements Set<E> {
          * Configures the set to maintain elements in insertion order.
          */
         public Builder<E> insertionOrder() {
+            this.ordering = CompactMap.INSERTION;
             mapBuilder.insertionOrder();
             return this;
         }
@@ -316,6 +329,7 @@ public class CompactSet<E> implements Set<E> {
          * Configures the set to maintain elements in no specific order, like a HashSet.
          */
         public Builder<E> noOrder() {
+            this.ordering = CompactMap.UNORDERED;
             mapBuilder.noOrder();
             return this;
         }
@@ -324,8 +338,12 @@ public class CompactSet<E> implements Set<E> {
          * Creates a new CompactSet with the configured options.
          */
         public CompactSet<E> build() {
-            // Build the underlying map, then wrap it in a new CompactSet
-            CompactMap<E, Object> builtMap = mapBuilder.build();
+            CompactMap<E, Object> builtMap;
+            if (ReflectionUtils.isJavaCompilerAvailable()) {
+                builtMap = mapBuilder.build();
+            } else {
+                builtMap = createSimpleMap(caseSensitive, compactSize, ordering);
+            }
             return new CompactSet<>(builtMap);
         }
     }
@@ -435,5 +453,43 @@ public class CompactSet<E> implements Set<E> {
             default:
                 builder.noOrder();
         }
+    }
+
+    static <E> CompactMap<E, Object> createSimpleMap(boolean caseSensitive, int size, String ordering) {
+        return new CompactMap<E, Object>() {
+            @Override
+            protected boolean isCaseInsensitive() {
+                return !caseSensitive;
+            }
+
+            @Override
+            protected int compactSize() {
+                return size;
+            }
+
+            @Override
+            protected String getOrdering() {
+                return ordering;
+            }
+
+            @Override
+            protected Map<E, Object> getNewMap() {
+                int cap = size + 1;
+                boolean ci = !caseSensitive;
+                switch (ordering) {
+                    case CompactMap.INSERTION:
+                        return ci ? new CaseInsensitiveMap<>(Collections.emptyMap(), new LinkedHashMap<>(cap))
+                                : new LinkedHashMap<>(cap);
+                    case CompactMap.SORTED:
+                    case CompactMap.REVERSE:
+                        Comparator<Object> comp = new CompactMap.CompactMapComparator(ci, CompactMap.REVERSE.equals(ordering));
+                        Map<E, Object> tree = new TreeMap<>(comp);
+                        return ci ? new CaseInsensitiveMap<>(Collections.emptyMap(), tree) : tree;
+                    default:
+                        return ci ? new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>(cap))
+                                : new HashMap<>(cap);
+                }
+            }
+        };
     }
 }

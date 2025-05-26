@@ -210,7 +210,7 @@ public class EncryptionUtilities {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getSHA256Digest());
             }
             // Fallback for non-file input streams (rare, but possible with custom filesystem providers)
-            return calculateStreamHash(in, getSHA1Digest());
+            return calculateStreamHash(in, getSHA256Digest());
         } catch (NoSuchFileException e) {
             return null;
         } catch (IOException e) {
@@ -237,7 +237,7 @@ public class EncryptionUtilities {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getSHA512Digest());
             }
             // Fallback for non-file input streams (rare, but possible with custom filesystem providers)
-            return calculateStreamHash(in, getSHA1Digest());
+            return calculateStreamHash(in, getSHA512Digest());
         } catch (NoSuchFileException e) {
             return null;
         } catch (IOException e) {

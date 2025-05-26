@@ -401,6 +401,11 @@ public class CompactMap<K, V> implements Map<K, V> {
     public boolean containsKey(Object key) {
         if (val instanceof Object[]) {   // 2 to compactSize
             Object[] entries = (Object[]) val;
+            String ordering = getOrdering();
+            if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
+                Comparator<Object> comp = new CompactMapComparator(isCaseInsensitive(), REVERSE.equals(ordering));
+                return pairBinarySearch(entries, key, comp) >= 0;
+            }
             final int len = entries.length;
             for (int i = 0; i < len; i += 2) {
                 if (areKeysEqual(key, entries[i])) {
@@ -461,6 +466,12 @@ public class CompactMap<K, V> implements Map<K, V> {
     public V get(Object key) {
         if (val instanceof Object[]) {   // 2 to compactSize
             Object[] entries = (Object[]) val;
+            String ordering = getOrdering();
+            if (SORTED.equals(ordering) || REVERSE.equals(ordering)) {
+                Comparator<Object> comp = new CompactMapComparator(isCaseInsensitive(), REVERSE.equals(ordering));
+                int pairIdx = pairBinarySearch(entries, key, comp);
+                return pairIdx >= 0 ? (V) entries[pairIdx * 2 + 1] : null;
+            }
             int len = entries.length;
             for (int i = 0; i < len; i += 2) {
                 if (areKeysEqual(key, entries[i])) {
@@ -532,6 +543,40 @@ public class CompactMap<K, V> implements Map<K, V> {
     }
 
     /**
+     * Performs a binary search on an array storing key-value pairs.
+     * <p>
+     * The array alternates keys and values where keys occupy the even
+     * indices. This method searches only the keys using the supplied
+     * comparator and returns the pair index using the same semantics as
+     * {@link java.util.Arrays#binarySearch(Object[], Object, Comparator)}.
+     * </p>
+     *
+     * @param arr   array containing alternating keys and values
+     * @param key   the key to search for
+     * @param comp  comparator used for key comparison
+     * @return index of the key if found (pair index), otherwise
+     *         {@code -(insertionPoint + 1)} where {@code insertionPoint}
+     *         is the pair index at which the key should be inserted
+     */
+    private int pairBinarySearch(Object[] arr, Object key, Comparator<Object> comp) {
+        int low = 0;
+        int high = (arr.length / 2) - 1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            Object midKey = arr[mid * 2];
+            int cmp = comp.compare(key, midKey);
+            if (cmp > 0) {
+                low = mid + 1;
+            } else if (cmp < 0) {
+                high = mid - 1;
+            } else {
+                return mid;
+            }
+        }
+        return -(low + 1);
+    }
+
+    /**
      * Adds or updates an entry in the compact array storage.
      * <p>
      * If the key exists, updates its value. If the key is new and there's room to stay as an array (< compactSize),
@@ -545,23 +590,46 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     private V putInCompactArray(final Object[] entries, K key, V value) {
         final int len = entries.length;
-        // Check for "update" case
-        for (int i = 0; i < len; i += 2) {
-            if (areKeysEqual(key, entries[i])) {
-                int i1 = i + 1;
-                V oldValue = (V) entries[i1];
-                entries[i1] = value;
+        String ordering = getOrdering();
+        boolean binary = SORTED.equals(ordering) || REVERSE.equals(ordering);
+        Comparator<Object> comp = null;
+        int pairIndex = -1;
+
+        if (binary) {
+            comp = new CompactMapComparator(isCaseInsensitive(), REVERSE.equals(ordering));
+            pairIndex = pairBinarySearch(entries, key, comp);
+            if (pairIndex >= 0) {
+                int vIdx = pairIndex * 2 + 1;
+                V oldValue = (V) entries[vIdx];
+                entries[vIdx] = value;
                 return oldValue;
+            }
+            pairIndex = -(pairIndex + 1);
+        } else {
+            for (int i = 0; i < len; i += 2) {
+                if (areKeysEqual(key, entries[i])) {
+                    int vIdx = i + 1;
+                    V oldValue = (V) entries[vIdx];
+                    entries[vIdx] = value;
+                    return oldValue;
+                }
             }
         }
 
-        // New entry
         if (size() < compactSize()) {
             Object[] expand = new Object[len + 2];
-            System.arraycopy(entries, 0, expand, 0, len);
-            expand[len] = key;
-            expand[len + 1] = value;
-            val = expand;  // Simply append, no sorting needed
+            if (binary) {
+                int insert = pairIndex * 2;
+                System.arraycopy(entries, 0, expand, 0, insert);
+                expand[insert] = key;
+                expand[insert + 1] = value;
+                System.arraycopy(entries, insert, expand, insert + 2, len - insert);
+            } else {
+                System.arraycopy(entries, 0, expand, 0, len);
+                expand[len] = key;
+                expand[len + 1] = value;
+            }
+            val = expand;
         } else {
             switchToMap(entries, key, value);
         }
@@ -587,24 +655,39 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         int len = entries.length;
-        for (int i = 0; i < len; i += 2) {
-            if (areKeysEqual(key, entries[i])) {
-                V oldValue = (V) entries[i + 1];
-                Object[] shrink = new Object[len - 2];
-                // Copy entries before the found pair
-                if (i > 0) {
-                    System.arraycopy(entries, 0, shrink, 0, i);
+        String ordering = getOrdering();
+        boolean binary = SORTED.equals(ordering) || REVERSE.equals(ordering);
+        int idx = -1;
+
+        if (binary) {
+            Comparator<Object> comp = new CompactMapComparator(isCaseInsensitive(), REVERSE.equals(ordering));
+            int pairIdx = pairBinarySearch(entries, key, comp);
+            if (pairIdx < 0) {
+                return null;
+            }
+            idx = pairIdx * 2;
+        } else {
+            for (int i = 0; i < len; i += 2) {
+                if (areKeysEqual(key, entries[i])) {
+                    idx = i;
+                    break;
                 }
-                // Copy entries after the found pair
-                if (i + 2 < len) {
-                    System.arraycopy(entries, i + 2, shrink, i, len - i - 2);
-                }
-                // Update the backing array without sorting
-                val = shrink;
-                return oldValue;
+            }
+            if (idx < 0) {
+                return null;
             }
         }
-        return null;    // Key not found
+
+        V oldValue = (V) entries[idx + 1];
+        Object[] shrink = new Object[len - 2];
+        if (idx > 0) {
+            System.arraycopy(entries, 0, shrink, 0, idx);
+        }
+        if (idx + 2 < len) {
+            System.arraycopy(entries, idx + 2, shrink, idx, len - idx - 2);
+        }
+        val = shrink;
+        return oldValue;
     }
 
     /**

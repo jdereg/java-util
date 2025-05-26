@@ -465,6 +465,15 @@ CompactMap<String, Object> ordered = CompactMap.<String, Object>builder()
     .build();
 ```
 
+> **JDK Requirement**
+> 
+> The `build()`, `newMap()`, and `withConfig()` APIs dynamically generate a
+> specialized subclass using the JDK compiler. These methods will throw an
+> `IllegalStateException` when the compiler tools are unavailable (for example
+> in JRE-only container environments). In those cases, either use the default
+> constructor or one of the pre-built classes such as `CompactLinkedMap`,
+> `CompactCIHashMap`, or `CompactCILinkedMap`.
+
 **Configuration Options:**
 ```java
 // Comprehensive configuration

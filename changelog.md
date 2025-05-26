@@ -2,9 +2,11 @@
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.
+> * `CompactMap` - When using the builder pattern with the .build() API, it requires being run with a JDK - you will get a clear error if executed on a JRE. Using CompactMap (or static subclass of it like CompactCIHashMap or one of your own) does not have this requirement. The withConfig() and newMap() APIs also expect to execute on a JDK (dynamica compilation).
+> * `CompactSet` - Has the same requirements regarding JDK/JRE as CompactMap.
 > * Updated tests to support JDK 24+
 >   * EST, MST, HST mapped to fixed offsets (‑05:00, ‑07:00, ‑10:00) when the property sun.timezone.ids.oldmapping=true was set
->   * The old‑mapping switch was removed and the short IDs are now links to region IDs: EST → America/Panama, MST → America/Phoenix, HST → Pacific/Honolulu
+>   * The old‑mapping switch was removed, and the short IDs are now links to region IDs: EST → America/Panama, MST → America/Phoenix, HST → Pacific/Honolulu
 #### 3.3.1 New Features and Improvements
 > * `CaseInsensitiveMap/Set` compute hashCodes slightly faster because of update to `StringUtilities.hashCodeIgnoreCase().`  It takes advantage of ASCII for Locale's that use Latin characters.
 > * `CaseInsensitiveString` inside `CaseInsensitiveMap` implements `CharSequence` and can be used outside `CaseInsensitiveMap` as a case-insensitive but case-retentiative String and passed to methods that take `CharSequence.`

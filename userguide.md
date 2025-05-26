@@ -449,7 +449,7 @@ Map<String, Object> source = new HashMap<>();
 CompactMap<String, Object> copy = new CompactMap<>(source);
 ```
 
-**Builder Pattern (Recommended):**
+**Builder Pattern (requires execution on JDK):**
 ```java
 // Case-insensitive, sorted map
 CompactMap<String, Object> map = CompactMap.<String, Object>builder()

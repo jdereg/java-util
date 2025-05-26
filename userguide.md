@@ -39,8 +39,9 @@ CompactSet<String> ordered = CompactSet.<String>builder()
 > specialized subclass using the JDK compiler. These methods will throw an
 > `IllegalStateException` when the compiler tools are unavailable (for example
 > in JRE-only container environments). In those cases, either use the default
-> constructor or one of the pre-built classes such as `CompactLinkedSet`,
-> `CompactCIHashSet`, or `CompactCILinkedSet`.
+> constructor, one of the pre-built classes such as `CompactLinkedSet`,
+> `CompactCIHashSet`, or `CompactCILinkedSet`, or create your own subclass and 
+> override the configuration options (compact-size, ordering, case-sensitivity, etc.)
 
 ### Configuration Options
 
@@ -480,8 +481,9 @@ CompactMap<String, Object> ordered = CompactMap.<String, Object>builder()
 > specialized subclass using the JDK compiler. These methods will throw an
 > `IllegalStateException` when the compiler tools are unavailable (for example
 > in JRE-only container environments). In those cases, either use the default
-> constructor or one of the pre-built classes such as `CompactLinkedMap`,
-> `CompactCIHashMap`, or `CompactCILinkedMap`.
+> constructor, one of the pre-built classes such as `CompactLinkedMap`,
+> `CompactCIHashMap`, or `CompactCILinkedMap`, or create your own subclass and
+> override the configuration options (compact-size, ordering, case-sensitivity, etc.)
 
 **Configuration Options:**
 ```java

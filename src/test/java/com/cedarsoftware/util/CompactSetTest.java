@@ -570,7 +570,7 @@ class CompactSetTest
         // Verify the conversion preserved configuration
         assert converted instanceof CompactSet;
 
-        // Test that CompactSet is a default instance (case-sensitive, compactSize 70, etc.)
+        // Test that CompactSet is a default instance (case-sensitive, compactSize 50, etc.)
         // Why? There is only a class instance passed to Converter.convert(). It cannot get the
         // configuration options from the class itself.
         assert !converted.contains("ZEBRA");

@@ -74,7 +74,7 @@ public class CompactSet<E> implements Set<E> {
      * This uses the no-arg CompactMap constructor, which typically yields:
      * <ul>
      *   <li>caseSensitive = true</li>
-     *   <li>compactSize = 70</li>
+     *   <li>compactSize = 50</li>
      *   <li>unordered</li>
      * </ul>
      * <p>
@@ -125,7 +125,7 @@ public class CompactSet<E> implements Set<E> {
     }
 
     public boolean isDefaultCompactSet() {
-        // 1. Check that compactSize() is 40
+        // 1. Check that compactSize() matches the library default (50)
         if (map.compactSize() != CompactMap.DEFAULT_COMPACT_SIZE) {
             return false;
         }
@@ -353,7 +353,7 @@ public class CompactSet<E> implements Set<E> {
      * serialization.
      */
     protected int compactSize() {
-        // Typically 40 is the default. You can override as needed.
+        // Default is 50. Override if a different threshold is desired.
         return CompactMap.DEFAULT_COMPACT_SIZE;
     }
 

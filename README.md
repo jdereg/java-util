@@ -13,7 +13,7 @@ A collection of high-performance Java utilities designed to enhance standard Jav
  
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `456K` and works with `JDK 1.8` through `JDK 23`.
+The`.jar`file is `456K` and works with `JDK 1.8` through `JDK 24`.
 The `.jar` file classes are version 52 `(JDK 1.8)`
 ## Compatibility
 

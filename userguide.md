@@ -13,7 +13,7 @@ A memory-efficient `Set` implementation that internally uses `CompactMap`. This 
     - Sorted order
     - Reverse order
     - Insertion order
-    - No oOrder
+    - No order
 - Customizable compact size threshold
 - Memory-efficient internal storage
 
@@ -40,7 +40,7 @@ CompactSet<String> ordered = CompactSet.<String>builder()
 - Useful for scenarios where case-insensitive string comparison is needed
 
 #### Element Ordering
-Choose from three ordering strategies:
+Choose from four ordering strategies:
 - `sortedOrder()`: Elements maintained in natural sorted order
 - `reverseOrder()`: Elements maintained in reverse sorted order
 - `insertionOrder()`: Elements maintained in the order they were added

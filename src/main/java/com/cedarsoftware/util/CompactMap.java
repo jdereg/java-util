@@ -1521,7 +1521,14 @@ public class CompactMap<K, V> implements Map<K, V> {
     /**
      * Creates a new CompactMap with the same entries but different configuration.
      * <p>
-     * This is useful for creating a new CompactMap with the same configuration as another compactMap.
+     * This is useful for creating a new CompactMap with the same configuration
+     * as another compactMap.
+     *
+     * <p><b>JDK Requirement:</b> this method ultimately calls
+     * {@link Builder#build()} which generates a specialized subclass using the
+     * JDK compiler. It will throw an {@link IllegalStateException} when executed
+     * in a runtime that lacks these compiler tools (such as a JRE-only
+     * container).
      *
      * @param config a map containing configuration options to change
      * @return a new CompactMap with the specified configuration and the same entries
@@ -1812,6 +1819,13 @@ public class CompactMap<K, V> implements Map<K, V> {
      * @return a new CompactMap instance configured according to options
      * @throws IllegalArgumentException if options are invalid or incompatible
      * @throws IllegalStateException if template generation or instantiation fails
+     *         and the Java compiler tools are not present (for example when only
+     *         a JRE is available)
+     *
+     * <p><b>JDK Requirement:</b> this method generates specialized subclasses at
+     * runtime using the JDK compiler. Running in an environment without
+     * {@code javax.tools.JavaCompiler} will result in an
+     * {@link IllegalStateException}.</p>
      */
     static <K, V> CompactMap<K, V> newMap(Map<String, Object> options) {
         // Ensure JDK Java Compiler is available before proceeding
@@ -2304,16 +2318,10 @@ public class CompactMap<K, V> implements Map<K, V> {
          * based on the configuration. The resulting map is optimized for the
          * specified combination of options.
          *
-         * @return a new CompactMap instance
-         * @throws IllegalArgumentException if any configuration options are invalid
-         *         or incompatible
-         */
-        /**
-         * Creates a new CompactMap instance with the configured options.
-         * <p>
-         * This method validates all options and creates a specialized implementation
-         * based on the configuration. The resulting map is optimized for the
-         * specified combination of options.
+         * <p><b>JDK Requirement:</b> this method generates a specialized subclass
+         * at runtime using {@code javax.tools.JavaCompiler}. It will throw an
+         * {@link IllegalStateException} when the compiler tools are not present
+         * (for example in a JRE-only environment).
          *
          * @return a new CompactMap instance
          * @throws IllegalStateException if JavaCompiler is unavailable at runtime (JRE detected)

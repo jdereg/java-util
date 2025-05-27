@@ -262,6 +262,29 @@ public final class StringUtilities {
         return true;
     }
 
+    /**
+     * Compares two strings for equality after trimming leading and trailing whitespace
+     * from both. {@code null} values are handled gracefully.
+     *
+     * <p>Two {@code null} references are considered equal. If only one string is
+     * {@code null}, the result is {@code false}. If both strings are non-null,
+     * they are trimmed using {@link String#trim()} before being compared
+     * using {@link String#equals(Object)}.</p>
+     *
+     * <p>Examples:</p>
+     * <pre>{@code
+     * StringUtilities.equalsWithTrim(null, null)     = true
+     * StringUtilities.equalsWithTrim(null, "abc")    = false
+     * StringUtilities.equalsWithTrim("abc", null)    = false
+     * StringUtilities.equalsWithTrim(" abc ", "abc") = true
+     * StringUtilities.equalsWithTrim(" abc ", "def") = false
+     * }</pre>
+     *
+     * @param s1 the first string to compare, may be {@code null}
+     * @param s2 the second string to compare, may be {@code null}
+     * @return {@code true} if the trimmed strings are equal or both are {@code null},
+     *         {@code false} otherwise.
+     */
     public static boolean equalsWithTrim(String s1, String s2) {
         if (s1 == null || s2 == null) {
             return s1 == s2;
@@ -269,6 +292,29 @@ public final class StringUtilities {
         return s1.trim().equals(s2.trim());
     }
 
+    /**
+     * Compares two strings for equality after trimming leading and trailing whitespace
+     * from both, ignoring case considerations. {@code null} values are handled gracefully.
+     *
+     * <p>Two {@code null} references are considered equal. If only one string is
+     * {@code null}, the result is {@code false}. If both strings are non-null,
+     * they are trimmed using {@link String#trim()} before being compared
+     * using {@link String#equalsIgnoreCase(String)}.</p>
+     *
+     * <p>Examples:</p>
+     * <pre>{@code
+     * StringUtilities.equalsIgnoreCaseWithTrim(null, null)       = true
+     * StringUtilities.equalsIgnoreCaseWithTrim(null, "abc")      = false
+     * StringUtilities.equalsIgnoreCaseWithTrim("abc", null)      = false
+     * StringUtilities.equalsIgnoreCaseWithTrim(" abc ", "ABC")   = true
+     * StringUtilities.equalsIgnoreCaseWithTrim(" abc ", "def")   = false
+     * }</pre>
+     *
+     * @param s1 the first string to compare, may be {@code null}
+     * @param s2 the second string to compare, may be {@code null}
+     * @return {@code true} if the trimmed strings are equal ignoring case or both are {@code null},
+     *         {@code false} otherwise.
+     */
     public static boolean equalsIgnoreCaseWithTrim(String s1, String s2) {
         if (s1 == null || s2 == null) {
             return s1 == s2;
@@ -352,6 +398,26 @@ public final class StringUtilities {
     }
 
 
+    /**
+     * Finds the last index of the specified character in the given string.
+     *
+     * <p>This method is null-safe. If the input string is {@code null},
+     * this method returns {@code -1}.</p>
+     *
+     * <p>Examples:</p>
+     * <pre>{@code
+     * StringUtilities.lastIndexOf(null, '*')      = -1
+     * StringUtilities.lastIndexOf("a.b.c", '.')   = 3
+     * StringUtilities.lastIndexOf("abc", '.')     = -1
+     * StringUtilities.lastIndexOf("abc.def", 'a') = 0
+     * }</pre>
+     *
+     * @param path the string to search in, may be {@code null}
+     * @param ch the character to search for
+     * @return the last index of the character in the string,
+     *         or {@code -1} if the character is not found or the string is {@code null}.
+     * @see String#lastIndexOf(int)
+     */
     public static int lastIndexOf(String path, char ch) {
         if (path == null) {
             return -1;
@@ -359,9 +425,39 @@ public final class StringUtilities {
         return path.lastIndexOf(ch);
     }
 
-    // Turn hex String into byte[]
-    // If string is not even length, return null.
-
+    /**
+     * Decodes a hexadecimal string into a byte array.
+     *
+     * <p>This method converts a string of hexadecimal characters (e.g., "48656c6c6f")
+     * into its corresponding byte array representation. Each pair of characters in the
+     * input string is interpreted as a single byte.</p>
+     *
+     * <p>If the input string has an odd number of characters, this method returns
+     * {@code null}, as a valid hex string must have an even length.</p>
+     *
+     * <p>Examples:</p>
+     * <pre>{@code
+     * StringUtilities.decode("48656c6c6f") // "Hello" in ASCII
+     *   // returns byte[]{0x48, 0x65, 0x6c, 0x6c, 0x6f}
+     * StringUtilities.decode("010203")
+     *   // returns byte[]{0x01, 0x02, 0x03}
+     * StringUtilities.decode("abc")        // Odd length
+     *   // returns null
+     * StringUtilities.decode("")           // Empty string
+     *   // returns byte[]{}
+     * StringUtilities.decode(null)         // Null input - this will throw NullPointerException
+     *   // (Consider adding null check if null should return null or empty array)
+     * }</pre>
+     *
+     * Note: The current implementation will throw a NullPointerException if {@code s} is null.
+     * The Javadoc should accurately reflect this or the method should be updated.
+     * For now, document existing behavior.
+     *
+     * @param s the hexadecimal string to decode, must not be {@code null}.
+     * @return a byte array representing the decoded hex string,
+     *         or {@code null} if the input string has an odd length.
+     * @throws NullPointerException if the input string {@code s} is {@code null}.
+     */
     public static byte[] decode(String s) {
         int len = s.length();
         if (len % 2 != 0) {
@@ -405,6 +501,28 @@ public final class StringUtilities {
         return HEX_ARRAY[value & 0x0f];
     }
 
+    /**
+     * Counts the number of occurrences of a specific character within a string.
+     *
+     * <p>If the input string is {@code null} or empty, this method returns {@code 0}.
+     * This method delegates to {@link #count(CharSequence, CharSequence)}, converting
+     * the character to a String.</p>
+     *
+     * <p>Examples:</p>
+     * <pre>{@code
+     * StringUtilities.count(null, 'a')        = 0
+     * StringUtilities.count("", 'a')          = 0
+     * StringUtilities.count("banana", 'a')    = 3
+     * StringUtilities.count("apple", 'z')     = 0
+     * StringUtilities.count("ababa", 'a')     = 3
+     * }</pre>
+     *
+     * @param s the string to search within, may be {@code null}
+     * @param c the character to count
+     * @return the number of times the character appears in the string,
+     *         or {@code 0} if the string is {@code null} or empty.
+     * @see #count(CharSequence, CharSequence)
+     */
     public static int count(String s, char c) {
         return count(s, EMPTY + c);
     }
@@ -633,6 +751,30 @@ public final class StringUtilities {
         return s.toString();
     }
 
+    /**
+     * Generates a random alphabetical character (a-z or A-Z).
+     *
+     * <p>The case of the generated character is determined by the {@code upper}
+     * parameter. If {@code upper} is {@code true}, an uppercase character (A-Z)
+     * is returned. Otherwise, a lowercase character (a-z) is returned.</p>
+     *
+     * <p>Requires a {@link Random} instance to be provided for generating
+     * the random character.</p>
+     *
+     * <p>Examples:</p>
+     * <pre>{@code
+     * Random rand = new Random();
+     * StringUtilities.getRandomChar(rand, true)   // Might return 'K'
+     * StringUtilities.getRandomChar(rand, false)  // Might return 'm'
+     * }</pre>
+     *
+     * @param random the {@link Random} instance to use for generating the random character.
+     *               Must not be {@code null}.
+     * @param upper  if {@code true}, returns an uppercase character;
+     *               if {@code false}, returns a lowercase character.
+     * @return a randomly generated alphabetical character as a String.
+     * @throws NullPointerException if {@code random} is {@code null}.
+     */
     public static String getRandomChar(Random random, boolean upper) {
         int r = random.nextInt(26);
         return upper ? EMPTY + (char) ('A' + r) : EMPTY + (char) ('a' + r);
@@ -663,6 +805,20 @@ public final class StringUtilities {
      *
      * @param bytes bytes to encode into a string
      * @deprecated 
+     */
+    /**
+     * Converts a byte array into a UTF-8 encoded String.
+     *
+     * <p>This method is null-safe. If the input byte array is {@code null},
+     * this method returns {@code null}.</p>
+     *
+     * @param bytes the byte array to convert to a String, may be {@code null}.
+     * @return a UTF-8 encoded String representing the byte array,
+     *         or {@code null} if the input is {@code null}.
+     * @deprecated This method has been deprecated in favor of {@link #createUTF8String(byte[])}.
+     *             The new method has a slightly different name (UTF8 in uppercase)
+     *             to better align with common Java naming conventions for acronyms.
+     *             This method will be removed in a future version.
      */
     @Deprecated
     public static String createUtf8String(byte[] bytes) {

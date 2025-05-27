@@ -237,79 +237,142 @@ public final class SystemUtilities
     }
 
     // Support classes
+
+    /**
+     * Simple container class describing the JVM memory usage at a given point
+     * in time.
+     */
     public static class MemoryInfo {
         private final long totalMemory;
         private final long freeMemory;
         private final long maxMemory;
 
+        /**
+         * Create an instance holding the supplied memory metrics.
+         *
+         * @param totalMemory total memory currently allocated to the JVM
+         * @param freeMemory  amount of memory that is unused
+         * @param maxMemory   maximum memory the JVM will attempt to use
+         */
         public MemoryInfo(long totalMemory, long freeMemory, long maxMemory) {
             this.totalMemory = totalMemory;
             this.freeMemory = freeMemory;
             this.maxMemory = maxMemory;
         }
 
+        /**
+         * @return the total memory currently allocated to the JVM
+         */
         public long getTotalMemory() {
             return totalMemory;
         }
 
+        /**
+         * @return the amount of unused memory
+         */
         public long getFreeMemory() {
             return freeMemory;
         }
 
+        /**
+         * @return the maximum memory the JVM can utilize
+         */
         public long getMaxMemory() {
             return maxMemory;
         }
     }
 
+    /**
+     * Describes a network interface present on the host system.
+     */
     public static class NetworkInfo {
         private final String name;
         private final String displayName;
         private final List<InetAddress> addresses;
         private final boolean loopback;
 
+        /**
+         * Construct a new {@code NetworkInfo} instance.
+         *
+         * @param name        the interface name
+         * @param displayName the human readable display name
+         * @param addresses   all addresses bound to the interface
+         * @param loopback    whether this interface represents the loopback device
+         */
         public NetworkInfo(String name, String displayName, List<InetAddress> addresses, boolean loopback) {
             this.name = name;
             this.displayName = displayName;
             this.addresses = addresses;
             this.loopback = loopback;
         }
-        
+
+        /**
+         * @return the interface name
+         */
         public String getName() {
             return name;
         }
 
+        /**
+         * @return the user friendly display name
+         */
         public String getDisplayName() {
             return displayName;
         }
 
+        /**
+         * @return all addresses associated with the interface
+         */
         public List<InetAddress> getAddresses() {
             return addresses;
         }
 
+        /**
+         * @return {@code true} if this interface is a loopback interface
+         */
         public boolean isLoopback() {
             return loopback;
         }
     }
 
+    /**
+     * Captures the results of executing an operating system process.
+     */
     public static class ProcessResult {
         private final int exitCode;
         private final String output;
         private final String error;
 
+        /**
+         * Create a new result.
+         *
+         * @param exitCode the exit value returned by the process
+         * @param output   text captured from standard out
+         * @param error    text captured from standard error
+         */
         public ProcessResult(int exitCode, String output, String error) {
             this.exitCode = exitCode;
             this.output = output;
             this.error = error;
         }
 
+        /**
+         * @return the exit value of the process
+         */
         public int getExitCode() {
             return exitCode;
         }
 
+        /**
+         * @return the contents of the standard output stream
+         */
         public String getOutput() {
             return output;
         }
 
+        /**
+         * @return the contents of the standard error stream
+         */
         public String getError() {
             return error;
         }

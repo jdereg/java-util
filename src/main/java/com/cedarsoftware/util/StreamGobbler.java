@@ -35,11 +35,20 @@ public class StreamGobbler implements Runnable
         _inputStream = is;
     }
 
+    /**
+     * Returns all text that was read from the underlying input stream.
+     *
+     * @return captured output from the stream
+     */
     public String getResult()
     {
         return _result;
     }
 
+    /**
+     * Continuously reads from the supplied input stream until it is exhausted.
+     * The collected data is stored so it can be retrieved via {@link #getResult()}.
+     */
     public void run()
     {
         InputStreamReader isr = null;

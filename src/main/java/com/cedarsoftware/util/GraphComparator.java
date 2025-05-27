@@ -53,11 +53,26 @@ public class GraphComparator
 {
     public static final String ROOT = "-root-";
 
+    /**
+     * Callback used to obtain a unique identifier for a given object during
+     * graph comparison.
+     */
     public interface ID
     {
+        /**
+         * Return the identifier to use for the supplied object.
+         *
+         * @param objectToId object from which to obtain an id
+         * @return unique identifier for the object
+         */
         Object getId(Object objectToId);
     }
 
+    /**
+     * Represents a single difference between two object graphs.  A collection
+     * of {@code Delta} instances can be used to transform one graph so that it
+     * matches another.
+     */
     public static class Delta implements Serializable
     {
         private static final long serialVersionUID = -4388236892818050806L;
@@ -69,6 +84,16 @@ public class GraphComparator
         private Object optionalKey;
         private Command cmd;
 
+        /**
+         * Construct a delta describing a change between two graphs.
+         *
+         * @param id          identifier of the object containing the difference
+         * @param fieldName   name of the field that differs
+         * @param srcPtr      pointer within the source graph
+         * @param srcValue    value from the source graph
+         * @param targetValue value from the target graph
+         * @param optKey      optional key used by certain collection operations
+         */
         public Delta(Object id, String fieldName, String srcPtr, Object srcValue, Object targetValue, Object optKey)
         {
             this.id = id;
@@ -79,16 +104,25 @@ public class GraphComparator
             optionalKey = optKey;
         }
 
+        /**
+         * @return identifier of the object containing the change
+         */
         public Object getId()
         {
             return id;
         }
 
+        /**
+         * Update the identifier associated with this delta.
+         */
         public void setId(Object id)
         {
             this.id = id;
         }
 
+        /**
+         * @return the name of the field where the difference occurred
+         */
         public String getFieldName()
         {
             return fieldName;
@@ -99,6 +133,9 @@ public class GraphComparator
             this.fieldName = fieldName;
         }
 
+        /**
+         * @return value from the source graph
+         */
         public Object getSourceValue()
         {
             return srcValue;
@@ -109,6 +146,9 @@ public class GraphComparator
             this.srcValue = srcValue;
         }
 
+        /**
+         * @return value from the target graph
+         */
         public Object getTargetValue()
         {
             return targetValue;
@@ -119,6 +159,9 @@ public class GraphComparator
             this.targetValue = targetValue;
         }
 
+        /**
+         * @return optional key used for collection operations
+         */
         public Object getOptionalKey()
         {
             return optionalKey;
@@ -129,6 +172,9 @@ public class GraphComparator
             this.optionalKey = optionalKey;
         }
 
+        /**
+         * @return command describing the modification type
+         */
         public Command getCmd()
         {
             return cmd;
@@ -222,17 +268,30 @@ public class GraphComparator
         }
     }
 
+    /**
+     * Extension of {@link Delta} that associates an error message with the
+     * delta that failed to be applied.
+     */
     public static class DeltaError extends Delta
     {
         private static final long serialVersionUID = 6248596026486571238L;
         public String error;
 
+        /**
+         * Construct a delta error.
+         *
+         * @param error message describing the problem
+         * @param delta the delta that failed
+         */
         public DeltaError(String error, Delta delta)
         {
             super(delta.getId(), delta.fieldName, delta.srcPtr, delta.srcValue, delta.targetValue, delta.optionalKey);
             this.error = error;
         }
 
+        /**
+         * @return the error message
+         */
         public String getError()
         {
             return error;
@@ -244,18 +303,43 @@ public class GraphComparator
         }
     }
 
+    /**
+     * Strategy interface used when applying {@link Delta} objects to a source
+     * graph.  Implementations perform the actual mutation operations.
+     */
     public interface DeltaProcessor
     {
+        /** Apply a value into an array element. */
         void processArraySetElement(Object srcValue, Field field, Delta delta);
+
+        /** Resize an array to match the target length. */
         void processArrayResize(Object srcValue, Field field, Delta delta);
+
+        /** Assign a field value on an object. */
         void processObjectAssignField(Object srcValue, Field field, Delta delta);
+
+        /** Remove an orphaned object from the graph. */
         void processObjectOrphan(Object srcValue, Field field, Delta delta);
+
+        /** Change the type of an object reference. */
         void processObjectTypeChanged(Object srcValue, Field field, Delta delta);
+
+        /** Add a value to a {@link java.util.Set}. */
         void processSetAdd(Object srcValue, Field field, Delta delta);
+
+        /** Remove a value from a {@link java.util.Set}. */
         void processSetRemove(Object srcValue, Field field, Delta delta);
+
+        /** Put a key/value pair into a {@link java.util.Map}. */
         void processMapPut(Object srcValue, Field field, Delta delta);
+
+        /** Remove an entry from a {@link java.util.Map}. */
         void processMapRemove(Object srcValue, Field field, Delta delta);
+
+        /** Adjust a {@link java.util.List}'s size. */
         void processListResize(Object srcValue, Field field, Delta delta);
+
+        /** Set a list element to a new value. */
         void processListSetElement(Object srcValue, Field field, Delta delta);
 
         class Helper

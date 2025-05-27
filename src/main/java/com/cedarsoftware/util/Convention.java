@@ -2,6 +2,13 @@ package com.cedarsoftware.util;
 
 import java.util.Map;
 
+/**
+ * Utility class containing common defensive programming helpers.
+ * <p>
+ * {@code Convention} offers a set of static convenience methods for
+ * validating method arguments such as null checks or ensuring that a
+ * string is not empty.  The class is not intended to be instantiated.
+ */
 public class Convention {
 
     /**

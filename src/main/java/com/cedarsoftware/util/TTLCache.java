@@ -254,6 +254,10 @@ public class TTLCache<K, V> implements Map<K, V> {
 
     // Implementations of Map interface methods
 
+    /**
+     * Associates the specified value with the specified key in this cache.
+     * The entry will expire after the configured TTL has elapsed.
+     */
     @Override
     public V put(K key, V value) {
         long expiryTime = System.currentTimeMillis() + ttlMillis;
@@ -284,6 +288,10 @@ public class TTLCache<K, V> implements Map<K, V> {
         return oldEntry != null ? oldEntry.node.value : null;
     }
 
+    /**
+     * Returns the value to which the specified key is mapped, or {@code null}
+     * if this cache contains no mapping for the key or if the entry has expired.
+     */
     @Override
     public V get(Object key) {
         CacheEntry<K, V> entry = cacheMap.get(key);
@@ -314,6 +322,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         return value;
     }
 
+    /**
+     * Removes the mapping for a key from this cache if it is present.
+     */
     @Override
     public V remove(Object key) {
         CacheEntry<K, V> entry = cacheMap.remove(key);
@@ -330,6 +341,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         return null;
     }
 
+    /**
+     * Removes all of the mappings from this cache.
+     */
     @Override
     public void clear() {
         cacheMap.clear();
@@ -343,16 +357,26 @@ public class TTLCache<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * @return the number of entries currently stored
+     */
     @Override
     public int size() {
         return cacheMap.size();
     }
 
+    /**
+     * @return {@code true} if this cache contains no key-value mappings
+     */
     @Override
     public boolean isEmpty() {
         return cacheMap.isEmpty();
     }
 
+    /**
+     * Returns {@code true} if this cache contains a mapping for the specified key
+     * and it has not expired.
+     */
     @Override
     public boolean containsKey(Object key) {
         CacheEntry<K, V> entry = cacheMap.get(key);
@@ -366,6 +390,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         return true;
     }
 
+    /**
+     * Returns {@code true} if this cache maps one or more keys to the specified value.
+     */
     @Override
     public boolean containsValue(Object value) {
         for (CacheEntry<K, V> entry : cacheMap.values()) {
@@ -377,6 +404,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         return false;
     }
 
+    /**
+     * Copies all of the mappings from the specified map to this cache.
+     */
     @Override
     public void putAll(Map<? extends K, ? extends V> m) {
         for (Entry<? extends K, ? extends V> e : m.entrySet()) {
@@ -384,6 +414,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * @return a {@link Set} view of the keys contained in this cache
+     */
     @Override
     public Set<K> keySet() {
         Set<K> keys = new HashSet<>();
@@ -394,6 +427,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         return keys;
     }
 
+    /**
+     * @return a {@link Collection} view of the values contained in this cache
+     */
     @Override
     public Collection<V> values() {
         List<V> values = new ArrayList<>();
@@ -404,6 +440,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         return values;
     }
 
+    /**
+     * @return a {@link Set} view of the mappings contained in this cache
+     */
     @Override
     public Set<Entry<K, V>> entrySet() {
         return new EntrySet();
@@ -464,6 +503,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Compares the specified object with this cache for equality.
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -479,6 +521,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Returns the hash code value for this cache.
+     */
     @Override
     public int hashCode() {
         lock.lock();
@@ -496,6 +541,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         }
     }
 
+    /**
+     * Returns a string representation of this cache.
+     */
     @Override
     public String toString() {
         lock.lock();

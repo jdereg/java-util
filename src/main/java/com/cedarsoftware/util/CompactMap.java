@@ -2954,7 +2954,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Manage file managers with try-with-resources
             try (StandardJavaFileManager stdFileManager = compiler.getStandardFileManager(diagnostics, null, null);
-                 JavaFileManager fileManager = new ForwardingJavaFileManager(stdFileManager) {
+                 JavaFileManager fileManager = new ForwardingJavaFileManager<StandardJavaFileManager>(stdFileManager) {
                      @Override
                      public JavaFileObject getJavaFileForOutput(Location location,
                                                                 String className,
@@ -3019,7 +3019,11 @@ public class CompactMap<K, V> implements Map<K, V> {
                 baos.close();
             }
             return defineClass(className, classBytes);
+        } // end try-with-resources
+        catch (IOException e) {
+            throw new IllegalStateException("I/O error during compilation", e);
         }
+    } // close compileClass()
 
         /**
          * Defines a Class object from compiled bytecode using a custom ClassLoader.

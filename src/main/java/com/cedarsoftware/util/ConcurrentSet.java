@@ -44,7 +44,7 @@ public class ConcurrentSet<T> implements Set<T> {
      * This data is populated into the internal set with nulls replaced by NULL_ITEM.
      * @param col Collection to supply initial elements.
      */
-    public ConcurrentSet(Collection<T> col) {
+    public ConcurrentSet(Collection<? extends T> col) {
         set = ConcurrentHashMap.newKeySet(col.size());
         this.addAll(col);
     }
@@ -54,7 +54,7 @@ public class ConcurrentSet<T> implements Set<T> {
      * Nulls in the existing set are replaced by NULL_ITEM.
      * @param set Existing Set to wrap.
      */
-    public ConcurrentSet(Set<T> set) {
+    public ConcurrentSet(Set<? extends T> set) {
         this.set = ConcurrentHashMap.newKeySet(set.size());
         this.addAll(set);
     }

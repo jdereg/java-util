@@ -883,7 +883,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     }
 
     /**
-     * Wrapper class for String keys to enforce case-ireplnsensitive comparison.
+     * Wrapper class for String keys to enforce case-insensitive comparison.
      * Implements CharSequence for compatibility with String operations and
      * Serializable for persistence support.
      */

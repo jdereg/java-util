@@ -210,6 +210,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     @SuppressWarnings("unchecked, rawtypes")
     public static void replaceCache(LRUCache lruCache) {
+        Objects.requireNonNull(lruCache, "Cache cannot be null");
         CaseInsensitiveString.COMMON_STRINGS = lruCache;
     }
 

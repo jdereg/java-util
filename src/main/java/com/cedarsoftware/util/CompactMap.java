@@ -2950,44 +2950,44 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
 
             DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-            StandardJavaFileManager stdFileManager = compiler.getStandardFileManager(diagnostics, null, null);
-
-            // Create in-memory source file
-            SimpleJavaFileObject sourceFile = new SimpleJavaFileObject(
-                    URI.create("string:///" + className.replace('.', '/') + ".java"),
-                    JavaFileObject.Kind.SOURCE) {
-                @Override
-                public CharSequence getCharContent(boolean ignoreEncodingErrors) {
-                    return sourceCode;
-                }
-            };
-
-            // Create in-memory output for class file
             Map<String, ByteArrayOutputStream> classOutputs = new HashMap<>();
-            JavaFileManager fileManager = new ForwardingJavaFileManager(stdFileManager) {
-                @Override
-                public JavaFileObject getJavaFileForOutput(Location location,
-                                                           String className,
-                                                           JavaFileObject.Kind kind,
-                                                           FileObject sibling) throws IOException {
-                    if (kind == JavaFileObject.Kind.CLASS) {
-                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                        classOutputs.put(className, outputStream);
-                        return new SimpleJavaFileObject(
-                                URI.create("byte:///" + className.replace('.', '/') + ".class"),
-                                JavaFileObject.Kind.CLASS) {
-                            @Override
-                            public OutputStream openOutputStream() {
-                                return outputStream;
-                            }
-                        };
-                    }
-                    return super.getJavaFileForOutput(location, className, kind, sibling);
-                }
-            };
 
-            // Compile the source
-            JavaCompiler.CompilationTask task = compiler.getTask(
+            // Manage file managers with try-with-resources
+            try (StandardJavaFileManager stdFileManager = compiler.getStandardFileManager(diagnostics, null, null);
+                 JavaFileManager fileManager = new ForwardingJavaFileManager(stdFileManager) {
+                     @Override
+                     public JavaFileObject getJavaFileForOutput(Location location,
+                                                                String className,
+                                                                JavaFileObject.Kind kind,
+                                                                FileObject sibling) throws IOException {
+                         if (kind == JavaFileObject.Kind.CLASS) {
+                             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                             classOutputs.put(className, outputStream);
+                             return new SimpleJavaFileObject(
+                                     URI.create("byte:///" + className.replace('.', '/') + ".class"),
+                                     JavaFileObject.Kind.CLASS) {
+                                 @Override
+                                 public OutputStream openOutputStream() {
+                                     return outputStream;
+                                 }
+                             };
+                         }
+                         return super.getJavaFileForOutput(location, className, kind, sibling);
+                     }
+                 }) {
+
+                // Create in-memory source file
+                SimpleJavaFileObject sourceFile = new SimpleJavaFileObject(
+                        URI.create("string:///" + className.replace('.', '/') + ".java"),
+                        JavaFileObject.Kind.SOURCE) {
+                    @Override
+                    public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+                        return sourceCode;
+                    }
+                };
+
+                // Compile the source
+                JavaCompiler.CompilationTask task = compiler.getTask(
                     null,                // Writer for compiler messages
                     fileManager,         // Custom file manager
                     diagnostics,         // DiagnosticListener
@@ -3013,6 +3013,11 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Define the class
             byte[] classBytes = classOutput.toByteArray();
+            classOutput.close();
+            // Ensure any additional class streams are closed
+            for (ByteArrayOutputStream baos : classOutputs.values()) {
+                baos.close();
+            }
             return defineClass(className, classBytes);
         }
 

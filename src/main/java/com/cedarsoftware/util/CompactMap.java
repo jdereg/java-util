@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -109,7 +110,9 @@ import java.util.stream.Collectors;
  *   </tr>
  *   <tr>
  *     <td>{@code mapType(Class)}</td>
- *     <td>Type of backing map when size exceeds compact size</td>
+ *     <td>Type of backing map when size exceeds compact size (must originate
+ *         from {@code java.util.*}, {@code java.util.concurrent.*}, or
+ *         {@code com.cedarsoftware.util.*})</td>
  *     <td>HashMap.class</td>
  *   </tr>
  *   <tr>
@@ -257,9 +260,26 @@ public class CompactMap<K, V> implements Map<K, V> {
     public static final boolean DEFAULT_CASE_SENSITIVE = true;
     public static final Class<? extends Map> DEFAULT_MAP_TYPE = HashMap.class;
     public static final String DEFAULT_SINGLE_KEY = "id";
+    /**
+     * Packages allowed when specifying a custom backing map type.
+     */
+    private static final Set<String> ALLOWED_MAP_PACKAGES = new HashSet<>(Arrays.asList(
+            "java.util",
+            "java.util.concurrent",
+            "com.cedarsoftware.util"));
     private static final String INNER_MAP_TYPE = "innerMapType";
     private static final TemplateClassLoader templateClassLoader = new TemplateClassLoader(ClassUtilities.getClassLoader(CompactMap.class));
     private static final Map<String, ReentrantLock> CLASS_LOCKS = new ConcurrentHashMap<>();
+
+    private static boolean isAllowedMapType(Class<?> mapType) {
+        String name = mapType.getName();
+        for (String prefix : ALLOWED_MAP_PACKAGES) {
+            if (name.startsWith(prefix + ".") || name.equals(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     // The only "state" and why this is a compactMap - one-member variable
     protected Object val = EMPTY_MAP;
@@ -1985,6 +2005,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      *           <li>source map's ordering conflicts with requested ordering</li>
      *           <li>IdentityHashMap or WeakHashMap is specified as map type</li>
      *           <li>specified map type is not a Map class</li>
+     *           <li>map type comes from a disallowed package</li>
      *         </ul>
      * @see #COMPACT_SIZE
      * @see #CASE_SENSITIVE
@@ -2002,6 +2023,10 @@ public class CompactMap<K, V> implements Map<K, V> {
         }
 
         Class<? extends Map> mapType = determineMapType(options, ordering);
+        if (!isAllowedMapType(mapType)) {
+            throw new IllegalArgumentException("Map type " + mapType.getName() +
+                    " is not from an allowed package");
+        }
         boolean caseSensitive = (boolean) options.getOrDefault(CASE_SENSITIVE, DEFAULT_CASE_SENSITIVE);
 
         // Store the validated mapType
@@ -2296,14 +2321,22 @@ public class CompactMap<K, V> implements Map<K, V> {
          *     <li>{@link LinkedHashMap} - Insertion order</li>
          * </ul>
          * Note: {@link IdentityHashMap} and {@link WeakHashMap} are not supported.
+         * The map type must come from an allowed package
+         * ({@code java.util.*}, {@code java.util.concurrent.*}, or
+         * {@code com.cedarsoftware.util.*}).
          *
          * @param mapType the Class object representing the desired Map implementation
          * @return this builder instance for method chaining
-         * @throws IllegalArgumentException if mapType is not a Map class
+         * @throws IllegalArgumentException if mapType is not a Map class or is
+         *         from a disallowed package
          */
         public Builder<K, V> mapType(Class<? extends Map> mapType) {
             if (!Map.class.isAssignableFrom(mapType)) {
                 throw new IllegalArgumentException("mapType must be a Map class");
+            }
+            if (!isAllowedMapType(mapType)) {
+                throw new IllegalArgumentException("Map type " + mapType.getName() +
+                        " is not from an allowed package");
             }
             options.put(MAP_TYPE, mapType);
             return this;

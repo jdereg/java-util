@@ -254,6 +254,30 @@ public class CompactMapBuilderConfigTest {
     }
 
     @Test
+    public void testMapTypeFromDisallowedPackageRejected() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                CompactMap.builder()
+                        .mapType(com.bad.UnapprovedMap.class)
+                        .build()
+        );
+
+        assertEquals("Map type com.bad.UnapprovedMap is not from an allowed package",
+                exception.getMessage());
+    }
+
+    @Test
+    public void testValidateOptionsRejectsDisallowedPackage() {
+        Map<String, Object> options = new HashMap<>();
+        options.put(CompactMap.MAP_TYPE, com.bad.UnapprovedMap.class);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> CompactMap.validateAndFinalizeOptions(options));
+
+        assertEquals("Map type com.bad.UnapprovedMap is not from an allowed package",
+                exception.getMessage());
+    }
+
+    @Test
     public void testReverseOrderWithCaseInsensitiveStrings() {
         CompactMap<String, String> map = CompactMap.<String, String>builder()
                 .caseSensitive(false)  // Enable case-insensitive mode

@@ -687,7 +687,7 @@ public class CompactMapTest
 
     @Test
     public void testPutAllExceedCompactSize() {
-        CompactMap<String, Object> map = new CompactMap<>() {
+        CompactMap<String, Object> map = new CompactMap() {
             protected String getSingleValueKey() { return "value"; }
             protected int compactSize() { return 3; }
             protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }

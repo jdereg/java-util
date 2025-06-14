@@ -45,6 +45,11 @@ import java.util.zip.InflaterInputStream;
  *   <li>Silent exception handling for close/flush operations</li>
  *   <li>Progress tracking through callback mechanism</li>
  *   <li>Support for XML stream operations</li>
+ *   <li>
+ *     <b>XML stream support:</b> Some methods work with {@code javax.xml.stream.XMLStreamReader} and
+ *     {@code javax.xml.stream.XMLStreamWriter}. <b>These methods require the {@code java.xml} module to be present at runtime.</b>
+ *     The rest of the library does <b>not</b> require {@code java.xml}.
+ *   </li>
  * </ul>
  *
  * <p><strong>Usage Example:</strong></p>

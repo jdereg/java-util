@@ -410,7 +410,8 @@ public class DeepEquals {
                     stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
+                if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2,
+                        stack, options, visited)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
@@ -509,11 +510,16 @@ public class DeepEquals {
     /**
      * Compares two unordered collections (e.g., Sets) deeply.
      *
-     * @param col1           First collection.
-     * @param col2           Second collection.
+     * @param col1    First collection.
+     * @param col2    Second collection.
+     * @param stack   Comparison stack.
+     * @param options Comparison options.
+     * @param visited Visited set used for cycle detection.
      * @return true if collections are equal, false otherwise.
      */
-    private static boolean decomposeUnorderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack) {
+    private static boolean decomposeUnorderedCollection(Collection<?> col1, Collection<?> col2,
+                                                       Deque<ItemsToCompare> stack, Map<String, ?> options,
+                                                       Set<Object> visited) {
         ItemsToCompare currentItem = stack.peek();
 
         // Check sizes first
@@ -543,7 +549,7 @@ public class DeepEquals {
             // Check candidates with matching hash
             boolean foundMatch = false;
             for (Object item2 : candidates) {
-                if (deepEquals(item1, item2)) {
+                if (deepEquals(item1, item2, options, visited)) {
                     foundMatch = true;
                     candidates.remove(item2);
                     if (candidates.isEmpty()) {

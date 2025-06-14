@@ -1025,6 +1025,29 @@ public class CompactMap<K, V> implements Map<K, V> {
         if (map == null || map.isEmpty()) {
             return;
         }
+
+        int targetSize = size() + map.size();
+
+        if (targetSize > compactSize()) {
+            Map<K, V> backingMap;
+            if (val instanceof Map) {
+                backingMap = (Map<K, V>) val;
+            } else {
+                backingMap = getNewMap();
+                if (val instanceof Object[]) {   // Existing compact array
+                    Object[] entries = (Object[]) val;
+                    for (int i = 0; i < entries.length; i += 2) {
+                        backingMap.put((K) entries[i], (V) entries[i + 1]);
+                    }
+                } else if (val != EMPTY_MAP) {   // Single entry state
+                    backingMap.put(getLogicalSingleKey(), getLogicalSingleValue());
+                }
+                val = backingMap;
+            }
+            backingMap.putAll(map);
+            return;
+        }
+
         for (Entry<? extends K, ? extends V> entry : map.entrySet()) {
             put(entry.getKey(), entry.getValue());
         }

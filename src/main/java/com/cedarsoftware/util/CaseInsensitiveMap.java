@@ -298,6 +298,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      * @throws IllegalArgumentException if mapInstance is not empty
      */
     public CaseInsensitiveMap(Map<K, V> source, Map<K, V> mapInstance) {
+        Objects.requireNonNull(source, "source map cannot be null");
+        Objects.requireNonNull(mapInstance, "mapInstance cannot be null");
+        if (!mapInstance.isEmpty()) {
+            throw new IllegalArgumentException("mapInstance must be empty");
+        }
         map = copy(source, mapInstance);
     }
 

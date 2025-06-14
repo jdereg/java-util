@@ -194,6 +194,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * case-insensitive hash codes provided by the underlying {@link CaseInsensitiveMap}.
      * </p>
      */
+    @Override
     public int hashCode() {
         return map.keySet().hashCode();
     }
@@ -210,6 +211,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @see Object#equals(Object)
      */
     @SuppressWarnings("unchecked")
+    @Override
     public boolean equals(Object other) {
         if (other == this) {
             return true;
@@ -232,6 +234,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      *
      * @return the number of elements in this set
      */
+    @Override
     public int size() {
         return map.size();
     }
@@ -246,6 +249,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      *
      * @return {@code true} if this set contains no elements, {@code false} otherwise
      */
+    @Override
     public boolean isEmpty() {
         return map.isEmpty();
     }
@@ -261,6 +265,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @param o the element whose presence in this set is to be tested
      * @return {@code true} if this set contains the specified element, {@code false} otherwise
      */
+    @Override
     public boolean contains(Object o) {
         return map.containsKey(o);
     }
@@ -275,6 +280,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      *
      * @return an iterator over the elements in this set
      */
+    @Override
     public Iterator<E> iterator() {
         return map.keySet().iterator();
     }
@@ -289,6 +295,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      *
      * @return an array containing all the elements in this set
      */
+    @Override
     public Object[] toArray() {
         return map.keySet().toArray();
     }
@@ -308,6 +315,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      *         of every element in this set
      * @throws NullPointerException if the specified array is {@code null}
      */
+    @Override
     public <T> T[] toArray(T[] a) {
         return map.keySet().toArray(a);
     }
@@ -323,6 +331,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @param e the element to be added to this set
      * @return {@code true} if this set did not already contain the specified element
      */
+    @Override
     public boolean add(E e) {
         return map.putIfAbsent(e, PRESENT) == null;
     }
@@ -338,6 +347,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @param o the object to be removed from this set, if present
      * @return {@code true} if this set contained the specified element
      */
+    @Override
     public boolean remove(Object o) {
         return map.remove(o) != null;
     }
@@ -354,6 +364,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @return {@code true} if this set contains all of the elements in the specified collection
      * @throws NullPointerException if the specified collection is {@code null}
      */
+    @Override
     public boolean containsAll(Collection<?> c) {
         for (Object o : c) {
             if (!map.containsKey(o)) {
@@ -376,6 +387,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @return {@code true} if this set changed as a result of the call
      * @throws NullPointerException if the specified collection is {@code null} or contains {@code null} elements
      */
+    @Override
     public boolean addAll(Collection<? extends E> c) {
         boolean modified = false;
         for (E elem : c) {
@@ -398,6 +410,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @return {@code true} if this set changed as a result of the call
      * @throws NullPointerException if the specified collection is {@code null}
      */
+    @Override
     public boolean retainAll(Collection<?> c) {
         Map<E, Object> other = new CaseInsensitiveMap<>();
         for (Object o : c) {
@@ -431,6 +444,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @return {@code true} if this set changed as a result of the call
      * @throws NullPointerException if the specified collection is {@code null}
      */
+    @Override
     public boolean removeAll(Collection<?> c) {
         boolean modified = false;
         for (Object elem : c) {
@@ -451,6 +465,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * on the clearing operation.
      * </p>
      */
+    @Override
     public void clear() {
         map.clear();
     }
@@ -498,6 +513,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      *
      * @return a string representation of this set
      */
+    @Override
     public String toString() {
         return map.keySet().toString();
     }

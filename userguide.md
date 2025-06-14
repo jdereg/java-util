@@ -1784,6 +1784,9 @@ String content = ClassUtilities.loadResourceAsString("config.json");
 // Load resource as bytes
 byte[] data = ClassUtilities.loadResourceAsBytes("image.png");
 ```
+- Resources are first resolved using the thread context ClassLoader, then the
+  {@code ClassUtilities} class loader. This aids modular and OSGi
+  environments where the context loader differs.
 
 **Class Alias Management:**
 ```java

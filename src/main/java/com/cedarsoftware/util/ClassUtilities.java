@@ -982,7 +982,14 @@ public class ClassUtilities {
     }
 
     /**
-     * Loads resource content as a String.
+     * Loads resource content as a {@link String}.
+     * <p>
+     * This method delegates to {@link #loadResourceAsBytes(String)} which first
+     * attempts to resolve the resource using the current thread's context
+     * {@link ClassLoader} and then falls back to the {@code ClassUtilities}
+     * class loader.
+     * </p>
+     *
      * @param resourceName Name of the resource file.
      * @return Content of the resource file as a String.
      */
@@ -992,7 +999,12 @@ public class ClassUtilities {
     }
 
     /**
-     * Loads resource content as a byte[].
+     * Loads resource content as a byte[] using the following lookup order:
+     * <ol>
+     *     <li>The current thread's context {@link ClassLoader}</li>
+     *     <li>The {@code ClassUtilities} class loader</li>
+     * </ol>
+     *
      * @param resourceName Name of the resource file.
      * @return Content of the resource file as a byte[].
      * @throws IllegalArgumentException if the resource cannot be found
@@ -1001,11 +1013,23 @@ public class ClassUtilities {
      */
     public static byte[] loadResourceAsBytes(String resourceName) {
         Objects.requireNonNull(resourceName, "resourceName cannot be null");
-        try (InputStream inputStream = ClassUtilities.getClassLoader(ClassUtilities.class).getResourceAsStream(resourceName)) {
-            if (inputStream == null) {
-                throw new IllegalArgumentException("Resource not found: " + resourceName);
-            }
-            return readInputStreamFully(inputStream);
+
+        InputStream inputStream = null;
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        if (cl != null) {
+            inputStream = cl.getResourceAsStream(resourceName);
+        }
+        if (inputStream == null) {
+            cl = ClassUtilities.getClassLoader(ClassUtilities.class);
+            inputStream = cl.getResourceAsStream(resourceName);
+        }
+
+        if (inputStream == null) {
+            throw new IllegalArgumentException("Resource not found: " + resourceName);
+        }
+
+        try (InputStream in = inputStream) {
+            return readInputStreamFully(in);
         } catch (IOException e) {
             throw new UncheckedIOException("Error reading resource: " + resourceName, e);
         }

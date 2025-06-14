@@ -686,6 +686,28 @@ public class CompactMapTest
     }
 
     @Test
+    public void testPutAllExceedCompactSize() {
+        CompactMap<String, Object> map = new CompactMap<>() {
+            protected String getSingleValueKey() { return "value"; }
+            protected int compactSize() { return 3; }
+            protected Map<String, Object> getNewMap() { return new LinkedHashMap<>(); }
+        };
+
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put("a", 1);
+        source.put("b", 2);
+        source.put("c", 3);
+        source.put("d", 4);
+
+        map.putAll(source);
+
+        assertEquals(4, map.size());
+        assertTrue(map.val instanceof Map);
+        assertEquals(1, map.get("a"));
+        assertEquals(4, map.get("d"));
+    }
+
+    @Test
     public void testClear()
     {
         Map<String, Object> map= new CompactMap()

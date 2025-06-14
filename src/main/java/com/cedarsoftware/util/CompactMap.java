@@ -1014,8 +1014,9 @@ public class CompactMap<K, V> implements Map<K, V> {
     /**
      * Copies all mappings from the specified map into this map.
      * <p>
-     * If resulting size would exceed compactSize, transitions directly to map storage.
-     * Otherwise, adds entries individually, allowing natural transitions to occur.
+     * Entries are inserted one by one using {@link #put(Object, Object)},
+     * allowing the map to transition naturally through its storage modes
+     * as elements are added.
      * </p>
      *
      * @param map mappings to be stored in this map

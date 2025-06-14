@@ -3019,7 +3019,11 @@ public class CompactMap<K, V> implements Map<K, V> {
                 baos.close();
             }
             return defineClass(className, classBytes);
+        } // end try-with-resources
+        catch (IOException e) {
+            throw new IllegalStateException("I/O error during compilation", e);
         }
+    } // close compileClass()
 
         /**
          * Defines a Class object from compiled bytecode using a custom ClassLoader.

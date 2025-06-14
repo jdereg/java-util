@@ -2522,6 +2522,11 @@ void testComputeIfAbsent() {
     }
 
     @Test
+    public void testReplaceCacheWithNull() {
+        assertThrows(NullPointerException.class, () -> CaseInsensitiveMap.replaceCache(null));
+    }
+
+    @Test
     public void testStringCachingBasedOnLength() {
         // Test string shorter than max length (should be cached)
         CaseInsensitiveMap.setMaxCacheLengthString(10);

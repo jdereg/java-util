@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -278,7 +278,7 @@ public class DeepEquals {
     }
 
     private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<Object> visited) {
-        Deque<ItemsToCompare> stack = new LinkedList<>();
+        Deque<ItemsToCompare> stack = new ArrayDeque<>();
         boolean result = deepEquals(a, b, stack, options, visited);
 
         boolean isRecurive = Objects.equals(true, options.get("recursive_call"));
@@ -900,7 +900,7 @@ public class DeepEquals {
     }
 
     private static int deepHashCode(Object obj, Set<Object> visited) {
-        LinkedList<Object> stack = new LinkedList<>();
+        Deque<Object> stack = new ArrayDeque<>();
         stack.addFirst(obj);
         int hash = 0;
 
@@ -939,13 +939,13 @@ public class DeepEquals {
 
             // Ignore order for non-List Collections (not part of definition of equality)
             if (obj instanceof Collection) {
-                stack.addAll(0, (Collection<?>) obj);
+                addCollectionToStack(stack, (Collection<?>) obj);
                 continue;
             }
 
             if (obj instanceof Map) {
-                stack.addAll(0, ((Map<?, ?>) obj).keySet());
-                stack.addAll(0, ((Map<?, ?>) obj).values());
+                addCollectionToStack(stack, ((Map<?, ?>) obj).keySet());
+                addCollectionToStack(stack, ((Map<?, ?>) obj).values());
                 continue;
             }
 
@@ -999,6 +999,13 @@ public class DeepEquals {
     private static int hashFloat(float value) {
         float normalizedValue = Math.round(value * SCALE_FLOAT) / SCALE_FLOAT;
         return Float.floatToIntBits(normalizedValue);
+    }
+
+    private static void addCollectionToStack(Deque<Object> stack, Collection<?> collection) {
+        List<?> items = (collection instanceof List) ? (List<?>) collection : new ArrayList<>(collection);
+        for (int i = items.size() - 1; i >= 0; i--) {
+            stack.addFirst(items.get(i));
+        }
     }
 
     private enum DiffCategory {

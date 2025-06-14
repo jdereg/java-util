@@ -2954,7 +2954,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Manage file managers with try-with-resources
             try (StandardJavaFileManager stdFileManager = compiler.getStandardFileManager(diagnostics, null, null);
-                 JavaFileManager fileManager = new ForwardingJavaFileManager(stdFileManager) {
+                 JavaFileManager fileManager = new ForwardingJavaFileManager<StandardJavaFileManager>(stdFileManager) {
                      @Override
                      public JavaFileObject getJavaFileForOutput(Location location,
                                                                 String className,

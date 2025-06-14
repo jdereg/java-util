@@ -24,7 +24,17 @@ specifies module dependencies and exports.
 
 ### OSGi
 
-This library also supports OSGi environments. It comes with pre-configured OSGi metadata in the `MANIFEST.MF` file, ensuring easy integration into any OSGi-based application. 
+This library also supports OSGi environments. It comes with pre-configured OSGi metadata in the `MANIFEST.MF` file, ensuring easy integration into any OSGi-based application.
+
+### Using in an OSGi Runtime
+
+The jar already ships with all necessary OSGi headers and a `module-info.class`. No `Import-Package` entries for `java.*` packages are required when consuming the bundle.
+
+To add the bundle to an Eclipse feature or any OSGi runtime simply reference it:
+
+```xml
+<plugin id="com.cedarsoftware.java-util" version="3.3.2"/>
+```
 
 Both of these features ensure that our library can be seamlessly integrated into modular Java applications, providing robust dependency management and encapsulation.
 

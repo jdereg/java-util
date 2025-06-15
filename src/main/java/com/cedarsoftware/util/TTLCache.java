@@ -268,6 +268,11 @@ public class TTLCache<K, V> implements Map<K, V> {
         boolean acquired = lock.tryLock();
         try {
             if (acquired) {
+                if (oldEntry != null) {
+                    // Remove the old node from the LRU chain
+                    unlink(oldEntry.node);
+                }
+
                 insertAtTail(node);
 
                 if (maxSize > -1 && cacheMap.size() > maxSize) {
@@ -539,11 +544,12 @@ public class TTLCache<K, V> implements Map<K, V> {
         lock.lock();
         try {
             int hashCode = 1;
-            for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                Object key = node.key;
-                Object value = node.value;
-                hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
-                hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
+            for (Entry<K, CacheEntry<K, V>> entry : cacheMap.entrySet()) {
+                K key = entry.getValue().node.key;
+                V value = entry.getValue().node.value;
+                int entryHash = (key == null ? 0 : key.hashCode());
+                entryHash = 31 * entryHash + (value == null ? 0 : value.hashCode());
+                hashCode = 31 * hashCode + entryHash;
             }
             return hashCode;
         } finally {

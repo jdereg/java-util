@@ -281,6 +281,60 @@ public class TTLCacheTest {
     }
 
     @Test
+    void testUpdateDoesNotCreateExtraNodes() throws Exception {
+        TTLCache<Integer, String> cache = new TTLCache<>(10000, 2);
+        cache.put(1, "A");
+        int nodeCount = getNodeCount(cache);
+
+        cache.put(1, "B");
+        assertEquals(nodeCount, getNodeCount(cache), "Updating key should not add LRU nodes");
+
+        cache.put(2, "C");
+        cache.put(3, "D");
+
+        assertEquals(2, cache.size());
+        assertFalse(cache.containsKey(1));
+    }
+
+    @Test
+    void testHashCodeAfterUpdate() {
+        TTLCache<Integer, String> cache1 = new TTLCache<>(10000, 3);
+        TTLCache<Integer, String> cache2 = new TTLCache<>(10000, 3);
+
+        cache1.put(1, "A");
+        cache2.put(1, "A");
+
+        cache1.put(1, "B");
+        cache2.put(1, "B");
+
+        cache1.put(2, "C");
+        cache2.put(2, "C");
+
+        assertEquals(cache1.hashCode(), cache2.hashCode());
+    }
+
+    // Helper method to count the number of nodes in the LRU list
+    private static int getNodeCount(TTLCache<?, ?> cache) throws Exception {
+        java.lang.reflect.Field headField = TTLCache.class.getDeclaredField("head");
+        headField.setAccessible(true);
+        Object head = headField.get(cache);
+
+        java.lang.reflect.Field tailField = TTLCache.class.getDeclaredField("tail");
+        tailField.setAccessible(true);
+        Object tail = tailField.get(cache);
+
+        java.lang.reflect.Field nextField = head.getClass().getDeclaredField("next");
+
+        int count = 0;
+        Object node = nextField.get(head);
+        while (node != tail) {
+            count++;
+            node = nextField.get(node);
+        }
+        return count;
+    }
+
+    @Test
     void testToString() {
         ttlCache = new TTLCache<>(10000, -1);
         ttlCache.put(1, "A");

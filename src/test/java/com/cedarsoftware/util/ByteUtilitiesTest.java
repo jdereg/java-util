@@ -5,10 +5,7 @@ import java.lang.reflect.Modifier;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -55,13 +52,27 @@ public class ByteUtilitiesTest
                 assertNull(ByteUtilities.decode("456"));
                 assertArrayEquals(new byte[]{-1, 0}, ByteUtilities.decode("ff00"));
                 assertNull(ByteUtilities.decode("GG"));
+                assertNull(ByteUtilities.decode((String) null));
+                StringBuilder sb = new StringBuilder(_str1);
+                assertArrayEquals(_array1, ByteUtilities.decode(sb));
 
         }
-	
-	@Test
-	public void testEncode() 
-	{
-		assertEquals(_str1, ByteUtilities.encode(_array1));
-		assertEquals(_str2, ByteUtilities.encode(_array2));
-	}
+
+        @Test
+        public void testEncode()
+        {
+                assertEquals(_str1, ByteUtilities.encode(_array1));
+                assertEquals(_str2, ByteUtilities.encode(_array2));
+                assertNull(ByteUtilities.encode(null));
+        }
+
+    @Test
+    public void testIsGzipped() {
+        byte[] gzipped = {(byte)0x1f, (byte)0x8b, 0x08};
+        byte[] notGzip = {0x00, 0x00, 0x00};
+        byte[] embedded = {0x00, (byte)0x1f, (byte)0x8b};
+        assertTrue(ByteUtilities.isGzipped(gzipped));
+        assertFalse(ByteUtilities.isGzipped(notGzip));
+        assertTrue(ByteUtilities.isGzipped(embedded, 1));
+    }
 }

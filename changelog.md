@@ -3,6 +3,9 @@
 > * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
+> * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
+> * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
+> * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `DateUtilities` uses `BigDecimal` for fractional second conversion, preventing rounding errors with high precision input
 #### 3.3.2 JDK 24+ Support

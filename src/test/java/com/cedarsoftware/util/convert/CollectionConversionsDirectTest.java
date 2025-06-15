@@ -18,7 +18,7 @@ class CollectionConversionsDirectTest {
     @Test
     void arrayToCollectionHandlesNestedArrays() {
         Object[] array = {"a", new String[]{"b", "c"}};
-        Collection<?> result = (Collection<?>) CollectionConversions.arrayToCollection(array, List.class);
+        Collection<?> result = CollectionConversions.arrayToCollection(array, List.class);
         assertEquals(2, result.size());
         assertTrue(result.contains("a"));
         Object nested = result.stream().filter(e -> e instanceof Collection).findFirst().orElse(null);
@@ -29,16 +29,16 @@ class CollectionConversionsDirectTest {
 
     @Test
     void arrayToCollectionCreatesUnmodifiable() {
-        Class<?> type = Collections.unmodifiableCollection(new ArrayList<>()).getClass();
-        Collection<?> result = (Collection<?>) CollectionConversions.arrayToCollection(new Integer[]{1, 2}, type);
+        Class<? extends Collection<?>> type = Collections.unmodifiableCollection(new ArrayList<>()).getClass();
+        Collection<?> result = CollectionConversions.arrayToCollection(new Integer[]{1, 2}, type);
         assertTrue(CollectionUtilities.isUnmodifiable(result.getClass()));
         assertThrows(UnsupportedOperationException.class, () -> result.add(3));
     }
 
     @Test
     void arrayToCollectionCreatesSynchronized() {
-        Class<?> type = Collections.synchronizedCollection(new ArrayList<>()).getClass();
-        Collection<?> result = (Collection<?>) CollectionConversions.arrayToCollection(new String[]{"x"}, type);
+        Class<? extends Collection<?>> type = Collections.synchronizedCollection(new ArrayList<>()).getClass();
+        Collection<?> result = CollectionConversions.arrayToCollection(new String[]{"x"}, type);
         assertTrue(CollectionUtilities.isSynchronized(result.getClass()));
         assertDoesNotThrow(() -> result.add("y"));
     }

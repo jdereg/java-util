@@ -121,77 +121,77 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
 
     // Immutable APIs
     @Override
-    public boolean equals(Object other) { return readOperation(() -> list.equals(other)); }
+    public boolean equals(Object other) { return withReadLock(() -> list.equals(other)); }
 
     @Override
-    public int hashCode() { return readOperation(list::hashCode); }
+    public int hashCode() { return withReadLock(list::hashCode); }
 
     @Override
-    public String toString() { return readOperation(list::toString); }
+    public String toString() { return withReadLock(list::toString); }
 
     @Override
-    public int size() { return readOperation(list::size); }
+    public int size() { return withReadLock(list::size); }
 
     @Override
-    public boolean isEmpty() { return readOperation(list::isEmpty); }
+    public boolean isEmpty() { return withReadLock(list::isEmpty); }
 
     @Override
-    public boolean contains(Object o) { return readOperation(() -> list.contains(o)); }
+    public boolean contains(Object o) { return withReadLock(() -> list.contains(o)); }
 
     @Override
-    public boolean containsAll(Collection<?> c) { return readOperation(() -> list.containsAll(c)); }
+    public boolean containsAll(Collection<?> c) { return withReadLock(() -> list.containsAll(c)); }
 
     @Override
-    public E get(int index) { return readOperation(() -> list.get(index)); }
+    public E get(int index) { return withReadLock(() -> list.get(index)); }
 
     @Override
-    public int indexOf(Object o) { return readOperation(() -> list.indexOf(o)); }
+    public int indexOf(Object o) { return withReadLock(() -> list.indexOf(o)); }
 
     @Override
-    public int lastIndexOf(Object o) { return readOperation(() -> list.lastIndexOf(o)); }
+    public int lastIndexOf(Object o) { return withReadLock(() -> list.lastIndexOf(o)); }
 
     @Override
     public Iterator<E> iterator() { return new LockedIterator(); }
 
     @Override
-    public Object[] toArray() { return readOperation(list::toArray); }
+    public Object[] toArray() { return withReadLock(list::toArray); }
 
     @Override
-    public <T> T[] toArray(T[] a) { return readOperation(() -> list.toArray(a)); }
+    public <T> T[] toArray(T[] a) { return withReadLock(() -> list.toArray(a)); }
 
     // Mutable APIs
     @Override
-    public boolean add(E e) { return writeOperation(() -> list.add(e)); }
+    public boolean add(E e) { return withWriteLock(() -> list.add(e)); }
 
     @Override
-    public boolean addAll(Collection<? extends E> c) { return writeOperation(() -> list.addAll(c)); }
+    public boolean addAll(Collection<? extends E> c) { return withWriteLock(() -> list.addAll(c)); }
 
     @Override
-    public boolean addAll(int index, Collection<? extends E> c) { return writeOperation(() -> list.addAll(index, c)); }
+    public boolean addAll(int index, Collection<? extends E> c) { return withWriteLock(() -> list.addAll(index, c)); }
 
     @Override
     public void add(int index, E element) {
-        writeOperation(() -> list.add(index, element));
+        withWriteLockVoid(() -> list.add(index, element));
     }
 
     @Override
-    public E set(int index, E element) { return writeOperation(() -> list.set(index, element)); }
+    public E set(int index, E element) { return withWriteLock(() -> list.set(index, element)); }
 
     @Override
-    public E remove(int index) { return writeOperation(() -> list.remove(index)); }
+    public E remove(int index) { return withWriteLock(() -> list.remove(index)); }
 
     @Override
-    public boolean remove(Object o) { return writeOperation(() -> list.remove(o)); }
+    public boolean remove(Object o) { return withWriteLock(() -> list.remove(o)); }
 
     @Override
-    public boolean removeAll(Collection<?> c) { return writeOperation(() -> list.removeAll(c)); }
+    public boolean removeAll(Collection<?> c) { return withWriteLock(() -> list.removeAll(c)); }
 
     @Override
-    public boolean retainAll(Collection<?> c) { return writeOperation(() -> list.retainAll(c)); }
+    public boolean retainAll(Collection<?> c) { return withWriteLock(() -> list.retainAll(c)); }
 
     @Override
     public void clear() {
-        writeOperation(() -> list.clear());
+        withWriteLockVoid(() -> list.clear());
     }
 
     @Override
@@ -227,34 +227,34 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
         LockedListIterator(int index) { this.cursor = index; }
 
         @Override
-        public boolean hasNext() { return readOperation(() -> cursor < list.size()); }
+        public boolean hasNext() { return withReadLock(() -> cursor < list.size()); }
 
         @Override
-        public E next() { return readOperation(() -> list.get(cursor++)); }
+        public E next() { return withReadLock(() -> list.get(cursor++)); }
 
         @Override
-        public boolean hasPrevious() { return readOperation(() -> cursor > 0); }
+        public boolean hasPrevious() { return withReadLock(() -> cursor > 0); }
 
         @Override
-        public E previous() { return readOperation(() -> list.get(--cursor)); }
+        public E previous() { return withReadLock(() -> list.get(--cursor)); }
 
         @Override
-        public int nextIndex() { return readOperation(() -> cursor); }
+        public int nextIndex() { return withReadLock(() -> cursor); }
 
         @Override
-        public int previousIndex() { return readOperation(() -> cursor - 1); }
+        public int previousIndex() { return withReadLock(() -> cursor - 1); }
 
         @Override
-        public void remove() { writeOperation(() -> list.remove(--cursor)); }
+        public void remove() { withWriteLock(() -> list.remove(--cursor)); }
 
         @Override
-        public void set(E e) { writeOperation(() -> list.set(cursor - 1, e)); }
+        public void set(E e) { withWriteLock(() -> list.set(cursor - 1, e)); }
 
         @Override
-        public void add(E e) { writeOperation(() -> list.add(cursor++, e)); }
+        public void add(E e) { withWriteLockVoid(() -> list.add(cursor++, e)); }
     }
 
-    private <T> T readOperation(Supplier<T> operation) {
+    private <T> T withReadLock(Supplier<T> operation) {
         lock.readLock().lock();
         try {
             return operation.get();
@@ -263,7 +263,7 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
         }
     }
 
-    private void readOperation(Runnable operation) {
+    private void withReadLockVoid(Runnable operation) {
         lock.readLock().lock();
         try {
             operation.run();
@@ -272,7 +272,7 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
         }
     }
 
-    private <T> T writeOperation(Supplier<T> operation) {
+    private <T> T withWriteLock(Supplier<T> operation) {
         lock.writeLock().lock();
         try {
             return operation.get();
@@ -281,7 +281,7 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
         }
     }
 
-    private void writeOperation(Runnable operation) {
+    private void withWriteLockVoid(Runnable operation) {
         lock.writeLock().lock();
         try {
             operation.run();

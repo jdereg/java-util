@@ -1,5 +1,6 @@
 ### Revision History
 #### 3.3.3 Unreleased
+> * Added JUnit test for `AdjustableGZIPOutputStream(OutputStream, int, int)` constructor.
 > * Fixed ReflectionUtils cache tests for new null-handling behavior
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
@@ -21,7 +22,6 @@
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
-> * Added unit tests for `GraphComparator` Java delta processor methods
 > * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
@@ -44,7 +44,6 @@
 > * Explicitly set versions for `maven-resources-plugin`, `maven-install-plugin`, and `maven-deploy-plugin` to avoid Maven 4 compatibility warnings
 > * Added Javadoc for several public APIs where it was missing.  Should be 100% now.
 > * JUnits added for all public APIs that did not have them (no longer relying on json-io to "cover" them). Should be 100% now.
-> * Added unit tests for `ConcurrentHashMapNullSafe` constructors.
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.
@@ -59,6 +58,7 @@
 > * `FastReader/FastWriter` - tests added to bring it to 100% Class, Method, Line, and Branch coverage.
 > * `FastByteArrayInputStream/FastByteArrayOutputStream` - tests added to bring it to 100% Class, Method, Line, and Branch coverage.
 > * `TrackingMap.setWrappedMap()` - added to allow the user to set the wrapped map to a different map.  This is useful for testing purposes.
+> * Added tests for CompactCIHashSet, CompactCILinkedSet and CompactLinkedSet constructors.
 #### 3.3.0 New Features and Improvements
 > * `CompactCIHashSet, CompactCILinkedSet, CompactLinkedSet, CompactCIHashMap, CompactCILinkedMap, CompactLinkedMap` are no longer deprecated. Subclassing `CompactMap` or `CompactSet` is a viable option if you need to serialize the derived class with libraries other than `json-io,` like Jackson, Gson, etc.
 > * Added `CharBuffer to Map,` `ByteBuffer to Map,` and vice-versa conversions.

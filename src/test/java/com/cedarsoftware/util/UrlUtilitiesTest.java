@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.net.ssl.X509TrustManager;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -120,12 +121,24 @@ public class UrlUtilitiesTest {
     }
 
     @Test
-    void testGetActualUrl() throws Exception {
-        URL u = UrlUtilities.getActualUrl("res://io-test.txt");
-        assertNotNull(u);
+    void testGetActualUrl() throws Exception { // Changed from default to public for older JUnit if needed
+        URL u = UrlUtilities.getActualUrl("res://io-test.txt"); // Ensure io-test.txt is in your test resources
+        assertNotNull(u, "URL should not be null");
+
         try (InputStream in = u.openStream()) {
-            byte[] bytes = in.readAllBytes();
-            assertTrue(bytes.length > 0);
+            assertNotNull(in, "InputStream should not be null"); // Good to check stream too
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192]; // Or 4096, a common buffer size
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                baos.write(buffer, 0, bytesRead);
+            }
+            byte[] bytes = baos.toByteArray();
+
+            assertTrue(bytes.length > 0, "File should not be empty");
+            // You can add more assertions here, e.g., print content for verification
+            // System.out.println("Read content: " + new String(bytes, StandardCharsets.UTF_8));
         }
     }
 

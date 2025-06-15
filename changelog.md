@@ -6,6 +6,7 @@
 > * Java logging now uses a Logback-style format for consistency
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
+> * `CollectionConversions.arrayToCollection` now returns a type-safe collection
 > * `ByteUtilities.toHexChar` - JUnit added.
 > * `CaseInsensitiveString.chars`, `codePoints`, and `subSequence` plus deprecated `CaseInsensitiveSet` methods - JUnit tests added for all.
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs

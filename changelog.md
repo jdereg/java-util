@@ -3,6 +3,8 @@
 > * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
+> * `LoggingConfig` can now accept a custom timestamp pattern via `LoggingConfig.init(String)` or
+  the `ju.log.dateFormat` system property. Uses thread-safe `SafeSimpleDateFormat`.
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.

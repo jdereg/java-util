@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -118,7 +119,7 @@ import static java.lang.Character.toLowerCase;
  *         limitations under the License.
  */
 public final class StringUtilities {
-    public static final String FOLDER_SEPARATOR = "/";
+    public static final String FOLDER_SEPARATOR = File.separator;
 
     public static final String EMPTY = "";
 

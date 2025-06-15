@@ -973,7 +973,7 @@ A thread-safe Map implementation that extends ConcurrentHashMap's capabilities b
 - High-performance concurrent operations
 - Full Map and ConcurrentMap interface implementation
 - Maintains ConcurrentHashMap's performance characteristics
-- Configurable initial capacity and load factor
+- Configurable initial capacity, load factor, and concurrency level
 - Atomic operations support
 
 ### Usage Examples
@@ -1000,8 +1000,12 @@ ConcurrentMap<Integer, String> map =
     new ConcurrentHashMapNullSafe<>(1000);
 
 // Create with capacity and load factor
-ConcurrentMap<Integer, String> map = 
+ConcurrentMap<Integer, String> map =
     new ConcurrentHashMapNullSafe<>(1000, 0.75f);
+
+// Create with capacity, load factor, and concurrency level
+ConcurrentMap<Integer, String> tunedMap =
+    new ConcurrentHashMapNullSafe<>(1000, 0.75f, 16);
 ```
 
 **Atomic Operations:**
@@ -1063,6 +1067,9 @@ map.merge("A", 10, Integer::sum);
 - Preserves map contract
 - Consistent serialization behavior
 - Safe iterator implementation
+- `computeIfAbsent` uses a single atomic `compute` call when
+  the mapping function returns `null`, preventing accidental
+  removal of concurrently inserted values
 
 ### Atomic Operation Support
 ```java

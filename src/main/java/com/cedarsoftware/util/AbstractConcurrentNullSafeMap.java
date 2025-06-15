@@ -210,29 +210,20 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
+        Objects.requireNonNull(mappingFunction);
         Object maskedKey = maskNullKey(key);
-        Object currentValue = internalMap.get(maskNullKey(key));
 
-        if (currentValue != null && currentValue != NullSentinel.NULL_VALUE) {
-            // The key exists with a non-null value, so we don't compute
-            return unmaskNullValue(currentValue);
-        }
+        Object result = internalMap.compute(maskedKey, (k, v) -> {
+            if (v != null && v != NullSentinel.NULL_VALUE) {
+                // Another thread already inserted a value
+                return v;
+            }
 
-        // The key doesn't exist or is mapped to null, so we should compute
-        V newValue = mappingFunction.apply(unmaskNullKey(maskedKey));
-        if (newValue != null) {
-            Object result = internalMap.compute(maskedKey, (k, v) -> {
-                if (v != null && v != NullSentinel.NULL_VALUE) {
-                    return v;  // Another thread set a non-null value, so we keep it
-                }
-                return maskNullValue(newValue);
-            });
-            return unmaskNullValue(result);
-        } else {
-            // If the new computed value is null, ensure no mapping exists
-            internalMap.remove(maskedKey);
-            return null;
-        }
+            V computed = mappingFunction.apply(unmaskNullKey(k));
+            return computed == null ? null : maskNullValue(computed);
+        });
+
+        return unmaskNullValue(result);
     }
 
     @Override

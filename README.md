@@ -103,6 +103,11 @@ remain lightweight. Applications that prefer a different logging framework can
 redirect these messages using one of the adapters below, ordered roughly by
 their usage across Maven Central.
 
+`java-util` provides `LoggingConfig` to apply a consistent console
+format. Call `LoggingConfig.init()` to use the default pattern or pass a
+custom pattern via `LoggingConfig.init("yyyy/MM/dd HH:mm:ss")`. The pattern
+can also be supplied with the system property `ju.log.dateFormat`.
+
 #### 1. SLF4J
 
 Add the `jul-to-slf4j` bridge and install it during startup:

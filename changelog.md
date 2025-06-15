@@ -58,6 +58,7 @@
 > * `FastReader/FastWriter` - tests added to bring it to 100% Class, Method, Line, and Branch coverage.
 > * `FastByteArrayInputStream/FastByteArrayOutputStream` - tests added to bring it to 100% Class, Method, Line, and Branch coverage.
 > * `TrackingMap.setWrappedMap()` - added to allow the user to set the wrapped map to a different map.  This is useful for testing purposes.
+> * Added tests for CompactCIHashSet, CompactCILinkedSet and CompactLinkedSet constructors.
 #### 3.3.0 New Features and Improvements
 > * `CompactCIHashSet, CompactCILinkedSet, CompactLinkedSet, CompactCIHashMap, CompactCILinkedMap, CompactLinkedMap` are no longer deprecated. Subclassing `CompactMap` or `CompactSet` is a viable option if you need to serialize the derived class with libraries other than `json-io,` like Jackson, Gson, etc.
 > * Added `CharBuffer to Map,` `ByteBuffer to Map,` and vice-versa conversions.

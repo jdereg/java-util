@@ -13,6 +13,8 @@ import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A Java Object Graph traverser that visits all object reference fields and invokes a
@@ -83,6 +85,8 @@ import java.util.function.Consumer;
  *         limitations under the License.
  */
 public class Traverser {
+
+    private static final Logger LOG = Logger.getLogger(Traverser.class.getName());
 
     /**
      * Represents a node visit during traversal, containing the node and its field information.
@@ -247,13 +251,17 @@ public class Traverser {
 
     private Map<Field, Object> collectFields(Object obj) {
         Map<Field, Object> fields = new HashMap<>();
-        Collection<Field> allFields = ReflectionUtils.getAllDeclaredFields(obj.getClass());
+        Collection<Field> allFields = ReflectionUtils.getAllDeclaredFields(
+                obj.getClass(),
+                field -> ReflectionUtils.DEFAULT_FIELD_FILTER.test(field) && !field.isSynthetic());
 
         for (Field field : allFields) {
             try {
                 fields.put(field, field.get(obj));
             } catch (IllegalAccessException e) {
-                System.err.println("Unable to access field '" + field.getName() + "' on " + obj.getClass().getName());
+                LOG.log(Level.FINEST,
+                        "Unable to access field '" + field.getName() + "' on " + obj.getClass().getName(),
+                        e);
                 fields.put(field, "<inaccessible>");
             }
         }
@@ -309,7 +317,9 @@ public class Traverser {
     }
 
     private void processFields(Deque<Object> stack, Object object, Set<Class<?>> classesToSkip) {
-        Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(object.getClass());
+        Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(
+                object.getClass(),
+                field -> ReflectionUtils.DEFAULT_FIELD_FILTER.test(field) && !field.isSynthetic());
         for (Field field : fields) {
             if (!field.getType().isPrimitive()) {
                 try {

@@ -24,7 +24,7 @@ class CollectionConversionsDirectTest {
         assertTrue(result.contains("a"));
         Object nested = result.stream().filter(e -> e instanceof Collection).findFirst().orElse(null);
         assertNotNull(nested);
-        assertEquals(List.of("b", "c"), new ArrayList<>((Collection<?>) nested));
+        assertEquals(CollectionUtilities.listOf("b", "c"), new ArrayList<>((Collection<?>) nested));
         assertDoesNotThrow(() -> ((Collection<Object>) result).add("d"));
     }
 

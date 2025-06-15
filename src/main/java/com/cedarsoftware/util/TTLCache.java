@@ -559,15 +559,15 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     public int hashCode() {
         lock.lock();
         try {
-            int hashCode = 1;
-            for (Entry<K, CacheEntry<K, V>> entry : cacheMap.entrySet()) {
-                K key = entry.getValue().node.key;
+            int hash = 0;
+            for (Map.Entry<K, CacheEntry<K, V>> entry : cacheMap.entrySet()) {
+                K key = entry.getKey();
                 V value = entry.getValue().node.value;
-                int entryHash = (key == null ? 0 : key.hashCode());
-                entryHash = 31 * entryHash + (value == null ? 0 : value.hashCode());
-                hashCode = 31 * hashCode + entryHash;
+                int keyHash = (key == null ? 0 : key.hashCode());
+                int valueHash = (value == null ? 0 : value.hashCode());
+                hash += keyHash ^ valueHash;
             }
-            return hashCode;
+            return hash;
         } finally {
             lock.unlock();
         }

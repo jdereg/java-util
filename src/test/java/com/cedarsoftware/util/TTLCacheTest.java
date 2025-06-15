@@ -282,6 +282,24 @@ public class TTLCacheTest {
     }
 
     @Test
+    void testHashCodeConsistencyAfterOperations() {
+        TTLCache<Integer, String> cache = new TTLCache<>(10000, 3);
+        cache.put(1, "A");
+        cache.put(2, "B");
+
+        int initial = cache.hashCode();
+
+        cache.put(3, "C");
+        cache.remove(3);
+        cache.put(2, "B");
+
+        assertEquals(initial, cache.hashCode());
+
+        cache.put(2, "Z");
+        assertNotEquals(initial, cache.hashCode());
+    }
+     
+    @Test
     void testUpdateDoesNotCreateExtraNodes() throws Exception {
         TTLCache<Integer, String> cache = new TTLCache<>(10000, 2);
         cache.put(1, "A");

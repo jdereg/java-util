@@ -1,0 +1,166 @@
+package com.cedarsoftware.util;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import javax.net.ssl.X509TrustManager;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class UrlUtilitiesTest {
+    private static HttpServer server;
+    private static String baseUrl;
+
+    @BeforeAll
+    static void startServer() throws IOException {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/ok", exchange -> writeResponse(exchange, 200, "hello"));
+        server.createContext("/error", exchange -> writeResponse(exchange, 500, "bad"));
+        server.start();
+        baseUrl = "http://localhost:" + server.getAddress().getPort();
+    }
+
+    @AfterAll
+    static void stopServer() {
+        server.stop(0);
+    }
+
+    @BeforeEach
+    void resetStatics() {
+        UrlUtilities.clearGlobalReferrer();
+        UrlUtilities.clearGlobalUserAgent();
+        UrlUtilities.userAgent.remove();
+        UrlUtilities.referrer.remove();
+    }
+
+    private static void writeResponse(HttpExchange exchange, int code, String body) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(code, bytes.length);
+        exchange.getResponseBody().write(bytes);
+        exchange.close();
+    }
+
+    @Test
+    void testHostnameVerifier() {
+        assertTrue(UrlUtilities.NAIVE_VERIFIER.verify("any", null));
+    }
+
+    @Test
+    void testTrustManagerMethods() throws Exception {
+        X509TrustManager tm = (X509TrustManager) UrlUtilities.NAIVE_TRUST_MANAGER[0];
+        tm.checkClientTrusted(null, null);
+        tm.checkServerTrusted(null, null);
+        assertNull(tm.getAcceptedIssuers());
+    }
+
+    @Test
+    void testSetAndClearUserAgent() {
+        UrlUtilities.setUserAgent("agent");
+        assertEquals("agent", UrlUtilities.getUserAgent());
+        UrlUtilities.clearGlobalUserAgent();
+        UrlUtilities.userAgent.remove();
+        assertNull(UrlUtilities.getUserAgent());
+    }
+
+    @Test
+    void testSetAndClearReferrer() {
+        UrlUtilities.setReferrer("ref");
+        assertEquals("ref", UrlUtilities.getReferrer());
+        UrlUtilities.clearGlobalReferrer();
+        UrlUtilities.referrer.remove();
+        assertNull(UrlUtilities.getReferrer());
+    }
+
+    @Test
+    void testDisconnect() throws Exception {
+        DummyHttpConnection c = new DummyHttpConnection(new URL(baseUrl));
+        UrlUtilities.disconnect(c);
+        assertTrue(c.disconnected);
+    }
+
+    @Test
+    void testGetCookieDomainFromHost() {
+        assertEquals("example.com", UrlUtilities.getCookieDomainFromHost("www.example.com"));
+    }
+
+    @Test
+    void testGetAndSetCookies() throws Exception {
+        URL url = new URL("http://example.com/test");
+        HttpURLConnection resp = mock(HttpURLConnection.class);
+        when(resp.getURL()).thenReturn(url);
+        when(resp.getHeaderFieldKey(1)).thenReturn(UrlUtilities.SET_COOKIE);
+        when(resp.getHeaderField(1)).thenReturn("ID=42; path=/");
+        when(resp.getHeaderFieldKey(2)).thenReturn(null);
+        Map store = new ConcurrentHashMap();
+        UrlUtilities.getCookies(resp, store);
+        assertTrue(store.containsKey("example.com"));
+        Map cookie = (Map) ((Map) store.get("example.com")).get("ID");
+        assertEquals("42", cookie.get("ID"));
+
+        HttpURLConnection req = mock(HttpURLConnection.class);
+        when(req.getURL()).thenReturn(url);
+        UrlUtilities.setCookies(req, store);
+        verify(req).setRequestProperty(UrlUtilities.COOKIE, "ID=42");
+    }
+
+    @Test
+    void testGetActualUrl() throws Exception {
+        URL u = UrlUtilities.getActualUrl("res://io-test.txt");
+        assertNotNull(u);
+        try (InputStream in = u.openStream()) {
+            byte[] bytes = in.readAllBytes();
+            assertTrue(bytes.length > 0);
+        }
+    }
+
+    @Test
+    void testGetConnection() throws Exception {
+        UrlUtilities.setUserAgent("ua");
+        UrlUtilities.setReferrer("ref");
+        URLConnection c = UrlUtilities.getConnection(new URL(baseUrl + "/ok"), true, false, false);
+        assertEquals("gzip, deflate", c.getRequestProperty("Accept-Encoding"));
+        assertEquals("ref", c.getRequestProperty("Referer"));
+        assertEquals("ua", c.getRequestProperty("User-Agent"));
+    }
+
+    @Test
+    void testGetContentFromUrl() {
+        String url = baseUrl + "/ok";
+        byte[] bytes = UrlUtilities.getContentFromUrl(url);
+        assertEquals("hello", new String(bytes, StandardCharsets.UTF_8));
+        assertEquals("hello", UrlUtilities.getContentFromUrlAsString(url));
+    }
+
+    @Test
+    void testReadErrorResponse() throws Exception {
+        HttpURLConnection conn = mock(HttpURLConnection.class);
+        when(conn.getResponseCode()).thenReturn(500);
+        when(conn.getErrorStream()).thenReturn(new ByteArrayInputStream("err".getBytes(StandardCharsets.UTF_8)));
+        UrlUtilities.readErrorResponse(conn);
+    }
+
+    private static class DummyHttpConnection extends HttpURLConnection {
+        boolean disconnected;
+        protected DummyHttpConnection(URL u) { super(u); }
+        @Override public void disconnect() { disconnected = true; }
+        @Override public boolean usingProxy() { return false; }
+        @Override public void connect() { }
+    }
+}
+

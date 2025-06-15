@@ -289,6 +289,41 @@ class ConcurrentNavigableSetNullSafeTest {
     }
 
     @Test
+    void testHeadAndTailSetViewModification() {
+        NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();
+        set.add("apple");
+        set.add("banana");
+        set.add("cherry");
+        set.add("date");
+        set.add(null);
+
+        NavigableSet<String> headSet = set.headSet("date", false);
+        NavigableSet<String> tailSet = set.tailSet("banana", true);
+
+        // Modify via headSet
+        headSet.remove("banana");
+        headSet.add("aardvark");
+        assertFalse(set.contains("banana"));
+        assertTrue(set.contains("aardvark"));
+
+        // Modify via tailSet
+        tailSet.remove(null);
+        tailSet.add("elderberry");
+        assertFalse(set.contains(null));
+        assertTrue(set.contains("elderberry"));
+
+        // Modify main set
+        set.add("fig");
+        set.remove("apple");
+        assertFalse(headSet.contains("apple"));
+        assertTrue(tailSet.contains("fig"));
+
+        set.remove("cherry");
+        assertFalse(headSet.contains("cherry"));
+        assertFalse(tailSet.contains("cherry"));
+    }
+
+    @Test
     void testIteratorRemove() {
         NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();
         set.add("apple");

@@ -2372,15 +2372,16 @@ A comprehensive utility class for I/O operations, providing robust stream handli
 
 ```java
 // Streaming
-public static void transfer(InputStream s, File f, TransferCallback cb) throws Exception
+public static void transfer(InputStream s, File f, TransferCallback cb) throws IOException
 public static void transfer(InputStream in, OutputStream out, TransferCallback cb) throws IOException
 public static void transfer(InputStream in, byte[] bytes) throws IOException
 public static void transfer(InputStream in, OutputStream out) throws IOException
-public static void transfer(File f, URLConnection c, TransferCallback cb) throws Exception
+public static void transfer(File f, URLConnection c, TransferCallback cb) throws IOException
 public static void transfer(File file, OutputStream out) throws IOException
-public static void transfer(URLConnection c, File f, TransferCallback cb) throws Exception
+public static void transfer(URLConnection c, File f, TransferCallback cb) throws IOException
 public static void transfer(URLConnection c, byte[] bytes) throws IOException
-public static byte[] inputStreamToBytes(InputStream in)
+public static byte[] inputStreamToBytes(InputStream in) throws IOException
+public static byte[] inputStreamToBytes(InputStream in, int maxSize) throws IOException
 public static InputStream getInputStream(URLConnection c) throws IOException
     
 // Stream close    
@@ -2479,7 +2480,12 @@ IOUtilities.flush(xmlStreamWriter);
 **Byte Array Operations:**
 ```java
 // Convert InputStream to byte array
-byte[] bytes = IOUtilities.inputStreamToBytes(inputStream);
+byte[] bytes;
+try {
+    bytes = IOUtilities.inputStreamToBytes(inputStream);
+} catch (IOException e) {
+    // handle error
+}
 
 // Transfer exact number of bytes
 byte[] buffer = new byte[1024];
@@ -2537,9 +2543,9 @@ This implementation provides a robust set of I/O utilities with emphasis on reso
 
 A comprehensive utility class providing cryptographic operations including high-performance hashing, encryption, and decryption capabilities.
 
-### Key Features
-- Optimized file hashing (MD5, SHA-1, SHA-256, SHA-512)
-- AES-128 encryption/decryption
+-### Key Features
+- Optimized file hashing (MD5, SHA-1, SHA-256, SHA-384, SHA-512)
+- AES-128 encryption/decryption using AES-GCM
 - Zero-copy I/O operations
 - Thread-safe implementation
 - Custom filesystem support
@@ -2553,6 +2559,7 @@ A comprehensive utility class providing cryptographic operations including high-
 String md5 = EncryptionUtilities.fastMD5(new File("large.dat"));
 String sha1 = EncryptionUtilities.fastSHA1(new File("large.dat"));
 String sha256 = EncryptionUtilities.fastSHA256(new File("large.dat"));
+String sha384 = EncryptionUtilities.fastSHA384(new File("large.dat"));
 String sha512 = EncryptionUtilities.fastSHA512(new File("large.dat"));
 ```
 
@@ -2562,6 +2569,7 @@ String sha512 = EncryptionUtilities.fastSHA512(new File("large.dat"));
 String md5Hash = EncryptionUtilities.calculateMD5Hash(bytes);
 String sha1Hash = EncryptionUtilities.calculateSHA1Hash(bytes);
 String sha256Hash = EncryptionUtilities.calculateSHA256Hash(bytes);
+String sha384Hash = EncryptionUtilities.calculateSHA384Hash(bytes);
 String sha512Hash = EncryptionUtilities.calculateSHA512Hash(bytes);
 ```
 
@@ -2603,9 +2611,9 @@ Cipher customCipher = EncryptionUtilities.createAesCipher("password", Cipher.ENC
 - Efficient memory management
 - Optimized for modern storage systems
 
-**Security Features:**
-- CBC mode with PKCS5 padding
-- IV generation from key using MD5
+-**Security Features:**
+- AES-GCM with authentication
+- Random IV and salt for each encryption
 - Standard JDK security providers
 - Thread-safe operations
 
@@ -2650,10 +2658,10 @@ String checksum = EncryptionUtilities.fastMD5(file);
 String secure = EncryptionUtilities.fastSHA256(file);
 
 // AES implementation details
-// - Uses CBC mode with PKCS5 padding
-// - IV is derived from key using MD5
-// - 128-bit key size
-Cipher cipher = EncryptionUtilities.createAesEncryptionCipher(key);
+// - Uses AES-GCM with authentication
+// - Random IV and salt stored with ciphertext
+// - 128-bit key size derived via PBKDF2
+Cipher cipher = EncryptionUtilities.createAesEncryptionCipher(key); // legacy API
 ```
 
 ### Resource Management
@@ -2698,6 +2706,12 @@ String errors = exec.getError();
 // Execute with command array (better argument handling)
 String[] cmd = {"git", "status", "--porcelain"};
 exitCode = exec.exec(cmd);
+
+// New API returning execution details
+ExecutionResult result = exec.execute("ls -l");
+int code = result.getExitCode();
+String stdout = result.getOut();
+String stderr = result.getError();
 ```
 
 **Environment Variables:**
@@ -2751,6 +2765,8 @@ if (stdout != null && stderr.isEmpty()) {
 - Non-blocking output handling
 - Automatic stream cleanup
 - Thread-safe output capture
+- 60-second default timeout for process completion
+- Executor instances are not thread-safe; create a new instance per use
 
 ### Best Practices
 

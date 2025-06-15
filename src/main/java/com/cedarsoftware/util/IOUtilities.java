@@ -85,6 +85,18 @@ import java.util.zip.InflaterInputStream;
  */
 public final class IOUtilities {
     private static final int TRANSFER_BUFFER = 32768;
+    private static final int DEFAULT_CONNECT_TIMEOUT = 5000;
+    private static final int DEFAULT_READ_TIMEOUT = 30000;
+    private static final boolean DEBUG = Boolean.parseBoolean(System.getProperty("io.debug", "false"));
+
+    private static void debug(String msg, Exception e) {
+        if (DEBUG) {
+            System.err.println(msg);
+            if (e != null) {
+                e.printStackTrace(System.err);
+            }
+        }
+    }
 
     private IOUtilities() { }
 
@@ -142,8 +154,16 @@ public final class IOUtilities {
 
             // Disable caching to avoid disk operations
             http.setUseCaches(false);
-            http.setConnectTimeout(5000); // 5 seconds connect timeout
-            http.setReadTimeout(30000);   // 30 seconds read timeout
+            int connectTimeout = DEFAULT_CONNECT_TIMEOUT;
+            int readTimeout = DEFAULT_READ_TIMEOUT;
+            try {
+                connectTimeout = Integer.parseInt(System.getProperty("io.connect.timeout", String.valueOf(DEFAULT_CONNECT_TIMEOUT)));
+                readTimeout = Integer.parseInt(System.getProperty("io.read.timeout", String.valueOf(DEFAULT_READ_TIMEOUT)));
+            } catch (NumberFormatException e) {
+                debug("Invalid timeout settings", e);
+            }
+            http.setConnectTimeout(connectTimeout);
+            http.setReadTimeout(readTimeout);
             
             // Apply general URLConnection optimizations
             c.setRequestProperty("Accept-Encoding", "gzip, x-gzip, deflate");
@@ -159,9 +179,9 @@ public final class IOUtilities {
      * @param f  the source File to transfer
      * @param c  the destination URLConnection
      * @param cb optional callback for progress monitoring and cancellation (may be null)
-     * @throws Exception if any error occurs during the transfer
+     * @throws IOException if an I/O error occurs during the transfer
      */
-    public static void transfer(File f, URLConnection c, TransferCallback cb) throws Exception {
+    public static void transfer(File f, URLConnection c, TransferCallback cb) throws IOException {
         Convention.throwIfNull(f, "File cannot be null");
         Convention.throwIfNull(c, "URLConnection cannot be null");
         try (InputStream in = new BufferedInputStream(Files.newInputStream(f.toPath()));
@@ -180,9 +200,9 @@ public final class IOUtilities {
      * @param c  the source URLConnection
      * @param f  the destination File
      * @param cb optional callback for progress monitoring and cancellation (may be null)
-     * @throws Exception if any error occurs during the transfer
+     * @throws IOException if an I/O error occurs during the transfer
      */
-    public static void transfer(URLConnection c, File f, TransferCallback cb) throws Exception {
+    public static void transfer(URLConnection c, File f, TransferCallback cb) throws IOException {
         Convention.throwIfNull(c, "URLConnection cannot be null");
         Convention.throwIfNull(f, "File cannot be null");
         try (InputStream in = getInputStream(c)) {
@@ -200,9 +220,9 @@ public final class IOUtilities {
      * @param s  the source InputStream
      * @param f  the destination File
      * @param cb optional callback for progress monitoring and cancellation (may be null)
-     * @throws Exception if any error occurs during the transfer
+     * @throws IOException if an I/O error occurs during the transfer
      */
-    public static void transfer(InputStream s, File f, TransferCallback cb) throws Exception {
+    public static void transfer(InputStream s, File f, TransferCallback cb) throws IOException {
         Convention.throwIfNull(s, "InputStream cannot be null");
         Convention.throwIfNull(f, "File cannot be null");
         try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(f.toPath()))) {
@@ -274,6 +294,7 @@ public final class IOUtilities {
         while ((count = in.read(buffer)) != -1) {
             out.write(buffer, 0, count);
         }
+        out.flush();
     }
 
     /**
@@ -306,8 +327,8 @@ public final class IOUtilities {
         if (reader != null) {
             try {
                 reader.close();
-            } catch (XMLStreamException ignore) {
-                // silently ignore
+            } catch (XMLStreamException e) {
+                debug("Failed to close XMLStreamReader", e);
             }
         }
     }
@@ -321,8 +342,8 @@ public final class IOUtilities {
         if (writer != null) {
             try {
                 writer.close();
-            } catch (XMLStreamException ignore) {
-                // silently ignore
+            } catch (XMLStreamException e) {
+                debug("Failed to close XMLStreamWriter", e);
             }
         }
     }
@@ -336,8 +357,8 @@ public final class IOUtilities {
         if (c != null) {
             try {
                 c.close();
-            } catch (IOException ignore) {
-                // silently ignore
+            } catch (IOException e) {
+                debug("Failed to close Closeable", e);
             }
         }
     }
@@ -351,8 +372,8 @@ public final class IOUtilities {
         if (f != null) {
             try {
                 f.flush();
-            } catch (IOException ignore) {
-                // silently ignore
+            } catch (IOException e) {
+                debug("Failed to flush", e);
             }
         }
     }
@@ -366,8 +387,8 @@ public final class IOUtilities {
         if (writer != null) {
             try {
                 writer.flush();
-            } catch (XMLStreamException ignore) {
-                // silently ignore
+            } catch (XMLStreamException e) {
+                debug("Failed to flush XMLStreamWriter", e);
             }
         }
     }
@@ -380,15 +401,38 @@ public final class IOUtilities {
      * </p>
      *
      * @param in the InputStream to read from
-     * @return the byte array containing the stream's contents, or null if an error occurs
+     * @return the byte array containing the stream's contents
+     * @throws IOException if an I/O error occurs
      */
-    public static byte[] inputStreamToBytes(InputStream in) {
-        Convention.throwIfNull(in,"Inputstream cannot be null");
+    public static byte[] inputStreamToBytes(InputStream in) throws IOException {
+        return inputStreamToBytes(in, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Converts an InputStream's contents to a byte array with a maximum size limit.
+     *
+     * @param in      the InputStream to read from
+     * @param maxSize the maximum number of bytes to read
+     * @return the byte array containing the stream's contents
+     * @throws IOException if an I/O error occurs or the stream exceeds maxSize
+     */
+    public static byte[] inputStreamToBytes(InputStream in, int maxSize) throws IOException {
+        Convention.throwIfNull(in, "Inputstream cannot be null");
+        if (maxSize <= 0) {
+            throw new IllegalArgumentException("maxSize must be > 0");
+        }
         try (FastByteArrayOutputStream out = new FastByteArrayOutputStream(16384)) {
-            transfer(in, out);
+            byte[] buffer = new byte[TRANSFER_BUFFER];
+            int total = 0;
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                total += count;
+                if (total > maxSize) {
+                    throw new IOException("Stream exceeds maximum allowed size: " + maxSize);
+                }
+                out.write(buffer, 0, count);
+            }
             return out.toByteArray();
-        } catch (Exception e) {
-            return null;
         }
     }
 
@@ -509,15 +553,15 @@ public final class IOUtilities {
      */
     public static byte[] uncompressBytes(byte[] bytes, int offset, int len) {
         Objects.requireNonNull(bytes, "Byte array cannot be null");
-        if (ByteUtilities.isGzipped(bytes)) {
+        if (ByteUtilities.isGzipped(bytes, offset)) {
             try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len);
                  GZIPInputStream gzipStream = new GZIPInputStream(byteStream, TRANSFER_BUFFER)) {
                 return inputStreamToBytes(gzipStream);
-            } catch (Exception e) {
+            } catch (IOException e) {
                 throw new RuntimeException("Error uncompressing bytes", e);
             }
         }
-        return bytes;
+        return Arrays.copyOfRange(bytes, offset, offset + len);
     }
 
     /**

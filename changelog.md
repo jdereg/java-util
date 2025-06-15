@@ -1,7 +1,6 @@
 ### Revision History
 #### 3.3.3 Unreleased
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
-> * Added JUnit tests for `LoggingConfig.init` and `useUniformFormatter`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * Java logging now uses a Logback-style format for consistency
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)

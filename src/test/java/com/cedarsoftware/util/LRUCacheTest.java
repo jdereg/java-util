@@ -52,6 +52,21 @@ public class LRUCacheTest {
             assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-1));
         }
     }
+
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testGetCapacity(LRUCache.StrategyType strategy) {
+        LRUCache<Integer, String> cache = new LRUCache<>(5, strategy);
+        assertEquals(5, cache.getCapacity());
+
+        if (strategy == LRUCache.StrategyType.THREADED) {
+            LRUCache<Integer, String> threaded = new LRUCache<>(2, 25);
+            assertEquals(2, threaded.getCapacity());
+        } else {
+            LRUCache<Integer, String> locking = new LRUCache<>(4);
+            assertEquals(4, locking.getCapacity());
+        }
+    }
     
     @ParameterizedTest
     @MethodSource("strategies")

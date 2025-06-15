@@ -399,6 +399,34 @@ class ConcurrentNavigableMapNullSafeTest {
 
 
     @Test
+    void testKeySetDescendingIterator() {
+        map.put("apple", 1);
+        map.put("banana", 2);
+        map.put("cherry", 3);
+        map.put(null, 0);
+
+        Iterator<String> it = map.keySet().descendingIterator();
+
+        assertEquals(null, it.next());
+        it.remove();
+        assertFalse(map.containsKey(null));
+
+        assertEquals("cherry", it.next());
+        it.remove();
+        assertFalse(map.containsKey("cherry"));
+
+        assertEquals("banana", it.next());
+        it.remove();
+        assertFalse(map.containsKey("banana"));
+
+        assertEquals("apple", it.next());
+        it.remove();
+        assertFalse(it.hasNext());
+        assertTrue(map.isEmpty());
+    }
+
+
+    @Test
     void testSubMap() {
         map.put("apple", 1);
         map.put("banana", 2);

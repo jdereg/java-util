@@ -1350,7 +1350,7 @@ public final class Converter {
             }
         } else if (sourceType.isArray()) {
             if (Collection.class.isAssignableFrom(toType)) {
-                return (T) CollectionConversions.arrayToCollection(from, toType);
+                return (T) CollectionConversions.arrayToCollection(from, (Class<? extends Collection<?>>) toType);
             } else if (toType.isArray() && !sourceType.getComponentType().equals(toType.getComponentType())) {
                 // Handle array-to-array conversion when component types differ
                 return (T) ArrayConversions.arrayToArray(from, toType, this);

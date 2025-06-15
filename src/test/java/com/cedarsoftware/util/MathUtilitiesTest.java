@@ -4,6 +4,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -11,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import static com.cedarsoftware.util.MathUtilities.parseToMinimalNumericType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -333,6 +339,51 @@ class MathUtilitiesTest
         String s = "1.45e+0000000000000000000000307";
         Number d = parseToMinimalNumericType(s);
         assert d instanceof Double;
+    }
+
+    @Test
+    void testNextPermutationSequence()
+    {
+        List<Integer> list = new ArrayList<>(Arrays.asList(1, 2, 3));
+        List<List<Integer>> perms = new ArrayList<>();
+
+        do
+        {
+            perms.add(new ArrayList<>(list));
+        }
+        while (MathUtilities.nextPermutation(list));
+
+        List<List<Integer>> expected = Arrays.asList(
+                Arrays.asList(1, 2, 3),
+                Arrays.asList(1, 3, 2),
+                Arrays.asList(2, 1, 3),
+                Arrays.asList(2, 3, 1),
+                Arrays.asList(3, 1, 2),
+                Arrays.asList(3, 2, 1)
+        );
+
+        assertEquals(expected, perms);
+        assertEquals(Arrays.asList(3, 2, 1), list);
+        assertFalse(MathUtilities.nextPermutation(list));
+    }
+
+    @Test
+    void testNextPermutationSingleElement()
+    {
+        List<Integer> list = new ArrayList<>(Collections.singletonList(42));
+        assertFalse(MathUtilities.nextPermutation(list));
+        assertEquals(Collections.singletonList(42), list);
+    }
+
+    @Test
+    void testNextPermutationNullList()
+    {
+        try
+        {
+            MathUtilities.nextPermutation(null);
+            fail("Should not make it here");
+        }
+        catch (IllegalArgumentException ignored) { }
     }
 
     // The very edges are hard to hit, without expensive additional processing to detect there difference in

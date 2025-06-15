@@ -125,28 +125,8 @@ public class CompactSet<E> implements Set<E> {
     }
 
     public boolean isDefaultCompactSet() {
-        // 1. Check that compactSize() matches the library default (50)
-        if (map.compactSize() != CompactMap.DEFAULT_COMPACT_SIZE) {
-            return false;
-        }
-
-        // 2. Check that the set is case-sensitive, meaning isCaseInsensitive() should be false.
-        if (map.isCaseInsensitive()) {
-            return false;
-        }
-
-        // 3. Check that the ordering is "unordered"
-        if (!"unordered".equals(map.getOrdering())) {
-            return false;
-        }
-
-        // 4. Check that the single key is "id"
-        if (!CompactMap.DEFAULT_SINGLE_KEY.equals(map.getSingleValueKey())) {
-            return false;
-        }
-        
-        // 5. Check that the backing map is a HashMap.
-        return HashMap.class.equals(map.getNewMap().getClass());
+        // Delegate to the underlying map since the logic is identical
+        return map.isDefaultCompactMap();
     }
     
     /* ----------------------------------------------------------------- */
@@ -363,14 +343,6 @@ public class CompactSet<E> implements Set<E> {
      */
     protected boolean isCaseInsensitive() {
         return false;  // default to case-sensitive, for legacy
-    }
-
-    /**
-     * Allow concrete subclasses to specify the internal set to use when larger than compactSize.  Concrete
-     * subclasses are useful to simplify serialization.
-     */
-    protected Set<E> getNewSet() {
-        return null;
     }
 
     /**

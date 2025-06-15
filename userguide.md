@@ -3766,6 +3766,7 @@ A utility class for traversing object graphs in Java, with cycle detection and r
 - Support for collections, arrays, and maps
 - Lambda-based processing
 - Legacy visitor pattern support (deprecated)
+- Optional lazy field collection via overloaded `traverse` method
 
 ### Core Methods
 
@@ -3788,6 +3789,11 @@ skipClasses.add(String.class);
 Traverser.traverse(root, visit -> {
     // Process node and its fields
 }, skipClasses);
+
+// Disable eager field collection
+Traverser.traverse(root, visit -> {
+    // Fields will be loaded on first call to visit.getFields()
+}, null, false);
 ```
 
 ### Field Information Access

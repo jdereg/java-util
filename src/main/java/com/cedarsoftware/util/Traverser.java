@@ -9,7 +9,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -89,11 +89,17 @@ public class Traverser {
      */
     public static class NodeVisit {
         private final Object node;
-        private final Map<Field, Object> fields;
+        private final java.util.function.Supplier<Map<Field, Object>> fieldsSupplier;
+        private Map<Field, Object> fields;
 
         public NodeVisit(Object node, Map<Field, Object> fields) {
-            this.node = node;
+            this(node, () -> fields == null ? Collections.emptyMap() : fields);
             this.fields = Collections.unmodifiableMap(new HashMap<>(fields));
+        }
+
+        public NodeVisit(Object node, java.util.function.Supplier<Map<Field, Object>> supplier) {
+            this.node = node;
+            this.fieldsSupplier = supplier;
         }
 
         /**
@@ -104,7 +110,16 @@ public class Traverser {
         /**
          * @return Unmodifiable map of fields to their values, including metadata about each field
          */
-        public Map<Field, Object> getFields() { return fields; }
+        public Map<Field, Object> getFields() {
+            if (fields == null) {
+                Map<Field, Object> f = fieldsSupplier == null ? Collections.emptyMap() : fieldsSupplier.get();
+                if (f == null) {
+                    f = Collections.emptyMap();
+                }
+                fields = Collections.unmodifiableMap(new HashMap<>(f));
+            }
+            return fields;
+        }
 
         /**
          * @return The class of the node being visited
@@ -134,9 +149,11 @@ public class Traverser {
 
     private final Set<Object> objVisited = Collections.newSetFromMap(new IdentityHashMap<>());
     private final Consumer<NodeVisit> nodeVisitor;
+    private final boolean collectFields;
 
-    private Traverser(Consumer<NodeVisit> nodeVisitor) {
+    private Traverser(Consumer<NodeVisit> nodeVisitor, boolean collectFields) {
         this.nodeVisitor = nodeVisitor;
+        this.collectFields = collectFields;
     }
 
     /**
@@ -147,10 +164,14 @@ public class Traverser {
      * @param visitor       visitor that receives detailed node information
      */
     public static void traverse(Object root, Consumer<NodeVisit> visitor, Set<Class<?>> classesToSkip) {
+        traverse(root, visitor, classesToSkip, true);
+    }
+
+    public static void traverse(Object root, Consumer<NodeVisit> visitor, Set<Class<?>> classesToSkip, boolean collectFields) {
         if (visitor == null) {
             throw new IllegalArgumentException("visitor cannot be null");
         }
-        Traverser traverser = new Traverser(visitor);
+        Traverser traverser = new Traverser(visitor, collectFields);
         traverser.walk(root, classesToSkip);
     }
 
@@ -158,7 +179,7 @@ public class Traverser {
         if (objectProcessor == null) {
             throw new IllegalArgumentException("objectProcessor cannot be null");
         }
-        traverse(root, visit -> objectProcessor.accept(visit.getNode()), classesToSkip);
+        traverse(root, visit -> objectProcessor.accept(visit.getNode()), classesToSkip, true);
     }
 
     /**
@@ -169,7 +190,7 @@ public class Traverser {
         if (visitor == null) {
             throw new IllegalArgumentException("visitor cannot be null");
         }
-        traverse(root, visit -> visitor.process(visit.getNode()), null);
+        traverse(root, visit -> visitor.process(visit.getNode()), null, true);
     }
 
     /**
@@ -181,7 +202,7 @@ public class Traverser {
             throw new IllegalArgumentException("visitor cannot be null");
         }
         Set<Class<?>> classesToSkip = (skip == null) ? null : new HashSet<>(Arrays.asList(skip));
-        traverse(root, visit -> visitor.process(visit.getNode()), classesToSkip);
+        traverse(root, visit -> visitor.process(visit.getNode()), classesToSkip, true);
     }
 
     private void walk(Object root, Set<Class<?>> classesToSkip) {
@@ -189,7 +210,7 @@ public class Traverser {
             return;
         }
 
-        Deque<Object> stack = new LinkedList<>();
+        Deque<Object> stack = new ArrayDeque<>();
         stack.add(root);
 
         while (!stack.isEmpty()) {
@@ -206,15 +227,17 @@ public class Traverser {
 
             objVisited.add(current);
 
-            Map<Field, Object> fields = collectFields(current);
-            nodeVisitor.accept(new NodeVisit(current, fields));
+            java.util.function.Supplier<Map<Field, Object>> supplier = collectFields
+                    ? () -> collectFields(current)
+                    : Collections::emptyMap;
+            nodeVisitor.accept(new NodeVisit(current, supplier));
 
             if (clazz.isArray()) {
                 processArray(stack, current, classesToSkip);
             } else if (current instanceof Collection) {
-                processCollection(stack, (Collection<?>) current);
+                processCollection(stack, (Collection<?>) current, classesToSkip);
             } else if (current instanceof Map) {
-                processMap(stack, (Map<?, ?>) current);
+                processMap(stack, (Map<?, ?>) current, classesToSkip);
             } else {
                 processFields(stack, current, classesToSkip);
             }
@@ -229,6 +252,7 @@ public class Traverser {
             try {
                 fields.put(field, field.get(obj));
             } catch (IllegalAccessException e) {
+                System.err.println("Unable to access field '" + field.getName() + "' on " + obj.getClass().getName());
                 fields.put(field, "<inaccessible>");
             }
         }
@@ -240,7 +264,7 @@ public class Traverser {
             return false;
         }
         for (Class<?> skipClass : classesToSkip) {
-            if (skipClass.isAssignableFrom(clazz)) {
+            if (skipClass != null && skipClass.isAssignableFrom(clazz)) {
                 return true;
             }
         }
@@ -261,23 +285,23 @@ public class Traverser {
         }
     }
 
-    private void processCollection(Deque<Object> stack, Collection<?> collection) {
+    private void processCollection(Deque<Object> stack, Collection<?> collection, Set<Class<?>> classesToSkip) {
         for (Object element : collection) {
-            if (element != null) {
+            if (element != null && !shouldSkipClass(element.getClass(), classesToSkip)) {
                 stack.addFirst(element);
             }
         }
     }
 
-    private void processMap(Deque<Object> stack, Map<?, ?> map) {
+    private void processMap(Deque<Object> stack, Map<?, ?> map, Set<Class<?>> classesToSkip) {
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
 
-            if (key != null) {
+            if (key != null && !shouldSkipClass(key.getClass(), classesToSkip)) {
                 stack.addFirst(key);
             }
-            if (value != null) {
+            if (value != null && !shouldSkipClass(value.getClass(), classesToSkip)) {
                 stack.addFirst(value);
             }
         }

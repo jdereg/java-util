@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -42,7 +43,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class TTLCache<K, V> implements Map<K, V> {
+public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
 
     private final long ttlMillis;
     private final int maxSize;
@@ -50,6 +51,9 @@ public class TTLCache<K, V> implements Map<K, V> {
     private final ReentrantLock lock = new ReentrantLock();
     private final Node<K, V> head;
     private final Node<K, V> tail;
+
+    // Task responsible for purging expired entries
+    private PurgeTask purgeTask;
 
     // Static ScheduledExecutorService with a single thread
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -114,8 +118,10 @@ public class TTLCache<K, V> implements Map<K, V> {
      */
     private void schedulePurgeTask(long cleanupIntervalMillis) {
         WeakReference<TTLCache<?, ?>> cacheRef = new WeakReference<>(this);
-        PurgeTask purgeTask = new PurgeTask(cacheRef);
-        scheduler.scheduleAtFixedRate(purgeTask, cleanupIntervalMillis, cleanupIntervalMillis, TimeUnit.MILLISECONDS);
+        PurgeTask task = new PurgeTask(cacheRef);
+        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(task, cleanupIntervalMillis, cleanupIntervalMillis, TimeUnit.MILLISECONDS);
+        task.setFuture(future);
+        purgeTask = task;
     }
 
     /**
@@ -124,9 +130,18 @@ public class TTLCache<K, V> implements Map<K, V> {
     private static class PurgeTask implements Runnable {
         private final WeakReference<TTLCache<?, ?>> cacheRef;
         private volatile boolean canceled = false;
+        private ScheduledFuture<?> future;
 
         PurgeTask(WeakReference<TTLCache<?, ?>> cacheRef) {
             this.cacheRef = cacheRef;
+        }
+
+        void setFuture(ScheduledFuture<?> future) {
+            this.future = future;
+        }
+
+        ScheduledFuture<?> getFuture() {
+            return future;
         }
 
         @Override
@@ -143,8 +158,9 @@ public class TTLCache<K, V> implements Map<K, V> {
         private void cancel() {
             if (!canceled) {
                 canceled = true;
-                // Remove this task from the scheduler
-                // Since we cannot remove the task directly, we rely on the scheduler to not keep strong references to canceled tasks
+                if (future != null) {
+                    future.cancel(false);
+                }
             }
         }
     }
@@ -268,6 +284,11 @@ public class TTLCache<K, V> implements Map<K, V> {
         boolean acquired = lock.tryLock();
         try {
             if (acquired) {
+                if (oldEntry != null) {
+                    // Remove the old node from the LRU chain
+                    unlink(oldEntry.node);
+                }
+
                 insertAtTail(node);
 
                 if (maxSize > -1 && cacheMap.size() > maxSize) {
@@ -574,6 +595,20 @@ public class TTLCache<K, V> implements Map<K, V> {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * Cancel the purge task associated with this cache instance.
+     */
+    public void close() {
+        if (purgeTask != null) {
+            purgeTask.cancel();
+            purgeTask = null;
+        }
+    }
+
+    ScheduledFuture<?> getPurgeFuture() {
+        return purgeTask == null ? null : purgeTask.getFuture();
     }
 
     /**

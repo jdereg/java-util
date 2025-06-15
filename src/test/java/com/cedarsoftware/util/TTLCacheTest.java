@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledFuture;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -297,6 +298,60 @@ public class TTLCacheTest {
         cache.put(2, "Z");
         assertNotEquals(initial, cache.hashCode());
     }
+     
+    @Test
+    void testUpdateDoesNotCreateExtraNodes() throws Exception {
+        TTLCache<Integer, String> cache = new TTLCache<>(10000, 2);
+        cache.put(1, "A");
+        int nodeCount = getNodeCount(cache);
+
+        cache.put(1, "B");
+        assertEquals(nodeCount, getNodeCount(cache), "Updating key should not add LRU nodes");
+
+        cache.put(2, "C");
+        cache.put(3, "D");
+
+        assertEquals(2, cache.size());
+        assertFalse(cache.containsKey(1));
+    }
+
+    @Test
+    void testHashCodeAfterUpdate() {
+        TTLCache<Integer, String> cache1 = new TTLCache<>(10000, 3);
+        TTLCache<Integer, String> cache2 = new TTLCache<>(10000, 3);
+
+        cache1.put(1, "A");
+        cache2.put(1, "A");
+
+        cache1.put(1, "B");
+        cache2.put(1, "B");
+
+        cache1.put(2, "C");
+        cache2.put(2, "C");
+
+        assertEquals(cache1.hashCode(), cache2.hashCode());
+    }
+
+    // Helper method to count the number of nodes in the LRU list
+    private static int getNodeCount(TTLCache<?, ?> cache) throws Exception {
+        java.lang.reflect.Field headField = TTLCache.class.getDeclaredField("head");
+        headField.setAccessible(true);
+        Object head = headField.get(cache);
+
+        java.lang.reflect.Field tailField = TTLCache.class.getDeclaredField("tail");
+        tailField.setAccessible(true);
+        Object tail = tailField.get(cache);
+
+        java.lang.reflect.Field nextField = head.getClass().getDeclaredField("next");
+
+        int count = 0;
+        Object node = nextField.get(head);
+        while (node != tail) {
+            count++;
+            node = nextField.get(node);
+        }
+        return count;
+    }
 
     @Test
     void testToString() {
@@ -359,6 +414,20 @@ public class TTLCacheTest {
 
         assertNull(ttlCache.get(1));
         assertNull(ttlCache.get(2));
+    }
+
+    @Test
+    void testPutTwiceSameKey() {
+        ttlCache = new TTLCache<>(10000, -1);
+        ttlCache.put(1, "A");
+        ttlCache.put(1, "B");
+
+        assertEquals(1, ttlCache.size());
+        assertEquals("B", ttlCache.get(1));
+
+        TTLCache<Integer, String> expected = new TTLCache<>(10000, -1);
+        expected.put(1, "B");
+        assertEquals(expected.hashCode(), ttlCache.hashCode());
     }
 
     @Test
@@ -527,5 +596,14 @@ public class TTLCacheTest {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    void testCloseCancelsFuture() {
+        TTLCache<Integer, String> cache = new TTLCache<>(1000, -1, 100);
+        ScheduledFuture<?> future = cache.getPurgeFuture();
+        assertFalse(future.isCancelled());
+        cache.close();
+        assertTrue(future.isCancelled());
     }
 }

@@ -1461,6 +1461,7 @@ A utility class providing static methods for array operations, offering null-saf
 // Check for empty arrays
 boolean empty = ArrayUtilities.isEmpty(array);
 int size = ArrayUtilities.size(array);
+boolean hasValues = ArrayUtilities.isNotEmpty(array);
 
 // Use common empty arrays
 Object[] emptyObj = ArrayUtilities.EMPTY_OBJECT_ARRAY;
@@ -1483,6 +1484,15 @@ String[] combined = ArrayUtilities.addAll(array1, array2);
 Integer[] array = {1, 2, 3, 4};
 Integer[] modified = ArrayUtilities.removeItem(array, 1);
 // Result: [1, 3, 4]
+
+// Append and search
+String[] more = ArrayUtilities.addItem(String.class, strings, "d");
+int first = ArrayUtilities.indexOf(more, "b");
+int last = ArrayUtilities.lastIndexOf(more, "d");
+boolean contains = ArrayUtilities.contains(more, "c");
+
+// Null-safe handling
+String[] safe = ArrayUtilities.nullToEmpty(String.class, null);
 ```
 
 **Array Subsetting:**

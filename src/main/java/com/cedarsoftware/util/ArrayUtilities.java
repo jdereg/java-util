@@ -3,7 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.Objects;
 
 /**
  * A utility class that provides various static methods for working with Java arrays.
@@ -111,6 +111,16 @@ public final class ArrayUtilities {
     }
 
     /**
+     * Null-safe check whether the given array contains at least one element.
+     *
+     * @param array array to check
+     * @return {@code true} if array is non-null and has a positive length
+     */
+    public static boolean isNotEmpty(final Object array) {
+        return !isEmpty(array);
+    }
+
+    /**
      * Returns the size (length) of the specified array in a null-safe manner.
      * <p>
      * If the provided array is {@code null}, this method returns {@code 0}.
@@ -152,6 +162,20 @@ public final class ArrayUtilities {
     }
 
     /**
+     * Return the supplied array, or an empty array if {@code null}.
+     *
+     * @param componentType the component type for the empty array when {@code array} is {@code null}
+     * @param array         array which may be {@code null}
+     * @param <T>           array component type
+     * @return the original array, or a new empty array of the specified type if {@code array} is {@code null}
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T[] nullToEmpty(Class<T> componentType, T[] array) {
+        Objects.requireNonNull(componentType, "componentType is null");
+        return array == null ? (T[]) Array.newInstance(componentType, 0) : array;
+    }
+
+    /**
      * Creates and returns an array containing the provided elements.
      *
      * <p>This method accepts a variable number of arguments and returns them as an array of type {@code T[]}.
@@ -183,7 +207,10 @@ public final class ArrayUtilities {
      */
     @SafeVarargs
     public static <T> T[] createArray(T... elements) {
-        return elements;
+        if (elements == null) {
+            return null;
+        }
+        return Arrays.copyOf(elements, elements.length);
     }
 
     /**
@@ -244,12 +271,90 @@ public final class ArrayUtilities {
      */
     @SuppressWarnings("unchecked")
     public static <T> T[] removeItem(T[] array, int pos) {
-        final int len = Array.getLength(array);
-        T[] dest = (T[]) Array.newInstance(array.getClass().getComponentType(), len - 1);
+        Objects.requireNonNull(array, "array cannot be null");
+        final int len = array.length;
+        if (pos < 0 || pos >= len) {
+            throw new ArrayIndexOutOfBoundsException("Index: " + pos + ", Length: " + len);
+        }
 
+        T[] dest = (T[]) Array.newInstance(array.getClass().getComponentType(), len - 1);
         System.arraycopy(array, 0, dest, 0, pos);
         System.arraycopy(array, pos + 1, dest, pos, len - pos - 1);
         return dest;
+    }
+
+    /**
+     * Append a single element to an array, returning a new array containing the element.
+     *
+     * @param componentType component type for the array when {@code array} is {@code null}
+     * @param array         existing array, may be {@code null}
+     * @param item          element to append
+     * @param <T>           array component type
+     * @return new array with {@code item} appended
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T[] addItem(Class<T> componentType, T[] array, T item) {
+        Objects.requireNonNull(componentType, "componentType is null");
+        if (array == null) {
+            T[] result = (T[]) Array.newInstance(componentType, 1);
+            result[0] = item;
+            return result;
+        }
+        T[] newArray = Arrays.copyOf(array, array.length + 1);
+        newArray[array.length] = item;
+        return newArray;
+    }
+
+    /**
+     * Locate the first index of {@code item} within {@code array}.
+     *
+     * @param array array to search
+     * @param item  item to locate
+     * @param <T>   array component type
+     * @return index of the item or {@code -1} if not found or array is {@code null}
+     */
+    public static <T> int indexOf(T[] array, T item) {
+        if (array == null) {
+            return -1;
+        }
+        for (int i = 0; i < array.length; i++) {
+            if (Objects.equals(array[i], item)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Locate the last index of {@code item} within {@code array}.
+     *
+     * @param array array to search
+     * @param item  item to locate
+     * @param <T>   array component type
+     * @return index of the item or {@code -1} if not found or array is {@code null}
+     */
+    public static <T> int lastIndexOf(T[] array, T item) {
+        if (array == null) {
+            return -1;
+        }
+        for (int i = array.length - 1; i >= 0; i--) {
+            if (Objects.equals(array[i], item)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Determine whether the provided array contains the specified item.
+     *
+     * @param array the array to search, may be {@code null}
+     * @param item  the item to find
+     * @param <T>   the array component type
+     * @return {@code true} if the item exists in the array; {@code false} otherwise
+     */
+    public static <T> boolean contains(T[] array, T item) {
+        return indexOf(array, item) >= 0;
     }
 
     /**
@@ -290,12 +395,10 @@ public final class ArrayUtilities {
      */
     @SuppressWarnings("unchecked")
     public static <T> T[] toArray(Class<T> classToCastTo, Collection<?> c) {
-        T[] array = c.toArray((T[]) Array.newInstance(classToCastTo, c.size()));
-        Iterator<?> i = c.iterator();
-        int idx = 0;
-        while (i.hasNext()) {
-            Array.set(array, idx++, i.next());
-        }
-        return array;
+        Objects.requireNonNull(classToCastTo, "classToCastTo is null");
+        Objects.requireNonNull(c, "collection is null");
+
+        T[] array = (T[]) Array.newInstance(classToCastTo, c.size());
+        return c.toArray(array);
     }
 }

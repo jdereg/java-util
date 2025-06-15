@@ -410,9 +410,9 @@ public class TrackingMapTest
 
         assertSame(before, tracking.getWrappedMap());
         assertEquals(2, tracking.size());
-        assertTrue(tracking.containsKey("c"));
-        assertTrue(tracking.containsKey("d"));
-        assertFalse(tracking.containsKey("a"));
+        assertTrue(tracking.getWrappedMap().containsKey("c"));
+        assertTrue(tracking.getWrappedMap().containsKey("d"));
+        assertFalse(tracking.getWrappedMap().containsKey("a"));
         assertTrue(tracking.keysUsed().isEmpty());
     }
 
@@ -444,7 +444,7 @@ public class TrackingMapTest
 
         assertSame(before, tracking.getWrappedMap());
         assertEquals(1, tracking.size());
-        assertTrue(tracking.containsKey("y"));
+        assertTrue(tracking.getWrappedMap().containsKey("y"));
         assertTrue(tracking.keysUsed().isEmpty());
     }
 

@@ -33,6 +33,7 @@
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
   `TestUtil.fetchResource`, `MapUtilities.cloneMapOfSets`, and core cache methods.
 > * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
+> * Fixed tests for `TrackingMap.replaceContents` and `setWrappedMap` to avoid tracking keys during verification
 > * `Traverser` supports lazy field collection, improved null-safe class skipping, and better error logging
 > * `Traverser` now ignores synthetic fields, preventing traversal into outer class references
 > * `Traverser` logs inaccessible fields at `Level.FINEST` instead of printing to STDERR

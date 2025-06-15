@@ -2,7 +2,6 @@
 #### 3.3.3 Unreleased
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
-> * Java logging now uses a Logback-style format for consistency
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs

@@ -156,10 +156,12 @@ public class TraverserTest
         class Foo { int n = 7; }
         Foo foo = new Foo();
 
+        Field nField = foo.getClass().getDeclaredField("n");
+
         Traverser.traverse(foo, visit -> {
             Map<Field, Object> fields = visit.getFields();
             assertEquals(1, fields.size());
-            assertTrue(fields.containsKey(foo.getClass().getDeclaredField("n")));
+            assertTrue(fields.containsKey(nField));
         }, null, false);
     }
 }

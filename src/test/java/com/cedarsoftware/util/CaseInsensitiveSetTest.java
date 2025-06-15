@@ -537,6 +537,36 @@ public class CaseInsensitiveSetTest
         assert !set.equals(other);
     }
 
+    /**
+     * Verifies the deprecated {@code plus(Object)} and {@code minus(E)} methods.
+     * This test should be removed when these methods are deleted.
+     */
+    @Test
+    public void testDeprecatedPlusMinusSingle()
+    {
+        CaseInsensitiveSet<String> set = new CaseInsensitiveSet<>();
+        set.add("alpha");
+        set.plus("beta");
+        assertTrue(set.contains("BETA"));
+        set.minus("alpha");
+        assertFalse(set.contains("ALPHA"));
+    }
+
+    /**
+     * Verifies the deprecated {@code plus(Iterable)} and {@code minus(Iterable)} methods.
+     * This test should be removed when the deprecated APIs are removed.
+     */
+    @Test
+    public void testDeprecatedPlusMinusIterable()
+    {
+        CaseInsensitiveSet<String> set = new CaseInsensitiveSet<>();
+        set.add("foo");
+        set.plus(Arrays.asList("bar", "baz"));
+        assertTrue(set.contains("BAR") && set.contains("BAZ"));
+        set.minus(Collections.singletonList("foo"));
+        assertFalse(set.contains("FOO"));
+    }
+
     private static Set<Object> get123()
     {
         Set<Object> set = new CaseInsensitiveSet<>();

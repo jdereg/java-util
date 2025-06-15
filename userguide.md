@@ -2700,6 +2700,12 @@ String errors = exec.getError();
 // Execute with command array (better argument handling)
 String[] cmd = {"git", "status", "--porcelain"};
 exitCode = exec.exec(cmd);
+
+// New API returning execution details
+ExecutionResult result = exec.execute("ls -l");
+int code = result.getExitCode();
+String stdout = result.getOut();
+String stderr = result.getError();
 ```
 
 **Environment Variables:**
@@ -2753,6 +2759,8 @@ if (stdout != null && stderr.isEmpty()) {
 - Non-blocking output handling
 - Automatic stream cleanup
 - Thread-safe output capture
+- 60-second default timeout for process completion
+- Executor instances are not thread-safe; create a new instance per use
 
 ### Best Practices
 

@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * This class is used in conjunction with the Executor class.  Example
@@ -28,11 +30,18 @@ import java.io.InputStreamReader;
 public class StreamGobbler implements Runnable
 {
     private final InputStream _inputStream;
+    private final Charset _charset;
     private String _result;
 
     StreamGobbler(InputStream is)
     {
+        this(is, StandardCharsets.UTF_8);
+    }
+
+    StreamGobbler(InputStream is, Charset charset)
+    {
         _inputStream = is;
+        _charset = charset;
     }
 
     /**
@@ -55,7 +64,7 @@ public class StreamGobbler implements Runnable
         BufferedReader br = null;
         try
         {
-            isr = new InputStreamReader(_inputStream);
+            isr = new InputStreamReader(_inputStream, _charset);
             br = new BufferedReader(isr);
             StringBuilder output = new StringBuilder();
             String line;
@@ -77,3 +86,4 @@ public class StreamGobbler implements Runnable
         }
     }
 }
+

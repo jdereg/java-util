@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A utility class for executing system commands and capturing their output.
@@ -42,10 +44,75 @@ import java.io.File;
  *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
+ *
+ * <p><strong>Thread Safety:</strong> Instances of this class are <em>not</em> thread
+ * safe. Create a new {@code Executor} per command execution or synchronize
+ * externally if sharing across threads.</p>
  */
 public class Executor {
     private String _error;
     private String _out;
+    private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
+
+    public ExecutionResult execute(String command) {
+        return execute(command, null, null);
+    }
+
+    public ExecutionResult execute(String[] cmdarray) {
+        return execute(cmdarray, null, null);
+    }
+
+    public ExecutionResult execute(String command, String[] envp) {
+        return execute(command, envp, null);
+    }
+
+    public ExecutionResult execute(String[] cmdarray, String[] envp) {
+        return execute(cmdarray, envp, null);
+    }
+
+    public ExecutionResult execute(String command, String[] envp, File dir) {
+        try {
+            Process proc = startProcess(command, envp, dir);
+            return runIt(proc);
+        } catch (IOException | InterruptedException e) {
+            System.err.println("Error occurred executing command: " + command);
+            e.printStackTrace(System.err);
+            return new ExecutionResult(-1, "", e.getMessage());
+        }
+    }
+
+    public ExecutionResult execute(String[] cmdarray, String[] envp, File dir) {
+        try {
+            Process proc = startProcess(cmdarray, envp, dir);
+            return runIt(proc);
+        } catch (IOException | InterruptedException e) {
+            System.err.println("Error occurred executing command: " + cmdArrayToString(cmdarray));
+            e.printStackTrace(System.err);
+            return new ExecutionResult(-1, "", e.getMessage());
+        }
+    }
+
+    private Process startProcess(String command, String[] envp, File dir) throws IOException {
+        boolean windows = System.getProperty("os.name").toLowerCase().contains("windows");
+        String[] shellCmd = windows ? new String[]{"cmd.exe", "/c", command} : new String[]{"sh", "-c", command};
+        return startProcess(shellCmd, envp, dir);
+    }
+
+    private Process startProcess(String[] cmdarray, String[] envp, File dir) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder(cmdarray);
+        if (envp != null) {
+            for (String env : envp) {
+                int idx = env.indexOf('=');
+                if (idx > 0) {
+                    pb.environment().put(env.substring(0, idx), env.substring(idx + 1));
+                }
+            }
+        }
+        if (dir != null) {
+            pb.directory(dir);
+        }
+        return pb.start();
+    }
 
     /**
      * Executes a command using the system's runtime environment.
@@ -55,14 +122,8 @@ public class Executor {
      *         or -1 if an error occurred starting the process
      */
     public int exec(String command) {
-        try {
-            Process proc = Runtime.getRuntime().exec(command);
-            return runIt(proc);
-        } catch (Exception e) {
-            System.err.println("Error occurred executing command: " + command);
-            e.printStackTrace(System.err);
-            return -1;
-        }
+        ExecutionResult result = execute(command);
+        return result.getExitCode();
     }
 
     /**
@@ -76,14 +137,8 @@ public class Executor {
      *         or -1 if an error occurred starting the process
      */
     public int exec(String[] cmdarray) {
-        try {
-            Process proc = Runtime.getRuntime().exec(cmdarray);
-            return runIt(proc);
-        } catch (Exception e) {
-            System.err.println("Error occurred executing command: " + cmdArrayToString(cmdarray));
-            e.printStackTrace(System.err);
-            return -1;
-        }
+        ExecutionResult result = execute(cmdarray);
+        return result.getExitCode();
     }
 
     /**
@@ -96,14 +151,8 @@ public class Executor {
      *         or -1 if an error occurred starting the process
      */
     public int exec(String command, String[] envp) {
-        try {
-            Process proc = Runtime.getRuntime().exec(command, envp);
-            return runIt(proc);
-        } catch (Exception e) {
-            System.err.println("Error occurred executing command: " + command);
-            e.printStackTrace(System.err);
-            return -1;
-        }
+        ExecutionResult result = execute(command, envp);
+        return result.getExitCode();
     }
 
     /**
@@ -116,14 +165,8 @@ public class Executor {
      *         or -1 if an error occurred starting the process
      */
     public int exec(String[] cmdarray, String[] envp) {
-        try {
-            Process proc = Runtime.getRuntime().exec(cmdarray, envp);
-            return runIt(proc);
-        } catch (Exception e) {
-            System.err.println("Error occurred executing command: " + cmdArrayToString(cmdarray));
-            e.printStackTrace(System.err);
-            return -1;
-        }
+        ExecutionResult result = execute(cmdarray, envp);
+        return result.getExitCode();
     }
 
     /**
@@ -138,14 +181,8 @@ public class Executor {
      *         or -1 if an error occurred starting the process
      */
     public int exec(String command, String[] envp, File dir) {
-        try {
-            Process proc = Runtime.getRuntime().exec(command, envp, dir);
-            return runIt(proc);
-        } catch (Exception e) {
-            System.err.println("Error occurred executing command: " + command);
-            e.printStackTrace(System.err);
-            return -1;
-        }
+        ExecutionResult result = execute(command, envp, dir);
+        return result.getExitCode();
     }
 
     /**
@@ -160,29 +197,33 @@ public class Executor {
      *         or -1 if an error occurred starting the process
      */
     public int exec(String[] cmdarray, String[] envp, File dir) {
-        try {
-            Process proc = Runtime.getRuntime().exec(cmdarray, envp, dir);
-            return runIt(proc);
-        } catch (Exception e) {
-            System.err.println("Error occurred executing command: " + cmdArrayToString(cmdarray));
-            e.printStackTrace(System.err);
-            return -1;
-        }
+        ExecutionResult result = execute(cmdarray, envp, dir);
+        return result.getExitCode();
     }
 
-    private int runIt(Process proc) throws InterruptedException {
+    private ExecutionResult runIt(Process proc) throws InterruptedException {
         StreamGobbler errors = new StreamGobbler(proc.getErrorStream());
         Thread errorGobbler = new Thread(errors);
         StreamGobbler out = new StreamGobbler(proc.getInputStream());
         Thread outputGobbler = new Thread(out);
         errorGobbler.start();
         outputGobbler.start();
-        int exitVal = proc.waitFor();
+
+        boolean finished = proc.waitFor(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        if (!finished) {
+            proc.destroyForcibly();
+        }
+
         errorGobbler.join();
         outputGobbler.join();
-        _error = errors.getResult();
-        _out = out.getResult();
-        return exitVal;
+
+        String err = errors.getResult();
+        String outStr = out.getResult();
+
+        int exitVal = finished ? proc.exitValue() : -1;
+        _error = err;
+        _out = outStr;
+        return new ExecutionResult(exitVal, outStr, err);
     }
 
     /**
@@ -204,12 +245,6 @@ public class Executor {
     }
 
     private String cmdArrayToString(String[] cmdArray) {
-        StringBuilder s = new StringBuilder();
-        for (String cmd : cmdArray) {
-            s.append(cmd);
-            s.append(' ');
-        }
-
-        return s.toString();
+        return String.join(" ", cmdArray);
     }
 }

@@ -64,7 +64,7 @@ public class ConcurrentSet<T> implements Set<T> {
      * @param item The element to wrap.
      * @return The wrapped element.
      */
-    private Object wrap(T item) {
+    private Object wrap(Object item) {
         return item == null ? NullSentinel.NULL_ITEM : item;
     }
 
@@ -130,7 +130,7 @@ public class ConcurrentSet<T> implements Set<T> {
 
     @Override
     public boolean contains(Object o) {
-        return set.contains(wrap((T) o));
+        return set.contains(wrap(o));
     }
 
     @Override
@@ -200,7 +200,7 @@ public class ConcurrentSet<T> implements Set<T> {
 
     @Override
     public boolean remove(Object o) {
-        return set.remove(wrap((T) o));
+        return set.remove(wrap(o));
     }
 
     @Override
@@ -229,7 +229,7 @@ public class ConcurrentSet<T> implements Set<T> {
     public boolean retainAll(Collection<?> col) {
         Set<Object> wrappedCol = ConcurrentHashMap.newKeySet();
         for (Object o : col) {
-            wrappedCol.add(wrap((T) o));
+            wrappedCol.add(wrap(o));
         }
         return set.retainAll(wrappedCol);
     }

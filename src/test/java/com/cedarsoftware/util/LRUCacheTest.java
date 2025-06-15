@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class LRUCacheTest {
@@ -34,6 +35,20 @@ public class LRUCacheTest {
 
     void setUp(LRUCache.StrategyType strategyType) {
         lruCache = new LRUCache<>(3, strategyType);
+    }
+
+    @ParameterizedTest
+    @MethodSource("strategies")
+    void testInvalidCapacityThrows(LRUCache.StrategyType strategy) {
+        assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(0, strategy));
+        assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-5, strategy));
+        if (strategy == LRUCache.StrategyType.THREADED) {
+            assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(0, 10));
+            assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-1, 10));
+        } else {
+            assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(0));
+            assertThrows(IllegalArgumentException.class, () -> new LRUCache<>(-1));
+        }
     }
     
     @ParameterizedTest

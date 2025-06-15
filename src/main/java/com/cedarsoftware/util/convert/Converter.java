@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
@@ -163,7 +164,7 @@ public final class Converter {
     private static final Convert<?> UNSUPPORTED = Converter::unsupported;
     static final String VALUE = "_v";
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
-    private static final Map<ConversionPair, Convert<?>> CONVERSION_DB = new HashMap<>(860, 0.8f);
+    private static Map<ConversionPair, Convert<?>> CONVERSION_DB = new HashMap<>(860, 0.8f);
     private static final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private static final ClassValueMap<ClassValueMap<Convert<?>>> FULL_CONVERSION_CACHE = new ClassValueMap<>();
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
@@ -211,6 +212,7 @@ public final class Converter {
     static {
         CUSTOM_ARRAY_NAMES.put(java.sql.Date[].class, "java.sql.Date[]");
         buildFactoryConversions();
+        CONVERSION_DB = Collections.unmodifiableMap(CONVERSION_DB);
     }
 
     /**
@@ -1380,32 +1382,6 @@ public final class Converter {
      * @param toType The target type to convert to
      * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
-//    private static final ClassValueMap<ClassValueMap<Convert<?>>> INHERITED_CONVERTER_CACHE = new ClassValueMap<>();
-//
-//    /**
-//     * Retrieves the most suitable converter for converting from the specified source type to the desired target type.
-//     * Results are cached in a two-level ClassValueMap for improved performance.
-//     *
-//     * @param sourceType The source type to convert from
-//     * @param toType The target type to convert to
-//     * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
-//     */
-//    private static Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
-//        // Get or create the target map for this source type
-//        ClassValueMap<Convert<?>> targetMap = INHERITED_CONVERTER_CACHE.computeIfAbsent(
-//                sourceType, k -> new ClassValueMap<>());
-//
-//        // Check if we already have a cached converter for this target type
-//        Convert<?> cachedConverter = targetMap.get(toType);
-//        if (cachedConverter != null) {
-//            return cachedConverter;
-//        }
-//
-//        // Cache miss - compute and store the converter
-//        Convert<?> converter = getInheritedConverterInternal(sourceType, toType);
-//        targetMap.put(toType, converter);
-//        return converter;
-//    }
 
     private static Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
         // Build the complete set of source types (including sourceType itself) with levels.

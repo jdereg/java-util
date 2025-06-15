@@ -3427,7 +3427,6 @@ public static String getRandomChar(Random random, boolean upper)
 
 // Encoding    
 public static byte[] getBytes(String s, String encoding)
-public static String createUtf8String(byte[] bytes)
 public static byte[] getUTF8Bytes(String s)
 public static String createString(byte[] bytes, String encoding)
 public static String createUTF8String(byte[] bytes)

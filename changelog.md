@@ -28,7 +28,6 @@
 > * Constants `FOLDER_SEPARATOR` and `EMPTY` are now immutable (`final`).
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
-> * Added Javadoc for several public APIs including `Convention.throwIfClassNotFound`,
   `TestUtil.fetchResource`, `MapUtilities.cloneMapOfSets`, and core cache methods.
 > * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
 > * `Traverser` supports lazy field collection, improved null-safe class skipping, and better error logging
@@ -37,7 +36,9 @@
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 > * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
 > * Explicitly set versions for `maven-resources-plugin`, `maven-install-plugin`, and `maven-deploy-plugin` to avoid Maven 4 compatibility warnings
-> * Added tests for cached wrapper classes returned by `CollectionsWrappers`
+> * Added Javadoc for several public APIs where it was missing.  Should be 100% now.
+> * JUnits added for all public APIs that did not have them (no longer relying on json-io to "cover" them). Should be 100% now.
+
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

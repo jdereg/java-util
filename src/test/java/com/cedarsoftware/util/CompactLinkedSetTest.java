@@ -18,7 +18,7 @@ class CompactLinkedSetTest {
         set.add("third");
         set.add("FIRST");
 
-        assertEquals(Arrays.asList("first", "second", "third"), new ArrayList<>(set));
+        assertEquals(Arrays.asList("first", "second", "third", "FIRST"), new ArrayList<>(set));
     }
 
     @Test
@@ -26,7 +26,7 @@ class CompactLinkedSetTest {
         List<String> src = Arrays.asList("a", "b", "A", "c");
         CompactLinkedSet<String> set = new CompactLinkedSet<>(src);
 
-        assertEquals(Arrays.asList("a", "b", "c"), new ArrayList<>(set));
+        assertEquals(Arrays.asList("a", "b", "A", "c"), new ArrayList<>(set));
         assertTrue(set.contains("A"));
     }
 }

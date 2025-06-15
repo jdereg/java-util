@@ -1175,8 +1175,8 @@ ConcurrentNavigableMap<String, Integer> tailMap =
 - Hierarchical data management
 
 ### Implementation Notes
-- Based on ConcurrentSkipListMap
-- Null sentinel handling
+- Based on `ConcurrentSkipListMap`
+- Uses a lightweight object sentinel for `null` keys
 - Maintains total ordering
 - Thread-safe navigation
 - Consistent range views

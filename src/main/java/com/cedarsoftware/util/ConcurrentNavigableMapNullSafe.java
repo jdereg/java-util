@@ -3,11 +3,11 @@ package com.cedarsoftware.util;
 import java.util.*;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.UUID;
 
 /**
- * ConcurrentNavigableMapNullSafe is a thread-safe implementation of ConcurrentNavigableMap
- * that allows null keys and null values by using a unique String sentinel for null keys.
+ * ConcurrentNavigableMapNullSafe is a thread-safe implementation of {@link ConcurrentNavigableMap}
+ * that allows {@code null} keys and values. A dedicated sentinel object is used internally to
+ * represent {@code null} keys, ensuring no accidental key collisions.
  * From an ordering perspective, null keys are considered last.  This is honored with the
  * ascending and descending views, where ascending view places them last, and descending view
  * place a null key first.
@@ -35,7 +35,12 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
         implements ConcurrentNavigableMap<K, V> {
 
     private final Comparator<? super K> originalComparator;
-    private static final String NULL_KEY_SENTINEL = "null_" + UUID.randomUUID();
+    /**
+     * Sentinel object used to represent {@code null} keys internally. Using a
+     * dedicated object avoids any chance of key collision and eliminates the
+     * overhead of generating a random value.
+     */
+    private static final Object NULL_KEY_SENTINEL = new Object();
 
     /**
      * Constructs a new, empty ConcurrentNavigableMapNullSafe with natural ordering of its keys.
@@ -76,8 +81,8 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
     private static <K> Comparator<Object> wrapComparator(Comparator<? super K> comparator) {
         return (o1, o2) -> {
             // Handle the sentinel value for null keys
-            boolean o1IsNullSentinel = NULL_KEY_SENTINEL.equals(o1);
-            boolean o2IsNullSentinel = NULL_KEY_SENTINEL.equals(o2);
+            boolean o1IsNullSentinel = o1 == NULL_KEY_SENTINEL;
+            boolean o2IsNullSentinel = o2 == NULL_KEY_SENTINEL;
 
             if (o1IsNullSentinel && o2IsNullSentinel) {
                 return 0;
@@ -119,8 +124,18 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
                 return classComparison;
             }
 
-            // If class names are the same but classes are different (rare), compare identity hash codes
-            return Integer.compare(System.identityHashCode(o1.getClass()), System.identityHashCode(o2.getClass()));
+            // If class names are the same but classes are different (rare), compare class loader information
+            ClassLoader cl1 = o1.getClass().getClassLoader();
+            ClassLoader cl2 = o2.getClass().getClassLoader();
+            String loader1 = cl1 == null ? "" : cl1.getClass().getName();
+            String loader2 = cl2 == null ? "" : cl2.getClass().getName();
+            int loaderCompare = loader1.compareTo(loader2);
+            if (loaderCompare != 0) {
+                return loaderCompare;
+            }
+
+            // Final tie-breaker using identity hash of the class loaders
+            return Integer.compare(System.identityHashCode(cl1), System.identityHashCode(cl2));
         };
     }
 
@@ -135,7 +150,7 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
     @Override
     @SuppressWarnings("unchecked")
     protected K unmaskNullKey(Object maskedKey) {
-        if (NULL_KEY_SENTINEL.equals(maskedKey)) {
+        if (maskedKey == NULL_KEY_SENTINEL) {
             return null;
         }
         return (K) maskedKey;
@@ -285,16 +300,18 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
     @Override
     public NavigableSet<K> keySet() {
         Set<Object> internalKeys = internalMap.keySet();
-        return new KeyNavigableSet(internalKeys);
+        return new KeyNavigableSet<>(this, internalKeys);
     }
 
     /**
      * Inner class implementing NavigableSet<K> for the keySet().
      */
-    private class KeyNavigableSet extends AbstractSet<K> implements NavigableSet<K> {
+    private static class KeyNavigableSet<K, V> extends AbstractSet<K> implements NavigableSet<K> {
+        private final ConcurrentNavigableMapNullSafe<K, V> owner;
         private final Set<Object> internalKeys;
 
-        KeyNavigableSet(Set<Object> internalKeys) {
+        KeyNavigableSet(ConcurrentNavigableMapNullSafe<K, V> owner, Set<Object> internalKeys) {
+            this.owner = owner;
             this.internalKeys = internalKeys;
         }
 
@@ -309,7 +326,7 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
                 @Override
                 public K next() {
-                    return unmaskNullKey(it.next());
+                    return owner.unmaskNullKey(it.next());
                 }
 
                 @Override
@@ -326,74 +343,74 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
         @Override
         public boolean contains(Object o) {
-            return internalMap.containsKey(maskNullKey((K) o));
+            return owner.internalMap.containsKey(owner.maskNullKey((K) o));
         }
 
         @Override
         public boolean remove(Object o) {
-            return internalMap.remove(maskNullKey((K) o)) != null;
+            return owner.internalMap.remove(owner.maskNullKey((K) o)) != null;
         }
 
         @Override
         public void clear() {
-            internalMap.clear();
+            owner.internalMap.clear();
         }
 
         @Override
         public K lower(K k) {
-            return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).lowerKey(maskNullKey(k)));
+            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).lowerKey(owner.maskNullKey(k)));
         }
 
         @Override
         public K floor(K k) {
-            return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).floorKey(maskNullKey(k)));
+            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).floorKey(owner.maskNullKey(k)));
         }
 
         @Override
         public K ceiling(K k) {
-            return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).ceilingKey(maskNullKey(k)));
+            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).ceilingKey(owner.maskNullKey(k)));
         }
 
         @Override
         public K higher(K k) {
-            return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).higherKey(maskNullKey(k)));
+            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).higherKey(owner.maskNullKey(k)));
         }
 
         @Override
         public K pollFirst() {
-            Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).pollFirstEntry();
-            return (entry == null) ? null : unmaskNullKey(entry.getKey());
+            Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) owner.internalMap).pollFirstEntry();
+            return (entry == null) ? null : owner.unmaskNullKey(entry.getKey());
         }
 
         @Override
         public K pollLast() {
-            Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).pollLastEntry();
-            return (entry == null) ? null : unmaskNullKey(entry.getKey());
+            Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) owner.internalMap).pollLastEntry();
+            return (entry == null) ? null : owner.unmaskNullKey(entry.getKey());
         }
 
         @Override
         public Comparator<? super K> comparator() {
-            return ConcurrentNavigableMapNullSafe.this.comparator();
+            return owner.comparator();
         }
 
         @Override
         public K first() {
-            return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).firstKey());
+            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).firstKey());
         }
 
         @Override
         public K last() {
-            return unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) internalMap).lastKey());
+            return owner.unmaskNullKey(((ConcurrentSkipListMap<Object, Object>) owner.internalMap).lastKey());
         }
 
         @Override
         public NavigableSet<K> descendingSet() {
-            return ConcurrentNavigableMapNullSafe.this.descendingKeySet();
+            return owner.descendingKeySet();
         }
 
         @Override
         public Iterator<K> descendingIterator() {
-            Iterator<Object> it = ((ConcurrentSkipListMap<Object, Object>) internalMap).descendingKeySet().iterator();
+            Iterator<Object> it = ((ConcurrentSkipListMap<Object, Object>) owner.internalMap).descendingKeySet().iterator();
             return new Iterator<K>() {
                 @Override
                 public boolean hasNext() {
@@ -402,7 +419,7 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
                 @Override
                 public K next() {
-                    return unmaskNullKey(it.next());
+                    return owner.unmaskNullKey(it.next());
                 }
 
                 @Override
@@ -414,19 +431,19 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
         @Override
         public NavigableSet<K> subSet(K fromElement, boolean fromInclusive, K toElement, boolean toInclusive) {
-            ConcurrentNavigableMap<K, V> subMap = ConcurrentNavigableMapNullSafe.this.subMap(fromElement, fromInclusive, toElement, toInclusive);
+            ConcurrentNavigableMap<K, V> subMap = owner.subMap(fromElement, fromInclusive, toElement, toInclusive);
             return subMap.navigableKeySet();
         }
 
         @Override
         public NavigableSet<K> headSet(K toElement, boolean inclusive) {
-            ConcurrentNavigableMap<K, V> headMap = ConcurrentNavigableMapNullSafe.this.headMap(toElement, inclusive);
+            ConcurrentNavigableMap<K, V> headMap = owner.headMap(toElement, inclusive);
             return headMap.navigableKeySet();
         }
 
         @Override
         public NavigableSet<K> tailSet(K fromElement, boolean inclusive) {
-            ConcurrentNavigableMap<K, V> tailMap = ConcurrentNavigableMapNullSafe.this.tailMap(fromElement, inclusive);
+            ConcurrentNavigableMap<K, V> tailMap = owner.tailMap(fromElement, inclusive);
             return tailMap.navigableKeySet();
         }
 

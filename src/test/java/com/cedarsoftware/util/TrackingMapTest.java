@@ -390,4 +390,73 @@ public class TrackingMapTest
         trackMap = new TrackingMap<>(new HashMap<>());
         assert trackMap.getWrappedMap() instanceof HashMap;
     }
+
+    @Test
+    public void testReplaceContentsMaintainsInstanceAndResetsState()
+    {
+        CaseInsensitiveMap<String, String> original = new CaseInsensitiveMap<>();
+        original.put("a", "alpha");
+        original.put("b", "bravo");
+        TrackingMap<String, String> tracking = new TrackingMap<>(original);
+        tracking.get("a");
+
+        Map<String, String> replacement = new HashMap<>();
+        replacement.put("c", "charlie");
+        replacement.put("d", "delta");
+
+        Map<String, String> before = tracking.getWrappedMap();
+        tracking.replaceContents(replacement);
+
+        assertSame(before, tracking.getWrappedMap());
+        assertEquals(2, tracking.size());
+        assertTrue(tracking.containsKey("c"));
+        assertTrue(tracking.containsKey("d"));
+        assertFalse(tracking.containsKey("a"));
+        assertTrue(tracking.keysUsed().isEmpty());
+    }
+
+    @Test
+    public void testReplaceContentsWithNullThrows()
+    {
+        TrackingMap<String, String> tracking = new TrackingMap<>(new HashMap<>());
+        try
+        {
+            tracking.replaceContents(null);
+            fail();
+        }
+        catch (IllegalArgumentException ignored)
+        { }
+    }
+
+    @Test
+    public void testSetWrappedMapDelegatesToReplaceContents()
+    {
+        Map<String, String> base = new HashMap<>();
+        base.put("x", "xray");
+        TrackingMap<String, String> tracking = new TrackingMap<>(base);
+
+        Map<String, String> newContents = new HashMap<>();
+        newContents.put("y", "yankee");
+        Map<String, String> before = tracking.getWrappedMap();
+
+        tracking.setWrappedMap(newContents);
+
+        assertSame(before, tracking.getWrappedMap());
+        assertEquals(1, tracking.size());
+        assertTrue(tracking.containsKey("y"));
+        assertTrue(tracking.keysUsed().isEmpty());
+    }
+
+    @Test
+    public void testSetWrappedMapNullThrows()
+    {
+        TrackingMap<String, String> tracking = new TrackingMap<>(new HashMap<>());
+        try
+        {
+            tracking.setWrappedMap(null);
+            fail();
+        }
+        catch (IllegalArgumentException ignored)
+        { }
+    }
 }

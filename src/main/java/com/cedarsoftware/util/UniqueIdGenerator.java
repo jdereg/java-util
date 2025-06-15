@@ -5,7 +5,9 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Date;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Logger;
 
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
@@ -85,6 +87,7 @@ public final class UniqueIdGenerator {
 
     private static final Lock lock = new ReentrantLock();
     private static final Lock lock19 = new ReentrantLock();
+    private static final Logger LOG = Logger.getLogger(UniqueIdGenerator.class.getName());
     private static int count = 0;
     private static int count2 = 0;
     private static long lastTimeMillis = 0;
@@ -167,7 +170,7 @@ public final class UniqueIdGenerator {
             setVia = "SecureRandom";
         }
 
-        System.out.println("java-util using node id=" + id + " for last two digits of generated unique IDs. Set using " + setVia);
+        LOG.info("java-util using node id=" + id + " for last two digits of generated unique IDs. Set using " + setVia);
         serverId = id;
     }
 
@@ -344,7 +347,7 @@ public final class UniqueIdGenerator {
     private static long waitForNextMillis(long lastTimestamp) {
         long timestamp = currentTimeMillis();
         while (timestamp <= lastTimestamp) {
-            Thread.yield(); // Hint to the scheduler
+            LockSupport.parkNanos(1000); // small pause to reduce CPU usage
             timestamp = currentTimeMillis();
         }
         return timestamp;
@@ -357,11 +360,9 @@ public final class UniqueIdGenerator {
                 return -1;
             }
             int parsedId = parseInt(id);
-            if (parsedId == Integer.MIN_VALUE) {
-                return 0; // or any default value
-            }
-            return Math.abs(parsedId) % 100;
-        } catch (Throwable ignored) {
+            return (int) (Math.abs((long) parsedId) % 100);
+        } catch (NumberFormatException | SecurityException e) {
+            LOG.fine("Unable to retrieve server id from " + externalVarName + ": " + e.getMessage());
             return -1;
         }
     }

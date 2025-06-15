@@ -1,5 +1,6 @@
 ### Revision History
 #### 3.3.3 Unreleased
+> * Fixed ReflectionUtils cache tests for new null-handling behavior
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)

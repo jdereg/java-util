@@ -199,7 +199,7 @@ public class IOUtilitiesTest
     {
         byte[] bytes = { 0x05, 0x10, 0x10};
         byte[] result = IOUtilities.uncompressBytes(bytes);
-        assertSame(bytes, result);
+        assertArrayEquals(bytes, result);
     }
 
     @Test
@@ -336,7 +336,7 @@ public class IOUtilitiesTest
     }
 
     @Test
-    public void testInputStreamToBytes()
+    public void testInputStreamToBytes() throws IOException
     {
         ByteArrayInputStream in = new ByteArrayInputStream("This is a test".getBytes());
 

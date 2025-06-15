@@ -111,6 +111,16 @@ public final class ArrayUtilities {
     }
 
     /**
+     * Null-safe check whether the given array contains at least one element.
+     *
+     * @param array array to check
+     * @return {@code true} if array is non-null and has a positive length
+     */
+    public static boolean isNotEmpty(final Object array) {
+        return !isEmpty(array);
+    }
+
+    /**
      * Returns the size (length) of the specified array in a null-safe manner.
      * <p>
      * If the provided array is {@code null}, this method returns {@code 0}.
@@ -149,6 +159,20 @@ public final class ArrayUtilities {
             return null;
         }
         return array.clone();
+    }
+
+    /**
+     * Return the supplied array, or an empty array if {@code null}.
+     *
+     * @param componentType the component type for the empty array when {@code array} is {@code null}
+     * @param array         array which may be {@code null}
+     * @param <T>           array component type
+     * @return the original array, or a new empty array of the specified type if {@code array} is {@code null}
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T[] nullToEmpty(Class<T> componentType, T[] array) {
+        Objects.requireNonNull(componentType, "componentType is null");
+        return array == null ? (T[]) Array.newInstance(componentType, 0) : array;
     }
 
     /**
@@ -299,6 +323,38 @@ public final class ArrayUtilities {
             }
         }
         return -1;
+    }
+
+    /**
+     * Locate the last index of {@code item} within {@code array}.
+     *
+     * @param array array to search
+     * @param item  item to locate
+     * @param <T>   array component type
+     * @return index of the item or {@code -1} if not found or array is {@code null}
+     */
+    public static <T> int lastIndexOf(T[] array, T item) {
+        if (array == null) {
+            return -1;
+        }
+        for (int i = array.length - 1; i >= 0; i--) {
+            if (Objects.equals(array[i], item)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Determine whether the provided array contains the specified item.
+     *
+     * @param array the array to search, may be {@code null}
+     * @param item  the item to find
+     * @param <T>   the array component type
+     * @return {@code true} if the item exists in the array; {@code false} otherwise
+     */
+    public static <T> boolean contains(T[] array, T item) {
+        return indexOf(array, item) >= 0;
     }
 
     /**

@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -74,7 +76,8 @@ public final class SystemUtilities
     public static final String JAVA_VERSION = System.getProperty("java.version");
     public static final String USER_HOME = System.getProperty("user.home");
     public static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
-    
+    private static final Logger LOG = Logger.getLogger(SystemUtilities.class.getName());
+
     private SystemUtilities() {
     }
 
@@ -96,7 +99,7 @@ public final class SystemUtilities
         return StringUtilities.isEmpty(value) ? null : value;
     }
 
-    
+
     /**
      * Get available processors, considering Docker container limits
      */
@@ -128,9 +131,9 @@ public final class SystemUtilities
      * Check if running on specific Java version or higher
      */
     public static boolean isJavaVersionAtLeast(int major, int minor) {
-        String[] version = JAVA_VERSION.split("\\.");
-        int majorVersion = Integer.parseInt(version[0]);
-        int minorVersion = version.length > 1 ? Integer.parseInt(version[1]) : 0;
+        int[] version = parseJavaVersionNumbers();
+        int majorVersion = version[0];
+        int minorVersion = version[1];
         return majorVersion > major || (majorVersion == major && minorVersion >= minor);
     }
 
@@ -138,8 +141,32 @@ public final class SystemUtilities
      * @return current JDK major version
      */
     public static int currentJdkMajorVersion() {
-        String spec = System.getProperty("java.specification.version");   // "1.8" … "24"
-        return spec.startsWith("1.") ? Integer.parseInt(spec.substring(2)) : Integer.parseInt(spec);
+        try {
+            java.lang.reflect.Method versionMethod = Runtime.class.getMethod("version");
+            Object v = versionMethod.invoke(Runtime.getRuntime());
+            java.lang.reflect.Method major = v.getClass().getMethod("major");
+            return (Integer) major.invoke(v);
+        } catch (Exception ignored) {
+            String spec = System.getProperty("java.specification.version");
+            return spec.startsWith("1.") ? Integer.parseInt(spec.substring(2)) : Integer.parseInt(spec);
+        }
+    }
+
+    private static int[] parseJavaVersionNumbers() {
+        try {
+            java.lang.reflect.Method versionMethod = Runtime.class.getMethod("version");
+            Object v = versionMethod.invoke(Runtime.getRuntime());
+            java.lang.reflect.Method majorMethod = v.getClass().getMethod("major");
+            java.lang.reflect.Method minorMethod = v.getClass().getMethod("minor");
+            int major = (Integer) majorMethod.invoke(v);
+            int minor = (Integer) minorMethod.invoke(v);
+            return new int[]{major, minor};
+        } catch (Exception ignored) {
+            String[] parts = JAVA_VERSION.split("\\.");
+            int major = Integer.parseInt(parts[0]);
+            int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
+            return new int[]{major, minor};
+        }
     }
 
     /**
@@ -173,10 +200,8 @@ public final class SystemUtilities
      */
     public static TimeZone getSystemTimeZone() {
         String tzEnv = System.getenv("TZ");
-        if (tzEnv != null) {
-            try {
-                return TimeZone.getTimeZone(tzEnv);
-            } catch (Exception ignored) { }
+        if (tzEnv != null && !tzEnv.isEmpty()) {
+            return TimeZone.getTimeZone(tzEnv);
         }
         return TimeZone.getDefault();
     }
@@ -208,21 +233,30 @@ public final class SystemUtilities
      */
     public static List<NetworkInfo> getNetworkInterfaces() throws SocketException {
         List<NetworkInfo> interfaces = new ArrayList<>();
-        for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
+        Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
+        if (en == null) {
+            return interfaces;
+        }
+
+        while (en.hasMoreElements()) {
             NetworkInterface ni = en.nextElement();
-            if (ni.isUp()) {
-                List<InetAddress> addresses = Collections.list(ni.getInetAddresses());
-                interfaces.add(new NetworkInfo(
-                        ni.getName(),
-                        ni.getDisplayName(),
-                        addresses,
-                        ni.isLoopback()
-                ));
+            try {
+                if (ni.isUp()) {
+                    List<InetAddress> addresses = Collections.list(ni.getInetAddresses());
+                    interfaces.add(new NetworkInfo(
+                            ni.getName(),
+                            ni.getDisplayName(),
+                            addresses,
+                            ni.isLoopback()
+                    ));
+                }
+            } catch (SocketException e) {
+                LOG.log(Level.WARNING, "Failed to inspect network interface " + ni.getName(), e);
             }
         }
         return interfaces;
     }
-    
+
     /**
      * Add shutdown hook with safe execution
      */
@@ -231,7 +265,7 @@ public final class SystemUtilities
             try {
                 hook.run();
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.log(Level.SEVERE, "Shutdown hook threw exception", e);
             }
         }));
     }
@@ -302,7 +336,8 @@ public final class SystemUtilities
         public NetworkInfo(String name, String displayName, List<InetAddress> addresses, boolean loopback) {
             this.name = name;
             this.displayName = displayName;
-            this.addresses = addresses;
+            List<InetAddress> safe = addresses == null ? Collections.emptyList() : new ArrayList<>(addresses);
+            this.addresses = Collections.unmodifiableList(safe);
             this.loopback = loopback;
         }
 

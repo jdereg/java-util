@@ -1,11 +1,12 @@
 package com.cedarsoftware.util;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.RandomAccess;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
@@ -86,9 +87,11 @@ import java.util.function.Supplier;
  *         limitations under the License.
  * @see List
  */
-public class ConcurrentList<E> implements List<E> {
+public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final List<E> list;
-    private final transient ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final transient ReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     /**
      * No-arg constructor to create an empty ConcurrentList, wrapping an ArrayList.
@@ -117,46 +120,139 @@ public class ConcurrentList<E> implements List<E> {
     }
 
     // Immutable APIs
+    @Override
     public boolean equals(Object other) { return readOperation(() -> list.equals(other)); }
+
+    @Override
     public int hashCode() { return readOperation(list::hashCode); }
+
+    @Override
     public String toString() { return readOperation(list::toString); }
+
+    @Override
     public int size() { return readOperation(list::size); }
+
+    @Override
     public boolean isEmpty() { return readOperation(list::isEmpty); }
+
+    @Override
     public boolean contains(Object o) { return readOperation(() -> list.contains(o)); }
-    public boolean containsAll(Collection<?> c) { return readOperation(() -> new HashSet<>(list).containsAll(c)); }
+
+    @Override
+    public boolean containsAll(Collection<?> c) { return readOperation(() -> list.containsAll(c)); }
+
+    @Override
     public E get(int index) { return readOperation(() -> list.get(index)); }
+
+    @Override
     public int indexOf(Object o) { return readOperation(() -> list.indexOf(o)); }
+
+    @Override
     public int lastIndexOf(Object o) { return readOperation(() -> list.lastIndexOf(o)); }
-    public Iterator<E> iterator() { return readOperation(() -> new ArrayList<>(list).iterator()); }
+
+    @Override
+    public Iterator<E> iterator() { return new LockedIterator(); }
+
+    @Override
     public Object[] toArray() { return readOperation(list::toArray); }
+
+    @Override
     public <T> T[] toArray(T[] a) { return readOperation(() -> list.toArray(a)); }
 
     // Mutable APIs
+    @Override
     public boolean add(E e) { return writeOperation(() -> list.add(e)); }
+
+    @Override
     public boolean addAll(Collection<? extends E> c) { return writeOperation(() -> list.addAll(c)); }
+
+    @Override
     public boolean addAll(int index, Collection<? extends E> c) { return writeOperation(() -> list.addAll(index, c)); }
+
+    @Override
     public void add(int index, E element) {
-        writeOperation(() -> {
-            list.add(index, element);
-            return null;
-        });
+        writeOperation(() -> list.add(index, element));
     }
+
+    @Override
     public E set(int index, E element) { return writeOperation(() -> list.set(index, element)); }
+
+    @Override
     public E remove(int index) { return writeOperation(() -> list.remove(index)); }
+
+    @Override
     public boolean remove(Object o) { return writeOperation(() -> list.remove(o)); }
+
+    @Override
     public boolean removeAll(Collection<?> c) { return writeOperation(() -> list.removeAll(c)); }
+
+    @Override
     public boolean retainAll(Collection<?> c) { return writeOperation(() -> list.retainAll(c)); }
+
+    @Override
     public void clear() {
-        writeOperation(() -> {
-            list.clear();
-            return null; // To comply with the Supplier<T> return type
-        });
+        writeOperation(() -> list.clear());
     }
-    public ListIterator<E> listIterator() { return readOperation(() -> new ArrayList<>(list).listIterator()); }
+
+    @Override
+    public ListIterator<E> listIterator() { return new LockedListIterator(0); }
 
     // Unsupported operations
-    public ListIterator<E> listIterator(int index) { throw new UnsupportedOperationException("listIterator(index) not implemented for ConcurrentList"); }
-    public List<E> subList(int fromIndex, int toIndex) { throw new UnsupportedOperationException("subList not implemented for ConcurrentList"); }
+    @Override
+    public ListIterator<E> listIterator(int index) {
+        throw new UnsupportedOperationException("listIterator(index) not implemented for ConcurrentList");
+    }
+
+    @Override
+    public List<E> subList(int fromIndex, int toIndex) {
+        throw new UnsupportedOperationException("subList not implemented for ConcurrentList");
+    }
+
+    private class LockedIterator implements Iterator<E> {
+        private final LockedListIterator it = new LockedListIterator(0);
+
+        @Override
+        public boolean hasNext() { return it.hasNext(); }
+
+        @Override
+        public E next() { return it.next(); }
+
+        @Override
+        public void remove() { it.remove(); }
+    }
+
+    private class LockedListIterator implements ListIterator<E> {
+        private int cursor;
+
+        LockedListIterator(int index) { this.cursor = index; }
+
+        @Override
+        public boolean hasNext() { return readOperation(() -> cursor < list.size()); }
+
+        @Override
+        public E next() { return readOperation(() -> list.get(cursor++)); }
+
+        @Override
+        public boolean hasPrevious() { return readOperation(() -> cursor > 0); }
+
+        @Override
+        public E previous() { return readOperation(() -> list.get(--cursor)); }
+
+        @Override
+        public int nextIndex() { return readOperation(() -> cursor); }
+
+        @Override
+        public int previousIndex() { return readOperation(() -> cursor - 1); }
+
+        @Override
+        public void remove() { writeOperation(() -> list.remove(--cursor)); }
+
+        @Override
+        public void set(E e) { writeOperation(() -> list.set(cursor - 1, e)); }
+
+        @Override
+        public void add(E e) { writeOperation(() -> list.add(cursor++, e)); }
+    }
 
     private <T> T readOperation(Supplier<T> operation) {
         lock.readLock().lock();
@@ -167,10 +263,28 @@ public class ConcurrentList<E> implements List<E> {
         }
     }
 
+    private void readOperation(Runnable operation) {
+        lock.readLock().lock();
+        try {
+            operation.run();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     private <T> T writeOperation(Supplier<T> operation) {
         lock.writeLock().lock();
         try {
             return operation.get();
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    private void writeOperation(Runnable operation) {
+        lock.writeLock().lock();
+        try {
+            operation.run();
         } finally {
             lock.writeLock().unlock();
         }

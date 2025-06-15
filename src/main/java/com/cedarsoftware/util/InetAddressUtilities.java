@@ -4,6 +4,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 
 /**
  * Useful InetAddress Utilities
@@ -27,6 +28,7 @@ import java.util.logging.Logger;
 public class InetAddressUtilities
 {
     private static final Logger LOG = Logger.getLogger(InetAddressUtilities.class.getName());
+    static { LoggingConfig.init(); }
     private InetAddressUtilities() {
         super();
     }

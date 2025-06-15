@@ -26,6 +26,7 @@ import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 
 /**
  * Utility class providing robust I/O operations with built-in error handling and resource management.
@@ -91,6 +92,7 @@ public final class IOUtilities {
     private static final int DEFAULT_READ_TIMEOUT = 30000;
     private static final boolean DEBUG = Boolean.parseBoolean(System.getProperty("io.debug", "false"));
     private static final Logger LOG = Logger.getLogger(IOUtilities.class.getName());
+    static { LoggingConfig.init(); }
 
     private static void debug(String msg, Exception e) {
         if (DEBUG) {

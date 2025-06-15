@@ -4225,3 +4225,9 @@ for (int i = 0; i < batchSize; i++) {
 
 ### Support
 For additional support or to report issues, please refer to the project's GitHub repository or documentation.
+
+## LoggingConfig
+[Source](/src/main/java/com/cedarsoftware/util/LoggingConfig.java)
+
+`LoggingConfig` sets up a consistent console format for `java.util.logging`. Call `LoggingConfig.init()` once during application startup to configure the root logger with a Logback-style pattern.
+

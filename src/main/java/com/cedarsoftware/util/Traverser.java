@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 
 /**
  * A Java Object Graph traverser that visits all object reference fields and invokes a
@@ -87,6 +88,7 @@ import java.util.logging.Logger;
 public class Traverser {
 
     private static final Logger LOG = Logger.getLogger(Traverser.class.getName());
+    static { LoggingConfig.init(); }
 
     /**
      * Represents a node visit during traversal, containing the node and its field information.

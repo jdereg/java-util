@@ -311,6 +311,10 @@ SortedSet<Integer> head = set.headSet(4);      // Contains 1, 3
 SortedSet<Integer> tail = set.tailSet(5);      // Contains 5, 7, null
 ```
 
+The `subSet`, `headSet`, and `tailSet` methods return live views backed by the
+original set. Changes made through these views immediately affect the backing
+set and vice versa.
+
 **Descending Views:**
 ```java
 NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();

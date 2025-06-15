@@ -415,7 +415,12 @@ public class TTLCache<K, V> implements Map<K, V> {
     }
 
     /**
-     * @return a {@link Set} view of the keys contained in this cache
+     * Returns the keys currently held in the cache.
+     * <p>
+     * The returned set is a snapshot and is not backed by the cache. Changes to
+     * the set or its iterator do not modify the cache contents.
+     *
+     * @return a snapshot {@link Set} of the keys contained in this cache
      */
     @Override
     public Set<K> keySet() {
@@ -428,7 +433,12 @@ public class TTLCache<K, V> implements Map<K, V> {
     }
 
     /**
-     * @return a {@link Collection} view of the values contained in this cache
+     * Returns the values currently held in the cache.
+     * <p>
+     * Like {@link #keySet()}, this collection is a snapshot.  Mutating the
+     * returned collection or its iterator will not affect the cache.
+     *
+     * @return a snapshot {@link Collection} of the values contained in this cache
      */
     @Override
     public Collection<V> values() {

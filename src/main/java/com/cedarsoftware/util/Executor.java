@@ -3,6 +3,8 @@ package com.cedarsoftware.util;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A utility class for executing system commands and capturing their output.
@@ -53,6 +55,7 @@ public class Executor {
     private String _error;
     private String _out;
     private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
+    private static final Logger LOG = Logger.getLogger(Executor.class.getName());
 
     public ExecutionResult execute(String command) {
         return execute(command, null, null);
@@ -75,8 +78,7 @@ public class Executor {
             Process proc = startProcess(command, envp, dir);
             return runIt(proc);
         } catch (IOException | InterruptedException e) {
-            System.err.println("Error occurred executing command: " + command);
-            e.printStackTrace(System.err);
+            LOG.log(Level.SEVERE, "Error occurred executing command: " + command, e);
             return new ExecutionResult(-1, "", e.getMessage());
         }
     }
@@ -86,8 +88,7 @@ public class Executor {
             Process proc = startProcess(cmdarray, envp, dir);
             return runIt(proc);
         } catch (IOException | InterruptedException e) {
-            System.err.println("Error occurred executing command: " + cmdArrayToString(cmdarray));
-            e.printStackTrace(System.err);
+            LOG.log(Level.SEVERE, "Error occurred executing command: " + cmdArrayToString(cmdarray), e);
             return new ExecutionResult(-1, "", e.getMessage());
         }
     }

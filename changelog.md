@@ -18,6 +18,7 @@
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys; legacy cipher APIs are deprecated. Added SHA-384 hashing support.
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
+> * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
@@ -28,7 +29,6 @@
 > * `Traverser` logs inaccessible fields at `Level.FINEST` instead of printing to STDERR
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 > * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
-> * Fixed `TraverserTest.testLazyFieldCollection` compilation by obtaining the field before the lambda
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

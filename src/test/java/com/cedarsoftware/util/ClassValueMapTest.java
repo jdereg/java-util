@@ -14,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -44,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class ClassValueMapTest {
 
+    private static final Logger LOG = Logger.getLogger(ClassValueMapTest.class.getName());
     @Test
     void testBasicMapOperations() {
         // Setup
@@ -251,7 +253,7 @@ class ClassValueMapTest {
                             }
                         } catch (Exception e) {
                             errorCount.incrementAndGet();
-                            System.err.println("Error in thread " + Thread.currentThread().getName() + ": " + e.getMessage());
+                            LOG.warning("Error in thread " + Thread.currentThread().getName() + ": " + e.getMessage());
                             e.printStackTrace();
                         }
                     }
@@ -274,11 +276,11 @@ class ClassValueMapTest {
         executorService.awaitTermination(5, TimeUnit.SECONDS);
 
         // Log results
-        System.out.println("Concurrent ClassValueMap Test Results:");
-        System.out.println("Read operations: " + readCount.get());
-        System.out.println("Write operations: " + writeCount.get());
-        System.out.println("Total operations: " + (readCount.get() + writeCount.get()));
-        System.out.println("Errors: " + errorCount.get());
+        LOG.info("Concurrent ClassValueMap Test Results:");
+        LOG.info("Read operations: " + readCount.get());
+        LOG.info("Write operations: " + writeCount.get());
+        LOG.info("Total operations: " + (readCount.get() + writeCount.get()));
+        LOG.info("Errors: " + errorCount.get());
 
         // Verify no errors occurred
         assertEquals(0, errorCount.get(), "Errors occurred during concurrent access");

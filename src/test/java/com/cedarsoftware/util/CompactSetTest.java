@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.logging.Logger;
 
 import com.cedarsoftware.io.JsonIo;
 import com.cedarsoftware.io.TypeHolder;
@@ -41,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class CompactSetTest
 {
+    private static final Logger LOG = Logger.getLogger(CompactSetTest.class.getName());
     @Test
     void testSimpleCases()
     {
@@ -446,9 +448,9 @@ class CompactSetTest
         }
         for (int i = lower; i < upper; i++)
         {
-            System.out.println("CompacSet.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
+            LOG.info("CompacSet.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
         }
-        System.out.println("HashSet = " + totals[totals.length - 1] / 1000000.0d);
+        LOG.info("HashSet = " + totals[totals.length - 1] / 1000000.0d);
     }
 
     @Test

@@ -18,6 +18,8 @@ import java.time.Month;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
@@ -120,6 +122,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *         limitations under the License.
  */
 class ConverterEverythingTest {
+    private static final Logger LOG = Logger.getLogger(ConverterEverythingTest.class.getName());
     private static final String TOKYO = "Asia/Tokyo";
     private static final ZoneId TOKYO_Z = ZoneId.of(TOKYO);
     private static final ZoneOffset TOKYO_ZO = ZoneOffset.of("+09:00");
@@ -4484,10 +4487,10 @@ class ConverterEverythingTest {
                             .toLocalDate();
 
             if (!restoredDate.equals(targetDate)) {
-                System.out.println("Conversion failed for: " + shortNameSource + " ==> " + shortNameTarget);
-                System.out.println("restored = " + restored);
-                System.out.println("target   = " + target);
-                System.out.println("diff     = [value mismatch] ▶ Date: " + restoredDate + " vs " + targetDate);
+                LOG.info("Conversion failed for: " + shortNameSource + " ==> " + shortNameTarget);
+                LOG.info("restored = " + restored);
+                LOG.info("target   = " + target);
+                LOG.info("diff     = [value mismatch] ▶ Date: " + restoredDate + " vs " + targetDate);
                 fail();
             }
             updateStat(pair(sourceClass, targetClass), true);
@@ -4543,10 +4546,10 @@ class ConverterEverythingTest {
             if (restored instanceof Pattern) {
                 assertEquals(restored.toString(), target.toString());
             } else if (!DeepEquals.deepEquals(restored, target, options)) {
-                System.out.println("Conversion failed for: " + shortNameSource + " ==> " + shortNameTarget);
-                System.out.println("restored = " + restored);
-                System.out.println("target   = " + target);
-                System.out.println("diff     = " + options.get("diff"));
+                LOG.info("Conversion failed for: " + shortNameSource + " ==> " + shortNameTarget);
+                LOG.info("restored = " + restored);
+                LOG.info("target   = " + target);
+                LOG.info("diff     = " + options.get("diff"));
                 fail();
             }
             updateStat(pair(sourceClass, targetClass), true);
@@ -4594,9 +4597,9 @@ class ConverterEverythingTest {
                 updateStat(pair(sourceClass, targetClass), true);
             } catch (Throwable e) {
                 if (!e.getMessage().contains(t.getMessage())) {
-                    System.out.println(e.getMessage());
-                    System.out.println(t.getMessage());
-                    System.out.println();
+                    LOG.info(e.getMessage());
+                    LOG.info(t.getMessage());
+                    LOG.info("");
                 }
                 assert e.getMessage().contains(t.getMessage());
                 assert e.getClass().equals(t.getClass());
@@ -4658,7 +4661,7 @@ class ConverterEverythingTest {
                     actualClass = Converter.getShortName(actual.getClass());
                 }
 
-                System.err.println(shortNameSource + "[" + toStr(source) + "] ==> " + shortNameTarget + "[" + toStr(target) + "] Failed with: " + actualClass + "[" + toStr(actual) + "]");
+                LOG.log(Level.WARNING, shortNameSource + "[" + toStr(source) + "] ==> " + shortNameTarget + "[" + toStr(target) + "] Failed with: " + actualClass + "[" + toStr(actual) + "]");
                 throw e;
             }
         }
@@ -4743,11 +4746,10 @@ class ConverterEverythingTest {
             }
         }
         
-        System.out.println("Total conversion pairs      = " + STAT_DB.size());
-        System.out.println("Conversion pairs tested     = " + (STAT_DB.size() - missing));
-        System.out.println("Conversion pairs not tested = " + missing);
-        System.out.print("Tests needed ");
-        System.out.println(testPairNames);
+        LOG.info("Total conversion pairs      = " + STAT_DB.size());
+        LOG.info("Conversion pairs tested     = " + (STAT_DB.size() - missing));
+        LOG.info("Conversion pairs not tested = " + missing);
+        LOG.info("Tests needed " + testPairNames);
     }
 
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")

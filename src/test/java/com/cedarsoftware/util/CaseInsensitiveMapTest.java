@@ -18,6 +18,7 @@ import java.util.NavigableSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.logging.Logger;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,6 +60,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class CaseInsensitiveMapTest
 {
+    private static final Logger LOG = Logger.getLogger(CaseInsensitiveMapTest.class.getName());
     @AfterEach
     public void cleanup() {
         // Reset to default for other tests
@@ -1683,7 +1685,7 @@ class CaseInsensitiveMapTest
                 break;
             }
         }
-        System.out.println("Done, ran " + (System.currentTimeMillis() - t1) + " ms, " + dupe + " dupes, CaseInsensitiveMap.size: " + hs.size());
+        LOG.info("Done, ran " + (System.currentTimeMillis() - t1) + " ms, " + dupe + " dupes, CaseInsensitiveMap.size: " + hs.size());
     }
 
     @Test
@@ -1718,7 +1720,7 @@ class CaseInsensitiveMapTest
         }
 
         long stop = System.nanoTime();
-        System.out.println("load CI map with 10,000: " + (stop - start) / 1000000);
+        LOG.info("load CI map with 10,000: " + (stop - start) / 1000000);
 
         start = System.nanoTime();
 
@@ -1729,7 +1731,7 @@ class CaseInsensitiveMapTest
 
         stop = System.nanoTime();
 
-        System.out.println("dupe CI map 100,000 times: " + (stop - start) / 1000000);
+        LOG.info("dupe CI map 100,000 times: " + (stop - start) / 1000000);
     }
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
@@ -1749,7 +1751,7 @@ class CaseInsensitiveMapTest
         }
 
         long stop = System.nanoTime();
-        System.out.println("load linked map with 10,000: " + (stop - start) / 1000000);
+        LOG.info("load linked map with 10,000: " + (stop - start) / 1000000);
 
         start = System.nanoTime();
 
@@ -1760,7 +1762,7 @@ class CaseInsensitiveMapTest
 
         stop = System.nanoTime();
 
-        System.out.println("dupe linked map 100,000 times: " + (stop - start) / 1000000);
+        LOG.info("dupe linked map 100,000 times: " + (stop - start) / 1000000);
     }
 
     @Test

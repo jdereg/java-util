@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ScheduledFuture;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class TTLCacheTest {
 
     private TTLCache<Integer, String> ttlCache;
+    private static final Logger LOG = Logger.getLogger(TTLCacheTest.class.getName());
 
     @AfterAll
     static void tearDown() {
@@ -482,7 +484,7 @@ public class TTLCacheTest {
             cache.put(i, true);
         }
         long endTime = System.currentTimeMillis();
-        System.out.println("TTLCache speed: " + (endTime - startTime) + "ms");
+        LOG.info("TTLCache speed: " + (endTime - startTime) + "ms");
     }
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")

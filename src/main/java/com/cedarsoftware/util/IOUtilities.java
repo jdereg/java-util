@@ -24,6 +24,8 @@ import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Utility class providing robust I/O operations with built-in error handling and resource management.
@@ -88,12 +90,14 @@ public final class IOUtilities {
     private static final int DEFAULT_CONNECT_TIMEOUT = 5000;
     private static final int DEFAULT_READ_TIMEOUT = 30000;
     private static final boolean DEBUG = Boolean.parseBoolean(System.getProperty("io.debug", "false"));
+    private static final Logger LOG = Logger.getLogger(IOUtilities.class.getName());
 
     private static void debug(String msg, Exception e) {
         if (DEBUG) {
-            System.err.println(msg);
-            if (e != null) {
-                e.printStackTrace(System.err);
+            if (e == null) {
+                LOG.fine(msg);
+            } else {
+                LOG.log(Level.FINE, msg, e);
             }
         }
     }

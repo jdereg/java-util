@@ -199,7 +199,7 @@ public class IOUtilitiesTest
     {
         byte[] bytes = { 0x05, 0x10, 0x10};
         byte[] result = IOUtilities.uncompressBytes(bytes);
-        assertSame(bytes, result);
+        assertArrayEquals(bytes, result);
     }
 
     @Test

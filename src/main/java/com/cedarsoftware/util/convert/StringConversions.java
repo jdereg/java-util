@@ -403,11 +403,14 @@ final class StringConversions {
 
         // Handle ISO 8601 format
         try {
-            // Parse any ISO format (with or without zone) and convert to converter's timezone
-            Instant instant = dateStr.endsWith("Z") ?
-                    Instant.parse(dateStr) :
-                    ZonedDateTime.parse(dateStr).toInstant();
-            return java.sql.Date.valueOf(instant.atZone(converter.getOptions().getZoneId()).toLocalDate());
+            // Parse ISO date strings while respecting any supplied zone or offset.
+            if (dateStr.endsWith("Z")) {
+                return java.sql.Date.valueOf(
+                        Instant.parse(dateStr).atZone(ZoneOffset.UTC).toLocalDate());
+            }
+
+            ZonedDateTime zdt = ZonedDateTime.parse(dateStr);
+            return java.sql.Date.valueOf(zdt.toLocalDate());
         } catch (DateTimeParseException e) {
             // If not ISO 8601, try other formats using DateUtilities
             ZonedDateTime zdt = DateUtilities.parseDate(dateStr, converter.getOptions().getZoneId(), true);

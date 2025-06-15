@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)

@@ -336,7 +336,7 @@ public class IOUtilitiesTest
     }
 
     @Test
-    public void testInputStreamToBytes()
+    public void testInputStreamToBytes() throws IOException
     {
         ByteArrayInputStream in = new ByteArrayInputStream("This is a test".getBytes());
 

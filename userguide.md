@@ -3409,8 +3409,10 @@ public static int lastIndexOf(String path, char ch)
 // ASCII Hex     
 public static byte[] decode(String s)
 public static String encode(byte[] bytes)
-    
-// Occurrence     
+
+// decode returns null for malformed hex input
+
+// Occurrence
 public static int count(String s, char c)
 public static int count(CharSequence content, CharSequence token)
     
@@ -3427,7 +3429,6 @@ public static String getRandomChar(Random random, boolean upper)
 
 // Encoding    
 public static byte[] getBytes(String s, String encoding)
-public static String createUtf8String(byte[] bytes)
 public static byte[] getUTF8Bytes(String s)
 public static String createString(byte[] bytes, String encoding)
 public static String createUTF8String(byte[] bytes)
@@ -3515,6 +3516,10 @@ String char = StringUtilities.getRandomChar(random, true);  // Uppercase
 String char = StringUtilities.getRandomChar(random, false); // Lowercase
 ```
 
+`getRandomString` validates its arguments and will throw
+`NullPointerException` if the {@link java.util.Random} is {@code null} or
+`IllegalArgumentException` when the length bounds are invalid.
+
 ### String Manipulation
 
 **Quote Handling:**
@@ -3531,6 +3536,9 @@ Set<String> set = StringUtilities.commaSeparatedStringToSet("a,b,c");
 // Result: ["a", "b", "c"]
 ```
 
+If the input is empty or {@code null}, the method returns a new mutable
+{@link java.util.LinkedHashSet}.
+
 ### Implementation Notes
 
 **Performance Features:**
@@ -3538,10 +3546,14 @@ Set<String> set = StringUtilities.commaSeparatedStringToSet("a,b,c");
 // Efficient case-insensitive hash code
 int hash = StringUtilities.hashCodeIgnoreCase("Text");
 
+// The locale check is refreshed whenever the default locale changes
+
 // Optimized string counting
 int count = StringUtilities.count("text", 't');
 int count = StringUtilities.count("text text", "text");
 ```
+
+`count` now uses a standard `indexOf` loop to avoid overlap issues.
 
 **Pattern Conversion:**
 ```java
@@ -3573,6 +3585,8 @@ int len = StringUtilities.trimLength(nullString);  // Returns 0
 StringUtilities.EMPTY           // Empty string ""
 StringUtilities.FOLDER_SEPARATOR // Forward slash "/"
 ```
+
+Both constants are immutable (`final`).
 
 This implementation provides robust string manipulation capabilities with emphasis on null safety, performance, and convenience.
 

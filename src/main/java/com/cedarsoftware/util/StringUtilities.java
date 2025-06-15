@@ -118,9 +118,9 @@ import static java.lang.Character.toLowerCase;
  *         limitations under the License.
  */
 public final class StringUtilities {
-    public static String FOLDER_SEPARATOR = "/";
+    public static final String FOLDER_SEPARATOR = "/";
 
-    public static String EMPTY = "";
+    public static final String EMPTY = "";
 
     /**
      * <p>Constructor is declared private since all methods are static.</p>
@@ -359,9 +359,15 @@ public final class StringUtilities {
         return path.lastIndexOf(ch);
     }
 
-    // Turn hex String into byte[]
-    // If string is not even length, return null.
-
+    /**
+     * Convert a hexadecimal {@link String} into a byte array.
+     *
+     * <p>If the input length is odd or contains non-hex characters the method
+     * returns {@code null}.</p>
+     *
+     * @param s the hexadecimal string to decode, may not be {@code null}
+     * @return the decoded bytes or {@code null} if the input is malformed
+     */
     public static byte[] decode(String s) {
         int len = s.length();
         if (len % 2 != 0) {
@@ -372,9 +378,12 @@ public final class StringUtilities {
         int pos = 0;
 
         for (int i = 0; i < len; i += 2) {
-            byte hi = (byte) Character.digit(s.charAt(i), 16);
-            byte lo = (byte) Character.digit(s.charAt(i + 1), 16);
-            bytes[pos++] = (byte) (hi * 16 + lo);
+            int hi = Character.digit(s.charAt(i), 16);
+            int lo = Character.digit(s.charAt(i + 1), 16);
+            if (hi == -1 || lo == -1) {
+                return null;
+            }
+            bytes[pos++] = (byte) ((hi << 4) + lo);
         }
 
         return bytes;
@@ -431,14 +440,12 @@ public final class StringUtilities {
         int answer = 0;
         int idx = 0;
 
-        while (true) {
-            idx = source.indexOf(sub, idx);
-            if (idx < answer) {
-                return answer;
-            }
-            ++answer;
-            ++idx;
+        while ((idx = source.indexOf(sub, idx)) != -1) {
+            answer++;
+            idx += sub.length();
         }
+
+        return answer;
     }
 
     /**
@@ -618,12 +625,23 @@ public final class StringUtilities {
     }
 
     /**
-     * @param random Random instance
-     * @param minLen minimum number of characters
-     * @param maxLen maximum number of characters
-     * @return String of alphabetical characters, with the first character uppercase (Proper case strings).
+     * Generate a random proper‑case string.
+     *
+     * @param random Random instance, must not be {@code null}
+     * @param minLen minimum number of characters (inclusive)
+     * @param maxLen maximum number of characters (inclusive)
+     * @return alphabetic string with the first character uppercase
+     * @throws NullPointerException     if {@code random} is {@code null}
+     * @throws IllegalArgumentException if length parameters are invalid
      */
     public static String getRandomString(Random random, int minLen, int maxLen) {
+        if (random == null) {
+            throw new NullPointerException("random cannot be null");
+        }
+        if (minLen < 0 || maxLen < minLen) {
+            throw new IllegalArgumentException("minLen must be >= 0 and <= maxLen");
+        }
+
         StringBuilder s = new StringBuilder();
         int len = minLen + random.nextInt(maxLen - minLen + 1);
 
@@ -656,19 +674,6 @@ public final class StringUtilities {
         }
     }
     
-    /**
-     * Convert a byte[] into a UTF-8 String.  Preferable used when the encoding
-     * is one of the guaranteed Java types and you don't want to have to catch
-     * the UnsupportedEncodingException required by Java
-     *
-     * @param bytes bytes to encode into a string
-     * @deprecated 
-     */
-    @Deprecated
-    public static String createUtf8String(byte[] bytes) {
-        return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
-    }
-
     /**
      * Convert a byte[] into a UTF-8 encoded String.
      *
@@ -718,6 +723,8 @@ public final class StringUtilities {
             return 0;
         }
 
+        updateAsciiCompatibility();
+
         final int len = s.length();
         int hash = 0;
 
@@ -747,6 +754,15 @@ public final class StringUtilities {
      * updated whenever the locale changes.
      */
     private static volatile boolean isAsciiCompatibleLocale = checkAsciiCompatibleLocale();
+    private static volatile Locale lastLocale = Locale.getDefault();
+
+    private static void updateAsciiCompatibility() {
+        Locale current = Locale.getDefault();
+        if (!current.equals(lastLocale)) {
+            lastLocale = current;
+            isAsciiCompatibleLocale = checkAsciiCompatibleLocale();
+        }
+    }
 
     /**
      * Listener for locale changes, updates the isAsciiCompatibleLocale flag when needed.
@@ -896,8 +912,8 @@ public final class StringUtilities {
      * </p>
      *
      * @param commaSeparatedString the comma-separated string to convert
-     * @return a {@link Set} containing the trimmed, unique, non-empty substrings from the input string.
-     *         Returns an empty set if the input is {@code null}, empty, or contains only whitespace.
+     * @return a mutable {@link Set} containing the trimmed, unique, non-empty substrings from the input string.
+     *         Returns an empty {@link LinkedHashSet} if the input is {@code null}, empty, or contains only whitespace.
      *
      * @throws IllegalArgumentException if the method is modified to disallow {@code null} inputs in the future
      *
@@ -906,7 +922,7 @@ public final class StringUtilities {
      */
     public static Set<String> commaSeparatedStringToSet(String commaSeparatedString) {
         if (commaSeparatedString == null || commaSeparatedString.trim().isEmpty()) {
-            return Collections.emptySet();
+            return new LinkedHashSet<>();
         }
         return Arrays.stream(commaSeparatedString.split(","))
                 .map(String::trim)

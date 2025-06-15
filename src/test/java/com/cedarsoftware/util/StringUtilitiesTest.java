@@ -213,6 +213,7 @@ public class StringUtilitiesTest
         assertArrayEquals(new byte[]{0x1A}, StringUtilities.decode("1A"));
         assertArrayEquals(new byte[]{}, StringUtilities.decode(""));
         assertNull(StringUtilities.decode("1AB"));
+        assertNull(StringUtilities.decode("1Z"));
     }
 
     void testDecodeWithNull()
@@ -469,6 +470,18 @@ public class StringUtilitiesTest
         {
             assertTrue(s.length() >= 3 && s.length() <= 9);
         }
+    }
+
+    @Test
+    void testRandomStringInvalidParams()
+    {
+        Random random = new Random();
+        assertThatExceptionOfType(NullPointerException.class)
+                .isThrownBy(() -> StringUtilities.getRandomString(null, 1, 2));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> StringUtilities.getRandomString(random, -1, 2));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> StringUtilities.getRandomString(random, 5, 2));
     }
 
     void testGetBytesWithInvalidEncoding() {

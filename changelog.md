@@ -16,6 +16,13 @@
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys; legacy cipher APIs are deprecated. Added SHA-384 hashing support.
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
+> * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
+> * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
+> * `StringUtilities.count()` uses a reliable substring search algorithm.
+> * `StringUtilities.hashCodeIgnoreCase()` updates locale compatibility when the default locale changes.
+> * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
+> * Constants `FOLDER_SEPARATOR` and `EMPTY` are now immutable (`final`).
+> * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 #### 3.3.2 JDK 24+ Support

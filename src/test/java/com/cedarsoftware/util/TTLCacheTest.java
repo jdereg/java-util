@@ -399,6 +399,20 @@ public class TTLCacheTest {
     }
 
     @Test
+    void testPutTwiceSameKey() {
+        ttlCache = new TTLCache<>(10000, -1);
+        ttlCache.put(1, "A");
+        ttlCache.put(1, "B");
+
+        assertEquals(1, ttlCache.size());
+        assertEquals("B", ttlCache.get(1));
+
+        TTLCache<Integer, String> expected = new TTLCache<>(10000, -1);
+        expected.put(1, "B");
+        assertEquals(expected.hashCode(), ttlCache.hashCode());
+    }
+
+    @Test
     void testNullValue() {
         ttlCache = new TTLCache<>(10000, 100);
         ttlCache.put(1, null);

@@ -54,7 +54,16 @@ class ConverterLegacyApiTest {
     @ParameterizedTest
     @MethodSource("convert2GoodData")
     void convert2_goodData(ConversionFunction func, Object input, Object expected) {
-        assertThat(func.apply(input)).isEqualTo(expected);
+        Object result = func.apply(input);
+        if (expected instanceof AtomicBoolean) {
+            assertThat(((AtomicBoolean) result).get()).isEqualTo(((AtomicBoolean) expected).get());
+        } else if (expected instanceof AtomicInteger) {
+            assertThat(((AtomicInteger) result).get()).isEqualTo(((AtomicInteger) expected).get());
+        } else if (expected instanceof AtomicLong) {
+            assertThat(((AtomicLong) result).get()).isEqualTo(((AtomicLong) expected).get());
+        } else {
+            assertThat(result).isEqualTo(expected);
+        }
     }
 
     private static Stream<Arguments> convert2NullData() {
@@ -79,7 +88,16 @@ class ConverterLegacyApiTest {
     @ParameterizedTest
     @MethodSource("convert2NullData")
     void convert2_nullReturnsDefault(ConversionFunction func, Object expected) {
-        assertThat(func.apply(null)).isEqualTo(expected);
+        Object result = func.apply(null);
+        if (expected instanceof AtomicBoolean) {
+            assertThat(((AtomicBoolean) result).get()).isEqualTo(((AtomicBoolean) expected).get());
+        } else if (expected instanceof AtomicInteger) {
+            assertThat(((AtomicInteger) result).get()).isEqualTo(((AtomicInteger) expected).get());
+        } else if (expected instanceof AtomicLong) {
+            assertThat(((AtomicLong) result).get()).isEqualTo(((AtomicLong) expected).get());
+        } else {
+            assertThat(result).isEqualTo(expected);
+        }
     }
 
     private static Stream<Arguments> convert2BadData() {
@@ -143,7 +161,13 @@ class ConverterLegacyApiTest {
     @MethodSource("convertToGoodData")
     void convertTo_goodData(ConversionFunction func, Object input, Object expected) {
         Object result = func.apply(input);
-        if (result instanceof Calendar) {
+        if (expected instanceof AtomicBoolean) {
+            assertThat(((AtomicBoolean) result).get()).isEqualTo(((AtomicBoolean) expected).get());
+        } else if (expected instanceof AtomicInteger) {
+            assertThat(((AtomicInteger) result).get()).isEqualTo(((AtomicInteger) expected).get());
+        } else if (expected instanceof AtomicLong) {
+            assertThat(((AtomicLong) result).get()).isEqualTo(((AtomicLong) expected).get());
+        } else if (result instanceof Calendar) {
             assertThat(((Calendar) result).getTime()).isEqualTo(((Calendar) expected).getTime());
         } else {
             assertThat(result).isEqualTo(expected);

@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
@@ -26,7 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class ConcurrentSet<T> implements Set<T> {
+public class ConcurrentSet<T> implements Set<T>, Serializable {
+    private static final long serialVersionUID = 1L;
+
     private enum NullSentinel {
         NULL_ITEM
     }

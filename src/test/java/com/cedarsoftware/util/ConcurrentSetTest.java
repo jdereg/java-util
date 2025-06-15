@@ -1,5 +1,9 @@
 package com.cedarsoftware.util;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -10,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -270,5 +275,23 @@ class ConcurrentSetTest {
         latch.await();
         assertTrue(set.size() >= 0 && set.size() <= operationsPerThread,
                 "Set size should be between 0 and " + operationsPerThread);
+    }
+
+    @Test
+    void testSerializationRoundTrip() throws Exception {
+        ConcurrentSet<String> set = new ConcurrentSet<>();
+        set.add("hello");
+        set.add(null);
+
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        ObjectOutputStream out = new ObjectOutputStream(bout);
+        out.writeObject(set);
+        out.close();
+
+        ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bout.toByteArray()));
+        ConcurrentSet<String> copy = (ConcurrentSet<String>) in.readObject();
+
+        assertEquals(set, copy);
+        assertNotSame(set, copy);
     }
 }

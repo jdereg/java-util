@@ -44,6 +44,7 @@
 > * Explicitly set versions for `maven-resources-plugin`, `maven-install-plugin`, and `maven-deploy-plugin` to avoid Maven 4 compatibility warnings
 > * Added Javadoc for several public APIs where it was missing.  Should be 100% now.
 > * JUnits added for all public APIs that did not have them (no longer relying on json-io to "cover" them). Should be 100% now.
+> * Added JUnit tests for `CaseInsensitiveString.of()`, `contains()`, and serialization.
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

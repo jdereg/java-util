@@ -647,7 +647,12 @@ public class ClassUtilities {
             try {
                 currentClass = classLoader.loadClass(className);
             } catch (ClassNotFoundException e) {
-                currentClass = Thread.currentThread().getContextClassLoader().loadClass(className);
+                ClassLoader ctx = Thread.currentThread().getContextClassLoader();
+                if (ctx != null) {
+                    currentClass = ctx.loadClass(className);
+                } else {
+                    currentClass = Class.forName(className, false, getClassLoader(ClassUtilities.class));
+                }
             }
         }
 
@@ -789,8 +794,8 @@ public class ClassUtilities {
      *
      * @param x first class to check
      * @param y second class to check
-     * @return true if one class is the wrapper of the other, false otherwise
-     * @throws NullPointerException if either input class is null
+     * @return true if one class is the wrapper of the other, false otherwise.
+     *         If either argument is {@code null}, this method returns {@code false}.
      */
     public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y) {
         return wrapperMap.get(x) == y;
@@ -842,6 +847,10 @@ public class ClassUtilities {
 
     /**
      * Checks if the current security manager allows class loader access.
+     * <p>
+     * This uses {@link SecurityManager}, which is deprecated in recent JDKs.
+     * When no security manager is present, this method performs no checks.
+     * </p>
      */
     private static void checkSecurityAccess() {
         SecurityManager sm = System.getSecurityManager();
@@ -924,7 +933,7 @@ public class ClassUtilities {
      * @param candidateClasses Map of candidate classes and their associated values (must not be null)
      * @param defaultClass Default value to return if no suitable match is found
      * @return The value associated with the closest matching class, or defaultClass if no match found
-     * @throws NullPointerException if clazz or candidateClasses is null
+     * @throws IllegalArgumentException if {@code clazz} or {@code candidateClasses} is null
      *
      * @see ClassUtilities#computeInheritanceDistance(Class, Class)
      */
@@ -1291,7 +1300,7 @@ public class ClassUtilities {
         int minIndex = -1;
 
         for (int i = 0; i < array.length; i++) {
-            if (array[i] < minValue && array[i] > -1) {
+            if (array[i] < minValue) {
                 minValue = array[i];
                 minIndex = i;
             }
@@ -1371,10 +1380,20 @@ public class ClassUtilities {
      * @throws IllegalStateException if constructor invocation fails
      */
     public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
+        Set<Class<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        return newInstance(converter, c, argumentValues, visited);
+    }
+
+    private static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues,
+                                      Set<Class<?>> visitedClasses) {
         Convention.throwIfNull(c, "Class cannot be null");
 
         // Do security check FIRST
         SecurityChecker.verifyClass(c);
+
+        if (visitedClasses.contains(c)) {
+            throw new IllegalStateException("Circular reference detected for " + c.getName());
+        }
 
         // Then do other validation
         if (c.isInterface()) {
@@ -1408,15 +1427,13 @@ public class ClassUtilities {
 
         // Handle inner classes - with circular reference protection
         if (c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers())) {
-            // Track already visited classes to prevent circular references
-            Set<Class<?>> visitedClasses = Collections.newSetFromMap(new IdentityHashMap<>());
             visitedClasses.add(c);
 
             try {
                 // For inner classes, try to get the enclosing instance
                 Class<?> enclosingClass = c.getEnclosingClass();
                 if (!visitedClasses.contains(enclosingClass)) {
-                    Object enclosingInstance = newInstance(converter, enclosingClass, Collections.emptyList());
+                    Object enclosingInstance = newInstance(converter, enclosingClass, Collections.emptyList(), visitedClasses);
                     Constructor<?> constructor = ReflectionUtils.getConstructor(c, enclosingClass);
                     if (constructor != null) {
                         // Cache this successful constructor
@@ -1512,9 +1529,13 @@ public class ClassUtilities {
     }
 
     /**
-     * Globally turn on (or off) the 'unsafe' option of Class construction.  The unsafe option
-     * is used when all constructors have been tried and the Java class could not be instantiated.
-     * @param state boolean true = on, false = off.
+     * Globally turn on (or off) the 'unsafe' option of Class construction. The
+     * unsafe option relies on {@code sun.misc.Unsafe} and should be used with
+     * caution as it may break on future JDKs or under strict security managers.
+     * It is used when all constructors have been tried and the Java class could
+     * not be instantiated.
+     *
+     * @param state boolean true = on, false = off
      */
     public static void setUseUnsafe(boolean state) {
         useUnsafe = state;

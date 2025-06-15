@@ -24,6 +24,7 @@
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
 > * `Traverser` supports lazy field collection, improved null-safe class skipping, and better error logging
+> * `Traverser` now ignores synthetic fields, preventing traversal into outer class references
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 > * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
 > * Fixed `TraverserTest.testLazyFieldCollection` compilation by obtaining the field before the lambda

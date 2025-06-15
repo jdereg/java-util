@@ -12,8 +12,9 @@ import java.util.Arrays;
  * <h2>Key Features</h2>
  * <ul>
  *   <li>Convert hexadecimal strings to byte arrays ({@link #decode(String)}).</li>
+ *   <li>Decode any {@link CharSequence} to a byte array ({@link #decode(CharSequence)}).</li>
  *   <li>Convert byte arrays to hexadecimal strings ({@link #encode(byte[])}).</li>
- *   <li>Check if a byte array is GZIP-compressed ({@link #isGzipped(byte[])}).</li>
+ *   <li>Check if a byte array is GZIP-compressed ({@link #isGzipped(byte[])} or {@link #isGzipped(byte[], int)}).</li>
  *   <li>Internally optimized for performance with reusable utilities like {@link #toHexChar(int)}.</li>
  * </ul>
  *
@@ -170,7 +171,8 @@ public final class ByteUtilities {
      * @return true if the bytes appear to be GZIP compressed
      */
     public static boolean isGzipped(byte[] bytes, int offset) {
-        return bytes != null && bytes.length - offset >= 2 &&
+        return bytes != null && offset >= 0 && bytes.length - offset >= 2 &&
                 bytes[offset] == GZIP_MAGIC[0] && bytes[offset + 1] == GZIP_MAGIC[1];
     }
+
 }

@@ -74,5 +74,7 @@ public class ByteUtilitiesTest
         assertTrue(ByteUtilities.isGzipped(gzipped));
         assertFalse(ByteUtilities.isGzipped(notGzip));
         assertTrue(ByteUtilities.isGzipped(embedded, 1));
+        assertFalse(ByteUtilities.isGzipped(embedded, -1));
+        assertFalse(ByteUtilities.isGzipped(embedded, 2));
     }
 }

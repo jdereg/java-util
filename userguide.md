@@ -1561,8 +1561,9 @@ A utility class providing static methods for byte array operations and hexadecim
 
 ### Key Features
 - Hex string to byte array conversion
+- CharSequence-based decoding for flexible inputs
 - Byte array to hex string conversion
-- GZIP compression detection
+- GZIP compression detection with optional offset
 - Thread-safe operations
 - Performance optimized
 - Null-safe methods
@@ -1579,6 +1580,10 @@ String hex = ByteUtilities.encode(data);
 // Decode hex string to bytes
 byte[] decoded = ByteUtilities.decode("1F8B3C");
 // Result: {0x1F, 0x8B, 0x3C}
+
+// Works with any CharSequence implementation
+StringBuilder sb = new StringBuilder("1F8B3C");
+byte[] fromSb = ByteUtilities.decode(sb);
 ```
 
 **GZIP Detection:**
@@ -1586,6 +1591,11 @@ byte[] decoded = ByteUtilities.decode("1F8B3C");
 // Check if byte array is GZIP compressed
 byte[] compressedData = {0x1f, 0x8b, /* ... */};
 boolean isGzipped = ByteUtilities.isGzipped(compressedData);
+// Result: true
+
+// Check gzip signature at an offset
+byte[] embedded = {0x00, 0x1f, 0x8b, /* ... */};
+boolean found = ByteUtilities.isGzipped(embedded, 1);
 // Result: true
 ```
 

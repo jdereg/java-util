@@ -57,10 +57,10 @@ public final class MathUtilities
     }
 
     /**
-     * Calculate the maximum value from an array of values.
+     * Calculate the minimum value from an array of values.
      *
      * @param values Array of values.
-     * @return maximum value of the provided set.
+     * @return minimum value of the provided set.
      */
     public static long minimum(long... values)
     {
@@ -103,10 +103,10 @@ public final class MathUtilities
     }
 
     /**
-     * Calculate the maximum value from an array of values.
+     * Calculate the minimum value from an array of values.
      *
      * @param values Array of values.
-     * @return maximum value of the provided set.
+     * @return minimum value of the provided set.
      */
     public static double minimum(double... values)
     {
@@ -149,10 +149,10 @@ public final class MathUtilities
     }
 
     /**
-     * Calculate the maximum value from an array of values.
+     * Calculate the minimum value from an array of values.
      *
      * @param values Array of values.
-     * @return maximum value of the provided set.
+     * @return minimum value of the provided set.
      */
     public static BigInteger minimum(BigInteger... values)
     {

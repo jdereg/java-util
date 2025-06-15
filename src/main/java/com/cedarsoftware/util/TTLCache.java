@@ -538,14 +538,15 @@ public class TTLCache<K, V> implements Map<K, V> {
     public int hashCode() {
         lock.lock();
         try {
-            int hashCode = 1;
-            for (Node<K, V> node = head.next; node != tail; node = node.next) {
-                Object key = node.key;
-                Object value = node.value;
-                hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
-                hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
+            int hash = 0;
+            for (Map.Entry<K, CacheEntry<K, V>> entry : cacheMap.entrySet()) {
+                K key = entry.getKey();
+                V value = entry.getValue().node.value;
+                int keyHash = (key == null ? 0 : key.hashCode());
+                int valueHash = (value == null ? 0 : value.hashCode());
+                hash += keyHash ^ valueHash;
             }
-            return hashCode;
+            return hash;
         } finally {
             lock.unlock();
         }

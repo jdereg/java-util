@@ -83,6 +83,11 @@ public final class ByteUtilities {
         }
     }
 
+    /**
+     * Magic number identifying a gzip byte stream.
+     */
+    private static final byte[] GZIP_MAGIC = {(byte) 0x1f, (byte) 0x8b};
+
     private ByteUtilities() { }
 
     /**
@@ -100,6 +105,17 @@ public final class ByteUtilities {
      * Returns null if the string length is odd or any character is non-hex.
      */
     public static byte[] decode(final String s) {
+        return decode((CharSequence) s);
+    }
+
+    /**
+     * Converts a hexadecimal CharSequence into a byte array.
+     * Returns null if the sequence length is odd, null, or contains non-hex characters.
+     */
+    public static byte[] decode(final CharSequence s) {
+        if (s == null) {
+            return null;
+        }
         final int len = s.length();
         // Must be even length
         if ((len & 1) != 0) {
@@ -127,6 +143,9 @@ public final class ByteUtilities {
      * Converts a byte array into a string of hex digits.
      */
     public static String encode(final byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
         char[] hexChars = new char[bytes.length * 2];
         for (int i = 0, j = 0; i < bytes.length; i++) {
             int v = bytes[i] & 0xFF;
@@ -140,7 +159,18 @@ public final class ByteUtilities {
      * Checks if the byte array represents gzip-compressed data.
      */
     public static boolean isGzipped(byte[] bytes) {
-        return (bytes != null && bytes.length >= 2 &&
-                bytes[0] == (byte) 0x1f && bytes[1] == (byte) 0x8b);
+        return isGzipped(bytes, 0);
+    }
+
+    /**
+     * Checks if the byte array represents gzip-compressed data starting at the given offset.
+     *
+     * @param bytes  the byte array to inspect
+     * @param offset the starting offset within the array
+     * @return true if the bytes appear to be GZIP compressed
+     */
+    public static boolean isGzipped(byte[] bytes, int offset) {
+        return bytes != null && bytes.length - offset >= 2 &&
+                bytes[offset] == GZIP_MAGIC[0] && bytes[offset + 1] == GZIP_MAGIC[1];
     }
 }

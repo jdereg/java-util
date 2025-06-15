@@ -1,39 +1,34 @@
 ### Revision History
 #### 3.3.3 Unreleased
-> * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
-> * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
-> * `LoggingConfig` can now accept a custom timestamp pattern via `LoggingConfig.init(String)` or
-  the `ju.log.dateFormat` system property. Uses thread-safe `SafeSimpleDateFormat`.
+> * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
+> * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
+> * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
-> * `Traverser` lazily loads fields when field collection is disabled, fixing missing field data in `NodeVisit`.
-> * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
   `ConcurrentHashMapNullSafe` for custom caches and generates unique parameter keys using fully qualified names.
-> * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
-> * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `Converter` - factory conversions map made immutable and legacy caching code removed
 > * `DateUtilities` uses `BigDecimal` for fractional second conversion, preventing rounding errors with high precision input
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
-> * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys; legacy cipher APIs are deprecated. Added SHA-384 hashing support.
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * Java logging now uses a Logback-style format for consistency
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
+> * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
+> * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
 > * `Traverser` supports lazy field collection, improved null-safe class skipping, and better error logging
 > * `Traverser` now ignores synthetic fields, preventing traversal into outer class references
 > * `Traverser` logs inaccessible fields at `Level.FINEST` instead of printing to STDERR
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 > * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
-> * README clarifies the configuration for each logger and notes that small libraries often rely on `java.util.logging`
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

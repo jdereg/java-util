@@ -54,13 +54,13 @@ class CollectionConversionsDirectTest {
         Object nested = result.stream().filter(e -> e instanceof Collection).findFirst().orElse(null);
         assertNotNull(nested);
         assertInstanceOf(Set.class, nested);
-        assertEquals(Set.of("b", "c"), new HashSet<>((Collection<?>) nested));
+        assertEquals(CollectionUtilities.setOf("b", "c"), new HashSet<>((Collection<?>) nested));
     }
 
     @Test
     void collectionToCollectionProducesUnmodifiable() {
         Class<?> type = Collections.unmodifiableCollection(new ArrayList<>()).getClass();
-        Collection<?> result = (Collection<?>) CollectionConversions.collectionToCollection(List.of(1, 2), type);
+        Collection<?> result = (Collection<?>) CollectionConversions.collectionToCollection(CollectionUtilities.listOf(1, 2), type);
         assertTrue(CollectionUtilities.isUnmodifiable(result.getClass()));
         assertThrows(UnsupportedOperationException.class,
                 () -> ((Collection<Object>) result).add(3));
@@ -69,7 +69,7 @@ class CollectionConversionsDirectTest {
     @Test
     void collectionToCollectionProducesSynchronized() {
         Class<?> type = Collections.synchronizedCollection(new ArrayList<>()).getClass();
-        Collection<?> result = (Collection<?>) CollectionConversions.collectionToCollection(List.of("a"), type);
+        Collection<?> result = (Collection<?>) CollectionConversions.collectionToCollection(CollectionUtilities.listOf("a"), type);
         assertTrue(CollectionUtilities.isSynchronized(result.getClass()));
         assertDoesNotThrow(() -> ((Collection<Object>) result).add("b"));
     }

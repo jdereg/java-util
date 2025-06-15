@@ -17,6 +17,7 @@ import java.util.TimeZone;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 import java.util.stream.Collectors;
 
 /**
@@ -77,6 +78,7 @@ public final class SystemUtilities
     public static final String USER_HOME = System.getProperty("user.home");
     public static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
     private static final Logger LOG = Logger.getLogger(SystemUtilities.class.getName());
+    static { LoggingConfig.init(); }
 
     private SystemUtilities() {
     }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 
 /**
  * A utility class for executing system commands and capturing their output.
@@ -56,6 +57,7 @@ public class Executor {
     private String _out;
     private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
     private static final Logger LOG = Logger.getLogger(Executor.class.getName());
+    static { LoggingConfig.init(); }
 
     public ExecutionResult execute(String command) {
         return execute(command, null, null);

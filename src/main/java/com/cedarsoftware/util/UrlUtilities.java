@@ -10,6 +10,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -107,6 +108,7 @@ public final class UrlUtilities
 
     protected static SSLSocketFactory naiveSSLSocketFactory;
     private static final Logger LOG = Logger.getLogger(UrlUtilities.class.getName());
+    static { LoggingConfig.init(); }
 
     static
     {

@@ -8,6 +8,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.abs;
@@ -88,6 +89,7 @@ public final class UniqueIdGenerator {
     private static final Lock lock = new ReentrantLock();
     private static final Lock lock19 = new ReentrantLock();
     private static final Logger LOG = Logger.getLogger(UniqueIdGenerator.class.getName());
+    static { LoggingConfig.init(); }
     private static int count = 0;
     private static int count2 = 0;
     private static long lastTimeMillis = 0;

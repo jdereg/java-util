@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -192,6 +193,7 @@ import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
 public class ClassUtilities {
 
     private static final Logger LOG = Logger.getLogger(ClassUtilities.class.getName());
+    static { LoggingConfig.init(); }
 
     private ClassUtilities() {
     }

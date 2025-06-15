@@ -16,6 +16,9 @@
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys; legacy cipher APIs are deprecated. Added SHA-384 hashing support.
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
+> * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
+> * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
+> * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`

@@ -36,6 +36,7 @@
 > * `Traverser` logs inaccessible fields at `Level.FINEST` instead of printing to STDERR
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 > * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
+> * Added unit tests for `ByteUtilities.toHexChar`
 > * Explicitly set versions for `maven-resources-plugin`, `maven-install-plugin`, and `maven-deploy-plugin` to avoid Maven 4 compatibility warnings
 > * Added tests for `CaseInsensitiveString.chars`, `codePoints`, and `subSequence` plus deprecated `CaseInsensitiveSet` methods
 #### 3.3.2 JDK 24+ Support

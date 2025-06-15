@@ -6,6 +6,8 @@
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
+> * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
+  `ConcurrentHashMapNullSafe` for custom caches and generates unique parameter keys using fully qualified names.
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `Converter` - factory conversions map made immutable and legacy caching code removed

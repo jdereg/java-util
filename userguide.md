@@ -3304,10 +3304,12 @@ Constructor<?> ctor = ReflectionUtils.getConstructor(
 **Caching Strategy:**
 ```java
 // All operations use internal caching
-private static final int CACHE_SIZE = 1000;
-private static final Map<MethodCacheKey, Method> METHOD_CACHE = 
+// Cache size can be tuned via the 'reflection.utils.cache.size' system property
+private static final int CACHE_SIZE =
+    Integer.getInteger("reflection.utils.cache.size", 1000);
+private static final Map<MethodCacheKey, Method> METHOD_CACHE =
     new LRUCache<>(CACHE_SIZE);
-private static final Map<FieldsCacheKey, Collection<Field>> FIELDS_CACHE = 
+private static final Map<FieldsCacheKey, Collection<Field>> FIELDS_CACHE =
     new LRUCache<>(CACHE_SIZE);
 ```
 

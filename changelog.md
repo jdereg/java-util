@@ -3,7 +3,21 @@
 > * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
+> * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
+> * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
+> * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
+> * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
+  `ConcurrentHashMapNullSafe` for custom caches and generates unique parameter keys using fully qualified names.
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
+> * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
+> * `Converter` - factory conversions map made immutable and legacy caching code removed
+> * `DateUtilities` uses `BigDecimal` for fractional second conversion, preventing rounding errors with high precision input
+> * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.
+> * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
+> * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys; legacy cipher APIs are deprecated. Added SHA-384 hashing support.
+> * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
+> * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
+> * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.

@@ -1,8 +1,14 @@
 package com.cedarsoftware.util;
 
 import javax.crypto.Cipher;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.security.SecureRandom;
+import java.security.spec.KeySpec;
+import java.util.Arrays;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -28,20 +34,25 @@ import java.security.spec.AlgorithmParameterSpec;
  *       <li>MD5 (fast implementation)</li>
  *       <li>SHA-1 (fast implementation)</li>
  *       <li>SHA-256</li>
+ *       <li>SHA-384</li>
  *       <li>SHA-512</li>
+ *       <li>SHA3-256</li>
+ *       <li>SHA3-512</li>
+ *       <li>Other variants like SHA-224 or SHA3-384 are available via
+ *           {@link java.security.MessageDigest}</li>
  *     </ul>
  *   </li>
  *   <li><b>Encryption/Decryption:</b>
  *     <ul>
  *       <li>AES-128 encryption</li>
- *       <li>CBC mode with PKCS5 padding</li>
- *       <li>IV generation from key</li>
+ *       <li>GCM mode with authentication</li>
+ *       <li>Random IV per encryption</li>
  *     </ul>
  *   </li>
  *   <li><b>Optimized File Operations:</b>
  *     <ul>
- *       <li>Zero-copy I/O using DirectByteBuffer</li>
- *       <li>Efficient large file handling</li>
+ *       <li>Efficient buffer management</li>
+ *       <li>Large file handling</li>
  *       <li>Custom filesystem support</li>
  *     </ul>
  *   </li>
@@ -72,14 +83,14 @@ import java.security.spec.AlgorithmParameterSpec;
  * <ul>
  *   <li>MD5 and SHA-1 are provided for legacy compatibility but are cryptographically broken</li>
  *   <li>Use SHA-256 or SHA-512 for secure hashing</li>
- *   <li>AES implementation uses CBC mode with PKCS5 padding</li>
- *   <li>IV is deterministically generated from the key using MD5</li>
+ *   <li>AES implementation uses GCM mode with authentication</li>
+ *   <li>IV and salt are randomly generated for each encryption</li>
  * </ul>
  *
  * <p><b>Performance Features:</b></p>
  * <ul>
  *   <li>Optimized buffer sizes for modern storage systems</li>
- *   <li>Direct ByteBuffer usage for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer usage for efficient memory management</li>
  *   <li>Efficient memory management</li>
  *   <li>Thread-safe implementation</li>
  * </ul>
@@ -109,7 +120,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -127,7 +138,7 @@ public class EncryptionUtilities {
         } catch (NoSuchFileException e) {
             return null;
         } catch (IOException e) {
-            return null;
+            throw new java.io.UncheckedIOException(e);
         }
     }
 
@@ -165,17 +176,17 @@ public class EncryptionUtilities {
     }
 
     /**
-     * Calculates a SHA-256 hash of a file using optimized I/O operations.
+     * Calculates a SHA-1 hash of a file using optimized I/O operations.
      * <p>
      * This implementation uses:
      * <ul>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
      *
      * @param file the file to hash
-     * @return hexadecimal string of the SHA-256 hash, or null if the file cannot be read
+ * @return hexadecimal string of the SHA-1 hash, or null if the file cannot be read
      */
     public static String fastSHA1(File file) {
         try (InputStream in = Files.newInputStream(file.toPath())) {
@@ -187,7 +198,7 @@ public class EncryptionUtilities {
         } catch (NoSuchFileException e) {
             return null;
         } catch (IOException e) {
-            return null;
+            throw new java.io.UncheckedIOException(e);
         }
     }
 
@@ -196,7 +207,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -214,7 +225,26 @@ public class EncryptionUtilities {
         } catch (NoSuchFileException e) {
             return null;
         } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Calculates a SHA-384 hash of a file using optimized I/O operations.
+     *
+     * @param file the file to hash
+     * @return hexadecimal string of the SHA-384 hash, or null if the file cannot be read
+     */
+    public static String fastSHA384(File file) {
+        try (InputStream in = Files.newInputStream(file.toPath())) {
+            if (in instanceof FileInputStream) {
+                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA384Digest());
+            }
+            return calculateStreamHash(in, getSHA384Digest());
+        } catch (NoSuchFileException e) {
             return null;
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
         }
     }
 
@@ -223,7 +253,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -246,12 +276,50 @@ public class EncryptionUtilities {
     }
 
     /**
+     * Calculates a SHA3-256 hash of a file using optimized I/O operations.
+     *
+     * @param file the file to hash
+     * @return hexadecimal string of the SHA3-256 hash, or null if the file cannot be read
+     */
+    public static String fastSHA3_256(File file) {
+        try (InputStream in = Files.newInputStream(file.toPath())) {
+            if (in instanceof FileInputStream) {
+                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA3_256Digest());
+            }
+            return calculateStreamHash(in, getSHA3_256Digest());
+        } catch (NoSuchFileException e) {
+            return null;
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Calculates a SHA3-512 hash of a file using optimized I/O operations.
+     *
+     * @param file the file to hash
+     * @return hexadecimal string of the SHA3-512 hash, or null if the file cannot be read
+     */
+    public static String fastSHA3_512(File file) {
+        try (InputStream in = Files.newInputStream(file.toPath())) {
+            if (in instanceof FileInputStream) {
+                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA3_512Digest());
+            }
+            return calculateStreamHash(in, getSHA3_512Digest());
+        } catch (NoSuchFileException e) {
+            return null;
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /**
      * Calculates a hash of a file using the provided MessageDigest and FileChannel.
      * <p>
      * This implementation uses:
      * <ul>
      *   <li>64KB buffer size optimized for modern storage systems</li>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>Efficient buffer management</li>
      * </ul>
      *
@@ -265,9 +333,9 @@ public class EncryptionUtilities {
         // Matches common SSD page sizes and OS buffer sizes
         final int BUFFER_SIZE = 64 * 1024;
 
-        // Direct buffer for zero-copy I/O
-        // Reuse buffer to avoid repeated allocation/deallocation
-        ByteBuffer buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
+        // Heap buffer avoids expensive native allocations
+        // Reuse buffer to reduce garbage creation
+        ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
 
         // Read until EOF
         while (channel.read(buffer) != -1) {
@@ -357,6 +425,26 @@ public class EncryptionUtilities {
     }
 
     /**
+     * Calculates a SHA-384 hash of a byte array.
+     *
+     * @param bytes the data to hash
+     * @return hexadecimal string of the SHA-384 hash, or null if input is null
+     */
+    public static String calculateSHA384Hash(byte[] bytes) {
+        return calculateHash(getSHA384Digest(), bytes);
+    }
+
+    /**
+     * Creates a SHA-384 MessageDigest instance.
+     *
+     * @return MessageDigest configured for SHA-384
+     * @throws IllegalArgumentException if SHA-384 algorithm is not available
+     */
+    public static MessageDigest getSHA384Digest() {
+        return getDigest("SHA-384");
+    }
+
+    /**
      * Calculates a SHA-512 hash of a byte array.
      *
      * @param bytes the data to hash
@@ -377,13 +465,73 @@ public class EncryptionUtilities {
     }
 
     /**
+     * Calculates a SHA3-256 hash of a byte array.
+     *
+     * @param bytes the data to hash
+     * @return hexadecimal string of the SHA3-256 hash, or null if input is null
+     */
+    public static String calculateSHA3_256Hash(byte[] bytes) {
+        return calculateHash(getSHA3_256Digest(), bytes);
+    }
+
+    /**
+     * Creates a SHA3-256 MessageDigest instance.
+     *
+     * @return MessageDigest configured for SHA3-256
+     * @throws IllegalArgumentException if SHA3-256 algorithm is not available
+     */
+    public static MessageDigest getSHA3_256Digest() {
+        return getDigest("SHA3-256");
+    }
+
+    /**
+     * Calculates a SHA3-512 hash of a byte array.
+     *
+     * @param bytes the data to hash
+     * @return hexadecimal string of the SHA3-512 hash, or null if input is null
+     */
+    public static String calculateSHA3_512Hash(byte[] bytes) {
+        return calculateHash(getSHA3_512Digest(), bytes);
+    }
+
+    /**
+     * Creates a SHA3-512 MessageDigest instance.
+     *
+     * @return MessageDigest configured for SHA3-512
+     * @throws IllegalArgumentException if SHA3-512 algorithm is not available
+     */
+    public static MessageDigest getSHA3_512Digest() {
+        return getDigest("SHA3-512");
+    }
+
+    /**
+     * Derives an AES key from a password and salt using PBKDF2.
+     *
+     * @param password   the password
+     * @param salt       random salt bytes
+     * @param bitsNeeded key length in bits
+     * @return derived key bytes
+     */
+    public static byte[] deriveKey(String password, byte[] salt, int bitsNeeded) {
+        try {
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, bitsNeeded);
+            return factory.generateSecret(spec).getEncoded();
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to derive key", e);
+        }
+    }
+
+    /**
      * Creates a byte array suitable for use as an AES key from a string password.
      * <p>
      * The key is derived using MD5 and truncated to the specified bit length.
+     * This legacy method is retained for backward compatibility.
      *
      * @param key the password to derive the key from
      * @param bitsNeeded the required key length in bits (typically 128, 192, or 256)
      * @return byte array containing the derived key
+     * @deprecated Use {@link #deriveKey(String, byte[], int)} for stronger security
      */
     public static byte[] createCipherBytes(String key, int bitsNeeded) {
         String word = calculateMD5Hash(key.getBytes(StandardCharsets.UTF_8));
@@ -397,6 +545,7 @@ public class EncryptionUtilities {
      * @return Cipher configured for AES encryption
      * @throws Exception if cipher creation fails
      */
+    @Deprecated
     public static Cipher createAesEncryptionCipher(String key) throws Exception {
         return createAesCipher(key, Cipher.ENCRYPT_MODE);
     }
@@ -408,6 +557,7 @@ public class EncryptionUtilities {
      * @return Cipher configured for AES decryption
      * @throws Exception if cipher creation fails
      */
+    @Deprecated
     public static Cipher createAesDecryptionCipher(String key) throws Exception {
         return createAesCipher(key, Cipher.DECRYPT_MODE);
     }
@@ -422,6 +572,7 @@ public class EncryptionUtilities {
      * @return configured Cipher instance
      * @throws Exception if cipher creation fails
      */
+    @Deprecated
     public static Cipher createAesCipher(String key, int mode) throws Exception {
         Key sKey = new SecretKeySpec(createCipherBytes(key, 128), "AES");
         return createAesCipher(sKey, mode);
@@ -437,6 +588,7 @@ public class EncryptionUtilities {
      * @return configured Cipher instance
      * @throws Exception if cipher creation fails
      */
+    @Deprecated
     public static Cipher createAesCipher(Key key, int mode) throws Exception {
         // Use password key as seed for IV (must be 16 bytes)
         MessageDigest d = getMD5Digest();
@@ -458,8 +610,28 @@ public class EncryptionUtilities {
      * @throws IllegalStateException if encryption fails
      */
     public static String encrypt(String key, String content) {
+        if (key == null || content == null) {
+            throw new IllegalArgumentException("key and content cannot be null");
+        }
         try {
-            return ByteUtilities.encode(createAesEncryptionCipher(key).doFinal(content.getBytes(StandardCharsets.UTF_8)));
+            SecureRandom random = new SecureRandom();
+            byte[] salt = new byte[16];
+            random.nextBytes(salt);
+            byte[] iv = new byte[12];
+            random.nextBytes(iv);
+
+            SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
+
+            byte[] encrypted = cipher.doFinal(content.getBytes(StandardCharsets.UTF_8));
+
+            byte[] out = new byte[1 + salt.length + iv.length + encrypted.length];
+            out[0] = 1; // version
+            System.arraycopy(salt, 0, out, 1, salt.length);
+            System.arraycopy(iv, 0, out, 1 + salt.length, iv.length);
+            System.arraycopy(encrypted, 0, out, 1 + salt.length + iv.length, encrypted.length);
+            return ByteUtilities.encode(out);
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred encrypting data", e);
         }
@@ -474,8 +646,27 @@ public class EncryptionUtilities {
      * @throws IllegalStateException if encryption fails
      */
     public static String encryptBytes(String key, byte[] content) {
+        if (key == null || content == null) {
+            throw new IllegalArgumentException("key and content cannot be null");
+        }
         try {
-            return ByteUtilities.encode(createAesEncryptionCipher(key).doFinal(content));
+            SecureRandom random = new SecureRandom();
+            byte[] salt = new byte[16];
+            random.nextBytes(salt);
+            byte[] iv = new byte[12];
+            random.nextBytes(iv);
+
+            SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
+            byte[] encrypted = cipher.doFinal(content);
+
+            byte[] out = new byte[1 + salt.length + iv.length + encrypted.length];
+            out[0] = 1;
+            System.arraycopy(salt, 0, out, 1, salt.length);
+            System.arraycopy(iv, 0, out, 1 + salt.length, iv.length);
+            System.arraycopy(encrypted, 0, out, 1 + salt.length + iv.length, encrypted.length);
+            return ByteUtilities.encode(out);
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred encrypting data", e);
         }
@@ -490,8 +681,25 @@ public class EncryptionUtilities {
      * @throws IllegalStateException if decryption fails
      */
     public static String decrypt(String key, String hexStr) {
+        if (key == null || hexStr == null) {
+            throw new IllegalArgumentException("key and hexStr cannot be null");
+        }
+        byte[] data = ByteUtilities.decode(hexStr);
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("Invalid hexadecimal input");
+        }
         try {
-            return new String(createAesDecryptionCipher(key).doFinal(ByteUtilities.decode(hexStr)));
+            if (data[0] == 1 && data.length > 29) {
+                byte[] salt = Arrays.copyOfRange(data, 1, 17);
+                byte[] iv = Arrays.copyOfRange(data, 17, 29);
+                byte[] cipherText = Arrays.copyOfRange(data, 29, data.length);
+
+                SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                cipher.init(Cipher.DECRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
+                return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
+            }
+            return new String(createAesDecryptionCipher(key).doFinal(data), StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred decrypting data", e);
         }
@@ -506,8 +714,25 @@ public class EncryptionUtilities {
      * @throws IllegalStateException if decryption fails
      */
     public static byte[] decryptBytes(String key, String hexStr) {
+        if (key == null || hexStr == null) {
+            throw new IllegalArgumentException("key and hexStr cannot be null");
+        }
+        byte[] data = ByteUtilities.decode(hexStr);
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("Invalid hexadecimal input");
+        }
         try {
-            return createAesDecryptionCipher(key).doFinal(ByteUtilities.decode(hexStr));
+            if (data[0] == 1 && data.length > 29) {
+                byte[] salt = Arrays.copyOfRange(data, 1, 17);
+                byte[] iv = Arrays.copyOfRange(data, 17, 29);
+                byte[] cipherText = Arrays.copyOfRange(data, 29, data.length);
+
+                SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                cipher.init(Cipher.DECRYPT_MODE, sKey, new GCMParameterSpec(128, iv));
+                return cipher.doFinal(cipherText);
+            }
+            return createAesDecryptionCipher(key).doFinal(data);
         } catch (Exception e) {
             throw new IllegalStateException("Error occurred decrypting data", e);
         }

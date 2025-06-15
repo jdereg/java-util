@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Objects;
 
 import static java.util.Collections.swap;
 
@@ -64,6 +65,10 @@ public final class MathUtilities
     public static long minimum(long... values)
     {
         final int len = values.length;
+        if (len == 0)
+        {
+            throw new IllegalArgumentException("values cannot be empty");
+        }
         long current = values[0];
 
         for (int i=1; i < len; i++)
@@ -75,14 +80,18 @@ public final class MathUtilities
     }
 
     /**
-     * Calculate the minimum value from an array of values.
+     * Calculate the maximum value from an array of values.
      *
      * @param values Array of values.
-     * @return minimum value of the provided set.
+     * @return maximum value of the provided set.
      */
     public static long maximum(long... values)
     {
         final int len = values.length;
+        if (len == 0)
+        {
+            throw new IllegalArgumentException("values cannot be empty");
+        }
         long current = values[0];
 
         for (int i=1; i < len; i++)
@@ -101,7 +110,11 @@ public final class MathUtilities
      */
     public static double minimum(double... values)
     {
-        final int len =values.length;
+        final int len = values.length;
+        if (len == 0)
+        {
+            throw new IllegalArgumentException("values cannot be empty");
+        }
         double current = values[0];
 
         for (int i=1; i < len; i++)
@@ -113,14 +126,18 @@ public final class MathUtilities
     }
 
     /**
-     * Calculate the minimum value from an array of values.
+     * Calculate the maximum value from an array of values.
      *
      * @param values Array of values.
-     * @return minimum value of the provided set.
+     * @return maximum value of the provided set.
      */
     public static double maximum(double... values)
     {
         final int len = values.length;
+        if (len == 0)
+        {
+            throw new IllegalArgumentException("values cannot be empty");
+        }
         double current = values[0];
 
         for (int i=1; i < len; i++)
@@ -140,6 +157,10 @@ public final class MathUtilities
     public static BigInteger minimum(BigInteger... values)
     {
         final int len = values.length;
+        if (len == 0)
+        {
+            throw new IllegalArgumentException("values cannot be empty");
+        }
         if (len == 1)
         {
             if (values[0] == null)
@@ -163,14 +184,18 @@ public final class MathUtilities
     }
 
     /**
-     * Calculate the minimum value from an array of values.
+     * Calculate the maximum value from an array of values.
      *
      * @param values Array of values.
-     * @return minimum value of the provided set.
+     * @return maximum value of the provided set.
      */
     public static BigInteger maximum(BigInteger... values)
     {
         final int len = values.length;
+        if (len == 0)
+        {
+            throw new IllegalArgumentException("values cannot be empty");
+        }
         if (len == 1)
         {
             if (values[0] == null)
@@ -202,6 +227,10 @@ public final class MathUtilities
     public static BigDecimal minimum(BigDecimal... values)
     {
         final int len = values.length;
+        if (len == 0)
+        {
+            throw new IllegalArgumentException("values cannot be empty");
+        }
         if (len == 1)
         {
             if (values[0] == null)
@@ -233,6 +262,10 @@ public final class MathUtilities
     public static BigDecimal maximum(BigDecimal... values)
     {
         final int len = values.length;
+        if (len == 0)
+        {
+            throw new IllegalArgumentException("values cannot be empty");
+        }
         if (len == 1)
         {
             if (values[0] == null)
@@ -281,22 +314,42 @@ public final class MathUtilities
      * @throws NumberFormatException if the string cannot be parsed as a number
      * @throws IllegalArgumentException if numStr is null
      */
-    public static Number parseToMinimalNumericType(String numStr) {
-        // Handle and preserve negative signs correctly while removing leading zeros
-        boolean negative = numStr.startsWith("-");
-        boolean hasSign = negative || numStr.startsWith("+");
-        String digits = hasSign ? numStr.substring(1) : numStr;
-        digits = digits.replaceFirst("^0+", "");
-        if (digits.isEmpty()) {
-            digits = "0";
+    public static Number parseToMinimalNumericType(String numStr)
+    {
+        Objects.requireNonNull(numStr, "numStr");
+
+        boolean negative = false;
+        boolean positive = false;
+        int index = 0;
+        if (numStr.startsWith("-"))
+        {
+            negative = true;
+            index = 1;
         }
-        numStr = (negative ? "-" : (hasSign ? "+" : "")) + digits;
+        else if (numStr.startsWith("+"))
+        {
+            positive = true;
+            index = 1;
+        }
+
+        StringBuilder digits = new StringBuilder(numStr.length() - index);
+        int len = numStr.length();
+        while (index < len && numStr.charAt(index) == '0' && index + 1 < len && Character.isDigit(numStr.charAt(index + 1)))
+        {
+            index++;
+        }
+        digits.append(numStr.substring(index));
+        if (digits.length() == 0)
+        {
+            digits.append('0');
+        }
+        numStr = (negative ? "-" : (positive ? "+" : "")) + digits.toString();
 
         boolean hasDecimalPoint = false;
         boolean hasExponent = false;
         int mantissaSize = 0;
         StringBuilder exponentValue = new StringBuilder();
-        int len = numStr.length();
+        len = numStr.length();
 
         for (int i = 0; i < len; i++) {
             char c = numStr.charAt(i);
@@ -313,12 +366,23 @@ public final class MathUtilities
             }
         }
 
-        if (hasDecimalPoint || hasExponent) {
-            if (mantissaSize < 17 && (exponentValue.length() == 0 || Math.abs(Integer.parseInt(exponentValue.toString())) < 308)) {
-                return Double.parseDouble(numStr);
-            } else {
-                return new BigDecimal(numStr);
+        if (hasDecimalPoint || hasExponent)
+        {
+            if (mantissaSize < 17)
+            {
+                try
+                {
+                    if (exponentValue.length() == 0 || Math.abs(Integer.parseInt(exponentValue.toString())) < 308)
+                    {
+                        return Double.parseDouble(numStr);
+                    }
+                }
+                catch (NumberFormatException ignore)
+                {
+                    // fall through to BigDecimal
+                }
             }
+            return new BigDecimal(numStr);
         } else {
             if (numStr.length() < 19) {
                 return Long.parseLong(numStr);
@@ -359,7 +423,12 @@ public final class MathUtilities
      * @return true if a next permutation exists and was generated, false if no more permutations exist
      * @throws IllegalArgumentException if list is null
      */
-    public static <T extends Comparable<? super T>> boolean nextPermutation(List<T> list) {
+    public static <T extends Comparable<? super T>> boolean nextPermutation(List<T> list)
+    {
+        if (list == null)
+        {
+            throw new IllegalArgumentException("list cannot be null");
+        }
         int k = list.size() - 2;
         while (k >= 0 && list.get(k).compareTo(list.get(k + 1)) >= 0) {
             k--;

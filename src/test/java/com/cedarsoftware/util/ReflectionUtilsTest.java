@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.io.InputStream;
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -502,7 +503,7 @@ public class ReflectionUtilsTest
     }
 
     @Test
-    public void testGetClassNameFromByteCode()
+    public void testGetClassNameFromByteCode() throws IOException
     {
         Class<?> c = ReflectionUtilsTest.class;
         String className = c.getName();

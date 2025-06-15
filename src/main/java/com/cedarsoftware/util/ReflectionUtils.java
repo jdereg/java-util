@@ -47,7 +47,11 @@ import java.util.function.Predicate;
  *         limitations under the License.
  */
 public final class ReflectionUtils {
-    private static final int CACHE_SIZE = 1500;
+    /** System property key controlling the reflection cache size. */
+    private static final String CACHE_SIZE_PROPERTY = "reflection.utils.cache.size";
+    private static final int DEFAULT_CACHE_SIZE = 1500;
+    private static final int CACHE_SIZE = Math.max(1,
+            Integer.getInteger(CACHE_SIZE_PROPERTY, DEFAULT_CACHE_SIZE));
 
     // Add a new cache for storing the sorted constructor arrays
     private static final AtomicReference<Map<? super SortedConstructorsCacheKey, Constructor<?>[]>> SORTED_CONSTRUCTORS_CACHE =
@@ -76,7 +80,7 @@ public final class ReflectionUtils {
         if (candidate instanceof ConcurrentMap || candidate instanceof LRUCache) {
             return candidate;                     // already thread-safe
         }
-        return Collections.synchronizedMap(candidate);
+        return new ConcurrentHashMapNullSafe<>(candidate);
     }
 
     private static <T> void swap(AtomicReference<T> ref, T newValue) {
@@ -1396,14 +1400,14 @@ public final class ReflectionUtils {
             return "";
         }
 
-        StringBuilder builder = new StringBuilder(":");
-        Iterator<Class<?>> i = Arrays.stream(parameterTypes).iterator();
-        while (i.hasNext()) {
-            Class<?> param = i.next();
-            builder.append(param.getSimpleName());
-            if (i.hasNext()) {
+        StringBuilder builder = new StringBuilder(32);
+        builder.append(':');
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (i > 0) {
                 builder.append('|');
             }
+            Class<?> param = parameterTypes[i];
+            builder.append(param.getName());
         }
         return builder.toString();
     }

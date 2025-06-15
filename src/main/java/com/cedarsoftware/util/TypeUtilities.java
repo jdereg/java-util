@@ -11,6 +11,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Useful APIs for working with Java types, including resolving type variables and generic types.
@@ -41,6 +43,7 @@ public class TypeUtilities {
      *             Must be thread-safe and implement Map interface.
      */
     public static void setTypeResolveCache(Map<Map.Entry<Type, Type>, Type> cache) {
+        Convention.throwIfNull(cache, "cache cannot be null");
         TYPE_RESOLVE_CACHE = cache;
     }
 
@@ -508,6 +511,25 @@ public class TypeUtilities {
             }
             return sb.toString();
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof ParameterizedType)) {
+                return false;
+            }
+            ParameterizedType that = (ParameterizedType) o;
+            return Objects.equals(raw, that.getRawType()) &&
+                    Objects.equals(owner, that.getOwnerType()) &&
+                    Arrays.equals(args, that.getActualTypeArguments());
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(args) ^ Objects.hashCode(raw) ^ Objects.hashCode(owner);
+        }
     }
 
     /**
@@ -528,6 +550,23 @@ public class TypeUtilities {
         @Override
         public String toString() {
             return componentType.getTypeName() + "[]";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof GenericArrayType)) {
+                return false;
+            }
+            GenericArrayType that = (GenericArrayType) o;
+            return Objects.equals(componentType, that.getGenericComponentType());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(componentType);
         }
     }
 
@@ -571,6 +610,24 @@ public class TypeUtilities {
                 }
             }
             return sb.toString();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof WildcardType)) {
+                return false;
+            }
+            WildcardType that = (WildcardType) o;
+            return Arrays.equals(upperBounds, that.getUpperBounds()) &&
+                    Arrays.equals(lowerBounds, that.getLowerBounds());
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(upperBounds) ^ Arrays.hashCode(lowerBounds);
         }
     }
 }

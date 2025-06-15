@@ -180,9 +180,10 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
         try {
             Node<K, V> node = cache.get(key);
             if (node != null) {
+                V oldValue = node.value;
                 node.value = value;
                 moveToHead(node);
-                return node.value;
+                return oldValue;
             } else {
                 Node<K, V> newNode = new Node<>(key, value);
                 cache.put(key, newNode);

@@ -36,6 +36,7 @@
 > * `Traverser` logs inaccessible fields at `Level.FINEST` instead of printing to STDERR
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 > * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
+> * Added unit tests for `ByteUtilities.toHexChar`
 > * Explicitly set versions for `maven-resources-plugin`, `maven-install-plugin`, and `maven-deploy-plugin` to avoid Maven 4 compatibility warnings
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.

@@ -6,6 +6,7 @@
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
+> * `Traverser` lazily loads fields when field collection is disabled, fixing missing field data in `NodeVisit`.
 > * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
   `ConcurrentHashMapNullSafe` for custom caches and generates unique parameter keys using fully qualified names.
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`

@@ -1306,6 +1306,7 @@ A thread-safe List implementation that provides synchronized access to list oper
 - Exclusive write access
 - Safe collection views
 - Null element support (if backing list allows)
+- Implements `Serializable` and `RandomAccess`
 
 ### Usage Examples
 

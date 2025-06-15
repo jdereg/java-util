@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -22,10 +23,11 @@ final class Unsafe
      */
     public Unsafe() throws InvocationTargetException {
         try {
-            Constructor<?> unsafeConstructor = forName("sun.misc.Unsafe", ClassUtilities.getClassLoader(Unsafe.class)).getDeclaredConstructor();
-            trySetAccessible(unsafeConstructor);
-            sunUnsafe = unsafeConstructor.newInstance();
-            allocateInstance = sunUnsafe.getClass().getMethod("allocateInstance", Class.class);
+            Class<?> unsafeClass = forName("sun.misc.Unsafe", ClassUtilities.getClassLoader(Unsafe.class));
+            Field f = unsafeClass.getDeclaredField("theUnsafe");
+            trySetAccessible(f);
+            sunUnsafe = f.get(null);
+            allocateInstance = unsafeClass.getMethod("allocateInstance", Class.class);
             trySetAccessible(allocateInstance);
         }
         catch (Exception e) {
@@ -41,15 +43,20 @@ final class Unsafe
      */
     public Object allocateInstance(Class<?> clazz)
     {
+        if (clazz == null || clazz.isInterface()) {
+            String name = clazz == null ? "null" : clazz.getName();
+            throw new IllegalArgumentException("Unable to create instance of class: " + name);
+        }
+
         try {
             return allocateInstance.invoke(sunUnsafe, clazz);
         }
         catch (IllegalAccessException | IllegalArgumentException e ) {
-            String name = clazz == null ? "null" : clazz.getName();
+            String name = clazz.getName();
             throw new IllegalArgumentException("Unable to create instance of class: " + name, e);
         }
         catch (InvocationTargetException e) {
-            String name = clazz == null ? "null" : clazz.getName();
+            String name = clazz.getName();
             throw new IllegalArgumentException("Unable to create instance of class: " + name, e.getCause() != null ? e.getCause() : e);
         }
     }

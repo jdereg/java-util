@@ -33,7 +33,8 @@ class CollectionConversionsDirectTest {
         Class<? extends Collection<?>> type = CollectionsWrappers.getUnmodifiableCollectionClass();
         Collection<?> result = CollectionConversions.arrayToCollection(new Integer[]{1, 2}, type);
         assertTrue(CollectionUtilities.isUnmodifiable(result.getClass()));
-        assertThrows(UnsupportedOperationException.class, () -> result.add(3));
+        assertThrows(UnsupportedOperationException.class,
+                () -> ((Collection<Object>) result).add(3));
     }
 
     @Test
@@ -41,7 +42,7 @@ class CollectionConversionsDirectTest {
         Class<? extends Collection<?>> type = CollectionsWrappers.getSynchronizedCollectionClass();
         Collection<?> result = CollectionConversions.arrayToCollection(new String[]{"x"}, type);
         assertTrue(CollectionUtilities.isSynchronized(result.getClass()));
-        assertDoesNotThrow(() -> result.add("y"));
+        assertDoesNotThrow(() -> ((Collection<Object>) result).add("y"));
     }
 
     @Test
@@ -61,7 +62,8 @@ class CollectionConversionsDirectTest {
         Class<?> type = Collections.unmodifiableCollection(new ArrayList<>()).getClass();
         Collection<?> result = (Collection<?>) CollectionConversions.collectionToCollection(List.of(1, 2), type);
         assertTrue(CollectionUtilities.isUnmodifiable(result.getClass()));
-        assertThrows(UnsupportedOperationException.class, () -> result.add(3));
+        assertThrows(UnsupportedOperationException.class,
+                () -> ((Collection<Object>) result).add(3));
     }
 
     @Test
@@ -69,7 +71,7 @@ class CollectionConversionsDirectTest {
         Class<?> type = Collections.synchronizedCollection(new ArrayList<>()).getClass();
         Collection<?> result = (Collection<?>) CollectionConversions.collectionToCollection(List.of("a"), type);
         assertTrue(CollectionUtilities.isSynchronized(result.getClass()));
-        assertDoesNotThrow(() -> result.add("b"));
+        assertDoesNotThrow(() -> ((Collection<Object>) result).add("b"));
     }
 }
 

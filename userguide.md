@@ -3092,8 +3092,15 @@ try {
     // Handle null input
 }
 
-// Primitive arrays cannot contain nulls
+// Primitive arrays cannot contain nulls and must not be empty
 MathUtilities.minimum(1L, 2L, 3L);  // Always safe
+
+// nextPermutation validates the list parameter
+try {
+    MathUtilities.nextPermutation(null);
+} catch (IllegalArgumentException e) {
+    // Handle null list
+}
 ```
 
 **Type Selection Rules:**

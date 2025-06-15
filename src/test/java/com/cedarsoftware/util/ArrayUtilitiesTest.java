@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * useful Array utilities
@@ -55,6 +56,8 @@ public class ArrayUtilitiesTest
         assertTrue(ArrayUtilities.isEmpty(new byte[]{}));
         assertTrue(ArrayUtilities.isEmpty(null));
         assertFalse(ArrayUtilities.isEmpty(new byte[]{5}));
+        assertTrue(ArrayUtilities.isNotEmpty(new byte[]{5}));
+        assertFalse(ArrayUtilities.isNotEmpty(null));
     }
 
     @Test
@@ -162,5 +165,46 @@ public class ArrayUtilitiesTest
         assert strs[0] == "foo";
         assert strs[1] == "bar";
         assert strs[2] == "baz";
+    }
+
+    @Test
+    public void testCreateArray()
+    {
+        String[] base = {"a", "b"};
+        String[] copy = ArrayUtilities.createArray(base);
+        assertNotSame(base, copy);
+        assertArrayEquals(base, copy);
+
+        assertNull(ArrayUtilities.createArray((String[]) null));
+    }
+
+    @Test
+    public void testNullToEmpty()
+    {
+        String[] result = ArrayUtilities.nullToEmpty(String.class, null);
+        assertNotNull(result);
+        assertEquals(0, result.length);
+
+        String[] source = {"a"};
+        assertSame(source, ArrayUtilities.nullToEmpty(String.class, source));
+    }
+
+    @Test
+    public void testAddItemAndIndexOf()
+    {
+        String[] data = {"a", "b"};
+        data = ArrayUtilities.addItem(String.class, data, "c");
+        assertArrayEquals(new String[]{"a", "b", "c"}, data);
+        assertEquals(1, ArrayUtilities.indexOf(data, "b"));
+        assertEquals(2, ArrayUtilities.lastIndexOf(data, "c"));
+        assertTrue(ArrayUtilities.contains(data, "c"));
+    }
+
+    @Test
+    public void testRemoveItemInvalid()
+    {
+        String[] data = {"x", "y"};
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> ArrayUtilities.removeItem(data, -1));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> ArrayUtilities.removeItem(data, 2));
     }
 }

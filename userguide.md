@@ -883,7 +883,7 @@ tracker.expungeUnused();  // Removes entries never accessed
 TrackingMap<String, Config> configMap = new TrackingMap<>(sourceMap);
 
 // After some time...
-Set<String> usedKeys = configMap.keysUsed();
+Set<Object> usedKeys = configMap.keysUsed();
 System.out.println("Accessed configs: " + usedKeys);
 ```
 
@@ -943,7 +943,7 @@ scheduler.scheduleAtFixedRate(() -> {
 ### Available Operations
 ```java
 // Core tracking operations
-Set<K> keysUsed()              // Get accessed keys
+Set<Object> keysUsed()         // Get accessed keys
 void expungeUnused()           // Remove unused entries
 
 // Usage pattern merging
@@ -952,6 +952,7 @@ void informAdditionalUsage(TrackingMap<K,V>) // Merge from another tracker
 
 // Map access
 Map<K,V> getWrappedMap()       // Get underlying map
+void replaceContents(Map<K,V>) // Replace map contents
 ```
 
 ### Thread Safety Notes

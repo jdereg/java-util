@@ -215,12 +215,12 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
         Object result = internalMap.compute(maskedKey, (k, v) -> {
             if (v != null && v != NullSentinel.NULL_VALUE) {
-                // Another thread already inserted a value
+                // Existing non-null value remains untouched
                 return v;
             }
 
-            V computed = mappingFunction.apply(unmaskNullKey(k));
-            return computed == null ? null : maskNullValue(computed);
+            V newValue = mappingFunction.apply(unmaskNullKey(k));
+            return (newValue == null) ? null : maskNullValue(newValue);
         });
 
         return unmaskNullValue(result);

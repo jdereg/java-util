@@ -247,7 +247,9 @@ public class Traverser {
 
     private Map<Field, Object> collectFields(Object obj) {
         Map<Field, Object> fields = new HashMap<>();
-        Collection<Field> allFields = ReflectionUtils.getAllDeclaredFields(obj.getClass());
+        Collection<Field> allFields = ReflectionUtils.getAllDeclaredFields(
+                obj.getClass(),
+                field -> ReflectionUtils.DEFAULT_FIELD_FILTER.test(field) && !field.isSynthetic());
 
         for (Field field : allFields) {
             try {
@@ -309,7 +311,9 @@ public class Traverser {
     }
 
     private void processFields(Deque<Object> stack, Object object, Set<Class<?>> classesToSkip) {
-        Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(object.getClass());
+        Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(
+                object.getClass(),
+                field -> ReflectionUtils.DEFAULT_FIELD_FILTER.test(field) && !field.isSynthetic());
         for (Field field : fields) {
             if (!field.getType().isPrimitive()) {
                 try {

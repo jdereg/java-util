@@ -99,6 +99,22 @@ public class EncryptionTest
     }
 
     @Test
+    public void testSHA3_256()
+    {
+        String hash = EncryptionUtilities.calculateSHA3_256Hash(QUICK_FOX.getBytes());
+        assertEquals("69070DDA01975C8C120C3AADA1B282394E7F032FA9CF32F4CB2259A0897DFC04", hash);
+        assertNull(EncryptionUtilities.calculateSHA3_256Hash(null));
+    }
+
+    @Test
+    public void testSHA3_512()
+    {
+        String hash = EncryptionUtilities.calculateSHA3_512Hash(QUICK_FOX.getBytes());
+        assertEquals("01DEDD5DE4EF14642445BA5F5B97C15E47B9AD931326E4B0727CD94CEFC44FFF23F07BF543139939B49128CAF436DC1BDEE54FCB24023A08D9403F9B4BF0D450", hash);
+        assertNull(EncryptionUtilities.calculateSHA3_512Hash(null));
+    }
+
+    @Test
     public void testSHA512()
     {
         String hash = EncryptionUtilities.calculateSHA512Hash(QUICK_FOX.getBytes());
@@ -201,8 +217,8 @@ public class EncryptionTest
         }
         catch(IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().contains("rror"));
-            assertTrue(e.getMessage().contains("encrypt"));
+            assertTrue(e.getMessage().contains("null"));
+            assertTrue(e.getMessage().contains("content"));
         }
     }
 
@@ -216,8 +232,8 @@ public class EncryptionTest
         }
         catch(IllegalArgumentException e)
         {
-            assertTrue(e.getMessage().contains("rror"));
-            assertTrue(e.getMessage().contains("ecrypt"));
+            assertTrue(e.getMessage().contains("null"));
+            assertTrue(e.getMessage().contains("hexStr"));
         }
     }
 }

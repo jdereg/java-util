@@ -34,7 +34,12 @@ import java.security.spec.AlgorithmParameterSpec;
  *       <li>MD5 (fast implementation)</li>
  *       <li>SHA-1 (fast implementation)</li>
  *       <li>SHA-256</li>
+ *       <li>SHA-384</li>
  *       <li>SHA-512</li>
+ *       <li>SHA3-256</li>
+ *       <li>SHA3-512</li>
+ *       <li>Other variants like SHA-224 or SHA3-384 are available via
+ *           {@link java.security.MessageDigest}</li>
  *     </ul>
  *   </li>
  *   <li><b>Encryption/Decryption:</b>
@@ -46,8 +51,8 @@ import java.security.spec.AlgorithmParameterSpec;
  *   </li>
  *   <li><b>Optimized File Operations:</b>
  *     <ul>
- *       <li>Zero-copy I/O using DirectByteBuffer</li>
- *       <li>Efficient large file handling</li>
+ *       <li>Efficient buffer management</li>
+ *       <li>Large file handling</li>
  *       <li>Custom filesystem support</li>
  *     </ul>
  *   </li>
@@ -85,7 +90,7 @@ import java.security.spec.AlgorithmParameterSpec;
  * <p><b>Performance Features:</b></p>
  * <ul>
  *   <li>Optimized buffer sizes for modern storage systems</li>
- *   <li>Direct ByteBuffer usage for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer usage for efficient memory management</li>
  *   <li>Efficient memory management</li>
  *   <li>Thread-safe implementation</li>
  * </ul>
@@ -115,7 +120,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -175,13 +180,13 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
      *
      * @param file the file to hash
-     * @return hexadecimal string of the SHA-256 hash, or null if the file cannot be read
+ * @return hexadecimal string of the SHA-1 hash, or null if the file cannot be read
      */
     public static String fastSHA1(File file) {
         try (InputStream in = Files.newInputStream(file.toPath())) {
@@ -202,7 +207,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -248,7 +253,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -271,12 +276,50 @@ public class EncryptionUtilities {
     }
 
     /**
+     * Calculates a SHA3-256 hash of a file using optimized I/O operations.
+     *
+     * @param file the file to hash
+     * @return hexadecimal string of the SHA3-256 hash, or null if the file cannot be read
+     */
+    public static String fastSHA3_256(File file) {
+        try (InputStream in = Files.newInputStream(file.toPath())) {
+            if (in instanceof FileInputStream) {
+                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA3_256Digest());
+            }
+            return calculateStreamHash(in, getSHA3_256Digest());
+        } catch (NoSuchFileException e) {
+            return null;
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Calculates a SHA3-512 hash of a file using optimized I/O operations.
+     *
+     * @param file the file to hash
+     * @return hexadecimal string of the SHA3-512 hash, or null if the file cannot be read
+     */
+    public static String fastSHA3_512(File file) {
+        try (InputStream in = Files.newInputStream(file.toPath())) {
+            if (in instanceof FileInputStream) {
+                return calculateFileHash(((FileInputStream) in).getChannel(), getSHA3_512Digest());
+            }
+            return calculateStreamHash(in, getSHA3_512Digest());
+        } catch (NoSuchFileException e) {
+            return null;
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    /**
      * Calculates a hash of a file using the provided MessageDigest and FileChannel.
      * <p>
      * This implementation uses:
      * <ul>
      *   <li>64KB buffer size optimized for modern storage systems</li>
-     *   <li>DirectByteBuffer for zero-copy I/O</li>
+ *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>Efficient buffer management</li>
      * </ul>
      *
@@ -419,6 +462,46 @@ public class EncryptionUtilities {
      */
     public static MessageDigest getSHA512Digest() {
         return getDigest("SHA-512");
+    }
+
+    /**
+     * Calculates a SHA3-256 hash of a byte array.
+     *
+     * @param bytes the data to hash
+     * @return hexadecimal string of the SHA3-256 hash, or null if input is null
+     */
+    public static String calculateSHA3_256Hash(byte[] bytes) {
+        return calculateHash(getSHA3_256Digest(), bytes);
+    }
+
+    /**
+     * Creates a SHA3-256 MessageDigest instance.
+     *
+     * @return MessageDigest configured for SHA3-256
+     * @throws IllegalArgumentException if SHA3-256 algorithm is not available
+     */
+    public static MessageDigest getSHA3_256Digest() {
+        return getDigest("SHA3-256");
+    }
+
+    /**
+     * Calculates a SHA3-512 hash of a byte array.
+     *
+     * @param bytes the data to hash
+     * @return hexadecimal string of the SHA3-512 hash, or null if input is null
+     */
+    public static String calculateSHA3_512Hash(byte[] bytes) {
+        return calculateHash(getSHA3_512Digest(), bytes);
+    }
+
+    /**
+     * Creates a SHA3-512 MessageDigest instance.
+     *
+     * @return MessageDigest configured for SHA3-512
+     * @throws IllegalArgumentException if SHA3-512 algorithm is not available
+     */
+    public static MessageDigest getSHA3_512Digest() {
+        return getDigest("SHA3-512");
     }
 
     /**

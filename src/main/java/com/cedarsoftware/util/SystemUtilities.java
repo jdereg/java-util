@@ -370,46 +370,4 @@ public final class SystemUtilities
         }
     }
 
-    /**
-     * Captures the results of executing an operating system process.
-     */
-    public static class ProcessResult {
-        private final int exitCode;
-        private final String output;
-        private final String error;
-
-        /**
-         * Create a new result.
-         *
-         * @param exitCode the exit value returned by the process
-         * @param output   text captured from standard out
-         * @param error    text captured from standard error
-         */
-        public ProcessResult(int exitCode, String output, String error) {
-            this.exitCode = exitCode;
-            this.output = output;
-            this.error = error;
-        }
-
-        /**
-         * @return the exit value of the process
-         */
-        public int getExitCode() {
-            return exitCode;
-        }
-
-        /**
-         * @return the contents of the standard output stream
-         */
-        public String getOutput() {
-            return output;
-        }
-
-        /**
-         * @return the contents of the standard error stream
-         */
-        public String getError() {
-            return error;
-        }
-    }
 }

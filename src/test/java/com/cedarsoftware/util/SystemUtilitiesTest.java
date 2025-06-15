@@ -197,13 +197,6 @@ class SystemUtilitiesTest
         assertEquals(addresses, info.getAddresses());
         assertTrue(info.isLoopback());
     }
-    @Test
-    void testProcessResultClass() {
-        SystemUtilities.ProcessResult result = new SystemUtilities.ProcessResult(0, "output", "error");
-        assertEquals(0, result.getExitCode());
-        assertEquals("output", result.getOutput());
-        assertEquals("error", result.getError());
-    }
 
     @Test
     void testConstructorIsPrivate() throws Exception {

@@ -39,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -2626,6 +2627,29 @@ void testComputeIfAbsent() {
     @Test
     public void testInvalidMaxLength() {
         assertThrows(IllegalArgumentException.class, () -> CaseInsensitiveMap.setMaxCacheLengthString(9));
+    }
+
+    @Test
+    public void testCaseInsensitiveStringSubSequence() {
+        CaseInsensitiveMap.CaseInsensitiveString cis = new CaseInsensitiveMap.CaseInsensitiveString("Hello");
+        CharSequence seq = cis.subSequence(1, 4);
+        assertEquals("ell", seq.toString());
+    }
+
+    @Test
+    public void testCaseInsensitiveStringChars() {
+        String str = "a\uD83D\uDE00b";
+        CaseInsensitiveMap.CaseInsensitiveString cis = new CaseInsensitiveMap.CaseInsensitiveString(str);
+        int[] expected = str.chars().toArray();
+        assertArrayEquals(expected, cis.chars().toArray());
+    }
+
+    @Test
+    public void testCaseInsensitiveStringCodePoints() {
+        String str = "a\uD83D\uDE00b";
+        CaseInsensitiveMap.CaseInsensitiveString cis = new CaseInsensitiveMap.CaseInsensitiveString(str);
+        int[] expected = str.codePoints().toArray();
+        assertArrayEquals(expected, cis.codePoints().toArray());
     }
 
     // ---------------------------------------------------

@@ -1645,7 +1645,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      */
     public Map<String, Object> getConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
-        config.put(COMPACT_SIZE, compactSize());
+        int compSize = isLegacyConstructed() ? DEFAULT_COMPACT_SIZE : compactSize();
+        config.put(COMPACT_SIZE, compSize);
         config.put(CASE_SENSITIVE, !isCaseInsensitive());
         config.put(ORDERING, getOrdering());
         config.put(SINGLE_KEY, getSingleValueKey());

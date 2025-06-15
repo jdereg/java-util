@@ -11,6 +11,7 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
@@ -236,9 +237,9 @@ class ConverterLegacyApiTest {
 
     @Test
     void simpleTypeConversionSupport() {
-        assertTrue(com.cedarsoftware.util.convert.Converter.isSimpleTypeConversionSupported(String.class, Integer.class));
-        assertFalse(com.cedarsoftware.util.convert.Converter.isSimpleTypeConversionSupported(String[].class, Integer[].class));
-        assertFalse(com.cedarsoftware.util.convert.Converter.isSimpleTypeConversionSupported(java.util.List.class, java.util.Set.class));
+        assertTrue(com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(String.class, Integer.class));
+        assertFalse(com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(String[].class, Integer[].class));
+        assertFalse(com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(java.util.List.class, java.util.Set.class));
     }
 
     @Test

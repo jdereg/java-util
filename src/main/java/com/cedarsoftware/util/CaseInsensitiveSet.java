@@ -149,12 +149,12 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * </p>
      *
      * @param source      the collection whose elements are to be placed into this set
-     * @param backingMap  the map to be used as the backing implementation
+     * @param backingMap  the case-insensitive map to be used as the backing implementation
      * @throws NullPointerException if the specified collection or map is {@code null}
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public CaseInsensitiveSet(Collection<? extends E> source, Map backingMap) {
-        map = backingMap;
+    @SuppressWarnings("unchecked")
+    public CaseInsensitiveSet(Collection<? extends E> source, CaseInsensitiveMap<E, ?> backingMap) {
+        map = (Map<E, Object>) backingMap;
         addAll(source);
     }
 

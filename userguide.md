@@ -2538,7 +2538,7 @@ This implementation provides a robust set of I/O utilities with emphasis on reso
 A comprehensive utility class providing cryptographic operations including high-performance hashing, encryption, and decryption capabilities.
 
 -### Key Features
-- Optimized file hashing (MD5, SHA-1, SHA-256, SHA-384, SHA-512)
+- Optimized file hashing (MD5, SHA-1, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-512)
 - AES-128 encryption/decryption using AES-GCM
 - Zero-copy I/O operations
 - Thread-safe implementation
@@ -2555,6 +2555,8 @@ String sha1 = EncryptionUtilities.fastSHA1(new File("large.dat"));
 String sha256 = EncryptionUtilities.fastSHA256(new File("large.dat"));
 String sha384 = EncryptionUtilities.fastSHA384(new File("large.dat"));
 String sha512 = EncryptionUtilities.fastSHA512(new File("large.dat"));
+String sha3_256 = EncryptionUtilities.fastSHA3_256(new File("large.dat"));
+String sha3_512 = EncryptionUtilities.fastSHA3_512(new File("large.dat"));
 ```
 
 **Byte Array Hashing:**
@@ -2565,6 +2567,8 @@ String sha1Hash = EncryptionUtilities.calculateSHA1Hash(bytes);
 String sha256Hash = EncryptionUtilities.calculateSHA256Hash(bytes);
 String sha384Hash = EncryptionUtilities.calculateSHA384Hash(bytes);
 String sha512Hash = EncryptionUtilities.calculateSHA512Hash(bytes);
+String sha3_256Hash = EncryptionUtilities.calculateSHA3_256Hash(bytes);
+String sha3_512Hash = EncryptionUtilities.calculateSHA3_512Hash(bytes);
 ```
 
 ### Encryption Operations

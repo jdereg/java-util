@@ -95,6 +95,22 @@ implementation 'com.cedarsoftware:java-util:3.3.2'
 - **[TypeUtilities](userguide.md#typeutilities)** - Advanced Java type introspection and generic resolution utilities
 - **[UniqueIdGenerator](userguide.md#uniqueidgenerator)** - Distributed-safe unique identifier generation
 
+### Redirecting java.util.logging
+
+This library uses `java.util.logging.Logger` for all diagnostics. To integrate these
+messages with frameworks like SLF4J or Logback, include the `jul-to-slf4j`
+bridge and install the handler at application startup:
+
+```java
+import org.slf4j.bridge.SLF4JBridgeHandler;
+
+SLF4JBridgeHandler.removeHandlersForRootLogger();
+SLF4JBridgeHandler.install();
+```
+
+For Log4j&nbsp;2, use the `log4j-jul` adapter and launch the JVM with
+`-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager`.
+
 [View detailed documentation](userguide.md)
 
 See [changelog.md](/changelog.md) for revision history.

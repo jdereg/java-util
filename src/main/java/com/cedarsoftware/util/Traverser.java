@@ -227,10 +227,11 @@ public class Traverser {
 
             objVisited.add(current);
 
-            java.util.function.Supplier<Map<Field, Object>> supplier = collectFields
-                    ? () -> collectFields(current)
-                    : Collections::emptyMap;
-            nodeVisitor.accept(new NodeVisit(current, supplier));
+            if (collectFields) {
+                nodeVisitor.accept(new NodeVisit(current, collectFields(current)));
+            } else {
+                nodeVisitor.accept(new NodeVisit(current, () -> collectFields(current)));
+            }
 
             if (clazz.isArray()) {
                 processArray(stack, current, classesToSkip);

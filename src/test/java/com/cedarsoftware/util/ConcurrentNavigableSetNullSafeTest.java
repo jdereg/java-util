@@ -232,6 +232,34 @@ class ConcurrentNavigableSetNullSafeTest {
     }
 
     @Test
+    void testDescendingIterator() {
+        NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();
+        set.add("apple");
+        set.add("banana");
+        set.add("cherry");
+        set.add(null);
+
+        Iterator<String> it = set.descendingIterator();
+
+        assertEquals(null, it.next());
+        it.remove();
+        assertFalse(set.contains(null));
+
+        assertEquals("cherry", it.next());
+        it.remove();
+        assertFalse(set.contains("cherry"));
+
+        assertEquals("banana", it.next());
+        it.remove();
+        assertFalse(set.contains("banana"));
+
+        assertEquals("apple", it.next());
+        it.remove();
+        assertFalse(it.hasNext());
+        assertTrue(set.isEmpty());
+    }
+
+    @Test
     void testSubSet() {
         NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();
         set.add("apple");

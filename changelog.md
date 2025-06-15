@@ -6,7 +6,10 @@
 > * Java logging now uses a Logback-style format for consistency
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
+> * `ByteUtilities.toHexChar` - JUnit added.
+> * `CaseInsensitiveString.chars`, `codePoints`, and `subSequence` plus deprecated `CaseInsensitiveSet` methods - JUnit tests added for all.
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
+> * `CollectionConversions` JUnits added to verify array and collection conversions
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
@@ -37,9 +40,7 @@
 > * `Traverser` logs inaccessible fields at `Level.FINEST` instead of printing to STDERR
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 > * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
-> * Added unit tests for `ByteUtilities.toHexChar`
 > * Explicitly set versions for `maven-resources-plugin`, `maven-install-plugin`, and `maven-deploy-plugin` to avoid Maven 4 compatibility warnings
-> * Added tests for `CaseInsensitiveString.chars`, `codePoints`, and `subSequence` plus deprecated `CaseInsensitiveSet` methods
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

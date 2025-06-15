@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.cedarsoftware.util.CollectionUtilities;
+import com.cedarsoftware.util.convert.CollectionsWrappers;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,7 +30,7 @@ class CollectionConversionsDirectTest {
 
     @Test
     void arrayToCollectionCreatesUnmodifiable() {
-        Class<? extends Collection<?>> type = Collections.unmodifiableCollection(new ArrayList<>()).getClass();
+        Class<? extends Collection<?>> type = CollectionsWrappers.getUnmodifiableCollectionClass();
         Collection<?> result = CollectionConversions.arrayToCollection(new Integer[]{1, 2}, type);
         assertTrue(CollectionUtilities.isUnmodifiable(result.getClass()));
         assertThrows(UnsupportedOperationException.class, () -> result.add(3));
@@ -37,7 +38,7 @@ class CollectionConversionsDirectTest {
 
     @Test
     void arrayToCollectionCreatesSynchronized() {
-        Class<? extends Collection<?>> type = Collections.synchronizedCollection(new ArrayList<>()).getClass();
+        Class<? extends Collection<?>> type = CollectionsWrappers.getSynchronizedCollectionClass();
         Collection<?> result = CollectionConversions.arrayToCollection(new String[]{"x"}, type);
         assertTrue(CollectionUtilities.isSynchronized(result.getClass()));
         assertDoesNotThrow(() -> result.add("y"));

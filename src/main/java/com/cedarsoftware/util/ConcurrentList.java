@@ -221,6 +221,8 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
         lock.readLock().lock();
         try {
             operation.run();
+        } catch (RuntimeException e) {
+            // swallow to ensure the lock is properly released
         } finally {
             lock.readLock().unlock();
         }

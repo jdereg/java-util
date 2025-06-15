@@ -72,9 +72,4 @@ public class CompactLinkedSet<E> extends CompactSet<E> {
         return true;
     }
 
-    @Override
-    protected Set<E> getNewSet() {
-        // Returning null to indicate it has no effect.
-        return null;
-    }
 }

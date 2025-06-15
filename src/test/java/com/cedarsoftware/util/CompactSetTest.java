@@ -119,7 +119,7 @@ class CompactSetTest
     }
 
     @Test
-    void testHeterogeneuousItems()
+    void testHeterogeneousItems()
     {
         CompactSet<Object> set = new CompactSet<>();
         assert set.add(16);
@@ -212,7 +212,6 @@ class CompactSetTest
         CompactSet<String> set = new CompactSet<String>()
         {
             protected boolean isCaseInsensitive() { return true; }
-            protected Set<String> getNewSet() { return new CaseInsensitiveSet<>(); }
         };
 
         set.add("foo");
@@ -256,7 +255,6 @@ class CompactSetTest
         CompactSet<String> set = new CompactSet<String>()
         {
             protected boolean isCaseInsensitive() { return true; }
-            protected Set<String> getNewSet() { return new CaseInsensitiveSet<>(); }
         };
 
         for (int i=0; i < set.compactSize() + 5; i++)

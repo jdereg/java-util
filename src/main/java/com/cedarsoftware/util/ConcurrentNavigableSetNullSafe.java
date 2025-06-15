@@ -257,13 +257,13 @@ public class ConcurrentNavigableSetNullSafe<E> extends AbstractSet<E> implements
     @Override
     public NavigableSet<E> headSet(E toElement, boolean inclusive) {
         NavigableSet<Object> headInternal = internalSet.headSet(maskNull(toElement), inclusive);
-        return new ConcurrentNavigableSetNullSafe<>((Collection<E>)headInternal, originalComparator);
+        return new ConcurrentNavigableSetNullSafe<>(headInternal, originalComparator);
     }
 
     @Override
     public NavigableSet<E> tailSet(E fromElement, boolean inclusive) {
         NavigableSet<Object> tailInternal = internalSet.tailSet(maskNull(fromElement), inclusive);
-        return new ConcurrentNavigableSetNullSafe<>((Collection<E>)tailInternal, originalComparator);
+        return new ConcurrentNavigableSetNullSafe<>(tailInternal, originalComparator);
     }
 
     @Override

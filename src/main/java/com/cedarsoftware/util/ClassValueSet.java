@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
 
 /**
  * A Set implementation for Class objects that leverages a ClassValue cache for extremely
@@ -162,9 +163,7 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
     @Override
     public boolean remove(Object o) {
         if (o == null) {
-            boolean changed = containsNull.get();
-            containsNull.set(false);
-            return changed;
+            return containsNull.getAndSet(false);
         }
         if (!(o instanceof Class)) {
             return false;
@@ -276,7 +275,7 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
      */
     @Override
     public boolean retainAll(Collection<?> c) {
-        Convention.throwIfNull(c, "Collection cannot be null");
+        Objects.requireNonNull(c, "Collection cannot be null");
 
         boolean modified = false;
 

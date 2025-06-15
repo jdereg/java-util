@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * useful Array utilities
@@ -162,5 +163,34 @@ public class ArrayUtilitiesTest
         assert strs[0] == "foo";
         assert strs[1] == "bar";
         assert strs[2] == "baz";
+    }
+
+    @Test
+    public void testCreateArray()
+    {
+        String[] base = {"a", "b"};
+        String[] copy = ArrayUtilities.createArray(base);
+        assertNotSame(base, copy);
+        assertArrayEquals(base, copy);
+
+        assertNull(ArrayUtilities.createArray((String[]) null));
+    }
+
+    @Test
+    public void testAddItemAndIndexOf()
+    {
+        String[] data = {"a", "b"};
+        data = ArrayUtilities.addItem(String.class, data, "c");
+        assertArrayEquals(new String[]{"a", "b", "c"}, data);
+        assertEquals(1, ArrayUtilities.indexOf(data, "b"));
+        assertTrue(ArrayUtilities.contains(data, "c"));
+    }
+
+    @Test
+    public void testRemoveItemInvalid()
+    {
+        String[] data = {"x", "y"};
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> ArrayUtilities.removeItem(data, -1));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> ArrayUtilities.removeItem(data, 2));
     }
 }

@@ -302,6 +302,18 @@ public final class ArrayUtilities {
     }
 
     /**
+     * Determine whether the provided array contains the specified item.
+     *
+     * @param array the array to search, may be {@code null}
+     * @param item  the item to find
+     * @param <T>   the array component type
+     * @return {@code true} if the item exists in the array; {@code false} otherwise
+     */
+    public static <T> boolean contains(T[] array, T item) {
+        return indexOf(array, item) >= 0;
+    }
+
+    /**
      * Creates a new array containing elements from the specified range of the source array.
      * <p>
      * Returns a new array containing elements from index {@code start} (inclusive) to index {@code end} (exclusive).

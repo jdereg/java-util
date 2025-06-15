@@ -278,7 +278,13 @@ public class TTLCacheTest {
         assertEquals(cache1.hashCode(), cache2.hashCode());
 
         cache2.put(4, "D");
-        assertNotEquals(cache1.hashCode(), cache2.hashCode());
+
+        // cache2 should now contain {2=B,3=C,4=D}; verify hashCode matches
+        Map<Integer, String> expected = new LinkedHashMap<>();
+        expected.put(2, "B");
+        expected.put(3, "C");
+        expected.put(4, "D");
+        assertEquals(expected.hashCode(), cache2.hashCode());
     }
 
     @Test
@@ -457,13 +463,14 @@ public class TTLCacheTest {
         assertTrue(ttlCache.containsKey(null));
         assertTrue(ttlCache.containsValue(null));
         assertTrue(ttlCache.toString().contains("null=null"));
-        assertNotEquals(0, ttlCache.hashCode());
+        assertEquals(0, ttlCache.hashCode());
 
         TTLCache<Integer, String> cache1 = new TTLCache<>(10000, 3);
         cache1.put(null, null);
         TTLCache<Integer, String> cache2 = new TTLCache<>(10000, 3);
         cache2.put(null, null);
         assertEquals(cache1, cache2);
+        assertEquals(cache1.hashCode(), cache2.hashCode());
     }
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")

@@ -23,6 +23,8 @@
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
+> * Added Javadoc for several public APIs including `Convention.throwIfClassNotFound`,
+  `TestUtil.fetchResource`, `MapUtilities.cloneMapOfSets`, and core cache methods.
 > * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
 > * `Traverser` supports lazy field collection, improved null-safe class skipping, and better error logging
 > * `Traverser` now ignores synthetic fields, preventing traversal into outer class references

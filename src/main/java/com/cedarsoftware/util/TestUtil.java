@@ -76,6 +76,13 @@ public class TestUtil
         return true;
     }
 
+    /**
+     * Load a resource from the classpath as a string.
+     *
+     * @param name the resource name relative to the classpath root
+     * @return contents of the resource as a UTF-8 string
+     * @throws RuntimeException if the resource cannot be read
+     */
     public static String fetchResource(String name)
     {
         try

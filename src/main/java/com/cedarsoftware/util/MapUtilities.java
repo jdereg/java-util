@@ -117,6 +117,15 @@ public class MapUtilities {
     }
 
     //  Keeping next two methods in case we need to make certain sets unmodifiable still.
+    /**
+     * Deep clone a map whose values are {@link Set Sets}.
+     *
+     * @param original   map to clone
+     * @param immutable  if {@code true}, return unmodifiable sets and map
+     * @param <T>        key type
+     * @param <V>        set element type
+     * @return cloned map of sets, optionally immutable
+     */
     public static <T, V> Map<T, Set<V>> cloneMapOfSets(final Map<T, Set<V>> original, final boolean immutable) {
         final Map<T, Set<V>> result = new HashMap<>();
 
@@ -134,6 +143,16 @@ public class MapUtilities {
         return immutable ? Collections.unmodifiableMap(result) : result;
     }
 
+    /**
+     * Deep clone a map whose values are themselves maps.
+     *
+     * @param original  map to clone
+     * @param immutable if {@code true}, return unmodifiable maps
+     * @param <T>       outer key type
+     * @param <U>       inner key type
+     * @param <V>       inner value type
+     * @return cloned map of maps, optionally immutable
+     */
     public static <T, U, V> Map<T, Map<U, V>> cloneMapOfMaps(final Map<T, Map<U, V>> original, final boolean immutable) {
         final Map<T, Map<U, V>> result = new LinkedHashMap<>();
 

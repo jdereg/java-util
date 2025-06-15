@@ -66,6 +66,9 @@ public class LRUCache<K, V> implements Map<K, V> {
      * @see com.cedarsoftware.util.cache.LockingLRUCacheStrategy
      */
     public LRUCache(int capacity) {
+        if (capacity < 1) {
+            throw new IllegalArgumentException("Capacity must be at least 1.");
+        }
         strategy = new LockingLRUCacheStrategy<>(capacity);
     }
 
@@ -80,6 +83,9 @@ public class LRUCache<K, V> implements Map<K, V> {
      * @see com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy
      */
     public LRUCache(int capacity, StrategyType strategyType) {
+        if (capacity < 1) {
+            throw new IllegalArgumentException("Capacity must be at least 1.");
+        }
         if (strategyType == StrategyType.THREADED) {
             strategy = new ThreadedLRUCacheStrategy<>(capacity, 10);
         } else if (strategyType == StrategyType.LOCKING) {
@@ -101,6 +107,9 @@ public class LRUCache<K, V> implements Map<K, V> {
      * @see com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy
      */
     public LRUCache(int capacity, int cleanupDelayMillis) {
+        if (capacity < 1) {
+            throw new IllegalArgumentException("Capacity must be at least 1.");
+        }
         strategy = new ThreadedLRUCacheStrategy<>(capacity, cleanupDelayMillis);
     }
 

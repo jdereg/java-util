@@ -61,9 +61,12 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
      * Constructs a new LRU cache with the specified maximum capacity.
      *
      * @param capacity the maximum number of entries the cache can hold
-     * @throws IllegalArgumentException if capacity is negative
+     * @throws IllegalArgumentException if capacity is less than 1
      */
     public LockingLRUCacheStrategy(int capacity) {
+        if (capacity < 1) {
+            throw new IllegalArgumentException("Capacity must be at least 1.");
+        }
         this.capacity = capacity;
         this.cache = new ConcurrentHashMapNullSafe<>(capacity);
         this.head = new Node<>(null, null);

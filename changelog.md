@@ -18,6 +18,7 @@
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys; legacy cipher APIs are deprecated. Added SHA-384 hashing support.
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
+> * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.

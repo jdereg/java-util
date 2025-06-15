@@ -13,6 +13,8 @@ import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A Java Object Graph traverser that visits all object reference fields and invokes a
@@ -83,6 +85,8 @@ import java.util.function.Consumer;
  *         limitations under the License.
  */
 public class Traverser {
+
+    private static final Logger LOG = Logger.getLogger(Traverser.class.getName());
 
     /**
      * Represents a node visit during traversal, containing the node and its field information.
@@ -253,7 +257,7 @@ public class Traverser {
             try {
                 fields.put(field, field.get(obj));
             } catch (IllegalAccessException e) {
-                System.err.println("Unable to access field '" + field.getName() + "' on " + obj.getClass().getName());
+                LOG.log(Level.WARNING, "Unable to access field '" + field.getName() + "' on " + obj.getClass().getName() + "", e);
                 fields.put(field, "<inaccessible>");
             }
         }

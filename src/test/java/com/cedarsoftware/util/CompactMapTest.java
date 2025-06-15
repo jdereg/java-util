@@ -21,6 +21,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.logging.Logger;
 
 import com.cedarsoftware.io.JsonIo;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class CompactMapTest
 {
+    private static final Logger LOG = Logger.getLogger(CompactMapTest.class.getName());
     @Test
     public void testSizeAndEmpty()
     {
@@ -4307,9 +4309,9 @@ public class CompactMapTest
         }
         for (int i = lower; i < upper; i++)
         {
-            System.out.println("CompacMap.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
+            LOG.info("CompacMap.compactSize: " + i + " = " + totals[i - lower] / 1000000.0d);
         }
-        System.out.println("HashMap = " + totals[totals.length - 1] / 1000000.0d);
+        LOG.info("HashMap = " + totals[totals.length - 1] / 1000000.0d);
     }
 
     private Map.Entry<Object, Object> getEntry(final Object key, final Object value)

@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClassValueSetTest {
 
+    private static final Logger LOG = Logger.getLogger(ClassValueSetTest.class.getName());
     @Test
     void testBasicSetOperations() {
         // Setup
@@ -365,76 +367,76 @@ class ClassValueSetTest {
         executorService.awaitTermination(5, TimeUnit.SECONDS);
 
         // Log results
-        System.out.println("=== Concurrent FastClassSet Test Results ===");
-        System.out.println("Read operations: " + readCount.get());
-        System.out.println("Write operations: " + writeCount.get());
-        System.out.println("Total operations: " + (readCount.get() + writeCount.get()));
-        System.out.println("Errors: " + errorCount.get());
+        LOG.info("=== Concurrent FastClassSet Test Results ===");
+        LOG.info("Read operations: " + readCount.get());
+        LOG.info("Write operations: " + writeCount.get());
+        LOG.info("Total operations: " + (readCount.get() + writeCount.get()));
+        LOG.info("Errors: " + errorCount.get());
 
         // Verify no errors occurred
         assertEquals(0, errorCount.get(), "Errors occurred during concurrent access");
 
         // Create a brand new set for verification to avoid state corruption
-        System.out.println("\nVerifying set operations with clean state...");
+        LOG.info("\nVerifying set operations with clean state...");
         ClassValueSet freshSet = new ClassValueSet();
 
         // Test basic operations with diagnostics
         for (int i = 0; i < 10; i++) {
             Class<?> cls = testClasses[i];
-            System.out.println("Testing with class: " + cls);
+            LOG.info("Testing with class: " + cls);
 
             // Test add
             boolean addResult = freshSet.add(cls);
-            System.out.println("  add result: " + addResult);
+            LOG.info("  add result: " + addResult);
             assertTrue(addResult, "Add should return true for class " + cls);
 
             // Test contains
             boolean containsResult = freshSet.contains(cls);
-            System.out.println("  contains result: " + containsResult);
+            LOG.info("  contains result: " + containsResult);
             assertTrue(containsResult, "Contains should return true for class " + cls + " after adding");
 
             // Test remove
             boolean removeResult = freshSet.remove(cls);
-            System.out.println("  remove result: " + removeResult);
+            LOG.info("  remove result: " + removeResult);
             assertTrue(removeResult, "Remove should return true for class " + cls);
 
             // Test contains after remove
             boolean containsAfterRemove = freshSet.contains(cls);
-            System.out.println("  contains after remove: " + containsAfterRemove);
+            LOG.info("  contains after remove: " + containsAfterRemove);
             assertFalse(containsAfterRemove, "Contains should return false for class " + cls + " after removing");
 
             // Test add again
             boolean addAgainResult = freshSet.add(cls);
-            System.out.println("  add again result: " + addAgainResult);
+            LOG.info("  add again result: " + addAgainResult);
             assertTrue(addAgainResult, "Add should return true for class " + cls + " after removing");
 
             // Test contains again
             boolean containsAgain = freshSet.contains(cls);
-            System.out.println("  contains again result: " + containsAgain);
+            LOG.info("  contains again result: " + containsAgain);
             assertTrue(containsAgain, "Contains should return true for class " + cls + " after adding again");
         }
 
         // Test with null
-        System.out.println("Testing with null:");
+        LOG.info("Testing with null:");
 
         // Test add null
         boolean addNullResult = freshSet.add(null);
-        System.out.println("  add null result: " + addNullResult);
+        LOG.info("  add null result: " + addNullResult);
         assertTrue(addNullResult, "Add should return true for null");
 
         // Test contains null
         boolean containsNullResult = freshSet.contains(null);
-        System.out.println("  contains null result: " + containsNullResult);
+        LOG.info("  contains null result: " + containsNullResult);
         assertTrue(containsNullResult, "Contains should return true for null after adding");
 
         // Test remove null
         boolean removeNullResult = freshSet.remove(null);
-        System.out.println("  remove null result: " + removeNullResult);
+        LOG.info("  remove null result: " + removeNullResult);
         assertTrue(removeNullResult, "Remove should return true for null");
 
         // Test contains null after remove
         boolean containsNullAfterRemove = freshSet.contains(null);
-        System.out.println("  contains null after remove: " + containsNullAfterRemove);
+        LOG.info("  contains null after remove: " + containsNullAfterRemove);
         assertFalse(containsNullAfterRemove, "Contains should return false for null after removing");
     }
     

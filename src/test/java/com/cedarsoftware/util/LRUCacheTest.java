@@ -10,6 +10,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class LRUCacheTest {
 
     private LRUCache<Integer, String> lruCache;
+    private static final Logger LOG = Logger.getLogger(LRUCacheTest.class.getName());
 
     static Collection<LRUCache.StrategyType> strategies() {
         return Arrays.asList(
@@ -447,7 +449,7 @@ public class LRUCacheTest {
             }
             try {
                 Thread.sleep(100);
-                System.out.println(strategy + " cache size: " + lruCache.size());
+                LOG.info(strategy + " cache size: " + lruCache.size());
             } catch (InterruptedException ignored) {
             }
         }
@@ -508,6 +510,6 @@ public class LRUCacheTest {
             cache.put(i, true);
         }
         long endTime = System.currentTimeMillis();
-        System.out.println(strategy + " speed: " + (endTime - startTime) + "ms");
+        LOG.info(strategy + " speed: " + (endTime - startTime) + "ms");
     }
 }

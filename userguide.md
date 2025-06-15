@@ -651,7 +651,6 @@ A thread-safe Least Recently Used (LRU) cache implementation that offers two dis
 - Configurable maximum capacity
 - Supports null keys and values
 - Full Map interface implementation
-- Optional eviction listeners
 - Automatic cleanup of expired entries
 
 ### Implementation Strategies
@@ -702,15 +701,6 @@ LRUCache<String, User> cache = new LRUCache<>(
 );
 ```
 
-**With Eviction Listener (coming soon):**
-```java
-// Create cache with eviction notification
-LRUCache<String, Session> sessionCache = new LRUCache<>(
-    1000,
-    (key, value) -> log.info("Session expired: " + key)
-);
-```
-
 ### Performance Characteristics
 
 **Locking Strategy:**
@@ -754,16 +744,6 @@ LRUCache<String, Session> sessionCache = new LRUCache<>(
 - Threaded strategy uses ConcurrentHashMap
 - Safe for concurrent access
 - No external synchronization needed
-
-### Shutdown Considerations
-```java
-// For threaded strategy, proper shutdown:
-try {
-    cache.shutdown();  // Cleans up background threads
-} catch (Exception e) {
-    // Handle shutdown failure
-}
-```
 
 ---
 ## TTLCache

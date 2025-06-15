@@ -16,8 +16,7 @@ import com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy;
  *   <li>The Locking strategy can be selected by using the constructor that takes only an int for capacity, or by using
  *       the constructor that takes an int and a StrategyType enum (StrategyType.LOCKING).</li>
  *   <li>The Threaded strategy can be selected by using the constructor that takes an int and a StrategyType enum
- *       (StrategyType.THREADED). Additionally, there is a constructor that takes a capacity, a cleanup delay time,
- *       and a ScheduledExecutorService.</li>
+ *       (StrategyType.THREADED). Another constructor allows specifying a cleanup delay time.</li>
  * </ul>
  * <p>
  * The Locking strategy allows for O(1) access for get(), put(), and remove(). For put(), remove(), and many other
@@ -70,12 +69,10 @@ public class LRUCache<K, V> implements Map<K, V> {
     }
 
     /**
-     * Create a "locking-based" OR a "thread-based" LRUCache with the passed in capacity.
-     * <p>
-     * Note: There is a "shutdown" method on LRUCache to ensure that the default scheduler that was created for you
-     * is cleaned up, which is useful in a container environment.
+     * Create a "locking-based" or a "thread-based" LRUCache with the passed in capacity.
+     *
      * @param capacity int maximum number of entries in the cache.
-     * @param strategyType StrategyType.LOCKING or Strategy.THREADED indicating the underlying LRUCache implementation.
+     * @param strategyType StrategyType.LOCKING or StrategyType.THREADED indicating the underlying LRUCache implementation.
      * @see com.cedarsoftware.util.cache.LockingLRUCacheStrategy
      * @see com.cedarsoftware.util.cache.ThreadedLRUCacheStrategy
      */
@@ -91,10 +88,6 @@ public class LRUCache<K, V> implements Map<K, V> {
 
     /**
      * Create a "thread-based" LRUCache with the passed in capacity.
-     * <p>
-     * Note: There is a "shutdown" method on LRUCache to ensure that the default scheduler that was created for you
-     * is cleaned up, which is useful in a container environment.  If you supplied your own scheduler and cleanupPool,
-     * then it is up to you to manage their termination.  The shutdown() method will not manipulate them in any way.
      * @param capacity int maximum number of entries in the cache.
      * @param cleanupDelayMillis int number of milliseconds after a put() call when a scheduled task should run to
      *                           trim the cache to no more than capacity.  The default is 10ms.

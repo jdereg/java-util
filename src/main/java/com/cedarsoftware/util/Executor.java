@@ -59,22 +59,56 @@ public class Executor {
     private static final Logger LOG = Logger.getLogger(Executor.class.getName());
     static { LoggingConfig.init(); }
 
+    /**
+     * Execute the supplied command line using the platform shell.
+     *
+     * @param command command to execute
+     * @return result of the execution
+     */
     public ExecutionResult execute(String command) {
         return execute(command, null, null);
     }
 
+    /**
+     * Execute the specified command array.
+     *
+     * @param cmdarray command and arguments
+     * @return result of the execution
+     */
     public ExecutionResult execute(String[] cmdarray) {
         return execute(cmdarray, null, null);
     }
 
+    /**
+     * Execute a command with environment variables.
+     *
+     * @param command command line to run
+     * @param envp    environment variables, may be {@code null}
+     * @return result of the execution
+     */
     public ExecutionResult execute(String command, String[] envp) {
         return execute(command, envp, null);
     }
 
+    /**
+     * Execute a command array with environment variables.
+     *
+     * @param cmdarray command and arguments
+     * @param envp     environment variables, may be {@code null}
+     * @return result of the execution
+     */
     public ExecutionResult execute(String[] cmdarray, String[] envp) {
         return execute(cmdarray, envp, null);
     }
 
+    /**
+     * Execute a command with optional environment and working directory.
+     *
+     * @param command command line to run
+     * @param envp    environment variables or {@code null}
+     * @param dir     working directory, may be {@code null}
+     * @return result of the execution
+     */
     public ExecutionResult execute(String command, String[] envp, File dir) {
         try {
             Process proc = startProcess(command, envp, dir);
@@ -85,6 +119,14 @@ public class Executor {
         }
     }
 
+    /**
+     * Execute a command array with optional environment and working directory.
+     *
+     * @param cmdarray command and arguments
+     * @param envp     environment variables or {@code null}
+     * @param dir      working directory, may be {@code null}
+     * @return result of the execution
+     */
     public ExecutionResult execute(String[] cmdarray, String[] envp, File dir) {
         try {
             Process proc = startProcess(cmdarray, envp, dir);

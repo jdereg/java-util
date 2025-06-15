@@ -117,16 +117,34 @@ public class LRUCache<K, V> implements Map<K, V> {
         }
     }
     
+    /**
+     * Retrieve a value from the cache.
+     *
+     * @param key key whose associated value is desired
+     * @return cached value or {@code null} if absent
+     */
     @Override
     public V get(Object key) {
         return strategy.get(key);
     }
 
+    /**
+     * Insert a value into the cache.
+     *
+     * @param key   key with which the specified value is to be associated
+     * @param value value to be cached
+     * @return previous value associated with the key or {@code null}
+     */
     @Override
     public V put(K key, V value) {
         return strategy.put(key, value);
     }
 
+    /**
+     * Copy all of the mappings from the specified map to this cache.
+     *
+     * @param m mappings to be stored
+     */
     @Override
     public void putAll(Map<? extends K, ? extends V> m) {
         strategy.putAll(m);

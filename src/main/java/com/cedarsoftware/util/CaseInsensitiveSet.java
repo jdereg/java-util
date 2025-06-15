@@ -399,23 +399,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @throws NullPointerException if the specified collection is {@code null}
      */
     public boolean retainAll(Collection<?> c) {
-        Map<E, Object> other = new CaseInsensitiveMap<>();
-        for (Object o : c) {
-            @SuppressWarnings("unchecked")
-            E element = (E) o; // Safe cast because Map allows adding any type
-            other.put(element, PRESENT);
-        }
-
-        Iterator<E> iterator = map.keySet().iterator();
-        boolean modified = false;
-        while (iterator.hasNext()) {
-            E elem = iterator.next();
-            if (!other.containsKey(elem)) {
-                iterator.remove();
-                modified = true;
-            }
-        }
-        return modified;
+        return map.keySet().retainAll(c);
     }
 
     /**
@@ -432,15 +416,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @throws NullPointerException if the specified collection is {@code null}
      */
     public boolean removeAll(Collection<?> c) {
-        boolean modified = false;
-        for (Object elem : c) {
-            @SuppressWarnings("unchecked")
-            E element = (E) elem; // Cast to E since map keys match the generic type
-            if (map.remove(element) != null) {
-                modified = true;
-            }
-        }
-        return modified;
+        return map.keySet().removeAll(c);
     }
 
     /**

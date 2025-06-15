@@ -35,7 +35,7 @@ public class CompileClassResourceTest {
         public StandardJavaFileManager getStandardFileManager(DiagnosticListener<? super JavaFileObject> dl,
                                                               Locale locale, Charset charset) {
             StandardJavaFileManager fm = delegate.getStandardFileManager(dl, locale, charset);
-            return new ForwardingJavaFileManager<>(fm) {
+            return new ForwardingJavaFileManager<StandardJavaFileManager>(fm) {
                 @Override
                 public void close() throws IOException {
                     closed.set(true);
@@ -59,10 +59,6 @@ public class CompileClassResourceTest {
             return delegate.isSupportedOption(option);
         }
 
-        @Override
-        public String name() {
-            return delegate.name();
-        }
     }
 
     @Test

@@ -25,13 +25,8 @@ import java.util.function.Supplier;
  *   <li><b>Wrapper Mode:</b> Pass an existing {@link List} to the constructor to wrap it with thread-safe behavior.</li>
  *   <li><b>Read-Only Iterators:</b> The {@link #iterator()} and {@link #listIterator()} methods return a read-only
  *       snapshot of the list at the time of the call, ensuring safe iteration in concurrent environments.</li>
- *   <li><b>Unsupported Operations:</b> Due to the dynamic nature of concurrent edits, the following operations are
- *       not implemented:
- *       <ul>
- *         <li>{@link #listIterator(int)}: The starting index may no longer be valid due to concurrent modifications.</li>
- *         <li>{@link #subList(int, int)}: The range may exceed the current list size in a concurrent context.</li>
- *       </ul>
- *   </li>
+ *   <li><b>Unsupported Operations:</b> Due to the dynamic nature of concurrent edits, the
+ *       {@link #subList(int, int)} method is not implemented.</li>
  * </ul>
  *
  * <h2>Thread Safety</h2>
@@ -65,7 +60,8 @@ import java.util.function.Supplier;
  * <h2>Additional Notes</h2>
  * <ul>
  *   <li>{@code ConcurrentList} supports {@code null} elements if the underlying list does.</li>
- *   <li>{@link #listIterator(int)} and {@link #subList(int, int)} throw {@link UnsupportedOperationException}.</li>
+ *   <li>{@link #subList(int, int)} throws {@link UnsupportedOperationException}.</li>
+ *   <li>Implements {@link Serializable} and {@link RandomAccess} with a fair {@link ReentrantReadWriteLock}.</li>
  * </ul>
  *
  * @param <E> The type of elements in this list
@@ -151,7 +147,9 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
     public int lastIndexOf(Object o) { return withReadLock(() -> list.lastIndexOf(o)); }
 
     @Override
-    public Iterator<E> iterator() { return new LockedIterator(); }
+    public Iterator<E> iterator() {
+        return withReadLock(() -> new ArrayList<>(list).iterator());
+    }
 
     @Override
     public Object[] toArray() { return withReadLock(list::toArray); }
@@ -195,12 +193,13 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
     }
 
     @Override
-    public ListIterator<E> listIterator() { return new LockedListIterator(0); }
+    public ListIterator<E> listIterator() {
+        return withReadLock(() -> new ArrayList<>(list).listIterator());
+    }
 
-    // Unsupported operations
     @Override
     public ListIterator<E> listIterator(int index) {
-        throw new UnsupportedOperationException("listIterator(index) not implemented for ConcurrentList");
+        return withReadLock(() -> new ArrayList<>(list).listIterator(index));
     }
 
     @Override
@@ -208,51 +207,6 @@ public final class ConcurrentList<E> implements List<E>, RandomAccess, Serializa
         throw new UnsupportedOperationException("subList not implemented for ConcurrentList");
     }
 
-    private class LockedIterator implements Iterator<E> {
-        private final LockedListIterator it = new LockedListIterator(0);
-
-        @Override
-        public boolean hasNext() { return it.hasNext(); }
-
-        @Override
-        public E next() { return it.next(); }
-
-        @Override
-        public void remove() { it.remove(); }
-    }
-
-    private class LockedListIterator implements ListIterator<E> {
-        private int cursor;
-
-        LockedListIterator(int index) { this.cursor = index; }
-
-        @Override
-        public boolean hasNext() { return withReadLock(() -> cursor < list.size()); }
-
-        @Override
-        public E next() { return withReadLock(() -> list.get(cursor++)); }
-
-        @Override
-        public boolean hasPrevious() { return withReadLock(() -> cursor > 0); }
-
-        @Override
-        public E previous() { return withReadLock(() -> list.get(--cursor)); }
-
-        @Override
-        public int nextIndex() { return withReadLock(() -> cursor); }
-
-        @Override
-        public int previousIndex() { return withReadLock(() -> cursor - 1); }
-
-        @Override
-        public void remove() { withWriteLock(() -> list.remove(--cursor)); }
-
-        @Override
-        public void set(E e) { withWriteLock(() -> list.set(cursor - 1, e)); }
-
-        @Override
-        public void add(E e) { withWriteLockVoid(() -> list.add(cursor++, e)); }
-    }
 
     private <T> T withReadLock(Supplier<T> operation) {
         lock.readLock().lock();

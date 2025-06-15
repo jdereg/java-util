@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -541,8 +542,16 @@ public final class DateUtilities {
     }
 
     private static long convertFractionToNanos(String fracSec) {
-        double fractionalSecond = Double.parseDouble(fracSec);
-        return (long) (fractionalSecond * 1_000_000_000);
+        if (StringUtilities.isEmpty(fracSec)) {
+            return 0;
+        }
+        BigDecimal fractional = new BigDecimal(fracSec);
+        BigDecimal nanos = fractional.movePointRight(9);
+        if (nanos.compareTo(BigDecimal.ZERO) < 0
+                || nanos.compareTo(BigDecimal.valueOf(1_000_000_000L)) >= 0) {
+            throw new IllegalArgumentException("Invalid fractional second: " + fracSec);
+        }
+        return nanos.longValue();
     }
 
     private static ZoneId getTimeZone(String tz) {

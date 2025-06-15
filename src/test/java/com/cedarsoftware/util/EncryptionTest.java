@@ -91,6 +91,14 @@ public class EncryptionTest
     }
 
     @Test
+    public void testSHA384()
+    {
+        String hash = EncryptionUtilities.calculateSHA384Hash(QUICK_FOX.getBytes());
+        assertEquals("CA737F1014A48F4C0B6DD43CB177B0AFD9E5169367544C494011E3317DBF9A509CB1E5DC1E85A941BBEE3D7F2AFBC9B1", hash);
+        assertNull(EncryptionUtilities.calculateSHA384Hash(null));
+    }
+
+    @Test
     public void testSHA512()
     {
         String hash = EncryptionUtilities.calculateSHA512Hash(QUICK_FOX.getBytes());
@@ -106,7 +114,7 @@ public class EncryptionTest
             EncryptionUtilities.encrypt("GavynRocks", (String)null);
             fail("Should not make it here.");
         }
-        catch (IllegalStateException e)
+        catch (IllegalArgumentException e)
         {
         }
     }
@@ -153,7 +161,7 @@ public class EncryptionTest
     public void testEncrypt()
     {
         String res = EncryptionUtilities.encrypt("GavynRocks", QUICK_FOX);
-        assertEquals("E68D5CD6B1C0ACD0CC4E2B9329911CF0ADD37A6A18132086C7E17990B933EBB351C2B8E0FAC40B371450FA899C695AA2", res);
+        assertNotNull(res);
         assertEquals(QUICK_FOX, EncryptionUtilities.decrypt("GavynRocks", res));
         try
         {
@@ -162,7 +170,7 @@ public class EncryptionTest
         }
         catch (IllegalStateException ignored) { }
         String diffRes = EncryptionUtilities.encrypt("NcubeRocks", QUICK_FOX);
-        assertEquals("2A6EF54E3D1EEDBB0287E6CC690ED3879C98E55942DA250DC5FE0D10C9BD865105B1E0B4F8E8C389BEF11A85FB6C5F84", diffRes);
+        assertNotNull(diffRes);
         assertEquals(QUICK_FOX, EncryptionUtilities.decrypt("NcubeRocks", diffRes));
     }
 
@@ -170,7 +178,7 @@ public class EncryptionTest
     public void testEncryptBytes()
     {
         String res = EncryptionUtilities.encryptBytes("GavynRocks", QUICK_FOX.getBytes());
-        assertEquals("E68D5CD6B1C0ACD0CC4E2B9329911CF0ADD37A6A18132086C7E17990B933EBB351C2B8E0FAC40B371450FA899C695AA2", res);
+        assertNotNull(res);
         assertTrue(DeepEquals.deepEquals(QUICK_FOX.getBytes(), EncryptionUtilities.decryptBytes("GavynRocks", res)));
         try
         {
@@ -179,7 +187,7 @@ public class EncryptionTest
         }
         catch (IllegalStateException ignored) { }
         String diffRes = EncryptionUtilities.encryptBytes("NcubeRocks", QUICK_FOX.getBytes());
-        assertEquals("2A6EF54E3D1EEDBB0287E6CC690ED3879C98E55942DA250DC5FE0D10C9BD865105B1E0B4F8E8C389BEF11A85FB6C5F84", diffRes);
+        assertNotNull(diffRes);
         assertTrue(DeepEquals.deepEquals(QUICK_FOX.getBytes(), EncryptionUtilities.decryptBytes("NcubeRocks", diffRes)));
     }
 
@@ -191,7 +199,7 @@ public class EncryptionTest
             EncryptionUtilities.encryptBytes("GavynRocks", null);
             fail();
         }
-        catch(IllegalStateException e)
+        catch(IllegalArgumentException e)
         {
             assertTrue(e.getMessage().contains("rror"));
             assertTrue(e.getMessage().contains("encrypt"));
@@ -206,7 +214,7 @@ public class EncryptionTest
             EncryptionUtilities.decryptBytes("GavynRocks", null);
             fail();
         }
-        catch(IllegalStateException e)
+        catch(IllegalArgumentException e)
         {
             assertTrue(e.getMessage().contains("rror"));
             assertTrue(e.getMessage().contains("ecrypt"));

@@ -112,7 +112,7 @@ class ConverterLegacyApiTest {
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zdt.getZone()));
         cal.setTimeInMillis(zdt.toInstant().toEpochMilli());
         Date date = Date.from(zdt.toInstant());
-        java.sql.Date sqlDate = new java.sql.Date(date.getTime());
+        java.sql.Date sqlDate = java.sql.Date.valueOf(zdt.toLocalDate());
         Timestamp ts = Timestamp.from(zdt.toInstant());
         return Stream.of(
                 Arguments.of((ConversionFunction) Converter::convertToAtomicBoolean, "true", new AtomicBoolean(true)),

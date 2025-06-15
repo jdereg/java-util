@@ -3449,6 +3449,13 @@ public static String removeLeadingAndTrailingQuotes(String input)
 // Utility
 public static int hashCodeIgnoreCase(String s)
 public static Set<String> commaSeparatedStringToSet(String commaSeparatedString)
+public static String snakeToCamel(String snake)
+public static String camelToSnake(String camel)
+public static boolean isNumeric(String s)
+public static String repeat(String s, int count)
+public static String reverse(String s)
+public static String padLeft(String s, int length)
+public static String padRight(String s, int length)
 ```
 
 ### Basic Operations
@@ -3544,6 +3551,16 @@ Set<String> set = StringUtilities.commaSeparatedStringToSet("a,b,c");
 
 If the input is empty or {@code null}, the method returns a new mutable
 {@link java.util.LinkedHashSet}.
+
+**Case Conversion and Padding:**
+```java
+String camel = StringUtilities.snakeToCamel("hello_world"); // "helloWorld"
+String snake = StringUtilities.camelToSnake("helloWorld"); // "hello_world"
+
+String padded = StringUtilities.padLeft("text", 6);  // "  text"
+String repeat = StringUtilities.repeat("ab", 3);     // "ababab"
+String reversed = StringUtilities.reverse("abc");    // "cba"
+```
 
 ### Implementation Notes
 

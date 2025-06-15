@@ -789,4 +789,56 @@ public class StringUtilitiesTest
         String x = StringUtilities.removeLeadingAndTrailingQuotes(s);
         assert "This is \"really\" weird.".equals(x);
     }
+
+    @Test
+    void testSnakeToCamel() {
+        assertEquals("helloWorld", StringUtilities.snakeToCamel("hello_world"));
+        assertEquals("already", StringUtilities.snakeToCamel("already"));
+        assertNull(StringUtilities.snakeToCamel(null));
+    }
+
+    @Test
+    void testCamelToSnake() {
+        assertEquals("camel_case", StringUtilities.camelToSnake("camelCase"));
+        assertEquals("camel_case", StringUtilities.camelToSnake("CamelCase"));
+        assertEquals("lower", StringUtilities.camelToSnake("lower"));
+        assertNull(StringUtilities.camelToSnake(null));
+    }
+
+    @Test
+    void testIsNumeric() {
+        assertTrue(StringUtilities.isNumeric("123"));
+        assertFalse(StringUtilities.isNumeric("12a"));
+        assertFalse(StringUtilities.isNumeric(""));
+        assertFalse(StringUtilities.isNumeric(null));
+    }
+
+    @Test
+    void testRepeat() {
+        assertEquals("ababab", StringUtilities.repeat("ab", 3));
+        assertEquals("", StringUtilities.repeat("x", 0));
+        assertNull(StringUtilities.repeat(null, 2));
+        assertThrows(IllegalArgumentException.class, () -> StringUtilities.repeat("x", -1));
+    }
+
+    @Test
+    void testReverse() {
+        assertEquals("cba", StringUtilities.reverse("abc"));
+        assertEquals("", StringUtilities.reverse(""));
+        assertNull(StringUtilities.reverse(null));
+    }
+
+    @Test
+    void testPadLeft() {
+        assertEquals("  abc", StringUtilities.padLeft("abc", 5));
+        assertEquals("abc", StringUtilities.padLeft("abc", 2));
+        assertNull(StringUtilities.padLeft(null, 4));
+    }
+
+    @Test
+    void testPadRight() {
+        assertEquals("abc  ", StringUtilities.padRight("abc", 5));
+        assertEquals("abc", StringUtilities.padRight("abc", 2));
+        assertNull(StringUtilities.padRight(null, 3));
+    }
 }

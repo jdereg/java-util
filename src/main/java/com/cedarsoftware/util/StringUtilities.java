@@ -929,4 +929,146 @@ public final class StringUtilities {
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
     }
+
+    /**
+     * Convert a {@code snake_case} string to {@code camelCase}.
+     *
+     * @param snake the snake case string, may be {@code null}
+     * @return the camelCase representation or {@code null} if {@code snake} is {@code null}
+     */
+    public static String snakeToCamel(String snake) {
+        if (snake == null) {
+            return null;
+        }
+        StringBuilder result = new StringBuilder();
+        boolean upper = false;
+        for (char c : snake.toCharArray()) {
+            if (c == '_') {
+                upper = true;
+                continue;
+            }
+            result.append(upper ? Character.toUpperCase(c) : c);
+            upper = false;
+        }
+        return result.toString();
+    }
+
+    /**
+     * Convert a {@code camelCase} or {@code PascalCase} string to {@code snake_case}.
+     *
+     * @param camel the camel case string, may be {@code null}
+     * @return the snake_case representation or {@code null} if {@code camel} is {@code null}
+     */
+    public static String camelToSnake(String camel) {
+        if (camel == null) {
+            return null;
+        }
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < camel.length(); i++) {
+            char c = camel.charAt(i);
+            if (Character.isUpperCase(c) && i > 0) {
+                result.append('_');
+            }
+            result.append(Character.toLowerCase(c));
+        }
+        return result.toString();
+    }
+
+    /**
+     * Determine if the supplied string contains only numeric digits.
+     *
+     * @param s the string to test, may be {@code null}
+     * @return {@code true} if {@code s} is non-empty and consists solely of digits
+     */
+    public static boolean isNumeric(String s) {
+        if (s == null || s.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < s.length(); i++) {
+            if (!Character.isDigit(s.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Repeat a string {@code count} times.
+     *
+     * @param s     the string to repeat, may be {@code null}
+     * @param count the number of times to repeat, must be non-negative
+     * @return the repeated string or {@code null} if {@code s} is {@code null}
+     * @throws IllegalArgumentException if {@code count} is negative
+     */
+    public static String repeat(String s, int count) {
+        if (s == null) {
+            return null;
+        }
+        if (count < 0) {
+            throw new IllegalArgumentException("count must be >= 0");
+        }
+        if (count == 0) {
+            return EMPTY;
+        }
+        StringBuilder result = new StringBuilder(s.length() * count);
+        for (int i = 0; i < count; i++) {
+            result.append(s);
+        }
+        return result.toString();
+    }
+
+    /**
+     * Reverse the characters of a string.
+     *
+     * @param s the string to reverse, may be {@code null}
+     * @return the reversed string or {@code null} if {@code s} is {@code null}
+     */
+    public static String reverse(String s) {
+        return s == null ? null : new StringBuilder(s).reverse().toString();
+    }
+
+    /**
+     * Pad the supplied string on the left with spaces until it reaches the specified length.
+     * If the string is already longer than {@code length}, the original string is returned.
+     *
+     * @param s      the string to pad, may be {@code null}
+     * @param length desired final length
+     * @return the padded string or {@code null} if {@code s} is {@code null}
+     */
+    public static String padLeft(String s, int length) {
+        if (s == null) {
+            return null;
+        }
+        if (length <= s.length()) {
+            return s;
+        }
+        StringBuilder result = new StringBuilder(length);
+        for (int i = s.length(); i < length; i++) {
+            result.append(' ');
+        }
+        return result.append(s).toString();
+    }
+
+    /**
+     * Pad the supplied string on the right with spaces until it reaches the specified length.
+     * If the string is already longer than {@code length}, the original string is returned.
+     *
+     * @param s      the string to pad, may be {@code null}
+     * @param length desired final length
+     * @return the padded string or {@code null} if {@code s} is {@code null}
+     */
+    public static String padRight(String s, int length) {
+        if (s == null) {
+            return null;
+        }
+        if (length <= s.length()) {
+            return s;
+        }
+        StringBuilder result = new StringBuilder(length);
+        result.append(s);
+        for (int i = s.length(); i < length; i++) {
+            result.append(' ');
+        }
+        return result.toString();
+    }
 }

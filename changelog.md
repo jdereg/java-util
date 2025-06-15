@@ -24,6 +24,7 @@
 > * `StringUtilities.count()` uses a reliable substring search algorithm.
 > * `StringUtilities.hashCodeIgnoreCase()` updates locale compatibility when the default locale changes.
 > * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
+> * `StringUtilities` adds `snakeToCamel`, `camelToSnake`, `isNumeric`, `repeat`, `reverse`, `padLeft`, and `padRight` helpers.
 > * Constants `FOLDER_SEPARATOR` and `EMPTY` are now immutable (`final`).
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists

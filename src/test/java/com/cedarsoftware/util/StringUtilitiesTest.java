@@ -3,6 +3,9 @@ package com.cedarsoftware.util;
 import javax.swing.text.Segment;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
@@ -25,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
  * @author Ken Partlow
@@ -647,6 +651,14 @@ public class StringUtilitiesTest
         );
     }
 
+    private static Stream<Arguments> nullEmptyOrWhitespace() {
+        return Stream.of(
+                Arguments.of((String) null),
+                Arguments.of(""),
+                Arguments.of("   ")
+        );
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     void testTrimToEmpty_whenNullOrEmpty_returnsEmptyString(String value) {
@@ -841,5 +853,29 @@ public class StringUtilitiesTest
         assertEquals("abc  ", StringUtilities.padRight("abc", 5));
         assertEquals("abc", StringUtilities.padRight("abc", 2));
         assertNull(StringUtilities.padRight(null, 3));
+    }
+
+    @ParameterizedTest
+    @MethodSource("nullEmptyOrWhitespace")
+    void testCommaSeparatedStringToSet_nullOrBlank_returnsEmptyMutableSet(String input) {
+        Set<String> result = StringUtilities.commaSeparatedStringToSet(input);
+        assertTrue(result.isEmpty());
+        assertInstanceOf(LinkedHashSet.class, result);
+        result.add("x");
+        assertTrue(result.contains("x"));
+    }
+
+    @Test
+    void testCommaSeparatedStringToSet_parsesValuesAndDeduplicates() {
+        Set<String> expected = new HashSet<>(Arrays.asList("a", "b", "c"));
+        Set<String> result = StringUtilities.commaSeparatedStringToSet(" a ,b , c ,a,, ,b,");
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void testGetRandomChar_returnsDeterministicCharacters() {
+        Random random = new Random(42);
+        assertEquals("A", StringUtilities.getRandomChar(random, true));
+        assertEquals("h", StringUtilities.getRandomChar(random, false));
     }
 }

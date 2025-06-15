@@ -100,8 +100,7 @@ implementation 'com.cedarsoftware:java-util:3.3.2'
 This library relies solely on `java.util.logging.Logger` so that no additional
 logging dependencies are pulled in. Small libraries often take this approach to
 remain lightweight. Applications that prefer a different logging framework can
-redirect these messages using one of the adapters below, ordered roughly by
-their usage across Maven Central.
+redirect these messages using one of the adapters below.
 
 `java-util` provides `LoggingConfig` to apply a consistent console
 format. Call `LoggingConfig.init()` to use the default pattern or pass a

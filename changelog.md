@@ -1,6 +1,9 @@
 ### Revision History
 #### 3.3.3 Unreleased
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
+> * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
+> * Java logging now uses a Logback-style format for consistency
+> * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
@@ -14,8 +17,6 @@
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
-> * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
-> * Java logging now uses a Logback-style format for consistency
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
@@ -28,7 +29,6 @@
 > * `Traverser` logs inaccessible fields at `Level.FINEST` instead of printing to STDERR
 > * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
 > * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
-> * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

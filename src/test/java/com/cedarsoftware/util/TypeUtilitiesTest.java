@@ -889,4 +889,35 @@ public class TypeUtilitiesTest {
         assertEquals(Double.class, resolved,
                 "Expected the type variable declared in AnInterface (implemented by Grandparent) to resolve to Double");
     }
+
+    @Test
+    public void testGetGenericComponentTypeFromResolveType() throws Exception {
+        Type parentType = TestConcrete.class.getGenericSuperclass();
+        Field field = TestGeneric.class.getField("arrayField");
+        Type arrayType = field.getGenericType();
+
+        Type resolved = TypeUtilities.resolveType(parentType, arrayType);
+
+        assertTrue(resolved instanceof GenericArrayType, "Should be GenericArrayType");
+        GenericArrayType gat = (GenericArrayType) resolved;
+        assertEquals(Integer.class, gat.getGenericComponentType(), "Component should resolve to Integer.class");
+    }
+
+    @Test
+    public void testSetTypeResolveCacheWithNull() {
+        assertThrows(IllegalArgumentException.class, () -> TypeUtilities.setTypeResolveCache(null));
+    }
+
+    @Test
+    public void testSetTypeResolveCacheUsesProvidedMap() throws Exception {
+        Map<Map.Entry<Type, Type>, Type> customCache = new ConcurrentHashMap<>();
+        TypeUtilities.setTypeResolveCache(customCache);
+
+        Field field = TestGeneric.class.getField("field");
+        TypeUtilities.resolveType(TestConcrete.class, field.getGenericType());
+
+        assertFalse(customCache.isEmpty(), "Cache should contain resolved entry");
+
+        TypeUtilities.setTypeResolveCache(new LRUCache<>(2000));
+    }
 }

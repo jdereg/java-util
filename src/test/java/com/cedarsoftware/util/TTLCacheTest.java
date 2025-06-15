@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledFuture;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -563,5 +564,14 @@ public class TTLCacheTest {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    void testCloseCancelsFuture() {
+        TTLCache<Integer, String> cache = new TTLCache<>(1000, -1, 100);
+        ScheduledFuture<?> future = cache.getPurgeFuture();
+        assertFalse(future.isCancelled());
+        cache.close();
+        assertTrue(future.isCancelled());
     }
 }

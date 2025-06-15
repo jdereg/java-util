@@ -309,10 +309,14 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
 
     /**
      * Returns a Set view of the mappings contained in this cache.
-     * The set is backed by a new LinkedHashMap to maintain the LRU order.
+     * <p>
+     * The returned set is a <em>snapshot</em> of the cache contents at the time
+     * of the call.  Modifying the set or its iterator does not affect the
+     * underlying cache.  Iterator removal operates only on the snapshot.
+     * The snapshot preserves LRU ordering via a temporary {@link LinkedHashMap}.
      * This operation requires a full traversal under a lock.
      *
-     * @return a set view of the mappings contained in this cache
+     * @return a snapshot set of the mappings contained in this cache
      */
     @Override
     public Set<Map.Entry<K, V>> entrySet() {
@@ -330,10 +334,13 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
 
     /**
      * Returns a Set view of the keys contained in this cache.
-     * The set maintains the LRU order of the cache.
+     * <p>
+     * Like {@link #entrySet()}, this method returns a snapshot.  The set is
+     * independent of the cache and retains the current LRU ordering.  Removing
+     * elements from the returned set does not remove them from the cache.
      * This operation requires a full traversal under a lock.
      *
-     * @return a set view of the keys contained in this cache
+     * @return a snapshot set of the keys contained in this cache
      */
     @Override
     public Set<K> keySet() {
@@ -351,10 +358,13 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
 
     /**
      * Returns a Collection view of the values contained in this cache.
-     * The collection maintains the LRU order of the cache.
+     * <p>
+     * The collection is a snapshot with values ordered from most to least
+     * recently used.  Changes to the returned collection or its iterator do not
+     * affect the cache.  Iterator removal only updates the snapshot.
      * This operation requires a full traversal under a lock.
      *
-     * @return a collection view of the values contained in this cache
+     * @return a snapshot collection of the values contained in this cache
      */
     @Override
     public Collection<V> values() {

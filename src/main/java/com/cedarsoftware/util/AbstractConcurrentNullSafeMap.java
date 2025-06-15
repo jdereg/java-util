@@ -210,6 +210,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public V computeIfAbsent(K key, java.util.function.Function<? super K, ? extends V> mappingFunction) {
+        Objects.requireNonNull(mappingFunction);
         Object maskedKey = maskNullKey(key);
 
         Object result = internalMap.compute(maskedKey, (k, v) -> {

@@ -883,7 +883,7 @@ tracker.expungeUnused();  // Removes entries never accessed
 TrackingMap<String, Config> configMap = new TrackingMap<>(sourceMap);
 
 // After some time...
-Set<String> usedKeys = configMap.keysUsed();
+Set<Object> usedKeys = configMap.keysUsed();
 System.out.println("Accessed configs: " + usedKeys);
 ```
 
@@ -943,7 +943,7 @@ scheduler.scheduleAtFixedRate(() -> {
 ### Available Operations
 ```java
 // Core tracking operations
-Set<K> keysUsed()              // Get accessed keys
+Set<Object> keysUsed()         // Get accessed keys
 void expungeUnused()           // Remove unused entries
 
 // Usage pattern merging
@@ -952,6 +952,7 @@ void informAdditionalUsage(TrackingMap<K,V>) // Merge from another tracker
 
 // Map access
 Map<K,V> getWrappedMap()       // Get underlying map
+void replaceContents(Map<K,V>) // Replace map contents
 ```
 
 ### Thread Safety Notes
@@ -973,7 +974,7 @@ A thread-safe Map implementation that extends ConcurrentHashMap's capabilities b
 - High-performance concurrent operations
 - Full Map and ConcurrentMap interface implementation
 - Maintains ConcurrentHashMap's performance characteristics
-- Configurable initial capacity and load factor
+- Configurable initial capacity, load factor, and concurrency level
 - Atomic operations support
 
 ### Usage Examples
@@ -1000,8 +1001,12 @@ ConcurrentMap<Integer, String> map =
     new ConcurrentHashMapNullSafe<>(1000);
 
 // Create with capacity and load factor
-ConcurrentMap<Integer, String> map = 
+ConcurrentMap<Integer, String> map =
     new ConcurrentHashMapNullSafe<>(1000, 0.75f);
+
+// Create with capacity, load factor, and concurrency level
+ConcurrentMap<Integer, String> tunedMap =
+    new ConcurrentHashMapNullSafe<>(1000, 0.75f, 16);
 ```
 
 **Atomic Operations:**
@@ -1063,6 +1068,9 @@ map.merge("A", 10, Integer::sum);
 - Preserves map contract
 - Consistent serialization behavior
 - Safe iterator implementation
+- `computeIfAbsent` uses a single atomic `compute` call when
+  the mapping function returns `null`, preventing accidental
+  removal of concurrently inserted values
 
 ### Atomic Operation Support
 ```java

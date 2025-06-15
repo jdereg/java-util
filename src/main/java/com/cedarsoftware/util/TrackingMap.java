@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -65,7 +66,12 @@ import java.util.Set;
  */
 public class TrackingMap<K, V> implements Map<K, V> {
     private final Map<K, V> internalMap;
-    private final Set<K> readKeys;
+    /**
+     * Tracks all keys that were read via {@link #get(Object)} or
+     * {@link #containsKey(Object)}. Stored as {@code Object} to avoid
+     * {@link ClassCastException} if callers supply a key of a different type.
+     */
+    private final Set<Object> readKeys;
 
     /**
      * Wraps the provided {@code Map} with a {@code TrackingMap}.
@@ -88,10 +94,9 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @param key the key whose associated value is to be returned
      * @return the value associated with the specified key, or {@code null} if no mapping exists
      */
-    @SuppressWarnings("unchecked")
     public V get(Object key) {
         V value = internalMap.get(key);
-        readKeys.add((K) key);
+        readKeys.add(key);
         return value;
     }
 
@@ -114,10 +119,9 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @param key key whose presence in this map is to be tested
      * @return {@code true} if this map contains a mapping for the specified key
      */
-    @SuppressWarnings("unchecked")
     public boolean containsKey(Object key) {
         boolean containsKey = internalMap.containsKey(key);
-        readKeys.add((K)key);
+        readKeys.add(key);
         return containsKey;
     }
 
@@ -226,6 +230,9 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public void expungeUnused() {
         internalMap.keySet().retainAll(readKeys);
+        // remove tracked keys that no longer exist in the map to avoid
+        // unbounded growth when many misses occur
+        readKeys.retainAll(internalMap.keySet());
     }
 
     /**
@@ -252,7 +259,16 @@ public class TrackingMap<K, V> implements Map<K, V> {
      *
      * @return a {@link Set} of accessed keys
      */
-    public Set<K> keysUsed() { return readKeys; }
+    /**
+     * Returns an unmodifiable view of the keys that have been accessed via
+     * {@code get()} or {@code containsKey()}.
+     * <p>
+     * The returned set may contain objects that are not of type {@code K} if
+     * callers queried the map using keys of a different type.
+     *
+     * @return unmodifiable set of accessed keys
+     */
+    public Set<Object> keysUsed() { return Collections.unmodifiableSet(readKeys); }
 
     /**
      * Returns the underlying {@link Map} that this {@code TrackingMap} wraps.
@@ -261,9 +277,25 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public Map<K, V> getWrappedMap() { return internalMap; }
 
-    public void setWrappedMap(Map<K, V> map) {
-        Convention.throwIfNull(map, "Cannot set a TrackingMap() with null");
+    /**
+     * Replace all contents of the wrapped map with those from the provided map.
+     * The underlying map instance remains the same.
+     *
+     * @param map map providing new contents; must not be {@code null}
+     */
+    public void replaceContents(Map<K, V> map) {
+        Convention.throwIfNull(map, "Cannot replace contents with null");
         clear();
         putAll(map);
+    }
+
+    /**
+     * @deprecated Use {@link #replaceContents(Map)} instead. This method
+     * merely replaces the contents of the wrapped map and does not change the
+     * underlying instance.
+     */
+    @Deprecated
+    public void setWrappedMap(Map<K, V> map) {
+        replaceContents(map);
     }
 }

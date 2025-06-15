@@ -18,7 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Thread-safe and highly concurrent.</li>
  *   <li>Supports {@code null} keys and {@code null} values through internal sentinel objects.</li>
  *   <li>Adheres to the {@link java.util.Map} and {@link java.util.concurrent.ConcurrentMap} contracts.</li>
- *   <li>Provides multiple constructors to control initial capacity, load factor, and populate from another map.</li>
+ *   <li>Provides constructors to control initial capacity, load factor,
+ *       concurrency level, and to populate from another map.</li>
  * </ul>
  *
  * <h2>Usage Example</h2>
@@ -58,7 +59,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see ConcurrentHashMap
  * @see AbstractConcurrentNullSafeMap
  */
-public class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNullSafeMap<K, V> {
+public final class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNullSafeMap<K, V> {
     /**
      * Constructs a new, empty {@code ConcurrentHashMapNullSafe} with the default initial capacity (16)
      * and load factor (0.75).
@@ -98,6 +99,20 @@ public class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNullSafeM
     }
 
     /**
+     * Constructs a new, empty {@code ConcurrentHashMapNullSafe} with the specified
+     * initial capacity, load factor, and concurrency level.
+     *
+     * @param initialCapacity  the initial capacity of the map
+     * @param loadFactor       the load factor threshold
+     * @param concurrencyLevel the estimated number of concurrently updating threads
+     * @throws IllegalArgumentException if the initial capacity is negative,
+     *                                  or the load factor or concurrency level are nonpositive
+     */
+    public ConcurrentHashMapNullSafe(int initialCapacity, float loadFactor, int concurrencyLevel) {
+        super(new ConcurrentHashMap<>(initialCapacity, loadFactor, concurrencyLevel));
+    }
+
+    /**
      * Constructs a new {@code ConcurrentHashMapNullSafe} with the same mappings as the specified map.
      * <p>
      * This constructor copies all mappings from the given map into the new {@code ConcurrentHashMapNullSafe}.
@@ -108,7 +123,7 @@ public class ConcurrentHashMapNullSafe<K, V> extends AbstractConcurrentNullSafeM
      * @throws NullPointerException if the specified map is {@code null}
      */
     public ConcurrentHashMapNullSafe(Map<? extends K, ? extends V> m) {
-        super(new ConcurrentHashMap<>());
+        super(new ConcurrentHashMap<>(Math.max(16, (int) (m.size() / 0.75f) + 1)));
         putAll(m);
     }
 

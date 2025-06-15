@@ -16,12 +16,16 @@
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
-> * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
+> * `StringUtilities.count()` uses a reliable substring search algorithm.
+> * `StringUtilities.hashCodeIgnoreCase()` updates locale compatibility when the default locale changes.
+> * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
+> * Constants `FOLDER_SEPARATOR` and `EMPTY` are now immutable (`final`).
+> * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
 > * Added Javadoc for several public APIs including `Convention.throwIfClassNotFound`,
   `TestUtil.fetchResource`, `MapUtilities.cloneMapOfSets`, and core cache methods.

@@ -1511,7 +1511,13 @@ public class ClassUtilities {
     }
 
     static void trySetAccessible(AccessibleObject object) {
-        safelyIgnoreException(() -> object.setAccessible(true));
+        try {
+            object.setAccessible(true);
+        } catch (SecurityException e) {
+            System.err.println("Unable to set accessible: " + object + " - " + e.getMessage());
+        } catch (Throwable t) {
+            safelyIgnoreException(t);
+        }
     }
 
     // Try instantiation via unsafe (if turned on).  It is off by default.  Use

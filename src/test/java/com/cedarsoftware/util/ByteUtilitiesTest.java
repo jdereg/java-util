@@ -4,6 +4,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,7 +32,7 @@ public class ByteUtilitiesTest
 	private byte[] _array2 = new byte[] { 0x01, 0x23, 0x45, 0x67 };
 	
 	private String _str1 = "FF00";
-	private String _str2 = "01234567";
+    private String _str2 = "01234567";
 
     @Test
     public void testConstructorIsPrivate() throws Exception {
@@ -74,5 +76,19 @@ public class ByteUtilitiesTest
         assertTrue(ByteUtilities.isGzipped(gzipped));
         assertFalse(ByteUtilities.isGzipped(notGzip));
         assertTrue(ByteUtilities.isGzipped(embedded, 1));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+    public void testToHexCharWithinRange(int value) {
+        char expected = "0123456789ABCDEF".charAt(value);
+        assertEquals(expected, ByteUtilities.toHexChar(value));
+    }
+
+    @Test
+    public void testToHexCharMasksInput() {
+        assertEquals('F', ByteUtilities.toHexChar(-1));
+        assertEquals('0', ByteUtilities.toHexChar(16));
+        assertEquals('5', ByteUtilities.toHexChar(0x15));
     }
 }

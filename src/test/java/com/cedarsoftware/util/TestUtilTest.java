@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -50,5 +51,67 @@ public class TestUtilTest
         assert TestUtil.checkContainsIgnoreCase("This is the source string to test.", "Source", "string", "Test");
         assert !TestUtil.checkContainsIgnoreCase("This is the source string to test.", "Source", "string", "Text");
         assert !TestUtil.checkContainsIgnoreCase("This is the source string to test.", "Test", "Source", "string");
+    }
+
+    @Test
+    public void testIsReleaseModeDefaultFalse()
+    {
+        String original = System.getProperty("performRelease");
+        System.clearProperty("performRelease");
+        try
+        {
+            assertFalse(TestUtil.isReleaseMode());
+        }
+        finally
+        {
+            if (original != null)
+            {
+                System.setProperty("performRelease", original);
+            }
+        }
+    }
+
+    @Test
+    public void testIsReleaseModeTrue()
+    {
+        String original = System.getProperty("performRelease");
+        System.setProperty("performRelease", "true");
+        try
+        {
+            assertTrue(TestUtil.isReleaseMode());
+        }
+        finally
+        {
+            if (original == null)
+            {
+                System.clearProperty("performRelease");
+            }
+            else
+            {
+                System.setProperty("performRelease", original);
+            }
+        }
+    }
+
+    @Test
+    public void testIsReleaseModeExplicitFalse()
+    {
+        String original = System.getProperty("performRelease");
+        System.setProperty("performRelease", "false");
+        try
+        {
+            assertFalse(TestUtil.isReleaseMode());
+        }
+        finally
+        {
+            if (original == null)
+            {
+                System.clearProperty("performRelease");
+            }
+            else
+            {
+                System.setProperty("performRelease", original);
+            }
+        }
     }
 }

@@ -1,21 +1,24 @@
 ### Revision History
 #### 3.3.3 Unreleased
-> * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
-> * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
+> * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
+> * Java logging now uses a Logback-style format for consistency
+> * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
+> * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
+> * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
+> * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
-> * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
   `ConcurrentHashMapNullSafe` for custom caches and generates unique parameter keys using fully qualified names.
-> * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
-> * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `Converter` - factory conversions map made immutable and legacy caching code removed
 > * `DateUtilities` uses `BigDecimal` for fractional second conversion, preventing rounding errors with high precision input
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
-> * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys; legacy cipher APIs are deprecated. Added SHA-384 hashing support.
 > * `Executor` now uses `ProcessBuilder` with a 60 second timeout and provides an `ExecutionResult` API
+> * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
+> * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
+> * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
 > * `StringUtilities.count()` uses a reliable substring search algorithm.
@@ -23,8 +26,16 @@
 > * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
 > * Constants `FOLDER_SEPARATOR` and `EMPTY` are now immutable (`final`).
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
-> * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
-> * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
+> * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
+> * Added Javadoc for several public APIs including `Convention.throwIfClassNotFound`,
+  `TestUtil.fetchResource`, `MapUtilities.cloneMapOfSets`, and core cache methods.
+> * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
+> * `Traverser` supports lazy field collection, improved null-safe class skipping, and better error logging
+> * `Traverser` now ignores synthetic fields, preventing traversal into outer class references
+> * `Traverser` logs inaccessible fields at `Level.FINEST` instead of printing to STDERR
+> * `TypeUtilities.setTypeResolveCache()` validates that the supplied cache is not null and inner `Type` implementations now implement `equals` and `hashCode`
+> * `UniqueIdGenerator` uses `java.util.logging` and reduces CPU usage while waiting for the next millisecond
+> * Explicitly set versions for `maven-resources-plugin`, `maven-install-plugin`, and `maven-deploy-plugin` to avoid Maven 4 compatibility warnings
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.
@@ -68,14 +79,14 @@
 > * `MonthDay` conversions added (all date-time types to `MonthDay`)
 > * All Temporal classes, when converted to a Map, will typically use a single String to represent the Temporal object. Uses the ISO 8601 formats for dates, other ISO formats for Currency, etc.
 #### 3.0.2
-> 
+>
 > * Conversion test added that ensures all conversions go from instance, to JSON, and JSON, back to instance, through all conversion types supported. `java-util` uses `json-io` as a test dependency only.
 > * `Timestamp` conversion improvements (better honoring of nanos) and Timezone is always specified now, so no risk of system default Timezone being used.  Would only use system default timezone if tz not specified, which could only happen if older version sending older format JSON.
 #### 3.0.1
-> * [ClassUtilities](userguide.md#classutilities) adds 
->   * `Set<Class<?>> findLowestCommonSupertypes(Class<?> a, Class<?> b)` 
+> * [ClassUtilities](userguide.md#classutilities) adds
+>   * `Set<Class<?>> findLowestCommonSupertypes(Class<?> a, Class<?> b)`
 >     * which returns the lowest common anscestor(s) of two classes, excluding `Object.class.`  This is useful for finding the common ancestor of two classes that are not related by inheritance.  Generally, executes in O(n log n) - uses sort internally.  If more than one exists, you can filter the returned Set as you please, favoring classes, interfaces, etc.
->   * `Class<?> findLowestCommonSupertype(Class<?> a, Class<?> b)` 
+>   * `Class<?> findLowestCommonSupertype(Class<?> a, Class<?> b)`
 >     * which is a convenience method that calls the above method and then returns the first one in the Set or null.
 >   * `boolean haveCommonAncestor(Class<?> a, Class<?> b)`
 >     * which returns true if the two classes have a common ancestor (excluding `Object.class`).
@@ -99,7 +110,7 @@
 > * Added `ClassUtilities.getClassLoader(Class<?> c)` so that class loading was not confined to java-util classloader bundle. Thank you @ozhelezniak-talend.
 #### 2.17.0
 > * `ClassUtilities.getClassLoader()` added. This will safely return the correct class loader when running in OSGi, JPMS, or neither.
-> * `ArrayUtilities.createArray()` added. This method accepts a variable number of arguments and returns them as an array of type `T[].` 
+> * `ArrayUtilities.createArray()` added. This method accepts a variable number of arguments and returns them as an array of type `T[].`
 > * Fixed bug when converting `Map` containing "time" key (and no `date` nor `zone` keys) with value to `java.sql.Date.`  The millisecond portion was set to 0.
 #### 2.16.0
 > * `SealableMap, LRUCache,` and `TTLCache` updated to use `ConcurrentHashMapNullSafe` internally, to simplify their implementation, as they no longer have to implement the null-safe work, `ConcurrentHashMapNullSafe` does that for them.
@@ -111,7 +122,7 @@
 > * `TestGraphComparator.testNewArrayElement` updated to reliable compare results (not depdendent on a Map that could return items in differing order).  Thank you @wtrazs
 #### 2.15.0
 > * Introducing `TTLCache`: a cache with a configurable minimum Time-To-Live (TTL). Entries expire and are automatically removed after the specified TTL. Optionally, set a `maxSize` to enable Least Recently Used (LRU) eviction. Each `TTLCache` instance can have its own TTL setting, leveraging a shared `ScheduledExecutorService` for efficient resource management. To ensure proper cleanup, call `TTLCache.shutdown()` when your application or service terminates.
-> * Introducing `ConcurrentHashMapNullSafe`: a drop-in replacement for `ConcurrentHashMap` that supports `null` keys and values. It uses internal sentinel values to manage `nulls,` providing a seamless experience. This frees users from `null` handling concerns, allowing unrestricted key-value insertion and retrieval. 
+> * Introducing `ConcurrentHashMapNullSafe`: a drop-in replacement for `ConcurrentHashMap` that supports `null` keys and values. It uses internal sentinel values to manage `nulls,` providing a seamless experience. This frees users from `null` handling concerns, allowing unrestricted key-value insertion and retrieval.
 > * `LRUCache` updated to use a single `ScheduledExecutorService` across all instances, regardless of the individual time settings. Call the static `shutdown()` method on `LRUCache` when your application or service is ending.
 #### 2.14.0
 > * `ClassUtilities.addPermanentClassAlias()` - add an alias that `.forName()` can use to instantiate class (e.g. "date" for `java.util.Date`)
@@ -121,11 +132,11 @@
 > * `LRUCache` improved garbage collection handling to avoid [gc Nepotism](https://psy-lob-saw.blogspot.com/2016/03/gc-nepotism-and-linked-queues.html?lr=1719181314858) issues by nulling out node references upon eviction. Pointed out by [Ben Manes](https://github.com/ben-manes).
 > * Combined `ForkedJoinPool` and `ScheduledExecutorService` into use of only `ScheduledExecutorServive,` which is easier for user.  The user can supply `null` or their own scheduler. In the case of `null`, one will be created and the `shutdown()` method will terminate it.  If the user supplies a `ScheduledExecutorService` it will be *used*, but not shutdown when the `shutdown()` method is called. This allows `LRUCache` to work well in containerized environments.
 #### 2.12.0
-> * `LRUCache` updated to support both "locking" and "threaded" implementation strategies. 
+> * `LRUCache` updated to support both "locking" and "threaded" implementation strategies.
 #### 2.11.0
-> * `LRUCache` re-written so that it operates in O(1) for `get(),` `put(),` and `remove()` methods without thread contention. When items are placed into (or removed from) the cache, it schedules a cleanup task to trim the cache to its capacity.  This means that it will operate as fast as a `ConcurrentHashMap,` yet shrink to capacity quickly after modifications.   
+> * `LRUCache` re-written so that it operates in O(1) for `get(),` `put(),` and `remove()` methods without thread contention. When items are placed into (or removed from) the cache, it schedules a cleanup task to trim the cache to its capacity.  This means that it will operate as fast as a `ConcurrentHashMap,` yet shrink to capacity quickly after modifications.
 #### 2.10.0
-> * Fixed potential memory leak in `LRUCache.` 
+> * Fixed potential memory leak in `LRUCache.`
 > * Added `nextPermutation` to `MathUtilities.`
 > * Added `size(),`, `isEmpty(),` and `hasContent` to `CollectionUtilities.`
 #### 2.9.0
@@ -140,7 +151,7 @@
 > * Added `ClassUtilities.doesOneWrapTheOther()` API so that it is easy to test if one class is wrapping the other.
 > * Added `StringBuilder` and `StringBuffer`  to `Strings` to the `Converter.` Eliminates special cases for `.toString()` calls where generalized `convert(src, type)` is being used.
 #### 2.7.0
-> * Added `ConcurrentList,` which implements a thread-safe `List.` Provides all API support except for `listIterator(),` however, it implements `iterator()` which returns an iterator to a snapshot copy of the `List.` 
+> * Added `ConcurrentList,` which implements a thread-safe `List.` Provides all API support except for `listIterator(),` however, it implements `iterator()` which returns an iterator to a snapshot copy of the `List.`
 > * Added `ConcurrentHashSet,` a true `Set` which is a bit easier to use than `ConcurrentSkipListSet,` which as a `NavigableSet` and `SortedSet,` requires each element to be `Comparable.`
 > * Performance improvement: On `LRUCache,` removed unnecessary `Collections.SynchronizedMap` surrounding the internal `LinkedHashMap` as the concurrent protection offered by `ReentrantReadWriteLock` is all that is needed.
 #### 2.6.0
@@ -148,7 +159,7 @@
 > * New capability added: `MathUtilities.parseToMinimalNumericType()` which will parse a String number into a Long, BigInteger, Double, or BigDecimal, choosing the "smallest" datatype to represent the number without loss of precision.
 > * New conversions added to convert from `Map` to `StringBuilder` and `StringBuffer.`
 #### 2.5.0
-> * pom.xml file updated to support both OSGi Bundle and JPMS Modules. 
+> * pom.xml file updated to support both OSGi Bundle and JPMS Modules.
 > * module-info.class resides in the root of the .jar but it is not referenced.
 #### 2.4.9
 > * Updated to allow the project to be compiled by versions of JDK > 1.8 yet still generate class file format 52 .class files so that they can be executed on JDK 1.8+ and up.
@@ -166,15 +177,15 @@
 #### 2.4.4
 > * `Converter` - Enum test added.  683 combinations.
 #### 2.4.3
-> * `DateUtilities` - now supports timezone offset with seconds component (rarer than seeing a bald eagle in your backyard).  
-> * `Converter` - many more tests added...682 combinations.  
+> * `DateUtilities` - now supports timezone offset with seconds component (rarer than seeing a bald eagle in your backyard).
+> * `Converter` - many more tests added...682 combinations.
 #### 2.4.2
 > * Fixed compatibility issues with `StringUtilities.` Method parameters changed from String to CharSequence broke backward compatibility.  Linked jars are bound to method signature at compile time, not at runtime. Added both methods where needed.  Removed methods with "Not" in the name.
 > * Fixed compatibility issue with `FastByteArrayOutputStream.` The `.getBuffer()` API was removed in favor of toByteArray(). Now both methods exist, leaving `getBuffer()` for backward compatibility.
 > * The Converter "Everything" test updated to track which pairs are tested (fowarded or reverse) and then outputs in order what tests combinations are left to write.
 #### 2.4.1
 > * `Converter` has had significant expansion in the types that it can convert between, about 670 combinations.  In addition, you can add your own conversions to it as well. Call the `Converter.getSupportedConversions()` to see all the combinations supported.  Also, you can use `Converter` instance-based now, allowing it to have different conversion tables if needed.
-> * `DateUtilities` has had performance improvements (> 35%), and adds a new `.parseDate()` API that allows it to return a `ZonedDateTime.` See the updated Javadoc on the class for a complete description of all the formats it supports.  Normally, you do not need to use this class directly, as you can use `Converter` to convert between `Dates`, `Calendars`, and the new Temporal classes like `ZonedDateTime,` `Duration,` `Instance,` as well as Strings. 
+> * `DateUtilities` has had performance improvements (> 35%), and adds a new `.parseDate()` API that allows it to return a `ZonedDateTime.` See the updated Javadoc on the class for a complete description of all the formats it supports.  Normally, you do not need to use this class directly, as you can use `Converter` to convert between `Dates`, `Calendars`, and the new Temporal classes like `ZonedDateTime,` `Duration,` `Instance,` as well as Strings.
 > * `FastByteArrayOutputStream` updated to match `ByteArrayOutputStream` API. This means that `.getBuffer()` is `.toByteArray()` and `.clear()` is now `.reset().`
 > * `FastByteArrayInputStream` added.  Matches `ByteArrayInputStream` API.
 > * Bug fix: `SafeSimpleDateFormat` to properly format dates having years with fewer than four digits.
@@ -183,8 +194,8 @@
 > * Added ClassUtilities.  This class has a method to get the distance between a source and destination class.  It includes support for Classes, multiple inheritance of interfaces, primitives, and class-to-interface, interface-interface, and class to class.
 > * Added LRUCache.  This class provides a simple cache API that will evict the least recently used items, once a threshold is met.
 #### 2.3.0
-> Added 
-> `FastReader` and `FastWriter.` 
+> Added
+> `FastReader` and `FastWriter.`
 >    * `FastReader` can be used instead of the JDK `PushbackReader(BufferedReader)).` It is much faster with no synchronization and combines both.  It also tracks line `[getLine()]`and column `[getCol()]` position monitoring for `0x0a` which it can be queried for.  It also can be queried for the last snippet read: `getLastSnippet().`  Great for showing parsing error messages that accurately point out where a syntax error occurred.  Make sure you use a new instance per each thread.
 >    * `FastWriter` can be used instead of the JDK `BufferedWriter` as it has no synchronization.  Make sure you use a new Instance per each thread.
 #### 2.2.0
@@ -200,7 +211,7 @@
 > * Upgraded from Java 8 to Java 11.
 > * Updated `ReflectionUtils.getClassNameFromByteCode()` to handle up to Java 17 `class` file format.
 #### 1.68.0
-> * Fixed: `UniqueIdGenerator` now correctly gets last two digits of ID using 3 attempts - JAVA_UTIL_CLUSTERID (optional), CF_INSTANCE_INDEX, and finally using SecuritRandom for the last two digits.  
+> * Fixed: `UniqueIdGenerator` now correctly gets last two digits of ID using 3 attempts - JAVA_UTIL_CLUSTERID (optional), CF_INSTANCE_INDEX, and finally using SecuritRandom for the last two digits.
 > * Removed `log4j` in favor of `slf4j` and `logback`.
 #### 1.67.0
 > * Updated log4j dependencies to version `2.17.1`.
@@ -211,7 +222,7 @@
 > * Bug fix: When progagating options the Set of visited ItemsToCompare (or a copy if it) should be passed on to prevent StackOverFlow from occurring.
 #### 1.64.0
 > * Performance Improvement: `DateUtilities` now using non-greedy matching for regex's within date sub-parts.
-> * Performance Improvement: `CompactMap` updated to use non-copying iterator for all non-Sorted Maps.  
+> * Performance Improvement: `CompactMap` updated to use non-copying iterator for all non-Sorted Maps.
 > * Performance Improvement: `StringUtilities.hashCodeIgnoreCase()` slightly faster - calls JDK method that makes one less call internally.
 #### 1.63.0
 > * Performance Improvement: Anytime `CompactMap` / `CompactSet` is copied internally, the destination map is pre-sized to correct size, eliminating growing underlying Map more than once.
@@ -239,20 +250,20 @@
 >    * `CompactCILinkedSet` added. This `CompactSet` expands to a case-insensitive `LinkedHashSet` when `size() > compactSize()`.
 >    * `CompactLinkedSet` added.  This `CompactSet` expands to a `LinkedHashSet` when `size() > compactSize()`.
 >    * `CompactSet` exists. This `CompactSet` expands to a `HashSet` when `size() > compactSize()`.
-> 
+>
 > New Maps:
 >    * `CompactCILinkedMap` exists. This `CompactMap` expands to a case-insensitive `LinkedHashMap` when `size() > compactSize()` entries.
->    * `CompactCIHashMap` exists.  This `CompactMap` expands to a case-insensitive `HashMap` when `size() > compactSize()` entries.      
+>    * `CompactCIHashMap` exists.  This `CompactMap` expands to a case-insensitive `HashMap` when `size() > compactSize()` entries.
 >    * `CompactLinkedMap` added.  This `CompactMap` expands to a `LinkedHashMap` when `size() > compactSize()` entries.
 >    * `CompactMap` exists.  This `CompactMap` expands to a `HashMap` when `size() > compactSize()` entries.
 #### 1.50.0
-> * `CompactCIHashMap` added.  This is a `CompactMap` that is case insensitive.  When more than `compactSize()` entries are stored in it (default 50), it uses a `CaseInsenstiveMap` `HashMap` to hold its entries. 
+> * `CompactCIHashMap` added.  This is a `CompactMap` that is case insensitive.  When more than `compactSize()` entries are stored in it (default 50), it uses a `CaseInsenstiveMap` `HashMap` to hold its entries.
 > * `CompactCILinkedMap` added.  This is a `CompactMap` that is case insensitive.  When more than `compactSize()` entries are stored in it (default 50), it uses a `CaseInsenstiveMap` `LinkedHashMap` to hold its entries.
 > * Bug fix: `CompactMap` `entrySet()` and `keySet()` were not handling the `retainAll()`, `containsAll()`, and `removeAll()` methods case-insensitively when case-insensitivity was activated.
 > * `Converter` methods that convert to byte, short, int, and long now accepted String decimal numbers.  The decimal portion is truncated.
 #### 1.49.0
-> * Added `CompactSet`.  Works similarly to `CompactMap` with single `Object[]` holding elements until it crosses `compactSize()` threshold.  
-  This `Object[]` is adjusted dynamically as objects are added and removed.  
+> * Added `CompactSet`.  Works similarly to `CompactMap` with single `Object[]` holding elements until it crosses `compactSize()` threshold.
+  This `Object[]` is adjusted dynamically as objects are added and removed.
 #### 1.48.0
 > * Added `char` and `Character` support to `Convert.convert*()`
 > * Added full Javadoc to `Converter`.
@@ -268,39 +279,39 @@
   and between `2` and `compactSize()` entries, the entries in the `Map` are stored in an `Object[]` (using same single member variable).  The
   even elements the 'keys' and the odd elements are the associated 'values'.  This array is dynamically resized to exactly match the number of stored entries.
   When more than `compactSize()` entries are used, the `Map` then uses the `Map` returned from the overrideable `getNewMap()` api to store the entries.
-  In all cases, it maintains the underlying behavior of the `Map`. 
+  In all cases, it maintains the underlying behavior of the `Map`.
 > * Updated to consume `log4j 2.13.1`
 #### 1.45.0
-> * `CompactMap` now supports case-insensitivity when using String keys.  By default, it is case sensitive, but you can override the 
+> * `CompactMap` now supports case-insensitivity when using String keys.  By default, it is case sensitive, but you can override the
   `isCaseSensitive()` method and return `false`.  This allows you to return `TreeMap(String.CASE_INSENSITIVE_ORDER)` or `CaseInsensitiveMap`
   from the `getNewMap()` method.  With these overrides, CompactMap is now case insensitive, yet still 'compact.'
 > * `Converter.setNullMode(Converter.NULL_PROPER | Converter.NULL_NULL)` added to allow control over how `null` values are converted.
-  By default, passing a `null` value into primitive `convert*()` methods returns the primitive form of `0` or `false`.  
+  By default, passing a `null` value into primitive `convert*()` methods returns the primitive form of `0` or `false`.
   If the static method `Converter.setNullMode(Converter.NULL_NULL)` is called it will change the behavior of the primitive
-  `convert*()` methods return `null`.    
+  `convert*()` methods return `null`.
 #### 1.44.0
-> * `CompactMap` introduced.  
+> * `CompactMap` introduced.
   `CompactMap` is a `Map` that strives to reduce memory at all costs while retaining speed that is close to `HashMap's` speed.
   It does this by using only one (1) member variable (of type `Object`) and changing it as the `Map` grows.  It goes from
   single value, to a single `Map Entry`, to an `Object[]`, and finally it uses a `Map` (user defined).  `CompactMap` is
   especially small when `0` or `1` entries are stored in it.  When `size()` is from `2` to `compactSize()`, then entries
   are stored internally in single `Object[]`.  If the `size() > compactSize()` then the entries are stored in a
   regular `Map`.
->  ``` 
+>  ```
 >     // If this key is used and only 1 element then only the value is stored
 >     protected K getSingleValueKey() { return "someKey"; }
->  
+>
 >     // Map you would like it to use when size() > compactSize().  HashMap is default
 >     protected abstract Map<K, V> getNewMap();
->  
+>
 >     // If you want case insensitivity, return true and return new CaseInsensitiveMap or TreeMap(String.CASE_INSENSITIVE_PRDER) from getNewMap()
 >     protected boolean isCaseInsensitive() { return false; }        // 1.45.0
->  
+>
 >     // When size() > than this amount, the Map returned from getNewMap() is used to store elements.
 >     protected int compactSize() { return 100; }                    // 1.46.0
->  ```     
+>  ```
 >    ##### **Empty**
->    This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that 
+>    This class only has one (1) member variable of type `Object`.  If there are no entries in it, then the value of that
 >    member variable takes on a pointer (points to sentinel value.)
 >    ##### **One entry**
 >    If the entry has a key that matches the value returned from `getSingleValueKey()` then there is no key stored
@@ -315,32 +326,32 @@
 >   [2] = next key, [3] = next value, and so on.  The Object[] is dynamically expanded until size() > compactSize(). In
 >   addition, it is dynamically shrunk until the size becomes 1, and then it switches to a single Map Entry or a single
 >   value.
-> 
+>
 >   ##### **size() > compactSize()**
 >   In this case, the single member variable points to a `Map` instance (supplied by `getNewMap()` API that user supplied.)
 >   This allows `CompactMap` to work with nearly all `Map` types.
->   This Map supports null for the key and values, as long as the Map returned by getNewMap() supports null keys-values.       
+>   This Map supports null for the key and values, as long as the Map returned by getNewMap() supports null keys-values.
 #### 1.43.0
 > * `CaseInsensitiveMap(Map orig, Map backing)` added for allowing precise control of what `Map` instance is used to back the `CaseInsensitiveMap`.  For example,
 >  ```
 >    Map originalMap = someMap  // has content already in it
 >    Map ciMap1 = new CaseInsensitiveMap(someMap, new TreeMap())  // Control Map type, but not initial capacity
 >    Map ciMap2 = new CaseInsensitiveMap(someMap, new HashMap(someMap.size()))    // Control both Map type and initial capacity
->    Map ciMap3 = new CaseInsensitiveMap(someMap, new Object2ObjectOpenHashMap(someMap.size()))   // Control initial capacity and use specialized Map from fast-util.  
+>    Map ciMap3 = new CaseInsensitiveMap(someMap, new Object2ObjectOpenHashMap(someMap.size()))   // Control initial capacity and use specialized Map from fast-util.
 >  ```
-> * `CaseInsensitiveMap.CaseInsensitiveString()` constructor made `public`. 
+> * `CaseInsensitiveMap.CaseInsensitiveString()` constructor made `public`.
 #### 1.42.0
 > * `CaseInsensitiveMap.putObject(Object key, Object value)` added for placing objects into typed Maps.
 #### 1.41.0
 > * `CaseInsensitiveMap.plus()` and `.minus()` added to support `+` and `-` operators in languages like Groovy.
-> * `CaseInsenstiveMap.CaseInsensitiveString` (`static` inner Class) is now `public`.  
+> * `CaseInsenstiveMap.CaseInsensitiveString` (`static` inner Class) is now `public`.
 #### 1.40.0
 > * Added `ReflectionUtils.getNonOverloadedMethod()` to support reflectively fetching methods with only Class and Method name available.  This implies there is no method overloading.
 #### 1.39.0
 > * Added `ReflectionUtils.call(bean, methodName, args...)` to allow one-step reflective calls.  See Javadoc for any limitations.
 > * Added `ReflectionUtils.call(bean, method, args...)` to allow easy reflective calls.  This version requires obtaining the `Method` instance first.  This approach allows methods with the same name and number of arguments (overloaded) to be called.
 > * All `ReflectionUtils.getMethod()` APIs cache reflectively located methods to significantly improve performance when using reflection.
-> * The `call()` methods throw the target of the checked `InvocationTargetException`.  The checked `IllegalAccessException` is rethrown wrapped in a RuntimeException.  This allows making reflective calls without having to handle these two checked exceptions directly at the call point. Instead, these exceptions are usually better handled at a high-level in the code.   
+> * The `call()` methods throw the target of the checked `InvocationTargetException`.  The checked `IllegalAccessException` is rethrown wrapped in a RuntimeException.  This allows making reflective calls without having to handle these two checked exceptions directly at the call point. Instead, these exceptions are usually better handled at a high-level in the code.
 #### 1.38.0
 > * Enhancement: `UniqueIdGenerator` now generates the long ids in monotonically increasing order.  @HonorKnight
 > * Enhancement: New API [`getDate(uniqueId)`] added to `UniqueIdGenerator` that when passed an ID that it generated, will return the time down to the millisecond when it was generated.
@@ -348,12 +359,12 @@
 > * `TestUtil.assertContainsIgnoreCase()` and `TestUtil.checkContainsIgnoreCase()` APIs added.  These are generally used in unit tests to check error messages for key words, in order (as opposed to doing `.contains()` on a string which allows the terms to appear in any order.)
 > * Build targets classes in Java 1.7 format, for maximum usability.  The version supported will slowly move up, but only based on necessity allowing for widest use of java-util in as many projects as possible.
 #### 1.36.0
-> * `Converter.convert()` now bi-directionally supports `Calendar.class`, e.g. Calendar to Date, SqlDate, Timestamp, String, long, BigDecimal, BigInteger, AtomicLong, and vice-versa.  
+> * `Converter.convert()` now bi-directionally supports `Calendar.class`, e.g. Calendar to Date, SqlDate, Timestamp, String, long, BigDecimal, BigInteger, AtomicLong, and vice-versa.
 > * `UniqueIdGenerator.getUniqueId19()` is a new API for getting 19 digit unique IDs (a full `long` value)  These are generated at a faster rate (10,000 per millisecond vs. 1,000 per millisecond) than the original (18-digit) API.
 > * Hardcore test added for ensuring concurrency correctness with `UniqueIdGenerator`.
 > * Javadoc beefed up for `UniqueIdGenerator`.
 > * Updated public APIs to have proper support for generic arguments.  For example Class&lt;T&gt;, Map&lt;?, ?&gt;, and so on.  This eliminates type casting on the caller's side.
-> * `ExceptionUtilities.getDeepestException()` added.  This API locates the source (deepest) exception.  
+> * `ExceptionUtilities.getDeepestException()` added.  This API locates the source (deepest) exception.
 #### 1.35.0
 > * `DeepEquals.deepEquals()`, when comparing `Maps`, the `Map.Entry` type holding the `Map's` entries is no longer considered in equality testing. In the past, a custom Map.Entry instance holding the key and value could cause inquality, which should be ignored.  @AndreyNudko
 > * `Converter.convert()` now uses parameterized types so that the return type matches the passed in `Class` parameter.  This eliminates the need to cast the return value of `Converter.convert()`.
@@ -362,7 +373,7 @@
 > * Performance Improvement: `CaseInsensitiveMap`, when created from another `CaseInsensitiveMap`, re-uses the internal `CaseInsensitiveString` keys, which are immutable.
 > * Bug fix: `Converter.convertToDate(), Converter.convertToSqlDate(), and Converter.convertToTimestamp()` all threw a `NullPointerException` if the passed in content was an empty String (of 0 or more spaces). When passed in NULL to these APIs, you get back null.  If you passed in empty strings or bad date formats, an IllegalArgumentException is thrown with a message clearly indicating what input failed and why.
 #### 1.34.0
-> * Enhancement: `DeepEquals.deepEquals(a, b options)` added.  The new options map supports a key `DeepEquals.IGNORE_CUSTOM_EQUALS` which can be set to a Set of String class names.  If any of the encountered classes in the comparison are listed in the Set, and the class has a custom `.equals()` method, it will not be called and instead a `deepEquals()` will be performed.  If the value associated to the `IGNORE_CUSTOM_EQUALS` key is an empty Set, then no custom `.equals()` methods will be called, except those on primitives, primitive wrappers, `Date`, `Class`, and `String`. 
+> * Enhancement: `DeepEquals.deepEquals(a, b options)` added.  The new options map supports a key `DeepEquals.IGNORE_CUSTOM_EQUALS` which can be set to a Set of String class names.  If any of the encountered classes in the comparison are listed in the Set, and the class has a custom `.equals()` method, it will not be called and instead a `deepEquals()` will be performed.  If the value associated to the `IGNORE_CUSTOM_EQUALS` key is an empty Set, then no custom `.equals()` methods will be called, except those on primitives, primitive wrappers, `Date`, `Class`, and `String`.
 #### 1.33.0
 > * Bug fix: `DeepEquals.deepEquals(a, b)` could report equivalent unordered `Collections` / `Maps` as not equal if the items in the `Collection` / `Map` had the same hash code.
 #### 1.32.0
@@ -390,7 +401,7 @@
 #### 1.26.0
 > * Enhancement: added `getClassNameFromByteCode()` API to `ReflectionUtils`.
 #### 1.25.1
-> * Enhancement: The Delta object returned by `GraphComparator` implements `Serializable` for those using `ObjectInputStream` / `ObjectOutputStream`.  Provided by @metlaivan (Ivan Metla) 
+> * Enhancement: The Delta object returned by `GraphComparator` implements `Serializable` for those using `ObjectInputStream` / `ObjectOutputStream`.  Provided by @metlaivan (Ivan Metla)
 #### 1.25.0
 > * Performance improvement: `CaseInsensitiveMap/Set` internally adds `Strings` to `Map` without using `.toLowerCase()` which eliminates creating a temporary copy on the heap of the `String` being added, just to get its lowerCaseValue.
 > * Performance improvement: `CaseInsensitiveMap/Set` uses less memory internally by caching the hash code as an `int`, instead of an `Integer`.
@@ -407,13 +418,13 @@
 > * bug fix: `CaseInsensitiveMap`, when passed a `LinkedHashMap`, was inadvertently using a HashMap instead.
 #### 1.20.5
 > * `CaseInsensitiveMap` intentionally does not retain 'not modifiability'.
-> * `CaseInsensitiveSet` intentionally does not retain 'not modifiability'. 
+> * `CaseInsensitiveSet` intentionally does not retain 'not modifiability'.
 #### 1.20.4
 > * Failed release.  Do not use.
 #### 1.20.3
 > * `TrackingMap` changed so that `get(anyKey)` always marks it as keyRead.  Same for `containsKey(anyKey)`.
 > * `CaseInsensitiveMap` has a constructor that takes a `Map`, which allows it to take on the nature of the `Map`, allowing for case-insensitive `ConcurrentHashMap`, sorted `CaseInsensitiveMap`, etc.  The 'Unmodifiable' `Map` nature is intentionally not taken on.  The passed in `Map` is not mutated.
-> * `CaseInsensitiveSet` has a constructor that takes a `Collection`, which allows it to take on the nature of the `Collection`, allowing for sorted `CaseInsensitiveSets`.  The 'unmodifiable' `Collection` nature is intentionally not taken on.  The passed in `Set` is not mutated.  
+> * `CaseInsensitiveSet` has a constructor that takes a `Collection`, which allows it to take on the nature of the `Collection`, allowing for sorted `CaseInsensitiveSets`.  The 'unmodifiable' `Collection` nature is intentionally not taken on.  The passed in `Set` is not mutated.
 #### 1.20.2
 > * `TrackingMap` changed so that an existing key associated to null counts as accessed. It is valid for many `Map` types to allow null values to be associated to the key.
 > * `TrackingMap.getWrappedMap()` added so that you can fetch the wrapped `Map`.

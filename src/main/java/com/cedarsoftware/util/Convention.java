@@ -43,6 +43,13 @@ public class Convention {
         }
     }
 
+    /**
+     * Verify that the supplied class can be loaded.
+     *
+     * @param fullyQualifiedClassName fully qualified name of the class to look up
+     * @param loader                  the {@link ClassLoader} used to locate the class
+     * @throws IllegalArgumentException if the class cannot be resolved
+     */
     public static void throwIfClassNotFound(String fullyQualifiedClassName, ClassLoader loader) {
         throwIfNullOrEmpty(fullyQualifiedClassName, "fully qualified ClassName cannot be null or empty");
         throwIfNull(loader, "loader cannot be null");

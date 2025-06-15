@@ -128,6 +128,11 @@ public class GraphComparator
             return fieldName;
         }
 
+        /**
+         * Set the name of the field where the difference occurred.
+         *
+         * @param fieldName name of the differing field
+         */
         public void setFieldName(String fieldName)
         {
             this.fieldName = fieldName;

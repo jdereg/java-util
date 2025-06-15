@@ -8,6 +8,9 @@ import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -104,6 +107,8 @@ public final class UrlUtilities
     };
 
     protected static SSLSocketFactory naiveSSLSocketFactory;
+    private static final Logger LOG = Logger.getLogger(UrlUtilities.class.getName());
+    static { LoggingConfig.init(); }
 
     static
     {
@@ -123,7 +128,7 @@ public final class UrlUtilities
         }
         catch (Exception e)
         {
-            e.printStackTrace(System.err);
+            LOG.log(Level.WARNING, e.getMessage(), e);
         }
     }
 
@@ -206,15 +211,15 @@ public final class UrlUtilities
         }
         catch (ConnectException e)
         {
-            e.printStackTrace(System.err);
+            LOG.log(Level.WARNING, e.getMessage(), e);
         }
         catch (IOException e)
         {
-            e.printStackTrace(System.err);
+            LOG.log(Level.WARNING, e.getMessage(), e);
         }
         catch (Exception e)
         {
-            e.printStackTrace(System.err);
+            LOG.log(Level.WARNING, e.getMessage(), e);
         }
         finally
         {
@@ -382,7 +387,7 @@ public final class UrlUtilities
         }
         catch (ParseException e)
         {
-            e.printStackTrace(System.err);
+            LOG.log(Level.WARNING, e.getMessage(), e);
             return false;
         }
     }
@@ -496,7 +501,7 @@ public final class UrlUtilities
         try {
             return getContentFromUrl(getActualUrl(url),inCookies, outCookies, allowAllCerts);
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            LOG.log(Level.WARNING, e.getMessage(), e);
             return null;
         }
     }
@@ -533,13 +538,13 @@ public final class UrlUtilities
         }
         catch (SSLHandshakeException e)
         {   // Don't read error response.  it will just cause another exception.
-            e.printStackTrace(System.err);
+            LOG.log(Level.WARNING, e.getMessage(), e);
             return null;
         }
         catch (Exception e)
         {
             readErrorResponse(c);
-            e.printStackTrace(System.err);
+            LOG.log(Level.WARNING, e.getMessage(), e);
             return null;
         }
         finally
@@ -632,7 +637,7 @@ public final class UrlUtilities
             }
             catch(Exception e)
             {
-                e.printStackTrace(System.err);
+                LOG.log(Level.WARNING, e.getMessage(), e);
             }
         }
 

@@ -4,8 +4,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.TimeZone;
 
 import org.junit.jupiter.api.Test;
@@ -132,5 +135,33 @@ public class TraverserTest
         assertEquals(1, visited[1]);
         assertEquals(1, visited[2]);
         assertEquals(0, visited[3]);
+    }
+
+    @Test
+    public void testNullSkipClass()
+    {
+        final int[] visited = new int[1];
+        visited[0] = 0;
+
+        Set<Class<?>> skip = new HashSet<>();
+        skip.add(null);
+
+        Traverser.traverse("test", visit -> visited[0]++, skip);
+        assertEquals(1, visited[0]);
+    }
+
+    @Test
+    public void testLazyFieldCollection() throws Exception
+    {
+        class Foo { int n = 7; }
+        Foo foo = new Foo();
+
+        Field nField = foo.getClass().getDeclaredField("n");
+
+        Traverser.traverse(foo, visit -> {
+            Map<Field, Object> fields = visit.getFields();
+            assertEquals(1, fields.size());
+            assertTrue(fields.containsKey(nField));
+        }, null, false);
     }
 }

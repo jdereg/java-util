@@ -17,6 +17,9 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import com.cedarsoftware.util.LoggingConfig;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -188,6 +191,9 @@ import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
  *         limitations under the License.
  */
 public class ClassUtilities {
+
+    private static final Logger LOG = Logger.getLogger(ClassUtilities.class.getName());
+    static { LoggingConfig.init(); }
 
     private ClassUtilities() {
     }
@@ -1514,7 +1520,7 @@ public class ClassUtilities {
         try {
             object.setAccessible(true);
         } catch (SecurityException e) {
-            System.err.println("Unable to set accessible: " + object + " - " + e.getMessage());
+            LOG.log(Level.WARNING, "Unable to set accessible: " + object + " - " + e.getMessage());
         } catch (Throwable t) {
             safelyIgnoreException(t);
         }

@@ -48,10 +48,11 @@ public final class CollectionConversions {
      *
      * @param array      The source array to convert
      * @param targetType The target collection type
+     * @param <T>        The collection class to return
      * @return A collection of the specified target type
      */
     @SuppressWarnings("unchecked")
-    public static Object arrayToCollection(Object array, Class<?> targetType) {
+    public static <T extends Collection<?>> T arrayToCollection(Object array, Class<T> targetType) {
         int length = Array.getLength(array);
 
         // Determine if the target type requires unmodifiable behavior
@@ -75,12 +76,12 @@ public final class CollectionConversions {
 
         // If wrapping is required, return the wrapped version
         if (requiresUnmodifiable) {
-            return getUnmodifiableCollection(collection);
+            return (T) getUnmodifiableCollection(collection);
         }
         if (requiresSynchronized) {
-            return getSynchronizedCollection(collection);
+            return (T) getSynchronizedCollection(collection);
         }
-        return collection;
+        return (T) collection;
     }
 
     /**

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class WrappedCollectionsConversionTest {
 
@@ -258,5 +259,27 @@ class WrappedCollectionsConversionTest {
         assertInstanceOf(Collection.class, result);
         assertTrue(result.contains(2));
         assertThrows(UnsupportedOperationException.class, () -> result.add("four"));
+    }
+
+    @Test
+    void testEmptyListSingleton() {
+        List<String> source = Arrays.asList("a", "b");
+        List<String> result1 = converter.convert(source, CollectionsWrappers.getEmptyListClass());
+        List<String> result2 = converter.convert(source, CollectionsWrappers.getEmptyListClass());
+
+        assertSame(Collections.emptyList(), result1);
+        assertSame(result1, result2);
+        assertThrows(UnsupportedOperationException.class, () -> result1.add("x"));
+    }
+
+    @Test
+    void testEmptyNavigableSetSingleton() {
+        NavigableSet<String> source = new TreeSet<>(Arrays.asList("x", "y"));
+        NavigableSet<String> result1 = converter.convert(source, CollectionsWrappers.getEmptyNavigableSetClass());
+        NavigableSet<String> result2 = converter.convert(source, CollectionsWrappers.getEmptyNavigableSetClass());
+
+        assertSame(Collections.emptyNavigableSet(), result1);
+        assertSame(result1, result2);
+        assertThrows(UnsupportedOperationException.class, () -> result1.add("z"));
     }
 }

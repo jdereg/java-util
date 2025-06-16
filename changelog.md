@@ -47,6 +47,7 @@
 > * Added Javadoc for several public APIs where it was missing.  Should be 100% now.
 > * JUnits added for all public APIs that did not have them (no longer relying on json-io to "cover" them). Should be 100% now.
 > * Added unit tests for CollectionHandling empty and synchronized wrappers
+> * Added tests for Converter empty list and navigable set wrappers
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

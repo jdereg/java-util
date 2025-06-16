@@ -94,6 +94,13 @@ public interface ConverterOptions {
     default <T> T getCustomOption(String name) { return null; }
 
     /**
+     * Accessor for all custom options defined on this instance.
+     *
+     * @return the map of custom options
+     */
+    default Map<String, Object> getCustomOptions() { return new HashMap<>(); }
+
+    /**
      * @return TimeZone expected on the target when finished (only for types that support ZoneId or TimeZone).
      */
     default TimeZone getTimeZone() { return TimeZone.getTimeZone(this.getZoneId()); }

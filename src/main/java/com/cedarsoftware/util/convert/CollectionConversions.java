@@ -139,6 +139,22 @@ public final class CollectionConversions {
         boolean requiresUnmodifiable = isUnmodifiable(targetType);
         boolean requiresSynchronized = isSynchronized(targetType);
 
+        // If the request is for one of the JDK's singleton empty collections,
+        // simply return the constant instance without attempting to populate it
+        if (targetType == CollectionsWrappers.getEmptyCollectionClass()
+                || targetType == CollectionsWrappers.getEmptyListClass()) {
+            return Collections.emptyList();
+        }
+        if (targetType == CollectionsWrappers.getEmptySetClass()) {
+            return Collections.emptySet();
+        }
+        if (targetType == CollectionsWrappers.getEmptySortedSetClass()) {
+            return Collections.emptySortedSet();
+        }
+        if (targetType == CollectionsWrappers.getEmptyNavigableSetClass()) {
+            return Collections.emptyNavigableSet();
+        }
+
         // Create a modifiable collection of the specified target type
         Collection<Object> targetCollection = (Collection<Object>) createCollection(source, targetType);
 

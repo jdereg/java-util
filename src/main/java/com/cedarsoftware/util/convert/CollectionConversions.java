@@ -74,6 +74,11 @@ public final class CollectionConversions {
             collection.add(element);
         }
 
+        // If the created collection already matches the target type, return it as is
+        if (targetType.isAssignableFrom(collection.getClass())) {
+            return (T) collection;
+        }
+
         // If wrapping is required, return the wrapped version
         if (requiresUnmodifiable) {
             return (T) getUnmodifiableCollection(collection);
@@ -107,6 +112,11 @@ public final class CollectionConversions {
                 element = collectionToCollection((Collection<?>) element, targetType);
             }
             targetCollection.add(element);
+        }
+
+        // If the created collection already matches the target type, return it as is
+        if (targetType.isAssignableFrom(targetCollection.getClass())) {
+            return targetCollection;
         }
 
         // If wrapping is required, return the wrapped version

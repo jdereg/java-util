@@ -13,7 +13,6 @@
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
-> * `ConverterOptions` exposes its custom option map through `getCustomOptions()`.
 > * `withReadLockVoid()` now suppresses exceptions thrown by the provided `Runnable`.
   `ConcurrentHashMapNullSafe` for custom caches and generates unique parameter keys using fully qualified names.
 > * `Converter` - factory conversions map made immutable and legacy caching code removed

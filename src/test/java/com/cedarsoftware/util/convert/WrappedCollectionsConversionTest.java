@@ -102,6 +102,12 @@ class WrappedCollectionsConversionTest {
         assertInstanceOf(CollectionsWrappers.getEmptyListClass(), emptyList);
         assertTrue(emptyList.isEmpty());
         assertThrows(UnsupportedOperationException.class, () -> emptyList.add("newElement"));
+
+        // Convert to EmptyNavigableSet
+        NavigableSet<String> emptyNavigableSet = converter.convert(source, CollectionsWrappers.getEmptyNavigableSetClass());
+        assertInstanceOf(CollectionsWrappers.getEmptyNavigableSetClass(), emptyNavigableSet);
+        assertTrue(emptyNavigableSet.isEmpty());
+        assertThrows(UnsupportedOperationException.class, () -> emptyNavigableSet.add("newElement"));
     }
 
     @Test

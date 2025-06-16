@@ -33,6 +33,14 @@ class CollectionsWrappersTest {
     }
 
     @Test
+    void testGetEmptyCollectionClass() {
+        Collection<Object> empty = Collections.emptyList();
+        assertSame(empty.getClass(), CollectionsWrappers.getEmptyCollectionClass());
+        assertTrue(empty.isEmpty());
+        assertThrows(UnsupportedOperationException.class, () -> empty.add("x"));
+    }
+
+    @Test
     void testGetEmptySetClass() {
         Set<Object> empty = Collections.emptySet();
         assertSame(empty.getClass(), CollectionsWrappers.getEmptySetClass());

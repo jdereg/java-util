@@ -19,7 +19,7 @@ class ConverterOptionsCustomOptionTest {
     void mapIsLiveForDefaultConverterOptions() {
         DefaultConverterOptions options = new DefaultConverterOptions();
         options.getCustomOptions().put("answer", 42);
-        assertThat(options.getCustomOption("answer")).isEqualTo(42);
+        assertThat((Object) options.getCustomOption("answer")).isEqualTo(42);
         assertThat(options.getCustomOptions()).containsEntry("answer", 42);
     }
 }

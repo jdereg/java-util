@@ -7,6 +7,7 @@
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `CollectionConversions.arrayToCollection` now returns a type-safe collection
+> * Fixed conversions to empty wrapper collections preserving the specialized empty types
 > * `CompactMap.getConfig()` returns the library default compact size for legacy subclasses.
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * `StringConversions.toSqlDate` now preserves the time zone from ISO date strings instead of using the JVM default.

@@ -83,6 +83,14 @@ public final class CollectionConversions {
     @SuppressWarnings("unchecked")
     public static <T extends Collection<?>> T arrayToCollection(Object array, Class<T> targetType) {
         if (isEmptyWrapper(targetType)) {
+            int length = Array.getLength(array);
+            for (int i = 0; i < length; i++) {
+                Object element = Array.get(array, i);
+                if (element instanceof Collection ||
+                        (element != null && element.getClass().isArray())) {
+                    throw new UnsupportedOperationException("Cannot convert nested structures to empty collection");
+                }
+            }
             return emptyWrapper(targetType);
         }
 
@@ -132,6 +140,12 @@ public final class CollectionConversions {
     @SuppressWarnings("unchecked")
     public static Object collectionToCollection(Collection<?> source, Class<?> targetType) {
         if (isEmptyWrapper(targetType)) {
+            for (Object element : source) {
+                if (element instanceof Collection ||
+                        (element != null && element.getClass().isArray())) {
+                    throw new UnsupportedOperationException("Cannot convert nested structures to empty collection");
+                }
+            }
             return emptyWrapper((Class<? extends Collection<?>>) targetType);
         }
 

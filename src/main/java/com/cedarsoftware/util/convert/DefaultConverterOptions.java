@@ -40,5 +40,8 @@ public class DefaultConverterOptions implements ConverterOptions {
     }
 
     @Override
+    public Map<String, Object> getCustomOptions() { return this.customOptions; }
+
+    @Override
     public Map<ConversionPair, Convert<?>> getConverterOverrides() { return this.converterOverrides; }
 }

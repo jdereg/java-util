@@ -1,5 +1,5 @@
 ### Revision History
-#### 3.3.3 Unreleased
+#### 3.3.3 AI/LLM review and updates
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * `Converter` now caches unsupported conversions to avoid repeated exceptions

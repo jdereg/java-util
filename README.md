@@ -13,7 +13,7 @@ A collection of high-performance Java utilities designed to enhance standard Jav
  
 Available on [Maven Central](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware). 
 This library has <b>no dependencies</b> on other libraries for runtime.
-The`.jar`file is `456K` and works with `JDK 1.8` through `JDK 24`.
+The`.jar`file is `473K` and works with `JDK 1.8` through `JDK 24`.
 The `.jar` file classes are version 52 `(JDK 1.8)`
 ## Compatibility
 
@@ -33,7 +33,7 @@ The jar already ships with all necessary OSGi headers and a `module-info.class`.
 To add the bundle to an Eclipse feature or any OSGi runtime simply reference it:
 
 ```xml
-<plugin id="com.cedarsoftware.java-util" version="3.3.2"/>
+<plugin id="com.cedarsoftware.java-util" version="3.3.3"/>
 ```
 
 Both of these features ensure that our library can be seamlessly integrated into modular Java applications, providing robust dependency management and encapsulation.
@@ -42,7 +42,7 @@ Both of these features ensure that our library can be seamlessly integrated into
 To include in your project:
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:3.3.2'
+implementation 'com.cedarsoftware:java-util:3.3.3'
 ```
 
 ##### Maven
@@ -50,7 +50,7 @@ implementation 'com.cedarsoftware:java-util:3.3.2'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>3.3.2</version>
+  <version>3.3.3</version>
 </dependency>
 ```
 ---

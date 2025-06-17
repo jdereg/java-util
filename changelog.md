@@ -54,6 +54,7 @@
 > * Added unit tests for CollectionHandling empty and synchronized wrappers
 > * Added tests for Converter empty list and navigable set wrappers
 > * Added test that cached unsupported conversions return null
+> * Added test verifying cached unsupported converters are reused on subsequent conversions
 > * Removed redundant empty collection checks in `CollectionConversions.arrayToCollection` and `collectionToCollection`
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.

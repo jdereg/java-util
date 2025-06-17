@@ -9,6 +9,13 @@ import org.junit.jupiter.api.Test;
 class ConverterOptionsCustomOptionTest {
 
     @Test
+    void defaultGetCustomOptionReturnsNull() {
+        ConverterOptions options = new ConverterOptions() { };
+        Object value = options.getCustomOption("missing");
+        assertThat(value).isNull();
+    }
+
+    @Test
     void defaultImplementationReturnsEmptyMap() {
         ConverterOptions options = new ConverterOptions() { };
         Map<String, Object> map = options.getCustomOptions();

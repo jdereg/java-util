@@ -1,6 +1,7 @@
 ### Revision History
 #### 3.3.3 Unreleased
 > * Added tests for checked NavigableSet and SortedSet creation
+> * Added tests for checked List and Collection creation
 > * Fixed ReflectionUtils cache tests for new null-handling behavior
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.

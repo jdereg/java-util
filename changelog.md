@@ -1,5 +1,6 @@
 ### Revision History
 #### 3.3.3 Unreleased
+> * Added tests for Converter.isCollectionConversionSupported
 > * Added tests for checked NavigableSet and SortedSet creation
 > * Added tests for checked List and Collection creation
 > * Fixed ReflectionUtils cache tests for new null-handling behavior

@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.ArrayDeque;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -278,7 +278,7 @@ public class DeepEquals {
     }
 
     private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<Object> visited) {
-        Deque<ItemsToCompare> stack = new ArrayDeque<>();
+        Deque<ItemsToCompare> stack = new LinkedList<>();
         boolean result = deepEquals(a, b, stack, options, visited);
 
         boolean isRecurive = Objects.equals(true, options.get("recursive_call"));
@@ -900,7 +900,7 @@ public class DeepEquals {
     }
 
     private static int deepHashCode(Object obj, Set<Object> visited) {
-        Deque<Object> stack = new ArrayDeque<>();
+        Deque<Object> stack = new LinkedList<>();
         stack.addFirst(obj);
         int hash = 0;
 

@@ -1,10 +1,5 @@
 ### Revision History
 #### 3.3.3 Unreleased
-> * Added tests for Converter.isCollectionConversionSupported
-> * Added tests for checked NavigableSet and SortedSet creation
-> * Added tests for checked List and Collection creation
-> * Added tests for CaseInsensitiveString length() and charAt()
-> * Fixed ReflectionUtils cache tests for new null-handling behavior
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * `Converter` now caches unsupported conversions to avoid repeated exceptions
@@ -54,11 +49,6 @@
 > * Explicitly set versions for `maven-resources-plugin`, `maven-install-plugin`, and `maven-deploy-plugin` to avoid Maven 4 compatibility warnings
 > * Added Javadoc for several public APIs where it was missing.  Should be 100% now.
 > * JUnits added for all public APIs that did not have them (no longer relying on json-io to "cover" them). Should be 100% now.
-> * Added unit tests for CollectionHandling empty and synchronized wrappers
-> * Added tests for Converter empty list and navigable set wrappers
-> * Added test that cached unsupported conversions return null
-> * Added test verifying cached unsupported converters are reused on subsequent conversions
-> * Removed redundant empty collection checks in `CollectionConversions.arrayToCollection` and `collectionToCollection`
 > * Custom map types under `com.cedarsoftware.io` allowed for `CompactMap`
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.

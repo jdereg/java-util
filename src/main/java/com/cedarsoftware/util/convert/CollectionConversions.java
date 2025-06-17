@@ -64,6 +64,11 @@ public final class CollectionConversions {
         // Create the appropriate collection using CollectionHandling
         Collection<Object> collection = (Collection<Object>) createCollection(array, targetType);
 
+        // If the target represents an empty collection, return it immediately
+        if (isEmptyCollection(targetType)) {
+            return (T) collection;
+        }
+
         // Populate the collection with array elements
         for (int i = 0; i < length; i++) {
             Object element = Array.get(array, i);
@@ -108,6 +113,11 @@ public final class CollectionConversions {
         // Create a modifiable collection of the specified target type
         Collection<Object> targetCollection = (Collection<Object>) createCollection(source, targetType);
 
+        // If the target represents an empty collection, return it without population
+        if (isEmptyCollection(targetType)) {
+            return targetCollection;
+        }
+
         // Populate the target collection, handling nested collections recursively
         for (Object element : source) {
             if (element instanceof Collection) {
@@ -130,5 +140,17 @@ public final class CollectionConversions {
             return getSynchronizedCollection(targetCollection);
         }
         return targetCollection;
+    }
+
+    /**
+     * Determines if the specified target type represents one of the empty
+     * collection wrapper classes.
+     */
+    private static boolean isEmptyCollection(Class<?> targetType) {
+        return CollectionsWrappers.getEmptyCollectionClass().isAssignableFrom(targetType)
+                || CollectionsWrappers.getEmptyListClass().isAssignableFrom(targetType)
+                || CollectionsWrappers.getEmptySetClass().isAssignableFrom(targetType)
+                || CollectionsWrappers.getEmptySortedSetClass().isAssignableFrom(targetType)
+                || CollectionsWrappers.getEmptyNavigableSetClass().isAssignableFrom(targetType);
     }
 }

@@ -59,6 +59,7 @@
 > * Added test that cached unsupported conversions return null
 > * Added test verifying cached unsupported converters are reused on subsequent conversions
 > * Removed redundant empty collection checks in `CollectionConversions.arrayToCollection` and `collectionToCollection`
+> * Custom map types under `com.cedarsoftware.io` allowed for `CompactMap`
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

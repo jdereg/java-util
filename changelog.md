@@ -13,6 +13,7 @@
 > * `CollectionConversions.arrayToCollection` now returns a type-safe collection
 > * Fixed conversions to empty wrapper collections preserving the specialized empty types
 > * Converting nested collections or arrays to empty wrapper types now throws an `UnsupportedOperationException`
+> * Fixed Nested EmptyCollection conversion test to expect the empty collection result instead of an exception
 > * Converting non-empty collections or arrays directly to empty wrappers now returns the canonical empty instance
 > * `CompactMap.getConfig()` returns the library default compact size for legacy subclasses.
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.

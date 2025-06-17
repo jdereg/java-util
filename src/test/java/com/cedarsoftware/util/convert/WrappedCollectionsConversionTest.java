@@ -178,11 +178,13 @@ class WrappedCollectionsConversionTest {
         );
 
         // Convert to Nested EmptyCollection
-        assertThrows(UnsupportedOperationException.class, () -> converter.convert(source, CollectionsWrappers.getEmptyCollectionClass()));
+        Collection<Object> nestedEmpty = converter.convert(source, CollectionsWrappers.getEmptyCollectionClass());
+        assertInstanceOf(CollectionsWrappers.getEmptyCollectionClass(), nestedEmpty);
+        assertTrue(nestedEmpty.isEmpty());
 
         Collection<String> strings = converter.convert(new ArrayList<>(), CollectionsWrappers.getEmptyCollectionClass());
-        assert CollectionsWrappers.getEmptyCollectionClass().isAssignableFrom(strings.getClass());
-        assert strings.isEmpty();
+        assertTrue(CollectionsWrappers.getEmptyCollectionClass().isAssignableFrom(strings.getClass()));
+        assertTrue(strings.isEmpty());
     }
 
     @Test

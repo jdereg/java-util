@@ -57,4 +57,19 @@ class CaseInsensitiveStringTest {
         assertEquals(original.hashCode(), copy.hashCode());
         assertEquals(original.toString(), copy.toString());
     }
+
+    @Test
+    void testLength() {
+        CaseInsensitiveMap.CaseInsensitiveString cis = new CaseInsensitiveMap.CaseInsensitiveString("Hello");
+        assertEquals(5, cis.length());
+    }
+
+    @Test
+    void testCharAt() {
+        CaseInsensitiveMap.CaseInsensitiveString cis = new CaseInsensitiveMap.CaseInsensitiveString("Hello");
+        assertEquals('e', cis.charAt(1));
+        assertEquals('o', cis.charAt(4));
+        assertThrows(IndexOutOfBoundsException.class, () -> cis.charAt(5));
+        assertThrows(IndexOutOfBoundsException.class, () -> cis.charAt(-1));
+    }
 }

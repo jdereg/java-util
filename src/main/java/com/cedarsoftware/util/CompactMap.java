@@ -266,7 +266,8 @@ public class CompactMap<K, V> implements Map<K, V> {
     private static final Set<String> ALLOWED_MAP_PACKAGES = new HashSet<>(Arrays.asList(
             "java.util",
             "java.util.concurrent",
-            "com.cedarsoftware.util"));
+            "com.cedarsoftware.util",
+            "com.cedarsoftware.io"));
     private static final String INNER_MAP_TYPE = "innerMapType";
     private static final TemplateClassLoader templateClassLoader = new TemplateClassLoader(ClassUtilities.getClassLoader(CompactMap.class));
     private static final Map<String, ReentrantLock> CLASS_LOCKS = new ConcurrentHashMap<>();

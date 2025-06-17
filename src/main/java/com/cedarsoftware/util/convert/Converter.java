@@ -1299,8 +1299,6 @@ public final class Converter {
             return (T) conversionMethod.convert(from, this, toType);
         }
 
-        // Cache unsupported conversions so later attempts simply return null
-        cacheConverter(sourceType, toType, UNSUPPORTED);
         throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) +
                 "] target type '" + getShortName(toType) + "'");
     }

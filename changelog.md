@@ -2,25 +2,17 @@
 #### 3.3.3 AI/LLM review and updates
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
-> * `Converter` now caches unsupported conversions to avoid repeated exceptions
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `CollectionConversions.arrayToCollection` now returns a type-safe collection
-> * Fixed conversions to empty wrapper collections preserving the specialized empty types
-> * Converting nested collections or arrays to empty wrapper types now throws an `UnsupportedOperationException`
-> * Fixed Nested EmptyCollection conversion test to expect the empty collection result instead of an exception
-> * Converting non-empty collections or arrays directly to empty wrappers now returns the canonical empty instance
 > * `CompactMap.getConfig()` returns the library default compact size for legacy subclasses.
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
-> * Fixed import in `CompactMapCustomTypeTest` so type inference works with `JsonIo.asType`.
 > * `StringConversions.toSqlDate` now preserves the time zone from ISO date strings instead of using the JVM default.
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
-> * `withReadLockVoid()` now suppresses exceptions thrown by the provided `Runnable`.
-> * Added test for `ConverterOptions.getCustomOption` default implementation
-  `ConcurrentHashMapNullSafe` for custom caches and generates unique parameter keys using fully qualified names.
+> * `withReadLockVoid()` now suppresses exceptions thrown by the provided `Runnable`
 > * `Converter` - factory conversions map made immutable and legacy caching code removed
 > * `DateUtilities` uses `BigDecimal` for fractional second conversion, preventing rounding errors with high precision input
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.

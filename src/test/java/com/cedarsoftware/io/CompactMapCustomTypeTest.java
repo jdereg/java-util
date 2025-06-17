@@ -4,7 +4,7 @@ import java.util.Map;
 
 import com.cedarsoftware.util.CompactMap;
 import com.cedarsoftware.util.ReflectionUtils;
-import com.cedarsoftware.util.TypeHolder;
+import com.cedarsoftware.io.TypeHolder;
 
 import org.junit.jupiter.api.Test;
 

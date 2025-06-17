@@ -38,11 +38,7 @@ final class ByteArrayConversions {
     static CharBuffer toCharBuffer(Object from, Converter converter) {
         return CharBuffer.wrap(toString(from, converter));
     }
-
-    static char[] toCharArray(Object from, Converter converter) {
-        return toString(from, converter).toCharArray();
-    }
-
+    
     static StringBuffer toStringBuffer(Object from, Converter converter) {
         return new StringBuffer(toString(from, converter));
     }

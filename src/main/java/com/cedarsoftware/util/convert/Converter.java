@@ -974,7 +974,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(StringBuffer.class, byte[].class), StringConversions::toByteArray);
         CONVERSION_DB.put(pair(ByteBuffer.class, byte[].class), ByteBufferConversions::toByteArray);
         CONVERSION_DB.put(pair(CharBuffer.class, byte[].class), CharBufferConversions::toByteArray);
-        CONVERSION_DB.put(pair(char[].class, byte[].class), CharArrayConversions::toByteArray);
+        CONVERSION_DB.put(pair(char[].class, byte[].class), VoidConversions::toNull); // advertising convertion, implemented generically in ArrayConversions.
         CONVERSION_DB.put(pair(byte[].class, byte[].class), Converter::identity);
 
         // toCharArray
@@ -985,7 +985,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(ByteBuffer.class, char[].class), ByteBufferConversions::toCharArray);
         CONVERSION_DB.put(pair(CharBuffer.class, char[].class), CharBufferConversions::toCharArray);
         CONVERSION_DB.put(pair(char[].class, char[].class), CharArrayConversions::toCharArray);
-        CONVERSION_DB.put(pair(byte[].class, char[].class), ByteArrayConversions::toCharArray);
+        CONVERSION_DB.put(pair(byte[].class, char[].class), VoidConversions::toNull);   // Used for advertising capability, implemented generically in ArrayConversions.
 
         // toCharacterArray
         CONVERSION_DB.put(pair(Void.class, Character[].class), VoidConversions::toNull);

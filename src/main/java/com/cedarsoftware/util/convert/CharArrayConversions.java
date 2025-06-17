@@ -47,13 +47,6 @@ final class CharArrayConversions {
         return new StringBuilder(toCharBuffer(from, converter));
     }
 
-    static byte[] toByteArray(Object from, Converter converter) {
-        ByteBuffer buffer = toByteBuffer(from, converter);
-        byte[] byteArray = new byte[buffer.remaining()];
-        buffer.get(byteArray);
-        return byteArray;
-    }
-
     static char[] toCharArray(Object from, Converter converter) {
         char[] chars = (char[])from;
         return Arrays.copyOf(chars, chars.length);

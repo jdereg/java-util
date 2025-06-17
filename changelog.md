@@ -18,6 +18,7 @@
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
 > * `withReadLockVoid()` now suppresses exceptions thrown by the provided `Runnable`.
+> * Added test for `ConverterOptions.getCustomOption` default implementation
   `ConcurrentHashMapNullSafe` for custom caches and generates unique parameter keys using fully qualified names.
 > * `Converter` - factory conversions map made immutable and legacy caching code removed
 > * `DateUtilities` uses `BigDecimal` for fractional second conversion, preventing rounding errors with high precision input

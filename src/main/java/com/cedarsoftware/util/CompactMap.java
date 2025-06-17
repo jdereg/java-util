@@ -45,9 +45,13 @@ import java.util.stream.Collectors;
  * to minimize memory usage while maintaining excellent performance.
  *
  * <h2>Creating a CompactMap</h2>
- * There are two primary ways to create a CompactMap:
+ * Most applications should create one of the provided subclasses
+ * ({@link CompactLinkedMap}, {@link CompactCIHashMap}, or
+ * {@link CompactCILinkedMap}) or extend {@code CompactMap} and override
+ * its configuration methods. The builder pattern can also be used for
+ * custom configurations when running on a JDK.
  *
- * <h3>1. Using the Builder Pattern (Recommended)</h3>
+ * <h3>Using the Builder Pattern (requires JDK)</h3>
  * <pre>{@code
  * // Create a case-insensitive, sorted CompactMap
  * CompactMap<String, Object> map = CompactMap.<String, Object>builder()
@@ -2189,6 +2193,8 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Returns a builder for creating customized CompactMap instances.
      * <p>
      * For detailed configuration options and examples, see {@link Builder}.
+     * This API generates subclasses at runtime and therefore requires
+     * the JDK compiler tools to be present.
      * <p>
      * Note: When method chaining directly from builder(), you may need to provide
      * a type witness to help type inference:

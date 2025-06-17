@@ -17,19 +17,24 @@ A memory-efficient `Set` implementation that internally uses `CompactMap`. This 
 - Customizable compact size threshold
 - Memory-efficient internal storage
 
+Most applications simply instantiate one of the provided subclasses
+such as `CompactCIHashSet`, `CompactCILinkedSet`, or
+`CompactLinkedSet`. You may also subclass `CompactSet` yourself to
+hard-code your preferred options. The builder API is available for
+advanced use cases when running on a full JDK.
+
 ### Usage Examples
 
 ```java
-// Create a case-insensitive, sorted CompactSet
+// Most common usage: instantiate a provided subclass
+CompactLinkedSet<String> linked = new CompactLinkedSet<>();
+linked.add("hello");
+
+// Advanced: build a custom CompactSet (requires JDK)
 CompactSet<String> set = CompactSet.<String>builder()
     .caseSensitive(false)
     .sortedOrder()
     .compactSize(50)
-    .build();
-
-// Create a CompactSet with insertion ordering
-CompactSet<String> ordered = CompactSet.<String>builder()
-    .insertionOrder()
     .build();
 ```
 
@@ -443,24 +448,30 @@ A memory-efficient Map implementation that dynamically adapts its internal stora
 
 ### Key Features
 - Dynamic storage optimization based on size
-- Builder pattern for creation and configuration
+- Optional builder API for advanced configuration (requires JDK)
 - Support for case-sensitive/insensitive String keys
 - Configurable ordering (sorted, reverse, insertion, unordered)
 - Custom backing map implementations
 - Thread-safe when wrapped with Collections.synchronizedMap()
 - Full Map interface implementation
 
+Most developers will instantiate one of the pre-built subclasses such
+as `CompactLinkedMap`, `CompactCIHashMap`, or `CompactCILinkedMap`. You
+can also extend `CompactMap` and override its configuration methods to
+create your own variant. The builder API should generally be reserved
+for situations where you know you are running on a full JDK.
+
 ### Usage Examples
 
 **Basic Usage:**
 ```java
-// Simple creation
-CompactMap<String, Object> map = new CompactMap<>();
-map.put("key", "value");
+// Using a predefined subclass
+CompactLinkedMap<String, Object> linked = new CompactLinkedMap<>();
+linked.put("key", "value");
 
 // Create from existing map
 Map<String, Object> source = new HashMap<>();
-CompactMap<String, Object> copy = new CompactMap<>(source);
+CompactLinkedMap<String, Object> copy = new CompactLinkedMap<>(source);
 ```
 
 **Builder Pattern (requires execution on JDK):**

@@ -23,17 +23,19 @@ import java.util.Comparator;
  * </p>
  *
  * <h2>Creating a CompactSet</h2>
+ * Typically you will create one of the provided subclasses
+ * ({@link CompactLinkedSet}, {@link CompactCIHashSet}, or
+ * {@link CompactCILinkedSet}) or extend {@code CompactSet} with your own
+ * configuration. The builder pattern is available for advanced cases
+ * when running on a JDK.
  * <pre>{@code
- * // Create a case-insensitive, sorted CompactSet
- * CompactSet<String> set = CompactSet.<String>builder()
+ * CompactLinkedSet<String> set = new CompactLinkedSet<>();
+ * set.add("hello");
+ *
+ * // Builder pattern (requires JDK)
+ * CompactSet<String> custom = CompactSet.<String>builder()
  *     .caseSensitive(false)
  *     .sortedOrder()
- *     .compactSize(80)
- *     .build();
- *
- * // Create a CompactSet with insertion ordering
- * CompactSet<String> ordered = CompactSet.<String>builder()
- *     .insertionOrder()
  *     .build();
  * }</pre>
  *
@@ -234,6 +236,8 @@ public class CompactSet<E> implements Set<E> {
 
     /**
      * Returns a builder for creating customized CompactSet instances.
+     * This API generates subclasses at runtime and therefore requires
+     * the JDK compiler tools to be present.
      *
      * @param <E> the type of elements in the set
      * @return a new Builder instance

@@ -2,13 +2,6 @@ package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Array;
 import java.util.Collection;
-import java.util.Collections;
-
-import static com.cedarsoftware.util.convert.CollectionsWrappers.getEmptyCollectionClass;
-import static com.cedarsoftware.util.convert.CollectionsWrappers.getEmptyListClass;
-import static com.cedarsoftware.util.convert.CollectionsWrappers.getEmptyNavigableSetClass;
-import static com.cedarsoftware.util.convert.CollectionsWrappers.getEmptySetClass;
-import static com.cedarsoftware.util.convert.CollectionsWrappers.getEmptySortedSetClass;
 
 import static com.cedarsoftware.util.CollectionUtilities.getSynchronizedCollection;
 import static com.cedarsoftware.util.CollectionUtilities.getUnmodifiableCollection;
@@ -49,27 +42,6 @@ public final class CollectionConversions {
 
     private CollectionConversions() { }
 
-    private static boolean isEmptyWrapper(Class<?> type) {
-        return getEmptyCollectionClass().isAssignableFrom(type)
-                || getEmptyListClass().isAssignableFrom(type)
-                || getEmptySetClass().isAssignableFrom(type)
-                || getEmptySortedSetClass().isAssignableFrom(type)
-                || getEmptyNavigableSetClass().isAssignableFrom(type);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Collection<?>> T emptyWrapper(Class<T> type) {
-        if (getEmptySetClass().isAssignableFrom(type)) {
-            return (T) Collections.emptySet();
-        }
-        if (getEmptySortedSetClass().isAssignableFrom(type)) {
-            return (T) Collections.emptySortedSet();
-        }
-        if (getEmptyNavigableSetClass().isAssignableFrom(type)) {
-            return (T) Collections.emptyNavigableSet();
-        }
-        return (T) Collections.emptyList();
-    }
 
     /**
      * Converts an array to a collection, supporting special collection types
@@ -82,17 +54,6 @@ public final class CollectionConversions {
      */
     @SuppressWarnings("unchecked")
     public static <T extends Collection<?>> T arrayToCollection(Object array, Class<T> targetType) {
-        if (isEmptyWrapper(targetType)) {
-            int length = Array.getLength(array);
-            for (int i = 0; i < length; i++) {
-                Object element = Array.get(array, i);
-                if (element instanceof Collection ||
-                        (element != null && element.getClass().isArray())) {
-                    throw new UnsupportedOperationException("Cannot convert nested structures to empty collection");
-                }
-            }
-            return emptyWrapper(targetType);
-        }
 
         int length = Array.getLength(array);
 
@@ -139,15 +100,6 @@ public final class CollectionConversions {
      */
     @SuppressWarnings("unchecked")
     public static Object collectionToCollection(Collection<?> source, Class<?> targetType) {
-        if (isEmptyWrapper(targetType)) {
-            for (Object element : source) {
-                if (element instanceof Collection ||
-                        (element != null && element.getClass().isArray())) {
-                    throw new UnsupportedOperationException("Cannot convert nested structures to empty collection");
-                }
-            }
-            return emptyWrapper((Class<? extends Collection<?>>) targetType);
-        }
 
         // Determine if the target type requires unmodifiable behavior
         boolean requiresUnmodifiable = isUnmodifiable(targetType);

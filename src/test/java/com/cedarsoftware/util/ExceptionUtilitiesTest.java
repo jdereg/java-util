@@ -4,12 +4,15 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author Ken Partlow
@@ -65,5 +68,29 @@ public class ExceptionUtilitiesTest
             assert t != e;
             assert t.getMessage().contains("Unable to parse: foo");
         }
+    }
+
+    @Test
+    void testCallableExceptionReturnsDefault() {
+        String result = ExceptionUtilities.safelyIgnoreException(() -> {
+            throw new Exception("fail");
+        }, "default");
+        assertEquals("default", result);
+    }
+
+    @Test
+    void testCallableSuccessReturnsValue() {
+        String result = ExceptionUtilities.safelyIgnoreException(() -> "value", "default");
+        assertEquals("value", result);
+    }
+
+    @Test
+    void testRunnableExceptionIgnored() {
+        AtomicBoolean ran = new AtomicBoolean(false);
+        ExceptionUtilities.safelyIgnoreException((Runnable) () -> {
+            ran.set(true);
+            throw new RuntimeException("boom");
+        });
+        assertTrue(ran.get());
     }
 }

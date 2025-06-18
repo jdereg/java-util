@@ -18,7 +18,6 @@
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
 > * `Executor` now uses `ProcessBuilder` with a 60-second timeout and provides an `ExecutionResult` API
-> * Additional JUnit tests cover `Executor` methods for environment variables and working directories
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
@@ -46,6 +45,7 @@
 > * JUnits added for all public APIs that did not have them (no longer relying on json-io to "cover" them). Should be 100% now.
 > * Custom map types under `com.cedarsoftware.io` allowed for `CompactMap`
 > * Added tests for `AbstractConcurrentNullSafeMap` entry equality and key set iterator removal
+> * Added JUnit tests for `ExceptionUtilities.safelyIgnoreException`
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

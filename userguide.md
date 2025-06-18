@@ -3737,6 +3737,8 @@ SystemUtilities.addShutdownHook(() -> {
 File tempDir = SystemUtilities.createTempDirectory("prefix-");
 // Directory will be deleted on JVM exit
 ```
+The returned path is canonical, preventing issues with symbolic links such as
+`/var` versus `/private/var` on macOS.
 
 ### Version Management
 

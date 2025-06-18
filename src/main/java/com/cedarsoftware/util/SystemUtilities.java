@@ -194,7 +194,7 @@ public final class SystemUtilities
     public static File createTempDirectory(String prefix) throws IOException {
         File tempDir = Files.createTempDirectory(prefix).toFile();
         tempDir.deleteOnExit();
-        return tempDir;
+        return tempDir.getCanonicalFile();
     }
 
     /**

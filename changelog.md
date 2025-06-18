@@ -33,6 +33,8 @@
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
   `TestUtil.fetchResource`, `MapUtilities.cloneMapOfSets`, and core cache methods.
+> * `SystemUtilities.createTempDirectory()` now returns a canonical path so that
+  temporary directories resolve symlinks on macOS and other platforms.
 > * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
 > * Fixed tests for `TrackingMap.replaceContents` and `setWrappedMap` to avoid tracking keys during verification
 > * `Unsafe` now obtains the sun.misc.Unsafe instance from the `theUnsafe` field instead of invoking its constructor, preventing JVM crashes during tests

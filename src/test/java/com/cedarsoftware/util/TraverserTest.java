@@ -173,8 +173,8 @@ public class TraverserTest
     @Test
     public void testPrivateTraverseConsumer() throws Exception
     {
-        class Parent { Child child; }
         class Child { }
+        class Parent { Child child; }
 
         Parent root = new Parent();
         root.child = new Child();

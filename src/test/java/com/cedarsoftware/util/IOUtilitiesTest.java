@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
@@ -299,7 +300,7 @@ public class IOUtilitiesTest
             IOUtilities.transfer(in, bytes);
             fail("should not make it here");
         }
-        catch (IOException e)
+        catch (UncheckedIOException e)
         {
         }
     }
@@ -336,7 +337,7 @@ public class IOUtilitiesTest
     }
 
     @Test
-    public void testInputStreamToBytes() throws IOException
+    public void testInputStreamToBytes()
     {
         ByteArrayInputStream in = new ByteArrayInputStream("This is a test".getBytes());
 

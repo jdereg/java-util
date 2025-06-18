@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.InputStream;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -65,7 +66,7 @@ public class IOUtilitiesAdditionalTest {
     @Test
     public void testInputStreamToBytesOverLimit() {
         ByteArrayInputStream in = new ByteArrayInputStream("toolong".getBytes(StandardCharsets.UTF_8));
-        IOException ex = assertThrows(IOException.class, () -> IOUtilities.inputStreamToBytes(in, 4));
+        UncheckedIOException ex = assertThrows(UncheckedIOException.class, () -> IOUtilities.inputStreamToBytes(in, 4));
         assertTrue(ex.getMessage().contains("Stream exceeds"));
     }
 

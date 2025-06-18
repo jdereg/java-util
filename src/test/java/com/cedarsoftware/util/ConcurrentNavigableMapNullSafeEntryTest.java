@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +23,7 @@ class ConcurrentNavigableMapNullSafeEntryTest {
         Map.Entry<String, Integer> entry = map.entrySet().stream()
                 .filter(e -> "a".equals(e.getKey()))
                 .findFirst()
-                .orElseThrow();
+                .orElseThrow(NoSuchElementException::new);
 
         assertEquals(1, entry.setValue(10));
         assertEquals(Integer.valueOf(10), map.get("a"));

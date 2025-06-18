@@ -6,34 +6,16 @@ import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 
 /**
- * Useful utility for allowing Java code to make Ajax calls, yet the Java code
- * can make these calls via Dynamic Proxies created from Java interfaces for
- * the remote server(s).
- *
- * Example:
- *
- * Assume you have a tomcat instance running a JSON Command Servlet, like com.cedarsoftware's or
- * Spring MVC.
- *
- * Assume you have a Java interface 'Explorer' that is mapped to a Java bean that you are allowing
- * to be called through RESTful JSON calls (Ajax / XHR).
- *
- * Explorer has methods on it, like getFiles(userId), etc.
- *
- * You need to use a SessionAware (JSESSIONID only) or CookieAware UrlInvocationHandler to interact
- * with the server so that the cookies will be placed on all requests.  In Javascript within browsers,
- * this is taken care of for you.  Not so in the Java side.
- * <pre>
- * Map cookies = new HashMap();
- * String url = "http://www.mycompany.com:80/json/"
- *
- * InvocationHandler handler = new UrlInvocationHandler(new UrlInvocationHandlerStrategyImplementation(url, ...));
- * Explorer explorer = (Explorer) ProxyFactory.create(Explorer.class, handler);
- *
- * At this point, your Java code can do this:
- *
- * List files = explorer.getFiles(userId);
- * </pre>
+ * Invocation handler that performs HTTP POST calls using a
+ * {@link UrlInvocationHandlerStrategy}.  It was originally designed to
+ * mimic Ajax-style requests via Java dynamic proxies.  The approach is no
+ * longer maintained and is kept solely for backward compatibility with
+ * legacy code such as n-cube.
+ * <p>
+ * Modern applications should prefer {@code java.net.http.HttpClient} or
+ * direct use of {@link UrlUtilities}.  This class may be removed in a
+ * future release.
+ * </p>
  *
  * @author Ken Partlow (kpartlow@gmail.com)
  * @author John DeRegnaucourt (jdereg@gmail.com)

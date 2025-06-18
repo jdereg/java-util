@@ -4,6 +4,7 @@
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
 > * Added unit tests for `ConcurrentNavigableSetNullSafe` convenience methods `subSet`, `headSet`, and `tailSet`
+> * Added tests for `ConcurrentNavigableSetNullSafe.comparator()`
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `CollectionConversions.arrayToCollection` now returns a type-safe collection

@@ -56,6 +56,7 @@
 > * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal
 > * Fixed `TTLCache.purgeExpiredEntries()` NPE when removing expired entries
 > * Added unit tests for `GenericArrayTypeImpl.equals()` and `hashCode()`
+> * `UrlUtilities` no longer deprecated; certificate validation defaults to on, provides streaming API and configurable timeouts
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

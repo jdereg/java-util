@@ -19,6 +19,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.concurrent.atomic.AtomicReference;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -62,11 +63,10 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-@Deprecated
 public final class UrlUtilities
 {
-    private static String globalUserAgent = null;
-    private static String globalReferrer = null;
+    private static final AtomicReference<String> globalUserAgent = new AtomicReference<>();
+    private static final AtomicReference<String> globalReferrer = new AtomicReference<>();
     public static final ThreadLocal<String> userAgent = new ThreadLocal<>();
     public static final ThreadLocal<String> referrer = new ThreadLocal<>();
     public static final String SET_COOKIE = "Set-Cookie";
@@ -78,6 +78,9 @@ public final class UrlUtilities
     public static final SafeSimpleDateFormat DATE_FORMAT = new SafeSimpleDateFormat("EEE, dd-MMM-yyyy hh:mm:ss z");
     public static final char NAME_VALUE_SEPARATOR = '=';
     public static final char DOT = '.';
+
+    private static volatile int defaultReadTimeout = 220000;
+    private static volatile int defaultConnectTimeout = 45000;
 
     private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
     
@@ -139,19 +142,19 @@ public final class UrlUtilities
 
     public static void clearGlobalUserAgent()
     {
-        globalUserAgent = null;
+        globalUserAgent.set(null);
     }
 
     public static void clearGlobalReferrer()
     {
-        globalReferrer = null;
+        globalReferrer.set(null);
     }
 
     public static void setReferrer(String referer)
     {
-        if (StringUtilities.isEmpty(globalReferrer))
+        if (StringUtilities.isEmpty(globalReferrer.get()))
         {
-            globalReferrer = referer;
+            globalReferrer.set(referer);
         }
         referrer.set(referer);
     }
@@ -163,14 +166,14 @@ public final class UrlUtilities
         {
             return localReferrer;
         }
-        return globalReferrer;
+        return globalReferrer.get();
     }
 
     public static void setUserAgent(String agent)
     {
-        if (StringUtilities.isEmpty(globalUserAgent))
+        if (StringUtilities.isEmpty(globalUserAgent.get()))
         {
-            globalUserAgent = agent;
+            globalUserAgent.set(agent);
         }
         userAgent.set(agent);
     }
@@ -182,7 +185,27 @@ public final class UrlUtilities
         {
             return localAgent;
         }
-        return globalUserAgent;
+        return globalUserAgent.get();
+    }
+
+    public static void setDefaultConnectTimeout(int millis)
+    {
+        defaultConnectTimeout = millis;
+    }
+
+    public static void setDefaultReadTimeout(int millis)
+    {
+        defaultReadTimeout = millis;
+    }
+
+    public static int getDefaultConnectTimeout()
+    {
+        return defaultConnectTimeout;
+    }
+
+    public static int getDefaultReadTimeout()
+    {
+        return defaultReadTimeout;
     }
 
     public static void readErrorResponse(URLConnection c)
@@ -194,7 +217,7 @@ public final class UrlUtilities
         InputStream in = null;
         try
         {
-            int error = ((HttpURLConnection) c).getResponseCode();
+            ((HttpURLConnection) c).getResponseCode();
             in = ((HttpURLConnection) c).getErrorStream();
             if (in == null)
             {
@@ -249,23 +272,22 @@ public final class UrlUtilities
      * @param conn a java.net.URLConnection - must be open, or IOException will
      *             be thrown
      */
-    @SuppressWarnings("unchecked")
-    public static void getCookies(URLConnection conn, Map store)
+    public static void getCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store)
     {
         // let's determine the domain from where these cookies are being sent
         String domain = getCookieDomainFromHost(conn.getURL().getHost());
-        Map domainStore; // this is where we will store cookies for this domain
+        Map<String, Map<String, String>> domainStore; // this is where we will store cookies for this domain
 
         // now let's check the store to see if we have an entry for this domain
         if (store.containsKey(domain))
         {
             // we do, so lets retrieve it from the store
-            domainStore = (Map) store.get(domain);
+            domainStore = store.get(domain);
         }
         else
         {
             // we don't, so let's create it and put it in the store
-            domainStore = new ConcurrentHashMap();
+            domainStore = new ConcurrentHashMap<>();
             store.put(domain, domainStore);
         }
 
@@ -281,7 +303,7 @@ public final class UrlUtilities
         {
             if (headerName.equalsIgnoreCase(SET_COOKIE))
             {
-                Map cookie = new ConcurrentHashMap();
+                Map<String, String> cookie = new ConcurrentHashMap<>();
                 StringTokenizer st = new StringTokenizer(conn.getHeaderField(i), COOKIE_VALUE_DELIMITER);
 
                 // the specification dictates that the first name/value pair
@@ -322,25 +344,25 @@ public final class UrlUtilities
      * @param conn a java.net.URLConnection - must NOT be open, or IOException will be thrown
      * @throws IOException Thrown if conn has already been opened.
      */
-    public static void setCookies(URLConnection conn, Map store) throws IOException
+    public static void setCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store) throws IOException
     {
         // let's determine the domain and path to retrieve the appropriate cookies
         URL url = conn.getURL();
         String domain = getCookieDomainFromHost(url.getHost());
         String path = url.getPath();
 
-        Map domainStore = (Map) store.get(domain);
+        Map<String, Map<String, String>> domainStore = store.get(domain);
         if (domainStore == null)
         {
             return;
         }
         StringBuilder cookieStringBuffer = new StringBuilder();
-        Iterator cookieNames = domainStore.keySet().iterator();
+        Iterator<String> cookieNames = domainStore.keySet().iterator();
 
         while (cookieNames.hasNext())
         {
-            String cookieName = (String) cookieNames.next();
-            Map cookie = (Map) domainStore.get(cookieName);
+            String cookieName = cookieNames.next();
+            Map<String, String> cookie = domainStore.get(cookieName);
             // check cookie to ensure path matches and cookie is not expired
             // if all is cool, add cookie to header string
             if (comparePaths((String) cookie.get(PATH), path) && isNotExpired((String) cookie.get(EXPIRES)))
@@ -367,11 +389,21 @@ public final class UrlUtilities
 
     public static String getCookieDomainFromHost(String host)
     {
-        while (host.indexOf(DOT) != host.lastIndexOf(DOT))
+        if (host == null)
         {
-            host = host.substring(host.indexOf(DOT) + 1);
+            return null;
         }
-        return host;
+        String[] parts = host.split("\\.");
+        if (parts.length <= 2)
+        {
+            return host;
+        }
+        String tld = parts[parts.length - 1];
+        if (tld.length() == 2 && parts.length >= 3)
+        {
+            return parts[parts.length - 3] + '.' + parts[parts.length - 2] + '.' + tld;
+        }
+        return parts[parts.length - 2] + '.' + tld;
     }
 
     static boolean isNotExpired(String cookieExpires)
@@ -407,7 +439,7 @@ public final class UrlUtilities
      */
     public static String getContentFromUrlAsString(String url)
     {
-        return getContentFromUrlAsString(url, null, null, true);
+        return getContentFromUrlAsString(url, null, null, false);
     }
 
     /**
@@ -469,7 +501,7 @@ public final class UrlUtilities
      */
     public static byte[] getContentFromUrl(String url)
     {
-        return getContentFromUrl(url, null, null, true);
+        return getContentFromUrl(url, null, null, false);
     }
 
     /**
@@ -556,6 +588,34 @@ public final class UrlUtilities
         }
     }
 
+    public static void copyContentFromUrl(String url, java.io.OutputStream out) throws IOException
+    {
+        copyContentFromUrl(getActualUrl(url), out, null, null, false);
+    }
+
+    public static void copyContentFromUrl(URL url, java.io.OutputStream out, Map<String, Map<String, Map<String, String>>> inCookies, Map<String, Map<String, Map<String, String>>> outCookies, boolean allowAllCerts) throws IOException
+    {
+        URLConnection c = null;
+        try
+        {
+            c = getConnection(url, inCookies, true, false, false, allowAllCerts);
+            InputStream stream = IOUtilities.getInputStream(c);
+            IOUtilities.transfer(stream, out);
+            stream.close();
+            if (outCookies != null)
+            {
+                getCookies(c, outCookies);
+            }
+        }
+        finally
+        {
+            if (c instanceof HttpURLConnection)
+            {
+                disconnect((HttpURLConnection)c);
+            }
+        }
+    }
+
     /**
      * Get content from the passed in URL.  This code will open a connection to
      * the passed in server, fetch the requested content, and return it as a
@@ -568,7 +628,7 @@ public final class UrlUtilities
      */
     public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies)
     {
-        return getContentFromUrl(url, inCookies, outCookies, true);
+        return getContentFromUrl(url, inCookies, outCookies, false);
     }
 
     /**
@@ -579,7 +639,7 @@ public final class UrlUtilities
      */
     public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException
     {
-        return getConnection(getActualUrl(url), null, input, output, cache, true);
+        return getConnection(getActualUrl(url), null, input, output, cache, false);
     }
 
     /**
@@ -591,7 +651,7 @@ public final class UrlUtilities
      */
     public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) throws IOException
     {
-        return getConnection(url, null, input, output, cache, true);
+        return getConnection(url, null, input, output, cache, false);
     }
 
     /**
@@ -610,8 +670,8 @@ public final class UrlUtilities
         c.setDoOutput(output);
         c.setDoInput(input);
         c.setUseCaches(cache);
-        c.setReadTimeout(220000);
-        c.setConnectTimeout(45000);
+        c.setReadTimeout(defaultReadTimeout);
+        c.setConnectTimeout(defaultConnectTimeout);
 
         String ref = getReferrer();
         if (StringUtilities.hasContent(ref))

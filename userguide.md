@@ -4293,4 +4293,14 @@ For additional support or to report issues, please refer to the project's GitHub
 Call `LoggingConfig.init()` once during application startup. You may supply a
 custom timestamp pattern via `LoggingConfig.init("yyyy/MM/dd HH:mm:ss")` or the
 system property `ju.log.dateFormat`.
+## UrlUtilities
+[Source](/src/main/java/com/cedarsoftware/util/UrlUtilities.java)
+
+Utility methods for fetching HTTP/HTTPS content.
+
+### Key Features
+- Fetch content as `byte[]` or `String`
+- Stream directly to an `OutputStream` with `copyContentFromUrl`
+- Configurable default connect and read timeouts
+- Optional insecure SSL mode via `allowAllCerts` parameters
 

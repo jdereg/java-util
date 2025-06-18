@@ -45,17 +45,7 @@ public class SafeSimpleDateFormat extends DateFormat
     public static SimpleDateFormat getDateFormat(String format)
     {
         Map<String, SimpleDateFormat> formatters = _dateFormats.get();
-        SimpleDateFormat formatter = formatters.get(format);
-        if (formatter == null)
-        {
-            formatter = new SimpleDateFormat(format);
-            SimpleDateFormat simpleDateFormatRef = formatters.putIfAbsent(format, formatter);
-            if (simpleDateFormatRef != null)
-            {
-                formatter = simpleDateFormatRef;
-            }
-        }
-        return formatter;
+        return formatters.computeIfAbsent(format, SimpleDateFormat::new);
     }
 
     public SafeSimpleDateFormat(String format)

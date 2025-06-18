@@ -484,8 +484,9 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
             @Override
             public V setValue(V value) {
-                Object oldValue = internalEntry.setValue(maskNullValue(value));
-                return unmaskNullValue(oldValue);
+                Object keyObj = internalEntry.getKey();
+                Object old = internalMap.put(keyObj, maskNullValue(value));
+                return unmaskNullValue(old);
             }
 
             @Override

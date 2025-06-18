@@ -18,7 +18,6 @@
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
 > * `Executor` now uses `ProcessBuilder` with a 60-second timeout and provides an `ExecutionResult` API
-> * Added test for `ExecutionResult.getOut()` and `getError()`
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses

@@ -9,7 +9,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
@@ -58,7 +57,7 @@ import static org.mockito.Mockito.when;
 public class IOUtilitiesTest
 {
     private final String _expected = "This is for an IO test!";
-    
+
     @Test
     public void testConstructorIsPrivate() throws Exception {
         Class<?> c = IOUtilities.class;
@@ -155,7 +154,7 @@ public class IOUtilitiesTest
 
         f.delete();
     }
-    
+
     @Test
     public void testCompressBytes() throws Exception
     {
@@ -300,7 +299,7 @@ public class IOUtilitiesTest
             IOUtilities.transfer(in, bytes);
             fail("should not make it here");
         }
-        catch (UncheckedIOException e)
+        catch (IOException e)
         {
         }
     }
@@ -337,7 +336,7 @@ public class IOUtilitiesTest
     }
 
     @Test
-    public void testInputStreamToBytes()
+    public void testInputStreamToBytes() throws IOException
     {
         ByteArrayInputStream in = new ByteArrayInputStream("This is a test".getBytes());
 

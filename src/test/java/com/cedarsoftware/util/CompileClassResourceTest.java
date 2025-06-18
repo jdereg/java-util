@@ -1,18 +1,30 @@
 package com.cedarsoftware.util;
 
-import javax.tools.*;
 import javax.lang.model.SourceVersion;
-import java.io.*;
+import javax.tools.DiagnosticListener;
+import javax.tools.ForwardingJavaFileManager;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
+import javax.tools.ToolProvider;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Writer;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.lang.reflect.Method;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CompileClassResourceTest {
     static class TrackingJavaCompiler implements JavaCompiler {
@@ -110,6 +122,8 @@ public class CompileClassResourceTest {
 
         // Get file manager from our tracking compiler
         StandardJavaFileManager fileManager = trackingCompiler.getStandardFileManager(null, null, null);
+        fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Collections.singleton(new File("target/classes")));
+
 
         // Compile some simple code using the file manager
         String source = "public class TestClass { public static void main(String[] args) {} }";

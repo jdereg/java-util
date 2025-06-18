@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import java.util.Iterator;
 import java.util.NavigableSet;
+import java.util.SortedSet;
 
 import org.junit.jupiter.api.Test;
 
@@ -60,5 +61,68 @@ class ConcurrentNavigableMapNullSafeKeySetTest {
 
         assertTrue(map.isEmpty());
         assertTrue(keys.isEmpty());
+    }
+
+    @Test
+    void testSubHeadTailAndSortedViews() {
+        ConcurrentNavigableMapNullSafe<String, Integer> map = new ConcurrentNavigableMapNullSafe<>();
+        map.put("apple", 1);
+        map.put("banana", 2);
+        map.put("cherry", 3);
+        map.put("date", 4);
+        map.put(null, 0);
+
+        NavigableSet<String> keys = map.keySet();
+
+        NavigableSet<String> sub = keys.subSet("banana", true, "date", false);
+        Iterator<String> it = sub.iterator();
+        assertEquals("banana", it.next());
+        assertEquals("cherry", it.next());
+        assertFalse(it.hasNext());
+        SortedSet<String> simpleSub = keys.subSet("banana", "date");
+        assertEquals(sub, simpleSub);
+        assertThrows(IllegalArgumentException.class,
+                () -> keys.subSet("date", true, "banana", false));
+
+        NavigableSet<String> headEx = keys.headSet("cherry", false);
+        assertTrue(headEx.contains("apple"));
+        assertFalse(headEx.contains("cherry"));
+        assertEquals(2, headEx.size());
+        SortedSet<String> headSimple = keys.headSet("cherry");
+        assertEquals(headEx, headSimple);
+
+        NavigableSet<String> headIn = keys.headSet("cherry", true);
+        assertTrue(headIn.contains("cherry"));
+        assertEquals(3, headIn.size());
+
+        NavigableSet<String> tailEx = keys.tailSet("banana", false);
+        assertFalse(tailEx.contains("banana"));
+        assertTrue(tailEx.contains(null));
+        assertEquals(3, tailEx.size());
+        SortedSet<String> tailSimple = keys.tailSet("banana");
+        assertTrue(tailSimple.contains("banana"));
+        assertEquals(4, tailSimple.size());
+    }
+
+    @Test
+    void testDescendingSet() {
+        ConcurrentNavigableMapNullSafe<String, Integer> map = new ConcurrentNavigableMapNullSafe<>();
+        map.put("apple", 1);
+        map.put("banana", 2);
+        map.put("cherry", 3);
+        map.put("date", 4);
+        map.put(null, 0);
+
+        NavigableSet<String> descending = map.keySet().descendingSet();
+        Iterator<String> it = descending.iterator();
+        assertEquals(null, it.next());
+        assertEquals("date", it.next());
+        assertEquals("cherry", it.next());
+        assertEquals("banana", it.next());
+        assertEquals("apple", it.next());
+        assertFalse(it.hasNext());
+
+        assertTrue(descending.remove("date"));
+        assertFalse(map.containsKey("date"));
     }
 }

@@ -24,6 +24,7 @@
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
 > * `StringUtilities.count()` uses a reliable substring search algorithm.
+> * Updated inner-class JSON test to match removal of synthetic `this$` fields.
 > * `StringUtilities.hashCodeIgnoreCase()` updates locale compatibility when the default locale changes.
 > * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
 > * `StringUtilities` adds `snakeToCamel`, `camelToSnake`, `isNumeric`, `repeat`, `reverse`, `padLeft`, and `padRight` helpers.

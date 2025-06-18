@@ -51,6 +51,7 @@
 > * Fixed `Map.Entry.setValue()` for entries from `ConcurrentNavigableMapNullSafe` and `AbstractConcurrentNullSafeMap` to update the backing map
 > * Map.Entry views now fetch values from the backing map so `toString()` and `equals()` reflect updates
 > * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal
+> * Added unit tests for `SafeSimpleDateFormat.equals()` and `.hashCode()`
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

@@ -973,4 +973,13 @@ public class StringUtilitiesTest
         assertEquals("A", StringUtilities.getRandomChar(random, true));
         assertEquals("h", StringUtilities.getRandomChar(random, false));
     }
+
+    @Test
+    void testIndexOf() {
+        assertEquals(0, StringUtilities.indexOf("abcd", "ab"));
+        assertEquals(2, StringUtilities.indexOf("abcd", "cd"));
+        assertEquals(-1, StringUtilities.indexOf("abcd", "ef"));
+        assertEquals(-1, StringUtilities.indexOf(null, "a"));
+        assertEquals(-1, StringUtilities.indexOf("abcd", null));
+    }
 }

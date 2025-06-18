@@ -361,6 +361,21 @@ public final class StringUtilities {
     }
 
     /**
+     * Find the first index of a substring within another string.
+     *
+     * @param outer the string to search, may be {@code null}
+     * @param inner the substring to find, may be {@code null}
+     * @return the index of {@code inner} within {@code outer}, or -1 if not found
+     *         or if either argument is {@code null}
+     */
+    public static int indexOf(String outer, String inner) {
+        if (outer == null || inner == null) {
+            return -1;
+        }
+        return outer.indexOf(inner);
+    }
+
+    /**
      * Convert a hexadecimal {@link String} into a byte array.
      *
      * <p>If the input length is odd or contains non-hex characters the method

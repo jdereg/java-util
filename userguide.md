@@ -3421,8 +3421,9 @@ public static int length(CharSequence cs)
 public static int length(String s)
 public static int trimLength(String s)
 public static int lastIndexOf(String path, char ch)
-    
-// ASCII Hex     
+public static int indexOf(String outer, String inner)
+
+// ASCII Hex
 public static byte[] decode(String s)
 public static String encode(byte[] bytes)
 
@@ -3584,6 +3585,7 @@ int hash = StringUtilities.hashCodeIgnoreCase("Text");
 // Optimized string counting
 int count = StringUtilities.count("text", 't');
 int count = StringUtilities.count("text text", "text");
+int index = StringUtilities.indexOf("hello world", "world"); // 6
 ```
 
 `count` now uses a standard `indexOf` loop to avoid overlap issues.

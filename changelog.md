@@ -30,6 +30,7 @@
 > * `StringUtilities.count()` uses a reliable substring search algorithm.
 > * Updated inner-class JSON test to match removal of synthetic `this$` fields.
 > * `StringUtilities.hashCodeIgnoreCase()` updates locale compatibility when the default locale changes.
+> * `StringUtilities.indexOf()` provides a null-safe substring search API.
 > * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
 > * `StringUtilities` adds `snakeToCamel`, `camelToSnake`, `isNumeric`, `repeat`, `reverse`, `padLeft`, and `padRight` helpers.
 > * Constants `FOLDER_SEPARATOR` and `EMPTY` are now immutable (`final`).

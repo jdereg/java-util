@@ -858,6 +858,8 @@ try {
     // Handle shutdown failure
 }
 ```
+Calling `TTLCache.shutdown()` stops the shared scheduler. Creating a new
+`TTLCache` instance afterwards will automatically restart the scheduler.
 ---
 ## TrackingMap
 [Source](/src/main/java/com/cedarsoftware/util/TrackingMap.java)

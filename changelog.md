@@ -1,5 +1,6 @@
 ### Revision History
 #### 3.3.3 AI/LLM review and updates
+> * `TTLCache` now recreates its background scheduler if used after `TTLCache.shutdown()`.
 > * Added test covering `CompactMapComparator.toString()`
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.

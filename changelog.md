@@ -52,6 +52,7 @@
 > * Added JUnit tests for `ExceptionUtilities.safelyIgnoreException`
 > * Fixed `ExecutorAdditionalTest` to compare canonical paths for cross-platform consistency
 > * Updated `ConcurrentNavigableMapNullSafeEntryTest` to use `Optional.orElseThrow(NoSuchElementException::new)` for JDK 1.8 compatibility
+> * Added tests covering `Map.Entry` implementations returned by `ConcurrentNavigableMapNullSafe`
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

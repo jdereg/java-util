@@ -25,8 +25,6 @@
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
 > * `StringUtilities.count()` uses a reliable substring search algorithm.
 > * Updated inner-class JSON test to match removal of synthetic `this$` fields.
-> * Fixed OverlappingMemberVariableNamesTest to use `com.cedarsoftware.io.TypeHolder`.
-> * Relaxed outer-reference assertion in OverlappingMemberVariableNamesTest.
 > * `StringUtilities.hashCodeIgnoreCase()` updates locale compatibility when the default locale changes.
 > * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
 > * `StringUtilities` adds `snakeToCamel`, `camelToSnake`, `isNumeric`, `repeat`, `reverse`, `padLeft`, and `padRight` helpers.
@@ -51,7 +49,6 @@
 > * Added tests for `AbstractConcurrentNullSafeMap` entry equality and key set iterator removal
 > * Added JUnit tests for `ExceptionUtilities.safelyIgnoreException`
 > * Fixed `ExecutorAdditionalTest` to compare canonical paths for cross-platform consistency
-> * Added tests for `ConcurrentNavigableMapNullSafe` keySet operations
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

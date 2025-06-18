@@ -56,11 +56,22 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     private PurgeTask purgeTask;
 
     // Static ScheduledExecutorService with a single thread
-    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread thread = new Thread(r, "TTLCache-Purge-Thread");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private static volatile ScheduledExecutorService scheduler = createScheduler();
+
+    private static ScheduledExecutorService createScheduler() {
+        return Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread thread = new Thread(r, "TTLCache-Purge-Thread");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    private static synchronized ScheduledExecutorService ensureScheduler() {
+        if (scheduler == null || scheduler.isShutdown() || scheduler.isTerminated()) {
+            scheduler = createScheduler();
+        }
+        return scheduler;
+    }
     
     /**
      * Constructs a TTLCache with the specified TTL.
@@ -119,7 +130,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     private void schedulePurgeTask(long cleanupIntervalMillis) {
         WeakReference<TTLCache<?, ?>> cacheRef = new WeakReference<>(this);
         PurgeTask task = new PurgeTask(cacheRef);
-        ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(task, cleanupIntervalMillis, cleanupIntervalMillis, TimeUnit.MILLISECONDS);
+        ScheduledFuture<?> future = ensureScheduler().scheduleAtFixedRate(task, cleanupIntervalMillis, cleanupIntervalMillis, TimeUnit.MILLISECONDS);
         task.setFuture(future);
         purgeTask = task;
     }
@@ -615,7 +626,10 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     /**
      * Shuts down the shared scheduler. Call this method when your application is terminating.
      */
-    public static void shutdown() {
-        scheduler.shutdown();
+    public static synchronized void shutdown() {
+        if (scheduler != null) {
+            scheduler.shutdown();
+            scheduler = null;
+        }
     }
 }

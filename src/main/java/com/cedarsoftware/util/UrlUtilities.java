@@ -718,6 +718,6 @@ public final class UrlUtilities
     public static URL getActualUrl(String url) throws MalformedURLException
     {
         Matcher m = resPattern.matcher(url);
-        return m.find() ? UrlUtilities.class.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
+        return m.find() ? ClassUtilities.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
     }
 }

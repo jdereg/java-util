@@ -196,11 +196,12 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
         long currentTime = System.currentTimeMillis();
         for (Iterator<Map.Entry<K, CacheEntry<K, V>>> it = cacheMap.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<K, CacheEntry<K, V>> entry = it.next();
-            if (entry.getValue().expiryTime < currentTime) {
+            CacheEntry<K, V> cacheEntry = entry.getValue();
+            if (cacheEntry.expiryTime < currentTime) {
                 it.remove();
                 lock.lock();
                 try {
-                    unlink(entry.getValue().node);
+                    unlink(cacheEntry.node);
                 } finally {
                     lock.unlock();
                 }

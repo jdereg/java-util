@@ -10,11 +10,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.TimeZone;
+import java.util.List;
+import java.util.function.Consumer;
+import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -163,5 +168,43 @@ public class TraverserTest
             assertEquals(1, fields.size());
             assertTrue(fields.containsKey(nField));
         }, null, false);
+    }
+
+    @Test
+    public void testPrivateTraverseConsumer() throws Exception
+    {
+        class Parent { Child child; }
+        class Child { }
+
+        Parent root = new Parent();
+        root.child = new Child();
+
+        Method m = Traverser.class.getDeclaredMethod("traverse", Object.class, Set.class, Consumer.class);
+        m.setAccessible(true);
+
+        Set<Class<?>> skip = new HashSet<>();
+        List<Object> visited = new ArrayList<>();
+        m.invoke(null, root, skip, (Consumer<Object>) visited::add);
+
+        assertEquals(2, visited.size());
+        assertTrue(visited.contains(root));
+        assertTrue(visited.contains(root.child));
+
+        visited.clear();
+        skip.add(Child.class);
+        m.invoke(null, root, skip, (Consumer<Object>) visited::add);
+        assertEquals(1, visited.size());
+        assertTrue(visited.contains(root));
+    }
+
+    @Test
+    public void testPrivateTraverseNullConsumer() throws Exception
+    {
+        Method m = Traverser.class.getDeclaredMethod("traverse", Object.class, Set.class, Consumer.class);
+        m.setAccessible(true);
+
+        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                () -> m.invoke(null, "root", null, null));
+        assertTrue(ex.getCause() instanceof IllegalArgumentException);
     }
 }

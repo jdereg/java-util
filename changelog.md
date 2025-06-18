@@ -26,6 +26,7 @@
 > * `StringUtilities.count()` uses a reliable substring search algorithm.
 > * Updated inner-class JSON test to match removal of synthetic `this$` fields.
 > * Fixed OverlappingMemberVariableNamesTest to use `com.cedarsoftware.io.TypeHolder`.
+> * Relaxed outer-reference assertion in OverlappingMemberVariableNamesTest.
 > * `StringUtilities.hashCodeIgnoreCase()` updates locale compatibility when the default locale changes.
 > * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
 > * `StringUtilities` adds `snakeToCamel`, `camelToSnake`, `isNumeric`, `repeat`, `reverse`, `padLeft`, and `padRight` helpers.

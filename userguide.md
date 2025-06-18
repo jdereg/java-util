@@ -2390,17 +2390,17 @@ See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if y
 
 ```java
 // Streaming
-public static void transfer(InputStream s, File f, TransferCallback cb) throws IOException
-public static void transfer(InputStream in, OutputStream out, TransferCallback cb) throws IOException
-public static void transfer(InputStream in, byte[] bytes) throws IOException
-public static void transfer(InputStream in, OutputStream out) throws IOException
-public static void transfer(File f, URLConnection c, TransferCallback cb) throws IOException
-public static void transfer(File file, OutputStream out) throws IOException
-public static void transfer(URLConnection c, File f, TransferCallback cb) throws IOException
-public static void transfer(URLConnection c, byte[] bytes) throws IOException
-public static byte[] inputStreamToBytes(InputStream in) throws IOException
-public static byte[] inputStreamToBytes(InputStream in, int maxSize) throws IOException
-public static InputStream getInputStream(URLConnection c) throws IOException
+public static void transfer(InputStream s, File f, TransferCallback cb) throws UncheckedIOException
+public static void transfer(InputStream in, OutputStream out, TransferCallback cb) throws UncheckedIOException
+public static void transfer(InputStream in, byte[] bytes) throws UncheckedIOException
+public static void transfer(InputStream in, OutputStream out) throws UncheckedIOException
+public static void transfer(File f, URLConnection c, TransferCallback cb) throws UncheckedIOException
+public static void transfer(File file, OutputStream out) throws UncheckedIOException
+public static void transfer(URLConnection c, File f, TransferCallback cb) throws UncheckedIOException
+public static void transfer(URLConnection c, byte[] bytes) throws UncheckedIOException
+public static byte[] inputStreamToBytes(InputStream in) throws UncheckedIOException
+public static byte[] inputStreamToBytes(InputStream in, int maxSize) throws UncheckedIOException
+public static InputStream getInputStream(URLConnection c) throws UncheckedIOException
     
 // Stream close    
 public static void close(XMLStreamReader reader)
@@ -2412,8 +2412,8 @@ public static void flush(Flushable f)
 public static void flush(XMLStreamWriter writer)
     
 // Compression     
-public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws IOException
-public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws IOException
+public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws UncheckedIOException
+public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws UncheckedIOException
 public static byte[] compressBytes(byte[] bytes)
 public static byte[] compressBytes(byte[] bytes, int offset, int len)
 public static byte[] uncompressBytes(byte[] bytes)
@@ -2499,11 +2499,7 @@ IOUtilities.flush(xmlStreamWriter);
 ```java
 // Convert InputStream to byte array
 byte[] bytes;
-try {
-    bytes = IOUtilities.inputStreamToBytes(inputStream);
-} catch (IOException e) {
-    // handle error
-}
+bytes = IOUtilities.inputStreamToBytes(inputStream);
 
 // Transfer exact number of bytes
 byte[] buffer = new byte[1024];

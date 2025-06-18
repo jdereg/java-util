@@ -470,21 +470,23 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
      * @return the wrapped entry, or null if the internal entry is null
      */
     private Entry<K, V> wrapEntry(Entry<Object, Object> internalEntry) {
-        if (internalEntry == null) return null;
+        if (internalEntry == null) {
+            return null;
+        }
+        final Object keyObj = internalEntry.getKey();
         return new Entry<K, V>() {
             @Override
             public K getKey() {
-                return unmaskNullKey(internalEntry.getKey());
+                return unmaskNullKey(keyObj);
             }
 
             @Override
             public V getValue() {
-                return unmaskNullValue(internalEntry.getValue());
+                return unmaskNullValue(internalMap.get(keyObj));
             }
 
             @Override
             public V setValue(V value) {
-                Object keyObj = internalEntry.getKey();
                 Object old = internalMap.put(keyObj, maskNullValue(value));
                 return unmaskNullValue(old);
             }

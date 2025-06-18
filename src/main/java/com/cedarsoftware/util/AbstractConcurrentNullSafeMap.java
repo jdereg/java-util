@@ -360,20 +360,20 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
                     @Override
                     public Entry<K, V> next() {
                         Entry<Object, Object> internalEntry = it.next();
+                        final Object keyObj = internalEntry.getKey();
                         return new Entry<K, V>() {
                             @Override
                             public K getKey() {
-                                return unmaskNullKey(internalEntry.getKey());
+                                return unmaskNullKey(keyObj);
                             }
 
                             @Override
                             public V getValue() {
-                                return unmaskNullValue(internalEntry.getValue());
+                                return unmaskNullValue(internalMap.get(keyObj));
                             }
 
                             @Override
                             public V setValue(V value) {
-                                Object keyObj = internalEntry.getKey();
                                 Object old = internalMap.put(keyObj, maskNullValue(value));
                                 return unmaskNullValue(old);
                             }

@@ -108,10 +108,10 @@ public class UrlUtilitiesTest {
         when(resp.getHeaderFieldKey(1)).thenReturn(UrlUtilities.SET_COOKIE);
         when(resp.getHeaderField(1)).thenReturn("ID=42; path=/");
         when(resp.getHeaderFieldKey(2)).thenReturn(null);
-        Map store = new ConcurrentHashMap();
+        Map<String, Map<String, Map<String, String>>> store = new ConcurrentHashMap<>();
         UrlUtilities.getCookies(resp, store);
         assertTrue(store.containsKey("example.com"));
-        Map cookie = (Map) ((Map) store.get("example.com")).get("ID");
+        Map<String, String> cookie = store.get("example.com").get("ID");
         assertEquals("42", cookie.get("ID"));
 
         HttpURLConnection req = mock(HttpURLConnection.class);
@@ -158,6 +158,14 @@ public class UrlUtilitiesTest {
         byte[] bytes = UrlUtilities.getContentFromUrl(url);
         assertEquals("hello", new String(bytes, StandardCharsets.UTF_8));
         assertEquals("hello", UrlUtilities.getContentFromUrlAsString(url));
+    }
+
+    @Test
+    void testCopyContentFromUrl() throws Exception {
+        String url = baseUrl + "/ok";
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        UrlUtilities.copyContentFromUrl(url, out);
+        assertEquals("hello", out.toString(StandardCharsets.UTF_8.name()));
     }
 
     @Test

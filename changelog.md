@@ -52,6 +52,7 @@
 > * Fixed `ExecutorAdditionalTest` to compare canonical paths for cross-platform consistency
 > * Fixed `Map.Entry.setValue()` for entries from `ConcurrentNavigableMapNullSafe` and `AbstractConcurrentNullSafeMap` to update the backing map
 > * Map.Entry views now fetch values from the backing map so `toString()` and `equals()` reflect updates
+> * `UrlInvocationHandler` Javadoc clarified deprecation and pointed to modern HTTP clients
 > * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal
 > * Fixed `TTLCache.purgeExpiredEntries()` NPE when removing expired entries
 > * Added unit tests for `GenericArrayTypeImpl.equals()` and `hashCode()`

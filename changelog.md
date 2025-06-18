@@ -3,8 +3,6 @@
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
 > * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the [README](README.md#redirecting-javautil-logging)
-> * Added unit tests for `ConcurrentNavigableSetNullSafe` convenience methods `subSet`, `headSet`, and `tailSet`
-> * Added tests for `ConcurrentNavigableSetNullSafe.comparator()`
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `CollectionConversions.arrayToCollection` now returns a type-safe collection
@@ -48,11 +46,9 @@
 > * Added Javadoc for several public APIs where it was missing.  Should be 100% now.
 > * JUnits added for all public APIs that did not have them (no longer relying on json-io to "cover" them). Should be 100% now.
 > * Custom map types under `com.cedarsoftware.io` allowed for `CompactMap`
-> * Added tests for `AbstractConcurrentNullSafeMap` entry equality and key set iterator removal
-> * Added JUnit tests for `ExceptionUtilities.safelyIgnoreException`
 > * Fixed `ExecutorAdditionalTest` to compare canonical paths for cross-platform consistency
 > * Updated `ConcurrentNavigableMapNullSafeEntryTest` to use `Optional.orElseThrow(NoSuchElementException::new)` for JDK 1.8 compatibility
-> * Added tests covering `Map.Entry` implementations returned by `ConcurrentNavigableMapNullSafe`
+> * Fixed `Map.Entry.setValue()` for entries from `ConcurrentNavigableMapNullSafe` and `AbstractConcurrentNullSafeMap` to update the backing map
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

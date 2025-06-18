@@ -55,4 +55,26 @@ class ConcurrentNavigableMapNullSafeEntryTest {
         assertEquals(Objects.hashCode(null) ^ Objects.hashCode(5), entry.hashCode());
         assertEquals("null=5", entry.toString());
     }
+
+    @Test
+    void testSetValueToNullAndToString() {
+        ConcurrentNavigableMapNullSafe<String, Integer> map = new ConcurrentNavigableMapNullSafe<>();
+        map.put("x", 7);
+
+        Map.Entry<String, Integer> entry = map.entrySet().iterator().next();
+
+        assertEquals(Integer.valueOf(7), entry.setValue(null));
+        assertNull(map.get("x"));
+        assertEquals("x=null", entry.toString());
+    }
+
+    @Test
+    void testEqualsWithNonEntryObject() {
+        ConcurrentNavigableMapNullSafe<String, Integer> map = new ConcurrentNavigableMapNullSafe<>();
+        map.put("key", 42);
+
+        Map.Entry<String, Integer> entry = map.entrySet().iterator().next();
+
+        assertNotEquals(entry, "notAnEntry");
+    }
 }

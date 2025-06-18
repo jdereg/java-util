@@ -262,13 +262,23 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
     @Override
     public Entry<K, V> pollFirstEntry() {
         Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).pollFirstEntry();
-        return wrapEntry(entry);
+        if (entry == null) {
+            return null;
+        }
+        K key = unmaskNullKey(entry.getKey());
+        V value = unmaskNullValue(entry.getValue());
+        return new AbstractMap.SimpleImmutableEntry<>(key, value);
     }
 
     @Override
     public Entry<K, V> pollLastEntry() {
         Entry<Object, Object> entry = ((ConcurrentSkipListMap<Object, Object>) internalMap).pollLastEntry();
-        return wrapEntry(entry);
+        if (entry == null) {
+            return null;
+        }
+        K key = unmaskNullKey(entry.getKey());
+        V value = unmaskNullValue(entry.getValue());
+        return new AbstractMap.SimpleImmutableEntry<>(key, value);
     }
 
     @Override

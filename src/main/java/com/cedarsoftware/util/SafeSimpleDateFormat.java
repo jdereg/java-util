@@ -113,7 +113,17 @@ public class SafeSimpleDateFormat extends DateFormat
 
     @Override
     public boolean equals(Object other) {
-        return getDateFormat(_format).equals(other);
+        if (this == other) {
+            return true;
+        }
+        if (other instanceof SafeSimpleDateFormat) {
+            SafeSimpleDateFormat that = (SafeSimpleDateFormat) other;
+            return getDateFormat(_format).equals(getDateFormat(that._format));
+        }
+        if (other instanceof SimpleDateFormat) {
+            return getDateFormat(_format).equals(other);
+        }
+        return false;
     }
 
     @Override

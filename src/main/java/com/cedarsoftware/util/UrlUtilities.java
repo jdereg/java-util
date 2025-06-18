@@ -82,7 +82,7 @@ public final class UrlUtilities
     private static volatile int defaultReadTimeout = 220000;
     private static volatile int defaultConnectTimeout = 45000;
 
-    private static final Pattern resPattern = Pattern.compile("^res\\:\\/\\/", Pattern.CASE_INSENSITIVE);
+    private static final Pattern resPattern = Pattern.compile("^res://", Pattern.CASE_INSENSITIVE);
     
     public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
     {

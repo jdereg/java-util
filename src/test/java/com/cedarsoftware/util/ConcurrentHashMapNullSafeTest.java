@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -357,6 +358,26 @@ class ConcurrentHashMapNullSafeTest {
         keys.remove(null);
         assertFalse(map.containsKey(null));
         assertEquals(1, map.size());
+    }
+
+    @Test
+    void testKeySetIteratorRemove() {
+        map.put("one", 1);
+        map.put("two", 2);
+        map.put(null, 100);
+
+        Iterator<String> it = map.keySet().iterator();
+        int expectedSize = 3;
+        while (it.hasNext()) {
+            String key = it.next();
+            it.remove();
+            expectedSize--;
+            assertFalse(map.containsKey(key));
+            assertEquals(expectedSize, map.size());
+        }
+
+        assertTrue(map.isEmpty());
+        assertTrue(map.entrySet().isEmpty());
     }
 
     @Test

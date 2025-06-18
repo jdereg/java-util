@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests for entrySet contains() and remove() methods inherited from
@@ -50,5 +51,23 @@ class AbstractConcurrentNullSafeMapEntrySetTest {
 
         assertTrue(entries.remove(new AbstractMap.SimpleEntry<>("b", null)));
         assertFalse(map.containsKey("b"));
+    }
+
+    @Test
+    void testEntrySetEntryEqualityHashAndToString() {
+        ConcurrentHashMapNullSafe<String, String> map = new ConcurrentHashMapNullSafe<>();
+        map.put("a", "alpha");
+        map.put(null, "nullVal");
+        map.put("b", null);
+
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            Map.Entry<String, String> other = new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue());
+            assertTrue(entry.equals(other));
+            assertEquals(other.hashCode(), entry.hashCode());
+
+            String expected = entry.getKey() + "=" + entry.getValue();
+            assertEquals(expected, entry.toString());
+            assertFalse(entry.toString().contains("@"));
+        }
     }
 }

@@ -82,6 +82,39 @@ public class StringUtilitiesTest
     {
         assertTrue(StringUtilities.isEmpty(s));
     }
+
+    private static Stream<Arguments> charSequencesWithOnlyWhitespace() {
+        return Stream.of(
+                Arguments.of(new StringBuilder("  ")),
+                Arguments.of(new StringBuffer("\t\n")),
+                Arguments.of(new Segment(" \r".toCharArray(), 0, 2))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("charSequencesWithOnlyWhitespace")
+    void testIsEmpty_whenCharSequenceHasOnlyWhitespace_returnsTrue(CharSequence cs) {
+        assertTrue(StringUtilities.isEmpty(cs));
+    }
+
+    private static Stream<Arguments> charSequencesWithContent() {
+        return Stream.of(
+                Arguments.of(new StringBuilder("a")),
+                Arguments.of(new StringBuffer("b")),
+                Arguments.of(new Segment("foo".toCharArray(), 0, 3))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("charSequencesWithContent")
+    void testIsEmpty_whenCharSequenceHasContent_returnsFalse(CharSequence cs) {
+        assertFalse(StringUtilities.isEmpty(cs));
+    }
+
+    @Test
+    void testIsEmpty_whenCharSequenceIsNull_returnsTrue() {
+        assertTrue(StringUtilities.isEmpty((CharSequence) null));
+    }
     
     @ParameterizedTest
     @MethodSource("stringsWithAllWhitespace")
@@ -324,6 +357,68 @@ public class StringUtilitiesTest
     void testEqualsIgnoreCase_whenStringsAreNotEqualIgnoringCase_returnsFalse(CharSequence one, CharSequence two)
     {
         assertThat(StringUtilities.equalsIgnoreCase(one, two)).isFalse();
+    }
+
+    private static Stream<Arguments> stringEquals_caseSensitive() {
+        return Stream.of(
+                Arguments.of(null, null),
+                Arguments.of("", ""),
+                Arguments.of("foo", "foo")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringEquals_caseSensitive")
+    void testEquals_whenStringsAreEqual_returnsTrue(String one, String two) {
+        assertTrue(StringUtilities.equals(one, two));
+    }
+
+    private static Stream<Arguments> stringNotEqual_caseSensitive() {
+        return Stream.of(
+                Arguments.of(null, ""),
+                Arguments.of("", null),
+                Arguments.of("foo", "bar"),
+                Arguments.of("foo", "FOO"),
+                Arguments.of("foo", "food")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringNotEqual_caseSensitive")
+    void testEquals_whenStringsAreNotEqual_returnsFalse(String one, String two) {
+        assertFalse(StringUtilities.equals(one, two));
+    }
+
+    private static Stream<Arguments> stringEquals_ignoreCase() {
+        return Stream.of(
+                Arguments.of(null, null),
+                Arguments.of("", ""),
+                Arguments.of("foo", "foo"),
+                Arguments.of("FOO", "foo"),
+                Arguments.of("fOo", "FoO")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringEquals_ignoreCase")
+    void testEqualsIgnoreCase_whenStringsEqualIgnoringCase_returnsTrue(String one, String two) {
+        assertTrue(StringUtilities.equalsIgnoreCase(one, two));
+    }
+
+    private static Stream<Arguments> stringNotEqual_ignoreCase() {
+        return Stream.of(
+                Arguments.of(null, ""),
+                Arguments.of("", null),
+                Arguments.of("foo", "bar"),
+                Arguments.of("foo", "food"),
+                Arguments.of(" foo", "foo")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringNotEqual_ignoreCase")
+    void testEqualsIgnoreCase_whenStringsNotEqualIgnoringCase_returnsFalse(String one, String two) {
+        assertFalse(StringUtilities.equalsIgnoreCase(one, two));
     }
 
     private static Stream<Arguments> charSequenceEquals_afterTrimCaseSensitive() {

@@ -8,6 +8,7 @@ repository.
 - End every file with a newline and use Unix line endings.
 - Keep code lines under **120 characters** where possible.
 - Follow standard Javadoc style for any new public APIs.
+- This library maintains JDK 1.8 source compatibility, please make sure to not use source constructs or expected JDK libary calls beyond JDK 1.8.
 
 ## Commit Messages
 - Start with a short imperative summary (max ~50 characters).

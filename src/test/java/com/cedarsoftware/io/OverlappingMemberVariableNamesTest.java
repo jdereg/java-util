@@ -1,6 +1,6 @@
 package com.cedarsoftware.io;
 
-import com.cedarsoftware.util.TypeHolder;
+import com.cedarsoftware.io.TypeHolder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,7 +40,7 @@ public class OverlappingMemberVariableNamesTest {
         String json = JsonIo.toJson(outer, null);
         assertFalse(json.contains("this$"), "Outer reference should not be serialized");
 
-        Outer x = JsonIo.toJava(json, null).asType(TypeHolder.of(Outer.class));
+        Outer x = JsonIo.toJava(json, null).asType(new TypeHolder<Outer>() {});
 
         assertEquals("Joe Outer", x.getName());
         assertEquals("Jane Inner", x.getFoo().getName());

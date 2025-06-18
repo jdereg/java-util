@@ -54,7 +54,8 @@ public class ExecutorAdditionalTest {
             String pwd = isWindows() ? "cd" : "pwd";
             ExecutionResult result = executor.execute(shellArray(pwd), null, dir);
             assertEquals(0, result.getExitCode());
-            assertEquals(dir.getAbsolutePath(), result.getOut().trim());
+            String actualPath = new File(result.getOut().trim()).getCanonicalPath();
+            assertEquals(dir.getCanonicalPath(), actualPath);
         } finally {
             if (dir != null) {
                 dir.delete();
@@ -80,10 +81,12 @@ public class ExecutorAdditionalTest {
         try {
             String pwd = isWindows() ? "cd" : "pwd";
             assertEquals(0, executor.exec(pwd, null, dir));
-            assertEquals(dir.getAbsolutePath(), executor.getOut().trim());
+            String outPath = new File(executor.getOut().trim()).getCanonicalPath();
+            assertEquals(dir.getCanonicalPath(), outPath);
 
             assertEquals(0, executor.exec(shellArray(pwd), null, dir));
-            assertEquals(dir.getAbsolutePath(), executor.getOut().trim());
+            outPath = new File(executor.getOut().trim()).getCanonicalPath();
+            assertEquals(dir.getCanonicalPath(), outPath);
         } finally {
             if (dir != null) {
                 dir.delete();

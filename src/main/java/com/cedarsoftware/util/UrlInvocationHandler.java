@@ -10,7 +10,7 @@ import java.net.HttpURLConnection;
  * {@link UrlInvocationHandlerStrategy}.  It was originally designed to
  * mimic Ajax-style requests via Java dynamic proxies.  The approach is no
  * longer maintained and is kept solely for backward compatibility with
- * legacy code such as n-cube.
+ * legacy code.
  * <p>
  * Modern applications should prefer {@code java.net.http.HttpClient} or
  * direct use of {@link UrlUtilities}.  This class may be removed in a

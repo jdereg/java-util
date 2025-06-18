@@ -529,4 +529,72 @@ class ConcurrentNavigableSetNullSafeTest {
         assertEquals(1, nullOnlySet.size());
         assertTrue(nullOnlySet.contains(null));
     }
+
+    @Test
+    void testSubSetDefault() {
+        NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();
+        set.add("apple");
+        set.add("banana");
+        set.add("cherry");
+        set.add("date");
+        set.add(null);
+
+        SortedSet<String> subSet = set.subSet("banana", "date");
+        assertEquals(2, subSet.size());
+        assertTrue(subSet.contains("banana"));
+        assertTrue(subSet.contains("cherry"));
+        assertFalse(subSet.contains("date"));
+        assertFalse(subSet.contains("apple"));
+        assertFalse(subSet.contains(null));
+
+        subSet.remove("banana");
+        assertFalse(set.contains("banana"));
+
+        subSet.add("blueberry");
+        assertTrue(set.contains("blueberry"));
+    }
+
+    @Test
+    void testHeadSetDefault() {
+        NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();
+        set.add("apple");
+        set.add("banana");
+        set.add("cherry");
+        set.add(null);
+
+        SortedSet<String> headSet = set.headSet("cherry");
+        assertEquals(2, headSet.size());
+        assertTrue(headSet.contains("apple"));
+        assertTrue(headSet.contains("banana"));
+        assertFalse(headSet.contains("cherry"));
+        assertFalse(headSet.contains(null));
+
+        headSet.remove("apple");
+        assertFalse(set.contains("apple"));
+
+        headSet.add("aardvark");
+        assertTrue(set.contains("aardvark"));
+    }
+
+    @Test
+    void testTailSetDefault() {
+        NavigableSet<String> set = new ConcurrentNavigableSetNullSafe<>();
+        set.add("apple");
+        set.add("banana");
+        set.add("cherry");
+        set.add(null);
+
+        SortedSet<String> tailSet = set.tailSet("banana");
+        assertEquals(3, tailSet.size());
+        assertTrue(tailSet.contains("banana"));
+        assertTrue(tailSet.contains("cherry"));
+        assertTrue(tailSet.contains(null));
+        assertFalse(tailSet.contains("apple"));
+
+        tailSet.remove(null);
+        assertFalse(set.contains(null));
+
+        tailSet.add("date");
+        assertTrue(set.contains("date"));
+    }
 }

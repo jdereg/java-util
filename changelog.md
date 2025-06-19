@@ -3,6 +3,7 @@
 > * `TTLCache` now recreates its background scheduler if used after `TTLCache.shutdown()`.
 > * Added test covering `CompactMapComparator.toString()`
 > * Added tests covering `MapUtilities.getMapStructureString()`
+> * Added tests covering `MapUtilities.detectMapOrdering()`
 > * `SafeSimpleDateFormat.equals()` now correctly handles other `SafeSimpleDateFormat` instances.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.

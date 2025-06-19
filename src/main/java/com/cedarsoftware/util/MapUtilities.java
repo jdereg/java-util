@@ -295,7 +295,9 @@ public class MapUtilities {
             return null;
         }
 
-        Set<Map<?, ?>> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        // Use identity semantics to avoid false cycle detection when wrapper
+        // maps implement equals() by delegating to their wrapped map.
+        Set<Map<?, ?>> seen = Collections.newSetFromMap(new IdentityHashMap<Map<?, ?>, Boolean>());
         Map<?, ?> current = map;
         List<String> path = new ArrayList<>();
         path.add(current.getClass().getSimpleName());
@@ -353,7 +355,9 @@ public class MapUtilities {
         if (map == null) return "null";
 
         List<String> structure = new ArrayList<>();
-        Set<Map<?, ?>> seen = new HashSet<>();
+        // Use identity semantics so wrapper maps that compare equal to their
+        // wrapped map do not trigger false cycles.
+        Set<Map<?, ?>> seen = Collections.newSetFromMap(new IdentityHashMap<Map<?, ?>, Boolean>());
         Map<?, ?> current = map;
 
         while (true) {

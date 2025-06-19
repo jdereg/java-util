@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -294,7 +295,7 @@ public class MapUtilities {
             return null;
         }
 
-        Set<Map<?, ?>> seen = new HashSet<>();
+        Set<Map<?, ?>> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         Map<?, ?> current = map;
         List<String> path = new ArrayList<>();
         path.add(current.getClass().getSimpleName());

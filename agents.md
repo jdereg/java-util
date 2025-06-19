@@ -14,6 +14,7 @@ repository.
 - Start with a short imperative summary (max ~50 characters).
 - Leave a blank line after the summary, then add further details if needed.
 - Don’t amend or rewrite existing commits.
+- Please list the Codex agent as the author so we can see that in the "Blame" view.  Also, please include the OpenAI model that Codex was using.  For email, just use some standard OpenAI corporate email.
 
 ## Testing
 - Run `mvn -q test` before committing to ensure tests pass.

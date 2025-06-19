@@ -176,6 +176,17 @@ public class UrlUtilitiesTest {
         UrlUtilities.readErrorResponse(conn);
     }
 
+    @Test
+    void testPublicStateSettingsApis() {
+        assert UrlUtilities.getDefaultConnectTimeout() != 369;
+        UrlUtilities.setDefaultConnectTimeout(369);
+        assert UrlUtilities.getDefaultConnectTimeout() == 369;
+
+        assert UrlUtilities.getDefaultReadTimeout() != 123;
+        UrlUtilities.setDefaultReadTimeout(123);
+        assert UrlUtilities.getDefaultReadTimeout() == 123;
+    }
+
     private static class DummyHttpConnection extends HttpURLConnection {
         boolean disconnected;
         protected DummyHttpConnection(URL u) { super(u); }

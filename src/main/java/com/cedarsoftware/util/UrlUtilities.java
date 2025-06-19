@@ -10,7 +10,9 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import com.cedarsoftware.util.LoggingConfig;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,8 +65,7 @@ import java.util.regex.Pattern;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class UrlUtilities
-{
+public final class UrlUtilities {
     private static final AtomicReference<String> globalUserAgent = new AtomicReference<>();
     private static final AtomicReference<String> globalReferrer = new AtomicReference<>();
     public static final ThreadLocal<String> userAgent = new ThreadLocal<>();
@@ -83,182 +84,137 @@ public final class UrlUtilities
     private static volatile int defaultConnectTimeout = 45000;
 
     private static final Pattern resPattern = Pattern.compile("^res://", Pattern.CASE_INSENSITIVE);
-    
-    public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
-    {
-            new X509TrustManager()
-            {
-                public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException
-                {
-                }
-                public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException
-                {
-                }
-                public X509Certificate[] getAcceptedIssuers()
-                {
-                    return null;
-                }
-            }
-    };
 
-    public static final HostnameVerifier NAIVE_VERIFIER = new HostnameVerifier()
-    {
-        public boolean verify(String s, SSLSession sslSession)
-        {
-            return true;
-        }
-    };
+    public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
+            {
+                    new X509TrustManager() {
+                        public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+                        }
+
+                        public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+                        }
+
+                        public X509Certificate[] getAcceptedIssuers() {
+                            return null;
+                        }
+                    }
+            };
+
+    public static final HostnameVerifier NAIVE_VERIFIER = (s, sslSession) -> true;
 
     protected static SSLSocketFactory naiveSSLSocketFactory;
     private static final Logger LOG = Logger.getLogger(UrlUtilities.class.getName());
-    static { LoggingConfig.init(); }
 
-    static
-    {
-        try
-        {
+    static {
+        LoggingConfig.init();
+    }
+
+    static {
+        try {
             // Default new HTTP connections to follow redirects
             HttpURLConnection.setFollowRedirects(true);
+        } catch (Exception ignored) {
         }
-        catch (Exception ignored) {}
 
-        try
-        {
+        try {
             //  could be other algorithms (prob need to calculate this another way.
             final SSLContext sslContext = SSLContext.getInstance("SSL");
             sslContext.init(null, NAIVE_TRUST_MANAGER, new SecureRandom());
             naiveSSLSocketFactory = sslContext.getSocketFactory();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             LOG.log(Level.WARNING, e.getMessage(), e);
         }
     }
 
-    private UrlUtilities()
-    {
+    private UrlUtilities() {
         super();
     }
 
-    public static void clearGlobalUserAgent()
-    {
+    public static void clearGlobalUserAgent() {
         globalUserAgent.set(null);
     }
 
-    public static void clearGlobalReferrer()
-    {
+    public static void clearGlobalReferrer() {
         globalReferrer.set(null);
     }
 
-    public static void setReferrer(String referer)
-    {
-        if (StringUtilities.isEmpty(globalReferrer.get()))
-        {
+    public static void setReferrer(String referer) {
+        if (StringUtilities.isEmpty(globalReferrer.get())) {
             globalReferrer.set(referer);
         }
         referrer.set(referer);
     }
 
-    public static String getReferrer()
-    {
+    public static String getReferrer() {
         String localReferrer = referrer.get();
-        if (StringUtilities.hasContent(localReferrer))
-        {
+        if (StringUtilities.hasContent(localReferrer)) {
             return localReferrer;
         }
         return globalReferrer.get();
     }
 
-    public static void setUserAgent(String agent)
-    {
-        if (StringUtilities.isEmpty(globalUserAgent.get()))
-        {
+    public static void setUserAgent(String agent) {
+        if (StringUtilities.isEmpty(globalUserAgent.get())) {
             globalUserAgent.set(agent);
         }
         userAgent.set(agent);
     }
 
-    public static String getUserAgent()
-    {
+    public static String getUserAgent() {
         String localAgent = userAgent.get();
-        if (StringUtilities.hasContent(localAgent))
-        {
+        if (StringUtilities.hasContent(localAgent)) {
             return localAgent;
         }
         return globalUserAgent.get();
     }
 
-    public static void setDefaultConnectTimeout(int millis)
-    {
+    public static void setDefaultConnectTimeout(int millis) {
         defaultConnectTimeout = millis;
     }
 
-    public static void setDefaultReadTimeout(int millis)
-    {
+    public static void setDefaultReadTimeout(int millis) {
         defaultReadTimeout = millis;
     }
 
-    public static int getDefaultConnectTimeout()
-    {
+    public static int getDefaultConnectTimeout() {
         return defaultConnectTimeout;
     }
 
-    public static int getDefaultReadTimeout()
-    {
+    public static int getDefaultReadTimeout() {
         return defaultReadTimeout;
     }
 
-    public static void readErrorResponse(URLConnection c)
-    {
-        if (c == null)
-        {
+    public static void readErrorResponse(URLConnection c) {
+        if (c == null) {
             return;
         }
         InputStream in = null;
-        try
-        {
+        try {
             ((HttpURLConnection) c).getResponseCode();
             in = ((HttpURLConnection) c).getErrorStream();
-            if (in == null)
-            {
+            if (in == null) {
                 return;
             }
             // read the response body
             ByteArrayOutputStream out = new ByteArrayOutputStream(1024);
             int count;
             byte[] bytes = new byte[8192];
-            while ((count = in.read(bytes)) != -1)
-            {
+            while ((count = in.read(bytes)) != -1) {
                 out.write(bytes, 0, count);
             }
-        }
-        catch (ConnectException e)
-        {
+        } catch (Exception e) {
             LOG.log(Level.WARNING, e.getMessage(), e);
-        }
-        catch (IOException e)
-        {
-            LOG.log(Level.WARNING, e.getMessage(), e);
-        }
-        catch (Exception e)
-        {
-            LOG.log(Level.WARNING, e.getMessage(), e);
-        }
-        finally
-        {
+        } finally {
             IOUtilities.close(in);
         }
     }
 
-    public static void disconnect(HttpURLConnection c)
-    {
-        if (c != null)
-        {
-            try
-            {
+    public static void disconnect(HttpURLConnection c) {
+        if (c != null) {
+            try {
                 c.disconnect();
+            } catch (Exception ignored) {
             }
-            catch (Exception ignored) {}
         }
     }
 
@@ -272,37 +228,30 @@ public final class UrlUtilities
      * @param conn a java.net.URLConnection - must be open, or IOException will
      *             be thrown
      */
-    public static void getCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store)
-    {
+    public static void getCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store) {
         // let's determine the domain from where these cookies are being sent
         String domain = getCookieDomainFromHost(conn.getURL().getHost());
         Map<String, Map<String, String>> domainStore; // this is where we will store cookies for this domain
 
         // now let's check the store to see if we have an entry for this domain
-        if (store.containsKey(domain))
-        {
+        if (store.containsKey(domain)) {
             // we do, so lets retrieve it from the store
             domainStore = store.get(domain);
-        }
-        else
-        {
+        } else {
             // we don't, so let's create it and put it in the store
             domainStore = new ConcurrentHashMap<>();
             store.put(domain, domainStore);
         }
 
-        if (domainStore.containsKey("JSESSIONID"))
-        {
+        if (domainStore.containsKey("JSESSIONID")) {
             // No need to continually get the JSESSIONID (and set-cookies header) as this does not change throughout the session.
             return;
         }
 
         // OK, now we are ready to get the cookies out of the URLConnection
         String headerName;
-        for (int i = 1; (headerName = conn.getHeaderFieldKey(i)) != null; i++)
-        {
-            if (headerName.equalsIgnoreCase(SET_COOKIE))
-            {
+        for (int i = 1; (headerName = conn.getHeaderFieldKey(i)) != null; i++) {
+            if (headerName.equalsIgnoreCase(SET_COOKIE)) {
                 Map<String, String> cookie = new ConcurrentHashMap<>();
                 StringTokenizer st = new StringTokenizer(conn.getHeaderField(i), COOKIE_VALUE_DELIMITER);
 
@@ -310,8 +259,7 @@ public final class UrlUtilities
                 // in the string is the cookie name and value, so let's handle
                 // them as a special case:
 
-                if (st.hasMoreTokens())
-                {
+                if (st.hasMoreTokens()) {
                     String token = st.nextToken();
                     String key = token.substring(0, token.indexOf(NAME_VALUE_SEPARATOR)).trim();
                     String value = token.substring(token.indexOf(NAME_VALUE_SEPARATOR) + 1);
@@ -319,12 +267,10 @@ public final class UrlUtilities
                     cookie.put(key, value);
                 }
 
-                while (st.hasMoreTokens())
-                {
+                while (st.hasMoreTokens()) {
                     String token = st.nextToken();
                     int pos = token.indexOf(NAME_VALUE_SEPARATOR);
-                    if (pos != -1)
-                    {
+                    if (pos != -1) {
                         String key = token.substring(0, pos).toLowerCase().trim();
                         String value = token.substring(token.indexOf(NAME_VALUE_SEPARATOR) + 1);
                         cookie.put(key, value);
@@ -344,88 +290,70 @@ public final class UrlUtilities
      * @param conn a java.net.URLConnection - must NOT be open, or IOException will be thrown
      * @throws IOException Thrown if conn has already been opened.
      */
-    public static void setCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store) throws IOException
-    {
+    public static void setCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store) throws IOException {
         // let's determine the domain and path to retrieve the appropriate cookies
         URL url = conn.getURL();
         String domain = getCookieDomainFromHost(url.getHost());
         String path = url.getPath();
 
         Map<String, Map<String, String>> domainStore = store.get(domain);
-        if (domainStore == null)
-        {
+        if (domainStore == null) {
             return;
         }
         StringBuilder cookieStringBuffer = new StringBuilder();
         Iterator<String> cookieNames = domainStore.keySet().iterator();
 
-        while (cookieNames.hasNext())
-        {
+        while (cookieNames.hasNext()) {
             String cookieName = cookieNames.next();
             Map<String, String> cookie = domainStore.get(cookieName);
             // check cookie to ensure path matches and cookie is not expired
             // if all is cool, add cookie to header string
-            if (comparePaths((String) cookie.get(PATH), path) && isNotExpired((String) cookie.get(EXPIRES)))
-            {
+            if (comparePaths((String) cookie.get(PATH), path) && isNotExpired((String) cookie.get(EXPIRES))) {
                 cookieStringBuffer.append(cookieName);
                 cookieStringBuffer.append('=');
                 cookieStringBuffer.append((String) cookie.get(cookieName));
-                if (cookieNames.hasNext())
-                {
+                if (cookieNames.hasNext()) {
                     cookieStringBuffer.append(SET_COOKIE_SEPARATOR);
                 }
             }
         }
-        try
-        {
+        try {
             conn.setRequestProperty(COOKIE, cookieStringBuffer.toString());
-        }
-        catch (IllegalStateException e)
-        {
+        } catch (IllegalStateException e) {
             throw new IOException("Illegal State! Cookies cannot be set on a URLConnection that is already connected. "
                     + "Only call setCookies(java.net.URLConnection) AFTER calling java.net.URLConnection.connect().");
         }
     }
 
-    public static String getCookieDomainFromHost(String host)
-    {
-        if (host == null)
-        {
+    public static String getCookieDomainFromHost(String host) {
+        if (host == null) {
             return null;
         }
         String[] parts = host.split("\\.");
-        if (parts.length <= 2)
-        {
+        if (parts.length <= 2) {
             return host;
         }
         String tld = parts[parts.length - 1];
-        if (tld.length() == 2 && parts.length >= 3)
-        {
+        if (tld.length() == 2 && parts.length >= 3) {
             return parts[parts.length - 3] + '.' + parts[parts.length - 2] + '.' + tld;
         }
         return parts[parts.length - 2] + '.' + tld;
     }
 
-    static boolean isNotExpired(String cookieExpires)
-    {
-        if (cookieExpires == null)
-        {
+    private static boolean isNotExpired(String cookieExpires) {
+        if (cookieExpires == null) {
             return true;
         }
 
-        try
-        {
+        try {
             return new Date().compareTo(DATE_FORMAT.parse(cookieExpires)) <= 0;
-        }
-        catch (ParseException e)
-        {
+        } catch (ParseException e) {
             LOG.log(Level.WARNING, e.getMessage(), e);
             return false;
         }
     }
 
-    static boolean comparePaths(String cookiePath, String targetPath)
-    {
+    private static boolean comparePaths(String cookiePath, String targetPath) {
         return cookiePath == null || "/".equals(cookiePath) || targetPath.regionMatches(0, cookiePath, 0, cookiePath.length());
     }
 
@@ -437,8 +365,7 @@ public final class UrlUtilities
      * @param url URL to hit
      * @return UTF-8 String read from URL or null in the case of error.
      */
-    public static String getContentFromUrlAsString(String url)
-    {
+    public static String getContentFromUrlAsString(String url) {
         return getContentFromUrlAsString(url, null, null, false);
     }
 
@@ -447,12 +374,11 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * String.
      *
-     * @param url URL to hit
+     * @param url           URL to hit
      * @param allowAllCerts true to not verify certificates
      * @return UTF-8 String read from URL or null in the case of error.
      */
-    public static String getContentFromUrlAsString(URL url, boolean allowAllCerts)
-    {
+    public static String getContentFromUrlAsString(URL url, boolean allowAllCerts) {
         return getContentFromUrlAsString(url, null, null, allowAllCerts);
     }
 
@@ -461,14 +387,13 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * String.
      *
-     * @param url URL to hit
-     * @param inCookies Map of session cookies (or null if not needed)
-     * @param outCookies Map of session cookies (or null if not needed)
+     * @param url           URL to hit
+     * @param inCookies     Map of session cookies (or null if not needed)
+     * @param outCookies    Map of session cookies (or null if not needed)
      * @param trustAllCerts if true, SSL connection will always be trusted.
      * @return String of content fetched from URL.
      */
-    public static String getContentFromUrlAsString(String url, Map inCookies, Map outCookies, boolean trustAllCerts)
-    {
+    public static String getContentFromUrlAsString(String url, Map inCookies, Map outCookies, boolean trustAllCerts) {
         byte[] bytes = getContentFromUrl(url, inCookies, outCookies, trustAllCerts);
         return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
     }
@@ -478,14 +403,13 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * String.
      *
-     * @param url URL to hit
-     * @param inCookies Map of session cookies (or null if not needed)
-     * @param outCookies Map of session cookies (or null if not needed)
+     * @param url           URL to hit
+     * @param inCookies     Map of session cookies (or null if not needed)
+     * @param outCookies    Map of session cookies (or null if not needed)
      * @param trustAllCerts if true, SSL connection will always be trusted.
      * @return String of content fetched from URL.
      */
-    public static String getContentFromUrlAsString(URL url, Map inCookies, Map outCookies, boolean trustAllCerts)
-    {
+    public static String getContentFromUrlAsString(URL url, Map inCookies, Map outCookies, boolean trustAllCerts) {
         byte[] bytes = getContentFromUrl(url, inCookies, outCookies, trustAllCerts);
         return bytes == null ? null : StringUtilities.createString(bytes, "UTF-8");
     }
@@ -499,8 +423,7 @@ public final class UrlUtilities
      * @param url URL to hit
      * @return byte[] read from URL or null in the case of error.
      */
-    public static byte[] getContentFromUrl(String url)
-    {
+    public static byte[] getContentFromUrl(String url) {
         return getContentFromUrl(url, null, null, false);
     }
 
@@ -512,8 +435,7 @@ public final class UrlUtilities
      * @param url URL to hit
      * @return byte[] read from URL or null in the case of error.
      */
-    public static byte[] getContentFromUrl(URL url, boolean allowAllCerts)
-    {
+    public static byte[] getContentFromUrl(URL url, boolean allowAllCerts) {
         return getContentFromUrl(url, null, null, allowAllCerts);
     }
 
@@ -528,10 +450,9 @@ public final class UrlUtilities
      * @param ignoreSec if true, SSL connection will always be trusted.
      * @return byte[] of content fetched from URL.
      */
-    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, boolean allowAllCerts)
-    {
+    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies, boolean allowAllCerts) {
         try {
-            return getContentFromUrl(getActualUrl(url),inCookies, outCookies, allowAllCerts);
+            return getContentFromUrl(getActualUrl(url), inCookies, outCookies, allowAllCerts);
         } catch (Exception e) {
             LOG.log(Level.WARNING, e.getMessage(), e);
             return null;
@@ -543,17 +464,15 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
      *
-     * @param url URL to hit
-     * @param inCookies Map of session cookies (or null if not needed)
-     * @param outCookies Map of session cookies (or null if not needed)
+     * @param url           URL to hit
+     * @param inCookies     Map of session cookies (or null if not needed)
+     * @param outCookies    Map of session cookies (or null if not needed)
      * @param allowAllCerts override certificate validation?
      * @return byte[] of content fetched from URL.
      */
-    public static byte[] getContentFromUrl(URL url, Map inCookies, Map outCookies, boolean allowAllCerts)
-    {
+    public static byte[] getContentFromUrl(URL url, Map inCookies, Map outCookies, boolean allowAllCerts) {
         URLConnection c = null;
-        try
-        {
+        try {
             c = getConnection(url, inCookies, true, false, false, allowAllCerts);
 
             FastByteArrayOutputStream out = new FastByteArrayOutputStream(65536);
@@ -561,57 +480,42 @@ public final class UrlUtilities
             IOUtilities.transfer(stream, out);
             stream.close();
 
-            if (outCookies != null)
-            {   // [optional] Fetch cookies from server and update outCookie Map (pick up JSESSIONID, other headers)
+            if (outCookies != null) {   // [optional] Fetch cookies from server and update outCookie Map (pick up JSESSIONID, other headers)
                 getCookies(c, outCookies);
             }
 
             return out.toByteArray();
-        }
-        catch (SSLHandshakeException e)
-        {   // Don't read error response.  it will just cause another exception.
+        } catch (SSLHandshakeException e) {   // Don't read error response.  it will just cause another exception.
             LOG.log(Level.WARNING, e.getMessage(), e);
             return null;
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             readErrorResponse(c);
             LOG.log(Level.WARNING, e.getMessage(), e);
             return null;
-        }
-        finally
-        {
-            if (c instanceof HttpURLConnection)
-            {
-                disconnect((HttpURLConnection)c);
+        } finally {
+            if (c instanceof HttpURLConnection) {
+                disconnect((HttpURLConnection) c);
             }
         }
     }
 
-    public static void copyContentFromUrl(String url, java.io.OutputStream out) throws IOException
-    {
+    public static void copyContentFromUrl(String url, java.io.OutputStream out) throws IOException {
         copyContentFromUrl(getActualUrl(url), out, null, null, false);
     }
 
-    public static void copyContentFromUrl(URL url, java.io.OutputStream out, Map<String, Map<String, Map<String, String>>> inCookies, Map<String, Map<String, Map<String, String>>> outCookies, boolean allowAllCerts) throws IOException
-    {
+    public static void copyContentFromUrl(URL url, java.io.OutputStream out, Map<String, Map<String, Map<String, String>>> inCookies, Map<String, Map<String, Map<String, String>>> outCookies, boolean allowAllCerts) throws IOException {
         URLConnection c = null;
-        try
-        {
+        try {
             c = getConnection(url, inCookies, true, false, false, allowAllCerts);
             InputStream stream = IOUtilities.getInputStream(c);
             IOUtilities.transfer(stream, out);
             stream.close();
-            if (outCookies != null)
-            {
+            if (outCookies != null) {
                 getCookies(c, outCookies);
             }
-        }
-        finally
-        {
-            if (c instanceof HttpURLConnection)
-            {
-                disconnect((HttpURLConnection)c);
+        } finally {
+            if (c instanceof HttpURLConnection) {
+                disconnect((HttpURLConnection) c);
             }
         }
     }
@@ -621,49 +525,45 @@ public final class UrlUtilities
      * the passed in server, fetch the requested content, and return it as a
      * byte[].
      *
-     * @param url URL to hit
-     * @param inCookies Map of session cookies (or null if not needed)
+     * @param url        URL to hit
+     * @param inCookies  Map of session cookies (or null if not needed)
      * @param outCookies Map of session cookies (or null if not needed)
      * @return byte[] of content fetched from URL.
      */
-    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies)
-    {
+    public static byte[] getContentFromUrl(String url, Map inCookies, Map outCookies) {
         return getContentFromUrl(url, inCookies, outCookies, false);
     }
 
     /**
-     * @param input boolean indicating whether this connection will be used for input
+     * @param input  boolean indicating whether this connection will be used for input
      * @param output boolean indicating whether this connection will be used for output
-     * @param cache boolean allow caching (be careful setting this to true for non-static retrievals).
+     * @param cache  boolean allow caching (be careful setting this to true for non-static retrievals).
      * @return URLConnection established URL connection.
      */
-    public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException
-    {
+    public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException {
         return getConnection(getActualUrl(url), null, input, output, cache, false);
     }
 
     /**
-     *
-     * @param input boolean indicating whether this connection will be used for input
+     * @param input  boolean indicating whether this connection will be used for input
      * @param output boolean indicating whether this connection will be used for output
-     * @param cache boolean allow caching (be careful setting this to true for non-static retrievals).
+     * @param cache  boolean allow caching (be careful setting this to true for non-static retrievals).
      * @return URLConnection established URL connection.
      */
-    public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) throws IOException
-    {
+    public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) throws IOException {
         return getConnection(url, null, input, output, cache, false);
     }
 
     /**
-     *  Gets a connection from a url.  All getConnection calls should go through this code.
+     * Gets a connection from a url.  All getConnection calls should go through this code.
+     *
      * @param inCookies Supply cookie Map (received from prior setCookies calls from server)
-     * @param input boolean indicating whether this connection will be used for input
-     * @param output boolean indicating whether this connection will be used for output
-     * @param cache boolean allow caching (be careful setting this to true for non-static retrievals).
+     * @param input     boolean indicating whether this connection will be used for input
+     * @param output    boolean indicating whether this connection will be used for output
+     * @param cache     boolean allow caching (be careful setting this to true for non-static retrievals).
      * @return URLConnection established URL connection.
      */
-    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) throws IOException
-    {
+    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) throws IOException {
         URLConnection c = url.openConnection();
         c.setRequestProperty("Accept-Encoding", "gzip, deflate");
         c.setAllowUserInteraction(false);
@@ -674,49 +574,39 @@ public final class UrlUtilities
         c.setConnectTimeout(defaultConnectTimeout);
 
         String ref = getReferrer();
-        if (StringUtilities.hasContent(ref))
-        {
+        if (StringUtilities.hasContent(ref)) {
             c.setRequestProperty("Referer", ref);
         }
         String agent = getUserAgent();
-        if (StringUtilities.hasContent(agent))
-        {
+        if (StringUtilities.hasContent(agent)) {
             c.setRequestProperty("User-Agent", agent);
         }
 
-        if (c instanceof HttpURLConnection)
-        {   // setFollowRedirects is a static (global) method / setting - resetting it in case other code changed it?
+        if (c instanceof HttpURLConnection) {   // setFollowRedirects is a static (global) method / setting - resetting it in case other code changed it?
             HttpURLConnection.setFollowRedirects(true);
         }
 
-        if (c instanceof HttpsURLConnection && allowAllCerts)
-        {
-            try
-            {
+        if (c instanceof HttpsURLConnection && allowAllCerts) {
+            try {
                 setNaiveSSLSocketFactory((HttpsURLConnection) c);
-            }
-            catch(Exception e)
-            {
+            } catch (Exception e) {
                 LOG.log(Level.WARNING, e.getMessage(), e);
             }
         }
 
         // Set cookies in the HTTP header
-        if (inCookies != null)
-        {   // [optional] place cookies (JSESSIONID) into HTTP headers
+        if (inCookies != null) {   // [optional] place cookies (JSESSIONID) into HTTP headers
             setCookies(c, inCookies);
         }
         return c;
     }
 
-    private static void setNaiveSSLSocketFactory(HttpsURLConnection sc)
-    {
+    private static void setNaiveSSLSocketFactory(HttpsURLConnection sc) {
         sc.setSSLSocketFactory(naiveSSLSocketFactory);
         sc.setHostnameVerifier(NAIVE_VERIFIER);
     }
 
-    public static URL getActualUrl(String url) throws MalformedURLException
-    {
+    public static URL getActualUrl(String url) throws MalformedURLException {
         Matcher m = resPattern.matcher(url);
         return m.find() ? ClassUtilities.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
     }

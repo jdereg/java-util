@@ -236,9 +236,6 @@ public final class SystemUtilities
     public static List<NetworkInfo> getNetworkInterfaces() throws SocketException {
         List<NetworkInfo> interfaces = new ArrayList<>();
         Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
-        if (en == null) {
-            return interfaces;
-        }
 
         while (en.hasMoreElements()) {
             NetworkInterface ni = en.nextElement();

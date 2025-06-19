@@ -238,7 +238,7 @@ public class CollectionUtilities {
     }
 
     /**
-     * Determines whether the specified class represents an synchronized collection type.
+     * Determines whether the specified class represents a synchronized collection type.
      * <p>
      * This method checks if the provided {@code targetType} is assignable to the class of
      * synchronized collections. It is commonly used to identify whether a given class type

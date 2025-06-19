@@ -120,7 +120,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
- *   <li>Heap ByteBuffer for efficient memory use</li>
+     *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -152,7 +152,7 @@ public class EncryptionUtilities {
      *   <li>Aligns with SSD block sizes</li>
      * </ul>
      *
-     * @param in InputStream to read from
+     * @param in     InputStream to read from
      * @param digest MessageDigest to use for hashing
      * @return hexadecimal string of the hash value
      * @throws IOException if an I/O error occurs
@@ -180,13 +180,13 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
- *   <li>Heap ByteBuffer for efficient memory use</li>
+     *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
      *
      * @param file the file to hash
- * @return hexadecimal string of the SHA-1 hash, or null if the file cannot be read
+     * @return hexadecimal string of the SHA-1 hash, or null if the file cannot be read
      */
     public static String fastSHA1(File file) {
         try (InputStream in = Files.newInputStream(file.toPath())) {
@@ -207,7 +207,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
- *   <li>Heap ByteBuffer for efficient memory use</li>
+     *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -253,7 +253,7 @@ public class EncryptionUtilities {
      * <p>
      * This implementation uses:
      * <ul>
- *   <li>Heap ByteBuffer for efficient memory use</li>
+     *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
      * </ul>
@@ -268,8 +268,6 @@ public class EncryptionUtilities {
             }
             // Fallback for non-file input streams (rare, but possible with custom filesystem providers)
             return calculateStreamHash(in, getSHA512Digest());
-        } catch (NoSuchFileException e) {
-            return null;
         } catch (IOException e) {
             return null;
         }
@@ -319,12 +317,12 @@ public class EncryptionUtilities {
      * This implementation uses:
      * <ul>
      *   <li>64KB buffer size optimized for modern storage systems</li>
- *   <li>Heap ByteBuffer for efficient memory use</li>
+     *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>Efficient buffer management</li>
      * </ul>
      *
      * @param channel FileChannel to read from
-     * @param digest MessageDigest to use for hashing
+     * @param digest  MessageDigest to use for hashing
      * @return hexadecimal string of the hash value
      * @throws IOException if an I/O error occurs
      */
@@ -528,7 +526,7 @@ public class EncryptionUtilities {
      * The key is derived using MD5 and truncated to the specified bit length.
      * This legacy method is retained for backward compatibility.
      *
-     * @param key the password to derive the key from
+     * @param key        the password to derive the key from
      * @param bitsNeeded the required key length in bits (typically 128, 192, or 256)
      * @return byte array containing the derived key
      * @deprecated Use {@link #deriveKey(String, byte[], int)} for stronger security
@@ -567,7 +565,7 @@ public class EncryptionUtilities {
      * <p>
      * Uses CBC mode with PKCS5 padding and IV derived from the key.
      *
-     * @param key the encryption/decryption key
+     * @param key  the encryption/decryption key
      * @param mode Cipher.ENCRYPT_MODE or Cipher.DECRYPT_MODE
      * @return configured Cipher instance
      * @throws Exception if cipher creation fails
@@ -583,7 +581,7 @@ public class EncryptionUtilities {
      * <p>
      * Uses CBC mode with PKCS5 padding and IV derived from the key.
      *
-     * @param key SecretKeySpec for encryption/decryption
+     * @param key  SecretKeySpec for encryption/decryption
      * @param mode Cipher.ENCRYPT_MODE or Cipher.DECRYPT_MODE
      * @return configured Cipher instance
      * @throws Exception if cipher creation fails
@@ -604,7 +602,7 @@ public class EncryptionUtilities {
     /**
      * Encrypts a string using AES-128.
      *
-     * @param key encryption key
+     * @param key     encryption key
      * @param content string to encrypt
      * @return hexadecimal string of encrypted data
      * @throws IllegalStateException if encryption fails
@@ -640,7 +638,7 @@ public class EncryptionUtilities {
     /**
      * Encrypts a byte array using AES-128.
      *
-     * @param key encryption key
+     * @param key     encryption key
      * @param content bytes to encrypt
      * @return hexadecimal string of encrypted data
      * @throws IllegalStateException if encryption fails
@@ -675,7 +673,7 @@ public class EncryptionUtilities {
     /**
      * Decrypts a hexadecimal string of encrypted data to its original string form.
      *
-     * @param key decryption key
+     * @param key    decryption key
      * @param hexStr hexadecimal string of encrypted data
      * @return decrypted string
      * @throws IllegalStateException if decryption fails
@@ -708,7 +706,7 @@ public class EncryptionUtilities {
     /**
      * Decrypts a hexadecimal string of encrypted data to its original byte array form.
      *
-     * @param key decryption key
+     * @param key    decryption key
      * @param hexStr hexadecimal string of encrypted data
      * @return decrypted byte array
      * @throws IllegalStateException if decryption fails
@@ -741,7 +739,7 @@ public class EncryptionUtilities {
     /**
      * Calculates a hash of a byte array using the specified MessageDigest.
      *
-     * @param d MessageDigest to use
+     * @param d     MessageDigest to use
      * @param bytes data to hash
      * @return hexadecimal string of the hash value, or null if input is null
      */

@@ -13,8 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class MapUtilitiesUnderlyingMapTest {
 
     private Map<?, ?> invoke(Map<?, ?> map) throws Exception {
-        Method m = MapUtilities.class.getDeclaredMethod("getUnderlyingMap", Map.class);
-        m.setAccessible(true);
+        Method m = ReflectionUtils.getMethod(MapUtilities.class, "getUnderlyingMap", Map.class);
         return (Map<?, ?>) m.invoke(null, map);
     }
 
@@ -27,12 +26,10 @@ public class MapUtilitiesUnderlyingMapTest {
     public void detectsCircularDependency() throws Exception {
         CaseInsensitiveMap<String, String> ci = new CaseInsensitiveMap<>();
         TrackingMap<String, String> tracking = new TrackingMap<>(ci);
-        Field mapField = CaseInsensitiveMap.class.getDeclaredField("map");
-        mapField.setAccessible(true);
+        Field mapField = ReflectionUtils.getField(CaseInsensitiveMap.class, "map");
         mapField.set(ci, tracking);
 
-        Method m = MapUtilities.class.getDeclaredMethod("getUnderlyingMap", Map.class);
-        m.setAccessible(true);
+        Method m = ReflectionUtils.getMethod(MapUtilities.class, "getUnderlyingMap", Map.class);
         InvocationTargetException ex = assertThrows(InvocationTargetException.class, () -> m.invoke(null, ci));
         assertTrue(ex.getCause() instanceof IllegalArgumentException);
     }
@@ -41,8 +38,7 @@ public class MapUtilitiesUnderlyingMapTest {
     public void unwrapsCompactMapWhenMap() throws Exception {
         CompactMap<String, String> compact = new CompactMap<>();
         Map<String, String> inner = new HashMap<>();
-        Field valField = CompactMap.class.getDeclaredField("val");
-        valField.setAccessible(true);
+        Field valField = ReflectionUtils.getField(CompactMap.class, "val");
         valField.set(compact, inner);
 
         assertSame(inner, invoke(compact));
@@ -57,8 +53,7 @@ public class MapUtilitiesUnderlyingMapTest {
     @Test
     public void unwrapsCaseInsensitiveMap() throws Exception {
         CaseInsensitiveMap<String, String> ci = new CaseInsensitiveMap<>();
-        Field mapField = CaseInsensitiveMap.class.getDeclaredField("map");
-        mapField.setAccessible(true);
+        Field mapField = ReflectionUtils.getField(CaseInsensitiveMap.class, "map");
         Map<?, ?> inner = (Map<?, ?>) mapField.get(ci);
         assertSame(inner, invoke(ci));
     }

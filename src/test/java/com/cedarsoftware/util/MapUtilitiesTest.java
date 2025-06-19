@@ -238,6 +238,32 @@ public class MapUtilitiesTest
     }
 
     @Test
+    public void testMapOfNullReturnsEmpty()
+    {
+        Map<Object, Object> map = MapUtilities.mapOf((Object[]) null);
+
+        assertTrue(map.isEmpty());
+        assertThrows(UnsupportedOperationException.class, () -> map.put("k", 1));
+    }
+
+    @Test
+    public void testMapOfOddArguments()
+    {
+        assertThrows(IllegalArgumentException.class, () -> MapUtilities.mapOf("a", 1, "b"));
+    }
+
+    @Test
+    public void testMapOfTooManyEntries()
+    {
+        Object[] data = new Object[22];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = i;
+        }
+
+        assertThrows(IllegalArgumentException.class, () -> MapUtilities.mapOf(data));
+    }
+
+    @Test
     public void testMapToString()
     {
         Map<String, Integer> map = new LinkedHashMap<>();

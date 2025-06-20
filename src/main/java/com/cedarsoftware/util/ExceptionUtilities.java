@@ -3,7 +3,9 @@ package com.cedarsoftware.util;
 import java.util.concurrent.Callable;
 
 /**
- * Useful Exception Utilities
+ * Useful Exception Utilities. This class also provides the
+ * {@code uncheckedThrow(Throwable)} helper which allows rethrowing any
+ * {@link Throwable} without declaring it.
  *
  * @author Ken Partlow (kpartlow@gmail.com)
  *         <br>
@@ -113,5 +115,18 @@ public final class ExceptionUtilities {
         if (t instanceof OutOfMemoryError) {
             throw (OutOfMemoryError) t;
         }
+    }
+
+    /**
+     * Throws any {@link Throwable} without declaring it. Useful when converting
+     * Groovy code to Java or otherwise bypassing checked exceptions.
+     *
+     * @param t throwable to be rethrown unchecked
+     * @param <T> type parameter used to trick the compiler
+     * @throws T never actually thrown, but declared for compiler satisfaction
+     */
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void uncheckedThrow(Throwable t) throws T {
+        throw (T) t;  // the cast fools the compiler into thinking this is unchecked
     }
 }

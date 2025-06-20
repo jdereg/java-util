@@ -2702,6 +2702,17 @@ String hash = EncryptionUtilities.calculateFileHash(channel, digest);
 This implementation provides a robust set of cryptographic utilities with emphasis on performance, security, and ease of use.
 
 ---
+## ExceptionUtilities
+[Source](/src/main/java/com/cedarsoftware/util/ExceptionUtilities.java)
+
+Utility helpers for dealing with {@link Throwable} instances.
+
+### Key Features
+- Retrieve the deepest nested cause with `getDeepestException`
+- Execute tasks while ignoring exceptions via `safelyIgnoreException`
+- Rethrow any exception without declaring it using the `uncheckedThrow` helper
+
+---
 ## Executor
 [Source](/src/main/java/com/cedarsoftware/util/Executor.java)
 

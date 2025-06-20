@@ -93,4 +93,19 @@ public class ExceptionUtilitiesTest
         });
         assertTrue(ran.get());
     }
+
+    @Test
+    void testUncheckedThrowRethrows() throws Exception {
+        java.lang.reflect.Method m = ExceptionUtilities.class.getDeclaredMethod("uncheckedThrow", Throwable.class);
+        m.setAccessible(true);
+
+        assertThatExceptionOfType(java.io.IOException.class)
+                .isThrownBy(() -> {
+                    try {
+                        m.invoke(null, new java.io.IOException("fail"));
+                    } catch (java.lang.reflect.InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+    }
 }

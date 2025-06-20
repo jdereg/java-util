@@ -4321,6 +4321,16 @@ class ConverterTest
     }
 
     @Test
+    void testSingleArgSupport()
+    {
+        assert converter.isSimpleTypeConversionSupported(String.class);
+        assert !converter.isSimpleTypeConversionSupported(Map.class);
+
+        assert converter.isConversionSupportedFor(UUID.class);
+        assert !converter.isConversionSupportedFor(Map.class);
+    }
+
+    @Test
     void testNullTypeInput()
     {
         assertThatThrownBy(() -> converter.convert("foo", null))

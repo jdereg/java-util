@@ -14,6 +14,7 @@
 > * `CompactMap.getConfig()` returns the library default compact size for legacy subclasses.
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
 > * Added tests covering wrapComparator null and mixed type handling
+> * Fixed test expectation for wrapComparator to place null keys last
 > * `StringConversions.toSqlDate` now preserves the time zone from ISO date strings instead of using the JVM default.
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.

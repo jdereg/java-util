@@ -21,7 +21,7 @@ repository.
 - IOUtilities has some nice APIs to close streams without extra try/catch blocks, and also has a nice transfer APIs, and transfer APIs that show call back with transfer stats.
 - ClassValueMap and ClassValueSet make using JDK's ClassValue much easier yet retain the benefits of ClassValue in terms of speed.
 - Of course, for CaseInsensitiveMaps, there is no better one that CaseInsensitiveMap.
-- And if you need to create massive quantity of Maps, CompactMap (and it's variants) use significantly less space that regular JDK maps.
+- And if you need to create large amounts of Maps, CompactMap (and its variants) use significantly less space than regular JDK maps.
 
 ## Commit Messages
 - Start with a short imperative summary (max ~50 characters).

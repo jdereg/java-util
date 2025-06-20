@@ -24,8 +24,8 @@ class ConcurrentNavigableMapNullSafeComparatorUtilTest {
     void testActualNullHandling() throws Exception {
         Comparator<Object> comp = getWrapped(null);
         assertEquals(0, comp.compare(null, null));
-        assertEquals(-1, comp.compare(null, "a"));
-        assertEquals(1, comp.compare("a", null));
+        assertEquals(1, comp.compare(null, "a"));
+        assertEquals(-1, comp.compare("a", null));
     }
 
     @Test

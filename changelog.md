@@ -16,13 +16,13 @@
     and `isConversionSupportedFor` that cache self-type lookups
 > * Fixed `TTLCache.purgeExpiredEntries()` NPE when removing expired entries
 > * `UrlUtilities` no longer deprecated; certificate validation defaults to on, provides streaming API and configurable timeouts
-> * Logging instructions moved to a standalone `logging.md` and summarized in the README
+> * Logging instructions merged into `userguide.md`; README section condensed
 #### 3.3.3 LLM inspired updates against the life-long "todo" list.
 > * `TTLCache` now recreates its background scheduler if used after `TTLCache.shutdown()`.
 > * `SafeSimpleDateFormat.equals()` now correctly handles other `SafeSimpleDateFormat` instances.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
-> * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in [logging.md](logging.md)
+> * Documentation explains how to route `java.util.logging` output to SLF4J, Logback, or Log4j 2 in the user guide
 > * `ArrayUtilities` - new APIs `isNotEmpty`, `nullToEmpty`, and `lastIndexOf`; improved `createArray`, `removeItem`, `addItem`, `indexOf`, `contains`, and `toArray`
 > * `ClassUtilities` - safer class loading fallback, improved inner class instantiation and updated Javadocs
 > * `CollectionConversions.arrayToCollection` now returns a type-safe collection

@@ -168,6 +168,8 @@ public final class Converter {
     private static final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
     private static final ClassValueMap<ClassValueMap<Convert<?>>> FULL_CONVERSION_CACHE = new ClassValueMap<>();
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
+    private static final ClassValueMap<Boolean> SIMPLE_TYPE_CACHE = new ClassValueMap<>();
+    private static final ClassValueMap<Boolean> SELF_CONVERSION_CACHE = new ClassValueMap<>();
     private final ConverterOptions options;
 
     // Efficient key that combines two Class instances for fast creation and lookup
@@ -1728,6 +1730,18 @@ public final class Converter {
         cacheConverter(source, target, UNSUPPORTED);
         return false;
     }
+
+    /**
+     * Overload of {@link #isSimpleTypeConversionSupported(Class, Class)} that checks
+     * if the specified class is considered a simple type.
+     * Results are cached for fast subsequent lookups.
+     *
+     * @param type the class to check
+     * @return {@code true} if a simple type conversion exists for the class
+     */
+    public boolean isSimpleTypeConversionSupported(Class<?> type) {
+        return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
+    }
     
     /**
      * Determines whether a conversion from the specified source type to the target type is supported.
@@ -1786,6 +1800,18 @@ public final class Converter {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Overload of {@link #isConversionSupportedFor(Class, Class)} that checks whether
+     * the specified class can be converted to itself.
+     * The result is cached for fast repeat access.
+     *
+     * @param type the class to query
+     * @return {@code true} if a conversion exists for the class
+     */
+    public boolean isConversionSupportedFor(Class<?> type) {
+        return SELF_CONVERSION_CACHE.computeIfAbsent(type, t -> isConversionSupportedFor(t, t));
     }
 
     private static boolean isValidConversion(Convert<?> method) {
@@ -1937,5 +1963,9 @@ public final class Converter {
         if (targetMap != null) {
             targetMap.remove(target);
         }
+        SIMPLE_TYPE_CACHE.remove(source);
+        SIMPLE_TYPE_CACHE.remove(target);
+        SELF_CONVERSION_CACHE.remove(source);
+        SELF_CONVERSION_CACHE.remove(target);
     }
 }

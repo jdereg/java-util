@@ -21,6 +21,8 @@
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
 > * `withReadLockVoid()` now suppresses exceptions thrown by the provided `Runnable`
 > * `Converter` - factory conversions map made immutable and legacy caching code removed
+> * `Converter` now offers single-argument overloads of `isSimpleTypeConversionSupported`
+  and `isConversionSupportedFor` that cache self-type lookups
 > * `DateUtilities` uses `BigDecimal` for fractional second conversion, preventing rounding errors with high precision input
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.

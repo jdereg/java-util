@@ -19,6 +19,8 @@ import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -264,6 +266,15 @@ class ConverterLegacyApiTest {
         assertTrue(com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(String.class, Integer.class));
         assertFalse(com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(String[].class, Integer[].class));
         assertFalse(com.cedarsoftware.util.Converter.isSimpleTypeConversionSupported(java.util.List.class, java.util.Set.class));
+    }
+
+    @Test
+    void singleArgSupportChecks() {
+        assertTrue(Converter.isSimpleTypeConversionSupported(String.class));
+        assertFalse(Converter.isSimpleTypeConversionSupported(Map.class));
+
+        assertTrue(Converter.isConversionSupportedFor(UUID.class));
+        assertFalse(Converter.isConversionSupportedFor(Map.class));
     }
 
     @Test

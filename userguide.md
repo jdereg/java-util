@@ -1986,6 +1986,10 @@ boolean directSupport = converter.isDirectConversionSupported(
 boolean simpleConvert = converter.isSimpleTypeConversionSupported(
         String.class, Date.class);    // built-in JDK types (BigDecimal, Atomic*,
 
+// Quick self-type checks using cached lookups
+boolean uuidSupported = converter.isConversionSupportedFor(UUID.class);
+boolean simpleType = converter.isSimpleTypeConversionSupported(String.class);
+
 // Fetch supported conversions (as Strings)
 Map<String, Set<String>> map = Converter.getSupportedConversions();
 

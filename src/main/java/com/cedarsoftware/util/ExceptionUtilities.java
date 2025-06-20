@@ -118,15 +118,19 @@ public final class ExceptionUtilities {
     }
 
     /**
-     * Throws any {@link Throwable} without declaring it. Useful when converting
-     * Groovy code to Java or otherwise bypassing checked exceptions.
+     * Throws any {@link Throwable} without declaring it. Useful when converting Groovy code to Java or otherwise
+     * bypassing checked exceptions. No longer do you need to declare checked exceptions, which are not always best
+     * handled by the immediate calling class. This will still an IOException, for example, without you declaring as
+     * a throws clause forcing the caller to deal with it, where as a higher level more suitable place that catches
+     * Exception will still catch it as an IOException (in this case). Helps the shift away from Checked exceptions,
+     * which imho, was not a good choice for the Java language.
      *
      * @param t throwable to be rethrown unchecked
      * @param <T> type parameter used to trick the compiler
      * @throws T never actually thrown, but declared for compiler satisfaction
      */
     @SuppressWarnings("unchecked")
-    private static <T extends Throwable> void uncheckedThrow(Throwable t) throws T {
+    public static <T extends Throwable> void uncheckedThrow(Throwable t) throws T {
         throw (T) t;  // the cast fools the compiler into thinking this is unchecked
     }
 }

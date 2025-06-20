@@ -324,9 +324,9 @@ public class EncryptionUtilities {
      * @param channel FileChannel to read from
      * @param digest  MessageDigest to use for hashing
      * @return hexadecimal string of the hash value
-     * @throws IOException if an I/O error occurs
+     * @throws IOException if an I/O error occurs (thrown as unchecked)
      */
-    public static String calculateFileHash(FileChannel channel, MessageDigest digest) throws IOException {
+    public static String calculateFileHash(FileChannel channel, MessageDigest digest) {
         // Modern OS/disk optimal transfer size (64KB)
         // Matches common SSD page sizes and OS buffer sizes
         final int BUFFER_SIZE = 64 * 1024;
@@ -336,13 +336,18 @@ public class EncryptionUtilities {
         ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
 
         // Read until EOF
-        while (channel.read(buffer) != -1) {
-            buffer.flip();  // Prepare buffer for reading
-            digest.update(buffer);  // Update digest
-            buffer.clear();  // Prepare buffer for writing
-        }
+        try {
+            while (channel.read(buffer) != -1) {
+                buffer.flip();  // Prepare buffer for reading
+                digest.update(buffer);  // Update digest
+                buffer.clear();  // Prepare buffer for writing
+            }
 
-        return ByteUtilities.encode(digest.digest());
+            return ByteUtilities.encode(digest.digest());
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
+        }
     }
 
     /**

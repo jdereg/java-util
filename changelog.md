@@ -18,6 +18,7 @@
 > * `UrlUtilities` no longer deprecated; certificate validation defaults to on, provides streaming API and configurable timeouts
 > * Logging instructions merged into `userguide.md`; README section condensed
 > * `ExceptionUtilities` adds private `uncheckedThrow` for rethrowing any `Throwable` unchecked
+> * `IOUtilities` and related APIs now throw `IOException` unchecked
 #### 3.3.3 LLM inspired updates against the life-long "todo" list.
 > * `TTLCache` now recreates its background scheduler if used after `TTLCache.shutdown()`.
 > * `SafeSimpleDateFormat.equals()` now correctly handles other `SafeSimpleDateFormat` instances.

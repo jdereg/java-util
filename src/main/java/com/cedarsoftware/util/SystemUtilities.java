@@ -189,12 +189,19 @@ public final class SystemUtilities
     }
 
     /**
-     * Create temporary directory that will be deleted on JVM exit
+     * Create temporary directory that will be deleted on JVM exit.
+     *
+     * @throws IOException if the directory cannot be created (thrown as unchecked)
      */
-    public static File createTempDirectory(String prefix) throws IOException {
-        File tempDir = Files.createTempDirectory(prefix).toFile();
-        tempDir.deleteOnExit();
-        return tempDir.getCanonicalFile();
+    public static File createTempDirectory(String prefix) {
+        try {
+            File tempDir = Files.createTempDirectory(prefix).toFile();
+            tempDir.deleteOnExit();
+            return tempDir.getCanonicalFile();
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
+        }
     }
 
     /**

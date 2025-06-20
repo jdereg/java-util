@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,7 +20,7 @@ class ConverterStaticMethodsTest {
     @Test
     void conversionSupportDelegatesToInstance() {
         assertTrue(Converter.isConversionSupportedFor(String.class, Integer.class));
-        assertFalse(Converter.isConversionSupportedFor(Map.class, Integer.class));
+        assertFalse(Converter.isConversionSupportedFor(Map.class, List.class));
     }
 
     @Test

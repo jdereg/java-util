@@ -97,10 +97,9 @@ implementation 'com.cedarsoftware:java-util:3.4.0'
 
 ### Logging
 
-This library has no external dependencies, so it relies on
-`java.util.logging` for all messages. For instructions on redirecting these
-logs to frameworks like SLF4J or Log4j&nbsp;2, see
-[logging.md](logging.md).
+java-util uses `java.util.logging` for all output. See the
+[user guide](userguide.md#redirecting-javautillogging) for ways to route
+these logs to SLF4J or Log4j&nbsp;2.
 
 [View detailed documentation](userguide.md)
 

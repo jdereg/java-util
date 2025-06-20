@@ -4296,7 +4296,7 @@ system property `ju.log.dateFormat`.
 
 ## Redirecting java.util.logging
 
-This library uses `java.util.logging.Logger` (JUL) internally. Most applications prefer frameworks like SLF4J, Logback or Log4j&nbsp;2. You can bridge JUL to your chosen framework so that logs from this library integrate with the rest of your application.
+`java-util` uses `java.util.logging.Logger` (JUL) internally so as to bring in no depencies to other libraries. Most applications prefer frameworks like SLF4J, Logback or Log4j&nbsp;2. You can bridge JUL to your chosen framework so that logs from this library integrate with the rest of your application.
 
 **All steps below are application-scoped**&mdash;set them up once during your application's initialization.
 

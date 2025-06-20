@@ -97,7 +97,7 @@ implementation 'com.cedarsoftware:java-util:3.4.0'
 
 ### Logging
 
-java-util uses `java.util.logging` for all output. See the
+Because `java-util` has no dependencies on other libraries, `java-util` uses the Java built-in `java.util.logging` for all output. See the
 [user guide](userguide.md#redirecting-javautillogging) for ways to route
 these logs to SLF4J or Log4j&nbsp;2.
 

@@ -288,9 +288,9 @@ public final class UrlUtilities {
      * method or an IOException will be thrown.
      *
      * @param conn a java.net.URLConnection - must NOT be open, or IOException will be thrown
-     * @throws IOException Thrown if conn has already been opened.
+     * @throws IOException if the connection has already been opened (thrown as unchecked)
      */
-    public static void setCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store) throws IOException {
+    public static void setCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store) {
         // let's determine the domain and path to retrieve the appropriate cookies
         URL url = conn.getURL();
         String domain = getCookieDomainFromHost(url.getHost());
@@ -320,8 +320,9 @@ public final class UrlUtilities {
         try {
             conn.setRequestProperty(COOKIE, cookieStringBuffer.toString());
         } catch (IllegalStateException e) {
-            throw new IOException("Illegal State! Cookies cannot be set on a URLConnection that is already connected. "
-                    + "Only call setCookies(java.net.URLConnection) AFTER calling java.net.URLConnection.connect().");
+            ExceptionUtilities.uncheckedThrow(new IOException(
+                    "Illegal State! Cookies cannot be set on a URLConnection that is already connected. " +
+                            "Only call setCookies(java.net.URLConnection) AFTER calling java.net.URLConnection.connect()."));
         }
     }
 
@@ -499,11 +500,26 @@ public final class UrlUtilities {
         }
     }
 
-    public static void copyContentFromUrl(String url, java.io.OutputStream out) throws IOException {
-        copyContentFromUrl(getActualUrl(url), out, null, null, false);
+    /**
+     * Convenience method to copy content from a String URL to an output stream.
+     *
+     * @throws IOException          if an I/O error occurs (thrown as unchecked)
+     * @throws MalformedURLException if the URL is invalid (thrown as unchecked)
+     */
+    public static void copyContentFromUrl(String url, java.io.OutputStream out) {
+        try {
+            copyContentFromUrl(getActualUrl(url), out, null, null, false);
+        } catch (IOException | MalformedURLException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+        }
     }
 
-    public static void copyContentFromUrl(URL url, java.io.OutputStream out, Map<String, Map<String, Map<String, String>>> inCookies, Map<String, Map<String, Map<String, String>>> outCookies, boolean allowAllCerts) throws IOException {
+    /**
+     * Copy content from a URL to an output stream.
+     *
+     * @throws IOException if an I/O error occurs (thrown as unchecked)
+     */
+    public static void copyContentFromUrl(URL url, java.io.OutputStream out, Map<String, Map<String, Map<String, String>>> inCookies, Map<String, Map<String, Map<String, String>>> outCookies, boolean allowAllCerts) {
         URLConnection c = null;
         try {
             c = getConnection(url, inCookies, true, false, false, allowAllCerts);
@@ -513,6 +529,8 @@ public final class UrlUtilities {
             if (outCookies != null) {
                 getCookies(c, outCookies);
             }
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
         } finally {
             if (c instanceof HttpURLConnection) {
                 disconnect((HttpURLConnection) c);
@@ -539,9 +557,16 @@ public final class UrlUtilities {
      * @param output boolean indicating whether this connection will be used for output
      * @param cache  boolean allow caching (be careful setting this to true for non-static retrievals).
      * @return URLConnection established URL connection.
+     * @throws IOException if an I/O error occurs (thrown as unchecked)
+     * @throws MalformedURLException if the URL is invalid (thrown as unchecked)
      */
-    public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) throws IOException {
-        return getConnection(getActualUrl(url), null, input, output, cache, false);
+    public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) {
+        try {
+            return getConnection(getActualUrl(url), null, input, output, cache, false);
+        } catch (IOException | MalformedURLException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
+        }
     }
 
     /**
@@ -550,7 +575,7 @@ public final class UrlUtilities {
      * @param cache  boolean allow caching (be careful setting this to true for non-static retrievals).
      * @return URLConnection established URL connection.
      */
-    public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) throws IOException {
+    public static URLConnection getConnection(URL url, boolean input, boolean output, boolean cache) {
         return getConnection(url, null, input, output, cache, false);
     }
 
@@ -562,8 +587,9 @@ public final class UrlUtilities {
      * @param output    boolean indicating whether this connection will be used for output
      * @param cache     boolean allow caching (be careful setting this to true for non-static retrievals).
      * @return URLConnection established URL connection.
+     * @throws IOException if an I/O error occurs (thrown as unchecked)
      */
-    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) throws IOException {
+    public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) {
         URLConnection c = url.openConnection();
         c.setRequestProperty("Accept-Encoding", "gzip, deflate");
         c.setAllowUserInteraction(false);

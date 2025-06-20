@@ -1492,10 +1492,10 @@ public final class ReflectionUtils {
      *
      * @param byteCode byte[] of compiled byte code
      * @return String fully qualified class name
-     * @throws IOException if there are problems reading the byte code
+     * @throws IOException if there are problems reading the byte code (thrown as unchecked)
      * @throws IllegalStateException if the class file format is not recognized
      */
-    public static String getClassNameFromByteCode(byte[] byteCode) throws IOException {
+    public static String getClassNameFromByteCode(byte[] byteCode) {
         try (InputStream is = new ByteArrayInputStream(byteCode);
              DataInputStream dis = new DataInputStream(is)) {
 
@@ -1577,6 +1577,9 @@ public final class ReflectionUtils {
             int stringIndex = classes[thisClassIndex - 1];
             String className = strings[stringIndex - 1];
             return className.replace('/', '.');
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // unreachable
         }
     }
 

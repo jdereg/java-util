@@ -2379,6 +2379,9 @@ This implementation provides robust deep comparison capabilities with detailed d
 
 A comprehensive utility class for I/O operations, providing robust stream handling, compression, and resource management capabilities.
 
+All methods that perform I/O now throw {@link java.io.IOException} unchecked via
+`ExceptionUtilities.uncheckedThrow`, simplifying caller code.
+
 See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a different logging framework.
 
 ### Key Features
@@ -2394,17 +2397,17 @@ See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a d
 
 ```java
 // Streaming
-public static void transfer(InputStream s, File f, TransferCallback cb) throws UncheckedIOException
-public static void transfer(InputStream in, OutputStream out, TransferCallback cb) throws UncheckedIOException
-public static void transfer(InputStream in, byte[] bytes) throws UncheckedIOException
-public static void transfer(InputStream in, OutputStream out) throws UncheckedIOException
-public static void transfer(File f, URLConnection c, TransferCallback cb) throws UncheckedIOException
-public static void transfer(File file, OutputStream out) throws UncheckedIOException
-public static void transfer(URLConnection c, File f, TransferCallback cb) throws UncheckedIOException
-public static void transfer(URLConnection c, byte[] bytes) throws UncheckedIOException
-public static byte[] inputStreamToBytes(InputStream in) throws UncheckedIOException
-public static byte[] inputStreamToBytes(InputStream in, int maxSize) throws UncheckedIOException
-public static InputStream getInputStream(URLConnection c) throws UncheckedIOException
+public static void transfer(InputStream s, File f, TransferCallback cb)
+public static void transfer(InputStream in, OutputStream out, TransferCallback cb)
+public static void transfer(InputStream in, byte[] bytes)
+public static void transfer(InputStream in, OutputStream out)
+public static void transfer(File f, URLConnection c, TransferCallback cb)
+public static void transfer(File file, OutputStream out)
+public static void transfer(URLConnection c, File f, TransferCallback cb)
+public static void transfer(URLConnection c, byte[] bytes)
+public static byte[] inputStreamToBytes(InputStream in)
+public static byte[] inputStreamToBytes(InputStream in, int maxSize)
+public static InputStream getInputStream(URLConnection c)
     
 // Stream close    
 public static void close(XMLStreamReader reader)
@@ -2416,8 +2419,8 @@ public static void flush(Flushable f)
 public static void flush(XMLStreamWriter writer)
     
 // Compression     
-public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed) throws UncheckedIOException
-public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed) throws UncheckedIOException
+public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed)
+public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed)
 public static byte[] compressBytes(byte[] bytes)
 public static byte[] compressBytes(byte[] bytes, int offset, int len)
 public static byte[] uncompressBytes(byte[] bytes)

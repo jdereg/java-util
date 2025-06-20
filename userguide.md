@@ -1713,7 +1713,7 @@ This implementation provides efficient and thread-safe operations for byte array
 
 A comprehensive utility class for Java class operations, providing methods for class manipulation, inheritance analysis, instantiation, and resource loading.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](logging.md) if you use a different logging framework.
 
 ### Key Features
 - Inheritance distance calculation
@@ -2379,7 +2379,7 @@ This implementation provides robust deep comparison capabilities with detailed d
 
 A comprehensive utility class for I/O operations, providing robust stream handling, compression, and resource management capabilities.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](logging.md) if you use a different logging framework.
 
 ### Key Features
 - Stream transfer operations
@@ -2707,7 +2707,7 @@ This implementation provides a robust set of cryptographic utilities with emphas
 
 A utility class for executing system commands and capturing their output. Provides a convenient wrapper around Java's Runtime.exec() with automatic stream handling and output capture.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](logging.md) if you use a different logging framework.
 
 ### Key Features
 - Command execution with various parameter options
@@ -3633,7 +3633,7 @@ This implementation provides robust string manipulation capabilities with emphas
 
 A comprehensive utility class providing system-level operations and information gathering capabilities with a focus on platform independence.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](logging.md) if you use a different logging framework.
 
 ### Key Features
 - Environment and property access
@@ -3814,7 +3814,7 @@ This implementation provides robust system utilities with emphasis on platform i
 
 A utility class for traversing object graphs in Java, with cycle detection and rich node visitation information.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](logging.md) if you use a different logging framework.
 
 ### Key Features
 - Complete object graph traversal
@@ -4113,7 +4113,7 @@ Type suggested = TypeUtilities.inferElementType(suggestedType, fieldType);
 ## UniqueIdGenerator
 UniqueIdGenerator is a utility class that generates guaranteed unique, time-based, monotonically increasing 64-bit IDs suitable for distributed environments. It provides two ID generation methods with different characteristics and throughput capabilities.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](logging.md) if you use a different logging framework.
 
 ### Features
 - Distributed-safe unique IDs

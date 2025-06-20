@@ -95,49 +95,12 @@ implementation 'com.cedarsoftware:java-util:3.4.0'
 - **[TypeUtilities](userguide.md#typeutilities)** - Advanced Java type introspection and generic resolution utilities
 - **[UniqueIdGenerator](userguide.md#uniqueidgenerator)** - Distributed-safe unique identifier generation
 
-### Redirecting java.util.logging
+### Logging
 
-This library relies solely on `java.util.logging.Logger` so that no additional
-logging dependencies are pulled in. Small libraries often take this approach to
-remain lightweight. Applications that prefer a different logging framework can
-redirect these messages using one of the adapters below.
-
-`java-util` provides `LoggingConfig` to apply a consistent console
-format. Call `LoggingConfig.init()` to use the default pattern or pass a
-custom pattern via `LoggingConfig.init("yyyy/MM/dd HH:mm:ss")`. The pattern
-can also be supplied with the system property `ju.log.dateFormat`.
-
-#### 1. SLF4J
-
-Add the `jul-to-slf4j` bridge and install it during startup:
-
-```java
-import org.slf4j.bridge.SLF4JBridgeHandler;
-
-SLF4JBridgeHandler.removeHandlersForRootLogger();
-SLF4JBridgeHandler.install();
-```
-
-SLF4J is the most common façade; it works with Logback, Log4j&nbsp;2 and many
-other implementations.
-
-#### 2. Logback
-
-Logback uses SLF4J natively, so the configuration is the same as above. Include
-`jul-to-slf4j` on the classpath and install the `SLF4JBridgeHandler`.
-
-#### 3. Log4j&nbsp;2
-
-Use the `log4j-jul` adapter and start the JVM with:
-
-```bash
--Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager
-```
-
-This routes all `java.util.logging` output to Log4j&nbsp;2.
-
-Most consumers are comfortable bridging JUL output when needed, so relying on
-`java.util.logging` by default generally is not considered burdensome.
+This library has no external dependencies, so it relies on
+`java.util.logging` for all messages. For instructions on redirecting these
+logs to frameworks like SLF4J or Log4j&nbsp;2, see
+[logging.md](logging.md).
 
 [View detailed documentation](userguide.md)
 

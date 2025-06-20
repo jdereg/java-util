@@ -1713,7 +1713,7 @@ This implementation provides efficient and thread-safe operations for byte array
 
 A comprehensive utility class for Java class operations, providing methods for class manipulation, inheritance analysis, instantiation, and resource loading.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](userguide.md#redirecting-javautil-logging) if you use a different logging framework.
 
 ### Key Features
 - Inheritance distance calculation
@@ -2379,7 +2379,7 @@ This implementation provides robust deep comparison capabilities with detailed d
 
 A comprehensive utility class for I/O operations, providing robust stream handling, compression, and resource management capabilities.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](userguide.md#redirecting-javautil-logging) if you use a different logging framework.
 
 ### Key Features
 - Stream transfer operations
@@ -2707,7 +2707,7 @@ This implementation provides a robust set of cryptographic utilities with emphas
 
 A utility class for executing system commands and capturing their output. Provides a convenient wrapper around Java's Runtime.exec() with automatic stream handling and output capture.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](userguide.md#redirecting-javautil-logging) if you use a different logging framework.
 
 ### Key Features
 - Command execution with various parameter options
@@ -3633,7 +3633,7 @@ This implementation provides robust string manipulation capabilities with emphas
 
 A comprehensive utility class providing system-level operations and information gathering capabilities with a focus on platform independence.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](userguide.md#redirecting-javautil-logging) if you use a different logging framework.
 
 ### Key Features
 - Environment and property access
@@ -3814,7 +3814,7 @@ This implementation provides robust system utilities with emphasis on platform i
 
 A utility class for traversing object graphs in Java, with cycle detection and rich node visitation information.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](userguide.md#redirecting-javautil-logging) if you use a different logging framework.
 
 ### Key Features
 - Complete object graph traversal
@@ -4113,7 +4113,7 @@ Type suggested = TypeUtilities.inferElementType(suggestedType, fieldType);
 ## UniqueIdGenerator
 UniqueIdGenerator is a utility class that generates guaranteed unique, time-based, monotonically increasing 64-bit IDs suitable for distributed environments. It provides two ID generation methods with different characteristics and throughput capabilities.
 
-See [Redirecting java.util.logging](README.md#redirecting-javautil-logging) if you use a different logging framework.
+See [Redirecting java.util.logging](userguide.md#redirecting-javautil-logging) if you use a different logging framework.
 
 ### Features
 - Distributed-safe unique IDs
@@ -4293,6 +4293,93 @@ For additional support or to report issues, please refer to the project's GitHub
 Call `LoggingConfig.init()` once during application startup. You may supply a
 custom timestamp pattern via `LoggingConfig.init("yyyy/MM/dd HH:mm:ss")` or the
 system property `ju.log.dateFormat`.
+
+### Redirecting java.util.logging
+
+This library uses `java.util.logging.Logger` (JUL) for its internal logging. This
+avoids imposing a specific logging framework dependency on consumers. Most
+applications, however, prefer frameworks like SLF4J, Logback, or Log4j&nbsp;2. To
+integrate this library's logs with such frameworks, install a bridge that routes
+JUL messages to your chosen logger.
+
+**All the configurations below are application-scoped.** Configure them once in
+your application's startup code or configuration so that the entire process
+handles JUL logs consistently.
+
+---
+
+**Optional: Using `java.util.logging` Directly with Consistent Formatting**
+
+If you are *not* bridging JUL to another framework, you can still use JUL with a
+consistent format by calling `LoggingConfig.init()` early in your application.
+
+*   **What it does:** Configures JUL's `ConsoleHandler` to use a uniform
+    formatter.
+*   **How to use it:**
+
+    ```java
+    public static void main(String[] args) {
+        LoggingConfig.init();
+        // ... rest of startup
+    }
+    ```
+
+*   To provide a custom date/time pattern:
+
+    ```java
+    LoggingConfig.init("yyyy/MM/dd HH:mm:ss");
+    ```
+
+*   The pattern may also be set globally via the system property
+    `ju.log.dateFormat`:
+
+    ```bash
+    java -Dju.log.dateFormat="HH:mm:ss.SSS" -jar your-app.jar
+    ```
+
+*   **Where does this code go?** Typically in your application's `main` method
+    or an initialization routine.
+*   **Important:** `LoggingConfig` is only needed when using JUL directly. If
+    you bridge to another framework, that framework controls formatting.
+
+---
+
+### Bridging JUL to Other Logging Frameworks
+
+To redirect JUL logs to another framework, follow two steps:
+
+1.  Add the appropriate bridge dependency to your build (e.g., `pom.xml` or
+    `build.gradle`).
+2.  Perform a one-time initialization, either programmatically or via a system
+    property.
+
+#### 1. SLF4J (and Logback, Log4j 1.x, etc.)
+
+Add the `jul-to-slf4j` bridge and install it during startup:
+
+```java
+import org.slf4j.bridge.SLF4JBridgeHandler;
+
+SLF4JBridgeHandler.removeHandlersForRootLogger();
+SLF4JBridgeHandler.install();
+```
+
+SLF4J is the most common façade; it works with Logback, Log4j&nbsp;2 and many other
+implementations.
+
+#### 2. Log4j&nbsp;2
+
+Use the `log4j-jul` adapter and start the JVM with:
+
+```bash
+-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager
+```
+
+This routes all `java.util.logging` output to Log4j&nbsp;2.
+
+Most application developers are comfortable bridging JUL output when needed. By
+relying on `java.util.logging` by default, this library remains lightweight and
+avoids imposing specific logging dependencies.
 ## UrlUtilities
 [Source](/src/main/java/com/cedarsoftware/util/UrlUtilities.java)
 

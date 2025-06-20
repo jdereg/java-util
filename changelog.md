@@ -16,6 +16,7 @@
     and `isConversionSupportedFor` that cache self-type lookups
 > * Fixed `TTLCache.purgeExpiredEntries()` NPE when removing expired entries
 > * `UrlUtilities` no longer deprecated; certificate validation defaults to on, provides streaming API and configurable timeouts
+> * Logging instructions moved from `logging.md` into the user guide
 #### 3.3.3 LLM inspired updates against the life-long "todo" list.
 > * `TTLCache` now recreates its background scheduler if used after `TTLCache.shutdown()`.
 > * `SafeSimpleDateFormat.equals()` now correctly handles other `SafeSimpleDateFormat` instances.

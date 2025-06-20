@@ -1,9 +1,23 @@
 ### Revision History
-#### 3.3.3 AI/LLM review and updates
+#### 3.4.0 
+> * `MapUtilities.getUnderlyingMap()` now uses identity comparison to avoid false cycle detection with wrapper maps
+> * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal
+> * `UrlInvocationHandler` (deprecated) was finally removed.
+> * `ProxyFactory` (deprecated) was finally removed.
+> * `withReadLockVoid()` now suppresses exceptions thrown by the provided `Runnable`
+> * `SystemUtilities.createTempDirectory()` now returns a canonical path so that
+    temporary directories resolve symlinks on macOS and other platforms.
+> * Updated inner-class JSON test to match removal of synthetic `this$` fields.
+> * Fixed `ExecutorAdditionalTest` to compare canonical paths for cross-platform consistency
+> * Fixed `Map.Entry.setValue()` for entries from `ConcurrentNavigableMapNullSafe` and `AbstractConcurrentNullSafeMap` to update the backing map
+> * Map.Entry views now fetch values from the backing map so `toString()` and `equals()` reflect updates
+> * Fixed test expectation for wrapComparator to place null keys last
+> * `Converter` now offers single-argument overloads of `isSimpleTypeConversionSupported`
+    and `isConversionSupportedFor` that cache self-type lookups
+> * Fixed `TTLCache.purgeExpiredEntries()` NPE when removing expired entries
+> * `UrlUtilities` no longer deprecated; certificate validation defaults to on, provides streaming API and configurable timeouts
+#### 3.3.3 LLM inspired updates against the life-long "todo" list.
 > * `TTLCache` now recreates its background scheduler if used after `TTLCache.shutdown()`.
-> * Added test covering `CompactMapComparator.toString()`
-> * Added tests covering `MapUtilities.getMapStructureString()`
-> * Added tests covering `MapUtilities.detectMapOrdering()`
 > * `SafeSimpleDateFormat.equals()` now correctly handles other `SafeSimpleDateFormat` instances.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`
 > * All `System.out` and `System.err` prints replaced with `java.util.logging.Logger` usage.
@@ -13,28 +27,21 @@
 > * `CollectionConversions.arrayToCollection` now returns a type-safe collection
 > * `CompactMap.getConfig()` returns the library default compact size for legacy subclasses.
 > * `ConcurrentHashMapNullSafe` - fixed race condition in `computeIfAbsent` and added constructor to specify concurrency level.
-> * Added tests covering wrapComparator null and mixed type handling
-> * Fixed test expectation for wrapComparator to place null keys last
 > * `StringConversions.toSqlDate` now preserves the time zone from ISO date strings instead of using the JVM default.
 > * `ConcurrentList` is now `final`, implements `Serializable` and `RandomAccess`, and uses a fair `ReentrantReadWriteLock` for balanced thread scheduling.
 > * `ConcurrentList.containsAll()` no longer allocates an intermediate `HashSet`.
 > * `listIterator(int)` now returns a snapshot-based iterator instead of throwing `UnsupportedOperationException`.
-> * `withReadLockVoid()` now suppresses exceptions thrown by the provided `Runnable`
 > * `Converter` - factory conversions map made immutable and legacy caching code removed
-> * `Converter` now offers single-argument overloads of `isSimpleTypeConversionSupported`
-  and `isConversionSupportedFor` that cache self-type lookups
 > * `DateUtilities` uses `BigDecimal` for fractional second conversion, preventing rounding errors with high precision input
 > * `EncryptionUtilities` now uses AES-GCM with random IV and PBKDF2-derived keys. Legacy cipher APIs are deprecated. Added SHA-384, SHA3-256, and SHA3-512 hashing support with improved input validation.
 > * Documentation for `EncryptionUtilities` updated to list all supported SHA algorithms and note heap buffer usage.
 > * `Executor` now uses `ProcessBuilder` with a 60-second timeout and provides an `ExecutionResult` API
 > * `IOUtilities` improved: configurable timeouts, `inputStreamToBytes` throws `IOException` with size limit, offset bug fixed in `uncompressBytes`
-> * `IOUtilities` now wraps I/O errors in `UncheckedIOException` so callers are not forced to handle checked exceptions
 > * `MathUtilities` now validates inputs for empty arrays and null lists, fixes documentation, and improves numeric parsing performance
 > * `ReflectionUtils` cache size is configurable via the `reflection.utils.cache.size` system property, uses
 > * `StringUtilities.decode()` now returns `null` when invalid hexadecimal digits are encountered.
 > * `StringUtilities.getRandomString()` validates parameters and throws descriptive exceptions.
 > * `StringUtilities.count()` uses a reliable substring search algorithm.
-> * Updated inner-class JSON test to match removal of synthetic `this$` fields.
 > * `StringUtilities.hashCodeIgnoreCase()` updates locale compatibility when the default locale changes.
 > * `StringUtilities.commaSeparatedStringToSet()` returns a mutable empty set using `LinkedHashSet`.
 > * `StringUtilities` adds `snakeToCamel`, `camelToSnake`, `isNumeric`, `repeat`, `reverse`, `padLeft`, and `padRight` helpers.
@@ -42,8 +49,6 @@
 > * Deprecated `StringUtilities.createUtf8String(byte[])` removed; use `createUTF8String(byte[])` instead.
 > * `SystemUtilities` logs shutdown hook failures, handles missing network interfaces and returns immutable address lists
   `TestUtil.fetchResource`, `MapUtilities.cloneMapOfSets`, and core cache methods.
-> * `SystemUtilities.createTempDirectory()` now returns a canonical path so that
-  temporary directories resolve symlinks on macOS and other platforms.
 > * `TrackingMap` - `replaceContents()` replaces the misleading `setWrappedMap()` API. `keysUsed()` now returns an unmodifiable `Set<Object>` and `expungeUnused()` prunes stale keys.
 > * Fixed tests for `TrackingMap.replaceContents` and `setWrappedMap` to avoid tracking keys during verification
 > * `Unsafe` now obtains the sun.misc.Unsafe instance from the `theUnsafe` field instead of invoking its constructor, preventing JVM crashes during tests
@@ -56,16 +61,6 @@
 > * Added Javadoc for several public APIs where it was missing.  Should be 100% now.
 > * JUnits added for all public APIs that did not have them (no longer relying on json-io to "cover" them). Should be 100% now.
 > * Custom map types under `com.cedarsoftware.io` allowed for `CompactMap`
-> * Fixed `ExecutorAdditionalTest` to compare canonical paths for cross-platform consistency
-> * Fixed `Map.Entry.setValue()` for entries from `ConcurrentNavigableMapNullSafe` and `AbstractConcurrentNullSafeMap` to update the backing map
-> * Map.Entry views now fetch values from the backing map so `toString()` and `equals()` reflect updates
-> * `UrlInvocationHandler` Javadoc clarified deprecation and pointed to modern HTTP clients
-> * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal
-> * Fixed `TTLCache.purgeExpiredEntries()` NPE when removing expired entries
-> * `UrlUtilities` no longer deprecated; certificate validation defaults to on, provides streaming API and configurable timeouts
-> * `MapUtilities.getUnderlyingMap()` now uses identity comparison to avoid false cycle detection with wrapper maps
-> * Added tests for static `Converter` methods `isConversionSupportedFor`, `getSupportedConversions`, and `addConversion`
-> * Updated static `Converter` test to use an unsupported Map-to-List conversion
 #### 3.3.2 JDK 24+ Support
 > * `LRUCache` - `getCapacity()` API added so you can query/determine capacity of an `LRUCache` instance after it has been created.
 > * `SystemUtilities.currentJdkMajorVersion()` added to provide JDK8 thru JDK24 compatible way to get the JDK/JRE major version.

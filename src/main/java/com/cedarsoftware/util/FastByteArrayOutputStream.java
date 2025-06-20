@@ -98,12 +98,16 @@ public class FastByteArrayOutputStream extends OutputStream {
         return new String(buf, 0, count);
     }
 
-    public void writeTo(OutputStream out) throws IOException {
-        out.write(buf, 0, count);
+    public void writeTo(OutputStream out) {
+        try {
+            out.write(buf, 0, count);
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+        }
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         // No resources to close
     }
 }

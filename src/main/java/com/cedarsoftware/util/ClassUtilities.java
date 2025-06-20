@@ -578,7 +578,7 @@ public class ClassUtilities {
      * @param classLoader ClassLoader to use when searching for JVM classes.
      * @return Class instance of the named JVM class
      */
-    private static Class<?> internalClassForName(String name, ClassLoader classLoader) throws ClassNotFoundException {
+    private static Class<?> internalClassForName(String name, ClassLoader classLoader) {
         Class<?> c = nameToClass.get(name);
         if (c != null) {
             return c;
@@ -607,9 +607,8 @@ public class ClassUtilities {
      * @param name the fully qualified class name or array type descriptor
      * @param classLoader the ClassLoader to use
      * @return the loaded Class object
-     * @throws ClassNotFoundException if the class cannot be found
      */
-    private static Class<?> loadClass(String name, ClassLoader classLoader) throws ClassNotFoundException {
+    private static Class<?> loadClass(String name, ClassLoader classLoader) {
         String className = name;
         boolean arrayType = false;
         Class<?> primitiveArray = null;
@@ -655,9 +654,17 @@ public class ClassUtilities {
             } catch (ClassNotFoundException e) {
                 ClassLoader ctx = Thread.currentThread().getContextClassLoader();
                 if (ctx != null) {
-                    currentClass = ctx.loadClass(className);
+                    try {
+                        currentClass = ctx.loadClass(className);
+                    } catch (ClassNotFoundException ex) {
+                        ExceptionUtilities.uncheckedThrow(ex);
+                    }
                 } else {
-                    currentClass = Class.forName(className, false, getClassLoader(ClassUtilities.class));
+                    try {
+                        currentClass = Class.forName(className, false, getClassLoader(ClassUtilities.class));
+                    } catch (ClassNotFoundException ex) {
+                        ExceptionUtilities.uncheckedThrow(ex);
+                    }
                 }
             }
         }
@@ -1057,16 +1064,19 @@ public class ClassUtilities {
      *
      * @param inputStream InputStream to read.
      * @return Content of the InputStream as byte array.
-     * @throws IOException if an I/O error occurs.
      */
-    private static byte[] readInputStreamFully(InputStream inputStream) throws IOException {
+    private static byte[] readInputStreamFully(InputStream inputStream) {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream(BUFFER_SIZE);
         byte[] data = new byte[BUFFER_SIZE];
         int nRead;
-        while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
-            buffer.write(data, 0, nRead);
+        try {
+            while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            buffer.flush();
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
         }
-        buffer.flush();
         return buffer.toByteArray();
     }
 
@@ -1552,11 +1562,7 @@ public class ClassUtilities {
     public static void setUseUnsafe(boolean state) {
         useUnsafe = state;
         if (state) {
-            try {
-                unsafe = new Unsafe();
-            } catch (InvocationTargetException e) {
-                useUnsafe = false;
-            }
+            unsafe = new Unsafe();
         }
     }
 

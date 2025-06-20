@@ -240,9 +240,14 @@ public final class SystemUtilities
     /**
      * Get network interface information
      */
-    public static List<NetworkInfo> getNetworkInterfaces() throws SocketException {
+    public static List<NetworkInfo> getNetworkInterfaces() {
         List<NetworkInfo> interfaces = new ArrayList<>();
-        Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
+        Enumeration<NetworkInterface> en = null;
+        try {
+            en = NetworkInterface.getNetworkInterfaces();
+        } catch (SocketException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+        }
 
         while (en.hasMoreElements()) {
             NetworkInterface ni = en.nextElement();

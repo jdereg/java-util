@@ -94,7 +94,7 @@ public class FastByteArrayInputStream extends InputStream {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         // Optionally implement if resources need to be released
     }
 }

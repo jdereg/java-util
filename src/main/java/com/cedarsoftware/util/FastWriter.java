@@ -45,18 +45,22 @@ public class FastWriter extends Writer {
         this.nextChar = 0;
     }
 
-    private void flushBuffer() throws IOException {
+    private void flushBuffer() {
         if (nextChar == 0) {
             return;
         }
-        out.write(cb, 0, nextChar);
+        try {
+            out.write(cb, 0, nextChar);
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+        }
         nextChar = 0;
     }
 
     @Override
-    public void write(int c) throws IOException {
+    public void write(int c) {
         if (out == null) {
-            throw new IOException("FastWriter stream is closed.");
+            ExceptionUtilities.uncheckedThrow(new IOException("FastWriter stream is closed"));
         }
         if (nextChar + 1 >= cb.length) {
             flushBuffer();
@@ -65,9 +69,9 @@ public class FastWriter extends Writer {
     }
 
     @Override
-    public void write(char[] cbuf, int off, int len) throws IOException {
+    public void write(char[] cbuf, int off, int len) {
         if (out == null) {
-            throw new IOException("FastWriter stream is closed.");
+            ExceptionUtilities.uncheckedThrow(new IOException("FastWriter stream is closed"));
         }
         if ((off < 0) || (off > cbuf.length) || (len < 0) ||
                 ((off + len) > cbuf.length) || ((off + len) < 0)) {
@@ -79,7 +83,11 @@ public class FastWriter extends Writer {
             // If the request length exceeds the size of the output buffer,
             // flush the buffer and then write the data directly.
             flushBuffer();
-            out.write(cbuf, off, len);
+            try {
+                out.write(cbuf, off, len);
+            } catch (IOException e) {
+                ExceptionUtilities.uncheckedThrow(e);
+            }
             return;
         }
         if (len > cb.length - nextChar) {
@@ -90,9 +98,9 @@ public class FastWriter extends Writer {
     }
 
     @Override
-    public void write(String str, int off, int len) throws IOException {
+    public void write(String str, int off, int len) {
         if (out == null) {
-            throw new IOException("FastWriter stream is closed.");
+            ExceptionUtilities.uncheckedThrow(new IOException("FastWriter stream is closed"));
         }
 
         // Return early for empty strings
@@ -121,11 +129,15 @@ public class FastWriter extends Writer {
         }
 
         // Write full buffer chunks directly - ensures buffer alignment
-        while (len >= cb.length) {
-            str.getChars(off, off + cb.length, cb, 0);
-            off += cb.length;
-            len -= cb.length;
-            out.write(cb, 0, cb.length);
+        try {
+            while (len >= cb.length) {
+                str.getChars(off, off + cb.length, cb, 0);
+                off += cb.length;
+                len -= cb.length;
+                out.write(cb, 0, cb.length);
+            }
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
         }
 
         // Write final fragment into buffer (won't overflow by definition)
@@ -136,20 +148,28 @@ public class FastWriter extends Writer {
     }
 
     @Override
-    public void flush() throws IOException {
+    public void flush() {
         flushBuffer();
-        out.flush();
+        try {
+            out.flush();
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+        }
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         if (out == null) {
             return;
         }
         try {
             flushBuffer();
         } finally {
-            out.close();
+            try {
+                out.close();
+            } catch (IOException e) {
+                ExceptionUtilities.uncheckedThrow(e);
+            }
             out = null;
             cb = null;
         }

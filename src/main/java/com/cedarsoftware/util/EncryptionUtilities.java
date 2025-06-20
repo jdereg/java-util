@@ -1,11 +1,14 @@
 package com.cedarsoftware.util;
 
 import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.Arrays;
@@ -155,9 +158,8 @@ public class EncryptionUtilities {
      * @param in     InputStream to read from
      * @param digest MessageDigest to use for hashing
      * @return hexadecimal string of the hash value
-     * @throws IOException if an I/O error occurs
      */
-    private static String calculateStreamHash(InputStream in, MessageDigest digest) throws IOException {
+    private static String calculateStreamHash(InputStream in, MessageDigest digest) {
         // 64KB buffer size - optimal for:
         // 1. Modern OS page sizes
         // 2. SSD block sizes
@@ -168,8 +170,12 @@ public class EncryptionUtilities {
         byte[] buffer = new byte[BUFFER_SIZE];
         int read;
 
-        while ((read = in.read(buffer)) != -1) {
-            digest.update(buffer, 0, read);
+        try {
+            while ((read = in.read(buffer)) != -1) {
+                digest.update(buffer, 0, read);
+            }
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
         }
 
         return ByteUtilities.encode(digest.digest());
@@ -546,10 +552,9 @@ public class EncryptionUtilities {
      *
      * @param key the encryption key
      * @return Cipher configured for AES encryption
-     * @throws Exception if cipher creation fails
      */
     @Deprecated
-    public static Cipher createAesEncryptionCipher(String key) throws Exception {
+    public static Cipher createAesEncryptionCipher(String key) {
         return createAesCipher(key, Cipher.ENCRYPT_MODE);
     }
 
@@ -558,10 +563,9 @@ public class EncryptionUtilities {
      *
      * @param key the decryption key
      * @return Cipher configured for AES decryption
-     * @throws Exception if cipher creation fails
      */
     @Deprecated
-    public static Cipher createAesDecryptionCipher(String key) throws Exception {
+    public static Cipher createAesDecryptionCipher(String key) {
         return createAesCipher(key, Cipher.DECRYPT_MODE);
     }
 
@@ -573,10 +577,9 @@ public class EncryptionUtilities {
      * @param key  the encryption/decryption key
      * @param mode Cipher.ENCRYPT_MODE or Cipher.DECRYPT_MODE
      * @return configured Cipher instance
-     * @throws Exception if cipher creation fails
      */
     @Deprecated
-    public static Cipher createAesCipher(String key, int mode) throws Exception {
+    public static Cipher createAesCipher(String key, int mode) {
         Key sKey = new SecretKeySpec(createCipherBytes(key, 128), "AES");
         return createAesCipher(sKey, mode);
     }
@@ -589,18 +592,28 @@ public class EncryptionUtilities {
      * @param key  SecretKeySpec for encryption/decryption
      * @param mode Cipher.ENCRYPT_MODE or Cipher.DECRYPT_MODE
      * @return configured Cipher instance
-     * @throws Exception if cipher creation fails
      */
     @Deprecated
-    public static Cipher createAesCipher(Key key, int mode) throws Exception {
+    public static Cipher createAesCipher(Key key, int mode)  {
         // Use password key as seed for IV (must be 16 bytes)
         MessageDigest d = getMD5Digest();
         d.update(key.getEncoded());
         byte[] iv = d.digest();
 
         AlgorithmParameterSpec paramSpec = new IvParameterSpec(iv);
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");        // CBC faster than CFB8/NoPadding (but file length changes)
-        cipher.init(mode, key, paramSpec);
+        Cipher cipher = null;        // CBC faster than CFB8/NoPadding (but file length changes)
+        
+        try {
+            cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+        }
+
+        try {
+            cipher.init(mode, key, paramSpec);
+        } catch (InvalidKeyException | InvalidAlgorithmParameterException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+        }
         return cipher;
     }
 

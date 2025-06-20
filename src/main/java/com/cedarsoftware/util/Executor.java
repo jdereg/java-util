@@ -113,7 +113,7 @@ public class Executor {
         try {
             Process proc = startProcess(command, envp, dir);
             return runIt(proc);
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
             LOG.log(Level.SEVERE, "Error occurred executing command: " + command, e);
             return new ExecutionResult(-1, "", e.getMessage());
         }
@@ -131,19 +131,19 @@ public class Executor {
         try {
             Process proc = startProcess(cmdarray, envp, dir);
             return runIt(proc);
-        } catch (IOException | InterruptedException e) {
+        } catch ( InterruptedException e) {
             LOG.log(Level.SEVERE, "Error occurred executing command: " + cmdArrayToString(cmdarray), e);
             return new ExecutionResult(-1, "", e.getMessage());
         }
     }
 
-    private Process startProcess(String command, String[] envp, File dir) throws IOException {
+    private Process startProcess(String command, String[] envp, File dir) {
         boolean windows = System.getProperty("os.name").toLowerCase().contains("windows");
         String[] shellCmd = windows ? new String[]{"cmd.exe", "/c", command} : new String[]{"sh", "-c", command};
         return startProcess(shellCmd, envp, dir);
     }
 
-    private Process startProcess(String[] cmdarray, String[] envp, File dir) throws IOException {
+    private Process startProcess(String[] cmdarray, String[] envp, File dir) {
         ProcessBuilder pb = new ProcessBuilder(cmdarray);
         if (envp != null) {
             for (String env : envp) {
@@ -156,7 +156,12 @@ public class Executor {
         if (dir != null) {
             pb.directory(dir);
         }
-        return pb.start();
+        try {
+            return pb.start();
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // ignored
+        }
     }
 
     /**

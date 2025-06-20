@@ -55,18 +55,22 @@ public class FastReader extends Reader {
         this.pushbackPosition = pushbackBufferSize; // Start from the end of pushbackBuffer
     }
 
-    private void fill() throws IOException {
+    private void fill() {
         if (position >= limit) {
-            limit = in.read(buf, 0, bufferSize);
+            try {
+                limit = in.read(buf, 0, bufferSize);
+            } catch (IOException e) {
+                ExceptionUtilities.uncheckedThrow(e);
+            }
             if (limit > 0) {
                 position = 0;
             }
         }
     }
 
-    public void pushback(char ch) throws IOException {
+    public void pushback(char ch) {
         if (pushbackPosition == 0) {
-            throw new IOException("Pushback buffer overflow");
+            ExceptionUtilities.uncheckedThrow(new IOException("Pushback buffer is full"));
         }
         pushbackBuffer[--pushbackPosition] = ch;
         if (ch == 0x0a) {
@@ -89,9 +93,9 @@ public class FastReader extends Reader {
     }
 
     @Override
-    public int read() throws IOException {
+    public int read() {
         if (in == null) {
-            throw new IOException("FastReader stream is closed.");
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
         char ch;
         if (pushbackPosition < pushbackBufferSize) {
@@ -110,9 +114,9 @@ public class FastReader extends Reader {
         return ch;
     }
 
-    public int read(char[] cbuf, int off, int len) throws IOException {
+    public int read(char[] cbuf, int off, int len) {
         if (in == null) {
-            throw new IOException("FastReader stream is closed.");
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
         int bytesRead = 0;
 
@@ -142,9 +146,13 @@ public class FastReader extends Reader {
         return bytesRead;
     }
 
-    public void close() throws IOException {
+    public void close()  {
         if (in != null) {
-            in.close();
+            try {
+                in.close();
+            } catch (IOException e) {
+                ExceptionUtilities.uncheckedThrow(e);
+            }
             in = null;
         }
     }

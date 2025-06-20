@@ -33,8 +33,13 @@ public class InetAddressUtilities
         super();
     }
 
-    public static InetAddress getLocalHost() throws UnknownHostException {
-        return InetAddress.getLocalHost();
+    public static InetAddress getLocalHost() {
+        try {
+            return InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return null;    // never reached
+        }
     }
 
     public static byte[] getIpAddress() {

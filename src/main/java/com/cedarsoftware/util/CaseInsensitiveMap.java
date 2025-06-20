@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.AbstractMap;
@@ -1083,9 +1084,13 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
          * Custom readObject method for serialization.
          * This ensures we properly handle the hash field during deserialization.
          */
-        private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
-            in.defaultReadObject();
-            // The hash field is final, but will be restored by deserialization
+        private void readObject(java.io.ObjectInputStream in) {
+            try {
+                in.defaultReadObject();
+                // The hash field is final, but will be restored by deserialization
+            } catch (IOException | ClassNotFoundException e) {
+                ExceptionUtilities.uncheckedThrow(e);
+            }
         }
     }
 

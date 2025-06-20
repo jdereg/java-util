@@ -1,6 +1,5 @@
 package com.cedarsoftware.util;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -19,9 +18,8 @@ final class Unsafe
 
     /**
      * Constructs unsafe object, acting as a wrapper.
-     * @throws InvocationTargetException
      */
-    public Unsafe() throws InvocationTargetException {
+    public Unsafe() {
         try {
             Class<?> unsafeClass = forName("sun.misc.Unsafe", ClassUtilities.getClassLoader(Unsafe.class));
             Field f = unsafeClass.getDeclaredField("theUnsafe");

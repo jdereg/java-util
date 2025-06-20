@@ -226,7 +226,7 @@ final class StringConversions {
         return result;
     }
 
-    private static char parseUnicodeEscape(String unicodeStr) throws IllegalArgumentException {
+    private static char parseUnicodeEscape(String unicodeStr) {
         if (!unicodeStr.startsWith("\\u") || unicodeStr.length() != 6) {
             throw new IllegalArgumentException("Unable to parse '" + unicodeStr + "' as a char/Character. Invalid Unicode escape sequence." + unicodeStr);
         }

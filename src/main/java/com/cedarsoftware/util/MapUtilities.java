@@ -64,7 +64,6 @@ public class MapUtilities {
      *
      * @param map       Map to retrieve item from
      * @param key       the key whose associated value is to be returned
-     * @param throwable
      * @param <T>       Throwable passed in to be thrown *if* the passed in key is not within the passed in map.
      * @return the value associated to the passed in key from the passed in map, otherwise throw the passed in exception.
      */

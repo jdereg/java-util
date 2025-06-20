@@ -294,14 +294,8 @@ public class IOUtilitiesTest
         URL u = IOUtilitiesTest.class.getClassLoader().getResource("io-test.txt");
         InputStream in = Files.newInputStream(Paths.get(u.toURI()));
         byte[] bytes = new byte[24];
-        try
-        {
-            IOUtilities.transfer(in, bytes);
-            fail("should not make it here");
-        }
-        catch (IOException e)
-        {
-        }
+        IOUtilities.transfer(in, bytes);
+        fail("should not make it here");
     }
 
     @Test

@@ -88,10 +88,10 @@ public final class UrlUtilities {
     public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
             {
                     new X509TrustManager() {
-                        public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+                        public void checkClientTrusted(X509Certificate[] x509Certificates, String s) {
                         }
 
-                        public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+                        public void checkServerTrusted(X509Certificate[] x509Certificates, String s)  {
                         }
 
                         public X509Certificate[] getAcceptedIssuers() {
@@ -502,22 +502,13 @@ public final class UrlUtilities {
 
     /**
      * Convenience method to copy content from a String URL to an output stream.
-     *
-     * @throws IOException          if an I/O error occurs (thrown as unchecked)
-     * @throws MalformedURLException if the URL is invalid (thrown as unchecked)
      */
     public static void copyContentFromUrl(String url, java.io.OutputStream out) {
-        try {
-            copyContentFromUrl(getActualUrl(url), out, null, null, false);
-        } catch (IOException | MalformedURLException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-        }
+        copyContentFromUrl(getActualUrl(url), out, null, null, false);
     }
 
     /**
      * Copy content from a URL to an output stream.
-     *
-     * @throws IOException if an I/O error occurs (thrown as unchecked)
      */
     public static void copyContentFromUrl(URL url, java.io.OutputStream out, Map<String, Map<String, Map<String, String>>> inCookies, Map<String, Map<String, Map<String, String>>> outCookies, boolean allowAllCerts) {
         URLConnection c = null;
@@ -561,12 +552,7 @@ public final class UrlUtilities {
      * @throws MalformedURLException if the URL is invalid (thrown as unchecked)
      */
     public static URLConnection getConnection(String url, boolean input, boolean output, boolean cache) {
-        try {
-            return getConnection(getActualUrl(url), null, input, output, cache, false);
-        } catch (IOException | MalformedURLException e) {
-            ExceptionUtilities.uncheckedThrow(e);
-            return null; // unreachable
-        }
+        return getConnection(getActualUrl(url), null, input, output, cache, false);
     }
 
     /**
@@ -590,7 +576,12 @@ public final class UrlUtilities {
      * @throws IOException if an I/O error occurs (thrown as unchecked)
      */
     public static URLConnection getConnection(URL url, Map inCookies, boolean input, boolean output, boolean cache, boolean allowAllCerts) {
-        URLConnection c = url.openConnection();
+        URLConnection c = null;
+        try {
+            c = url.openConnection();
+        } catch (IOException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+        }
         c.setRequestProperty("Accept-Encoding", "gzip, deflate");
         c.setAllowUserInteraction(false);
         c.setDoOutput(output);
@@ -632,8 +623,17 @@ public final class UrlUtilities {
         sc.setHostnameVerifier(NAIVE_VERIFIER);
     }
 
-    public static URL getActualUrl(String url) throws MalformedURLException {
+    public static URL getActualUrl(String url) {
         Matcher m = resPattern.matcher(url);
-        return m.find() ? ClassUtilities.getClassLoader().getResource(url.substring(m.end())) : new URL(url);
+        if (m.find()) {
+            return ClassUtilities.getClassLoader().getResource(url.substring(m.end()));
+        } else {
+            try {
+                return new URL(url);
+            } catch (MalformedURLException e) {
+                ExceptionUtilities.uncheckedThrow(e);
+                return null; // never reached
+            }
+        }
     }
 }

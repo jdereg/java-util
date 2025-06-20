@@ -46,7 +46,12 @@ class ConverterStaticMethodsTest {
             result = Converter.convert("abc", CustomType.class);
             assertEquals("ABC", result.value);
         } finally {
-            Converter.addConversion(String.class, CustomType.class, null);
+            Converter.addConversion(String.class, CustomType.class, new Convert<Object>() {
+                @Override
+                public Object convert(Object from, com.cedarsoftware.util.convert.Converter converter) {
+                    return new CustomType((String)from);
+                }
+            });
         }
     }
 }

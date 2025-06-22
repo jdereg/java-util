@@ -1373,7 +1373,6 @@ public class ClassUtilities {
      *     <li>Using unsafe instantiation (if enabled)</li>
      * </ol>
      *
-     * @param converter Converter instance used to convert null values to appropriate defaults for primitive types
      * @param c Class to instantiate
      * @param arguments Can be:
      *                  - null or empty (no-arg constructor)
@@ -1384,9 +1383,8 @@ public class ClassUtilities {
      * @return A new instance of the specified class
      * @throws IllegalArgumentException if the class cannot be instantiated or arguments are invalid
      */
-    public static Object newInstance(Converter converter, Class<?> c, Object arguments) {
+    public static Object newInstance(Class<?> c, Object arguments) {
         Convention.throwIfNull(c, "Class cannot be null");
-        Convention.throwIfNull(converter, "Converter cannot be null");
 
         // Normalize arguments to Collection format for existing code
         Collection<?> normalizedArgs;
@@ -1418,7 +1416,7 @@ public class ClassUtilities {
                 normalizedArgs = map.values();
             }
         } else if (arguments.getClass().isArray()) {
-            normalizedArgs = converter.convert(arguments, Collection.class);
+            normalizedArgs = com.cedarsoftware.util.Converter.convert(arguments, Collection.class);
         } else {
             // Single value - wrap in collection
             normalizedArgs = Collections.singletonList(arguments);
@@ -1426,7 +1424,7 @@ public class ClassUtilities {
 
         // Call existing implementation
         Set<Class<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        return newInstance(converter, c, normalizedArgs, visited);
+        return newInstance(com.cedarsoftware.util.Converter.getInstance(), c, normalizedArgs, visited);
     }
 
     // Add this as a static field near the top of ClassUtilities
@@ -1449,16 +1447,15 @@ public class ClassUtilities {
     }
 
     /**
-     * @deprecated Use {@link #newInstance(Converter, Class, Object)} instead.
+     * @deprecated Use {@link #newInstance(Class, Object)} instead.
      * @param converter Converter instance
      * @param c Class to instantiate
      * @param argumentValues Collection of constructor arguments
      * @return A new instance of the specified class
-     * @see #newInstance(Converter, Class, Object)
      */
     @Deprecated
     public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
-        return newInstance(converter, c, (Object) argumentValues);
+        return newInstance(c, argumentValues);
     }
 
     private static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues,

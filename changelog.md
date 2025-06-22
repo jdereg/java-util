@@ -1,4 +1,5 @@
 ### Revision History
+#### 3.5.0 (Unreleased)
 #### 3.4.0 
 > * `MapUtilities.getUnderlyingMap()` now uses identity comparison to avoid false cycle detection with wrapper maps
 > * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal

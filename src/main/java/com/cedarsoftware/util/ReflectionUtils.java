@@ -1029,10 +1029,9 @@ public final class ReflectionUtils {
         }
         try {
             return method.invoke(instance, args);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException("IllegalAccessException occurred attempting to reflectively call method: " + method.getName() + "()", e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException("Exception thrown inside reflectively called method: " + method.getName() + "()", e.getTargetException());
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // never executed
         }
     }
 
@@ -1089,10 +1088,9 @@ public final class ReflectionUtils {
         Method method = getMethod(instance, methodName, args.length);
         try {
             return method.invoke(instance, args);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException("IllegalAccessException occurred attempting to reflectively call method: " + method.getName() + "()", e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException("Exception thrown inside reflectively called method: " + method.getName() + "()", e.getTargetException());
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            ExceptionUtilities.uncheckedThrow(e);
+            return null; // never executed
         }
     }
 
@@ -1145,7 +1143,7 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Retrieves a method by name and argument count from an object instance, using a
+     * Retrieves a method by name and argument count from an object instance (or Class), using a
      * deterministic selection strategy when multiple matching methods exist.
      * <p>
      * Key features:
@@ -1179,7 +1177,7 @@ public final class ReflectionUtils {
      * );
      * </pre>
      *
-     * @param instance The object instance on which to find the method
+     * @param instance The object instance on which to find the method (can also be a Class)
      * @param methodName The name of the method to find
      * @param argCount The number of parameters the method should have
      * @return The Method object, made accessible if necessary
@@ -1193,7 +1191,7 @@ public final class ReflectionUtils {
             throw new IllegalArgumentException("Argument count cannot be negative");
         }
 
-        Class<?> beanClass = instance.getClass();
+        Class<?> beanClass = (instance instanceof Class) ? (Class<?>) instance : instance.getClass();
 
         Class<?>[] types = new Class<?>[argCount];
         Arrays.fill(types, Object.class);

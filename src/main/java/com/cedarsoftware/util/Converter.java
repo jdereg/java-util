@@ -158,8 +158,7 @@ public final class Converter
      *
      * @return the default {@code Converter} instance
      */
-    public static com.cedarsoftware.util.convert.Converter getInstance()
-    {
+    public static com.cedarsoftware.util.convert.Converter getInstance() {
         return instance;
     }
 

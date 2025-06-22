@@ -1384,7 +1384,35 @@ public class ClassUtilities {
      * @throws IllegalArgumentException if the class cannot be instantiated or arguments are invalid
      */
     public static Object newInstance(Class<?> c, Object arguments) {
+        return newInstance(com.cedarsoftware.util.Converter.getInstance(), c, arguments);
+    }
+
+    /**
+     * Create a new instance of the specified class, optionally using provided constructor arguments.
+     * <p>
+     * This method attempts to instantiate a class using the following strategies in order:
+     * <ol>
+     *     <li>Using cached successful constructor from previous instantiations</li>
+     *     <li>Using constructors in optimal order (public, protected, package, private)</li>
+     *     <li>Within each accessibility level, trying constructors with more parameters first</li>
+     *     <li>For each constructor, trying with exact matches first, then allowing null values</li>
+     *     <li>Using unsafe instantiation (if enabled)</li>
+     * </ol>
+     *
+     * @param converter Converter instance used to convert null values to appropriate defaults for primitive types
+     * @param c Class to instantiate
+     * @param arguments Can be:
+     *                  - null or empty (no-arg constructor)
+     *                  - Map&lt;String, Object&gt; to match by parameter name (when available) or type
+     *                  - Collection&lt;?&gt; of values to match by type
+     *                  - Object[] of values to match by type
+     *                  - Single value for single-argument constructors
+     * @return A new instance of the specified class
+     * @throws IllegalArgumentException if the class cannot be instantiated or arguments are invalid
+     */
+    public static Object newInstance(Converter converter, Class<?> c, Object arguments) {
         Convention.throwIfNull(c, "Class cannot be null");
+        Convention.throwIfNull(converter, "Converter cannot be null");
 
         // Normalize arguments to Collection format for existing code
         Collection<?> normalizedArgs;
@@ -1398,7 +1426,7 @@ public class ClassUtilities {
             Map<String, Object> map = (Map<String, Object>) arguments;
 
             // Check if we should try parameter name matching
-            // (stub for now - just set a flag but don't act on it)
+            // (stub for now - just set flag but don't act on it)
             if (!hasGeneratedKeys(map)) {
                 // TODO: In future, try parameter name matching here
                 hasNamedParameters = true;
@@ -1416,15 +1444,15 @@ public class ClassUtilities {
                 normalizedArgs = map.values();
             }
         } else if (arguments.getClass().isArray()) {
-            normalizedArgs = com.cedarsoftware.util.Converter.convert(arguments, Collection.class);
+            normalizedArgs = converter.convert(arguments, Collection.class);
         } else {
-            // Single value - wrap in a collection
+            // Single value - wrap in collection
             normalizedArgs = Collections.singletonList(arguments);
         }
 
         // Call existing implementation
         Set<Class<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        return newInstance(com.cedarsoftware.util.Converter.getInstance(), c, normalizedArgs, visited);
+        return newInstance(converter, c, normalizedArgs, visited);
     }
 
     // Add this as a static field near the top of ClassUtilities
@@ -1447,15 +1475,16 @@ public class ClassUtilities {
     }
 
     /**
-     * @deprecated Use {@link #newInstance(Class, Object)} instead.
+     * @deprecated Use {@link #newInstance(Converter, Class, Object)} instead.
      * @param converter Converter instance
      * @param c Class to instantiate
      * @param argumentValues Collection of constructor arguments
      * @return A new instance of the specified class
+     * @see #newInstance(Converter, Class, Object)
      */
     @Deprecated
     public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
-        return newInstance(c, argumentValues);
+        return newInstance(converter, c, (Object) argumentValues);
     }
 
     private static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues,

@@ -405,7 +405,7 @@ final class MapConversions {
             if (StringUtilities.hasContent(causeClassName)) {
                 Class<?> causeClass = ClassUtilities.forName(causeClassName, ClassUtilities.getClassLoader(MapConversions.class));
                 if (causeClass != null) {
-                    cause = (Throwable) ClassUtilities.newInstance(causeClass, Arrays.asList(causeMessage));
+                    cause = (Throwable) ClassUtilities.newInstance(converter, causeClass, Arrays.asList(causeMessage));
                 }
             }
 
@@ -425,7 +425,7 @@ final class MapConversions {
             }
 
             // Create the main exception using the determined class
-            Throwable exception = (Throwable) ClassUtilities.newInstance(classToUse, constructorArgs);
+            Throwable exception = (Throwable) ClassUtilities.newInstance(converter, classToUse, constructorArgs);
 
             // If cause wasn't handled in constructor, set it explicitly
             if (cause != null && exception.getCause() == null) {

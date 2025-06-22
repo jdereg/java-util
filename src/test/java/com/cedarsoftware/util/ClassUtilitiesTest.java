@@ -122,7 +122,7 @@ class ClassUtilitiesTest {
     @Test
     @DisplayName("Should create instance with no-arg constructor")
     void shouldCreateInstanceWithNoArgConstructor() {
-        Object instance = ClassUtilities.newInstance(NoArgConstructor.class, null);
+        Object instance = ClassUtilities.newInstance(converter, NoArgConstructor.class, null);
         assertNotNull(instance);
         assertInstanceOf(NoArgConstructor.class, instance);
     }
@@ -131,7 +131,7 @@ class ClassUtilitiesTest {
     @DisplayName("Should create instance with single argument")
     void shouldCreateInstanceWithSingleArgument() {
         List<Object> args = Collections.singletonList("test");
-        Object instance = ClassUtilities.newInstance(SingleArgConstructor.class, args);
+        Object instance = ClassUtilities.newInstance(converter, SingleArgConstructor.class, args);
 
         assertNotNull(instance);
         assertInstanceOf(SingleArgConstructor.class, instance);
@@ -142,7 +142,7 @@ class ClassUtilitiesTest {
     @DisplayName("Should create instance with multiple arguments")
     void shouldCreateInstanceWithMultipleArguments() {
         List<Object> args = Arrays.asList("test", 42);
-        Object instance = ClassUtilities.newInstance(MultiArgConstructor.class, args);
+        Object instance = ClassUtilities.newInstance(converter, MultiArgConstructor.class, args);
 
         assertNotNull(instance);
         assertInstanceOf(MultiArgConstructor.class, instance);
@@ -155,7 +155,7 @@ class ClassUtilitiesTest {
     @DisplayName("Should handle private constructors")
     void shouldHandlePrivateConstructors() {
         List<Object> args = Collections.singletonList("private");
-        Object instance = ClassUtilities.newInstance(PrivateConstructor.class, args);
+        Object instance = ClassUtilities.newInstance(converter, PrivateConstructor.class, args);
 
         assertNotNull(instance);
         assertInstanceOf(PrivateConstructor.class, instance);
@@ -165,7 +165,7 @@ class ClassUtilitiesTest {
     @Test
     @DisplayName("Should handle primitive parameters with null arguments")
     void shouldHandlePrimitiveParametersWithNullArguments() {
-        Object instance = ClassUtilities.newInstance(PrimitiveConstructor.class, null);
+        Object instance = ClassUtilities.newInstance(converter, PrimitiveConstructor.class, null);
 
         assertNotNull(instance);
         assertInstanceOf(PrimitiveConstructor.class, instance);
@@ -178,7 +178,7 @@ class ClassUtilitiesTest {
     @DisplayName("Should choose best matching constructor with overloads")
     void shouldChooseBestMatchingConstructor() {
         List<Object> args = Arrays.asList("custom", 42);
-        Object instance = ClassUtilities.newInstance(OverloadedConstructors.class, args);
+        Object instance = ClassUtilities.newInstance(converter, OverloadedConstructors.class, args);
 
         assertNotNull(instance);
         assertInstanceOf(OverloadedConstructors.class, instance);
@@ -202,7 +202,7 @@ class ClassUtilitiesTest {
         for (Class<?> sensitiveClass : sensitiveClasses) {
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> ClassUtilities.newInstance(sensitiveClass, null)
+                    () -> ClassUtilities.newInstance(converter, sensitiveClass, null)
             );
             assertTrue(exception.getMessage().contains("not"));
             assertInstanceOf(SecurityException.class, exception);
@@ -213,21 +213,21 @@ class ClassUtilitiesTest {
     @DisplayName("Should throw IllegalArgumentException for interfaces")
     void shouldThrowExceptionForInterfaces() {
         assertThrows(IllegalArgumentException.class,
-                () -> ClassUtilities.newInstance(Runnable.class, null));
+                () -> ClassUtilities.newInstance(converter, Runnable.class, null));
     }
 
     @Test
     @DisplayName("Should throw IllegalArgumentException for null class")
     void shouldThrowExceptionForNullClass() {
         assertThrows(IllegalArgumentException.class,
-                () -> ClassUtilities.newInstance(null, null));
+                () -> ClassUtilities.newInstance(converter, null, null));
     }
 
     @ParameterizedTest
     @MethodSource("provideArgumentMatchingCases")
     @DisplayName("Should match constructor arguments correctly")
     void shouldMatchConstructorArgumentsCorrectly(Class<?> clazz, List<Object> args, Object[] expectedValues) {
-        Object instance = ClassUtilities.newInstance(clazz, args);
+        Object instance = ClassUtilities.newInstance(converter, clazz, args);
         assertNotNull(instance);
         assertArrayEquals(expectedValues, getValues(instance));
     }

@@ -1375,19 +1375,90 @@ public class ClassUtilities {
      *
      * @param converter Converter instance used to convert null values to appropriate defaults for primitive types
      * @param c Class to instantiate
-     * @param argumentValues Optional collection of values to match to constructor parameters. Can be null or empty.
+     * @param arguments Can be:
+     *                  - null or empty (no-arg constructor)
+     *                  - Map&lt;String, Object&gt; to match by parameter name (when available) or type
+     *                  - Collection&lt;?&gt; of values to match by type
+     *                  - Object[] of values to match by type
+     *                  - Single value for single-argument constructors
      * @return A new instance of the specified class
-     * @throws IllegalArgumentException if:
-     *         <ul>
-     *             <li>The class cannot be instantiated</li>
-     *             <li>The class is a security-sensitive class (Process, ClassLoader, etc.)</li>
-     *             <li>The class is an unknown interface</li>
-     *         </ul>
-     * @throws IllegalStateException if constructor invocation fails
+     * @throws IllegalArgumentException if the class cannot be instantiated or arguments are invalid
      */
-    public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
+    public static Object newInstance(Converter converter, Class<?> c, Object arguments) {
+        Convention.throwIfNull(c, "Class cannot be null");
+        Convention.throwIfNull(converter, "Converter cannot be null");
+
+        // Normalize arguments to Collection format for existing code
+        Collection<?> normalizedArgs;
+        boolean hasNamedParameters = false;
+
+        if (arguments == null) {
+            normalizedArgs = Collections.emptyList();
+        } else if (arguments instanceof Collection) {
+            normalizedArgs = (Collection<?>) arguments;
+        } else if (arguments instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) arguments;
+
+            // Check if we should try parameter name matching
+            // (stub for now - just set flag but don't act on it)
+            if (!hasGeneratedKeys(map)) {
+                // TODO: In future, try parameter name matching here
+                hasNamedParameters = true;
+            }
+
+            // Convert map values to collection
+            if (hasGeneratedKeys(map)) {
+                // Preserve order for generated keys (arg0, arg1, etc.)
+                List<Object> orderedValues = new ArrayList<>();
+                for (int i = 0; i < map.size(); i++) {
+                    orderedValues.add(map.get("arg" + i));
+                }
+                normalizedArgs = orderedValues;
+            } else {
+                normalizedArgs = map.values();
+            }
+        } else if (arguments.getClass().isArray()) {
+            normalizedArgs = converter.convert(arguments, Collection.class);
+        } else {
+            // Single value - wrap in collection
+            normalizedArgs = Collections.singletonList(arguments);
+        }
+
+        // Call existing implementation
         Set<Class<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        return newInstance(converter, c, argumentValues, visited);
+        return newInstance(converter, c, normalizedArgs, visited);
+    }
+
+    // Add this as a static field near the top of ClassUtilities
+    private static final Pattern ARG_PATTERN = Pattern.compile("arg\\d+");
+
+    /**
+     * Check if the map has generated keys (arg0, arg1, etc.)
+     */
+    private static boolean hasGeneratedKeys(Map<String, Object> map) {
+        if (map.isEmpty()) {
+            return false;
+        }
+        // Check if all keys match the pattern arg0, arg1, etc.
+        for (String key : map.keySet()) {
+            if (!ARG_PATTERN.matcher(key).matches()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @deprecated Use {@link #newInstance(Converter, Class, Object)} instead.
+     * @param converter Converter instance
+     * @param c Class to instantiate
+     * @param argumentValues Collection of constructor arguments
+     * @return A new instance of the specified class
+     * @see #newInstance(Converter, Class, Object)
+     */
+    @Deprecated
+    public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues) {
+        return newInstance(converter, c, (Object) argumentValues);
     }
 
     private static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues,

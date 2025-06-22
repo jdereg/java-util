@@ -11,15 +11,11 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import com.cedarsoftware.util.LoggingConfig;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -102,6 +98,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -1416,6 +1414,7 @@ public class ClassUtilities {
 
         // Normalize arguments to Collection format for existing code
         Collection<?> normalizedArgs;
+        Map<String, Object> namedParameters = null;
         boolean hasNamedParameters = false;
 
         if (arguments == null) {
@@ -1425,15 +1424,17 @@ public class ClassUtilities {
         } else if (arguments instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) arguments;
 
-            // Check if we should try parameter name matching
-            // (stub for now - just set flag but don't act on it)
-            if (!hasGeneratedKeys(map)) {
-                // TODO: In future, try parameter name matching here
+            // Check once if we have generated keys
+            boolean generatedKeys = hasGeneratedKeys(map);
+
+            if (!generatedKeys) {
                 hasNamedParameters = true;
+                namedParameters = map;
+                // Remove System.out.println - we have LOG statements below
             }
 
-            // Convert map values to collection
-            if (hasGeneratedKeys(map)) {
+            // Convert map values to collection for fallback
+            if (generatedKeys) {
                 // Preserve order for generated keys (arg0, arg1, etc.)
                 List<Object> orderedValues = new ArrayList<>();
                 for (int i = 0; i < map.size(); i++) {
@@ -1450,11 +1451,129 @@ public class ClassUtilities {
             normalizedArgs = Collections.singletonList(arguments);
         }
 
-        // Call existing implementation
+        // Try parameter name matching first if we have named parameters
+        if (hasNamedParameters && namedParameters != null) {
+            LOG.log(Level.FINE, "Attempting parameter name matching for class: {0}", c.getName());
+            LOG.log(Level.FINER, "Provided parameter names: {0}", namedParameters.keySet());
+
+            try {
+                Object result = newInstanceWithNamedParameters(converter, c, namedParameters);
+                if (result != null) {
+                    LOG.log(Level.FINE, "Successfully created instance of {0} using parameter names", c.getName());
+                    return result;
+                }
+            } catch (Exception e) {
+                LOG.log(Level.FINE, "Parameter name matching failed for {0}: {1}", new Object[]{c.getName(), e.getMessage()});
+                LOG.log(Level.FINER, "Falling back to positional argument matching");
+            }
+        }
+
+        // Call existing implementation as fallback
+        LOG.log(Level.FINER, "Using positional argument matching for {0}", c.getName());
         Set<Class<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         return newInstance(converter, c, normalizedArgs, visited);
     }
 
+    private static Object newInstanceWithNamedParameters(Converter converter, Class<?> c, Map<String, Object> namedParams) {
+        // Get all constructors using ReflectionUtils for caching
+        Constructor<?>[] sortedConstructors = ReflectionUtils.getAllConstructors(c);
+
+        boolean isFinal = Modifier.isFinal(c.getModifiers());
+        boolean isException = Throwable.class.isAssignableFrom(c);
+
+        LOG.log(Level.FINER, "Class {0} is {1}{2}",
+                new Object[]{c.getName(),
+                        isFinal ? "final" : "non-final",
+                        isException ? " (Exception type)" : ""});
+
+        LOG.log(Level.FINER, "Trying {0} constructors for {1}",
+                new Object[]{sortedConstructors.length, c.getName()});
+
+        // First check if ANY constructor has real parameter names
+        boolean anyConstructorHasRealNames = false;
+        for (Constructor<?> constructor : sortedConstructors) {
+            Parameter[] parameters = constructor.getParameters();
+            if (parameters.length > 0) {
+                String firstParamName = parameters[0].getName();
+                if (!firstParamName.matches("arg\\d+")) {
+                    anyConstructorHasRealNames = true;
+                    break;
+                }
+            }
+        }
+
+        // If no constructors have real parameter names, bail out early
+        if (!anyConstructorHasRealNames) {
+            boolean hasParameterizedConstructor = false;
+            for (Constructor<?> cons : sortedConstructors) {
+                if (cons.getParameterCount() > 0) {
+                    hasParameterizedConstructor = true;
+                    break;
+                }
+            }
+
+            if (hasParameterizedConstructor) {
+                LOG.log(Level.FINE, "No constructors for {0} have real parameter names - cannot use parameter matching", c.getName());
+                return null; // This will trigger fallback to positional matching
+            }
+        }
+
+        for (Constructor<?> constructor : sortedConstructors) {
+            LOG.log(Level.FINER, "Trying constructor: {0}", constructor);
+
+            // Get parameter names
+            Parameter[] parameters = constructor.getParameters();
+            String[] paramNames = new String[parameters.length];
+            boolean hasRealNames = true;
+
+            for (int i = 0; i < parameters.length; i++) {
+                paramNames[i] = parameters[i].getName();
+                LOG.log(Level.FINEST, "  Parameter {0}: name=''{1}'', type={2}",
+                        new Object[]{i, paramNames[i], parameters[i].getType().getSimpleName()});
+
+                // Check if we have real parameter names or just arg0, arg1, etc.
+                if (paramNames[i].matches("arg\\d+")) {
+                    hasRealNames = false;
+                }
+            }
+
+            if (!hasRealNames && parameters.length > 0) {
+                LOG.log(Level.FINER, "  Skipping constructor - parameter names not available");
+                continue; // Skip this constructor for parameter matching
+            }
+
+            // Try to match all parameters
+            Object[] args = new Object[parameters.length];
+            boolean allMatched = true;
+
+            for (int i = 0; i < parameters.length; i++) {
+                if (namedParams.containsKey(paramNames[i])) {
+                    Object value = namedParams.get(paramNames[i]);
+                    // Convert if necessary
+                    args[i] = converter.convert(value, parameters[i].getType());
+                    LOG.log(Level.FINEST, "  Matched parameter ''{0}'' with value: {1}",
+                            new Object[]{paramNames[i], value});
+                } else {
+                    LOG.log(Level.FINER, "  Missing parameter: {0}", paramNames[i]);
+                    allMatched = false;
+                    break;
+                }
+            }
+
+            if (allMatched) {
+                try {
+                    Object instance = constructor.newInstance(args);
+                    LOG.log(Level.FINE, "  Successfully created instance of {0}", c.getName());
+                    return instance;
+                } catch (Exception e) {
+                    LOG.log(Level.FINER, "  Failed to invoke constructor: {0}", e.getMessage());
+                }
+            }
+        }
+
+        return null; // Indicate failure to create with named parameters
+    }
+    
     // Add this as a static field near the top of ClassUtilities
     private static final Pattern ARG_PATTERN = Pattern.compile("arg\\d+");
 
@@ -1657,6 +1776,121 @@ public class ClassUtilities {
         }
     }
 
+    /**
+     * Cached reference to InaccessibleObjectException class (Java 9+), or null if not available
+     */
+    private static final Class<?> INACCESSIBLE_OBJECT_EXCEPTION_CLASS;
+
+    static {
+        Class<?> clazz = null;
+        try {
+            clazz = Class.forName("java.lang.reflect.InaccessibleObjectException");
+        } catch (ClassNotFoundException e) {
+            // Java 8 or earlier - this exception doesn't exist
+        }
+        INACCESSIBLE_OBJECT_EXCEPTION_CLASS = clazz;
+    }
+
+    /**
+     * Logs reflection access issues in a concise, readable format without stack traces.
+     * Useful for expected access failures due to module restrictions or private access.
+     *
+     * @param accessible The field, method, or constructor that couldn't be accessed
+     * @param e The exception that was thrown
+     * @param operation Description of what was being attempted (e.g., "read field", "invoke method")
+     */
+    public static void logAccessIssue(AccessibleObject accessible, Exception e, String operation) {
+        if (!LOG.isLoggable(Level.FINEST)) {
+            return;
+        }
+
+        String elementType;
+        String elementName;
+        String declaringClass;
+        String modifiers;
+
+        if (accessible instanceof Field) {
+            Field field = (Field) accessible;
+            elementType = "field";
+            elementName = field.getName();
+            declaringClass = field.getDeclaringClass().getName();
+            modifiers = Modifier.toString(field.getModifiers());
+        } else if (accessible instanceof Method) {
+            Method method = (Method) accessible;
+            elementType = "method";
+            elementName = method.getName() + "()";
+            declaringClass = method.getDeclaringClass().getName();
+            modifiers = Modifier.toString(method.getModifiers());
+        } else if (accessible instanceof Constructor) {
+            Constructor<?> constructor = (Constructor<?>) accessible;
+            elementType = "constructor";
+            elementName = constructor.getDeclaringClass().getSimpleName() + "()";
+            declaringClass = constructor.getDeclaringClass().getName();
+            modifiers = Modifier.toString(constructor.getModifiers());
+        } else {
+            elementType = "member";
+            elementName = accessible.toString();
+            declaringClass = "unknown";
+            modifiers = "";
+        }
+
+        // Determine the reason for the access failure
+        String reason = null;
+        if (e instanceof IllegalAccessException) {
+            String msg = e.getMessage();
+            if (msg != null) {
+                if (msg.contains("module")) {
+                    reason = "Java module system restriction";
+                } else if (msg.contains("private")) {
+                    reason = "private access";
+                } else if (msg.contains("protected")) {
+                    reason = "protected access";
+                } else if (msg.contains("package")) {
+                    reason = "package-private access";
+                }
+            }
+        } else if (INACCESSIBLE_OBJECT_EXCEPTION_CLASS != null &&
+                INACCESSIBLE_OBJECT_EXCEPTION_CLASS.isInstance(e)) {
+            reason = "Java module system restriction (InaccessibleObjectException)";
+        } else if (e instanceof SecurityException) {
+            reason = "Security manager restriction";
+        }
+
+        if (reason == null) {
+            reason = e.getClass().getSimpleName();
+        }
+
+        // Log the concise message
+        if (operation != null && !operation.isEmpty()) {
+            LOG.log(Level.FINEST, "Cannot {0} {1} {2} ''{3}'' on {4} ({5})",
+                    new Object[]{operation, modifiers, elementType, elementName, declaringClass, reason});
+        } else {
+            LOG.log(Level.FINEST, "Cannot access {0} {1} ''{2}'' on {3} ({4})",
+                    new Object[]{modifiers, elementType, elementName, declaringClass, reason});
+        }
+    }
+    
+    /**
+     * Convenience method for field access issues
+     */
+    public static void logFieldAccessIssue(Field field, Exception e) {
+        logAccessIssue(field, e, "read");
+    }
+
+    /**
+     * Convenience method for method invocation issues
+     */
+    public static void logMethodAccessIssue(Method method, Exception e) {
+        logAccessIssue(method, e, "invoke");
+    }
+
+    /**
+     * Convenience method for constructor access issues
+     */
+    public static void logConstructorAccessIssue(Constructor<?> constructor, Exception e) {
+        logAccessIssue(constructor, e, "invoke");
+    }
+    
     /**
      * Returns all equally "lowest" common supertypes (classes or interfaces) shared by both
      * {@code classA} and {@code classB}, excluding any types specified in {@code excludeSet}.

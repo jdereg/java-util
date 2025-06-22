@@ -398,42 +398,47 @@ final class MapConversions {
                 }
             }
 
-            // First, handle the cause if it exists
-            Throwable cause = null;
+            // Create a new map with properly named parameters
+            Map<String, Object> namedParams = new LinkedHashMap<>();
+
+            // Copy all fields from the original map
+            namedParams.putAll(map);
+
+            // Handle special fields that might have different names
+            // Convert detailMessage to message if needed
+            if (map.containsKey(DETAIL_MESSAGE) && !map.containsKey(MESSAGE)) {
+                namedParams.put(MESSAGE, map.get(DETAIL_MESSAGE));
+            }
+
+            // Handle cause if it's represented as className string + message
             String causeClassName = (String) map.get(CAUSE);
             String causeMessage = (String) map.get(CAUSE_MESSAGE);
+
             if (StringUtilities.hasContent(causeClassName)) {
                 Class<?> causeClass = ClassUtilities.forName(causeClassName, ClassUtilities.getClassLoader(MapConversions.class));
                 if (causeClass != null) {
-                    cause = (Throwable) ClassUtilities.newInstance(converter, causeClass, Arrays.asList(causeMessage));
+                    Map<String, Object> causeMap = new LinkedHashMap<>();
+                    if (causeMessage != null) {
+                        causeMap.put(MESSAGE, causeMessage);
+                    }
+
+                    Throwable cause = (Throwable) ClassUtilities.newInstance(converter, causeClass, causeMap);
+                    namedParams.put(CAUSE, cause);
                 }
+            } else if (map.get(CAUSE) instanceof Map) {
+                // If cause is already a Map, convert it recursively
+                Map<String, Object> causeMap = (Map<String, Object>) map.get(CAUSE);
+                Throwable cause = toThrowable(causeMap, converter, Throwable.class);
+                namedParams.put(CAUSE, cause);
             }
+            // If cause is already a Throwable, it will be used as-is
 
-            // Prepare constructor args - message and cause if available
-            List<Object> constructorArgs = new ArrayList<>();
-            String message = (String) map.get(MESSAGE);
-            if (message != null) {
-                constructorArgs.add(message);
-            } else {
-                if (map.containsKey(DETAIL_MESSAGE)) {
-                    constructorArgs.add(map.get(DETAIL_MESSAGE));
-                }
-            }
+            // Remove fields that shouldn't be passed to the constructor
+            namedParams.remove(CLASS);
+            namedParams.remove(CAUSE_MESSAGE); // Remove the cause message since we've processed it
 
-            if (cause != null) {
-                constructorArgs.add(cause);
-            }
-
-            // Create the main exception using the determined class
-            Throwable exception = (Throwable) ClassUtilities.newInstance(converter, classToUse, constructorArgs);
-
-            // If cause wasn't handled in constructor, set it explicitly
-            if (cause != null && exception.getCause() == null) {
-                exception.initCause(cause);
-            }
-
-            // Now attempt to populate all remaining fields
-            populateFields(exception, map, converter);
+            // Create the exception using the Map - this will use parameter name matching!
+            Throwable exception = (Throwable) ClassUtilities.newInstance(converter, classToUse, namedParams);
 
             // Clear the stackTrace
             exception.setStackTrace(new StackTraceElement[0]);
@@ -443,7 +448,7 @@ final class MapConversions {
             throw new IllegalArgumentException("Unable to reconstruct exception instance from map: " + map, e);
         }
     }
-
+    
     private static void populateFields(Throwable exception, Map<String, Object> map, Converter converter) {
         // Skip special fields we've already handled
         Set<String> skipFields = CollectionUtilities.setOf(CAUSE, CAUSE_MESSAGE, MESSAGE, "stackTrace");

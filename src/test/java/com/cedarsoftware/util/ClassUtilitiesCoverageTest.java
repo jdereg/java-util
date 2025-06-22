@@ -124,10 +124,10 @@ class ClassUtilitiesCoverageTest {
     void testSetUseUnsafe() {
         ClassUtilities.setUseUnsafe(false);
         assertThrows(IllegalArgumentException.class,
-                () -> ClassUtilities.newInstance(converter, FailingCtor.class, null));
+                () -> ClassUtilities.newInstance(converter, FailingCtor.class, (Object)null));
 
         ClassUtilities.setUseUnsafe(true);
-        Object obj = ClassUtilities.newInstance(converter, FailingCtor.class, null);
+        Object obj = ClassUtilities.newInstance(converter, FailingCtor.class, (Object)null);
         assertNotNull(obj);
     }
 }

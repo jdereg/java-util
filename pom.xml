@@ -74,6 +74,7 @@
                             <release>8</release>
                             <testRelease>8</testRelease>
                             <encoding>${project.build.sourceEncoding}</encoding>
+                            <parameters>true</parameters>
                         </configuration>
                     </plugin>
                 </plugins>

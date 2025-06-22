@@ -261,9 +261,7 @@ public class Traverser {
             try {
                 fields.put(field, field.get(obj));
             } catch (IllegalAccessException e) {
-                LOG.log(Level.FINEST,
-                        "Unable to access field '" + field.getName() + "' on " + obj.getClass().getName(),
-                        e);
+                ClassUtilities.logFieldAccessIssue(field, e);
                 fields.put(field, "<inaccessible>");
             }
         }

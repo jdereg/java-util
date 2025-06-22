@@ -45,12 +45,27 @@ public class ReflectionUtilsCachesTest {
     void testGetAllConstructorsSorting() {
         Constructor<?>[] ctors = ReflectionUtils.getAllConstructors(ConstructorTarget.class);
         assertEquals(5, ctors.length);
+
+        // First: public with 1 parameter (more specific)
         assertEquals(1, ctors[0].getParameterCount());
         assertTrue(Modifier.isPublic(ctors[0].getModifiers()));
+
+        // Second: public with 0 parameters
         assertEquals(0, ctors[1].getParameterCount());
         assertTrue(Modifier.isPublic(ctors[1].getModifiers()));
+
+        // Third: protected with 1 parameter
+        assertEquals(1, ctors[2].getParameterCount());
         assertTrue(Modifier.isProtected(ctors[2].getModifiers()));
+
+        // Fourth: package-private with 1 parameter
+        assertEquals(1, ctors[3].getParameterCount());
+        assertFalse(Modifier.isPublic(ctors[3].getModifiers()));
+        assertFalse(Modifier.isProtected(ctors[3].getModifiers()));
         assertFalse(Modifier.isPrivate(ctors[3].getModifiers()));
+
+        // Fifth: private with 1 parameter
+        assertEquals(1, ctors[4].getParameterCount());
         assertTrue(Modifier.isPrivate(ctors[4].getModifiers()));
     }
 

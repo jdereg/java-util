@@ -1367,26 +1367,42 @@ public final class ReflectionUtils {
 
         // Sort the constructors in optimal order if there's more than one
         if (result.length > 1) {
+            boolean isFinal = Modifier.isFinal(clazz.getModifiers());
+            boolean isException = Throwable.class.isAssignableFrom(clazz);
+
             Arrays.sort(result, (c1, c2) -> {
-                // Compare by accessibility level
+                // First, sort by accessibility (public > protected > package > private)
                 int mod1 = c1.getModifiers();
                 int mod2 = c2.getModifiers();
 
-                // Public > Protected > Package-private > Private
-                if (Modifier.isPublic(mod1) != Modifier.isPublic(mod2)) {
-                    return Modifier.isPublic(mod1) ? -1 : 1;
+                boolean isPublic1 = Modifier.isPublic(mod1);
+                boolean isPublic2 = Modifier.isPublic(mod2);
+                boolean isProtected1 = Modifier.isProtected(mod1);
+                boolean isProtected2 = Modifier.isProtected(mod2);
+                boolean isPrivate1 = Modifier.isPrivate(mod1);
+                boolean isPrivate2 = Modifier.isPrivate(mod2);
+
+                // Compare accessibility levels
+                if (isPublic1 != isPublic2) {
+                    return isPublic1 ? -1 : 1;  // public first
+                }
+                if (isProtected1 != isProtected2) {
+                    return isProtected1 ? -1 : 1;  // protected before package/private
+                }
+                if (isPrivate1 != isPrivate2) {
+                    return isPrivate1 ? 1 : -1;  // private last
                 }
 
-                if (Modifier.isProtected(mod1) != Modifier.isProtected(mod2)) {
-                    return Modifier.isProtected(mod1) ? -1 : 1;
-                }
+                // Within same accessibility level, sort by parameter count
+                int paramDiff = c1.getParameterCount() - c2.getParameterCount();
 
-                if (Modifier.isPrivate(mod1) != Modifier.isPrivate(mod2)) {
-                    return Modifier.isPrivate(mod1) ? 1 : -1; // Note: private gets lower priority
+                // For exceptions/final classes: prefer more parameters
+                // For regular classes: also prefer more parameters (more specific first)
+                if (isFinal || isException) {
+                    return -paramDiff;  // More parameters first
+                } else {
+                    return -paramDiff;  // More parameters first (more specific)
                 }
-
-                // Within same accessibility, prefer more parameters (more specific constructor)
-                return Integer.compare(c2.getParameterCount(), c1.getParameterCount());
             });
         }
 

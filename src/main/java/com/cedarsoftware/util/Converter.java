@@ -148,6 +148,22 @@ public final class Converter
     private Converter() { }
 
     /**
+     * Provides access to the default {@link com.cedarsoftware.util.convert.Converter}
+     * instance used by this class.
+     * <p>
+     * The returned instance is created with {@link DefaultConverterOptions} and is
+     * the same one used by all static conversion APIs. It is immutable and
+     * thread-safe.
+     * </p>
+     *
+     * @return the default {@code Converter} instance
+     */
+    public static com.cedarsoftware.util.convert.Converter getInstance()
+    {
+        return instance;
+    }
+
+    /**
      * Converts the given source object to the specified target type.
      * <p>
      * The {@code convert} method serves as the primary API for transforming objects between various types.

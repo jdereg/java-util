@@ -1921,6 +1921,7 @@ public static APIs on the `com.cedarsoftware.util.Converter` class.
 The instance API allows you to create a `com.cedarsoftware.util.converter.Converter` instance with a custom `ConverterOptions` object.  If you add custom conversions, they will be used by the `Converter` instance.
 You can also store arbitrary settings in the options via `getCustomOptions()` and retrieve them later with `getCustomOption(name)`.
 You can create as many instances of the Converter as needed.  Often though, the static API is sufficient.
+If you only use the static API but need an instance for integration with other frameworks, call `Converter.getInstance()` to obtain the default Converter.
 
 **Collection Conversions:**
 ```java

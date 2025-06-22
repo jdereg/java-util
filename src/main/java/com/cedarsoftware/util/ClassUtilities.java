@@ -1398,7 +1398,7 @@ public class ClassUtilities {
             Map<String, Object> map = (Map<String, Object>) arguments;
 
             // Check if we should try parameter name matching
-            // (stub for now - just set flag but don't act on it)
+            // (stub for now - just set a flag but don't act on it)
             if (!hasGeneratedKeys(map)) {
                 // TODO: In future, try parameter name matching here
                 hasNamedParameters = true;
@@ -1418,7 +1418,7 @@ public class ClassUtilities {
         } else if (arguments.getClass().isArray()) {
             normalizedArgs = com.cedarsoftware.util.Converter.convert(arguments, Collection.class);
         } else {
-            // Single value - wrap in collection
+            // Single value - wrap in a collection
             normalizedArgs = Collections.singletonList(arguments);
         }
 

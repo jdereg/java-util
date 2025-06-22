@@ -288,7 +288,7 @@ public final class Converter
      *
      * <h3>Performance Considerations:</h3>
      * <p>
-     * The Converter utilizes caching mechanisms to store and retrieve converters, ensuring efficient performance
+     * The Converter uses caching mechanisms to store and retrieve converters, ensuring efficient performance
      * even with a large number of conversion operations. However, registering an excessive number of custom converters
      * may impact memory usage. It is recommended to register only necessary converters to maintain optimal performance.
      * </p>

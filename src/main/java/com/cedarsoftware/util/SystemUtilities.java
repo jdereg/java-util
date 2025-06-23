@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -19,8 +20,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.cedarsoftware.util.LoggingConfig;
 import java.util.stream.Collectors;
-import java.lang.reflect.Method;
-import com.cedarsoftware.util.ReflectionUtils;
 
 /**
  * Utility class providing common system-level operations and information gathering capabilities.

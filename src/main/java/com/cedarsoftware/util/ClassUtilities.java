@@ -884,29 +884,28 @@ public class ClassUtilities {
      */
     private static ClassLoader getOSGiClassLoader0(final Class<?> classFromBundle) {
         try {
-            // Load the FrameworkUtil class from OSGi using the bundle's class loader
-            ClassLoader loader = classFromBundle.getClassLoader();
-            Class<?> frameworkUtilClass = forName("org.osgi.framework.FrameworkUtil", loader);
+            // Load the FrameworkUtil class from OSGi
+            Class<?> frameworkUtilClass = Class.forName("org.osgi.framework.FrameworkUtil");
 
             // Get the getBundle(Class<?>) method
-            Method getBundleMethod = ReflectionUtils.getMethod(frameworkUtilClass, "getBundle", Class.class);
+            Method getBundleMethod = frameworkUtilClass.getMethod("getBundle", Class.class);
 
             // Invoke FrameworkUtil.getBundle(classFromBundle) to get the Bundle instance
             Object bundle = getBundleMethod.invoke(null, classFromBundle);
 
             if (bundle != null) {
                 // Get BundleWiring class
-                Class<?> bundleWiringClass = forName("org.osgi.framework.wiring.BundleWiring", loader);
+                Class<?> bundleWiringClass = Class.forName("org.osgi.framework.wiring.BundleWiring");
 
                 // Get the adapt(Class) method
-                Method adaptMethod = ReflectionUtils.getMethod(bundle.getClass(), "adapt", Class.class);
+                Method adaptMethod = bundle.getClass().getMethod("adapt", Class.class);
 
                 // Invoke bundle.adapt(BundleWiring.class) to get the BundleWiring instance
                 Object bundleWiring = adaptMethod.invoke(bundle, bundleWiringClass);
 
                 if (bundleWiring != null) {
                     // Get the getClassLoader() method from BundleWiring
-                    Method getClassLoaderMethod = ReflectionUtils.getMethod(bundleWiringClass, "getClassLoader");
+                    Method getClassLoaderMethod = bundleWiringClass.getMethod("getClassLoader");
 
                     // Invoke getClassLoader() to obtain the ClassLoader
                     Object classLoader = getClassLoaderMethod.invoke(bundleWiring);

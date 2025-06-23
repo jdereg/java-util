@@ -5,6 +5,10 @@
 > * Argument conversion generalized for `Executable` objects
 > * `Converter.convert()` returns the source when assignment compatible
 > * Throwable creation from a `Map` handles aliases and nested causes
+> * Documentation clarifies assignment-compatible values are returned as-is only
+  when no other conversion path is selected
+> * README notes use of the `-parameters` flag which increased the jar size by
+  about 10K
 #### 3.4.0
 > * `MapUtilities.getUnderlyingMap()` now uses identity comparison to avoid false cycle detection with wrapper maps
 > * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal

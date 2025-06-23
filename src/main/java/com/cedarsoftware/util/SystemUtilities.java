@@ -19,6 +19,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.cedarsoftware.util.LoggingConfig;
 import java.util.stream.Collectors;
+import java.lang.reflect.Method;
+import com.cedarsoftware.util.ReflectionUtils;
 
 /**
  * Utility class providing common system-level operations and information gathering capabilities.
@@ -144,9 +146,9 @@ public final class SystemUtilities
      */
     public static int currentJdkMajorVersion() {
         try {
-            java.lang.reflect.Method versionMethod = Runtime.class.getMethod("version");
+            Method versionMethod = ReflectionUtils.getMethod(Runtime.class, "version");
             Object v = versionMethod.invoke(Runtime.getRuntime());
-            java.lang.reflect.Method major = v.getClass().getMethod("major");
+            Method major = ReflectionUtils.getMethod(v.getClass(), "major");
             return (Integer) major.invoke(v);
         } catch (Exception ignored) {
             String spec = System.getProperty("java.specification.version");
@@ -156,10 +158,10 @@ public final class SystemUtilities
 
     private static int[] parseJavaVersionNumbers() {
         try {
-            java.lang.reflect.Method versionMethod = Runtime.class.getMethod("version");
+            Method versionMethod = ReflectionUtils.getMethod(Runtime.class, "version");
             Object v = versionMethod.invoke(Runtime.getRuntime());
-            java.lang.reflect.Method majorMethod = v.getClass().getMethod("major");
-            java.lang.reflect.Method minorMethod = v.getClass().getMethod("minor");
+            Method majorMethod = ReflectionUtils.getMethod(v.getClass(), "major");
+            Method minorMethod = ReflectionUtils.getMethod(v.getClass(), "minor");
             int major = (Integer) majorMethod.invoke(v);
             int minor = (Integer) minorMethod.invoke(v);
             return new int[]{major, minor};

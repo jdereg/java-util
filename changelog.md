@@ -1,14 +1,10 @@
 ### Revision History
-#### 3.5.0 (Unreleased)
+#### 3.5.0
 > * `Converter.getInstance()` exposes the default instance used by the static API
 > * `ClassUtilities.newInstance()` accepts `Map` arguments using parameter names and falls back to the no‑arg constructor
-> * Argument conversion generalized for `Executable` objects
-> * `Converter.convert()` returns the source when assignment compatible
+> * `Converter.convert()` returns the source when assignment compatible (when no other conversion path is selected)
 > * Throwable creation from a `Map` handles aliases and nested causes
-> * Documentation clarifies assignment-compatible values are returned as-is only
-  when no other conversion path is selected
-> * README notes use of the `-parameters` flag which increased the jar size by
-  about 10K
+> * Jar file is built with `-parameters` flag going forward (increased the jar size by about 10K)
 #### 3.4.0
 > * `MapUtilities.getUnderlyingMap()` now uses identity comparison to avoid false cycle detection with wrapper maps
 > * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal

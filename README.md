@@ -18,7 +18,7 @@ The `.jar` file classes are version 52 `(JDK 1.8)`
 
 As of version 3.5.0 the library is built with the `-parameters`
 compiler flag. Parameter names are now retained for tasks such as
-constructor discovery which increased the jar size by about 10K.
+constructor discovery (increased the jar size by about 10K.)
 ## Compatibility
 
 ### JPMS (Java Platform Module System)

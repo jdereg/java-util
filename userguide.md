@@ -1724,6 +1724,7 @@ See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a d
 - OSGi/JPMS support
 - Constructor caching
 - Unsafe instantiation support
+- Map argument instantiation uses parameter names when available
 
 ### Public API
 ```java
@@ -1897,6 +1898,7 @@ A powerful type conversion utility that supports conversion between various Java
 - Thread-safe design
 - Inheritance-based conversion resolution
 - Performance optimized with caching
+- Assignment-compatible values returned without conversion
 - Static or Instance API
 
 ### Usage Examples

@@ -3,6 +3,7 @@
 > * `Converter.getInstance()` exposes the default instance used by the static API
 > * `ClassUtilities.newInstance()` accepts `Map` arguments using parameter names and falls back to the no‑arg constructor
 > * `Converter.convert()` returns the source when assignment compatible (when no other conversion path is selected)
+> * Internal reflection now uses `ReflectionUtils` caching for better performance
 > * Throwable creation from a `Map` handles aliases and nested causes
 > * Jar file is built with `-parameters` flag going forward (increased the jar size by about 10K)
 #### 3.4.0

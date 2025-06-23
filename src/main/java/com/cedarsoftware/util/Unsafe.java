@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import com.cedarsoftware.util.ReflectionUtils;
 
 import static com.cedarsoftware.util.ClassUtilities.forName;
 import static com.cedarsoftware.util.ClassUtilities.trySetAccessible;
@@ -22,10 +23,10 @@ final class Unsafe
     public Unsafe() {
         try {
             Class<?> unsafeClass = forName("sun.misc.Unsafe", ClassUtilities.getClassLoader(Unsafe.class));
-            Field f = unsafeClass.getDeclaredField("theUnsafe");
+            Field f = ReflectionUtils.getField(unsafeClass, "theUnsafe");
             trySetAccessible(f);
             sunUnsafe = f.get(null);
-            allocateInstance = unsafeClass.getMethod("allocateInstance", Class.class);
+            allocateInstance = ReflectionUtils.getMethod(unsafeClass, "allocateInstance", Class.class);
             trySetAccessible(allocateInstance);
         }
         catch (Exception e) {
@@ -47,7 +48,7 @@ final class Unsafe
         }
 
         try {
-            return allocateInstance.invoke(sunUnsafe, clazz);
+            return ReflectionUtils.call(sunUnsafe, allocateInstance, clazz);
         }
         catch (IllegalAccessException | IllegalArgumentException e ) {
             String name = clazz.getName();

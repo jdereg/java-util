@@ -1,9 +1,10 @@
 ### Revision History
+#### 3.6.0 (Unreleased)
+> * Updated a few more spots where internal reflection updated `ReflectionUtils` caching for better performance.
 #### 3.5.0
 > * `Converter.getInstance()` exposes the default instance used by the static API
 > * `ClassUtilities.newInstance()` accepts `Map` arguments using parameter names and falls back to the no‑arg constructor
 > * `Converter.convert()` returns the source when assignment compatible (when no other conversion path is selected)
-> * Internal reflection now uses `ReflectionUtils` caching for better performance
 > * Throwable creation from a `Map` handles aliases and nested causes
 > * Jar file is built with `-parameters` flag going forward (increased the jar size by about 10K)
 #### 3.4.0

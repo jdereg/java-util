@@ -1898,7 +1898,9 @@ A powerful type conversion utility that supports conversion between various Java
 - Thread-safe design
 - Inheritance-based conversion resolution
 - Performance optimized with caching
-- Assignment-compatible values returned without conversion
+- Assignment-compatible values are returned as-is when no other
+  reducing or expanding conversion is selected between the source
+  instance and destination type
 - Static or Instance API
 
 ### Usage Examples

@@ -191,7 +191,9 @@ import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
 public class ClassUtilities {
 
     private static final Logger LOG = Logger.getLogger(ClassUtilities.class.getName());
-    static { LoggingConfig.init(); }
+    static {
+        LoggingConfig.init();
+    }
 
     private ClassUtilities() {
     }
@@ -713,7 +715,7 @@ public class ClassUtilities {
      * @throws NullPointerException if the input class is null
      */
     public static boolean areAllConstructorsPrivate(Class<?> c) {
-        Constructor<?>[] constructors = c.getDeclaredConstructors();
+        Constructor<?>[] constructors = ReflectionUtils.getAllConstructors(c);
 
         for (Constructor<?> constructor : constructors) {
             if ((constructor.getModifiers() & Modifier.PRIVATE) == 0) {
@@ -1430,7 +1432,6 @@ public class ClassUtilities {
             if (!generatedKeys) {
                 hasNamedParameters = true;
                 namedParameters = map;
-                // Remove System.out.println - we have LOG statements below
             }
 
             // Convert map values to collection for fallback
@@ -1468,10 +1469,20 @@ public class ClassUtilities {
             }
         }
 
-        // Call existing implementation as fallback
+        // Call existing implementation
         LOG.log(Level.FINER, "Using positional argument matching for {0}", c.getName());
         Set<Class<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        return newInstance(converter, c, normalizedArgs, visited);
+
+        try {
+            return newInstance(converter, c, normalizedArgs, visited);
+        } catch (Exception e) {
+            // If we were trying with map values and it failed, try with null (no-arg constructor)
+            if (arguments instanceof Map && normalizedArgs != null && !normalizedArgs.isEmpty()) {
+                LOG.log(Level.FINER, "Positional matching with map values failed for {0}, trying no-arg constructor", c.getName());
+                return newInstance(converter, c, null, visited);
+            }
+            throw e;
+        }
     }
 
     private static Object newInstanceWithNamedParameters(Converter converter, Class<?> c, Map<String, Object> namedParams) {
@@ -1528,6 +1539,7 @@ public class ClassUtilities {
 
             for (int i = 0; i < parameters.length; i++) {
                 paramNames[i] = parameters[i].getName();
+
                 LOG.log(Level.FINEST, "  Parameter {0}: name=''{1}'', type={2}",
                         new Object[]{i, paramNames[i], parameters[i].getType().getSimpleName()});
 
@@ -1547,12 +1559,25 @@ public class ClassUtilities {
             boolean allMatched = true;
 
             for (int i = 0; i < parameters.length; i++) {
+
                 if (namedParams.containsKey(paramNames[i])) {
                     Object value = namedParams.get(paramNames[i]);
-                    // Convert if necessary
-                    args[i] = converter.convert(value, parameters[i].getType());
-                    LOG.log(Level.FINEST, "  Matched parameter ''{0}'' with value: {1}",
-                            new Object[]{paramNames[i], value});
+
+                    try {
+                        // Check if conversion is needed - if value is already assignable to target type, use as-is
+                        if (value != null && parameters[i].getType().isAssignableFrom(value.getClass())) {
+                            args[i] = value;
+                        } else {
+                            // Convert if necessary
+                            args[i] = converter.convert(value, parameters[i].getType());
+                        }
+
+                        LOG.log(Level.FINEST, "  Matched parameter ''{0}'' with value: {1}",
+                                new Object[]{paramNames[i], value});
+                    } catch (Exception conversionException) {
+                        allMatched = false;
+                        break;
+                    }
                 } else {
                     LOG.log(Level.FINER, "  Missing parameter: {0}", paramNames[i]);
                     allMatched = false;

@@ -384,99 +384,150 @@ final class MapConversions {
 
     static Throwable toThrowable(Object from, Converter converter, Class<?> target) {
         Map<String, Object> map = (Map<String, Object>) from;
+
         try {
-            // Determine most derived class between target and class specified in map
-            Class<?> classToUse = target;
-            String className = (String) map.get(CLASS);
-            if (StringUtilities.hasContent(className)) {
-                Class<?> mapClass = ClassUtilities.forName(className, ClassUtilities.getClassLoader(MapConversions.class));
-                if (mapClass != null) {
-                    // Use ClassUtilities to determine which class is more derived
-                    if (ClassUtilities.computeInheritanceDistance(mapClass, target) >= 0) {
-                        classToUse = mapClass;
+            // Make a mutable copy for safety
+            Map<String, Object> namedParams = new LinkedHashMap<>(map);
+
+            // Handle special case where cause is specified as a class name string
+            Object causeValue = namedParams.get(CAUSE);
+            if (causeValue instanceof String) {
+                String causeClassName = (String) causeValue;
+                String causeMessage = (String) namedParams.get(CAUSE_MESSAGE);
+
+                if (StringUtilities.hasContent(causeClassName)) {
+                    Class<?> causeClass = ClassUtilities.forName(causeClassName, ClassUtilities.getClassLoader(MapConversions.class));
+                    if (causeClass != null) {
+                        Map<String, Object> causeMap = new LinkedHashMap<>();
+                        if (causeMessage != null) {
+                            causeMap.put(MESSAGE, causeMessage);
+                        }
+
+                        // Recursively create the cause
+                        Throwable cause = (Throwable) ClassUtilities.newInstance(converter, causeClass, causeMap);
+                        namedParams.put(CAUSE, cause);
                     }
                 }
-            }
-
-            // Create a new map with properly named parameters
-            Map<String, Object> namedParams = new LinkedHashMap<>();
-
-            // Copy all fields from the original map
-            namedParams.putAll(map);
-
-            // Handle special fields that might have different names
-            // Convert detailMessage to message if needed
-            if (map.containsKey(DETAIL_MESSAGE) && !map.containsKey(MESSAGE)) {
-                namedParams.put(MESSAGE, map.get(DETAIL_MESSAGE));
-            }
-
-            // Handle cause if it's represented as className string + message
-            String causeClassName = (String) map.get(CAUSE);
-            String causeMessage = (String) map.get(CAUSE_MESSAGE);
-
-            if (StringUtilities.hasContent(causeClassName)) {
-                Class<?> causeClass = ClassUtilities.forName(causeClassName, ClassUtilities.getClassLoader(MapConversions.class));
-                if (causeClass != null) {
-                    Map<String, Object> causeMap = new LinkedHashMap<>();
-                    if (causeMessage != null) {
-                        causeMap.put(MESSAGE, causeMessage);
-                    }
-
-                    Throwable cause = (Throwable) ClassUtilities.newInstance(converter, causeClass, causeMap);
-                    namedParams.put(CAUSE, cause);
-                }
-            } else if (map.get(CAUSE) instanceof Map) {
-                // If cause is already a Map, convert it recursively
-                Map<String, Object> causeMap = (Map<String, Object>) map.get(CAUSE);
+                // Remove the cause message since we've processed it
+                namedParams.remove(CAUSE_MESSAGE);
+            } else if (causeValue instanceof Map) {
+                // If cause is a Map, recursively convert it
+                Map<String, Object> causeMap = (Map<String, Object>) causeValue;
                 Throwable cause = toThrowable(causeMap, converter, Throwable.class);
                 namedParams.put(CAUSE, cause);
             }
             // If cause is already a Throwable, it will be used as-is
 
-            // Remove fields that shouldn't be passed to the constructor
-            namedParams.remove(CLASS);
-            namedParams.remove(CAUSE_MESSAGE); // Remove the cause message since we've processed it
+            // Add throwable-specific aliases to improve parameter matching
+            addThrowableAliases(namedParams);
 
-            // Create the exception using the Map - this will use parameter name matching!
+            // Determine the actual class to instantiate
+            Class<?> classToUse = target;
+            String className = (String) namedParams.get(CLASS);
+            if (StringUtilities.hasContent(className)) {
+                Class<?> specifiedClass = ClassUtilities.forName(className, ClassUtilities.getClassLoader(MapConversions.class));
+                if (specifiedClass != null && target.isAssignableFrom(specifiedClass)) {
+                    classToUse = specifiedClass;
+                }
+            }
+
+            // Remove metadata that shouldn't be constructor parameters
+            namedParams.remove(CLASS);
+
+            // Let ClassUtilities.newInstance handle everything!
+            // It will try parameter name matching, handle type conversions, fall back to positional if needed
             Throwable exception = (Throwable) ClassUtilities.newInstance(converter, classToUse, namedParams);
 
-            // Clear the stackTrace
+            // Clear the stack trace (as required by the original)
+            // Note: ThrowableFactory may set a real stack trace later
             exception.setStackTrace(new StackTraceElement[0]);
 
             return exception;
+
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to reconstruct exception instance from map: " + map, e);
+            throw new IllegalArgumentException("Unable to create " + target.getName() + " from map: " + map, e);
         }
     }
     
-    private static void populateFields(Throwable exception, Map<String, Object> map, Converter converter) {
-        // Skip special fields we've already handled
-        Set<String> skipFields = CollectionUtilities.setOf(CAUSE, CAUSE_MESSAGE, MESSAGE, "stackTrace");
-
-        // Get all fields as a Map for O(1) lookup, excluding fields we want to skip
-        Map<String, Field> fieldMap = ReflectionUtils.getAllDeclaredFieldsMap(
-                exception.getClass(),
-                field -> !skipFields.contains(field.getName())
-        );
-
-        // Process each map entry
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            String fieldName = entry.getKey();
-            Object value = entry.getValue();
-            Field field = fieldMap.get(fieldName);
-
-            if (field != null) {
-                try {
-                    // Convert value to field type if needed
-                    Object convertedValue = value;
-                    if (value != null && !field.getType().isAssignableFrom(value.getClass())) {
-                        convertedValue = converter.convert(value, field.getType());
-                    }
-                    field.set(exception, convertedValue);
-                } catch (Exception ignored) {
-                    // Silently ignore field population errors
-                }
+    private static void addThrowableAliases(Map<String, Object> namedParams) {
+        // Convert null messages to empty string to match original behavior
+        String[] messageFields = {DETAIL_MESSAGE, MESSAGE, "msg"};
+        for (String field : messageFields) {
+            if (namedParams.containsKey(field) && namedParams.get(field) == null) {
+                namedParams.put(field, "");
             }
+        }
+
+        // Map detailMessage/message to msg since many constructors use 'msg' as parameter name
+        if (!namedParams.containsKey("msg")) {
+            Object messageValue = null;
+            if (namedParams.containsKey(DETAIL_MESSAGE)) {
+                messageValue = namedParams.get(DETAIL_MESSAGE);
+            } else if (namedParams.containsKey(MESSAGE)) {
+                messageValue = namedParams.get(MESSAGE);
+            } else if (namedParams.containsKey("reason")) {
+                messageValue = namedParams.get("reason");
+            } else if (namedParams.containsKey("description")) {
+                messageValue = namedParams.get("description");
+            }
+
+            if (messageValue != null) {
+                namedParams.put("msg", messageValue);
+            }
+        }
+
+        // Also ensure message exists if we have detailMessage or other variants
+        if (!namedParams.containsKey(MESSAGE)) {
+            Object messageValue = null;
+            if (namedParams.containsKey(DETAIL_MESSAGE)) {
+                messageValue = namedParams.get(DETAIL_MESSAGE);
+            } else if (namedParams.containsKey("msg")) {
+                messageValue = namedParams.get("msg");
+            }
+
+            if (messageValue != null) {
+                namedParams.put(MESSAGE, messageValue);
+            }
+        }
+
+        // For constructors that use 's' for string message
+        if (!namedParams.containsKey("s")) {
+            Object messageValue = namedParams.get(MESSAGE);
+            if (messageValue == null) messageValue = namedParams.get("msg");
+            if (messageValue == null) messageValue = namedParams.get(DETAIL_MESSAGE);
+
+            if (messageValue != null) {
+                namedParams.put("s", messageValue);
+            }
+        }
+
+        // Handle cause aliases
+        if (!namedParams.containsKey(CAUSE) && namedParams.containsKey("rootCause")) {
+            namedParams.put(CAUSE, namedParams.get("rootCause"));
+        }
+
+        if (!namedParams.containsKey("throwable") && namedParams.containsKey(CAUSE)) {
+            namedParams.put("throwable", namedParams.get(CAUSE));
+        }
+
+        // For constructors that use 't' for throwable
+        if (!namedParams.containsKey("t")) {
+            Object causeValue = namedParams.get(CAUSE);
+            if (causeValue == null) causeValue = namedParams.get("throwable");
+            if (causeValue == null) causeValue = namedParams.get("rootCause");
+
+            if (causeValue != null) {
+                namedParams.put("t", causeValue);
+            }
+        }
+
+        // Handle boolean parameter aliases
+        if (namedParams.containsKey("suppressionEnabled") && !namedParams.containsKey("enableSuppression")) {
+            namedParams.put("enableSuppression", namedParams.get("suppressionEnabled"));
+        }
+
+        if (namedParams.containsKey("stackTraceWritable") && !namedParams.containsKey("writableStackTrace")) {
+            namedParams.put("writableStackTrace", namedParams.get("stackTraceWritable"));
         }
     }
 

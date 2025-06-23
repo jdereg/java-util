@@ -18,8 +18,6 @@ import java.time.Month;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.time.Period;
 import java.time.Year;
 import java.time.YearMonth;
@@ -35,6 +33,7 @@ import java.util.Currency;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -48,6 +47,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -635,7 +636,11 @@ class ConverterEverythingTest {
                 {Pattern.compile("(foo|bar)"), mapOf(VALUE, "(foo|bar)")},
         });
         TEST_DB.put(pair(Map.class, Map.class), new Object[][]{
-                { new HashMap<>(), new IllegalArgumentException("Unsupported conversion") }
+                {mapOf("message", "in a bottle"), (Supplier<Map<String, String>>) () -> {
+                    Map<String, String> x = new LinkedHashMap<>();
+                    x.put("message", "in a bottle");
+                    return x;
+                }}
         });
         TEST_DB.put(pair(ByteBuffer.class, Map.class), new Object[][]{
                 {ByteBuffer.wrap("ABCD\0\0zyxw".getBytes(StandardCharsets.UTF_8)), mapOf(VALUE, "QUJDRAAAenl4dw==")},

@@ -1294,11 +1294,16 @@ public final class Converter {
             return (T) conversionMethod.convert(from, this, toType);
         }
 
-        // Always attempt inheritance-based conversion as a last resort.
+        // Attempt inheritance-based conversion.
         conversionMethod = getInheritedConverter(sourceType, toType);
         if (isValidConversion(conversionMethod)) {
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
+        }
+
+        // If no specific converter found, check assignment compatibility as fallback [someone is doing convert(linkedMap, Map.class) for example]
+        if (from != null && toType.isAssignableFrom(from.getClass())) {
+            return (T) from; // Assignment compatible - use as-is
         }
 
         throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) +

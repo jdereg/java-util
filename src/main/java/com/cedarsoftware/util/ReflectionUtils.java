@@ -1275,45 +1275,39 @@ public final class ReflectionUtils {
     }
 
     /**
-     * Gets a constructor for the specified class with the given parameter types,
-     * regardless of access level (public, protected, private, or package).
-     * Both successful lookups and misses are cached for performance.
-     * <p>
-     * This method:
-     * <ul>
-     *     <li>Searches for constructors of any access level</li>
-     *     <li>Attempts to make non-public constructors accessible</li>
-     *     <li>Returns the constructor even if it cannot be made accessible</li>
-     *     <li>Caches both found constructors and misses</li>
-     *     <li>Handles different classloaders correctly</li>
-     * </ul>
-     * <p>
-     * Note: Finding a constructor does not guarantee that the caller has the necessary
-     * permissions to invoke it. Security managers or module restrictions may prevent
-     * access even if the constructor is found and marked accessible.
+     * Retrieves a constructor for the given class and parameter types.
+     * Uses a cache to speed up repeated lookups.
      *
-     * @param clazz The class whose constructor is to be retrieved
-     * @param parameterTypes The parameter types for the constructor
-     * @return The constructor matching the specified parameters, or null if not found
-     * @throws IllegalArgumentException if the class is null
+     * @param clazz The class for which to get the constructor.
+     * @param parameterTypes The parameter types of the constructor.
+     * @param <T> The type of the class.
+     * @return The constructor, or null if not found or not accessible.
      */
-    public static Constructor<?> getConstructor(Class<?> clazz, Class<?>... parameterTypes) {
+    @SuppressWarnings("unchecked") // For the cast from cached Constructor<?> to Constructor<T>
+    public static <T> Constructor<T> getConstructor(Class<T> clazz, Class<?>... parameterTypes) {
         Convention.throwIfNull(clazz, "class cannot be null");
 
         final ConstructorCacheKey key = new ConstructorCacheKey(clazz, parameterTypes);
 
         // Atomically retrieve or compute the cached constructor
-        return CONSTRUCTOR_CACHE.get().computeIfAbsent(key, k -> {
+        // The mapping function returns Constructor<T>, which is compatible with Constructor<?> for storage.
+        // The final return then casts the Constructor<?> from the cache to Constructor<T>.
+        // This cast is safe because the key ensures we're getting the constructor for Class<T>.
+        Constructor<?> cachedCtor = CONSTRUCTOR_CACHE.get().computeIfAbsent(key, k -> {
             try {
                 // Try to fetch the constructor reflectively
-                Constructor<?> ctor = clazz.getDeclaredConstructor(parameterTypes);
-                ClassUtilities.trySetAccessible(ctor);
+                Constructor<T> ctor = clazz.getDeclaredConstructor(parameterTypes); // This already returns Constructor<T>
+                ClassUtilities.trySetAccessible(ctor); // Assuming this method handles setting accessible
                 return ctor;
-            } catch (Exception ignored) {
+            } catch (NoSuchMethodException ignored) { // Be more specific with exceptions
                 // If no such constructor exists, store null in the cache
+                return null;
+            } catch (SecurityException ignored) {
+                // If security manager denies access
                 return null;
             }
         });
+        return (Constructor<T>) cachedCtor; // This cast is necessary and what @SuppressWarnings("unchecked") is for
     }
 
     /**

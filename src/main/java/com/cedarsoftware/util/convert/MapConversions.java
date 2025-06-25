@@ -376,7 +376,16 @@ final class MapConversions {
     }
 
     static Throwable toThrowable(Object from, Converter converter, Class<?> target) {
+        // Handle null input - return null rather than creating an empty exception
+        if (from == null) {
+            return null;
+        }
         Map<String, Object> map = (Map<String, Object>) from;
+        // If we get an empty map, it's likely from converter trying to convert null to Exception
+        // Return null instead of creating an empty exception
+        if (map.isEmpty()) {
+            return null;
+        }
 
         try {
             // Make a mutable copy for safety
@@ -406,13 +415,57 @@ final class MapConversions {
             } else if (causeValue instanceof Map) {
                 // If cause is a Map, recursively convert it
                 Map<String, Object> causeMap = (Map<String, Object>) causeValue;
-                Throwable cause = toThrowable(causeMap, converter, Throwable.class);
+
+                // Determine the actual type of the cause
+                Class<?> causeType = Throwable.class;
+                String causeClassName = (String) causeMap.get("@type");
+                if (causeClassName == null) {
+                    causeClassName = (String) causeMap.get(CLASS);
+                }
+
+                if (StringUtilities.hasContent(causeClassName)) {
+                    Class<?> specifiedClass = ClassUtilities.forName(causeClassName, ClassUtilities.getClassLoader(MapConversions.class));
+                    if (specifiedClass != null && Throwable.class.isAssignableFrom(specifiedClass)) {
+                        causeType = specifiedClass;
+                    }
+                }
+
+                Throwable cause = toThrowable(causeMap, converter, causeType);
                 namedParams.put(CAUSE, cause);
             }
-            // If cause is already a Throwable, it will be used as-is
+            // If cause is null, DON'T remove it - we need to pass null to the constructor
+            // Just make sure no aliases are created for it
 
             // Add throwable-specific aliases to improve parameter matching
             addThrowableAliases(namedParams);
+
+            // Remove internal fields that aren't constructor parameters
+            namedParams.remove(DETAIL_MESSAGE);
+            namedParams.remove("suppressed");
+            namedParams.remove("stackTrace");
+
+            // For custom exceptions with additional fields, ensure the message comes first
+            // This helps with positional parameter matching when named parameters aren't available
+            if (!namedParams.isEmpty() && (namedParams.containsKey("msg") || namedParams.containsKey("message"))) {
+                Map<String, Object> orderedParams = new LinkedHashMap<>();
+
+                // Put message first
+                Object messageValue = namedParams.get("msg");
+                if (messageValue == null) messageValue = namedParams.get("message");
+                if (messageValue != null) {
+                    orderedParams.put("msg", messageValue);
+                    orderedParams.put("message", messageValue);
+                }
+
+                // Then add all other parameters in their original order
+                for (Map.Entry<String, Object> entry : namedParams.entrySet()) {
+                    if (!entry.getKey().equals("msg") && !entry.getKey().equals("message") && !entry.getKey().equals("s")) {
+                        orderedParams.put(entry.getKey(), entry.getValue());
+                    }
+                }
+
+                namedParams = orderedParams;
+            }
 
             // Determine the actual class to instantiate
             Class<?> classToUse = target;
@@ -428,11 +481,9 @@ final class MapConversions {
             namedParams.remove(CLASS);
 
             // Let ClassUtilities.newInstance handle everything!
-            // It will try parameter name matching, handle type conversions, fall back to positional if needed
             Throwable exception = (Throwable) ClassUtilities.newInstance(converter, classToUse, namedParams);
 
             // Clear the stack trace (as required by the original)
-            // Note: ThrowableFactory may set a real stack trace later
             exception.setStackTrace(new StackTraceElement[0]);
 
             return exception;
@@ -494,22 +545,21 @@ final class MapConversions {
             }
         }
 
-        // Handle cause aliases
-        if (!namedParams.containsKey(CAUSE) && namedParams.containsKey("rootCause")) {
-            namedParams.put(CAUSE, namedParams.get("rootCause"));
-        }
+        // Handle cause aliases - ONLY if cause is not null
+        Object causeValue = namedParams.get(CAUSE);
 
-        if (!namedParams.containsKey("throwable") && namedParams.containsKey(CAUSE)) {
-            namedParams.put("throwable", namedParams.get(CAUSE));
-        }
+        // Don't create any aliases for null causes
+        if (causeValue != null) {
+            if (!namedParams.containsKey("rootCause")) {
+                namedParams.put("rootCause", causeValue);
+            }
 
-        // For constructors that use 't' for throwable
-        if (!namedParams.containsKey("t")) {
-            Object causeValue = namedParams.get(CAUSE);
-            if (causeValue == null) causeValue = namedParams.get("throwable");
-            if (causeValue == null) causeValue = namedParams.get("rootCause");
+            if (!namedParams.containsKey("throwable")) {
+                namedParams.put("throwable", causeValue);
+            }
 
-            if (causeValue != null) {
+            // For constructors that use 't' for throwable
+            if (!namedParams.containsKey("t")) {
                 namedParams.put("t", causeValue);
             }
         }

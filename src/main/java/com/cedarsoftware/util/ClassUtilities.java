@@ -1560,13 +1560,22 @@ public class ClassUtilities {
             boolean allMatched = true;
 
             for (int i = 0; i < parameters.length; i++) {
-
                 if (namedParams.containsKey(paramNames[i])) {
                     Object value = namedParams.get(paramNames[i]);
 
                     try {
-                        // Check if conversion is needed - if value is already assignable to target type, use as-is
-                        if (value != null && parameters[i].getType().isAssignableFrom(value.getClass())) {
+                        // Handle null values - don't convert null for non-primitive types
+                        if (value == null) {
+                            // If it's a primitive type, we can't use null
+                            if (parameters[i].getType().isPrimitive()) {
+                                // Let converter handle conversion to primitive default values
+                                args[i] = converter.convert(value, parameters[i].getType());
+                            } else {
+                                // For object types, just use null directly
+                                args[i] = null;
+                            }
+                        } else if (parameters[i].getType().isAssignableFrom(value.getClass())) {
+                            // Value is already the right type
                             args[i] = value;
                         } else {
                             // Convert if necessary

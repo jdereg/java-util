@@ -389,7 +389,7 @@ final class MapConversions {
             // Make a mutable copy for safety
             Map<String, Object> namedParams = new LinkedHashMap<>(map);
 
-            // Handle special case where cause is specified as a class name string
+            // Handle a special case where cause is specified as a class name string
             Object causeValue = namedParams.get(CAUSE);
             if (causeValue instanceof String) {
                 String causeClassName = (String) causeValue;

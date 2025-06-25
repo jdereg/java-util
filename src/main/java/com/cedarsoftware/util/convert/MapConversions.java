@@ -1,6 +1,5 @@
 package com.cedarsoftware.util.convert;
 
-import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -22,17 +21,13 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,8 +36,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.CollectionUtilities;
-import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
 
 import static com.cedarsoftware.util.convert.Converter.getShortName;

@@ -14,6 +14,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ReflectPermission;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -860,9 +861,16 @@ public class ClassUtilities {
      * </p>
      */
     private static void checkSecurityAccess() {
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkPermission(new RuntimePermission("getClassLoader"));
+        // SecurityManager is deprecated in Java 17+ and removed in Java 21+
+        try {
+            SecurityManager sm = System.getSecurityManager();
+            if (sm != null) {
+                sm.checkPermission(new RuntimePermission("getClassLoader"));
+            }
+        } catch (UnsupportedOperationException e) {
+            // Java 21+ - SecurityManager not available
+            // In modern Java, rely on module system and other security mechanisms
+            // No additional security check needed here
         }
     }
 
@@ -1507,7 +1515,7 @@ public class ClassUtilities {
             Parameter[] parameters = constructor.getParameters();
             if (parameters.length > 0) {
                 String firstParamName = parameters[0].getName();
-                if (!firstParamName.matches("arg\\d+")) {
+                if (!ARG_PATTERN.matcher(firstParamName).matches()) {
                     anyConstructorHasRealNames = true;
                     break;
                 }
@@ -1545,7 +1553,7 @@ public class ClassUtilities {
                         new Object[]{i, paramNames[i], parameters[i].getType().getSimpleName()});
 
                 // Check if we have real parameter names or just arg0, arg1, etc.
-                if (paramNames[i].matches("arg\\d+")) {
+                if (ARG_PATTERN.matcher(paramNames[i]).matches()) {
                     hasRealNames = false;
                 }
             }
@@ -1768,11 +1776,24 @@ public class ClassUtilities {
     }
 
     static void trySetAccessible(AccessibleObject object) {
+        // Check security permissions before attempting to set accessible
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            try {
+                sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
+            } catch (SecurityException e) {
+                LOG.log(Level.WARNING, "Security manager denies access to: " + object);
+                throw e; // Don't suppress security exceptions - let caller handle
+            }
+        }
+        
         try {
             object.setAccessible(true);
         } catch (SecurityException e) {
             LOG.log(Level.WARNING, "Unable to set accessible: " + object + " - " + e.getMessage());
+            throw e; // Don't suppress security exceptions - they indicate important access control violations
         } catch (Throwable t) {
+            // Only ignore non-security exceptions (like InaccessibleObjectException in Java 9+)
             safelyIgnoreException(t);
         }
     }
@@ -1794,20 +1815,38 @@ public class ClassUtilities {
     /**
      * Globally turn on (or off) the 'unsafe' option of Class construction. The
      * unsafe option relies on {@code sun.misc.Unsafe} and should be used with
-     * caution as it may break on future JDKs or under strict security managers.
-     * It is used when all constructors have been tried and the Java class could
-     * not be instantiated.
+     * extreme caution as it may break on future JDKs or under strict security managers.
+     * 
+     * <p><strong>SECURITY WARNING:</strong> Enabling unsafe instantiation bypasses normal Java
+     * security mechanisms, constructor validations, and initialization logic. This can lead to
+     * security vulnerabilities and unstable object states. Only enable in trusted environments
+     * where you have full control over the codebase and understand the security implications.</p>
+     * 
+     * <p>It is used when all constructors have been tried and the Java class could
+     * not be instantiated.</p>
      *
      * @param state boolean true = on, false = off
+     * @throws SecurityException if a security manager exists and denies the required permissions
      */
     public static void setUseUnsafe(boolean state) {
+        // Add security check for unsafe instantiation access
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null && state) {
+            // Require RuntimePermission to enable unsafe operations
+            sm.checkPermission(new RuntimePermission("accessClassInPackage.sun.misc"));
+            sm.checkPermission(new RuntimePermission("setFactory"));
+        }
+        
         useUnsafe = state;
         if (state) {
             try {
                 unsafe = new Unsafe();
             } catch (Exception e) {
                 useUnsafe = false;
+                LOG.log(Level.WARNING, "Failed to initialize unsafe instantiation: " + e.getMessage());
             }
+        } else {
+            unsafe = null; // Clear reference when disabled
         }
     }
 

@@ -84,7 +84,7 @@ public final class ArrayUtilities {
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     public static final char[] EMPTY_CHAR_ARRAY = new char[0];
     public static final Character[] EMPTY_CHARACTER_ARRAY = new Character[0];
-    public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class[0];
+    public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
 
     /**
      * Private constructor to promote using as static class.
@@ -254,6 +254,7 @@ public final class ArrayUtilities {
      * This method creates a new array with length one less than the input array and copies all elements
      * except the one at the specified position. The original array remains unchanged.
      * </p>
+     * <p><strong>Time Complexity:</strong> O(n) where n is the array length</p>
      *
      * <p><strong>Example:</strong></p>
      * <pre>{@code

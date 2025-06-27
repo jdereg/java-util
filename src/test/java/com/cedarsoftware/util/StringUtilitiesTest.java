@@ -495,6 +495,45 @@ public class StringUtilitiesTest
     }
 
     @Test
+    void testContainsIgnoreCase() {
+        // Basic functionality
+        assertTrue(StringUtilities.containsIgnoreCase("Hello World", "world"));
+        assertTrue(StringUtilities.containsIgnoreCase("Hello World", "WORLD"));
+        assertTrue(StringUtilities.containsIgnoreCase("Hello World", "WoRlD"));
+        assertTrue(StringUtilities.containsIgnoreCase("Hello World", "Hello"));
+        assertTrue(StringUtilities.containsIgnoreCase("Hello World", "llo Wo"));
+        
+        // Case sensitivity
+        assertTrue(StringUtilities.containsIgnoreCase("ABCdef", "cde"));
+        assertTrue(StringUtilities.containsIgnoreCase("ABCdef", "CDE"));
+        assertTrue(StringUtilities.containsIgnoreCase("ABCdef", "abcdef"));
+        assertTrue(StringUtilities.containsIgnoreCase("ABCdef", "ABCDEF"));
+        
+        // Edge cases
+        assertTrue(StringUtilities.containsIgnoreCase("test", "")); // Empty substring
+        assertFalse(StringUtilities.containsIgnoreCase("", "test")); // Empty main string
+        assertFalse(StringUtilities.containsIgnoreCase("short", "longer string"));
+        
+        // Null handling
+        assertFalse(StringUtilities.containsIgnoreCase(null, "test"));
+        assertFalse(StringUtilities.containsIgnoreCase("test", null));
+        assertFalse(StringUtilities.containsIgnoreCase(null, null));
+        
+        // No match cases
+        assertFalse(StringUtilities.containsIgnoreCase("Hello World", "xyz"));
+        assertFalse(StringUtilities.containsIgnoreCase("Hello World", "worldx"));
+        
+        // Exact match
+        assertTrue(StringUtilities.containsIgnoreCase("exact", "exact"));
+        assertTrue(StringUtilities.containsIgnoreCase("exact", "EXACT"));
+        
+        // Unicode and special characters
+        assertTrue(StringUtilities.containsIgnoreCase("café", "café"));
+        assertTrue(StringUtilities.containsIgnoreCase("CAFÉ", "café"));
+        assertTrue(StringUtilities.containsIgnoreCase("Hello-World_123", "world_"));
+    }
+
+    @Test
     void testLastIndexOf()
     {
         assertEquals(-1, StringUtilities.lastIndexOf(null, 'a'));

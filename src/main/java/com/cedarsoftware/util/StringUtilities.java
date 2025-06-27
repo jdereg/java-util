@@ -204,6 +204,41 @@ public final class StringUtilities {
     }
 
     /**
+     * Checks if the first string contains the second string, ignoring case considerations.
+     * <p>
+     * This method uses {@link String#regionMatches(boolean, int, String, int, int)} for optimal performance,
+     * avoiding the creation of temporary lowercase strings that would be required with 
+     * {@code s1.toLowerCase().contains(s2.toLowerCase())}.
+     * </p>
+     *
+     * @param s1 the string to search within, may be {@code null}
+     * @param s2 the substring to search for, may be {@code null}
+     * @return {@code true} if s1 contains s2 (case-insensitive), {@code false} otherwise.
+     *         Returns {@code false} if either parameter is {@code null}.
+     */
+    public static boolean containsIgnoreCase(String s1, String s2) {
+        if (s1 == null || s2 == null) {
+            return false;
+        }
+        if (s2.isEmpty()) {
+            return true;
+        }
+        if (s1.length() < s2.length()) {
+            return false;
+        }
+        
+        int searchLen = s2.length();
+        int maxIndex = s1.length() - searchLen;
+        
+        for (int i = 0; i <= maxIndex; i++) {
+            if (s1.regionMatches(true, i, s2, 0, searchLen)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Green implementation of regionMatches.
      *
      * @param cs         the {@link CharSequence} to be processed

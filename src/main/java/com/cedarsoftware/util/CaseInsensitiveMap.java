@@ -212,7 +212,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     @SuppressWarnings("unchecked, rawtypes")
     public static void replaceCache(LRUCache lruCache) {
         Objects.requireNonNull(lruCache, "Cache cannot be null");
-        CaseInsensitiveString.COMMON_STRINGS = lruCache;
+        CaseInsensitiveString.COMMON_STRINGS_REF.set(lruCache);
     }
 
     /**
@@ -249,8 +249,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
         // Iterate through the registry and pick the first matching type
         for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : mapRegistry.get()) {
             if (entry.getKey().isInstance(source)) {
-                Function<Integer, Map<K, V>> factory = (Function<Integer, Map<K, V>>) entry.getValue();
-                return copy(source, factory.apply(size));
+                @SuppressWarnings("unchecked")
+                Function<Integer, ? extends Map<?, ?>> rawFactory = entry.getValue();
+                @SuppressWarnings("unchecked")
+                Map<K, V> newMap = (Map<K, V>) rawFactory.apply(size);
+                return copy(source, newMap);
             }
         }
 
@@ -595,14 +598,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
              */
             @Override
             public boolean retainAll(Collection<?> c) {
-                Map<K, V> other = new CaseInsensitiveMap<>();
+                // Normalize collection keys for case-insensitive comparison
+                Set<Object> normalizedRetainSet = new HashSet<>();
                 for (Object o : c) {
-                    other.put((K) o, null);
+                    normalizedRetainSet.add(convertKey(o));
                 }
 
-                final int size = map.size();
-                map.keySet().removeIf(key -> !other.containsKey(key));
-                return map.size() != size;
+                final int originalSize = map.size();
+                map.keySet().removeIf(key -> !normalizedRetainSet.contains(key));
+                return map.size() != originalSize;
             }
         };
     }
@@ -894,9 +898,16 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
         private final String original;
         private final int hash;
 
-        // Add static cache for common strings - use ConcurrentHashMap for thread safety
-        private static volatile Map<String, CaseInsensitiveString> COMMON_STRINGS = new LRUCache<>(5000, LRUCache.StrategyType.THREADED);
-        private static volatile int maxCacheLengthString = 100;
+        // Configuration values with system property overrides
+        private static final int DEFAULT_CACHE_SIZE = Integer.parseInt(
+            System.getProperty("caseinsensitive.cache.size", "5000"));
+        private static final int DEFAULT_MAX_STRING_LENGTH = Integer.parseInt(
+            System.getProperty("caseinsensitive.max.string.length", "100"));
+            
+        // Add static cache for common strings - use AtomicReference for thread safety
+        private static final AtomicReference<Map<String, CaseInsensitiveString>> COMMON_STRINGS_REF = 
+            new AtomicReference<>(new LRUCache<>(DEFAULT_CACHE_SIZE, LRUCache.StrategyType.THREADED));
+        private static volatile int maxCacheLengthString = DEFAULT_MAX_STRING_LENGTH;
 
         // Pre-populate with common values
         static {
@@ -909,8 +920,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
                     "id", "name", "code", "type", "status", "date", "value", "amount",
                     "yes", "no", "null", "none"
             };
+            Map<String, CaseInsensitiveString> initialCache = COMMON_STRINGS_REF.get();
             for (String value : commonValues) {
-                COMMON_STRINGS.put(value, new CaseInsensitiveString(value));
+                initialCache.put(value, new CaseInsensitiveString(value));
             }
         }
 
@@ -929,18 +941,12 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
                 return new CaseInsensitiveString(s);
             }
 
-            // Circuit breaker to prevent cache thrashing
-            Map<String, CaseInsensitiveString> cache = COMMON_STRINGS;
-
-            if (cache.size() > (((LRUCache)cache).getCapacity() - 10)) { // Approaching capacity
-                if (!cache.containsKey(s)) {
-                    return new CaseInsensitiveString(s);
-                }
-            }
+            // Get current cache atomically and use it consistently
+            Map<String, CaseInsensitiveString> cache = COMMON_STRINGS_REF.get();
             
-            // For all other strings, use the cache
+            // For all strings within cache length limit, use the cache
             // computeIfAbsent ensures we only create one instance per unique string
-            return COMMON_STRINGS.computeIfAbsent(s, CaseInsensitiveString::new);
+            return cache.computeIfAbsent(s, CaseInsensitiveString::new);
         }
 
         // Private constructor - use CaseInsensitiveString.of(sourceString) factory method instead
@@ -1077,20 +1083,16 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
          * @return true if this string contains s, false otherwise
          */
         public boolean contains(CharSequence s) {
-            return original.toLowerCase().contains(s.toString().toLowerCase());
+            return StringUtilities.containsIgnoreCase(original, s.toString());
         }
 
         /**
          * Custom readObject method for serialization.
          * This ensures we properly handle the hash field during deserialization.
          */
-        private void readObject(java.io.ObjectInputStream in) {
-            try {
-                in.defaultReadObject();
-                // The hash field is final, but will be restored by deserialization
-            } catch (IOException | ClassNotFoundException e) {
-                ExceptionUtilities.uncheckedThrow(e);
-            }
+        private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+            in.defaultReadObject();
+            // The hash field is final, but will be restored by deserialization
         }
     }
 

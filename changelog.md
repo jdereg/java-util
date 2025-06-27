@@ -6,6 +6,26 @@
 >   * Fixed race condition in class generation by ensuring consistent OSGi/JPMS-aware ClassLoader usage
 >   * Enhanced input validation in `Builder` methods with comprehensive null checks and range validation
 >   * Improved resource management during compilation with proper exception handling
+> * **Security Enhancement**: Fixed critical security issues in `ClassUtilities`:
+>   * Added strict security checks for unsafe instantiation with `RuntimePermission` validation
+>   * Enhanced reflection security in `trySetAccessible()` to not suppress `SecurityExceptions`
+>   * Updated deprecated `SecurityManager` usage for Java 17+ compatibility with graceful fallback
+> * **Performance Optimization**: Optimized `CollectionUtilities` APIs:
+>   * Pre-size collections in `listOf()`/`setOf()` to avoid resizing overhead
+>   * Replace `Collections.addAll()` with direct loops for better performance
+>   * Use `Collections.emptySet`/`emptyList` instead of creating new instances
+>   * Updated codebase to use consistent collection APIs (`CollectionUtilities.setOf()` vs `Arrays.asList()`)
+> * **Performance Optimization**: Enhanced `CaseInsensitiveMap` efficiency:
+>   * Fixed thread safety issues in cache management with `AtomicReference`
+>   * Optimized `retainAll()` to avoid size() anti-pattern (O(1) vs potentially O(n))
+>   * Added `StringUtilities.containsIgnoreCase()` method with optimized `regionMatches` performance
+>   * Updated `CaseInsensitiveMap` to use new `containsIgnoreCase` instead of double `toLowerCase()`
+> * **Code Quality**: Enhanced `ArrayUtilities` and `ByteUtilities`:
+>   * Fixed generic type safety in `EMPTY_CLASS_ARRAY` using `Class<?>[0]`
+>   * Added bounds validation to `ByteUtilities.isGzipped(offset)` to prevent `ArrayIndexOutOfBoundsException`
+>   * Added time complexity documentation to `ArrayUtilities.removeItem()` method (O(n))
+>   * Improved documentation for null handling and method contracts
+> * **Performance Optimization**: Replaced inefficient `String.matches()` with pre-compiled regex patterns in `ClassUtilities`
 > * Updated a few more spots where internal reflection updated `ReflectionUtils` caching for better performance.
 #### 3.5.0
 > * `Converter.getInstance()` exposes the default instance used by the static API

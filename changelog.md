@@ -1,5 +1,11 @@
 ### Revision History
 #### 3.6.0 (Unreleased)
+> * **Security Enhancement**: Fixed critical security vulnerabilities in `CompactMap` dynamic code generation:
+>   * Added strict input sanitization to prevent code injection attacks in class name generation
+>   * Fixed memory leak by using `WeakReference` for generated class caching to allow garbage collection
+>   * Fixed race condition in class generation by ensuring consistent OSGi/JPMS-aware ClassLoader usage
+>   * Enhanced input validation in `Builder` methods with comprehensive null checks and range validation
+>   * Improved resource management during compilation with proper exception handling
 > * Updated a few more spots where internal reflection updated `ReflectionUtils` caching for better performance.
 #### 3.5.0
 > * `Converter.getInstance()` exposes the default instance used by the static API

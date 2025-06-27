@@ -39,6 +39,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.lang.ref.WeakReference;
 
 /**
  * A memory-efficient {@code Map} implementation that adapts its internal storage structure
@@ -2382,8 +2383,17 @@ public class CompactMap<K, V> implements Map<K, V> {
          *
          * @param key the key to use for optimized single-entry storage
          * @return this builder instance for method chaining
+         * @throws IllegalArgumentException if key is null or contains invalid characters when used in class generation
          */
         public Builder<K, V> singleValueKey(K key) {
+            if (key == null) {
+                throw new IllegalArgumentException("Single value key cannot be null");
+            }
+            // Validate that the key is safe for use in class name generation
+            String keyStr = String.valueOf(key);
+            if (keyStr.length() > 50) {
+                throw new IllegalArgumentException("Single value key is too long (max 50 characters): " + keyStr.length());
+            }
             options.put(SINGLE_KEY, key);
             return this;
         }
@@ -2397,8 +2407,12 @@ public class CompactMap<K, V> implements Map<K, V> {
          *
          * @param size the maximum number of entries to store in compact format
          * @return this builder instance for method chaining
+         * @throws IllegalArgumentException if size is less than 2
          */
         public Builder<K, V> compactSize(int size) {
+            if (size < 2) {
+                throw new IllegalArgumentException("Compact size must be >= 2, got: " + size);
+            }
             options.put(COMPACT_SIZE, size);
             return this;
         }
@@ -2463,10 +2477,13 @@ public class CompactMap<K, V> implements Map<K, V> {
          *
          * @param source the map whose entries are to be copied
          * @return this builder instance for method chaining
-         * @throws IllegalArgumentException if source map's ordering conflicts with
+         * @throws IllegalArgumentException if source is null or source map's ordering conflicts with
          *         configured ordering
          */
         public Builder<K, V> sourceMap(Map<K, V> source) {
+            if (source == null) {
+                throw new IllegalArgumentException("Source map cannot be null");
+            }
             options.put(SOURCE_MAP, source);
             return this;
         }
@@ -2528,7 +2545,7 @@ public class CompactMap<K, V> implements Map<K, V> {
         private static Class<?> getOrCreateTemplateClass(Map<String, Object> options) {
             String className = generateClassName(options);
             try {
-                return templateClassLoader.loadClass(className);
+                return ClassUtilities.getClassLoader(CompactMap.class).loadClass(className);
             } catch (ClassNotFoundException e) {
                 return generateTemplateClass(options);
             }
@@ -2554,11 +2571,15 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Add map type's simple name
             Object mapTypeObj = options.get(MAP_TYPE);
+            String mapTypeName;
             if (mapTypeObj instanceof Class) {
-                keyBuilder.append(((Class<?>) mapTypeObj).getSimpleName());
+                mapTypeName = ((Class<?>) mapTypeObj).getSimpleName();
             } else {
-                keyBuilder.append((String) mapTypeObj);
+                mapTypeName = (String) mapTypeObj;
             }
+            // Sanitize map type name for safe class name usage
+            mapTypeName = sanitizeForClassName(mapTypeName);
+            keyBuilder.append(mapTypeName);
 
             // Add case sensitivity
             keyBuilder.append('_')
@@ -2570,8 +2591,7 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Add single key value (convert to title case and remove non-alphanumeric)
             String singleKey = (String) options.getOrDefault(SINGLE_KEY, DEFAULT_SINGLE_KEY);
-            singleKey = singleKey.substring(0, 1).toUpperCase() + singleKey.substring(1);
-            singleKey = singleKey.replaceAll("[^a-zA-Z0-9]", "");
+            singleKey = sanitizeForClassName(singleKey);
             keyBuilder.append('_').append(singleKey);
 
             // Add ordering
@@ -2592,6 +2612,29 @@ public class CompactMap<K, V> implements Map<K, V> {
             }
 
             return keyBuilder.toString();
+        }
+
+        /**
+         * Sanitizes input for use in class name generation to prevent injection attacks.
+         * 
+         * @param input the input string to sanitize
+         * @return sanitized string safe for use in class names
+         * @throws IllegalArgumentException if input is invalid
+         */
+        private static String sanitizeForClassName(String input) {
+            if (input == null || input.isEmpty()) {
+                throw new IllegalArgumentException("Input cannot be null or empty");
+            }
+            
+            // Strict whitelist approach - only allow alphanumeric characters
+            String sanitized = input.replaceAll("[^a-zA-Z0-9]", "");
+            if (sanitized.isEmpty()) {
+                throw new IllegalArgumentException("Input must contain alphanumeric characters: " + input);
+            }
+            
+            // Ensure first character is uppercase, rest lowercase to follow Java naming conventions
+            return sanitized.substring(0, 1).toUpperCase() + 
+                   (sanitized.length() > 1 ? sanitized.substring(1).toLowerCase() : "");
         }
 
         /**
@@ -3021,10 +3064,15 @@ public class CompactMap<K, V> implements Map<K, V> {
 
             // Define the class
             byte[] classBytes = classOutput.toByteArray();
-            classOutput.close();
-            // Ensure any additional class streams are closed
+            // Ensure all class output streams are properly closed
             for (ByteArrayOutputStream baos : classOutputs.values()) {
-                baos.close();
+                if (baos != null) {
+                    try {
+                        baos.close();
+                    } catch (IOException ignored) {
+                        // ByteArrayOutputStream.close() is a no-op, but be defensive
+                    }
+                }
             }
             return defineClass(className, classBytes);
         } // end try-with-resources
@@ -3066,7 +3114,7 @@ public class CompactMap<K, V> implements Map<K, V> {
      * Internal implementation detail of the template generation system.
      */
     private static final class TemplateClassLoader extends ClassLoader {
-        private final Map<String, Class<?>> definedClasses = new ConcurrentHashMap<>();
+        private final Map<String, WeakReference<Class<?>>> definedClasses = new ConcurrentHashMap<>();
         private final Map<String, ReentrantLock> classLoadLocks = new ConcurrentHashMap<>();
 
         private TemplateClassLoader(ClassLoader parent) {
@@ -3109,15 +3157,21 @@ public class CompactMap<K, V> implements Map<K, V> {
             ReentrantLock lock = classLoadLocks.computeIfAbsent(name, k -> new ReentrantLock());
             lock.lock();
             try {
-                // Check if already defined
-                Class<?> cached = definedClasses.get(name);
-                if (cached != null) {
-                    return cached;
+                // Check if already defined and still reachable
+                WeakReference<Class<?>> cachedRef = definedClasses.get(name);
+                if (cachedRef != null) {
+                    Class<?> cached = cachedRef.get();
+                    if (cached != null) {
+                        return cached;
+                    } else {
+                        // Class was garbage collected, remove stale reference
+                        definedClasses.remove(name);
+                    }
                 }
 
                 // Define new class
                 Class<?> definedClass = defineClass(name, bytes, 0, bytes.length);
-                definedClasses.put(name, definedClass);
+                definedClasses.put(name, new WeakReference<>(definedClass));
                 return definedClass;
             }
             finally {
@@ -3143,10 +3197,16 @@ public class CompactMap<K, V> implements Map<K, V> {
         protected Class<?> findClass(String name) throws ClassNotFoundException {
             // For your "template" classes:
             if (name.startsWith("com.cedarsoftware.util.CompactMap$")) {
-                // Check if we have it cached
-                Class<?> cached = definedClasses.get(name);
-                if (cached != null) {
-                    return cached;
+                // Check if we have it cached and still reachable
+                WeakReference<Class<?>> cachedRef = definedClasses.get(name);
+                if (cachedRef != null) {
+                    Class<?> cached = cachedRef.get();
+                    if (cached != null) {
+                        return cached;
+                    } else {
+                        // Class was garbage collected, remove stale reference
+                        definedClasses.remove(name);
+                    }
                 }
                 // If we don't, we can throw ClassNotFoundException or
                 // your code might dynamically generate the class at this point.

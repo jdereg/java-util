@@ -102,7 +102,9 @@ public final class ByteUtilities {
 
     /**
      * Converts a hexadecimal string into a byte array.
-     * Returns null if the string length is odd or any character is non-hex.
+     * 
+     * @param s the hexadecimal string to decode
+     * @return the decoded byte array, or null if input is null, has odd length, or contains non-hex characters
      */
     public static byte[] decode(final String s) {
         return decode((CharSequence) s);
@@ -110,7 +112,9 @@ public final class ByteUtilities {
 
     /**
      * Converts a hexadecimal CharSequence into a byte array.
-     * Returns null if the sequence length is odd, null, or contains non-hex characters.
+     * 
+     * @param s the hexadecimal CharSequence to decode
+     * @return the decoded byte array, or null if input is null, has odd length, or contains non-hex characters
      */
     public static byte[] decode(final CharSequence s) {
         if (s == null) {
@@ -141,6 +145,9 @@ public final class ByteUtilities {
 
     /**
      * Converts a byte array into a string of hex digits.
+     * 
+     * @param bytes the byte array to encode
+     * @return the hexadecimal string representation, or null if input is null
      */
     public static String encode(final byte[] bytes) {
         if (bytes == null) {
@@ -167,10 +174,13 @@ public final class ByteUtilities {
      *
      * @param bytes  the byte array to inspect
      * @param offset the starting offset within the array
-     * @return true if the bytes appear to be GZIP compressed
+     * @return true if the bytes appear to be GZIP compressed, false if bytes is null, offset is invalid, or not enough bytes
      */
     public static boolean isGzipped(byte[] bytes, int offset) {
-        return bytes != null && bytes.length - offset >= 2 &&
+        if (bytes == null || offset < 0 || offset >= bytes.length) {
+            return false;
+        }
+        return bytes.length - offset >= 2 &&
                 bytes[offset] == GZIP_MAGIC[0] && bytes[offset + 1] == GZIP_MAGIC[1];
     }
 }

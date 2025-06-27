@@ -10,6 +10,12 @@
 >   * Added strict security checks for unsafe instantiation with `RuntimePermission` validation
 >   * Enhanced reflection security in `trySetAccessible()` to not suppress `SecurityExceptions`
 >   * Updated deprecated `SecurityManager` usage for Java 17+ compatibility with graceful fallback
+> * **Security Enhancement**: Fixed critical security vulnerabilities in `ReflectionUtils`:
+>   * Added `ReflectPermission` security checks to prevent unrestricted method invocation in `call()` methods
+>   * Created `secureSetAccessible()` wrapper to prevent access control bypass attacks
+>   * Fixed cache poisoning vulnerabilities by using object identity (`System.identityHashCode`) instead of string-based cache keys
+>   * Updated all cache key classes to use tamper-proof object identity comparison for security
+>   * Enhanced security boundary enforcement across all reflection operations
 > * **Performance Optimization**: Optimized `CollectionUtilities` APIs:
 >   * Pre-size collections in `listOf()`/`setOf()` to avoid resizing overhead
 >   * Replace `Collections.addAll()` with direct loops for better performance

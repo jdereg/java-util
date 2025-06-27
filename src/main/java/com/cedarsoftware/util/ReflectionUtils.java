@@ -10,6 +10,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ReflectPermission;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -193,19 +194,42 @@ public final class ReflectionUtils {
         swap(SORTED_CONSTRUCTORS_CACHE, ensureThreadSafe(cache));
     }
 
+    /**
+     * Securely sets the accessible flag on a reflection object with proper security checks.
+     * <p>
+     * This method wraps ClassUtilities.trySetAccessible() with additional security validation
+     * to prevent unauthorized access control bypass. It verifies that the caller has the
+     * necessary permissions before attempting to suppress access checks.
+     * </p>
+     *
+     * @param obj The AccessibleObject (Field, Method, or Constructor) to make accessible
+     * @throws SecurityException if the caller lacks suppressAccessChecks permission
+     */
+    private static void secureSetAccessible(java.lang.reflect.AccessibleObject obj) {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            try {
+                sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
+            } catch (SecurityException e) {
+                throw new SecurityException("Access denied: Insufficient permissions to bypass access controls for " + obj.getClass().getSimpleName(), e);
+            }
+        }
+        ClassUtilities.trySetAccessible(obj);
+    }
+
     private ReflectionUtils() { }
 
     private static final class ClassAnnotationCacheKey {
-        private final String classLoaderName;
-        private final String className;
-        private final String annotationClassName;
+        // Use object identity instead of string names to prevent cache poisoning
+        private final Class<?> clazz;
+        private final Class<? extends Annotation> annotationClass;
         private final int hash;
 
         ClassAnnotationCacheKey(Class<?> clazz, Class<? extends Annotation> annotationClass) {
-            this.classLoaderName = getClassLoaderName(clazz);
-            this.className = clazz.getName();
-            this.annotationClassName = annotationClass.getName();
-            this.hash = Objects.hash(classLoaderName, className, annotationClassName);
+            this.clazz = Objects.requireNonNull(clazz, "clazz cannot be null");
+            this.annotationClass = Objects.requireNonNull(annotationClass, "annotationClass cannot be null");
+            // Use System.identityHashCode to prevent hash manipulation
+            this.hash = Objects.hash(System.identityHashCode(clazz), System.identityHashCode(annotationClass));
         }
 
         @Override
@@ -213,9 +237,8 @@ public final class ReflectionUtils {
             if (this == o) return true;
             if (!(o instanceof ClassAnnotationCacheKey)) return false;
             ClassAnnotationCacheKey that = (ClassAnnotationCacheKey) o;
-            return Objects.equals(classLoaderName, that.classLoaderName) &&
-                    Objects.equals(className, that.className) &&
-                    Objects.equals(annotationClassName, that.annotationClassName);
+            // Use reference equality to prevent spoofing
+            return this.clazz == that.clazz && this.annotationClass == that.annotationClass;
         }
 
         @Override
@@ -225,21 +248,16 @@ public final class ReflectionUtils {
     }
 
     private static final class MethodAnnotationCacheKey {
-        private final String classLoaderName;
-        private final String className;
-        private final String methodName;
-        private final String parameterTypes;
-        private final String annotationClassName;
+        // Use object identity instead of string names to prevent cache poisoning
+        private final Method method;
+        private final Class<? extends Annotation> annotationClass;
         private final int hash;
 
         MethodAnnotationCacheKey(Method method, Class<? extends Annotation> annotationClass) {
-            Class<?> declaringClass = method.getDeclaringClass();
-            this.classLoaderName = getClassLoaderName(declaringClass);
-            this.className = declaringClass.getName();
-            this.methodName = method.getName();
-            this.parameterTypes = makeParamKey(method.getParameterTypes());
-            this.annotationClassName = annotationClass.getName();
-            this.hash = Objects.hash(classLoaderName, className, methodName, parameterTypes, annotationClassName);
+            this.method = Objects.requireNonNull(method, "method cannot be null");
+            this.annotationClass = Objects.requireNonNull(annotationClass, "annotationClass cannot be null");
+            // Use System.identityHashCode to prevent hash manipulation
+            this.hash = Objects.hash(System.identityHashCode(method), System.identityHashCode(annotationClass));
         }
 
         @Override
@@ -247,11 +265,8 @@ public final class ReflectionUtils {
             if (this == o) return true;
             if (!(o instanceof MethodAnnotationCacheKey)) return false;
             MethodAnnotationCacheKey that = (MethodAnnotationCacheKey) o;
-            return Objects.equals(classLoaderName, that.classLoaderName) &&
-                    Objects.equals(className, that.className) &&
-                    Objects.equals(methodName, that.methodName) &&
-                    Objects.equals(parameterTypes, that.parameterTypes) &&
-                    Objects.equals(annotationClassName, that.annotationClassName);
+            // Use reference equality to prevent spoofing
+            return this.method == that.method && this.annotationClass == that.annotationClass;
         }
 
         @Override
@@ -261,16 +276,16 @@ public final class ReflectionUtils {
     }
 
     private static final class ConstructorCacheKey {
-        private final String classLoaderName;
-        private final String className;
-        private final String parameterTypes;
+        // Use object identity instead of string names to prevent cache poisoning
+        private final Class<?> clazz;
+        private final Class<?>[] parameterTypes;
         private final int hash;
 
         ConstructorCacheKey(Class<?> clazz, Class<?>... types) {
-            this.classLoaderName = getClassLoaderName(clazz);
-            this.className = clazz.getName();
-            this.parameterTypes = makeParamKey(types);
-            this.hash = Objects.hash(classLoaderName, className, parameterTypes);
+            this.clazz = Objects.requireNonNull(clazz, "clazz cannot be null");
+            this.parameterTypes = types.clone(); // Defensive copy
+            // Use System.identityHashCode to prevent hash manipulation
+            this.hash = Objects.hash(System.identityHashCode(clazz), Arrays.hashCode(parameterTypes));
         }
 
         @Override
@@ -278,9 +293,8 @@ public final class ReflectionUtils {
             if (this == o) return true;
             if (!(o instanceof ConstructorCacheKey)) return false;
             ConstructorCacheKey that = (ConstructorCacheKey) o;
-            return Objects.equals(classLoaderName, that.classLoaderName) &&
-                    Objects.equals(className, that.className) &&
-                    Objects.equals(parameterTypes, that.parameterTypes);
+            // Use reference equality to prevent spoofing
+            return this.clazz == that.clazz && Arrays.equals(this.parameterTypes, that.parameterTypes);
         }
 
         @Override
@@ -291,14 +305,14 @@ public final class ReflectionUtils {
 
     // Add this class definition with the other cache keys
     private static final class SortedConstructorsCacheKey {
-        private final String classLoaderName;
-        private final String className;
+        // Use object identity instead of string names to prevent cache poisoning
+        private final Class<?> clazz;
         private final int hash;
 
         SortedConstructorsCacheKey(Class<?> clazz) {
-            this.classLoaderName = getClassLoaderName(clazz);
-            this.className = clazz.getName();
-            this.hash = Objects.hash(classLoaderName, className);
+            this.clazz = Objects.requireNonNull(clazz, "clazz cannot be null");
+            // Use System.identityHashCode to prevent hash manipulation
+            this.hash = System.identityHashCode(clazz);
         }
 
         @Override
@@ -306,8 +320,8 @@ public final class ReflectionUtils {
             if (this == o) return true;
             if (!(o instanceof SortedConstructorsCacheKey)) return false;
             SortedConstructorsCacheKey that = (SortedConstructorsCacheKey) o;
-            return Objects.equals(classLoaderName, that.classLoaderName) &&
-                    Objects.equals(className, that.className);
+            // Use reference equality to prevent spoofing
+            return this.clazz == that.clazz;
         }
 
         @Override
@@ -317,16 +331,16 @@ public final class ReflectionUtils {
     }
 
     private static final class FieldNameCacheKey {
-        private final String classLoaderName;
-        private final String className;
+        // Use object identity instead of string names to prevent cache poisoning
+        private final Class<?> clazz;
         private final String fieldName;
         private final int hash;
 
         FieldNameCacheKey(Class<?> clazz, String fieldName) {
-            this.classLoaderName = getClassLoaderName(clazz);
-            this.className = clazz.getName();
-            this.fieldName = fieldName;
-            this.hash = Objects.hash(classLoaderName, className, fieldName);
+            this.clazz = Objects.requireNonNull(clazz, "clazz cannot be null");
+            this.fieldName = Objects.requireNonNull(fieldName, "fieldName cannot be null");
+            // Use System.identityHashCode to prevent hash manipulation
+            this.hash = Objects.hash(System.identityHashCode(clazz), fieldName);
         }
 
         @Override
@@ -334,9 +348,8 @@ public final class ReflectionUtils {
             if (this == o) return true;
             if (!(o instanceof FieldNameCacheKey)) return false;
             FieldNameCacheKey that = (FieldNameCacheKey) o;
-            return Objects.equals(classLoaderName, that.classLoaderName) &&
-                    Objects.equals(className, that.className) &&
-                    Objects.equals(fieldName, that.fieldName);
+            // Use reference equality to prevent spoofing
+            return this.clazz == that.clazz && Objects.equals(this.fieldName, that.fieldName);
         }
 
         @Override
@@ -346,19 +359,18 @@ public final class ReflectionUtils {
     }
 
     private static final class FieldsCacheKey {
-        private final String classLoaderName;
-        private final String className;
+        // Use object identity instead of string names to prevent cache poisoning
+        private final Class<?> clazz;
         private final Predicate<Field> predicate;
         private final boolean deep;
         private final int hash;
 
         FieldsCacheKey(Class<?> clazz, Predicate<Field> predicate, boolean deep) {
-            this.classLoaderName = getClassLoaderName(clazz);
-            this.className = clazz.getName();
-            this.predicate = predicate;
+            this.clazz = Objects.requireNonNull(clazz, "clazz cannot be null");
+            this.predicate = Objects.requireNonNull(predicate, "predicate cannot be null");
             this.deep = deep;
-            // Include predicate in hash calculation
-            this.hash = Objects.hash(classLoaderName, className, deep, System.identityHashCode(predicate));
+            // Use System.identityHashCode to prevent hash manipulation
+            this.hash = Objects.hash(System.identityHashCode(clazz), deep, System.identityHashCode(predicate));
         }
 
         @Override
@@ -367,8 +379,7 @@ public final class ReflectionUtils {
             if (!(o instanceof FieldsCacheKey)) return false;
             FieldsCacheKey other = (FieldsCacheKey) o;
             return deep == other.deep &&
-                    Objects.equals(classLoaderName, other.classLoaderName) &&
-                    Objects.equals(className, other.className) &&
+                    this.clazz == other.clazz && // Use reference equality to prevent spoofing
                     predicate == other.predicate; // Use identity comparison for predicates
         }
 
@@ -379,20 +390,19 @@ public final class ReflectionUtils {
     }
 
     private static class MethodCacheKey {
-        private final String classLoaderName;
-        private final String className;
+        // Use object identity instead of string names to prevent cache poisoning
+        private final Class<?> clazz;
         private final String methodName;
-        private final String parameterTypes;
+        private final Class<?>[] parameterTypes;
         private final int hash;
 
         public MethodCacheKey(Class<?> clazz, String methodName, Class<?>... types) {
-            this.classLoaderName = getClassLoaderName(clazz);
-            this.className = clazz.getName();
-            this.methodName = methodName;
-            this.parameterTypes = makeParamKey(types);
+            this.clazz = Objects.requireNonNull(clazz, "clazz cannot be null");
+            this.methodName = Objects.requireNonNull(methodName, "methodName cannot be null");
+            this.parameterTypes = types.clone(); // Defensive copy
 
-            // Pre-compute hash code
-            this.hash = Objects.hash(classLoaderName, className, methodName, parameterTypes);
+            // Use System.identityHashCode to prevent hash manipulation
+            this.hash = Objects.hash(System.identityHashCode(clazz), methodName, Arrays.hashCode(parameterTypes));
         }
 
         @Override
@@ -400,10 +410,10 @@ public final class ReflectionUtils {
             if (this == o) return true;
             if (!(o instanceof MethodCacheKey)) return false;
             MethodCacheKey that = (MethodCacheKey) o;
-            return Objects.equals(classLoaderName, that.classLoaderName) &&
-                    Objects.equals(className, that.className) &&
-                    Objects.equals(methodName, that.methodName) &&
-                    Objects.equals(parameterTypes, that.parameterTypes);
+            // Use reference equality to prevent spoofing
+            return this.clazz == that.clazz &&
+                    Objects.equals(this.methodName, that.methodName) &&
+                    Arrays.equals(this.parameterTypes, that.parameterTypes);
         }
 
         @Override
@@ -701,7 +711,7 @@ public final class ReflectionUtils {
                 if (!fieldFilter.test(field)) {
                     continue;
                 }
-                ClassUtilities.trySetAccessible(field);
+                secureSetAccessible(field);
                 filteredList.add(field);
             }
 
@@ -1027,6 +1037,17 @@ public final class ReflectionUtils {
         if (instance == null) {
             throw new IllegalArgumentException("Cannot call [" + method.getName() + "()] on a null object.");
         }
+        
+        // Security check: Verify permission for reflection access
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            try {
+                sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
+            } catch (SecurityException e) {
+                throw new SecurityException("Access denied: ReflectionUtils.call() requires suppressAccessChecks permission for method: " + method.getName(), e);
+            }
+        }
+        
         try {
             return method.invoke(instance, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -1085,6 +1106,16 @@ public final class ReflectionUtils {
      * @see #getMethod(Class, String, Class...) For explicit method lookup with parameter types
      */
     public static Object call(Object instance, String methodName, Object... args) {
+        // Security check: Verify permission for reflection access
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            try {
+                sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
+            } catch (SecurityException e) {
+                throw new SecurityException("Access denied: ReflectionUtils.call() requires suppressAccessChecks permission for method: " + methodName, e);
+            }
+        }
+        
         Method method = getMethod(instance, methodName, args.length);
         try {
             return method.invoke(instance, args);
@@ -1131,7 +1162,7 @@ public final class ReflectionUtils {
             while (current != null && method == null) {
                 try {
                     method = current.getDeclaredMethod(methodName, types);
-                    ClassUtilities.trySetAccessible(method);
+                    secureSetAccessible(method);
                 } catch (Exception ignored) {
                     // Move on up the superclass chain
                 }
@@ -1227,7 +1258,7 @@ public final class ReflectionUtils {
         Method selected = selectMethod(candidates);
 
         // Attempt to make the method accessible
-        ClassUtilities.trySetAccessible(selected);
+        secureSetAccessible(selected);
 
         // Cache the result
         METHOD_CACHE.get().put(key, selected);
@@ -1297,7 +1328,7 @@ public final class ReflectionUtils {
             try {
                 // Try to fetch the constructor reflectively
                 Constructor<T> ctor = clazz.getDeclaredConstructor(parameterTypes); // This already returns Constructor<T>
-                ClassUtilities.trySetAccessible(ctor); // Assuming this method handles setting accessible
+                secureSetAccessible(ctor); // Secure method with proper security checks
                 return ctor;
             } catch (NoSuchMethodException ignored) { // Be more specific with exceptions
                 // If no such constructor exists, store null in the cache
@@ -1350,7 +1381,7 @@ public final class ReflectionUtils {
 
             // Retrieve from cache or add to cache
             declared[i] = CONSTRUCTOR_CACHE.get().computeIfAbsent(key, k -> {
-                ClassUtilities.trySetAccessible(ctor);
+                secureSetAccessible(ctor);
                 return ctor;
             });
         }

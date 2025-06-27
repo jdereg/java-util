@@ -604,9 +604,16 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
                     normalizedRetainSet.add(convertKey(o));
                 }
 
-                final int originalSize = map.size();
-                map.keySet().removeIf(key -> !normalizedRetainSet.contains(key));
-                return map.size() != originalSize;
+                // Use state variable to track changes instead of computing size() twice
+                final boolean[] changed = {false};
+                map.keySet().removeIf(key -> {
+                    boolean shouldRemove = !normalizedRetainSet.contains(key);
+                    if (shouldRemove) {
+                        changed[0] = true;
+                    }
+                    return shouldRemove;
+                });
+                return changed[0];
             }
         };
     }

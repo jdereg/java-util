@@ -104,8 +104,8 @@ import com.cedarsoftware.util.convert.CollectionsWrappers;
  */
 public class CollectionUtilities {
 
-    private static final Set<?> unmodifiableEmptySet = Collections.unmodifiableSet(new HashSet<>());
-    private static final List<?> unmodifiableEmptyList = Collections.unmodifiableList(new ArrayList<>());
+    private static final Set<?> unmodifiableEmptySet = Collections.emptySet();
+    private static final List<?> unmodifiableEmptyList = Collections.emptyList();
     private static final Class<?> unmodifiableCollectionClass = CollectionsWrappers.getUnmodifiableCollectionClass();
     private static final Class<?> synchronizedCollectionClass = CollectionsWrappers.getSynchronizedCollectionClass();
 
@@ -176,8 +176,11 @@ public class CollectionUtilities {
         if (items == null || items.length == 0) {
             return (List<T>) unmodifiableEmptyList;
         }
-        List<T> list = new ArrayList<>();
-        Collections.addAll(list, items);
+        // Pre-size the ArrayList to avoid resizing and avoid Collections.addAll() overhead
+        List<T> list = new ArrayList<>(items.length);
+        for (T item : items) {
+            list.add(item); // This will throw NPE if item is null, as documented
+        }
         return Collections.unmodifiableList(list);
     }
 
@@ -207,8 +210,11 @@ public class CollectionUtilities {
         if (items == null || items.length == 0) {
             return (Set<T>) unmodifiableEmptySet;
         }
-        Set<T> set = new LinkedHashSet<>();
-        Collections.addAll(set, items);
+        // Pre-size the LinkedHashSet to avoid resizing and avoid Collections.addAll() overhead
+        Set<T> set = new LinkedHashSet<>(items.length);
+        for (T item : items) {
+            set.add(item); // This will throw NPE if item is null, as documented
+        }
         return Collections.unmodifiableSet(set);
     }
 
@@ -382,7 +388,7 @@ public class CollectionUtilities {
         } else if (collection instanceof List) {
             return Collections.emptyList();
         } else {
-            return Collections.emptyList(); // Default to an empty list for other collection types
+            return Collections.emptySet(); // More neutral default than emptyList() for unknown collection types
         }
     }
 

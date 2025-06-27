@@ -2175,7 +2175,7 @@ public class ClassUtilities {
 
     public static class SecurityChecker {
         // Combine all security-sensitive classes in one place
-        static final ClassValueSet SECURITY_BLOCKED_CLASSES = new ClassValueSet(Arrays.asList(
+        static final ClassValueSet SECURITY_BLOCKED_CLASSES = ClassValueSet.of(
                 ClassLoader.class,
                 ProcessBuilder.class,
                 Process.class,
@@ -2184,12 +2184,12 @@ public class ClassUtilities {
                 Field.class,
                 Runtime.class,
                 System.class
-        ));
+        );
 
         // Add specific class names that might be loaded dynamically
-        static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(Collections.singletonList(
+        static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(CollectionUtilities.listOf(
                 "java.lang.ProcessImpl"
-                // Add any other specific class names
+                // Add any other specific class names as needed
         ));
 
         /**

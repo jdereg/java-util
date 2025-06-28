@@ -668,12 +668,27 @@ public final class UrlUtilities {
     }
 
     public static URL getActualUrl(String url) {
+        Convention.throwIfNull(url, "URL cannot be null");
+        
         Matcher m = resPattern.matcher(url);
         if (m.find()) {
             return ClassUtilities.getClassLoader().getResource(url.substring(m.end()));
         } else {
             try {
-                return new URL(url);
+                URL parsedUrl = new URL(url);
+                // Basic SSRF protection - validate protocol and host
+                String protocol = parsedUrl.getProtocol();
+                if (protocol == null || (!protocol.equals("http") && !protocol.equals("https") && !protocol.equals("ftp"))) {
+                    throw new IllegalArgumentException("Unsupported protocol: " + protocol);
+                }
+                
+                String host = parsedUrl.getHost();
+                if (host != null && (host.equals("localhost") || host.equals("127.0.0.1") || host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172."))) {
+                    // Allow but log potential internal access
+                    LOG.warning("Accessing internal/local host: " + host);
+                }
+                
+                return parsedUrl;
             } catch (MalformedURLException e) {
                 ExceptionUtilities.uncheckedThrow(e);
                 return null; // never reached

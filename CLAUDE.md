@@ -98,75 +98,84 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - LRUCache and TTLCache are thread-safe with configurable strategies
 - Use appropriate concurrent collections for multi-threaded scenarios
 
-## Enhanced Security Review Loop
+## Enhanced Review Loop
 
-**This is the complete workflow that Claude Code MUST follow for security reviews and fixes:**
+**This is the complete workflow that Claude Code MUST follow for systematic code reviews and improvements (security, performance, features, etc.):**
 
-### Step 1: Select Next File for Review
-- Continue systematic review of Java source files using CODE_REVIEW.md framework
-- Prioritize by security risk: network utilities, reflection utilities, file I/O, crypto, system calls
+### Step 1: Select Next File/Area for Review
+- Continue systematic review of Java source files using appropriate analysis framework
+- For **Security**: Prioritize by risk (network utilities, reflection, file I/O, crypto, system calls)
+- For **Performance**: Focus on hot paths, collection usage, algorithm efficiency
+- For **Features**: Target specific functionality or API enhancements
 - Mark current task as "in_progress" in todo list
 
-### Step 2: Security Analysis
-- Apply CODE_REVIEW.md framework to identify vulnerabilities
-- Classify findings by severity: Critical, High, Medium, Low
-- Create specific todo items for each security issue found
-- Focus on Critical and High severity issues first
+### Step 2: Analysis and Issue Identification  
+- Apply appropriate analysis framework (CODE_REVIEW.md for security, performance profiling, feature requirements)
+- Classify findings by severity/priority: Critical, High, Medium, Low
+- Create specific todo items for each issue found
+- Focus on Critical and High priority issues first
 
-### Step 3: Implement Security Fixes
-- Make targeted security improvements to address identified vulnerabilities
-- **MANDATORY**: Add comprehensive JUnit tests for all security fixes, including:
-  - Tests that verify the fix prevents the vulnerability
+### Step 3: Implement Improvements
+- Make targeted improvements to address identified issues
+- **MANDATORY**: Add comprehensive JUnit tests for all changes, including:
+  - Tests that verify the improvement works correctly
   - Tests for edge cases and boundary conditions  
-  - Tests for error handling and security boundary violations
+  - Tests for error handling and regression prevention
   - All new tests must pass along with existing 11,500+ test suite
-- Follow secure coding practices and maintain API compatibility
-- Update Javadoc with security warnings where appropriate
+- Follow coding best practices and maintain API compatibility
+- Update Javadoc and comments where appropriate
 
 ### Step 4: Validate Changes
 - **CRITICAL**: Run full test suite: `mvn clean test`
 - **VERIFY**: Ensure 11,500+ tests pass (not ~10,000)
 - **REQUIREMENT**: All tests must be 100% passing before proceeding
 - If tests fail, fix issues before continuing to next step
-- Mark security fix todos as "completed" only when tests pass
+- Mark improvement todos as "completed" only when tests pass
 
 ### Step 5: Update Documentation
-- **changelog.md**: Add entry describing security fixes under appropriate version
-- **userguide.md**: Update if security changes affect public APIs or usage patterns
-- **Javadoc**: Ensure security warnings and usage guidance are clear
-- **README.md**: Update if security changes affect high-level functionality
+- **changelog.md**: Add entry describing improvements under appropriate version
+- **userguide.md**: Update if changes affect public APIs or usage patterns  
+- **Javadoc**: Ensure documentation reflects changes and provides clear guidance
+- **README.md**: Update if changes affect high-level functionality
 
 ### Step 6: Commit Approval Process
 **MANDATORY HUMAN APPROVAL STEP:**
 Present a commit approval request to the human with:
-- Summary of security vulnerabilities fixed
+- Summary of improvements made (security fixes, performance enhancements, new features, etc.)
 - List of files modified 
 - Test results confirmation (11,500+ tests passing)
 - Documentation updates made
-- Clear description of security improvements
-- Ask: "Should I commit these security fixes? (Y/N)"
+- Clear description of changes and benefits
+- Ask: "Should I commit these changes? (Y/N)"
 
 **CRITICAL**: NEVER commit without explicit human approval (Y/N response)
 
 ### Step 7: Commit Changes (Only After Human Approval)
 - Use descriptive commit message format:
   ```
-  Security: Fix [vulnerability type] in [component]
+  [Type]: [Brief description] in [component]
   
-  - [Specific fix 1]
-  - [Specific fix 2] 
+  - [Specific change 1]
+  - [Specific change 2] 
   - [Test coverage added]
   
   🤖 Generated with [Claude Code](https://claude.ai/code)
   
   Co-Authored-By: Claude <noreply@anthropic.com>
   ```
+  Where [Type] = Security, Performance, Feature, Refactor, etc.
 - Only commit after receiving explicit "Y" approval from human
 - Mark commit-related todos as "completed"
 
 ### Step 8: Continue Review Loop
-- Move to next highest priority security issue
+- Move to next highest priority issue
 - Repeat this complete 8-step process
 - Maintain todo list to track progress across entire codebase
 
-**This loop ensures systematic security hardening with proper testing, documentation, and human oversight for all changes.**
+**Special Cases - Tinkering/Exploratory Work:**
+For non-systematic changes, individual experiments, or small targeted fixes, the process can be adapted:
+- Steps 1-2 can be simplified or skipped for well-defined changes
+- Steps 4-6 remain mandatory (testing, documentation, human approval)
+- Commit messages should still be descriptive and follow format
+
+**This loop ensures systematic code improvement with proper testing, documentation, and human oversight for all changes.**

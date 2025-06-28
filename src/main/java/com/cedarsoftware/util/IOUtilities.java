@@ -196,12 +196,10 @@ public final class IOUtilities {
                 // On Windows, case differences might be normal, so normalize case for comparison
                 if (System.getProperty("os.name", "").toLowerCase().contains("windows")) {
                     if (!canonicalPath.equalsIgnoreCase(absolutePath)) {
-                        debug("Potential symlink or case manipulation detected: " + 
-                              sanitizePathForLogging(absolutePath) + " -> " + sanitizePathForLogging(canonicalPath), null);
+                        debug("Potential symlink or case manipulation detected in file access", null);
                     }
                 } else {
-                    debug("Potential symlink detected: " + 
-                          sanitizePathForLogging(absolutePath) + " -> " + sanitizePathForLogging(canonicalPath), null);
+                    debug("Potential symlink detected in file access", null);
                 }
             }
             
@@ -256,7 +254,7 @@ public final class IOUtilities {
             // Check for backup or temporary files that might contain sensitive data
             if (element.endsWith(".bak") || element.endsWith(".tmp") || element.endsWith(".old") ||
                 element.endsWith("~") || element.startsWith("core.")) {
-                debug("Accessing potentially sensitive file: " + sanitizePathForLogging(element), null);
+                debug("Accessing potentially sensitive file type detected", null);
             }
             
             // Check for path elements with unusual characters
@@ -268,12 +266,39 @@ public final class IOUtilities {
 
     /**
      * Sanitizes file paths for safe logging by limiting length and removing sensitive information.
+     * This method prevents information disclosure through log files by masking potentially
+     * sensitive path information while preserving enough detail for security analysis.
      * 
      * @param path the file path to sanitize
      * @return sanitized path safe for logging
      */
     private static String sanitizePathForLogging(String path) {
         if (path == null) return "[null]";
+        
+        // Check if detailed logging is explicitly enabled (for debugging only)
+        boolean allowDetailedLogging = Boolean.parseBoolean(System.getProperty("io.debug.detailed.paths", "false"));
+        if (!allowDetailedLogging) {
+            // Minimal logging - only show basic pattern information to prevent information disclosure
+            if (path.contains("..")) {
+                return "[path-with-traversal-pattern]";
+            }
+            if (path.contains("\0")) {
+                return "[path-with-null-byte]";
+            }
+            if (path.toLowerCase().contains("system32") || path.toLowerCase().contains("syswow64")) {
+                return "[windows-system-path]";
+            }
+            if (path.startsWith("/proc/") || path.startsWith("/sys/") || path.startsWith("/dev/") || path.startsWith("/etc/")) {
+                return "[unix-system-path]";
+            }
+            if (path.contains("/.")) {
+                return "[hidden-directory-path]";
+            }
+            // Generic path indicator without exposing structure
+            return "[file-path:" + path.length() + "-chars]";
+        }
+        
+        // Detailed logging only when explicitly enabled (for debugging)
         // Limit length and mask potentially sensitive parts
         if (path.length() > 100) {
             path = path.substring(0, 100) + "...[truncated]";
@@ -353,7 +378,7 @@ public final class IOUtilities {
                 connectTimeout = Integer.parseInt(System.getProperty("io.connect.timeout", String.valueOf(DEFAULT_CONNECT_TIMEOUT)));
                 readTimeout = Integer.parseInt(System.getProperty("io.read.timeout", String.valueOf(DEFAULT_READ_TIMEOUT)));
             } catch (NumberFormatException e) {
-                debug("Invalid timeout settings", e);
+                debug("Invalid timeout configuration detected, using defaults", null);
             }
             http.setConnectTimeout(connectTimeout);
             http.setReadTimeout(readTimeout);

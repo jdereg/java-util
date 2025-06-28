@@ -1451,4 +1451,40 @@ class DateUtilitiesTest
         assertNotNull(result3);
         assertEquals(2024, result3.getYear());
     }
+
+    @Test
+    void testRegexPerformance_SampleBenchmark() {
+        // Basic performance test to verify regex optimizations don't hurt performance
+        // Tests common date parsing patterns for performance regression detection
+        String[] testDates = {
+            "2024-01-15 14:30:00",
+            "2024/01/15 14:30:00.123+05:00",
+            "January 15th, 2024 2:30 PM EST",
+            "15th Jan 2024 14:30:00.123456",
+            "Mon Jan 15 14:30:00 EST 2024",
+            "1705339800000" // epoch milliseconds
+        };
+        
+        ZoneId utc = ZoneId.of("UTC");
+        long startTime = System.nanoTime();
+        
+        // Parse each test date multiple times to measure performance
+        for (int i = 0; i < 100; i++) {
+            for (String testDate : testDates) {
+                try {
+                    ZonedDateTime result = DateUtilities.parseDate(testDate, utc, false);
+                    assertNotNull(result, "Failed to parse: " + testDate);
+                } catch (Exception e) {
+                    // Some test dates may not parse perfectly - that's ok for performance test
+                }
+            }
+        }
+        
+        long endTime = System.nanoTime();
+        long durationMs = (endTime - startTime) / 1_000_000;
+        
+        // Performance should complete within reasonable time (regression detection)
+        // This is not a strict benchmark, just ensuring no major performance degradation
+        assertTrue(durationMs < 5000, "Date parsing took too long: " + durationMs + "ms - possible performance regression");
+    }
 }

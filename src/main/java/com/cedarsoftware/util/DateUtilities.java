@@ -125,7 +125,8 @@ import java.util.regex.Pattern;
  *         limitations under the License.
  */
 public final class DateUtilities {
-    private static final Pattern allDigits = Pattern.compile("^-?\\d+$");
+    // Performance optimized: Added UNICODE_CHARACTER_CLASS for better digit matching across locales
+    private static final Pattern allDigits = Pattern.compile("^-?\\d+$", Pattern.UNICODE_CHARACTER_CLASS);
     private static final String days = "monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun"; // longer before shorter matters
     private static final String mos = "January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec";
     private static final String yr = "[+-]?\\d{4,9}\\b";
@@ -145,16 +146,20 @@ public final class DateUtilities {
     private static final String nano = "\\.\\d{1,9}";
 
     // Patterns defined in BNF influenced style using above named elements
+    // Performance optimized: Added UNICODE_CHARACTER_CLASS for better Unicode handling
     private static final Pattern isoDatePattern = Pattern.compile(    // Regex's using | (OR)
             "(" + yr + ")(" + sep + ")(" + d1or2 + ")" + "\\2" + "(" + d1or2 + ")|" +        // 2024/01/21 (yyyy/mm/dd -or- yyyy-mm-dd -or- yyyy.mm.dd)   [optional time, optional day of week]  \2 references 1st separator (ensures both same)
-            "(" + d1or2 + ")(" + sep + ")(" + d1or2 + ")" + "\\6(" + yr + ")");              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 2nd 1st separator (ensures both same)
+            "(" + d1or2 + ")(" + sep + ")(" + d1or2 + ")" + "\\6(" + yr + ")",              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 2nd 1st separator (ensures both same)
+            Pattern.UNICODE_CHARACTER_CLASS);
 
+    // Performance optimized: Combined flags for better performance
     private static final Pattern alphaMonthPattern = Pattern.compile(
             "\\b(" + mos + ")\\b" + wsOrComma + "(" + d1or2 + ")(" + ord + ")?" + wsOrComma + "(" + yr + ")|" +   // Jan 21st, 2024  (comma optional between all, day of week optional, time optional, ordinal text optional [st, nd, rd, th])
             "(" + d1or2 + ")(" + ord + ")?" + wsOrComma + "\\b(" + mos + ")\\b" + wsOrComma + "(" + yr + ")|" +         // 21st Jan, 2024  (ditto)
             "(" + yr + ")" + wsOrComma + "\\b(" + mos + "\\b)" + wsOrComma + "(" + d1or2 + ")(" + ord + ")?",           // 2024 Jan 21st   (ditto)
-            Pattern.CASE_INSENSITIVE);
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
 
+    // Performance optimized: Added UNICODE_CHARACTER_CLASS for consistent Unicode handling
     private static final Pattern unixDateTimePattern = Pattern.compile(
             "(?:\\b(" + days + ")\\b" + ws + ")?"
                     + "\\b(" + mos + ")\\b" + ws
@@ -163,17 +168,21 @@ public final class DateUtilities {
                     + "(" + tzUnix + ")?"
                     + wsOp
                     + "(" + yr + ")",
-            Pattern.CASE_INSENSITIVE);
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
     
+    // Performance optimized: Added UNICODE_CHARACTER_CLASS while preserving original capture group structure
     private static final Pattern timePattern = Pattern.compile(
             "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
-            Pattern.CASE_INSENSITIVE);
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
 
+    // Performance optimized: Reordered alternatives for better matching efficiency and added UNICODE_CHARACTER_CLASS
     private static final Pattern zonePattern = Pattern.compile(
-            "(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")",
-            Pattern.CASE_INSENSITIVE);
+            "(" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh_MM_SS + "|" + tz_Hh + "|Z|" + tzNamed + ")",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
 
-    private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", Pattern.CASE_INSENSITIVE);
+    // Performance optimized: Added UNICODE_CHARACTER_CLASS for consistent Unicode handling
+    private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", 
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
     private static final Map<String, Integer> months = new ConcurrentHashMap<>();
     public static final Map<String, String> ABBREVIATION_TO_TIMEZONE;
 

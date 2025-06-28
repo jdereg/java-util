@@ -20,6 +20,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.cedarsoftware.util.LoggingConfig;
 import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Utility class providing common system-level operations and information gathering capabilities.
@@ -80,16 +84,67 @@ public final class SystemUtilities
     public static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
     private static final Logger LOG = Logger.getLogger(SystemUtilities.class.getName());
     static { LoggingConfig.init(); }
+    
+    // Security: Sensitive variable patterns that should not be exposed
+    private static final Set<String> SENSITIVE_VARIABLE_PATTERNS = Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList(
+            "PASSWORD", "PASSWD", "PASS", "SECRET", "KEY", "TOKEN", "CREDENTIAL", 
+            "AUTH", "APIKEY", "API_KEY", "PRIVATE", "CERT", "CERTIFICATE",
+            "DATABASE_URL", "DB_URL", "CONNECTION_STRING", "DSN",
+            "AWS_SECRET", "AZURE_CLIENT_SECRET", "GCP_SERVICE_ACCOUNT"
+        ))
+    );
+    
+    // Security: Resource limits for system operations
+    private static final AtomicInteger SHUTDOWN_HOOK_COUNT = new AtomicInteger(0);
+    private static final int MAX_SHUTDOWN_HOOKS = 100;
 
     private SystemUtilities() {
     }
 
     /**
      * Fetch value from environment variable and if not set, then fetch from
-     * System properties.  If neither available, return null.
+     * System properties. If neither available, return null.
+     * 
+     * <p><strong>Security Note:</strong> This method filters out potentially sensitive 
+     * variables such as passwords, tokens, and credentials to prevent information disclosure.
+     * Use {@link #getExternalVariableUnsafe(String)} if you need access to sensitive variables
+     * and have verified the security requirements.</p>
+     * 
      * @param var String key of variable to return
+     * @return variable value or null if not found or filtered for security
      */
     public static String getExternalVariable(String var)
+    {
+        if (StringUtilities.isEmpty(var)) {
+            return null;
+        }
+        
+        // Security: Check if this is a sensitive variable that should be filtered
+        if (isSensitiveVariable(var)) {
+            LOG.log(Level.FINE, "Access to sensitive variable blocked: " + sanitizeVariableName(var));
+            return null;
+        }
+
+        String value = System.getProperty(var);
+        if (StringUtilities.isEmpty(value)) {
+            value = System.getenv(var);
+        }
+        return StringUtilities.isEmpty(value) ? null : value;
+    }
+    
+    /**
+     * Fetch value from environment variable and if not set, then fetch from
+     * System properties, without security filtering.
+     * 
+     * <p><strong>Security Warning:</strong> This method bypasses security filtering
+     * and may return sensitive information such as passwords or tokens. Use with extreme
+     * caution and ensure proper access controls are in place.</p>
+     * 
+     * @param var String key of variable to return
+     * @return variable value or null if not found
+     */
+    public static String getExternalVariableUnsafe(String var)
     {
         if (StringUtilities.isEmpty(var)) {
             return null;
@@ -100,6 +155,39 @@ public final class SystemUtilities
             value = System.getenv(var);
         }
         return StringUtilities.isEmpty(value) ? null : value;
+    }
+    
+    /**
+     * Checks if a variable name matches patterns for sensitive information.
+     * 
+     * @param varName the variable name to check
+     * @return true if the variable name suggests sensitive content
+     */
+    private static boolean isSensitiveVariable(String varName) {
+        if (varName == null) {
+            return false;
+        }
+        
+        String upperVar = varName.toUpperCase();
+        return SENSITIVE_VARIABLE_PATTERNS.stream().anyMatch(upperVar::contains);
+    }
+    
+    /**
+     * Sanitizes variable names for safe logging.
+     * 
+     * @param varName the variable name to sanitize
+     * @return sanitized variable name safe for logging
+     */
+    private static String sanitizeVariableName(String varName) {
+        if (varName == null) {
+            return "[null]";
+        }
+        
+        if (varName.length() <= 3) {
+            return "[var:" + varName.length() + "-chars]";
+        }
+        
+        return varName.substring(0, 2) + StringUtilities.repeat("*", varName.length() - 4) + varName.substring(varName.length() - 2);
     }
 
 
@@ -145,6 +233,9 @@ public final class SystemUtilities
      */
     public static int currentJdkMajorVersion() {
         try {
+            // Security: Check SecurityManager permissions for reflection
+            checkReflectionPermission();
+            
             Method versionMethod = ReflectionUtils.getMethod(Runtime.class, "version");
             Object v = versionMethod.invoke(Runtime.getRuntime());
             Method major = ReflectionUtils.getMethod(v.getClass(), "major");
@@ -157,6 +248,9 @@ public final class SystemUtilities
 
     private static int[] parseJavaVersionNumbers() {
         try {
+            // Security: Check SecurityManager permissions for reflection
+            checkReflectionPermission();
+            
             Method versionMethod = ReflectionUtils.getMethod(Runtime.class, "version");
             Object v = versionMethod.invoke(Runtime.getRuntime());
             Method majorMethod = ReflectionUtils.getMethod(v.getClass(), "major");
@@ -169,6 +263,18 @@ public final class SystemUtilities
             int major = Integer.parseInt(parts[0]);
             int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
             return new int[]{major, minor};
+        }
+    }
+    
+    /**
+     * Checks security manager permissions for reflection operations.
+     * 
+     * @throws SecurityException if reflection is not permitted
+     */
+    private static void checkReflectionPermission() {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(new RuntimePermission("accessDeclaredMembers"));
         }
     }
 
@@ -191,10 +297,19 @@ public final class SystemUtilities
 
     /**
      * Create temporary directory that will be deleted on JVM exit.
+     * 
+     * <p><strong>Security Note:</strong> The prefix parameter is validated to prevent 
+     * path traversal attacks and ensure safe directory creation.</p>
      *
+     * @param prefix the prefix for the temporary directory name
+     * @return the created temporary directory
+     * @throws IllegalArgumentException if the prefix contains invalid characters
      * @throws IOException if the directory cannot be created (thrown as unchecked)
      */
     public static File createTempDirectory(String prefix) {
+        // Security: Validate prefix to prevent path traversal and injection
+        validateTempDirectoryPrefix(prefix);
+        
         try {
             File tempDir = Files.createTempDirectory(prefix).toFile();
             tempDir.deleteOnExit();
@@ -202,6 +317,42 @@ public final class SystemUtilities
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
             return null; // unreachable
+        }
+    }
+    
+    /**
+     * Validates the prefix for temporary directory creation.
+     * 
+     * @param prefix the prefix to validate
+     * @throws IllegalArgumentException if the prefix is invalid
+     */
+    private static void validateTempDirectoryPrefix(String prefix) {
+        if (prefix == null) {
+            throw new IllegalArgumentException("Temporary directory prefix cannot be null");
+        }
+        
+        if (prefix.isEmpty()) {
+            throw new IllegalArgumentException("Temporary directory prefix cannot be empty");
+        }
+        
+        // Check for path traversal attempts
+        if (prefix.contains("..") || prefix.contains("/") || prefix.contains("\\")) {
+            throw new IllegalArgumentException("Temporary directory prefix contains invalid path characters: " + prefix);
+        }
+        
+        // Check for null bytes and control characters
+        if (prefix.contains("\0")) {
+            throw new IllegalArgumentException("Temporary directory prefix contains null byte");
+        }
+        
+        // Check for other dangerous characters
+        if (prefix.matches(".*[<>:\"|?*].*")) {
+            throw new IllegalArgumentException("Temporary directory prefix contains invalid characters: " + prefix);
+        }
+        
+        // Limit length to prevent excessive resource usage
+        if (prefix.length() > 100) {
+            throw new IllegalArgumentException("Temporary directory prefix too long (max 100 characters): " + prefix.length());
         }
     }
 
@@ -225,9 +376,39 @@ public final class SystemUtilities
     }
 
     /**
-     * Get all environment variables with optional filtering
+     * Get all environment variables with optional filtering and security protection.
+     * 
+     * <p><strong>Security Note:</strong> This method automatically filters out sensitive
+     * variables such as passwords, tokens, and credentials to prevent information disclosure.
+     * Use {@link #getEnvironmentVariablesUnsafe(Predicate)} if you need access to sensitive
+     * variables and have verified the security requirements.</p>
+     * 
+     * @param filter optional predicate to further filter variables (applied after security filtering)
+     * @return map of non-sensitive environment variables
      */
     public static Map<String, String> getEnvironmentVariables(Predicate<String> filter) {
+        return System.getenv().entrySet().stream()
+                .filter(e -> !isSensitiveVariable(e.getKey())) // Security: Filter sensitive variables
+                .filter(e -> filter == null || filter.test(e.getKey()))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (v1, v2) -> v1,
+                        LinkedHashMap::new
+                ));
+    }
+    
+    /**
+     * Get all environment variables with optional filtering, without security protection.
+     * 
+     * <p><strong>Security Warning:</strong> This method bypasses security filtering
+     * and may return sensitive information such as passwords or tokens. Use with extreme
+     * caution and ensure proper access controls are in place.</p>
+     * 
+     * @param filter optional predicate to filter variables
+     * @return map of all environment variables matching the filter
+     */
+    public static Map<String, String> getEnvironmentVariablesUnsafe(Predicate<String> filter) {
         return System.getenv().entrySet().stream()
                 .filter(e -> filter == null || filter.test(e.getKey()))
                 .collect(Collectors.toMap(
@@ -270,16 +451,52 @@ public final class SystemUtilities
     }
 
     /**
-     * Add shutdown hook with safe execution
+     * Add shutdown hook with safe execution and resource limits.
+     * 
+     * <p><strong>Security Note:</strong> This method enforces a limit on the number of 
+     * shutdown hooks to prevent resource exhaustion attacks. The current limit is 
+     * {@value #MAX_SHUTDOWN_HOOKS} hooks.</p>
+     * 
+     * @param hook the runnable to execute during shutdown
+     * @throws IllegalStateException if the maximum number of shutdown hooks is exceeded
+     * @throws IllegalArgumentException if hook is null
      */
     public static void addShutdownHook(Runnable hook) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            try {
-                hook.run();
-            } catch (Exception e) {
-                LOG.log(Level.SEVERE, "Shutdown hook threw exception", e);
-            }
-        }));
+        if (hook == null) {
+            throw new IllegalArgumentException("Shutdown hook cannot be null");
+        }
+        
+        // Security: Enforce limit on shutdown hooks to prevent resource exhaustion
+        int currentCount = SHUTDOWN_HOOK_COUNT.incrementAndGet();
+        if (currentCount > MAX_SHUTDOWN_HOOKS) {
+            SHUTDOWN_HOOK_COUNT.decrementAndGet();
+            throw new IllegalStateException("Maximum number of shutdown hooks exceeded: " + MAX_SHUTDOWN_HOOKS);
+        }
+        
+        try {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    hook.run();
+                } catch (Exception e) {
+                    LOG.log(Level.SEVERE, "Shutdown hook threw exception", e);
+                } finally {
+                    SHUTDOWN_HOOK_COUNT.decrementAndGet();
+                }
+            }));
+        } catch (Exception e) {
+            // If adding the hook fails, decrement the counter
+            SHUTDOWN_HOOK_COUNT.decrementAndGet();
+            throw e;
+        }
+    }
+    
+    /**
+     * Get the current number of registered shutdown hooks.
+     * 
+     * @return the number of shutdown hooks currently registered
+     */
+    public static int getShutdownHookCount() {
+        return SHUTDOWN_HOOK_COUNT.get();
     }
 
     // Support classes

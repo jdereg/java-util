@@ -141,10 +141,15 @@ class SystemUtilitiesTest
 
     @Test
     void testGetEnvironmentVariables() {
-        // Test without filter
+        // Test without filter (note: security filtering may reduce the count)
         Map<String, String> allVars = SystemUtilities.getEnvironmentVariables(null);
         assertFalse(allVars.isEmpty());
-        assertEquals(System.getenv().size(), allVars.size());
+        // Security filtering may reduce the count, so we check that it's less than or equal to system env size
+        assertTrue(allVars.size() <= System.getenv().size());
+        
+        // Test unsafe method returns all variables
+        Map<String, String> unsafeVars = SystemUtilities.getEnvironmentVariablesUnsafe(null);
+        assertEquals(System.getenv().size(), unsafeVars.size());
 
         // Test with filter
         Map<String, String> filteredVars = SystemUtilities.getEnvironmentVariables(

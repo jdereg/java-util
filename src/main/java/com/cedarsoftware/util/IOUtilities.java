@@ -542,10 +542,35 @@ public final class IOUtilities {
     }
 
     /**
+     * Creates a safe defensive copy of the transfer buffer for callback use.
+     * This prevents race conditions where the callback might modify the buffer
+     * while it's still being used for transfer operations, or where multiple
+     * callbacks might access the same buffer concurrently.
+     * 
+     * @param buffer the original transfer buffer
+     * @param count the number of valid bytes in the buffer
+     * @return a defensive copy containing only the valid data
+     */
+    private static byte[] createSafeCallbackBuffer(byte[] buffer, int count) {
+        if (count <= 0) {
+            return new byte[0];
+        }
+        
+        // Create a defensive copy with only the valid data to prevent:
+        // 1. Buffer corruption if callback modifies the array
+        // 2. Race conditions with concurrent buffer access
+        // 3. Information leakage of unused buffer portions
+        byte[] callbackBuffer = new byte[count];
+        System.arraycopy(buffer, 0, callbackBuffer, 0, count);
+        return callbackBuffer;
+    }
+
+    /**
      * Transfers bytes from an input stream to an output stream with optional progress monitoring.
      * <p>
      * This method does not close the streams; that responsibility remains with the caller.
      * Progress can be monitored and the transfer can be cancelled through the callback interface.
+     * The callback receives a defensive copy of the buffer to prevent race conditions and data corruption.
      * </p>
      *
      * @param in  the source InputStream
@@ -562,7 +587,9 @@ public final class IOUtilities {
             while ((count = in.read(buffer)) != -1) {
                 out.write(buffer, 0, count);
                 if (cb != null) {
-                    cb.bytesTransferred(buffer, count);
+                    // Create a defensive copy to prevent race conditions and buffer corruption
+                    byte[] callbackBuffer = createSafeCallbackBuffer(buffer, count);
+                    cb.bytesTransferred(callbackBuffer, count);
                     if (cb.isCancelled()) {
                         break;
                     }
@@ -929,14 +956,23 @@ public final class IOUtilities {
 
     /**
      * Callback interface for monitoring and controlling byte transfers.
+     * <p>
+     * The callback receives a defensive copy of the transfer buffer to ensure thread safety
+     * and prevent race conditions. Implementations can safely modify the provided buffer
+     * without affecting the ongoing transfer operation.
+     * </p>
      */
     @FunctionalInterface
     public interface TransferCallback {
         /**
          * Called when bytes are transferred during an operation.
+         * <p>
+         * The provided buffer is a defensive copy containing only the transferred bytes.
+         * It is safe to modify this buffer without affecting the transfer operation.
+         * </p>
          *
-         * @param bytes the buffer containing the transferred bytes
-         * @param count the number of bytes actually transferred
+         * @param bytes the buffer containing the transferred bytes (defensive copy)
+         * @param count the number of bytes actually transferred (equals bytes.length)
          */
         void bytesTransferred(byte[] bytes, int count);
 

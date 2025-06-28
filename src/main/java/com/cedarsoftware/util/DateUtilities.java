@@ -141,8 +141,8 @@ public final class DateUtilities {
     private static final String tz_Hh_MM_SS = "[+-]\\d{1,2}:\\d{2}:\\d{2}";
     private static final String tz_HHMM = "[+-]\\d{4}";
     private static final String tz_Hh = "[+-]\\d{1,2}";
-    private static final String tzNamed = wsOp + "\\[?(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]+)]?";
-    private static final String nano = "\\.\\d+";
+    private static final String tzNamed = wsOp + "\\[?(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]{1,50})]?";
+    private static final String nano = "\\.\\d{1,9}";
 
     // Patterns defined in BNF influenced style using above named elements
     private static final Pattern isoDatePattern = Pattern.compile(    // Regex's using | (OR)
@@ -175,7 +175,7 @@ public final class DateUtilities {
 
     private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", Pattern.CASE_INSENSITIVE);
     private static final Map<String, Integer> months = new ConcurrentHashMap<>();
-    public static final Map<String, String> ABBREVIATION_TO_TIMEZONE = new HashMap<>();
+    public static final Map<String, String> ABBREVIATION_TO_TIMEZONE;
 
     static {
         // Month name to number map
@@ -204,134 +204,137 @@ public final class DateUtilities {
         months.put("dec", 12);
         months.put("december", 12);
 
+        // Build timezone abbreviation map - thread-safe and immutable after initialization
+        Map<String, String> timezoneBuilder = new ConcurrentHashMap<>();
+        
         // North American Time Zones
-        ABBREVIATION_TO_TIMEZONE.put("EST", "America/New_York");    // Eastern Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("EDT", "America/New_York");    // Eastern Daylight Time
+        timezoneBuilder.put("EST", "America/New_York");    // Eastern Standard Time
+        timezoneBuilder.put("EDT", "America/New_York");    // Eastern Daylight Time
 
         // CST is ambiguous: could be Central Standard Time (North America) or China Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("CST", "America/Chicago");     // Central Standard Time
+        timezoneBuilder.put("CST", "America/Chicago");     // Central Standard Time
 
-        ABBREVIATION_TO_TIMEZONE.put("CDT", "America/Chicago");     // Central Daylight Time
+        timezoneBuilder.put("CDT", "America/Chicago");     // Central Daylight Time
         // Note: CDT can also be Cuba Daylight Time (America/Havana)
 
         // MST is ambiguous: could be Mountain Standard Time (North America) or Myanmar Standard Time
         // Chose Myanmar Standard Time due to larger population
         // Conflicts: America/Denver (Mountain Standard Time)
-        ABBREVIATION_TO_TIMEZONE.put("MST", "America/Denver");      // Mountain Standard Time
+        timezoneBuilder.put("MST", "America/Denver");      // Mountain Standard Time
 
-        ABBREVIATION_TO_TIMEZONE.put("MDT", "America/Denver");      // Mountain Daylight Time
+        timezoneBuilder.put("MDT", "America/Denver");      // Mountain Daylight Time
 
         // PST is ambiguous: could be Pacific Standard Time (North America) or Philippine Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("PST", "America/Los_Angeles"); // Pacific Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("PDT", "America/Los_Angeles"); // Pacific Daylight Time
+        timezoneBuilder.put("PST", "America/Los_Angeles"); // Pacific Standard Time
+        timezoneBuilder.put("PDT", "America/Los_Angeles"); // Pacific Daylight Time
 
-        ABBREVIATION_TO_TIMEZONE.put("AKST", "America/Anchorage");  // Alaska Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("AKDT", "America/Anchorage");  // Alaska Daylight Time
+        timezoneBuilder.put("AKST", "America/Anchorage");  // Alaska Standard Time
+        timezoneBuilder.put("AKDT", "America/Anchorage");  // Alaska Daylight Time
 
-        ABBREVIATION_TO_TIMEZONE.put("HST", "Pacific/Honolulu");    // Hawaii Standard Time
+        timezoneBuilder.put("HST", "Pacific/Honolulu");    // Hawaii Standard Time
         // Hawaii does not observe Daylight Saving Time
 
         // European Time Zones
-        ABBREVIATION_TO_TIMEZONE.put("GMT", "Europe/London");       // Greenwich Mean Time
+        timezoneBuilder.put("GMT", "Europe/London");       // Greenwich Mean Time
 
         // BST is ambiguous: could be British Summer Time or Bangladesh Standard Time
         // Chose British Summer Time as it's more commonly used in international contexts
-        ABBREVIATION_TO_TIMEZONE.put("BST", "Europe/London");       // British Summer Time
-        ABBREVIATION_TO_TIMEZONE.put("WET", "Europe/Lisbon");       // Western European Time
-        ABBREVIATION_TO_TIMEZONE.put("WEST", "Europe/Lisbon");      // Western European Summer Time
+        timezoneBuilder.put("BST", "Europe/London");       // British Summer Time
+        timezoneBuilder.put("WET", "Europe/Lisbon");       // Western European Time
+        timezoneBuilder.put("WEST", "Europe/Lisbon");      // Western European Summer Time
 
-        ABBREVIATION_TO_TIMEZONE.put("CET", "Europe/Berlin");       // Central European Time
-        ABBREVIATION_TO_TIMEZONE.put("CEST", "Europe/Berlin");      // Central European Summer Time
+        timezoneBuilder.put("CET", "Europe/Berlin");       // Central European Time
+        timezoneBuilder.put("CEST", "Europe/Berlin");      // Central European Summer Time
 
-        ABBREVIATION_TO_TIMEZONE.put("EET", "Europe/Kiev");         // Eastern European Time
-        ABBREVIATION_TO_TIMEZONE.put("EEST", "Europe/Kiev");        // Eastern European Summer Time
+        timezoneBuilder.put("EET", "Europe/Kiev");         // Eastern European Time
+        timezoneBuilder.put("EEST", "Europe/Kiev");        // Eastern European Summer Time
 
         // Australia and New Zealand Time Zones
-        ABBREVIATION_TO_TIMEZONE.put("AEST", "Australia/Brisbane"); // Australian Eastern Standard Time
+        timezoneBuilder.put("AEST", "Australia/Brisbane"); // Australian Eastern Standard Time
         // Brisbane does not observe Daylight Saving Time
 
-        ABBREVIATION_TO_TIMEZONE.put("AEDT", "Australia/Sydney");   // Australian Eastern Daylight Time
+        timezoneBuilder.put("AEDT", "Australia/Sydney");   // Australian Eastern Daylight Time
 
-        ABBREVIATION_TO_TIMEZONE.put("ACST", "Australia/Darwin");   // Australian Central Standard Time
+        timezoneBuilder.put("ACST", "Australia/Darwin");   // Australian Central Standard Time
         // Darwin does not observe Daylight Saving Time
 
-        ABBREVIATION_TO_TIMEZONE.put("ACDT", "Australia/Adelaide"); // Australian Central Daylight Time
+        timezoneBuilder.put("ACDT", "Australia/Adelaide"); // Australian Central Daylight Time
 
-        ABBREVIATION_TO_TIMEZONE.put("AWST", "Australia/Perth");    // Australian Western Standard Time
+        timezoneBuilder.put("AWST", "Australia/Perth");    // Australian Western Standard Time
         // Perth does not observe Daylight Saving Time
 
-        ABBREVIATION_TO_TIMEZONE.put("NZST", "Pacific/Auckland");   // New Zealand Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("NZDT", "Pacific/Auckland");   // New Zealand Daylight Time
+        timezoneBuilder.put("NZST", "Pacific/Auckland");   // New Zealand Standard Time
+        timezoneBuilder.put("NZDT", "Pacific/Auckland");   // New Zealand Daylight Time
 
         // South American Time Zones
-        ABBREVIATION_TO_TIMEZONE.put("CLT", "America/Santiago");    // Chile Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("CLST", "America/Santiago");   // Chile Summer Time
+        timezoneBuilder.put("CLT", "America/Santiago");    // Chile Standard Time
+        timezoneBuilder.put("CLST", "America/Santiago");   // Chile Summer Time
 
-        ABBREVIATION_TO_TIMEZONE.put("PYT", "America/Asuncion");    // Paraguay Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("PYST", "America/Asuncion");   // Paraguay Summer Time
+        timezoneBuilder.put("PYT", "America/Asuncion");    // Paraguay Standard Time
+        timezoneBuilder.put("PYST", "America/Asuncion");   // Paraguay Summer Time
 
         // ART is ambiguous: could be Argentina Time or Eastern European Time (Egypt)
         // Chose Argentina Time due to larger population
         // Conflicts: Africa/Cairo (Egypt)
-        ABBREVIATION_TO_TIMEZONE.put("ART", "America/Argentina/Buenos_Aires"); // Argentina Time
+        timezoneBuilder.put("ART", "America/Argentina/Buenos_Aires"); // Argentina Time
 
         // Middle East Time Zones
         // IST is ambiguous: could be India Standard Time, Israel Standard Time, or Irish Standard Time
         // Chose India Standard Time due to larger population
         // Conflicts: Asia/Jerusalem (Israel), Europe/Dublin (Ireland)
-        ABBREVIATION_TO_TIMEZONE.put("IST", "Asia/Kolkata");        // India Standard Time
+        timezoneBuilder.put("IST", "Asia/Kolkata");        // India Standard Time
 
-        ABBREVIATION_TO_TIMEZONE.put("IDT", "Asia/Jerusalem");      // Israel Daylight Time
+        timezoneBuilder.put("IDT", "Asia/Jerusalem");      // Israel Daylight Time
 
-        ABBREVIATION_TO_TIMEZONE.put("IRST", "Asia/Tehran");        // Iran Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("IRDT", "Asia/Tehran");        // Iran Daylight Time
+        timezoneBuilder.put("IRST", "Asia/Tehran");        // Iran Standard Time
+        timezoneBuilder.put("IRDT", "Asia/Tehran");        // Iran Daylight Time
 
         // Africa Time Zones
-        ABBREVIATION_TO_TIMEZONE.put("WAT", "Africa/Lagos");        // West Africa Time
-        ABBREVIATION_TO_TIMEZONE.put("CAT", "Africa/Harare");       // Central Africa Time
+        timezoneBuilder.put("WAT", "Africa/Lagos");        // West Africa Time
+        timezoneBuilder.put("CAT", "Africa/Harare");       // Central Africa Time
 
         // Asia Time Zones
-        ABBREVIATION_TO_TIMEZONE.put("JST", "Asia/Tokyo");          // Japan Standard Time
+        timezoneBuilder.put("JST", "Asia/Tokyo");          // Japan Standard Time
 
         // KST is ambiguous: could be Korea Standard Time or Kazakhstan Standard Time
         // Chose Korea Standard Time due to larger population
         // Conflicts: Asia/Almaty (Kazakhstan)
-        ABBREVIATION_TO_TIMEZONE.put("KST", "Asia/Seoul");          // Korea Standard Time
+        timezoneBuilder.put("KST", "Asia/Seoul");          // Korea Standard Time
 
-        ABBREVIATION_TO_TIMEZONE.put("HKT", "Asia/Hong_Kong");      // Hong Kong Time
+        timezoneBuilder.put("HKT", "Asia/Hong_Kong");      // Hong Kong Time
 
         // SGT is ambiguous: could be Singapore Time or Sierra Leone Time (defunct)
         // Chose Singapore Time due to larger population
-        ABBREVIATION_TO_TIMEZONE.put("SGT", "Asia/Singapore");      // Singapore Time
+        timezoneBuilder.put("SGT", "Asia/Singapore");      // Singapore Time
 
         // MST is mapped to America/Denver (Mountain Standard Time) above
         // MYT is Malaysia Time
-        ABBREVIATION_TO_TIMEZONE.put("MYT", "Asia/Kuala_Lumpur");   // Malaysia Time
+        timezoneBuilder.put("MYT", "Asia/Kuala_Lumpur");   // Malaysia Time
 
         // Additional Time Zones
-        ABBREVIATION_TO_TIMEZONE.put("MSK", "Europe/Moscow");       // Moscow Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("MSD", "Europe/Moscow");       // Moscow Daylight Time (historical)
+        timezoneBuilder.put("MSK", "Europe/Moscow");       // Moscow Standard Time
+        timezoneBuilder.put("MSD", "Europe/Moscow");       // Moscow Daylight Time (historical)
 
-        ABBREVIATION_TO_TIMEZONE.put("EAT", "Africa/Nairobi");      // East Africa Time
+        timezoneBuilder.put("EAT", "Africa/Nairobi");      // East Africa Time
 
         // HKT is unique to Hong Kong Time
         // No conflicts
 
         // ICT is unique to Indochina Time
         // Covers Cambodia, Laos, Thailand, Vietnam
-        ABBREVIATION_TO_TIMEZONE.put("ICT", "Asia/Bangkok");        // Indochina Time
+        timezoneBuilder.put("ICT", "Asia/Bangkok");        // Indochina Time
 
         // Chose "COT" for Colombia Time
-        ABBREVIATION_TO_TIMEZONE.put("COT", "America/Bogota");      // Colombia Time
+        timezoneBuilder.put("COT", "America/Bogota");      // Colombia Time
 
         // Chose "PET" for Peru Time
-        ABBREVIATION_TO_TIMEZONE.put("PET", "America/Lima");        // Peru Time
+        timezoneBuilder.put("PET", "America/Lima");        // Peru Time
 
         // Chose "PKT" for Pakistan Standard Time
-        ABBREVIATION_TO_TIMEZONE.put("PKT", "Asia/Karachi");        // Pakistan Standard Time
+        timezoneBuilder.put("PKT", "Asia/Karachi");        // Pakistan Standard Time
 
         // Chose "WIB" for Western Indonesian Time
-        ABBREVIATION_TO_TIMEZONE.put("WIB", "Asia/Jakarta");        // Western Indonesian Time
+        timezoneBuilder.put("WIB", "Asia/Jakarta");        // Western Indonesian Time
 
         // Chose "KST" for Korea Standard Time (already mapped)
         // Chose "PST" for Philippine Standard Time (already mapped)
@@ -339,6 +342,9 @@ public final class DateUtilities {
         // Chose "SGT" for Singapore Time (already mapped)
 
         // Add more mappings as needed, following the same pattern
+        
+        // Make timezone abbreviation map immutable for thread safety and security
+        ABBREVIATION_TO_TIMEZONE = Collections.unmodifiableMap(timezoneBuilder);
     }
 
     private DateUtilities() {

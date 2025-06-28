@@ -1280,4 +1280,128 @@ class DateUtilitiesTest
         ZonedDateTime roundTrippedZdt = DateUtilities.parseDate(roundTripped, ZoneId.of("UTC"), true);
         assertThat(roundTrippedZdt.toInstant()).isEqualTo(expectedInstant);
     }
+
+    @Test
+    void testReDoSProtection_timePattern() {
+        // Test that ReDoS vulnerability fix prevents catastrophic backtracking
+        // Previous pattern with nested quantifiers could cause exponential time complexity
+        
+        // Test normal cases still work (date + time format)
+        ZonedDateTime normal = DateUtilities.parseDate("2024-01-01 12:34:56.123", ZoneId.of("UTC"), true);
+        assertNotNull(normal);
+        assertEquals(12, normal.getHour());
+        assertEquals(34, normal.getMinute());
+        assertEquals(56, normal.getSecond());
+        
+        // Test potentially malicious inputs complete quickly (should not hang)
+        long startTime = System.currentTimeMillis();
+        
+        // Test case 1: Multiple digits in nano could cause backtracking (with date)
+        StringBuilder sb1 = new StringBuilder("2024-01-01 12:34:56.");
+        for (int i = 0; i < 100; i++) sb1.append('1');
+        try {
+            DateUtilities.parseDate(sb1.toString(), ZoneId.of("UTC"), true);
+        } catch (Exception e) {
+            // Expected to fail parsing, but should fail quickly
+        }
+        
+        // Test case 2: Long timezone names that could cause backtracking (with date)
+        StringBuilder sb2 = new StringBuilder("2024-01-01 12:34:56 ");
+        for (int i = 0; i < 200; i++) sb2.append('A');
+        try {
+            DateUtilities.parseDate(sb2.toString(), ZoneId.of("UTC"), true);
+        } catch (Exception e) {
+            // Expected to fail parsing, but should fail quickly
+        }
+        
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        
+        // Should complete within reasonable time (not exponential backtracking)
+        assertTrue(duration < 1000, "ReDoS protection failed - parsing took too long: " + duration + "ms");
+    }
+
+    @Test
+    void testReDoSProtection_timezonePatternLimits() {
+        // Test that timezone pattern limits prevent excessive repetition
+        
+        // Valid timezone should work
+        ZonedDateTime valid = DateUtilities.parseDate("2024-01-01 12:34:56 EST", ZoneId.of("America/New_York"), true);
+        assertNotNull(valid);
+        
+        // Extremely long timezone should be rejected or handled safely
+        StringBuilder longTimezone = new StringBuilder("2024-01-01 12:34:56 ");
+        for (int i = 0; i < 100; i++) longTimezone.append('A'); // Exceeds 50 char limit
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            DateUtilities.parseDate(longTimezone.toString(), ZoneId.of("UTC"), true);
+        } catch (Exception e) {
+            // Expected to fail, but should fail quickly
+        }
+        
+        long duration = System.currentTimeMillis() - startTime;
+        assertTrue(duration < 500, "Timezone pattern processing took too long: " + duration + "ms");
+    }
+
+    @Test
+    void testReDoSProtection_nanoSecondsLimit() {
+        // Test that nanoseconds pattern limits precision appropriately
+        
+        // Valid nanoseconds (1-9 digits) should work
+        ZonedDateTime valid = DateUtilities.parseDate("2024-01-01 12:34:56.123456789", ZoneId.of("UTC"), true);
+        assertNotNull(valid);
+        assertEquals(123456789, valid.getNano());
+        
+        // Test exactly 9 digits (maximum)
+        ZonedDateTime max = DateUtilities.parseDate("2024-01-01 12:34:56.999999999", ZoneId.of("UTC"), true);
+        assertNotNull(max);
+        assertEquals(999999999, max.getNano());
+        
+        // More than 9 digits should either be truncated or cause quick failure
+        long startTime = System.currentTimeMillis();
+        StringBuilder longNanos = new StringBuilder("2024-01-01 12:34:56.");
+        for (int i = 0; i < 50; i++) longNanos.append('1');
+        try {
+            DateUtilities.parseDate(longNanos.toString(), ZoneId.of("UTC"), true);
+        } catch (Exception e) {
+            // Expected to fail or truncate, but should be quick
+        }
+        
+        long duration = System.currentTimeMillis() - startTime;
+        assertTrue(duration < 500, "Nanoseconds pattern processing took too long: " + duration + "ms");
+    }
+
+    @Test
+    void testTimezoneMapThreadSafety() {
+        // Test that ABBREVIATION_TO_TIMEZONE map is immutable
+        assertThatThrownBy(() -> DateUtilities.ABBREVIATION_TO_TIMEZONE.put("TEST", "Test/Zone"))
+            .isInstanceOf(UnsupportedOperationException.class);
+        
+        // Test that map contains expected timezone mappings
+        assertEquals("America/New_York", DateUtilities.ABBREVIATION_TO_TIMEZONE.get("EST"));
+        assertEquals("America/Chicago", DateUtilities.ABBREVIATION_TO_TIMEZONE.get("CST"));
+        assertEquals("America/Denver", DateUtilities.ABBREVIATION_TO_TIMEZONE.get("MST"));
+        assertEquals("America/Los_Angeles", DateUtilities.ABBREVIATION_TO_TIMEZONE.get("PST"));
+        
+        // Test concurrent access safety - no exceptions should occur
+        assertDoesNotThrow(() -> {
+            Runnable task = () -> {
+                for (int i = 0; i < 1000; i++) {
+                    String timezone = DateUtilities.ABBREVIATION_TO_TIMEZONE.get("EST");
+                    assertEquals("America/New_York", timezone);
+                }
+            };
+            
+            Thread[] threads = new Thread[5];
+            for (int i = 0; i < threads.length; i++) {
+                threads[i] = new Thread(task);
+                threads[i].start();
+            }
+            
+            for (Thread thread : threads) {
+                thread.join();
+            }
+        });
+    }
 }

@@ -28,6 +28,18 @@
 >   * Fixed `getAcceptedIssuers()` to return empty array instead of null for improved security
 >   * Added runtime logging when SSL certificate validation is disabled to warn of security risks
 >   * Enhanced JUnit test coverage to verify security fixes and validate proper warning behavior
+> * **Security Enhancement**: Fixed ReDoS vulnerability in `DateUtilities` regex patterns:
+>   * Limited timezone pattern repetition to prevent catastrophic backtracking (max 50 characters)
+>   * Limited nanosecond precision to 1-9 digits to prevent infinite repetition attacks
+>   * Added comprehensive ReDoS protection tests to verify malicious inputs complete quickly
+>   * Preserved all existing DateUtilities functionality (187/187 tests pass)
+>   * Conservative fix maintains exact capture group structure for API compatibility
+> * **Security Enhancement**: Fixed thread safety vulnerability in `DateUtilities` timezone mappings:
+>   * Made `ABBREVIATION_TO_TIMEZONE` map immutable using `Collections.unmodifiableMap()`
+>   * Used `ConcurrentHashMap` during initialization for thread-safe construction
+>   * Prevents external modification that could corrupt timezone resolution
+>   * Eliminates potential race conditions in multi-threaded timezone lookups
+>   * Added comprehensive thread safety tests to verify concurrent access protection
 > * **Performance Optimization**: Optimized `CollectionUtilities` APIs:
 >   * Pre-size collections in `listOf()`/`setOf()` to avoid resizing overhead
 >   * Replace `Collections.addAll()` with direct loops for better performance

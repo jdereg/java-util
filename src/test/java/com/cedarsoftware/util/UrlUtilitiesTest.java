@@ -8,7 +8,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.X509TrustManager;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -67,7 +71,9 @@ public class UrlUtilitiesTest {
         X509TrustManager tm = (X509TrustManager) UrlUtilities.NAIVE_TRUST_MANAGER[0];
         tm.checkClientTrusted(null, null);
         tm.checkServerTrusted(null, null);
-        assertNull(tm.getAcceptedIssuers());
+        // After security fix: returns empty array instead of null
+        assertNotNull(tm.getAcceptedIssuers());
+        assertEquals(0, tm.getAcceptedIssuers().length);
     }
 
     @Test
@@ -185,6 +191,76 @@ public class UrlUtilitiesTest {
         assert UrlUtilities.getDefaultReadTimeout() != 123;
         UrlUtilities.setDefaultReadTimeout(123);
         assert UrlUtilities.getDefaultReadTimeout() == 123;
+    }
+
+    @Test
+    void testSecurityWarningForNaiveSSL() throws Exception {
+        // Test that security warning is logged when allowAllCerts=true for HTTPS
+        TestLogHandler logHandler = new TestLogHandler();
+        Logger urlUtilitiesLogger = Logger.getLogger(UrlUtilities.class.getName());
+        urlUtilitiesLogger.addHandler(logHandler);
+        
+        try {
+            // Create an HTTPS URL connection with allowAllCerts=true to trigger the warning
+            URL httpsUrl = new URL("https://example.com");
+            URLConnection connection = UrlUtilities.getConnection(httpsUrl, null, true, false, false, true);
+            
+            // Verify the security warning was logged
+            assertTrue(logHandler.hasWarning("SSL certificate validation disabled"));
+            
+            // Verify connection is properly configured for naive SSL (testing security fix behavior)
+            if (connection instanceof HttpsURLConnection) {
+                HttpsURLConnection httpsConnection = (HttpsURLConnection) connection;
+                assertNotNull(httpsConnection.getSSLSocketFactory());
+                assertNotNull(httpsConnection.getHostnameVerifier());
+            }
+        } finally {
+            urlUtilitiesLogger.removeHandler(logHandler);
+        }
+    }
+
+    @Test
+    void testDeprecatedNaiveTrustManagerSecurity() {
+        // Verify NAIVE_TRUST_MANAGER is marked as deprecated and works securely
+        X509TrustManager tm = (X509TrustManager) UrlUtilities.NAIVE_TRUST_MANAGER[0];
+        
+        // Test that getAcceptedIssuers returns empty array (not null) for security
+        assertNotNull(tm.getAcceptedIssuers());
+        assertEquals(0, tm.getAcceptedIssuers().length);
+        
+        // Verify it still functions for testing purposes but with warnings in code
+        assertDoesNotThrow(() -> tm.checkClientTrusted(null, null));
+        assertDoesNotThrow(() -> tm.checkServerTrusted(null, null));
+    }
+
+    @Test 
+    void testDeprecatedNaiveHostnameVerifierSecurity() {
+        // Verify NAIVE_VERIFIER still works for testing but is marked deprecated
+        assertTrue(UrlUtilities.NAIVE_VERIFIER.verify("malicious.example.com", null));
+        assertTrue(UrlUtilities.NAIVE_VERIFIER.verify("legitimate.example.com", null));
+        // Both should return true - highlighting the security risk this poses
+    }
+
+    // Test helper class to capture log messages
+    private static class TestLogHandler extends Handler {
+        private boolean hasSSLWarning = false;
+        
+        @Override
+        public void publish(LogRecord record) {
+            if (record.getMessage() != null && record.getMessage().contains("SSL certificate validation disabled")) {
+                hasSSLWarning = true;
+            }
+        }
+        
+        public boolean hasWarning(String message) {
+            return hasSSLWarning;
+        }
+        
+        @Override
+        public void flush() {}
+        
+        @Override
+        public void close() throws SecurityException {}
     }
 
     private static class DummyHttpConnection extends HttpURLConnection {

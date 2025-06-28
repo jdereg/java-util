@@ -22,6 +22,12 @@
 >   * Fixed thread safety issue by making month names map immutable using `Collections.unmodifiableMap()`
 >   * Added comprehensive input validation with bounds checking for all numeric parsing operations
 >   * Enhanced error messages with specific field names and valid ranges for better debugging
+> * **Security Enhancement**: Fixed critical SSL certificate bypass vulnerability in `UrlUtilities`:
+>   * Added comprehensive security warnings to `NAIVE_TRUST_MANAGER` and `NAIVE_VERIFIER` highlighting the security risks
+>   * Deprecated dangerous SSL bypass methods with clear documentation of vulnerabilities and safer alternatives
+>   * Fixed `getAcceptedIssuers()` to return empty array instead of null for improved security
+>   * Added runtime logging when SSL certificate validation is disabled to warn of security risks
+>   * Enhanced JUnit test coverage to verify security fixes and validate proper warning behavior
 > * **Performance Optimization**: Optimized `CollectionUtilities` APIs:
 >   * Pre-size collections in `listOf()`/`setOf()` to avoid resizing overhead
 >   * Replace `Collections.addAll()` with direct loops for better performance

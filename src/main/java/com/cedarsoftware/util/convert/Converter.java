@@ -145,6 +145,22 @@ import com.cedarsoftware.util.ClassValueMap;
  * }</pre>
  * </p>
  *
+ * <p>
+ * <strong>Module Dependencies:</strong>
+ * </p>
+ * <ul>
+ *   <li>
+ *     <b>SQL support:</b> Conversions involving {@code java.sql.Date} and {@code java.sql.Timestamp} require
+ *     the {@code java.sql} module to be present at runtime. If you're using OSGi, ensure your bundle imports
+ *     the {@code java.sql} package or declare it as an optional import if SQL support is not required.
+ *   </li>
+ *   <li>
+ *     <b>XML support:</b> This library does not directly use XML classes, but {@link com.cedarsoftware.util.IOUtilities}
+ *     provides XML stream support that requires the {@code java.xml} module. See {@link com.cedarsoftware.util.IOUtilities}
+ *     for more details.
+ *   </li>
+ * </ul>
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         Copyright (c) Cedar Software LLC
  *         <br><br>

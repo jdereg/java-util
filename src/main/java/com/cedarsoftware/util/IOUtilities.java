@@ -50,7 +50,8 @@ import java.util.logging.Logger;
  *   <li>
  *     <b>XML stream support:</b> Some methods work with {@code javax.xml.stream.XMLStreamReader} and
  *     {@code javax.xml.stream.XMLStreamWriter}. <b>These methods require the {@code java.xml} module to be present at runtime.</b>
- *     The rest of the library does <b>not</b> require {@code java.xml}.
+ *     If you're using OSGi, ensure your bundle imports the {@code javax.xml.stream} package or declare it as an optional import
+ *     if XML support is not required. The rest of the library does <b>not</b> require {@code java.xml}.
  *   </li>
  * </ul>
  *

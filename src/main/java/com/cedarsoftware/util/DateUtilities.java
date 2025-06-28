@@ -5,8 +5,10 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
@@ -147,97 +149,60 @@ public final class DateUtilities {
             "(" + yr + ")(" + sep + ")(" + d1or2 + ")" + "\\2" + "(" + d1or2 + ")|" +        // 2024/01/21 (yyyy/mm/dd -or- yyyy-mm-dd -or- yyyy.mm.dd)   [optional time, optional day of week]  \2 references 1st separator (ensures both same)
             "(" + d1or2 + ")(" + sep + ")(" + d1or2 + ")" + "\\6(" + yr + ")");              // 01/21/2024 (mm/dd/yyyy -or- mm-dd-yyyy -or- mm.dd.yyyy)   [optional time, optional day of week]  \6 references 2nd 1st separator (ensures both same)
 
-    // Simplified to prevent ReDoS - removed nested quantifiers and complex alternations
     private static final Pattern alphaMonthPattern = Pattern.compile(
-            "\\b(" + mos + ")\\b[ ,]+(\\d{1,2})(?:st|nd|rd|th)?[ ,]+(" + yr + ")|" +   // Jan 21st, 2024
-            "(\\d{1,2})(?:st|nd|rd|th)?[ ,]+\\b(" + mos + ")\\b[ ,]+(" + yr + ")|" +         // 21st Jan, 2024
-            "(" + yr + ")[ ,]+\\b(" + mos + ")\\b[ ,]+(\\d{1,2})(?:st|nd|rd|th)?",           // 2024 Jan 21st
+            "\\b(" + mos + ")\\b" + wsOrComma + "(" + d1or2 + ")(" + ord + ")?" + wsOrComma + "(" + yr + ")|" +   // Jan 21st, 2024  (comma optional between all, day of week optional, time optional, ordinal text optional [st, nd, rd, th])
+            "(" + d1or2 + ")(" + ord + ")?" + wsOrComma + "\\b(" + mos + ")\\b" + wsOrComma + "(" + yr + ")|" +         // 21st Jan, 2024  (ditto)
+            "(" + yr + ")" + wsOrComma + "\\b(" + mos + "\\b)" + wsOrComma + "(" + d1or2 + ")(" + ord + ")?",           // 2024 Jan 21st   (ditto)
             Pattern.CASE_INSENSITIVE);
 
-    // Simplified to prevent ReDoS - removed optional groups and complex nesting
     private static final Pattern unixDateTimePattern = Pattern.compile(
-            "(?:\\b(" + days + ")\\b\\s+)?" +
-            "\\b(" + mos + ")\\b\\s+" +
-            "(\\d{1,2})\\s+" +
-            "(\\d{2}:\\d{2}:\\d{2})\\s*" +
-            "([A-Z]{1,3})?\\s*" +
-            "(" + yr + ")",
+            "(?:\\b(" + days + ")\\b" + ws + ")?"
+                    + "\\b(" + mos + ")\\b" + ws
+                    + "(" + d1or2 + ")" + ws
+                    + "(" + d2 + ":" + d2 + ":" + d2 + ")" + wsOp
+                    + "(" + tzUnix + ")?"
+                    + wsOp
+                    + "(" + yr + ")",
             Pattern.CASE_INSENSITIVE);
     
-    // Simplified to prevent ReDoS - removed nested optional groups
     private static final Pattern timePattern = Pattern.compile(
-            "(\\d{2}):(\\d{2})(?::(\\d{2})(\\.\\d+)?)?" +
-            "([+-]\\d{1,2}:\\d{2}(?::\\d{2})?|[+-]\\d{4}|[+-]\\d{1,2}|Z)?" +
-            "(\\s*\\[?(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]+)\\]?)?",
+            "(" + d2 + "):(" + d2 + ")(?::(" + d2 + ")(" + nano + ")?)?(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z)?(" + tzNamed + ")?",
             Pattern.CASE_INSENSITIVE);
 
-    // Simplified to prevent ReDoS - direct pattern without complex alternations
     private static final Pattern zonePattern = Pattern.compile(
-            "([+-]\\d{1,2}:\\d{2}(?::\\d{2})?|[+-]\\d{4}|[+-]\\d{1,2}|Z|\\s*\\[?(?:GMT[+-]\\d{2}:\\d{2}|[A-Za-z][A-Za-z0-9~/._+-]+)\\]?)",
+            "(" + tz_Hh_MM_SS + "|" + tz_Hh_MM + "|" + tz_HHMM + "|" + tz_Hh + "|Z|" + tzNamed + ")",
             Pattern.CASE_INSENSITIVE);
 
     private static final Pattern dayPattern = Pattern.compile("\\b(" + days + ")\\b", Pattern.CASE_INSENSITIVE);
-    private static final Map<String, Integer> months = createMonthsMap();
+    private static final Map<String, Integer> months = new ConcurrentHashMap<>();
     public static final Map<String, String> ABBREVIATION_TO_TIMEZONE = new HashMap<>();
 
-    /**
-     * Creates an immutable map of month names to their numeric values.
-     * Thread-safe and prevents modification after initialization.
-     */
-    private static Map<String, Integer> createMonthsMap() {
-        Map<String, Integer> map = new HashMap<>();
-        map.put("jan", 1);
-        map.put("january", 1);
-        map.put("feb", 2);
-        map.put("february", 2);
-        map.put("mar", 3);
-        map.put("march", 3);
-        map.put("apr", 4);
-        map.put("april", 4);
-        map.put("may", 5);
-        map.put("jun", 6);
-        map.put("june", 6);
-        map.put("jul", 7);
-        map.put("july", 7);
-        map.put("aug", 8);
-        map.put("august", 8);
-        map.put("sep", 9);
-        map.put("sept", 9);
-        map.put("september", 9);
-        map.put("oct", 10);
-        map.put("october", 10);
-        map.put("nov", 11);
-        map.put("november", 11);
-        map.put("dec", 12);
-        map.put("december", 12);
-        return Collections.unmodifiableMap(map);
-    }
-
-    /**
-     * Safely parses an integer with bounds checking to prevent overflow and provide better error messages.
-     * @param value The string value to parse
-     * @param fieldName The name of the field being parsed (for error messages)
-     * @param min Minimum allowed value (inclusive)
-     * @param max Maximum allowed value (inclusive)
-     * @return The parsed integer value
-     * @throws IllegalArgumentException if the value is invalid or out of bounds
-     */
-    private static int parseIntSafely(String value, String fieldName, int min, int max) {
-        if (StringUtilities.isEmpty(value)) {
-            throw new IllegalArgumentException(fieldName + " cannot be empty");
-        }
-        try {
-            long parsed = Long.parseLong(value);
-            if (parsed < min || parsed > max) {
-                throw new IllegalArgumentException(fieldName + " must be between " + min + " and " + max + ", got: " + parsed);
-            }
-            return (int) parsed;
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid " + fieldName + ": " + value, e);
-        }
-    }
-
     static {
+        // Month name to number map
+        months.put("jan", 1);
+        months.put("january", 1);
+        months.put("feb", 2);
+        months.put("february", 2);
+        months.put("mar", 3);
+        months.put("march", 3);
+        months.put("apr", 4);
+        months.put("april", 4);
+        months.put("may", 5);
+        months.put("jun", 6);
+        months.put("june", 6);
+        months.put("jul", 7);
+        months.put("july", 7);
+        months.put("aug", 8);
+        months.put("august", 8);
+        months.put("sep", 9);
+        months.put("sept", 9);
+        months.put("september", 9);
+        months.put("oct", 10);
+        months.put("october", 10);
+        months.put("nov", 11);
+        months.put("november", 11);
+        months.put("dec", 12);
+        months.put("december", 12);
 
         // North American Time Zones
         ABBREVIATION_TO_TIMEZONE.put("EST", "America/New_York");    // Eastern Standard Time
@@ -429,11 +394,11 @@ public final class DateUtilities {
         if (remnant.length() < dateStr.length()) {
             if (matcher.group(1) != null) {
                 year = matcher.group(1);
-                month = parseIntSafely(matcher.group(3), "month", 1, 12);
+                month = Integer.parseInt(matcher.group(3));
                 day = matcher.group(4);
             } else {
                 year = matcher.group(8);
-                month = parseIntSafely(matcher.group(5), "month", 1, 12);
+                month = Integer.parseInt(matcher.group(5));
                 day = matcher.group(7);
             }
             remains = remnant;
@@ -545,8 +510,8 @@ public final class DateUtilities {
                                 String sec,
                                 String fracSec) {
         // Build Calendar from date, time, and timezone components, and retrieve Date instance from Calendar.
-        int y = parseIntSafely(year, "year", -999999999, 999999999);
-        int d = parseIntSafely(day, "day", 1, 31);
+        int y = Integer.parseInt(year);
+        int d = Integer.parseInt(day);
 
         if (month < 1 || month > 12) {
             throw new IllegalArgumentException("Month must be between 1 and 12 inclusive, date: " + dateStr);
@@ -559,9 +524,9 @@ public final class DateUtilities {
             return ZonedDateTime.of(y, month, d, 0, 0, 0, 0, zoneId);
         } else {
             // Regex prevents these from ever failing to parse.
-            int h = parseIntSafely(hour, "hour", 0, 23);
-            int mn = parseIntSafely(min, "minute", 0, 59);
-            int s = parseIntSafely(sec, "second", 0, 59);
+            int h = Integer.parseInt(hour);
+            int mn = Integer.parseInt(min);
+            int s = Integer.parseInt(sec);
             long nanoOfSec = convertFractionToNanos(fracSec);
 
             if (h > 23) {
@@ -607,12 +572,8 @@ public final class DateUtilities {
             return ZoneId.of("Etc/GMT");
         }
 
-        // 3) Check custom abbreviation map first (optimized to avoid object creation)
-        String mappedZone = ABBREVIATION_TO_TIMEZONE.get(tz);
-        if (mappedZone == null && !tz.equals(tz.toUpperCase(Locale.ROOT))) {
-            // Only create uppercase string if needed and different
-            mappedZone = ABBREVIATION_TO_TIMEZONE.get(tz.toUpperCase(Locale.ROOT));
-        }
+        // 3) Check custom abbreviation map first
+        String mappedZone = ABBREVIATION_TO_TIMEZONE.get(tz.toUpperCase());
         if (mappedZone != null) {
             // e.g. "EST" => "America/New_York"
             return ZoneId.of(mappedZone);

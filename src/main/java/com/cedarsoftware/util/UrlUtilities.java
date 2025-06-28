@@ -85,22 +85,55 @@ public final class UrlUtilities {
 
     private static final Pattern resPattern = Pattern.compile("^res://", Pattern.CASE_INSENSITIVE);
 
+    /**
+     * ⚠️ SECURITY WARNING ⚠️
+     * This TrustManager accepts ALL SSL certificates without verification, including self-signed,
+     * expired, or certificates from unauthorized Certificate Authorities. This completely disables
+     * SSL/TLS certificate validation and makes connections vulnerable to man-in-the-middle attacks.
+     * 
+     * <b>DO NOT USE IN PRODUCTION</b> - Only suitable for development/testing against known safe endpoints.
+     * 
+     * For production use, consider:
+     * 1. Use proper CA-signed certificates
+     * 2. Import self-signed certificates into a custom TrustStore
+     * 3. Use certificate pinning for additional security
+     * 4. Implement custom TrustManager with proper validation logic
+     * 
+     * @deprecated This creates a serious security vulnerability. Use proper certificate validation.
+     */
+    @Deprecated
     public static final TrustManager[] NAIVE_TRUST_MANAGER = new TrustManager[]
             {
                     new X509TrustManager() {
                         public void checkClientTrusted(X509Certificate[] x509Certificates, String s) {
+                            // WARNING: No validation performed - accepts any client certificate
                         }
 
                         public void checkServerTrusted(X509Certificate[] x509Certificates, String s)  {
+                            // WARNING: No validation performed - accepts any server certificate
                         }
 
                         public X509Certificate[] getAcceptedIssuers() {
-                            return null;
+                            return new X509Certificate[0]; // Return empty array instead of null
                         }
                     }
             };
 
-    public static final HostnameVerifier NAIVE_VERIFIER = (s, sslSession) -> true;
+    /**
+     * ⚠️ SECURITY WARNING ⚠️
+     * This HostnameVerifier accepts ALL hostnames without verification, completely disabling
+     * hostname verification for SSL/TLS connections. This makes connections vulnerable to
+     * man-in-the-middle attacks where an attacker presents a valid certificate for a different domain.
+     * 
+     * <b>DO NOT USE IN PRODUCTION</b> - Only suitable for development/testing against known safe endpoints.
+     * 
+     * @deprecated This creates a serious security vulnerability. Use proper hostname verification.
+     */
+    @Deprecated
+    public static final HostnameVerifier NAIVE_VERIFIER = (hostname, sslSession) -> {
+        // WARNING: No hostname verification performed - accepts any hostname
+        return true;
+    };
 
     protected static SSLSocketFactory naiveSSLSocketFactory;
     private static final Logger LOG = Logger.getLogger(UrlUtilities.class.getName());
@@ -604,6 +637,8 @@ public final class UrlUtilities {
         }
 
         if (c instanceof HttpsURLConnection && allowAllCerts) {
+            // WARNING: This disables SSL certificate validation - use only for development/testing
+            LOG.warning("SSL certificate validation disabled - this is a security risk in production environments");
             try {
                 setNaiveSSLSocketFactory((HttpsURLConnection) c);
             } catch (Exception e) {
@@ -618,6 +653,15 @@ public final class UrlUtilities {
         return c;
     }
 
+    /**
+     * ⚠️ SECURITY WARNING ⚠️
+     * This method disables SSL certificate and hostname verification.
+     * Only use for development/testing with trusted endpoints.
+     * 
+     * @param sc the HttpsURLConnection to configure
+     * @deprecated Use proper SSL certificate validation in production
+     */
+    @Deprecated
     private static void setNaiveSSLSocketFactory(HttpsURLConnection sc) {
         sc.setSSLSocketFactory(naiveSSLSocketFactory);
         sc.setHostnameVerifier(NAIVE_VERIFIER);

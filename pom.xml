@@ -223,9 +223,6 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
-                        <Import-Package>
-                            java.sql,
-                            java.xml</Import-Package>
                         <Export-Package>
                             com.cedarsoftware.util,
                             com.cedarsoftware.util.convert

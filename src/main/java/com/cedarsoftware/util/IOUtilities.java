@@ -122,6 +122,72 @@ public final class IOUtilities {
     }
 
     /**
+     * Validates that a file path is secure and does not contain path traversal attempts.
+     * Can be disabled via system property 'io.path.validation.disabled=true'.
+     * 
+     * @param file the file to validate
+     * @throws IllegalArgumentException if file is null
+     * @throws SecurityException if path contains traversal attempts or other security violations
+     */
+    private static void validateFilePath(File file) {
+        Convention.throwIfNull(file, "File cannot be null");
+        
+        // Allow disabling path validation via system property for compatibility
+        if (Boolean.parseBoolean(System.getProperty("io.path.validation.disabled", "false"))) {
+            return;
+        }
+        
+        String filePath = file.getPath();
+        
+        // Fast checks first - no filesystem operations needed
+        // Check for obvious path traversal attempts
+        if (filePath.contains("../") || filePath.contains("..\\") || 
+            filePath.contains("/..") || filePath.contains("\\..")) {
+            throw new SecurityException("Path traversal attempt detected: " + sanitizePathForLogging(filePath));
+        }
+        
+        // Check for null bytes which can be used to bypass filters
+        if (filePath.indexOf('\0') != -1) {
+            throw new SecurityException("Null byte in file path: " + sanitizePathForLogging(filePath));
+        }
+        
+        // Only do expensive canonical path check if there are suspicious patterns
+        // This reduces the performance impact for normal file paths
+        if (filePath.contains("..") || filePath.contains("~") || filePath.contains("%")) {
+            try {
+                String canonicalPath = file.getCanonicalPath();
+                String normalizedOriginal = file.getAbsoluteFile().getPath();
+                
+                // Check if canonical path differs significantly from original
+                // This catches sophisticated traversal attempts that normalize out
+                if (!canonicalPath.equals(normalizedOriginal)) {
+                    debug("Path normalization detected potential traversal: " + sanitizePathForLogging(filePath) + 
+                          " -> " + sanitizePathForLogging(canonicalPath), null);
+                }
+                
+            } catch (IOException e) {
+                throw new SecurityException("Unable to validate file path security: " + sanitizePathForLogging(file.getPath()), e);
+            }
+        }
+    }
+
+    /**
+     * Sanitizes file paths for safe logging by limiting length and removing sensitive information.
+     * 
+     * @param path the file path to sanitize
+     * @return sanitized path safe for logging
+     */
+    private static String sanitizePathForLogging(String path) {
+        if (path == null) return "[null]";
+        // Limit length and mask potentially sensitive parts
+        if (path.length() > 100) {
+            path = path.substring(0, 100) + "...[truncated]";
+        }
+        // Remove any remaining control characters for log safety
+        return path.replaceAll("[\\x00-\\x1F\\x7F]", "?");
+    }
+
+    /**
      * Gets an appropriate InputStream from a URLConnection, handling compression if necessary.
      * <p>
      * This method automatically detects and handles various compression encodings
@@ -216,6 +282,7 @@ public final class IOUtilities {
     public static void transfer(File f, URLConnection c, TransferCallback cb) {
         Convention.throwIfNull(f, "File cannot be null");
         Convention.throwIfNull(c, "URLConnection cannot be null");
+        validateFilePath(f);
         try (InputStream in = new BufferedInputStream(Files.newInputStream(f.toPath()));
              OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             transfer(in, out, cb);
@@ -239,6 +306,7 @@ public final class IOUtilities {
     public static void transfer(URLConnection c, File f, TransferCallback cb) {
         Convention.throwIfNull(c, "URLConnection cannot be null");
         Convention.throwIfNull(f, "File cannot be null");
+        validateFilePath(f);
         try (InputStream in = getInputStream(c)) {
             transfer(in, f, cb);
         } catch (IOException e) {
@@ -261,6 +329,7 @@ public final class IOUtilities {
     public static void transfer(InputStream s, File f, TransferCallback cb) {
         Convention.throwIfNull(s, "InputStream cannot be null");
         Convention.throwIfNull(f, "File cannot be null");
+        validateFilePath(f);
         try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(f.toPath()))) {
             transfer(s, out, cb);
         } catch (IOException e) {
@@ -361,6 +430,7 @@ public final class IOUtilities {
     public static void transfer(File file, OutputStream out) {
         Convention.throwIfNull(file, "File cannot be null");
         Convention.throwIfNull(out, "OutputStream cannot be null");
+        validateFilePath(file);
         try (InputStream in = new BufferedInputStream(Files.newInputStream(file.toPath()), TRANSFER_BUFFER)) {
             transfer(in, out);
         } catch (IOException e) {

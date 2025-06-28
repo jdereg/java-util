@@ -138,7 +138,7 @@ public final class IOUtilities {
 
 
     /**
-     * Validates that a file path is secure and does not contain path traversal attempts.
+     * Validates that a file path is secure and does not contain path traversal attempts or other security violations.
      * Can be disabled via system property 'io.path.validation.disabled=true'.
      * 
      * @param file the file to validate
@@ -167,22 +167,101 @@ public final class IOUtilities {
             throw new SecurityException("Null byte in file path: " + sanitizePathForLogging(filePath));
         }
         
-        // Only do expensive canonical path check if there are suspicious patterns
-        // This reduces the performance impact for normal file paths
-        if (filePath.contains("..") || filePath.contains("~") || filePath.contains("%")) {
-            try {
-                String canonicalPath = file.getCanonicalPath();
-                String normalizedOriginal = file.getAbsoluteFile().getPath();
-                
-                // Check if canonical path differs significantly from original
-                // This catches sophisticated traversal attempts that normalize out
-                if (!canonicalPath.equals(normalizedOriginal)) {
-                    debug("Path normalization detected potential traversal: " + sanitizePathForLogging(filePath) + 
-                          " -> " + sanitizePathForLogging(canonicalPath), null);
+        // Check for suspicious characters that might indicate injection attempts
+        if (filePath.contains("|") || filePath.contains(";") || filePath.contains("&") || 
+            filePath.contains("`") || filePath.contains("$")) {
+            throw new SecurityException("Suspicious characters detected in file path: " + sanitizePathForLogging(filePath));
+        }
+        
+        // Perform comprehensive security validation including symlink detection
+        validateFileSystemSecurity(file, filePath);
+    }
+    
+    /**
+     * Performs comprehensive file system security validation including symlink detection,
+     * special file checks, and canonical path verification.
+     * 
+     * @param file the file to validate
+     * @param filePath the file path string for logging
+     * @throws SecurityException if security violations are detected
+     */
+    private static void validateFileSystemSecurity(File file, String filePath) {
+        try {
+            // Get canonical path to resolve all symbolic links and relative references
+            String canonicalPath = file.getCanonicalPath();
+            String absolutePath = file.getAbsolutePath();
+            
+            // Detect symbolic link attacks by comparing canonical and absolute paths
+            if (!canonicalPath.equals(absolutePath)) {
+                // On Windows, case differences might be normal, so normalize case for comparison
+                if (System.getProperty("os.name", "").toLowerCase().contains("windows")) {
+                    if (!canonicalPath.equalsIgnoreCase(absolutePath)) {
+                        debug("Potential symlink or case manipulation detected: " + 
+                              sanitizePathForLogging(absolutePath) + " -> " + sanitizePathForLogging(canonicalPath), null);
+                    }
+                } else {
+                    debug("Potential symlink detected: " + 
+                          sanitizePathForLogging(absolutePath) + " -> " + sanitizePathForLogging(canonicalPath), null);
                 }
-                
-            } catch (IOException e) {
-                throw new SecurityException("Unable to validate file path security: " + sanitizePathForLogging(file.getPath()), e);
+            }
+            
+            // Check for attempts to access system directories (Unix/Linux specific)
+            String lowerCanonical = canonicalPath.toLowerCase();
+            if (lowerCanonical.startsWith("/proc/") || lowerCanonical.startsWith("/sys/") || 
+                lowerCanonical.startsWith("/dev/") || lowerCanonical.equals("/etc/passwd") ||
+                lowerCanonical.equals("/etc/shadow") || lowerCanonical.startsWith("/etc/ssh/")) {
+                throw new SecurityException("Access to system directory/file denied: " + sanitizePathForLogging(canonicalPath));
+            }
+            
+            // Check for Windows system file access attempts
+            if (System.getProperty("os.name", "").toLowerCase().contains("windows")) {
+                String lowerPath = canonicalPath.toLowerCase();
+                if (lowerPath.contains("\\windows\\system32\\") || lowerPath.contains("\\windows\\syswow64\\") ||
+                    lowerPath.endsWith("\\sam") || lowerPath.endsWith("\\system") || lowerPath.endsWith("\\security")) {
+                    throw new SecurityException("Access to Windows system directory/file denied: " + sanitizePathForLogging(canonicalPath));
+                }
+            }
+            
+            // Validate against overly long paths that might cause buffer overflows
+            if (canonicalPath.length() > 4096) {
+                throw new SecurityException("File path too long (potential buffer overflow): " + sanitizePathForLogging(canonicalPath));
+            }
+            
+            // Check for path elements that indicate potential security issues
+            validatePathElements(canonicalPath);
+            
+        } catch (IOException e) {
+            throw new SecurityException("Unable to validate file path security: " + sanitizePathForLogging(filePath), e);
+        }
+    }
+    
+    /**
+     * Validates individual path elements for security issues.
+     * 
+     * @param canonicalPath the canonical file path to validate
+     * @throws SecurityException if security violations are detected
+     */
+    private static void validatePathElements(String canonicalPath) {
+        String[] pathElements = canonicalPath.split("[/\\\\]");
+        
+        for (String element : pathElements) {
+            if (element.isEmpty()) continue;
+            
+            // Check for hidden system files or directories that shouldn't be accessed
+            if (element.startsWith(".") && (element.equals(".ssh") || element.equals(".gnupg") || 
+                element.equals(".aws") || element.equals(".docker"))) {
+                throw new SecurityException("Access to sensitive hidden directory denied: " + sanitizePathForLogging(element));
+            }
+            
+            // Check for backup or temporary files that might contain sensitive data
+            if (element.endsWith(".bak") || element.endsWith(".tmp") || element.endsWith(".old") ||
+                element.endsWith("~") || element.startsWith("core.")) {
+                debug("Accessing potentially sensitive file: " + sanitizePathForLogging(element), null);
+            }
+            
+            // Check for path elements with unusual characters
+            if (element.contains("\t") || element.contains("\n") || element.contains("\r")) {
+                throw new SecurityException("Invalid characters in path element: " + sanitizePathForLogging(element));
             }
         }
     }

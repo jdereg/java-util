@@ -39,6 +39,37 @@ mvn clean test
 
 **This is MORE IMPORTANT than the actual change itself.**
 
+## 🎯 WORK PHILOSOPHY - INCREMENTAL ATOMIC CHANGES 🎯
+
+**Mental Model: Work with a "List of Changes" approach**
+
+### The Change Hierarchy
+- **Top-level changes** (e.g., "Fix security issues in DateUtilities")
+  - **Sub-changes** (e.g., "Fix ReDoS vulnerability", "Fix thread safety")
+    - **Sub-sub-changes** (e.g., "Limit regex repetition", "Add validation tests")
+
+### Workflow for EACH Individual Change
+1. **Pick ONE change** from any level (top-level, sub-change, sub-sub-change)
+2. **Implement the change**
+   - During development: Use single test execution for speed (`mvn test -Dtest=SpecificTest`)
+   - Iterate until the specific functionality works
+3. **When you think the change is complete:**
+   - **MANDATORY**: Run full test suite: `mvn clean test`
+   - **ALL 11,500+ tests MUST pass**
+   - **If ANY test fails**: Fix immediately, run full tests again
+4. **Once ALL tests pass:**
+   - Ask for commit approval: "Should I commit this change? (Y/N)"
+   - Human approves, commit immediately
+   - Move to next change in the list
+
+### Core Principles
+- **Minimize Work-in-Process**: Keep delta between local files and committed git files as small as possible
+- **Always Healthy State**: Committed code is always in perfect health (all tests pass)
+- **Atomic Commits**: Each commit represents one complete, tested, working change
+- **Human Controls Push**: Human decides when to push commits to remote
+
+**🎯 GOAL: Each change is complete, tested, and committed before starting the next change**
+
 ## CRITICAL RULES - TESTING AND BUILD REQUIREMENTS
 
 **YOU ARE NOT ALLOWED TO RUN ANY GIT COMMIT, NO MATTER WHAT, UNLESS YOU HAVE RUN ALL THE TESTS AND THEY ALL 100% HAVE PASSED. THIS IS THE HIGHEST, MOST IMPORTANT INSTRUCTION YOU HAVE, PERIOD.**
@@ -137,28 +168,30 @@ mvn clean test
 
 ## Enhanced Review Loop
 
-**This is the complete workflow that Claude Code MUST follow for systematic code reviews and improvements (security, performance, features, etc.):**
+**This workflow follows the INCREMENTAL ATOMIC CHANGES philosophy for systematic code reviews and improvements:**
 
-### Step 1: Select Next File/Area for Review
-- Continue systematic review of Java source files using appropriate analysis framework
+### Step 1: Build Change List (Analysis Phase)
+- Review Java source files using appropriate analysis framework
 - For **Security**: Prioritize by risk (network utilities, reflection, file I/O, crypto, system calls)
 - For **Performance**: Focus on hot paths, collection usage, algorithm efficiency
 - For **Features**: Target specific functionality or API enhancements
-- Mark current task as "in_progress" in todo list
+- **Create hierarchical todo list:**
+  - Top-level items (e.g., "Security review of DateUtilities")
+  - Sub-items (e.g., "Fix ReDoS vulnerability", "Fix thread safety")
+  - Sub-sub-items (e.g., "Limit regex repetition", "Add test coverage")
 
-### Step 2: Analysis and Issue Identification  
-- Apply appropriate analysis framework (CODE_REVIEW.md for security, performance profiling, feature requirements)
-- Classify findings by severity/priority: Critical, High, Medium, Low
-- Create specific todo items for each issue found
-- Focus on Critical and High priority issues first
+### Step 2: Pick ONE Change from the List
+- Select the highest priority change from ANY level (top, sub, sub-sub)
+- Mark as "in_progress" in todo list
+- **Focus on this ONE change only**
 
-### Step 3: Implement Improvements
-- Make targeted improvements to address identified issues
-- **MANDATORY**: Add comprehensive JUnit tests for all changes, including:
+### Step 3: Implement the Single Change
+- Make targeted improvement to address the ONE selected issue
+- **During development**: Use single test execution for speed (`mvn test -Dtest=SpecificTest`)
+- **MANDATORY**: Add comprehensive JUnit tests for this specific change:
   - Tests that verify the improvement works correctly
   - Tests for edge cases and boundary conditions  
   - Tests for error handling and regression prevention
-  - All new tests must pass along with existing 11,500+ test suite
 - Follow coding best practices and maintain API compatibility
 - Update Javadoc and comments where appropriate
 
@@ -173,45 +206,47 @@ mvn clean test
 
 **⚠️ WARNING: Skipping full test validation is a CRITICAL PROCESS VIOLATION ⚠️**
 
-### Step 5: Update Documentation
-- **changelog.md**: Add entry describing improvements under appropriate version
-- **userguide.md**: Update if changes affect public APIs or usage patterns  
-- **Javadoc**: Ensure documentation reflects changes and provides clear guidance
-- **README.md**: Update if changes affect high-level functionality
+### Step 5: Update Documentation (for this ONE change)
+- **changelog.md**: Add entry for this specific change under appropriate version
+- **userguide.md**: Update if this change affects public APIs or usage patterns  
+- **Javadoc**: Ensure documentation reflects this change
+- **README.md**: Update if this change affects high-level functionality
 
-### Step 6: Commit Approval Process
-**MANDATORY HUMAN APPROVAL STEP:**
+### Step 6: Request Atomic Commit Approval
+**MANDATORY HUMAN APPROVAL STEP for this ONE change:**
 Present a commit approval request to the human with:
-- Summary of improvements made (security fixes, performance enhancements, new features, etc.)
-- List of files modified 
-- Test results confirmation (11,500+ tests passing)
-- Documentation updates made
-- Clear description of changes and benefits
-- Ask: "Should I commit these changes? (Y/N)"
+- Summary of this ONE improvement made (specific security fix, performance enhancement, etc.)
+- List of files modified for this change
+- Test results confirmation (ALL 11,500+ tests passing)
+- Documentation updates made for this change
+- Clear description of this change and its benefits
+- Ask: "Should I commit this change? (Y/N)"
 
 **CRITICAL**: NEVER commit without explicit human approval (Y/N response)
 
-### Step 7: Commit Changes (Only After Human Approval)
-- Use descriptive commit message format:
+### Step 7: Atomic Commit (Only After Human Approval)
+- **Immediately commit this ONE change** after receiving "Y" approval
+- Use descriptive commit message format for this specific change:
   ```
-  [Type]: [Brief description] in [component]
+  [Type]: [Brief description of this ONE change]
   
-  - [Specific change 1]
-  - [Specific change 2] 
-  - [Test coverage added]
+  - [This specific change implemented]
+  - [Test coverage added for this change]
+  - [Any documentation updated]
   
   🤖 Generated with [Claude Code](https://claude.ai/code)
   
   Co-Authored-By: Claude <noreply@anthropic.com>
   ```
   Where [Type] = Security, Performance, Feature, Refactor, etc.
-- Only commit after receiving explicit "Y" approval from human
-- Mark commit-related todos as "completed"
+- Mark this specific todo as "completed"
+- **Repository is now in healthy state with this change committed**
 
-### Step 8: Continue Review Loop
-- Move to next highest priority issue
-- Repeat this complete 8-step process
-- Maintain todo list to track progress across entire codebase
+### Step 8: Return to Change List
+- **Pick the NEXT change** from the hierarchical list (top-level, sub, sub-sub)
+- **Repeat Steps 2-7 for this next change**
+- **Continue until all changes in the list are complete**
+- Maintain todo list to track progress across entire scope
 
 **Special Cases - Tinkering/Exploratory Work:**
 For non-systematic changes, individual experiments, or small targeted fixes, the process can be adapted:

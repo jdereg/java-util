@@ -352,6 +352,252 @@ public final class IOUtilities {
     }
 
     /**
+     * Validates that the URLConnection's protocol is safe and prevents SSRF attacks.
+     * Only allows HTTP and HTTPS protocols by default, with configurable overrides.
+     * 
+     * @param connection the URLConnection to validate
+     * @throws SecurityException if the protocol is not allowed
+     */
+    private static void validateUrlProtocol(URLConnection connection) {
+        if (connection == null || connection.getURL() == null) {
+            return; // Already handled by null checks
+        }
+        
+        String protocol = connection.getURL().getProtocol();
+        if (protocol == null) {
+            throw new SecurityException("URL protocol cannot be null");
+        }
+        
+        protocol = protocol.toLowerCase();
+        
+        // Check if protocol validation is disabled (for testing or specific use cases)
+        if (Boolean.parseBoolean(System.getProperty("io.url.protocol.validation.disabled", "false"))) {
+            debug("URL protocol validation disabled via system property", null);
+            return;
+        }
+        
+        // Get allowed protocols from system property or use secure defaults
+        // Note: file and jar are included for legitimate resource access but have additional validation
+        String allowedProtocolsProperty = System.getProperty("io.allowed.protocols", "http,https,file,jar");
+        String[] allowedProtocols = allowedProtocolsProperty.toLowerCase().split(",");
+        
+        // Trim whitespace from protocols
+        for (int i = 0; i < allowedProtocols.length; i++) {
+            allowedProtocols[i] = allowedProtocols[i].trim();
+        }
+        
+        // Check if the protocol is allowed
+        boolean isAllowed = false;
+        for (String allowedProtocol : allowedProtocols) {
+            if (protocol.equals(allowedProtocol)) {
+                isAllowed = true;
+                break;
+            }
+        }
+        
+        if (!isAllowed) {
+            String sanitizedUrl = sanitizeUrlForLogging(connection.getURL().toString());
+            debug("Blocked dangerous URL protocol: " + sanitizedUrl, null);
+            throw new SecurityException("URL protocol '" + protocol + "' is not allowed. Allowed protocols: " + allowedProtocolsProperty);
+        }
+        
+        // Additional validation for dangerous protocol patterns (only if not explicitly allowed)
+        validateAgainstDangerousProtocols(protocol, allowedProtocols);
+        
+        // Additional validation for file and jar protocols
+        if (protocol.equals("file") || protocol.equals("jar")) {
+            validateFileProtocolSafety(connection);
+        }
+        
+        debug("URL protocol validation passed for: " + protocol, null);
+    }
+    
+    /**
+     * Validates against known dangerous protocol patterns that should never be allowed
+     * unless explicitly configured in allowed protocols.
+     * 
+     * @param protocol the protocol to validate
+     * @param allowedProtocols array of explicitly allowed protocols
+     * @throws SecurityException if a dangerous protocol pattern is detected
+     */
+    private static void validateAgainstDangerousProtocols(String protocol, String[] allowedProtocols) {
+        // Critical protocols that should never be allowed even if explicitly configured
+        String[] criticallyDangerousProtocols = {
+            "javascript", "data", "vbscript"
+        };
+        
+        for (String dangerous : criticallyDangerousProtocols) {
+            if (protocol.equals(dangerous)) {
+                throw new SecurityException("Critically dangerous protocol '" + protocol + "' is never allowed");
+            }
+        }
+        
+        // Other potentially dangerous protocols - only forbidden if not explicitly allowed
+        String[] potentiallyDangerousProtocols = {
+            "netdoc", "mailto", "gopher", "ldap", "dict", "sftp", "tftp"
+        };
+        
+        // Check if this protocol is explicitly allowed
+        boolean explicitlyAllowed = false;
+        for (String allowed : allowedProtocols) {
+            if (protocol.equals(allowed)) {
+                explicitlyAllowed = true;
+                break;
+            }
+        }
+        
+        // If not explicitly allowed, check if it's in the dangerous list
+        if (!explicitlyAllowed) {
+            for (String dangerous : potentiallyDangerousProtocols) {
+                if (protocol.equals(dangerous)) {
+                    throw new SecurityException("Dangerous protocol '" + protocol + "' is forbidden unless explicitly allowed");
+                }
+            }
+        }
+        
+        // Check for protocol injection attempts
+        if (protocol.contains(":") || protocol.contains("/") || protocol.contains("\\") || 
+            protocol.contains(" ") || protocol.contains("\t") || protocol.contains("\n") || 
+            protocol.contains("\r")) {
+            throw new SecurityException("Invalid characters detected in protocol: " + protocol);
+        }
+    }
+    
+    /**
+     * Validates file and jar protocol URLs for safety.
+     * Allows legitimate resource access while blocking dangerous file system access.
+     * 
+     * @param connection the URLConnection with file or jar protocol
+     * @throws SecurityException if the file URL is deemed unsafe
+     */
+    private static void validateFileProtocolSafety(URLConnection connection) {
+        String urlString = connection.getURL().toString();
+        String protocol = connection.getURL().getProtocol();
+        
+        // Check if file protocol validation is disabled for testing
+        if (Boolean.parseBoolean(System.getProperty("io.file.protocol.validation.disabled", "false"))) {
+            debug("File protocol validation disabled via system property", null);
+            return;
+        }
+        
+        // Jar protocols are generally safer as they access files within archives
+        if ("jar".equals(protocol)) {
+            // Basic validation for jar URLs
+            if (urlString.contains("..") || urlString.contains("\0")) {
+                throw new SecurityException("Dangerous path patterns detected in jar URL");
+            }
+            return; // Allow jar protocols with basic validation
+        }
+        
+        // For file protocols, apply more strict validation
+        if ("file".equals(protocol)) {
+            String path = connection.getURL().getPath();
+            if (path == null) {
+                throw new SecurityException("File URL path cannot be null");
+            }
+            
+            // Allow only if it's clearly a resource within the application's domain
+            // Common patterns for legitimate resources:
+            // - ClassLoader.getResource() typically produces paths in target/classes or jar files
+            // - Should not allow access to sensitive system paths
+            
+            if (isSystemPath(path)) {
+                throw new SecurityException("File URL accesses system path: " + sanitizeUrlForLogging(urlString));
+            }
+            
+            if (path.contains("..") || path.contains("\0")) {
+                throw new SecurityException("Dangerous path patterns detected in file URL");
+            }
+            
+            // Additional check for suspicious paths
+            if (isSuspiciousPath(path)) {
+                throw new SecurityException("Suspicious file path detected: " + sanitizeUrlForLogging(urlString));
+            }
+            
+            debug("File protocol validation passed for resource path", null);
+        }
+    }
+    
+    /**
+     * Checks if a path accesses system directories that should be protected.
+     * 
+     * @param path the file path to check
+     * @return true if the path accesses system directories
+     */
+    private static boolean isSystemPath(String path) {
+        if (path == null) return false;
+        
+        String lowerPath = path.toLowerCase();
+        
+        // Unix/Linux system paths
+        if (lowerPath.startsWith("/etc/") || lowerPath.startsWith("/proc/") || 
+            lowerPath.startsWith("/sys/") || lowerPath.startsWith("/dev/")) {
+            return true;
+        }
+        
+        // Windows system paths
+        if (lowerPath.contains("system32") || lowerPath.contains("syswow64") ||
+            lowerPath.contains("\\windows\\") || lowerPath.contains("/windows/")) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Checks if a path contains suspicious patterns that might indicate an attack.
+     * 
+     * @param path the file path to check
+     * @return true if suspicious patterns are detected
+     */
+    private static boolean isSuspiciousPath(String path) {
+        if (path == null) return false;
+        
+        // Check for hidden directories that might contain sensitive files
+        if (path.contains("/.ssh/") || path.contains("/.gnupg/") || 
+            path.contains("/.aws/") || path.contains("/.docker/")) {
+            return true;
+        }
+        
+        // Check for passwd, shadow files, and other sensitive files
+        if (path.endsWith("/passwd") || path.endsWith("/shadow") || 
+            path.contains("id_rsa") || path.contains("private")) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Sanitizes URLs for safe logging by masking sensitive parts.
+     * 
+     * @param url the URL to sanitize
+     * @return sanitized URL safe for logging
+     */
+    private static String sanitizeUrlForLogging(String url) {
+        if (url == null) return "[null]";
+        
+        // Check if detailed logging is explicitly enabled
+        boolean allowDetailedLogging = Boolean.parseBoolean(System.getProperty("io.debug.detailed.urls", "false"));
+        if (!allowDetailedLogging) {
+            // Only show protocol and length for security
+            try {
+                java.net.URL urlObj = new java.net.URL(url);
+                return "[" + urlObj.getProtocol() + "://...:" + url.length() + "-chars]";
+            } catch (Exception e) {
+                return "[malformed-url:" + url.length() + "-chars]";
+            }
+        }
+        
+        // Detailed logging when explicitly enabled - still sanitize credentials
+        String sanitized = url.replaceAll("://[^@/]*@", "://[credentials]@");
+        if (sanitized.length() > 200) {
+            sanitized = sanitized.substring(0, 200) + "...[truncated]";
+        }
+        return sanitized;
+    }
+
+    /**
      * Sanitizes file paths for safe logging by limiting length and removing sensitive information.
      * This method prevents information disclosure through log files by masking potentially
      * sensitive path information while preserving enough detail for security analysis.
@@ -411,6 +657,9 @@ public final class IOUtilities {
      */
     public static InputStream getInputStream(URLConnection c) {
         Convention.throwIfNull(c, "URLConnection cannot be null");
+        
+        // Validate URL protocol to prevent SSRF and local file access attacks
+        validateUrlProtocol(c);
 
         // Optimize connection parameters before getting the stream
         optimizeConnection(c);

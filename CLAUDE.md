@@ -2,6 +2,43 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 CRITICAL RULE - READ FIRST 🚨
+
+**BEFORE doing ANYTHING else, understand this NON-NEGOTIABLE requirement:**
+
+### MANDATORY FULL TEST SUITE VALIDATION
+
+**EVERY change, no matter how small, MUST be followed by running the complete test suite:**
+
+```bash
+mvn clean test
+```
+
+**ALL 11,500+ tests MUST pass before:**
+- Moving to the next issue/file/task
+- Committing any changes  
+- Asking for human approval
+- Starting any new work
+
+**If even ONE test fails:**
+- Stop immediately
+- Fix the failing test(s)
+- Run the full test suite again
+- Only proceed when ALL tests pass
+
+**This rule applies to:**
+- Security fixes
+- Performance improvements
+- Feature additions
+- Documentation changes
+- ANY code modification
+
+**❌ NEVER skip this step**
+**❌ NEVER assume tests will pass**
+**❌ NEVER move forward with failing tests**
+
+**This is MORE IMPORTANT than the actual change itself.**
+
 ## CRITICAL RULES - TESTING AND BUILD REQUIREMENTS
 
 **YOU ARE NOT ALLOWED TO RUN ANY GIT COMMIT, NO MATTER WHAT, UNLESS YOU HAVE RUN ALL THE TESTS AND THEY ALL 100% HAVE PASSED. THIS IS THE HIGHEST, MOST IMPORTANT INSTRUCTION YOU HAVE, PERIOD.**
@@ -125,12 +162,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Follow coding best practices and maintain API compatibility
 - Update Javadoc and comments where appropriate
 
-### Step 4: Validate Changes
-- **CRITICAL**: Run full test suite: `mvn clean test`
-- **VERIFY**: Ensure 11,500+ tests pass (not ~10,000)
-- **REQUIREMENT**: All tests must be 100% passing before proceeding
-- If tests fail, fix issues before continuing to next step
+### Step 4: Validate Changes - ABSOLUTELY MANDATORY
+- **🚨 CRITICAL - NON-NEGOTIABLE 🚨**: Run full test suite: `mvn clean test`
+- **🚨 VERIFY ALL TESTS PASS 🚨**: Ensure 11,500+ tests pass (not ~10,000)
+- **🚨 ZERO TOLERANCE FOR TEST FAILURES 🚨**: All tests must be 100% passing before proceeding
+- **If even ONE test fails**: Fix issues immediately before continuing to next step
+- **NEVER move to Step 5, 6, 7, or 8 until ALL tests pass**
+- **NEVER start new work until ALL tests pass**
 - Mark improvement todos as "completed" only when tests pass
+
+**⚠️ WARNING: Skipping full test validation is a CRITICAL PROCESS VIOLATION ⚠️**
 
 ### Step 5: Update Documentation
 - **changelog.md**: Add entry describing improvements under appropriate version

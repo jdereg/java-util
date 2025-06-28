@@ -90,6 +90,8 @@ public final class IOUtilities {
     private static final int TRANSFER_BUFFER = 32768;
     private static final int DEFAULT_CONNECT_TIMEOUT = 5000;
     private static final int DEFAULT_READ_TIMEOUT = 30000;
+    private static final int MIN_TIMEOUT = 1000;  // Minimum 1 second to prevent DoS
+    private static final int MAX_TIMEOUT = 300000; // Maximum 5 minutes to prevent resource exhaustion
     private static final boolean DEBUG = Boolean.parseBoolean(System.getProperty("io.debug", "false"));
     private static final Logger LOG = Logger.getLogger(IOUtilities.class.getName());
     static { LoggingConfig.init(); }
@@ -107,33 +109,118 @@ public final class IOUtilities {
     private IOUtilities() { }
 
     /**
+     * Safely retrieves and validates timeout values from system properties.
+     * Prevents system property injection attacks by enforcing strict bounds and validation.
+     * 
+     * @param propertyName the system property name to read
+     * @param defaultValue the default value to use if property is invalid or missing
+     * @param propertyType description of the property for logging (e.g., "connect timeout")
+     * @return validated timeout value within safe bounds
+     */
+    private static int getValidatedTimeout(String propertyName, int defaultValue, String propertyType) {
+        try {
+            String propertyValue = System.getProperty(propertyName);
+            if (propertyValue == null || propertyValue.trim().isEmpty()) {
+                return defaultValue;
+            }
+            
+            // Additional validation to prevent injection attacks
+            if (!propertyValue.matches("^-?\\d+$")) {
+                debug("Invalid " + propertyType + " format, using default", null);
+                return defaultValue;
+            }
+            
+            int timeout = Integer.parseInt(propertyValue.trim());
+            
+            // Enforce reasonable bounds to prevent DoS attacks
+            if (timeout < MIN_TIMEOUT) {
+                debug("Configured " + propertyType + " too low, using minimum value", null);
+                return MIN_TIMEOUT;
+            }
+            
+            if (timeout > MAX_TIMEOUT) {
+                debug("Configured " + propertyType + " too high, using maximum value", null);
+                return MAX_TIMEOUT;
+            }
+            
+            return timeout;
+            
+        } catch (NumberFormatException e) {
+            debug("Invalid " + propertyType + " configuration detected, using defaults", null);
+            return defaultValue;
+        } catch (SecurityException e) {
+            debug("Security restriction accessing " + propertyType + " property, using defaults", null);
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Safely retrieves and validates size limit values from system properties.
+     * Prevents system property injection attacks by enforcing strict bounds and validation.
+     * 
+     * @param propertyName the system property name to read
+     * @param defaultValue the default value to use if property is invalid or missing
+     * @param propertyType description of the property for logging (e.g., "max stream size")
+     * @return validated size value within safe bounds
+     */
+    private static int getValidatedSizeProperty(String propertyName, int defaultValue, String propertyType) {
+        try {
+            String propertyValue = System.getProperty(propertyName);
+            if (propertyValue == null || propertyValue.trim().isEmpty()) {
+                return defaultValue;
+            }
+            
+            // Additional validation to prevent injection attacks
+            if (!propertyValue.matches("^-?\\d+$")) {
+                debug("Invalid " + propertyType + " format, using default", null);
+                return defaultValue;
+            }
+            
+            long size = Long.parseLong(propertyValue.trim());
+            
+            // Enforce reasonable bounds to prevent resource exhaustion
+            if (size <= 0) {
+                debug("Configured " + propertyType + " must be positive, using default", null);
+                return defaultValue;
+            }
+            
+            // Prevent overflow and extremely large values
+            if (size > Integer.MAX_VALUE) {
+                debug("Configured " + propertyType + " too large, using maximum safe value", null);
+                return Integer.MAX_VALUE;
+            }
+            
+            return (int) size;
+            
+        } catch (NumberFormatException e) {
+            debug("Invalid " + propertyType + " configuration detected, using defaults", null);
+            return defaultValue;
+        } catch (SecurityException e) {
+            debug("Security restriction accessing " + propertyType + " property, using defaults", null);
+            return defaultValue;
+        }
+    }
+
+    /**
      * Gets the default maximum stream size for security purposes.
      * Can be configured via system property 'io.max.stream.size'.
-     * Defaults to 2GB if not configured.
+     * Defaults to 2GB if not configured. Uses secure validation to prevent injection.
      *
      * @return the maximum allowed stream size in bytes
      */
     private static int getDefaultMaxStreamSize() {
-        try {
-            return Integer.parseInt(System.getProperty("io.max.stream.size", "2147483647")); // 2GB default (Integer.MAX_VALUE)
-        } catch (NumberFormatException e) {
-            return 2147483647; // 2GB fallback
-        }
+        return getValidatedSizeProperty("io.max.stream.size", 2147483647, "max stream size");
     }
 
     /**
      * Gets the default maximum decompression size for security purposes.
      * Can be configured via system property 'io.max.decompression.size'.
-     * Defaults to 2GB if not configured.
+     * Defaults to 2GB if not configured. Uses secure validation to prevent injection.
      *
      * @return the maximum allowed decompressed data size in bytes
      */
     private static int getDefaultMaxDecompressionSize() {
-        try {
-            return Integer.parseInt(System.getProperty("io.max.decompression.size", "2147483647")); // 2GB default
-        } catch (NumberFormatException e) {
-            return 2147483647; // 2GB fallback
-        }
+        return getValidatedSizeProperty("io.max.decompression.size", 2147483647, "max decompression size");
     }
 
 
@@ -372,14 +459,11 @@ public final class IOUtilities {
 
             // Disable caching to avoid disk operations
             http.setUseCaches(false);
-            int connectTimeout = DEFAULT_CONNECT_TIMEOUT;
-            int readTimeout = DEFAULT_READ_TIMEOUT;
-            try {
-                connectTimeout = Integer.parseInt(System.getProperty("io.connect.timeout", String.valueOf(DEFAULT_CONNECT_TIMEOUT)));
-                readTimeout = Integer.parseInt(System.getProperty("io.read.timeout", String.valueOf(DEFAULT_READ_TIMEOUT)));
-            } catch (NumberFormatException e) {
-                debug("Invalid timeout configuration detected, using defaults", null);
-            }
+            
+            // Use secure timeout validation to prevent injection attacks
+            int connectTimeout = getValidatedTimeout("io.connect.timeout", DEFAULT_CONNECT_TIMEOUT, "connect timeout");
+            int readTimeout = getValidatedTimeout("io.read.timeout", DEFAULT_READ_TIMEOUT, "read timeout");
+            
             http.setConnectTimeout(connectTimeout);
             http.setReadTimeout(readTimeout);
 

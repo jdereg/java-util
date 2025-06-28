@@ -1,14 +1,12 @@
 package com.cedarsoftware.util;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
@@ -250,13 +248,13 @@ public final class DateUtilities {
         // Chose British Summer Time as it's more commonly used in international contexts
         timezoneBuilder.put("BST", "Europe/London");       // British Summer Time
         timezoneBuilder.put("WET", "Europe/Lisbon");       // Western European Time
-        timezoneBuilder.put("WEST", "Europe/Lisbon");      // Western European Summer Time
+        timezoneBuilder.put("WEST", "Europe/Lisbon");      // Western European summer
 
         timezoneBuilder.put("CET", "Europe/Berlin");       // Central European Time
-        timezoneBuilder.put("CEST", "Europe/Berlin");      // Central European Summer Time
+        timezoneBuilder.put("CEST", "Europe/Berlin");      // Central European summer
 
         timezoneBuilder.put("EET", "Europe/Kiev");         // Eastern European Time
-        timezoneBuilder.put("EEST", "Europe/Kiev");        // Eastern European Summer Time
+        timezoneBuilder.put("EEST", "Europe/Kiev");        // Eastern European summer
 
         // Australia and New Zealand Time Zones
         timezoneBuilder.put("AEST", "Australia/Brisbane"); // Australian Eastern Standard Time
@@ -277,10 +275,10 @@ public final class DateUtilities {
 
         // South American Time Zones
         timezoneBuilder.put("CLT", "America/Santiago");    // Chile Standard Time
-        timezoneBuilder.put("CLST", "America/Santiago");   // Chile Summer Time
+        timezoneBuilder.put("CLST", "America/Santiago");   // Chile summer
 
         timezoneBuilder.put("PYT", "America/Asuncion");    // Paraguay Standard Time
-        timezoneBuilder.put("PYST", "America/Asuncion");   // Paraguay Summer Time
+        timezoneBuilder.put("PYST", "America/Asuncion");   // Paraguay summer
 
         // ART is ambiguous: could be Argentina Time or Eastern European Time (Egypt)
         // Chose Argentina Time due to larger population
@@ -647,7 +645,7 @@ public final class DateUtilities {
             // 5) Fallback to TimeZone for legacy support, but if that also fails, rethrow original
             try {
                 TimeZone timeZone = TimeZone.getTimeZone(tz);
-                if (timeZone.getID().equals("GMT") && !tz.toUpperCase().equals("GMT")) {
+                if (timeZone.getID().equals("GMT") && !tz.equalsIgnoreCase("GMT")) {
                     // Means the JDK didn't recognize 'tz' (it fell back to "GMT")
                     throw zoneRulesEx;  // rethrow original ZoneRulesException
                 }
@@ -668,7 +666,7 @@ public final class DateUtilities {
             // 5) Fallback to TimeZone for legacy support, but with enhanced security validation
             try {
                 TimeZone timeZone = TimeZone.getTimeZone(tz);
-                if (timeZone.getID().equals("GMT") && !tz.toUpperCase().equals("GMT")) {
+                if (timeZone.getID().equals("GMT") && !tz.equalsIgnoreCase("GMT")) {
                     // Means the JDK didn't recognize 'tz' (it fell back to "GMT")
                     // Security: Don't expose internal exception details
                     throw new IllegalArgumentException("Unrecognized timezone: " + tz.substring(0, Math.min(tz.length(), 20)));
@@ -706,6 +704,6 @@ public final class DateUtilities {
         if (input == null || input.isEmpty()) {
             return input;
         }
-        return input.replaceAll("^\\[|\\]$", "");
+        return input.replaceAll("^\\[|]$", "");
     }
 }

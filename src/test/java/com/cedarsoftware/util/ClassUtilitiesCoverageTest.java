@@ -126,6 +126,8 @@ class ClassUtilitiesCoverageTest {
         assertThrows(IllegalArgumentException.class,
                 () -> ClassUtilities.newInstance(converter, FailingCtor.class, (Object)null));
 
+        // With security enhancements, Unsafe is still accessible for trusted callers (java-util)
+        // setUseUnsafe(true) should work because ClassUtilities is a trusted caller
         ClassUtilities.setUseUnsafe(true);
         Object obj = ClassUtilities.newInstance(converter, FailingCtor.class, (Object)null);
         assertNotNull(obj);

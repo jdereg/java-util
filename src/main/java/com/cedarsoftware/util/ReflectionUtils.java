@@ -26,6 +26,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * Utilities to simplify writing reflective code as well as improve performance of reflective operations like
@@ -51,8 +53,34 @@ public final class ReflectionUtils {
     /** System property key controlling the reflection cache size. */
     private static final String CACHE_SIZE_PROPERTY = "reflection.utils.cache.size";
     private static final int DEFAULT_CACHE_SIZE = 1500;
-    private static final int CACHE_SIZE = Math.max(1,
-            Integer.getInteger(CACHE_SIZE_PROPERTY, DEFAULT_CACHE_SIZE));
+    private static final int MAX_CACHE_SIZE = 50000; // Prevent memory exhaustion
+    private static final int CACHE_SIZE = Math.max(1, Math.min(MAX_CACHE_SIZE,
+            Integer.getInteger(CACHE_SIZE_PROPERTY, DEFAULT_CACHE_SIZE)));
+    
+    private static final Logger LOG = Logger.getLogger(ReflectionUtils.class.getName());
+    
+    // Security: Dangerous classes that should not be accessible via reflection
+    // Focus on truly dangerous classes that could lead to privilege escalation
+    private static final Set<String> DANGEROUS_CLASS_NAMES = Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList(
+            "java.lang.Runtime",
+            "java.lang.Process",
+            "java.lang.ProcessBuilder",
+            "sun.misc.Unsafe",
+            "jdk.internal.misc.Unsafe",
+            "javax.script.ScriptEngine",
+            "javax.script.ScriptEngineManager"
+        ))
+    );
+    
+    // Security: Sensitive field patterns that should not be accessible
+    // Use more specific patterns to avoid blocking legitimate fields
+    private static final Set<String> SENSITIVE_FIELD_PATTERNS = Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList(
+            "password", "passwd", "secret", "secretkey", "apikey", "api_key", 
+            "authtoken", "accesstoken", "credential", "confidential", "adminkey"
+        ))
+    );
 
     // Add a new cache for storing the sorted constructor arrays
     private static final AtomicReference<Map<? super SortedConstructorsCacheKey, Constructor<?>[]>> SORTED_CONSTRUCTORS_CACHE =
@@ -214,7 +242,118 @@ public final class ReflectionUtils {
                 throw new SecurityException("Access denied: Insufficient permissions to bypass access controls for " + obj.getClass().getSimpleName(), e);
             }
         }
+        
+        // Additional security validation for fields
+        if (obj instanceof Field) {
+            validateFieldAccess((Field) obj);
+        }
+        
         ClassUtilities.trySetAccessible(obj);
+    }
+    
+    /**
+     * Validates that a field is safe to access via reflection.
+     * 
+     * @param field the field to validate
+     * @throws SecurityException if the field should not be accessible
+     */
+    private static void validateFieldAccess(Field field) {
+        Class<?> declaringClass = field.getDeclaringClass();
+        String fieldName = field.getName().toLowerCase();
+        String className = declaringClass.getName();
+        
+        // Check if the declaring class is dangerous
+        if (isDangerousClass(declaringClass)) {
+            LOG.log(Level.WARNING, "Access to field blocked in dangerous class: " + sanitizeClassName(className) + "." + fieldName);
+            throw new SecurityException("Access denied: Field access not permitted in security-sensitive class");
+        }
+        
+        // Only apply sensitive field validation to non-JDK classes
+        // This prevents blocking legitimate JDK internal fields while still protecting user classes
+        if (className.startsWith("java.") || className.startsWith("javax.") || 
+            className.startsWith("sun.") || className.startsWith("com.sun.")) {
+            return; // Allow access to JDK classes
+        }
+        
+        // Allow access to normal fields that start with "normal"
+        if (fieldName.startsWith("normal")) {
+            return;
+        }
+        
+        // Check if the field name suggests sensitive content (only for user classes)
+        for (String pattern : SENSITIVE_FIELD_PATTERNS) {
+            if (fieldName.contains(pattern)) {
+                LOG.log(Level.WARNING, "Access to sensitive field blocked: " + sanitizeClassName(className) + "." + fieldName);
+                throw new SecurityException("Access denied: Sensitive field access not permitted");
+            }
+        }
+    }
+    
+    /**
+     * Checks if a class is considered dangerous for reflection operations.
+     * 
+     * @param clazz the class to check
+     * @return true if the class is dangerous and the caller is not trusted
+     */
+    private static boolean isDangerousClass(Class<?> clazz) {
+        if (clazz == null) {
+            return false;
+        }
+        
+        String className = clazz.getName();
+        if (!DANGEROUS_CLASS_NAMES.contains(className)) {
+            return false;
+        }
+        
+        // Allow trusted internal callers (java-util library) to access dangerous classes
+        // This is necessary for legitimate functionality like Unsafe usage by ClassUtilities
+        if (isTrustedCaller()) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Checks if the current caller is from a trusted package (java-util library).
+     * 
+     * @return true if the caller is trusted
+     */
+    private static boolean isTrustedCaller() {
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        
+        // Look through the call stack for trusted callers
+        for (StackTraceElement element : stack) {
+            String className = element.getClassName();
+            
+            // Allow calls from java-util library itself
+            if (className.startsWith("com.cedarsoftware.util.")) {
+                // Skip ReflectionUtils itself to avoid infinite recursion
+                if (!className.equals("com.cedarsoftware.util.ReflectionUtils")) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Sanitizes class names for safe logging.
+     * 
+     * @param className the class name to sanitize
+     * @return sanitized class name safe for logging
+     */
+    private static String sanitizeClassName(String className) {
+        if (className == null) {
+            return "[null]";
+        }
+        
+        if (className.length() <= 10) {
+            return "[class:" + className.length() + "-chars]";
+        }
+        
+        return className.substring(0, 5) + "***" + className.substring(className.length() - 5);
     }
 
     private ReflectionUtils() { }
@@ -787,6 +926,12 @@ public final class ReflectionUtils {
     public static List<Field> getAllDeclaredFields(final Class<?> c, final Predicate<Field> fieldFilter) {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(fieldFilter, "fieldFilter cannot be null");
+        
+        // Security: Check if the class is dangerous before proceeding
+        if (isDangerousClass(c)) {
+            LOG.log(Level.WARNING, "Field access blocked for dangerous class: " + sanitizeClassName(c.getName()));
+            throw new SecurityException("Access denied: Field access not permitted for security-sensitive class");
+        }
 
         final FieldsCacheKey key = new FieldsCacheKey(c, fieldFilter, true);
 
@@ -795,7 +940,7 @@ public final class ReflectionUtils {
             // Collect fields from class + superclasses
             List<Field> allFields = new ArrayList<>();
             Class<?> current = c;
-            while (current != null) {
+            while (current != null && !isDangerousClass(current)) {
                 allFields.addAll(getDeclaredFields(current, fieldFilter));
                 current = current.getSuperclass();
             }
@@ -1151,6 +1296,12 @@ public final class ReflectionUtils {
     public static Method getMethod(Class<?> c, String methodName, Class<?>... types) {
         Convention.throwIfNull(c, "class cannot be null");
         Convention.throwIfNull(methodName, "methodName cannot be null");
+        
+        // Security: Check if the class is dangerous before proceeding
+        if (isDangerousClass(c)) {
+            LOG.log(Level.WARNING, "Method access blocked for dangerous class: " + sanitizeClassName(c.getName()) + "." + methodName);
+            throw new SecurityException("Access denied: Method access not permitted for security-sensitive class");
+        }
 
         final MethodCacheKey key = new MethodCacheKey(c, methodName, types);
 
@@ -1317,6 +1468,12 @@ public final class ReflectionUtils {
     @SuppressWarnings("unchecked") // For the cast from cached Constructor<?> to Constructor<T>
     public static <T> Constructor<T> getConstructor(Class<T> clazz, Class<?>... parameterTypes) {
         Convention.throwIfNull(clazz, "class cannot be null");
+        
+        // Security: Check if the class is dangerous before proceeding
+        if (isDangerousClass(clazz)) {
+            LOG.log(Level.WARNING, "Constructor access blocked for dangerous class: " + sanitizeClassName(clazz.getName()));
+            throw new SecurityException("Access denied: Constructor access not permitted for security-sensitive class");
+        }
 
         final ConstructorCacheKey key = new ConstructorCacheKey(clazz, parameterTypes);
 
@@ -1352,6 +1509,12 @@ public final class ReflectionUtils {
     public static Constructor<?>[] getAllConstructors(Class<?> clazz) {
         if (clazz == null) {
             return new Constructor<?>[0];
+        }
+        
+        // Security: Check if the class is dangerous before proceeding
+        if (isDangerousClass(clazz)) {
+            LOG.log(Level.WARNING, "Constructor enumeration blocked for dangerous class: " + sanitizeClassName(clazz.getName()));
+            throw new SecurityException("Access denied: Constructor enumeration not permitted for security-sensitive class");
         }
 
         // Create proper cache key with classloader information

@@ -600,36 +600,89 @@ public final class DateUtilities {
             throw new IllegalArgumentException("Timezone string too long (max 100 characters): " + tz.length());
         }
 
-        // 1) If tz starts with +/- => offset
-        if (tz.startsWith("-") || tz.startsWith("+")) {
-            ZoneOffset offset = ZoneOffset.of(tz);
-            return ZoneId.ofOffset("GMT", offset);
+        // Additional security validation: prevent control characters and null bytes
+        for (int i = 0; i < tz.length(); i++) {
+            char c = tz.charAt(i);
+            if (c < 32 || c == 127) { // Control characters including null byte
+                throw new IllegalArgumentException("Invalid timezone string contains control characters");
+            }
         }
 
-        // 2) Handle GMT explicitly to normalize to Etc/GMT
-        if (tz.equals("GMT")) {
+        // 1) If tz starts with +/- => offset
+        if (tz.startsWith("-") || tz.startsWith("+")) {
+            try {
+                ZoneOffset offset = ZoneOffset.of(tz);
+                return ZoneId.ofOffset("GMT", offset);
+            } catch (java.time.DateTimeException e) {
+                // Preserve DateTimeException for API compatibility (e.g., test expectations)
+                throw e;
+            } catch (Exception e) {
+                // For other exceptions, apply security measures
+                throw new IllegalArgumentException("Invalid timezone offset format: " + tz.substring(0, Math.min(tz.length(), 20)));
+            }
+        }
+
+        // 2) Handle GMT explicitly to normalize to Etc/GMT (case insensitive)
+        if (tz.equalsIgnoreCase("GMT")) {
             return ZoneId.of("Etc/GMT");
         }
 
-        // 3) Check custom abbreviation map first
+        // 3) Check custom abbreviation map first (case insensitive lookup)
         String mappedZone = ABBREVIATION_TO_TIMEZONE.get(tz.toUpperCase());
         if (mappedZone != null) {
-            // e.g. "EST" => "America/New_York"
-            return ZoneId.of(mappedZone);
+            try {
+                // e.g. "EST" => "America/New_York"
+                return ZoneId.of(mappedZone);
+            } catch (Exception e) {
+                // Security: Don't expose internal mapping details in exceptions
+                throw new IllegalArgumentException("Invalid timezone abbreviation: " + tz.substring(0, Math.min(tz.length(), 10)));
+            }
         }
 
         // 4) Try ZoneId.of(tz) for full region IDs like "Europe/Paris"
         try {
             return ZoneId.of(tz);
-        } catch (Exception zoneIdEx) {
-            // 5) Fallback to TimeZone for weird short IDs or older JDK
-            TimeZone timeZone = TimeZone.getTimeZone(tz);
-            if (timeZone.getID().equals("GMT") && !tz.toUpperCase().equals("GMT")) {
-                // Means the JDK didn't recognize 'tz' (it fell back to "GMT")
-                throw zoneIdEx;  // rethrow original
+        } catch (java.time.zone.ZoneRulesException zoneRulesEx) {
+            // Preserve ZoneRulesException for API compatibility (e.g., test expectations)
+            // 5) Fallback to TimeZone for legacy support, but if that also fails, rethrow original
+            try {
+                TimeZone timeZone = TimeZone.getTimeZone(tz);
+                if (timeZone.getID().equals("GMT") && !tz.toUpperCase().equals("GMT")) {
+                    // Means the JDK didn't recognize 'tz' (it fell back to "GMT")
+                    throw zoneRulesEx;  // rethrow original ZoneRulesException
+                }
+                // Additional security check: ensure the returned timezone ID is reasonable
+                String timeZoneId = timeZone.getID();
+                if (timeZoneId.length() > 50) {
+                    throw new IllegalArgumentException("Invalid timezone ID returned by system");
+                }
+                return timeZone.toZoneId();
+            } catch (java.time.zone.ZoneRulesException ex) {
+                throw ex;  // Preserve ZoneRulesException
+            } catch (Exception fallbackEx) {
+                // For non-ZoneRulesException, rethrow the original ZoneRulesException for API compatibility
+                throw zoneRulesEx;
             }
-            // Otherwise, we accept whatever the JDK returned
-            return timeZone.toZoneId();
+        } catch (Exception otherEx) {
+            // For other exceptions (DateTimeException, etc.), apply security measures
+            // 5) Fallback to TimeZone for legacy support, but with enhanced security validation
+            try {
+                TimeZone timeZone = TimeZone.getTimeZone(tz);
+                if (timeZone.getID().equals("GMT") && !tz.toUpperCase().equals("GMT")) {
+                    // Means the JDK didn't recognize 'tz' (it fell back to "GMT")
+                    // Security: Don't expose internal exception details
+                    throw new IllegalArgumentException("Unrecognized timezone: " + tz.substring(0, Math.min(tz.length(), 20)));
+                }
+                // Additional security check: ensure the returned timezone ID is reasonable
+                String timeZoneId = timeZone.getID();
+                if (timeZoneId.length() > 50) {
+                    throw new IllegalArgumentException("Invalid timezone ID returned by system");
+                }
+                return timeZone.toZoneId();
+            } catch (Exception fallbackEx) {
+                // Security: Sanitize exception message to prevent information disclosure
+                throw new IllegalArgumentException("Invalid timezone format: " + tz.substring(0, Math.min(tz.length(), 20)));
+            }
         }
     }
 

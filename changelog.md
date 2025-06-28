@@ -54,6 +54,12 @@
 >   * Optimized timezone resolution to avoid unnecessary string object creation in hot path
 >   * Only create uppercase strings for timezone lookups when needed, reducing memory allocation overhead
 >   * Improved timezone abbreviation lookup performance by checking exact match first
+> * **Security Enhancement**: Fixed timezone handling security boundary issues in `DateUtilities`:
+>   * Added control character validation to prevent null bytes and control characters in timezone strings
+>   * Enhanced exception information sanitization to prevent information disclosure
+>   * Improved error handling with truncated error messages for security
+>   * Preserved API compatibility by maintaining `ZoneRulesException` and `DateTimeException` for existing test expectations
+>   * Added case-insensitive GMT handling and additional validation of system-returned timezone IDs
 > * **Code Quality**: Enhanced `ArrayUtilities` and `ByteUtilities`:
 >   * Fixed generic type safety in `EMPTY_CLASS_ARRAY` using `Class<?>[0]`
 >   * Added bounds validation to `ByteUtilities.isGzipped(offset)` to prevent `ArrayIndexOutOfBoundsException`

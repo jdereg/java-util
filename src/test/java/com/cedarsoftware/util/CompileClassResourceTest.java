@@ -122,7 +122,10 @@ public class CompileClassResourceTest {
 
         // Get file manager from our tracking compiler
         StandardJavaFileManager fileManager = trackingCompiler.getStandardFileManager(null, null, null);
-        fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Collections.singleton(new File("target/classes")));
+        // Use a test-specific directory to avoid polluting the main classes directory
+        File testOutputDir = new File("target/test-compile-output");
+        testOutputDir.mkdirs();
+        fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Collections.singleton(testOutputDir));
 
 
         // Compile some simple code using the file manager

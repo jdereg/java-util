@@ -107,6 +107,21 @@ public final class IOUtilities {
     private IOUtilities() { }
 
     /**
+     * Gets the default maximum stream size for security purposes.
+     * Can be configured via system property 'io.max.stream.size'.
+     * Defaults to 2GB if not configured.
+     *
+     * @return the maximum allowed stream size in bytes
+     */
+    private static int getDefaultMaxStreamSize() {
+        try {
+            return Integer.parseInt(System.getProperty("io.max.stream.size", "2147483647")); // 2GB default (Integer.MAX_VALUE)
+        } catch (NumberFormatException e) {
+            return 2147483647; // 2GB fallback
+        }
+    }
+
+    /**
      * Gets an appropriate InputStream from a URLConnection, handling compression if necessary.
      * <p>
      * This method automatically detects and handles various compression encodings
@@ -433,16 +448,17 @@ public final class IOUtilities {
     /**
      * Converts an InputStream's contents to a byte array.
      * <p>
-     * This method should only be used when the input stream's length is known to be relatively small,
-     * as it loads the entire stream into memory.
+     * This method loads the entire stream into memory, so use with appropriate consideration for memory usage.
+     * Uses a default maximum size limit (2GB) to prevent memory exhaustion attacks while allowing reasonable
+     * data transfer operations. For custom limits, use {@link #inputStreamToBytes(InputStream, int)}.
      * </p>
      *
      * @param in the InputStream to read from
      * @return the byte array containing the stream's contents
-     * @throws IOException if an I/O error occurs (thrown as unchecked)
+     * @throws IOException if an I/O error occurs or the stream exceeds the default size limit (thrown as unchecked)
      */
     public static byte[] inputStreamToBytes(InputStream in) {
-        return inputStreamToBytes(in, Integer.MAX_VALUE);
+        return inputStreamToBytes(in, getDefaultMaxStreamSize());
     }
 
     /**
@@ -458,16 +474,20 @@ public final class IOUtilities {
         if (maxSize <= 0) {
             throw new IllegalArgumentException("maxSize must be > 0");
         }
-        try (FastByteArrayOutputStream out = new FastByteArrayOutputStream(16384)) {
-            byte[] buffer = new byte[TRANSFER_BUFFER];
+        try (FastByteArrayOutputStream out = new FastByteArrayOutputStream(Math.min(16384, maxSize))) {
+            byte[] buffer = new byte[Math.min(TRANSFER_BUFFER, maxSize)];
             int total = 0;
             int count;
-            while ((count = in.read(buffer)) != -1) {
-                total += count;
-                if (total > maxSize) {
+            while (total < maxSize && (count = in.read(buffer, 0, Math.min(buffer.length, maxSize - total))) != -1) {
+                if (total + count > maxSize) {
                     throw new IOException("Stream exceeds maximum allowed size: " + maxSize);
                 }
+                total += count;
                 out.write(buffer, 0, count);
+            }
+            // Check if there's more data after reaching the limit
+            if (total >= maxSize && in.read() != -1) {
+                throw new IOException("Stream exceeds maximum allowed size: " + maxSize);
             }
             return out.toByteArray();
         } catch (IOException e) {

@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static com.cedarsoftware.util.DateUtilities.ABBREVIATION_TO_TIMEZONE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -1403,5 +1404,51 @@ class DateUtilitiesTest
                 thread.join();
             }
         });
+    }
+
+    @Test
+    void testInputValidation_MaxLength() {
+        // Test date string length validation (max 256 characters)
+        StringBuilder longString = new StringBuilder("2024-01-01");
+        for (int i = 0; i < 250; i++) {
+            longString.append("X"); // Use non-whitespace characters to avoid trimming
+        }
+        // This should be > 256 characters total (10 + 250 = 260)
+        
+        assertThatThrownBy(() -> DateUtilities.parseDate(longString.toString(), ZoneId.of("UTC"), true))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Date string too long");
+    }
+
+    @Test
+    void testInputValidation_EpochMilliseconds() {
+        // Test epoch milliseconds bounds (max 19 digits)
+        String tooLong = "12345678901234567890"; // 20 digits
+        assertThatThrownBy(() -> DateUtilities.parseDate(tooLong, ZoneId.of("UTC"), true))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Epoch milliseconds value too large");
+        
+        // Test valid epoch milliseconds still works
+        String valid = "1640995200000"; // 13 digits - valid
+        ZonedDateTime result = DateUtilities.parseDate(valid, ZoneId.of("UTC"), true);
+        assertNotNull(result);
+        assertEquals(2022, result.getYear());
+    }
+
+    @Test
+    void testInputValidation_YearBounds() {
+        // Test boundary values are accepted (the validation is primarily for extreme edge cases)
+        ZonedDateTime result1 = DateUtilities.parseDate("999999999-01-01", ZoneId.of("UTC"), true);
+        assertNotNull(result1);
+        assertEquals(999999999, result1.getYear());
+        
+        ZonedDateTime result2 = DateUtilities.parseDate("-999999999-01-01", ZoneId.of("UTC"), true);
+        assertNotNull(result2);
+        assertEquals(-999999999, result2.getYear());
+        
+        // Test that reasonable years work normally
+        ZonedDateTime result3 = DateUtilities.parseDate("2024-01-01", ZoneId.of("UTC"), true);
+        assertNotNull(result3);
+        assertEquals(2024, result3.getYear());
     }
 }

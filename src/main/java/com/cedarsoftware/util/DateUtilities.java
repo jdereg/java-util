@@ -386,9 +386,24 @@ public final class DateUtilities {
         }
         Convention.throwIfNull(defaultZoneId, "ZoneId cannot be null.  Use ZoneId.of(\"America/New_York\"), ZoneId.systemDefault(), etc.");
 
+        // Input validation for security: prevent excessively long input strings
+        if (dateStr.length() > 256) {
+            throw new IllegalArgumentException("Date string too long (max 256 characters): " + dateStr.length());
+        }
+
         // If purely digits => epoch millis
         if (allDigits.matcher(dateStr).matches()) {
-            return Instant.ofEpochMilli(Long.parseLong(dateStr)).atZone(defaultZoneId);
+            // Validate epoch milliseconds range to prevent overflow
+            if (dateStr.length() > 19) {
+                throw new IllegalArgumentException("Epoch milliseconds value too large: " + dateStr);
+            }
+            long epochMillis;
+            try {
+                epochMillis = Long.parseLong(dateStr);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid epoch milliseconds: " + dateStr, e);
+            }
+            return Instant.ofEpochMilli(epochMillis).atZone(defaultZoneId);
         }
 
         String year, day, remains, tz = null;
@@ -519,6 +534,10 @@ public final class DateUtilities {
         int y = Integer.parseInt(year);
         int d = Integer.parseInt(day);
 
+        // Input validation for security: prevent extreme year values
+        if (y < -999999999 || y > 999999999) {
+            throw new IllegalArgumentException("Year must be between -999999999 and 999999999 inclusive, date: " + dateStr);
+        }
         if (month < 1 || month > 12) {
             throw new IllegalArgumentException("Month must be between 1 and 12 inclusive, date: " + dateStr);
         }
@@ -565,6 +584,11 @@ public final class DateUtilities {
     private static ZoneId getTimeZone(String tz) {
         if (tz == null || tz.isEmpty()) {
             return ZoneId.systemDefault();
+        }
+
+        // Input validation for security: prevent excessively long timezone strings
+        if (tz.length() > 100) {
+            throw new IllegalArgumentException("Timezone string too long (max 100 characters): " + tz.length());
         }
 
         // 1) If tz starts with +/- => offset

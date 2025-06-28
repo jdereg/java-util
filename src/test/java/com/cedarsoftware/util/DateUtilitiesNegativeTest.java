@@ -138,7 +138,8 @@ class DateUtilitiesNegativeTests {
      */
     @Test
     void testOverflowEpochMillis() {
-        assertThrows(NumberFormatException.class, () ->
+        // Input validation now catches epoch overflow before NumberFormatException
+        assertThrows(IllegalArgumentException.class, () ->
                 DateUtilities.parseDate("999999999999999999999", ZoneId.of("UTC"), true));
     }
 

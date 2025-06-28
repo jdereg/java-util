@@ -122,6 +122,22 @@ public final class IOUtilities {
     }
 
     /**
+     * Gets the default maximum decompression size for security purposes.
+     * Can be configured via system property 'io.max.decompression.size'.
+     * Defaults to 2GB if not configured.
+     *
+     * @return the maximum allowed decompressed data size in bytes
+     */
+    private static int getDefaultMaxDecompressionSize() {
+        try {
+            return Integer.parseInt(System.getProperty("io.max.decompression.size", "2147483647")); // 2GB default
+        } catch (NumberFormatException e) {
+            return 2147483647; // 2GB fallback
+        }
+    }
+
+
+    /**
      * Validates that a file path is secure and does not contain path traversal attempts.
      * Can be disabled via system property 'io.path.validation.disabled=true'.
      * 
@@ -662,37 +678,60 @@ public final class IOUtilities {
     }
 
     /**
-     * Uncompresses a GZIP-compressed byte array.
+     * Uncompresses a GZIP-compressed byte array with default size limits.
      * <p>
      * If the input is not GZIP-compressed, returns the original array unchanged.
+     * Uses a default maximum decompressed size (2GB) to prevent zip bomb attacks.
      * </p>
      *
      * @param bytes the compressed byte array
      * @return the uncompressed byte array, or the original array if not compressed
-     * @throws RuntimeException if decompression fails
+     * @throws RuntimeException if decompression fails or exceeds size limits
      */
     public static byte[] uncompressBytes(byte[] bytes) {
-        return uncompressBytes(bytes, 0, bytes.length);
+        return uncompressBytes(bytes, 0, bytes.length, getDefaultMaxDecompressionSize());
     }
 
     /**
-     * Uncompresses a portion of a GZIP-compressed byte array.
+     * Uncompresses a portion of a GZIP-compressed byte array with default size limits.
      * <p>
      * If the input is not GZIP-compressed, returns the original array unchanged.
+     * Uses a default maximum decompressed size (2GB) to prevent zip bomb attacks.
      * </p>
      *
      * @param bytes  the compressed byte array
      * @param offset the starting position in the source array
      * @param len    the number of bytes to uncompress
      * @return the uncompressed byte array, or the original array if not compressed
-     * @throws RuntimeException if decompression fails
+     * @throws RuntimeException if decompression fails or exceeds size limits
      */
     public static byte[] uncompressBytes(byte[] bytes, int offset, int len) {
+        return uncompressBytes(bytes, offset, len, getDefaultMaxDecompressionSize());
+    }
+
+    /**
+     * Uncompresses a portion of a GZIP-compressed byte array with specified size limit.
+     * <p>
+     * If the input is not GZIP-compressed, returns the original array unchanged.
+     * </p>
+     *
+     * @param bytes    the compressed byte array
+     * @param offset   the starting position in the source array
+     * @param len      the number of bytes to uncompress
+     * @param maxSize  the maximum allowed decompressed size in bytes
+     * @return the uncompressed byte array, or the original array if not compressed
+     * @throws RuntimeException if decompression fails or exceeds size limits
+     */
+    public static byte[] uncompressBytes(byte[] bytes, int offset, int len, int maxSize) {
         Objects.requireNonNull(bytes, "Byte array cannot be null");
+        if (maxSize <= 0) {
+            throw new IllegalArgumentException("maxSize must be > 0");
+        }
+        
         if (ByteUtilities.isGzipped(bytes, offset)) {
             try (ByteArrayInputStream byteStream = new ByteArrayInputStream(bytes, offset, len);
                  GZIPInputStream gzipStream = new GZIPInputStream(byteStream, TRANSFER_BUFFER)) {
-                return inputStreamToBytes(gzipStream);
+                return inputStreamToBytes(gzipStream, maxSize);
             } catch (IOException e) {
                 throw new RuntimeException("Error uncompressing bytes", e);
             }

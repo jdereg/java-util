@@ -34,9 +34,21 @@ import java.util.Arrays;
  * <p>ByteUtilities provides configurable security options through system properties.
  * All security features are <strong>disabled by default</strong> for backward compatibility:</p>
  * <ul>
- *   <li><code>bytes.max.hex.string.length=0</code> &mdash; Hex string length limit for decode operations (0=disabled)</li>
- *   <li><code>bytes.max.array.size=0</code> &mdash; Byte array size limit for encode operations (0=disabled)</li>
+ *   <li><code>byteutilities.security.enabled=false</code> &mdash; Master switch to enable all security features</li>
+ *   <li><code>byteutilities.max.hex.string.length=0</code> &mdash; Hex string length limit for decode operations (0=disabled)</li>
+ *   <li><code>byteutilities.max.array.size=0</code> &mdash; Byte array size limit for encode operations (0=disabled)</li>
  * </ul>
+ *
+ * <p><strong>Example Usage:</strong></p>
+ * <pre>{@code
+ * // Enable security with default limits
+ * System.setProperty("byteutilities.security.enabled", "true");
+ *
+ * // Or enable with custom limits
+ * System.setProperty("byteutilities.security.enabled", "true");
+ * System.setProperty("byteutilities.max.hex.string.length", "10000");
+ * System.setProperty("byteutilities.max.array.size", "1000000");
+ * }</pre>
  *
  * <h2>Design Notes</h2>
  * <ul>
@@ -72,12 +84,46 @@ import java.util.Arrays;
  *         limitations under the License.
  */
 public final class ByteUtilities {
-    // Security limits to prevent resource exhaustion attacks
-    // 0 or negative values = disabled, positive values = enabled with limit
-    private static final int MAX_HEX_STRING_LENGTH = Integer.parseInt(
-            System.getProperty("bytes.max.hex.string.length", "0"));
-    private static final int MAX_ARRAY_SIZE = Integer.parseInt(
-            System.getProperty("bytes.max.array.size", "0"));
+    // Security Configuration - using dynamic property reading for testability
+    // Default limits used when security is enabled but no custom limits specified
+    private static final int DEFAULT_MAX_HEX_STRING_LENGTH = 1000000;  // 1MB hex string
+    private static final int DEFAULT_MAX_ARRAY_SIZE = 10000000;        // 10MB byte array
+    
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("byteutilities.security.enabled", "false"));
+    }
+    
+    private static int getMaxHexStringLength() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String value = System.getProperty("byteutilities.max.hex.string.length");
+        if (value == null) {
+            return DEFAULT_MAX_HEX_STRING_LENGTH;
+        }
+        try {
+            int limit = Integer.parseInt(value);
+            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
+        } catch (NumberFormatException e) {
+            return DEFAULT_MAX_HEX_STRING_LENGTH;
+        }
+    }
+    
+    private static int getMaxArraySize() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String value = System.getProperty("byteutilities.max.array.size");
+        if (value == null) {
+            return DEFAULT_MAX_ARRAY_SIZE;
+        }
+        try {
+            int limit = Integer.parseInt(value);
+            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
+        } catch (NumberFormatException e) {
+            return DEFAULT_MAX_ARRAY_SIZE;
+        }
+    }
 
     // For encode: Array of hex digits.
     static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
@@ -138,8 +184,9 @@ public final class ByteUtilities {
         final int len = s.length();
         
         // Security check: validate hex string length
-        if (MAX_HEX_STRING_LENGTH > 0 && len > MAX_HEX_STRING_LENGTH) {
-            throw new SecurityException("Hex string length exceeds maximum allowed: " + MAX_HEX_STRING_LENGTH);
+        int maxHexLength = getMaxHexStringLength();
+        if (maxHexLength > 0 && len > maxHexLength) {
+            throw new SecurityException("Hex string length exceeds maximum allowed: " + maxHexLength);
         }
         
         // Must be even length
@@ -176,8 +223,9 @@ public final class ByteUtilities {
         }
         
         // Security check: validate byte array size
-        if (MAX_ARRAY_SIZE > 0 && bytes.length > MAX_ARRAY_SIZE) {
-            throw new SecurityException("Byte array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && bytes.length > maxArraySize) {
+            throw new SecurityException("Byte array size exceeds maximum allowed: " + maxArraySize);
         }
         char[] hexChars = new char[bytes.length * 2];
         for (int i = 0, j = 0; i < bytes.length; i++) {

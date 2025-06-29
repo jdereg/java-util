@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Security tests for Executor class.
- * Tests the security control that allows disabling command execution entirely.
+ * Tests the security control where command execution is disabled by default and must be explicitly enabled.
  * 
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -47,17 +47,20 @@ public class ExecutorSecurityTest {
     }
     
     @Test
-    void testExecutorEnabledByDefault() {
-        // Executor should be enabled by default for backward compatibility
+    void testExecutorDisabledByDefault() {
+        // Executor should be disabled by default for security
         System.clearProperty("executor.enabled"); // Ensure no explicit setting
         
         Executor executor = new Executor();
         
-        // Should be able to execute commands by default
-        assertDoesNotThrow(() -> {
-            ExecutionResult result = executor.execute("echo test");
-            assertNotNull(result);
-        }, "Executor should be enabled by default");
+        // Should throw SecurityException by default
+        SecurityException e = assertThrows(SecurityException.class, () -> {
+            executor.execute("echo test");
+        }, "Executor should be disabled by default");
+        
+        // Check that error message provides clear instructions
+        assertTrue(e.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e.getMessage().contains("executor.enabled=true"));
     }
     
     @Test
@@ -85,32 +88,38 @@ public class ExecutorSecurityTest {
         SecurityException e1 = assertThrows(SecurityException.class, 
             () -> executor.execute("echo test"),
             "execute(String) should throw SecurityException when disabled");
-        assertTrue(e1.getMessage().contains("Command execution is disabled"));
+        assertTrue(e1.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e1.getMessage().contains("executor.enabled=true"));
         
         SecurityException e2 = assertThrows(SecurityException.class, 
             () -> executor.execute(new String[]{"echo", "test"}),
             "execute(String[]) should throw SecurityException when disabled");
-        assertTrue(e2.getMessage().contains("Command execution is disabled"));
+        assertTrue(e2.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e2.getMessage().contains("executor.enabled=true"));
         
         SecurityException e3 = assertThrows(SecurityException.class, 
             () -> executor.execute("echo test", null),
             "execute(String, String[]) should throw SecurityException when disabled");
-        assertTrue(e3.getMessage().contains("Command execution is disabled"));
+        assertTrue(e3.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e3.getMessage().contains("executor.enabled=true"));
         
         SecurityException e4 = assertThrows(SecurityException.class, 
             () -> executor.execute(new String[]{"echo", "test"}, null),
             "execute(String[], String[]) should throw SecurityException when disabled");
-        assertTrue(e4.getMessage().contains("Command execution is disabled"));
+        assertTrue(e4.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e4.getMessage().contains("executor.enabled=true"));
         
         SecurityException e5 = assertThrows(SecurityException.class, 
             () -> executor.execute("echo test", null, null),
             "execute(String, String[], File) should throw SecurityException when disabled");
-        assertTrue(e5.getMessage().contains("Command execution is disabled"));
+        assertTrue(e5.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e5.getMessage().contains("executor.enabled=true"));
         
         SecurityException e6 = assertThrows(SecurityException.class, 
             () -> executor.execute(new String[]{"echo", "test"}, null, null),
             "execute(String[], String[], File) should throw SecurityException when disabled");
-        assertTrue(e6.getMessage().contains("Command execution is disabled"));
+        assertTrue(e6.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e6.getMessage().contains("executor.enabled=true"));
     }
     
     @Test
@@ -124,32 +133,38 @@ public class ExecutorSecurityTest {
         SecurityException e1 = assertThrows(SecurityException.class, 
             () -> executor.exec("echo test"),
             "exec(String) should throw SecurityException when disabled");
-        assertTrue(e1.getMessage().contains("Command execution is disabled"));
+        assertTrue(e1.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e1.getMessage().contains("executor.enabled=true"));
         
         SecurityException e2 = assertThrows(SecurityException.class, 
             () -> executor.exec(new String[]{"echo", "test"}),
             "exec(String[]) should throw SecurityException when disabled");
-        assertTrue(e2.getMessage().contains("Command execution is disabled"));
+        assertTrue(e2.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e2.getMessage().contains("executor.enabled=true"));
         
         SecurityException e3 = assertThrows(SecurityException.class, 
             () -> executor.exec("echo test", null),
             "exec(String, String[]) should throw SecurityException when disabled");
-        assertTrue(e3.getMessage().contains("Command execution is disabled"));
+        assertTrue(e3.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e3.getMessage().contains("executor.enabled=true"));
         
         SecurityException e4 = assertThrows(SecurityException.class, 
             () -> executor.exec(new String[]{"echo", "test"}, null),
             "exec(String[], String[]) should throw SecurityException when disabled");
-        assertTrue(e4.getMessage().contains("Command execution is disabled"));
+        assertTrue(e4.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e4.getMessage().contains("executor.enabled=true"));
         
         SecurityException e5 = assertThrows(SecurityException.class, 
             () -> executor.exec("echo test", null, null),
             "exec(String, String[], File) should throw SecurityException when disabled");
-        assertTrue(e5.getMessage().contains("Command execution is disabled"));
+        assertTrue(e5.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e5.getMessage().contains("executor.enabled=true"));
         
         SecurityException e6 = assertThrows(SecurityException.class, 
             () -> executor.exec(new String[]{"echo", "test"}, null, null),
             "exec(String[], String[], File) should throw SecurityException when disabled");
-        assertTrue(e6.getMessage().contains("Command execution is disabled"));
+        assertTrue(e6.getMessage().contains("Command execution is disabled by default for security"));
+        assertTrue(e6.getMessage().contains("executor.enabled=true"));
     }
     
     @Test
@@ -165,7 +180,7 @@ public class ExecutorSecurityTest {
             SecurityException e = assertThrows(SecurityException.class, 
                 () -> executor.execute("echo test"),
                 "Should be disabled with value: " + falseValue);
-            assertTrue(e.getMessage().contains("Command execution is disabled"));
+            assertTrue(e.getMessage().contains("Command execution is disabled by default for security"));
         }
         
         // Test various case combinations for "true"
@@ -196,25 +211,28 @@ public class ExecutorSecurityTest {
             SecurityException e = assertThrows(SecurityException.class, 
                 () -> executor.execute("echo test"),
                 "Should be disabled with invalid value: " + invalidValue);
-            assertTrue(e.getMessage().contains("Command execution is disabled"));
+            assertTrue(e.getMessage().contains("Command execution is disabled by default for security"));
         }
     }
     
     @Test
-    void testBackwardCompatibilityWithExistingCode() {
-        // Test that existing code continues to work when property is not set
+    void testBreakingChangeRequiresExplicitEnable() {
+        // Test that existing code now requires explicit enablement (breaking change)
         System.clearProperty("executor.enabled");
         
         Executor executor = new Executor();
         
-        // Traditional usage should continue to work
-        assertDoesNotThrow(() -> {
-            int exitCode = executor.exec("echo backward_compatibility_test");
-            ExecutionResult result = executor.execute("echo test_result");
-            
-            assertNotNull(result);
-            String output = executor.getOut();
-            assertNotNull(output);
-        }, "Existing code should continue to work for backward compatibility");
+        // Traditional usage should now throw SecurityException
+        SecurityException e1 = assertThrows(SecurityException.class, () -> {
+            executor.exec("echo backward_compatibility_test");
+        }, "Existing code should now require explicit enablement");
+        
+        SecurityException e2 = assertThrows(SecurityException.class, () -> {
+            executor.execute("echo test_result");
+        }, "Existing code should now require explicit enablement");
+        
+        // Both should provide clear instructions on how to enable
+        assertTrue(e1.getMessage().contains("executor.enabled=true"));
+        assertTrue(e2.getMessage().contains("executor.enabled=true"));
     }
 }

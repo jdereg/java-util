@@ -25,38 +25,49 @@ import com.cedarsoftware.util.LoggingConfig;
  * </ul>
  *
  * <h2>Security Configuration</h2>
- * <p>Due to the inherent security risks of executing arbitrary system commands, Executor provides
- * a simple security control to completely disable command execution when needed. Command execution 
- * is <strong>enabled by default</strong> for backward compatibility.</p>
+ * <p>Due to the inherent security risks of executing arbitrary system commands, Executor is
+ * <strong>disabled by default</strong> and must be explicitly enabled. This is a security-first
+ * approach that requires intentional opt-in for command execution capabilities.</p>
  *
  * <p>Security control can be configured via system property:</p>
  * <ul>
- *   <li><code>executor.enabled=true</code> &mdash; Enable/disable all command execution (default: true)</li>
+ *   <li><code>executor.enabled=false</code> &mdash; Enable/disable all command execution (default: false)</li>
  * </ul>
  *
  * <h3>Security Features</h3>
  * <ul>
- *   <li><b>Complete Disable:</b> When disabled, all command execution methods throw SecurityException</li>
- *   <li><b>Backward Compatibility:</b> Enabled by default to preserve existing functionality</li>
- *   <li><b>Simple Control:</b> Single property controls all execution methods</li>
+ *   <li><b>Disabled by Default:</b> Command execution is disabled unless explicitly enabled</li>
+ *   <li><b>Explicit Opt-in:</b> Users must consciously enable this dangerous functionality</li>
+ *   <li><b>Complete Control:</b> Single property controls all execution methods</li>
+ *   <li><b>Clear Error Messages:</b> SecurityExceptions provide instructions on how to enable</li>
  * </ul>
  *
  * <h3>Security Warning</h3>
  * <p><strong>⚠️ WARNING:</strong> This class executes arbitrary system commands with the privileges 
- * of the JVM process. Only use with trusted input or disable entirely in security-sensitive environments.</p>
+ * of the JVM process. Only enable with trusted input and in environments where command execution is necessary.</p>
  *
  * <h3>Usage Example</h3>
  * <pre>{@code
- * // Disable command execution in production
- * System.setProperty("executor.enabled", "false");
+ * // Enable command execution (required)
+ * System.setProperty("executor.enabled", "true");
  *
- * // This will now throw SecurityException
+ * // Now command execution will work
  * Executor exec = new Executor();
- * exec.exec("ls -l"); // Throws SecurityException
+ * int exitCode = exec.exec("ls -l");
+ * String output = exec.getOut();
  * }</pre>
+ *
+ * <h3>Breaking Change Notice</h3>
+ * <p><strong>⚠️ BREAKING CHANGE:</strong> As of this version, Executor is disabled by default.
+ * Existing code that uses Executor will need to add <code>System.setProperty("executor.enabled", "true")</code>
+ * before using any Executor methods.</p>
  *
  * <p><strong>Basic Usage:</strong></p>
  * <pre>{@code
+ * // First, enable command execution (required)
+ * System.setProperty("executor.enabled", "true");
+ * 
+ * // Then use Executor normally
  * Executor exec = new Executor();
  * int exitCode = exec.exec("ls -l");
  * String output = exec.getOut();      // Get stdout
@@ -95,7 +106,7 @@ public class Executor {
      * @return true if command execution is allowed, false otherwise
      */
     private static boolean isExecutionEnabled() {
-        return Boolean.parseBoolean(System.getProperty("executor.enabled", "true"));
+        return Boolean.parseBoolean(System.getProperty("executor.enabled", "false"));
     }
     
     /**
@@ -104,7 +115,8 @@ public class Executor {
      */
     private static void validateExecutionEnabled() {
         if (!isExecutionEnabled()) {
-            throw new SecurityException("Command execution is disabled via system property 'executor.enabled=false'");
+            throw new SecurityException("Command execution is disabled by default for security. " +
+                    "To enable command execution, set system property: executor.enabled=true");
         }
     }
 

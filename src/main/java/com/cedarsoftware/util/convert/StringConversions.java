@@ -35,6 +35,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
@@ -645,5 +647,20 @@ final class StringConversions {
     static Currency toCurrency(Object from, Converter converter) {
         String code = ((String) from).trim();
         return Currency.getInstance(code);
+    }
+
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        String str = ((String) from).trim();
+        
+        // Special case: if the string looks like an enum name (all uppercase letters with optional underscores),
+        // convert it to a Map with "name" field like enum conversions do
+        if (str.matches("^[A-Z][A-Z0-9_]*$")) {
+            Map<String, Object> target = new LinkedHashMap<>();
+            target.put("name", str);
+            return target;
+        }
+        
+        // Otherwise, this is an unsupported conversion
+        throw new IllegalArgumentException("Unsupported conversion, source type [String (" + str + ")] target type 'Map'");
     }
 }

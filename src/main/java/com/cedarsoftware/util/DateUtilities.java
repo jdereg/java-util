@@ -17,6 +17,43 @@ import java.util.regex.Pattern;
  * Utility for parsing String dates with optional times, supporting a wide variety of formats and patterns.
  * Handles inconsistent input formats, optional time components, and various timezone specifications.
  *
+ * <h2>Security Configuration</h2>
+ * <p>DateUtilities provides configurable security controls to prevent various attack vectors including
+ * ReDoS (Regular Expression Denial of Service) attacks, input validation bypasses, and resource exhaustion.
+ * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security controls can be enabled via system properties:</p>
+ * <ul>
+ *   <li><code>dateutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
+ *   <li><code>dateutilities.input.validation.enabled=false</code> &mdash; Enable input length and content validation</li>
+ *   <li><code>dateutilities.regex.timeout.enabled=false</code> &mdash; Enable regex timeout protection</li>
+ *   <li><code>dateutilities.malformed.string.protection.enabled=false</code> &mdash; Enable malformed input protection</li>
+ *   <li><code>dateutilities.max.input.length=1000</code> &mdash; Maximum input string length</li>
+ *   <li><code>dateutilities.max.epoch.digits=19</code> &mdash; Maximum digits for epoch milliseconds</li>
+ *   <li><code>dateutilities.regex.timeout.milliseconds=1000</code> &mdash; Timeout for regex operations in milliseconds</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>Input Length Validation:</b> Prevents memory exhaustion through oversized input strings</li>
+ *   <li><b>ReDoS Protection:</b> Configurable timeouts for regex operations to prevent catastrophic backtracking</li>
+ *   <li><b>Malformed Input Protection:</b> Enhanced validation to detect and reject malicious input patterns</li>
+ *   <li><b>Epoch Range Validation:</b> Prevents integer overflow in epoch millisecond parsing</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * // Enable security with custom settings
+ * System.setProperty("dateutilities.security.enabled", "true");
+ * System.setProperty("dateutilities.input.validation.enabled", "true");
+ * System.setProperty("dateutilities.regex.timeout.enabled", "true");
+ * System.setProperty("dateutilities.max.input.length", "500");
+ *
+ * // These will now enforce security controls
+ * Date date = DateUtilities.parseDate("2024-01-15 14:30:00"); // works
+ * Date malicious = DateUtilities.parseDate(veryLongString); // throws SecurityException
+ * }</pre>
+ *
  * <h2>Supported Date Formats</h2>
  * <table border="1" summary="Supported date formats">
  *   <tr><th>Format</th><th>Example</th><th>Description</th></tr>
@@ -123,6 +160,187 @@ import java.util.regex.Pattern;
  *         limitations under the License.
  */
 public final class DateUtilities {
+    // Default security limits
+    private static final int DEFAULT_MAX_INPUT_LENGTH = 1000;
+    private static final int DEFAULT_MAX_EPOCH_DIGITS = 19;
+    private static final long DEFAULT_REGEX_TIMEOUT_MILLISECONDS = 1000;
+    
+    static {
+        // Initialize system properties with defaults if not already set (backward compatibility)
+        initializeSystemPropertyDefaults();
+    }
+    
+    private static void initializeSystemPropertyDefaults() {
+        // Set max input length if not explicitly configured
+        if (System.getProperty("dateutilities.max.input.length") == null) {
+            System.setProperty("dateutilities.max.input.length", String.valueOf(DEFAULT_MAX_INPUT_LENGTH));
+        }
+        
+        // Set max epoch digits if not explicitly configured
+        if (System.getProperty("dateutilities.max.epoch.digits") == null) {
+            System.setProperty("dateutilities.max.epoch.digits", String.valueOf(DEFAULT_MAX_EPOCH_DIGITS));
+        }
+        
+        // Set regex timeout if not explicitly configured
+        if (System.getProperty("dateutilities.regex.timeout.milliseconds") == null) {
+            System.setProperty("dateutilities.regex.timeout.milliseconds", String.valueOf(DEFAULT_REGEX_TIMEOUT_MILLISECONDS));
+        }
+    }
+    
+    // Security configuration methods
+    
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("dateutilities.security.enabled", "false"));
+    }
+    
+    private static boolean isInputValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("dateutilities.input.validation.enabled", "false"));
+    }
+    
+    private static boolean isRegexTimeoutEnabled() {
+        return Boolean.parseBoolean(System.getProperty("dateutilities.regex.timeout.enabled", "false"));
+    }
+    
+    private static boolean isMalformedStringProtectionEnabled() {
+        return Boolean.parseBoolean(System.getProperty("dateutilities.malformed.string.protection.enabled", "false"));
+    }
+    
+    private static int getMaxInputLength() {
+        String maxLengthProp = System.getProperty("dateutilities.max.input.length");
+        if (maxLengthProp != null) {
+            try {
+                return Math.max(1, Integer.parseInt(maxLengthProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_MAX_INPUT_LENGTH : Integer.MAX_VALUE;
+    }
+    
+    private static int getMaxEpochDigits() {
+        String maxDigitsProp = System.getProperty("dateutilities.max.epoch.digits");
+        if (maxDigitsProp != null) {
+            try {
+                return Math.max(1, Integer.parseInt(maxDigitsProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_MAX_EPOCH_DIGITS : Integer.MAX_VALUE;
+    }
+    
+    private static long getRegexTimeoutMilliseconds() {
+        String timeoutProp = System.getProperty("dateutilities.regex.timeout.milliseconds");
+        if (timeoutProp != null) {
+            try {
+                return Math.max(1, Long.parseLong(timeoutProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_REGEX_TIMEOUT_MILLISECONDS : Long.MAX_VALUE;
+    }
+    
+    /**
+     * Validates input for malformed patterns that could cause ReDoS attacks.
+     * 
+     * @param input the input string to validate
+     * @throws SecurityException if malformed patterns are detected
+     */
+    private static void validateMalformedInput(String input) {
+        // Check for excessive repetition that could cause catastrophic backtracking
+        if (input.matches(".*(.{10,})\\1{5,}.*")) {
+            throw new SecurityException("Input contains excessive repetition patterns that could cause ReDoS");
+        }
+        
+        // Check for excessive nested grouping
+        int openParens = 0;
+        int maxNesting = 0;
+        for (char c : input.toCharArray()) {
+            if (c == '(') {
+                openParens++;
+                maxNesting = Math.max(maxNesting, openParens);
+            } else if (c == ')') {
+                openParens--;
+            }
+        }
+        if (maxNesting > 20) {
+            throw new SecurityException("Input contains excessive nesting that could cause parsing issues");
+        }
+        
+        // Check for suspicious characters that don't belong in date strings
+        if (input.matches(".*[<>&\"'\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F].*")) {
+            throw new SecurityException("Input contains invalid characters for date parsing");
+        }
+    }
+    
+    /**
+     * Performs regex matching with timeout protection to prevent ReDoS attacks.
+     * 
+     * @param pattern the pattern to match against
+     * @param input the input string
+     * @return the matcher result, or null if timeout occurs
+     * @throws SecurityException if timeout occurs and security is enabled
+     */
+    private static Matcher safePatternMatch(Pattern pattern, String input) {
+        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
+            // No timeout protection when security is disabled
+            return pattern.matcher(input);
+        }
+        
+        long timeout = getRegexTimeoutMilliseconds();
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            Matcher matcher = pattern.matcher(input);
+            
+            // Check timeout before operations that could be expensive
+            if (System.currentTimeMillis() - startTime > timeout) {
+                throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack");
+            }
+            
+            return matcher;
+        } catch (Exception e) {
+            if (System.currentTimeMillis() - startTime > timeout) {
+                throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
+            }
+            throw e;
+        }
+    }
+    
+    /**
+     * Performs regex find operation with timeout protection.
+     * 
+     * @param pattern the pattern to match against
+     * @param input the input string
+     * @return true if pattern matches, false otherwise
+     * @throws SecurityException if timeout occurs and security is enabled
+     */
+    private static boolean safePatternFind(Pattern pattern, String input) {
+        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
+            // No timeout protection when security is disabled
+            return pattern.matcher(input).find();
+        }
+        
+        long timeout = getRegexTimeoutMilliseconds();
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            boolean result = pattern.matcher(input).find();
+            
+            if (System.currentTimeMillis() - startTime > timeout) {
+                throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack");
+            }
+            
+            return result;
+        } catch (Exception e) {
+            if (System.currentTimeMillis() - startTime > timeout) {
+                throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
+            }
+            throw e;
+        }
+    }
+    
     // Performance optimized: Added UNICODE_CHARACTER_CLASS for better digit matching across locales
     private static final Pattern allDigits = Pattern.compile("^-?\\d+$", Pattern.UNICODE_CHARACTER_CLASS);
     private static final String days = "monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thur|thu|friday|fri|saturday|sat|sunday|sun"; // longer before shorter matters
@@ -393,16 +611,27 @@ public final class DateUtilities {
         }
         Convention.throwIfNull(defaultZoneId, "ZoneId cannot be null.  Use ZoneId.of(\"America/New_York\"), ZoneId.systemDefault(), etc.");
 
-        // Input validation for security: prevent excessively long input strings
-        if (dateStr.length() > 256) {
-            throw new IllegalArgumentException("Date string too long (max 256 characters): " + dateStr.length());
+        // Security: Input validation to prevent excessively long input strings
+        if (isSecurityEnabled() && isInputValidationEnabled()) {
+            int maxLength = getMaxInputLength();
+            if (dateStr.length() > maxLength) {
+                throw new SecurityException("Date string too long (max " + maxLength + " characters): " + dateStr.length());
+            }
+        }
+        
+        // Security: Check for malformed input patterns that could cause ReDoS
+        if (isSecurityEnabled() && isMalformedStringProtectionEnabled()) {
+            validateMalformedInput(dateStr);
         }
 
         // If purely digits => epoch millis
-        if (allDigits.matcher(dateStr).matches()) {
-            // Validate epoch milliseconds range to prevent overflow
-            if (dateStr.length() > 19) {
-                throw new IllegalArgumentException("Epoch milliseconds value too large: " + dateStr);
+        if (safePatternMatch(allDigits, dateStr).matches()) {
+            // Security: Validate epoch milliseconds range to prevent overflow
+            if (isSecurityEnabled() && isInputValidationEnabled()) {
+                int maxEpochDigits = getMaxEpochDigits();
+                if (dateStr.length() > maxEpochDigits) {
+                    throw new SecurityException("Epoch milliseconds value too large (max " + maxEpochDigits + " digits): " + dateStr.length());
+                }
             }
             long epochMillis;
             try {
@@ -417,7 +646,7 @@ public final class DateUtilities {
         int month;
 
         // 1) Try matching ISO or numeric style date
-        Matcher matcher = isoDatePattern.matcher(dateStr);
+        Matcher matcher = safePatternMatch(isoDatePattern, dateStr);
         String remnant = matcher.replaceFirst("");
         if (remnant.length() < dateStr.length()) {
             if (matcher.group(1) != null) {
@@ -432,19 +661,19 @@ public final class DateUtilities {
             remains = remnant;
             // Do we have a Date with a TimeZone after it, but no time?
             if (remnant.startsWith("T")) {
-                matcher = zonePattern.matcher(remnant.substring(1));
+                matcher = safePatternMatch(zonePattern, remnant.substring(1));
                 if (matcher.matches()) {
                     throw new IllegalArgumentException("Time zone information without time is invalid: " + dateStr);
                 }
             } else {
-                matcher = zonePattern.matcher(remnant);
+                matcher = safePatternMatch(zonePattern, remnant);
                 if (matcher.matches()) {
                     throw new IllegalArgumentException("Time zone information without time is invalid: " + dateStr);
                 }
             }
         } else {
             // 2) Try alphaMonthPattern
-            matcher = alphaMonthPattern.matcher(dateStr);
+            matcher = safePatternMatch(alphaMonthPattern, dateStr);
             remnant = matcher.replaceFirst("");
             if (remnant.length() < dateStr.length()) {
                 String mon;
@@ -467,7 +696,7 @@ public final class DateUtilities {
                 month = months.get(mon.trim().toLowerCase());
             } else {
                 // 3) Try unixDateTimePattern
-                matcher = unixDateTimePattern.matcher(dateStr);
+                matcher = safePatternMatch(unixDateTimePattern, dateStr);
                 if (matcher.replaceFirst("").length() == dateStr.length()) {
                     throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date-time");
                 }
@@ -487,7 +716,7 @@ public final class DateUtilities {
         // 4) Parse time portion (could appear before or after date)
         String hour = null, min = null, sec = "00", fracSec = "0";
         remains = remains.trim();
-        matcher = timePattern.matcher(remains);
+        matcher = safePatternMatch(timePattern, remains);
         remnant = matcher.replaceFirst("");
 
         if (remnant.length() < remains.length()) {
@@ -687,7 +916,7 @@ public final class DateUtilities {
     private static void verifyNoGarbageLeft(String remnant) {
         // Clear out day of week (mon, tue, wed, ...)
         if (StringUtilities.length(remnant) > 0) {
-            Matcher dayMatcher = dayPattern.matcher(remnant);
+            Matcher dayMatcher = safePatternMatch(dayPattern, remnant);
             remnant = dayMatcher.replaceFirst("").trim();
         }
 

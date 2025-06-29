@@ -1094,6 +1094,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Class.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(UUID.class, Map.class), UUIDConversions::toMap);
         CONVERSION_DB.put(pair(Map.class, Map.class), UNSUPPORTED);
+        CONVERSION_DB.put(pair(String.class, Map.class), StringConversions::toMap);
         CONVERSION_DB.put(pair(Enum.class, Map.class), EnumConversions::toMap);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Map.class), OffsetDateTimeConversions::toMap);
         CONVERSION_DB.put(pair(OffsetTime.class, Map.class), OffsetTimeConversions::toMap);

@@ -33,6 +33,42 @@ import java.util.logging.Level;
  * Utilities to simplify writing reflective code as well as improve performance of reflective operations like
  * method and annotation lookups.
  *
+ * <h2>Security Configuration</h2>
+ * <p>ReflectionUtils provides configurable security controls to prevent various attack vectors including
+ * unauthorized access to dangerous classes, sensitive field exposure, and reflection-based attacks.
+ * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security controls can be enabled via system properties:</p>
+ * <ul>
+ *   <li><code>reflectionutils.security.enabled=false</code> &mdash; Master switch for all security features</li>
+ *   <li><code>reflectionutils.dangerous.class.validation.enabled=false</code> &mdash; Block dangerous class access</li>
+ *   <li><code>reflectionutils.sensitive.field.validation.enabled=false</code> &mdash; Block sensitive field access</li>
+ *   <li><code>reflectionutils.max.cache.size=50000</code> &mdash; Maximum cache size per cache type</li>
+ *   <li><code>reflectionutils.dangerous.class.patterns=java.lang.Runtime,java.lang.Process,...</code> &mdash; Comma-separated dangerous class patterns</li>
+ *   <li><code>reflectionutils.sensitive.field.patterns=password,secret,apikey,...</code> &mdash; Comma-separated sensitive field patterns</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>Dangerous Class Protection:</b> Prevents reflection access to system classes that could enable privilege escalation</li>
+ *   <li><b>Sensitive Field Protection:</b> Blocks access to fields containing sensitive information (passwords, tokens, etc.)</li>
+ *   <li><b>Cache Size Limits:</b> Configurable limits to prevent memory exhaustion attacks</li>
+ *   <li><b>Trusted Caller Validation:</b> Allows java-util library internal access while blocking external callers</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * // Enable security with custom settings
+ * System.setProperty("reflectionutils.security.enabled", "true");
+ * System.setProperty("reflectionutils.dangerous.class.validation.enabled", "true");
+ * System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");
+ * System.setProperty("reflectionutils.max.cache.size", "10000");
+ *
+ * // These will now enforce security controls
+ * Method method = ReflectionUtils.getMethod(String.class, "valueOf", int.class);
+ * Field field = ReflectionUtils.getField(MyClass.class, "normalField");
+ * }</pre>
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -53,34 +89,78 @@ public final class ReflectionUtils {
     /** System property key controlling the reflection cache size. */
     private static final String CACHE_SIZE_PROPERTY = "reflection.utils.cache.size";
     private static final int DEFAULT_CACHE_SIZE = 1500;
-    private static final int MAX_CACHE_SIZE = 50000; // Prevent memory exhaustion
-    private static final int CACHE_SIZE = Math.max(1, Math.min(MAX_CACHE_SIZE,
-            Integer.getInteger(CACHE_SIZE_PROPERTY, DEFAULT_CACHE_SIZE)));
+    private static final int DEFAULT_MAX_CACHE_SIZE = 50000; // Default max to prevent memory exhaustion
     
     private static final Logger LOG = Logger.getLogger(ReflectionUtils.class.getName());
     
-    // Security: Dangerous classes that should not be accessible via reflection
-    // Focus on truly dangerous classes that could lead to privilege escalation
-    private static final Set<String> DANGEROUS_CLASS_NAMES = Collections.unmodifiableSet(
-        new HashSet<>(Arrays.asList(
-            "java.lang.Runtime",
-            "java.lang.Process",
-            "java.lang.ProcessBuilder",
-            "sun.misc.Unsafe",
-            "jdk.internal.misc.Unsafe",
-            "javax.script.ScriptEngine",
-            "javax.script.ScriptEngineManager"
-        ))
-    );
+    // Default dangerous class patterns (moved to system properties in static initializer)
+    private static final String DEFAULT_DANGEROUS_CLASS_PATTERNS = 
+        "java.lang.Runtime,java.lang.Process,java.lang.ProcessBuilder,sun.misc.Unsafe,jdk.internal.misc.Unsafe,javax.script.ScriptEngine,javax.script.ScriptEngineManager";
     
-    // Security: Sensitive field patterns that should not be accessible
-    // Use more specific patterns to avoid blocking legitimate fields
-    private static final Set<String> SENSITIVE_FIELD_PATTERNS = Collections.unmodifiableSet(
-        new HashSet<>(Arrays.asList(
-            "password", "passwd", "secret", "secretkey", "apikey", "api_key", 
-            "authtoken", "accesstoken", "credential", "confidential", "adminkey"
-        ))
-    );
+    // Default sensitive field patterns (moved to system properties in static initializer)
+    private static final String DEFAULT_SENSITIVE_FIELD_PATTERNS = 
+        "password,passwd,secret,secretkey,apikey,api_key,authtoken,accesstoken,credential,confidential,adminkey,private";
+    
+    static {
+        // Initialize system properties with defaults if not already set (backward compatibility)
+        initializeSystemPropertyDefaults();
+    }
+    
+    private static void initializeSystemPropertyDefaults() {
+        // Set dangerous class patterns if not explicitly configured
+        if (System.getProperty("reflectionutils.dangerous.class.patterns") == null) {
+            System.setProperty("reflectionutils.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
+        }
+        
+        // Set sensitive field patterns if not explicitly configured  
+        if (System.getProperty("reflectionutils.sensitive.field.patterns") == null) {
+            System.setProperty("reflectionutils.sensitive.field.patterns", DEFAULT_SENSITIVE_FIELD_PATTERNS);
+        }
+        
+        // Set max cache size if not explicitly configured
+        if (System.getProperty("reflectionutils.max.cache.size") == null) {
+            System.setProperty("reflectionutils.max.cache.size", String.valueOf(DEFAULT_MAX_CACHE_SIZE));
+        }
+    }
+    
+    // Security configuration methods
+    
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("reflectionutils.security.enabled", "false"));
+    }
+    
+    private static boolean isDangerousClassValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("reflectionutils.dangerous.class.validation.enabled", "false"));
+    }
+    
+    private static boolean isSensitiveFieldValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("reflectionutils.sensitive.field.validation.enabled", "false"));
+    }
+    
+    private static int getMaxCacheSize() {
+        String maxSizeProp = System.getProperty("reflectionutils.max.cache.size");
+        if (maxSizeProp != null) {
+            try {
+                return Math.max(1, Integer.parseInt(maxSizeProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_MAX_CACHE_SIZE : Integer.MAX_VALUE;
+    }
+    
+    private static Set<String> getDangerousClassPatterns() {
+        String patterns = System.getProperty("reflectionutils.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
+        return new HashSet<>(Arrays.asList(patterns.split(",")));
+    }
+    
+    private static Set<String> getSensitiveFieldPatterns() {
+        String patterns = System.getProperty("reflectionutils.sensitive.field.patterns", DEFAULT_SENSITIVE_FIELD_PATTERNS);
+        return new HashSet<>(Arrays.asList(patterns.split(",")));
+    }
+    
+    private static final int CACHE_SIZE = Math.max(1, Math.min(getMaxCacheSize(),
+            Integer.getInteger(CACHE_SIZE_PROPERTY, DEFAULT_CACHE_SIZE)));
 
     // Add a new cache for storing the sorted constructor arrays
     private static final AtomicReference<Map<? super SortedConstructorsCacheKey, Constructor<?>[]>> SORTED_CONSTRUCTORS_CACHE =
@@ -255,20 +335,29 @@ public final class ReflectionUtils {
      * Validates that a field is safe to access via reflection.
      * 
      * @param field the field to validate
-     * @throws SecurityException if the field should not be accessible
+     * @throws SecurityException if the field should not be accessible and validation is enabled
      */
     private static void validateFieldAccess(Field field) {
+        // Only validate if security features are enabled
+        if (!isSecurityEnabled()) {
+            return;
+        }
+        
         Class<?> declaringClass = field.getDeclaringClass();
         String fieldName = field.getName().toLowerCase();
         String className = declaringClass.getName();
         
-        // Check if the declaring class is dangerous
-        if (isDangerousClass(declaringClass)) {
+        // Check if the declaring class is dangerous (if dangerous class validation is enabled)
+        if (isDangerousClassValidationEnabled() && isDangerousClass(declaringClass)) {
             LOG.log(Level.WARNING, "Access to field blocked in dangerous class: " + sanitizeClassName(className) + "." + fieldName);
             throw new SecurityException("Access denied: Field access not permitted in security-sensitive class");
         }
         
-        // Only apply sensitive field validation to non-JDK classes
+        // Only apply sensitive field validation if enabled and for non-JDK classes
+        if (!isSensitiveFieldValidationEnabled()) {
+            return;
+        }
+        
         // This prevents blocking legitimate JDK internal fields while still protecting user classes
         if (className.startsWith("java.") || className.startsWith("javax.") || 
             className.startsWith("sun.") || className.startsWith("com.sun.")) {
@@ -281,8 +370,9 @@ public final class ReflectionUtils {
         }
         
         // Check if the field name suggests sensitive content (only for user classes)
-        for (String pattern : SENSITIVE_FIELD_PATTERNS) {
-            if (fieldName.contains(pattern)) {
+        Set<String> sensitivePatterns = getSensitiveFieldPatterns();
+        for (String pattern : sensitivePatterns) {
+            if (fieldName.contains(pattern.trim().toLowerCase())) {
                 LOG.log(Level.WARNING, "Access to sensitive field blocked: " + sanitizeClassName(className) + "." + fieldName);
                 throw new SecurityException("Access denied: Sensitive field access not permitted");
             }
@@ -293,15 +383,32 @@ public final class ReflectionUtils {
      * Checks if a class is considered dangerous for reflection operations.
      * 
      * @param clazz the class to check
-     * @return true if the class is dangerous and the caller is not trusted
+     * @return true if the class is dangerous and the caller is not trusted, and validation is enabled
      */
     private static boolean isDangerousClass(Class<?> clazz) {
         if (clazz == null) {
             return false;
         }
         
+        // Only check if security and dangerous class validation are enabled
+        if (!isSecurityEnabled() || !isDangerousClassValidationEnabled()) {
+            return false;
+        }
+        
         String className = clazz.getName();
-        if (!DANGEROUS_CLASS_NAMES.contains(className)) {
+        Set<String> dangerousPatterns = getDangerousClassPatterns();
+        
+        // Check if class name matches any dangerous patterns
+        boolean isDangerous = false;
+        for (String pattern : dangerousPatterns) {
+            pattern = pattern.trim();
+            if (className.equals(pattern)) {
+                isDangerous = true;
+                break;
+            }
+        }
+        
+        if (!isDangerous) {
             return false;
         }
         
@@ -782,15 +889,22 @@ public final class ReflectionUtils {
         final FieldNameCacheKey key = new FieldNameCacheKey(c, fieldName);
 
         // Atomically retrieve or compute the field from the cache
-        return FIELD_NAME_CACHE.get().computeIfAbsent(key, k -> {
+        Field field = FIELD_NAME_CACHE.get().computeIfAbsent(key, k -> {
             Collection<Field> fields = getAllDeclaredFields(c);  // returns all fields in c's hierarchy
-            for (Field field : fields) {
-                if (fieldName.equals(field.getName())) {
-                    return field;
+            for (Field f : fields) {
+                if (fieldName.equals(f.getName())) {
+                    return f;
                 }
             }
             return null;  // no matching field
         });
+        
+        // Security: Validate field access before returning
+        if (field != null) {
+            validateFieldAccess(field);
+        }
+        
+        return field;
     }
 
     /**

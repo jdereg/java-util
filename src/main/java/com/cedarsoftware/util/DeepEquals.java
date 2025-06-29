@@ -155,9 +155,7 @@ public class DeepEquals {
     // Epsilon values for floating-point comparisons
     private static final double doubleEpsilon = 1e-15;
     
-    // Configuration for security-safe error messages
-    private static final boolean SECURE_ERROR_MESSAGES = Boolean.parseBoolean(
-            System.getProperty("deepequals.secure.errors", "false"));
+    // Configuration for security-safe error messages - removed static final, now uses dynamic method
     
     // Fields that should be redacted in error messages for security
     private static final Set<String> SENSITIVE_FIELD_NAMES = CollectionUtilities.setOf(
@@ -165,18 +163,121 @@ public class DeepEquals {
             "auth", "authorization", "authentication", "api_key", "apikey"
     );
     
-    // Security limits to prevent memory exhaustion attacks
-    // 0 or negative values = disabled, positive values = enabled with limit
-    private static final int MAX_COLLECTION_SIZE = Integer.parseInt(
-            System.getProperty("deepequals.max.collection.size", "0"));
-    private static final int MAX_ARRAY_SIZE = Integer.parseInt(
-            System.getProperty("deepequals.max.array.size", "0"));
-    private static final int MAX_MAP_SIZE = Integer.parseInt(
-            System.getProperty("deepequals.max.map.size", "0"));
-    private static final int MAX_OBJECT_FIELDS = Integer.parseInt(
-            System.getProperty("deepequals.max.object.fields", "0"));
-    private static final int MAX_RECURSION_DEPTH = Integer.parseInt(
-            System.getProperty("deepequals.max.recursion.depth", "0"));
+    // Default security limits
+    private static final int DEFAULT_MAX_COLLECTION_SIZE = 100000;
+    private static final int DEFAULT_MAX_ARRAY_SIZE = 100000;
+    private static final int DEFAULT_MAX_MAP_SIZE = 100000;
+    private static final int DEFAULT_MAX_OBJECT_FIELDS = 1000;
+    private static final int DEFAULT_MAX_RECURSION_DEPTH = 1000000;  // 1M depth for heap-based traversal
+    
+    static {
+        // Initialize system properties with defaults if not already set (backward compatibility)
+        initializeSystemPropertyDefaults();
+    }
+    
+    private static void initializeSystemPropertyDefaults() {
+        // Set default values if not explicitly configured
+        if (System.getProperty("deepequals.max.collection.size") == null) {
+            System.setProperty("deepequals.max.collection.size", "0"); // Disabled by default
+        }
+        if (System.getProperty("deepequals.max.array.size") == null) {
+            System.setProperty("deepequals.max.array.size", "0"); // Disabled by default
+        }
+        if (System.getProperty("deepequals.max.map.size") == null) {
+            System.setProperty("deepequals.max.map.size", "0"); // Disabled by default
+        }
+        if (System.getProperty("deepequals.max.object.fields") == null) {
+            System.setProperty("deepequals.max.object.fields", "0"); // Disabled by default
+        }
+        if (System.getProperty("deepequals.max.recursion.depth") == null) {
+            System.setProperty("deepequals.max.recursion.depth", "0"); // Disabled by default
+        }
+    }
+    
+    // Security configuration methods
+    
+    private static boolean isSecureErrorsEnabled() {
+        return Boolean.parseBoolean(System.getProperty("deepequals.secure.errors", "false"));
+    }
+    
+    private static int getMaxCollectionSize() {
+        String maxSizeProp = System.getProperty("deepequals.max.collection.size");
+        if (maxSizeProp != null) {
+            try {
+                int value = Integer.parseInt(maxSizeProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_COLLECTION_SIZE;
+    }
+    
+    private static int getMaxArraySize() {
+        String maxSizeProp = System.getProperty("deepequals.max.array.size");
+        if (maxSizeProp != null) {
+            try {
+                int value = Integer.parseInt(maxSizeProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_ARRAY_SIZE;
+    }
+    
+    private static int getMaxMapSize() {
+        String maxSizeProp = System.getProperty("deepequals.max.map.size");
+        if (maxSizeProp != null) {
+            try {
+                int value = Integer.parseInt(maxSizeProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_MAP_SIZE;
+    }
+    
+    private static int getMaxObjectFields() {
+        String maxFieldsProp = System.getProperty("deepequals.max.object.fields");
+        if (maxFieldsProp != null) {
+            try {
+                int value = Integer.parseInt(maxFieldsProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_OBJECT_FIELDS;
+    }
+    
+    private static int getMaxRecursionDepth() {
+        String maxDepthProp = System.getProperty("deepequals.max.recursion.depth");
+        if (maxDepthProp != null) {
+            try {
+                int value = Integer.parseInt(maxDepthProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_RECURSION_DEPTH;
+    }
+    
+    /**
+     * Calculate the depth of the current item in the object graph by counting
+     * the number of parent links. This is used for heap-based depth tracking.
+     */
+    private static int calculateDepth(ItemsToCompare item) {
+        int depth = 0;
+        ItemsToCompare current = item.parent;
+        while (current != null) {
+            depth++;
+            current = current.parent;
+        }
+        return depth;
+    }
     
     // Class to hold information about items being compared
     private final static class ItemsToCompare {
@@ -314,7 +415,7 @@ public class DeepEquals {
 
     private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<Object> visited) {
         Deque<ItemsToCompare> stack = new LinkedList<>();
-        boolean result = deepEquals(a, b, stack, options, visited, 0);
+        boolean result = deepEquals(a, b, stack, options, visited);
 
         boolean isRecurive = Objects.equals(true, options.get("recursive_call"));
         if (!result && !stack.isEmpty()) {
@@ -328,23 +429,29 @@ public class DeepEquals {
         return result;
     }
 
-    // Recursive deepEquals implementation
+    // Heap-based deepEquals implementation
     private static boolean deepEquals(Object a, Object b, Deque<ItemsToCompare> stack,
-                                      Map<String, ?> options, Set<Object> visited, int depth) {
+                                      Map<String, ?> options, Set<Object> visited) {
         Collection<Class<?>> ignoreCustomEquals = (Collection<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
         boolean allowAllCustomEquals = ignoreCustomEquals == null;
         boolean hasNonEmptyIgnoreSet = (ignoreCustomEquals != null && !ignoreCustomEquals.isEmpty());
         final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
         
-        // Security check: prevent excessive recursion depth
-        if (MAX_RECURSION_DEPTH > 0 && depth > MAX_RECURSION_DEPTH) {
-            throw new SecurityException("Maximum recursion depth exceeded: " + MAX_RECURSION_DEPTH);
-        }
-        
         stack.addFirst(new ItemsToCompare(a, b));
+
+        // Hoist loop invariant: maxRecursionDepth doesn't change during execution
+        final int maxRecursionDepth = getMaxRecursionDepth();
 
         while (!stack.isEmpty()) {
             ItemsToCompare itemsToCompare = stack.peek();
+            
+            // Security check: prevent excessive recursion depth (heap-based depth tracking)
+            if (maxRecursionDepth > 0) {
+                int currentDepth = calculateDepth(itemsToCompare);
+                if (currentDepth > maxRecursionDepth) {
+                    throw new SecurityException("Maximum recursion depth exceeded: " + currentDepth + " > " + maxRecursionDepth);
+                }
+            }
 
             if (visited.contains(itemsToCompare)) {
                 stack.removeFirst();
@@ -559,8 +666,9 @@ public class DeepEquals {
         ItemsToCompare currentItem = stack.peek();
 
         // Security check: validate collection sizes
-        if (MAX_COLLECTION_SIZE > 0 && (col1.size() > MAX_COLLECTION_SIZE || col2.size() > MAX_COLLECTION_SIZE)) {
-            throw new SecurityException("Collection size exceeds maximum allowed: " + MAX_COLLECTION_SIZE);
+        int maxCollectionSize = getMaxCollectionSize();
+        if (maxCollectionSize > 0 && (col1.size() > maxCollectionSize || col2.size() > maxCollectionSize)) {
+            throw new SecurityException("Collection size exceeds maximum allowed: " + maxCollectionSize);
         }
 
         // Check sizes first
@@ -614,8 +722,9 @@ public class DeepEquals {
         ItemsToCompare currentItem = stack.peek();
 
         // Security check: validate collection sizes
-        if (MAX_COLLECTION_SIZE > 0 && (col1.size() > MAX_COLLECTION_SIZE || col2.size() > MAX_COLLECTION_SIZE)) {
-            throw new SecurityException("Collection size exceeds maximum allowed: " + MAX_COLLECTION_SIZE);
+        int maxCollectionSize = getMaxCollectionSize();
+        if (maxCollectionSize > 0 && (col1.size() > maxCollectionSize || col2.size() > maxCollectionSize)) {
+            throw new SecurityException("Collection size exceeds maximum allowed: " + maxCollectionSize);
         }
 
         // Check sizes first
@@ -643,8 +752,9 @@ public class DeepEquals {
         ItemsToCompare currentItem = stack.peek();
 
         // Security check: validate map sizes
-        if (MAX_MAP_SIZE > 0 && (map1.size() > MAX_MAP_SIZE || map2.size() > MAX_MAP_SIZE)) {
-            throw new SecurityException("Map size exceeds maximum allowed: " + MAX_MAP_SIZE);
+        int maxMapSize = getMaxMapSize();
+        if (maxMapSize > 0 && (map1.size() > maxMapSize || map2.size() > maxMapSize)) {
+            throw new SecurityException("Map size exceeds maximum allowed: " + maxMapSize);
         }
 
         // Check sizes first
@@ -747,8 +857,9 @@ public class DeepEquals {
         int len2 = Array.getLength(array2);
         
         // Security check: validate array sizes
-        if (MAX_ARRAY_SIZE > 0 && (len1 > MAX_ARRAY_SIZE || len2 > MAX_ARRAY_SIZE)) {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && (len1 > maxArraySize || len2 > maxArraySize)) {
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         
         if (len1 != len2) {
@@ -773,8 +884,9 @@ public class DeepEquals {
         Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj1.getClass());
 
         // Security check: validate field count
-        if (MAX_OBJECT_FIELDS > 0 && fields.size() > MAX_OBJECT_FIELDS) {
-            throw new SecurityException("Object field count exceeds maximum allowed: " + MAX_OBJECT_FIELDS);
+        int maxObjectFields = getMaxObjectFields();
+        if (maxObjectFields > 0 && fields.size() > maxObjectFields) {
+            throw new SecurityException("Object field count exceeds maximum allowed: " + maxObjectFields);
         }
 
         // Push each field for comparison
@@ -1388,7 +1500,7 @@ public class DeepEquals {
                 String fieldName = field.getName();
                 
                 // Check if field is sensitive and security is enabled
-                if (SECURE_ERROR_MESSAGES && isSensitiveField(fieldName)) {
+                if (isSecureErrorsEnabled() && isSensitiveField(fieldName)) {
                     sb.append(fieldName).append(": [REDACTED]");
                     continue;
                 }
@@ -1452,7 +1564,7 @@ public class DeepEquals {
 
         if (value instanceof String) {
             String str = (String) value;
-            return SECURE_ERROR_MESSAGES ? sanitizeStringValue(str) : "\"" + str + "\"";
+            return isSecureErrorsEnabled() ? sanitizeStringValue(str) : "\"" + str + "\"";
         }
         if (value instanceof Character) return "'" + value + "'";
         if (value instanceof Number) {
@@ -1467,17 +1579,17 @@ public class DeepEquals {
             return "TimeZone: " + timeZone.getID();
         }
         if (value instanceof URI) {
-            return SECURE_ERROR_MESSAGES ? sanitizeUriValue((URI) value) : value.toString();
+            return isSecureErrorsEnabled() ? sanitizeUriValue((URI) value) : value.toString();
         }
         if (value instanceof URL) {
-            return SECURE_ERROR_MESSAGES ? sanitizeUrlValue((URL) value) : value.toString();
+            return isSecureErrorsEnabled() ? sanitizeUrlValue((URL) value) : value.toString();
         }
         if (value instanceof UUID) {
             return value.toString();  // UUID is generally safe to display
         }
 
         // For other types, show type and sanitized toString if security enabled
-        if (SECURE_ERROR_MESSAGES) {
+        if (isSecureErrorsEnabled()) {
             return value.getClass().getSimpleName() + ":[REDACTED]";
         }
         return value.getClass().getSimpleName() + ":" + value;

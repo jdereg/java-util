@@ -32,10 +32,23 @@ import static java.util.Collections.swap;
  * <p>MathUtilities provides configurable security options through system properties.
  * All security features are <strong>disabled by default</strong> for backward compatibility:</p>
  * <ul>
- *   <li><code>math.max.array.size=0</code> &mdash; Array size limit for min/max operations (0=disabled)</li>
- *   <li><code>math.max.string.length=0</code> &mdash; String length limit for parsing (0=disabled)</li>
- *   <li><code>math.max.permutation.size=0</code> &mdash; List size limit for permutations (0=disabled)</li>
+ *   <li><code>mathutilities.security.enabled=false</code> &mdash; Master switch to enable all security features</li>
+ *   <li><code>mathutilities.max.array.size=0</code> &mdash; Array size limit for min/max operations (0=disabled)</li>
+ *   <li><code>mathutilities.max.string.length=0</code> &mdash; String length limit for parsing (0=disabled)</li>
+ *   <li><code>mathutilities.max.permutation.size=0</code> &mdash; List size limit for permutations (0=disabled)</li>
  * </ul>
+ *
+ * <p><strong>Example Usage:</strong></p>
+ * <pre>{@code
+ * // Enable security with default limits
+ * System.setProperty("mathutilities.security.enabled", "true");
+ *
+ * // Or enable with custom limits
+ * System.setProperty("mathutilities.security.enabled", "true");
+ * System.setProperty("mathutilities.max.array.size", "1000");
+ * System.setProperty("mathutilities.max.string.length", "100");
+ * System.setProperty("mathutilities.max.permutation.size", "10");
+ * }</pre>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -60,14 +73,63 @@ public final class MathUtilities
     public static final BigDecimal BIG_DEC_DOUBLE_MIN = BigDecimal.valueOf(-Double.MAX_VALUE);
     public static final BigDecimal BIG_DEC_DOUBLE_MAX = BigDecimal.valueOf(Double.MAX_VALUE);
 
-    // Security limits to prevent resource exhaustion attacks
-    // 0 or negative values = disabled, positive values = enabled with limit
-    private static final int MAX_ARRAY_SIZE = Integer.parseInt(
-            System.getProperty("math.max.array.size", "0"));
-    private static final int MAX_STRING_LENGTH = Integer.parseInt(
-            System.getProperty("math.max.string.length", "0"));
-    private static final int MAX_PERMUTATION_SIZE = Integer.parseInt(
-            System.getProperty("math.max.permutation.size", "0"));
+    // Security Configuration - using dynamic property reading for testability
+    // Default limits used when security is enabled but no custom limits specified
+    private static final int DEFAULT_MAX_ARRAY_SIZE = 100000;       // 100K array elements
+    private static final int DEFAULT_MAX_STRING_LENGTH = 100000;    // 100K character string
+    private static final int DEFAULT_MAX_PERMUTATION_SIZE = 10;     // 10! = 3.6M permutations
+    
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("mathutilities.security.enabled", "false"));
+    }
+    
+    private static int getMaxArraySize() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String value = System.getProperty("mathutilities.max.array.size");
+        if (value == null) {
+            return DEFAULT_MAX_ARRAY_SIZE;
+        }
+        try {
+            int limit = Integer.parseInt(value);
+            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
+        } catch (NumberFormatException e) {
+            return DEFAULT_MAX_ARRAY_SIZE;
+        }
+    }
+    
+    private static int getMaxStringLength() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String value = System.getProperty("mathutilities.max.string.length");
+        if (value == null) {
+            return DEFAULT_MAX_STRING_LENGTH;
+        }
+        try {
+            int limit = Integer.parseInt(value);
+            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
+        } catch (NumberFormatException e) {
+            return DEFAULT_MAX_STRING_LENGTH;
+        }
+    }
+    
+    private static int getMaxPermutationSize() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String value = System.getProperty("mathutilities.max.permutation.size");
+        if (value == null) {
+            return DEFAULT_MAX_PERMUTATION_SIZE;
+        }
+        try {
+            int limit = Integer.parseInt(value);
+            return limit <= 0 ? 0 : limit; // 0 or negative means disabled
+        } catch (NumberFormatException e) {
+            return DEFAULT_MAX_PERMUTATION_SIZE;
+        }
+    }
 
     private MathUtilities()
     {
@@ -88,9 +150,10 @@ public final class MathUtilities
             throw new IllegalArgumentException("values cannot be empty");
         }
         // Security check: validate array size
-        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && len > maxArraySize)
         {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         long current = values[0];
 
@@ -116,9 +179,10 @@ public final class MathUtilities
             throw new IllegalArgumentException("values cannot be empty");
         }
         // Security check: validate array size
-        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && len > maxArraySize)
         {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         long current = values[0];
 
@@ -144,9 +208,10 @@ public final class MathUtilities
             throw new IllegalArgumentException("values cannot be empty");
         }
         // Security check: validate array size
-        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && len > maxArraySize)
         {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         double current = values[0];
 
@@ -172,9 +237,10 @@ public final class MathUtilities
             throw new IllegalArgumentException("values cannot be empty");
         }
         // Security check: validate array size
-        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && len > maxArraySize)
         {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         double current = values[0];
 
@@ -200,9 +266,10 @@ public final class MathUtilities
             throw new IllegalArgumentException("values cannot be empty");
         }
         // Security check: validate array size
-        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && len > maxArraySize)
         {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         if (len == 1)
         {
@@ -240,9 +307,10 @@ public final class MathUtilities
             throw new IllegalArgumentException("values cannot be empty");
         }
         // Security check: validate array size
-        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && len > maxArraySize)
         {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         if (len == 1)
         {
@@ -280,9 +348,10 @@ public final class MathUtilities
             throw new IllegalArgumentException("values cannot be empty");
         }
         // Security check: validate array size
-        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && len > maxArraySize)
         {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         if (len == 1)
         {
@@ -320,9 +389,10 @@ public final class MathUtilities
             throw new IllegalArgumentException("values cannot be empty");
         }
         // Security check: validate array size
-        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        int maxArraySize = getMaxArraySize();
+        if (maxArraySize > 0 && len > maxArraySize)
         {
-            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+            throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
         if (len == 1)
         {
@@ -377,9 +447,10 @@ public final class MathUtilities
         Objects.requireNonNull(numStr, "numStr");
         
         // Security check: validate string length
-        if (MAX_STRING_LENGTH > 0 && numStr.length() > MAX_STRING_LENGTH)
+        int maxStringLength = getMaxStringLength();
+        if (maxStringLength > 0 && numStr.length() > maxStringLength)
         {
-            throw new SecurityException("String length exceeds maximum allowed: " + MAX_STRING_LENGTH);
+            throw new SecurityException("String length exceeds maximum allowed: " + maxStringLength);
         }
 
         boolean negative = false;
@@ -495,9 +566,10 @@ public final class MathUtilities
         }
         
         // Security check: validate list size
-        if (MAX_PERMUTATION_SIZE > 0 && list.size() > MAX_PERMUTATION_SIZE)
+        int maxPermutationSize = getMaxPermutationSize();
+        if (maxPermutationSize > 0 && list.size() > maxPermutationSize)
         {
-            throw new SecurityException("List size exceeds maximum allowed for permutation: " + MAX_PERMUTATION_SIZE);
+            throw new SecurityException("List size exceeds maximum allowed for permutation: " + maxPermutationSize);
         }
         int k = list.size() - 2;
         while (k >= 0 && list.get(k).compareTo(list.get(k + 1)) >= 0) {

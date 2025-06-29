@@ -3139,6 +3139,178 @@ String output2 = exec.getOut();
 This implementation provides a robust and convenient way to execute system commands while properly handling streams, environment variables, and working directories.
 
 ---
+## Traverser
+[Source](/src/main/java/com/cedarsoftware/util/Traverser.java)
+
+A Java Object Graph traverser that visits all object reference fields and invokes a provided callback for each encountered object, including the root. It properly detects cycles within the graph to prevent infinite loops and provides complete field information including metadata for each visited node.
+
+### Key Features
+- **Object Graph Traversal:** Visits all object reference fields recursively
+- **Cycle Detection:** Prevents infinite loops in circular object references
+- **Field Information:** Provides complete field metadata for each visited node
+- **Type Skipping:** Allows selective skipping of specified classes during traversal
+- **Security Controls:** Configurable limits to prevent resource exhaustion attacks
+- **Modern API:** Consumer-based callback system with detailed node information
+- **Legacy Support:** Backward-compatible visitor pattern API
+
+### Basic Usage
+
+**Modern API (Recommended):**
+```java
+// Define classes to skip (optional)
+Set<Class<?>> classesToSkip = new HashSet<>();
+classesToSkip.add(String.class);
+
+// Traverse with full node information
+Traverser.traverse(root, visit -> {
+    System.out.println("Node: " + visit.getNode());
+    visit.getFields().forEach((field, value) -> {
+        System.out.println("  Field: " + field.getName() +
+            " (type: " + field.getType().getSimpleName() + ") = " + value);
+
+        // Access field metadata if needed
+        if (field.isAnnotationPresent(JsonProperty.class)) {
+            JsonProperty ann = field.getAnnotation(JsonProperty.class);
+            System.out.println("    JSON property: " + ann.value());
+        }
+    });
+}, classesToSkip);
+```
+
+**Legacy API (Deprecated):**
+```java
+// Define a visitor that processes each object
+Traverser.Visitor visitor = new Traverser.Visitor() {
+    @Override
+    public void process(Object o) {
+        System.out.println("Visited: " + o);
+    }
+};
+
+// Create an object graph and traverse it
+SomeClass root = new SomeClass();
+Traverser.traverse(root, visitor);
+```
+
+### Security Configuration
+
+Traverser provides configurable security controls to prevent resource exhaustion and stack overflow attacks from malicious or deeply nested object graphs. All security features are **disabled by default** for backward compatibility.
+
+**System Property Configuration:**
+```properties
+# Master switch for all security features
+traverser.security.enabled=false
+
+# Individual security limits (0 = disabled)
+traverser.max.stack.depth=0
+traverser.max.objects.visited=0
+traverser.max.collection.size=0
+traverser.max.array.length=0
+```
+
+**Security Features:**
+- **Stack Depth Limiting:** Prevents stack overflow from deeply nested object graphs
+- **Object Count Limiting:** Prevents memory exhaustion from large object graphs  
+- **Collection Size Limiting:** Limits processing of oversized collections and maps
+- **Array Length Limiting:** Limits processing of oversized object arrays (primitive arrays are not limited)
+
+**Usage Examples:**
+
+**Enable Security with Custom Limits:**
+```java
+// Enable security with custom limits
+System.setProperty("traverser.security.enabled", "true");
+System.setProperty("traverser.max.stack.depth", "1000");
+System.setProperty("traverser.max.objects.visited", "50000");
+System.setProperty("traverser.max.collection.size", "10000");
+System.setProperty("traverser.max.array.length", "5000");
+
+// These will now enforce security controls
+Traverser.traverse(root, classesToSkip, visit -> {
+    // Process visit - will throw SecurityException if limits exceeded
+});
+```
+
+**Security Error Handling:**
+```java
+try {
+    Traverser.traverse(maliciousObject, visit -> {
+        // Process normally
+    }, null);
+} catch (SecurityException e) {
+    // Handle security limit exceeded
+    if (e.getMessage().contains("Stack depth exceeded")) {
+        // Handle deep nesting attack
+    } else if (e.getMessage().contains("Objects visited exceeded")) {
+        // Handle large object graph attack
+    } else if (e.getMessage().contains("Collection size exceeded")) {
+        // Handle oversized collection attack
+    } else if (e.getMessage().contains("Array length exceeded")) {
+        // Handle oversized array attack
+    }
+}
+```
+
+### Advanced Usage
+
+**Field Filtering:**
+```java
+// Traverser automatically filters fields using ReflectionUtils
+// - Excludes synthetic fields
+// - Excludes primitive fields from traversal
+// - Includes all declared fields from class hierarchy
+```
+
+**Node Information:**
+```java
+Traverser.traverse(root, visit -> {
+    Object node = visit.getNode();
+    Class<?> nodeClass = visit.getNodeClass();
+    Map<Field, Object> fields = visit.getFields();
+    
+    // Examine field details
+    for (Map.Entry<Field, Object> entry : fields.entrySet()) {
+        Field field = entry.getKey();
+        Object value = entry.getValue();
+        
+        // Field metadata available
+        System.out.println("Field: " + field.getName());
+        System.out.println("Type: " + field.getType());
+        System.out.println("Modifiers: " + field.getModifiers());
+        System.out.println("Accessible: " + field.isAccessible());
+        System.out.println("Value: " + value);
+    }
+}, null);
+```
+
+### Performance Considerations
+- Uses efficient cycle detection with IdentityHashMap
+- Lazy field collection when using supplier-based NodeVisit
+- Processes primitive arrays without traversing elements
+- Memory-efficient traversal of large object graphs
+- Heap-based traversal (not recursive) for unlimited graph depth capability
+
+### Security Considerations
+- **Resource Exhaustion:** Use security limits for untrusted object graphs
+- **Stack Overflow:** Configure max stack depth for deeply nested objects
+- **Memory Usage:** Set object count limits for large graphs
+- **Collection Bombs:** Limit collection and array sizes
+- **Backward Compatibility:** Security features disabled by default
+
+### Thread Safety
+This class is **not** thread-safe. If multiple threads access a Traverser instance concurrently, external synchronization is required.
+
+### Implementation Notes
+- Uses heap-based traversal with security depth tracking (not recursive)
+- Handles arrays, collections, maps, and regular objects
+- Supports both immediate and lazy field collection
+- Integrates with ReflectionUtils for field access
+- Provides detailed security violation messages
+- Can handle very deep object graphs (up to 1M depth by default) due to heap allocation
+
+This implementation provides a powerful and secure way to traverse complex object graphs while offering protection against various resource exhaustion attacks.
+
+---
 ## GraphComparator
 [Source](/src/main/java/com/cedarsoftware/util/GraphComparator.java)
 
@@ -5399,4 +5571,408 @@ Date bigEpoch = DateUtilities.parseDate("123456789012345678901234567890"); // al
 - **Memory exhaustion:** Oversized input strings that consume excessive memory
 - **Resource exhaustion:** Patterns designed to consume excessive CPU time
 - **Input validation bypass:** Attempts to circumvent normal parsing logic
+
+---
+
+## ClassUtilities Security Configuration
+
+ClassUtilities provides a unique hybrid security model that combines always-active core security with optional enhanced security features. This approach ensures that fundamental class loading and reflection security is never compromised while allowing additional protections for high-security environments.
+
+### Security Architecture
+
+**Core Security (Always Active):**
+- Dangerous class blocking (Runtime, ProcessBuilder, System, etc.)
+- Path traversal protection in resource loading
+- ClassLoader validation
+- Reflection permission checks
+- These protections **cannot be disabled** and are always enforced
+
+**Enhanced Security (Configurable):**
+- Class loading depth limits
+- Constructor argument count limits
+- Reflection operation limits
+- Configurable resource name length restrictions
+
+### System Property Configuration
+
+**Enhanced Security Properties:**
+```properties
+# Master enhanced security switch (disabled by default)
+classutilities.enhanced.security.enabled=false
+
+# Class loading depth tracking (0 = disabled)
+classutilities.max.class.load.depth=100
+
+# Constructor argument limits (0 = disabled)  
+classutilities.max.constructor.args=50
+
+# Reflection operation limits (0 = disabled)
+classutilities.max.reflection.operations=1000
+
+# Resource name length limits (minimum 100 characters)
+classutilities.max.resource.name.length=1000
+```
+
+### Security Features
+
+**Core Security Features (Always Enabled):**
+
+**Dangerous Class Blocking:**
+- Prevents instantiation of Runtime, ProcessBuilder, System, etc.
+- Blocks access to reflection classes (Method, Field, Constructor)
+- Prevents loading of scripting engine classes
+- Uses high-performance ClassValue caching for fast validation
+
+**Resource Path Protection:**
+- Blocks path traversal attempts (../, \\, absolute paths)
+- Prevents access to system resources (META-INF, passwd, hosts)
+- Validates resource names for null bytes and dangerous patterns
+- Always enforces basic length limits (configurable with enhanced security)
+
+**ClassLoader Validation:**
+- Validates context ClassLoaders for suspicious patterns
+- Warns about non-standard ClassLoader usage
+- Provides OSGi and JPMS environment detection
+
+**Enhanced Security Features (Configurable):**
+
+**Class Loading Depth Tracking:**
+- Monitors recursive class loading operations
+- Prevents infinite recursion in class dependency chains
+- Uses ThreadLocal tracking for thread-safe depth monitoring
+- Configurable depth limits (default: 100, 0 = disabled)
+
+**Constructor Argument Limits:**
+- Limits the number of arguments passed to constructor calls
+- Prevents resource exhaustion via excessive parameter processing
+- Configurable limits (default: 50, 0 = disabled)
+
+**Resource Name Length Enforcement:**
+- Enhanced length restrictions beyond core security
+- Configurable limits with enforced minimum of 100 characters
+- Balances security with practical usability requirements
+
+### Usage Examples
+
+**Default Behavior (Core Security Only):**
+```java
+// Core security is always active
+try {
+    ClassUtilities.newInstance(Runtime.class, null); // Always blocked
+} catch (SecurityException e) {
+    // Core security prevents dangerous class instantiation
+}
+
+// Enhanced security is disabled by default
+ClassUtilities.loadResourceAsBytes("very_long_resource_name..."); // Allowed up to default limits
+```
+
+**Enhanced Security Configuration:**
+```java
+// Enable enhanced security with custom limits
+System.setProperty("classutilities.enhanced.security.enabled", "true");
+System.setProperty("classutilities.max.class.load.depth", "50");
+System.setProperty("classutilities.max.constructor.args", "20");
+System.setProperty("classutilities.max.resource.name.length", "200");
+
+// Now enhanced limits are enforced
+try {
+    Object[] manyArgs = new Object[25]; // Exceeds limit of 20
+    ClassUtilities.newInstance(String.class, manyArgs); // Throws SecurityException
+} catch (SecurityException e) {
+    // Enhanced security prevents excessive constructor arguments
+}
+```
+
+**Production Security Setup:**
+```java
+// Recommended production configuration
+System.setProperty("classutilities.enhanced.security.enabled", "true");
+System.setProperty("classutilities.max.class.load.depth", "75");
+System.setProperty("classutilities.max.constructor.args", "30");
+System.setProperty("classutilities.max.resource.name.length", "500");
+```
+
+### Configuration Details
+
+**Enhanced Security Master Switch:**
+- Controls whether enhanced security features are active
+- When disabled, only core security features operate
+- Default: false (disabled) for backward compatibility
+- Must be enabled to use any enhanced security features
+
+**Class Loading Depth Protection:**
+- Tracks nested class loading operations per thread
+- Prevents stack overflow from circular class dependencies
+- Uses efficient ThreadLocal storage for tracking
+- Zero value disables depth checking
+
+**Constructor Argument Validation:**
+- Validates argument count before instantiation attempts
+- Prevents resource exhaustion from excessive parameter processing
+- Applied to all newInstance() method variants
+- Zero value disables argument count checking
+
+**Resource Name Length Controls:**
+- Extends core path traversal protection with configurable limits
+- Enforces minimum length of 100 characters for practical usability
+- Prevents buffer overflow attacks via oversized resource names
+- Core security always enforces basic length validation
+
+### Security Considerations
+
+**Always-Active vs. Configurable:**
+- Core security features address fundamental class loading risks
+- Enhanced features provide additional protection layers
+- Core security cannot be bypassed or disabled
+- Enhanced security adds defense-in-depth capabilities
+
+**Performance Impact:**
+- Core security uses optimized ClassValue caching for minimal overhead
+- Enhanced security adds small validation costs when enabled
+- ThreadLocal depth tracking has negligible performance impact
+- Resource validation happens before expensive I/O operations
+
+**When to Enable Enhanced Security:**
+- Applications processing untrusted class names or reflection operations
+- Multi-tenant environments with strict resource controls
+- Systems requiring protection against resource exhaustion attacks
+- Environments with advanced security compliance requirements
+
+**Backward Compatibility:**
+- Core security maintains compatibility with legitimate use cases
+- Enhanced security is disabled by default
+- Configuration changes require application restart
+- All limits are configurable to balance security with functionality
+
+**Thread Safety:**
+- All security operations are thread-safe
+- ThreadLocal depth tracking prevents cross-thread interference
+- ClassValue caching provides thread-safe class validation
+- System property reading is performed safely
+
+**Attack Vectors Addressed:**
+- **Class loading attacks:** Prevents loading and instantiation of dangerous classes
+- **Path traversal:** Blocks unauthorized resource access via malicious paths  
+- **Resource exhaustion:** Limits constructor arguments and class loading depth
+- **Reflection bypasses:** Enforces security even in reflection-based operations
+
+---
+
+## ByteUtilities Security Configuration
+
+ByteUtilities provides configurable security options to prevent resource exhaustion attacks through oversized hex strings and byte arrays.
+
+### Security Properties
+
+```properties
+# Master security switch (disabled by default)
+byteutilities.security.enabled=false
+
+# Hex string length limit for decode operations (0 = disabled)
+byteutilities.max.hex.string.length=1000000
+
+# Byte array size limit for encode operations (0 = disabled)  
+byteutilities.max.array.size=10000000
+```
+
+### Security Features
+
+**Resource Exhaustion Protection:**
+- Hex string length validation prevents memory exhaustion during decode operations
+- Byte array size limits prevent excessive memory allocation during encode operations
+- Configurable limits with secure defaults (1MB hex strings, 10MB byte arrays)
+- Zero or negative values disable specific limits
+
+### Usage Examples
+
+**Default Behavior (Security Disabled):**
+```java
+// Security is disabled by default for backward compatibility
+ByteUtilities.decode(veryLongHexString); // No limits enforced
+ByteUtilities.encode(largeByteArray);    // No limits enforced
+```
+
+**Enhanced Security Configuration:**
+```java
+// Enable security with default limits
+System.setProperty("byteutilities.security.enabled", "true");
+
+// Or enable with custom limits
+System.setProperty("byteutilities.security.enabled", "true");
+System.setProperty("byteutilities.max.hex.string.length", "10000");
+System.setProperty("byteutilities.max.array.size", "1000000");
+
+// Now size limits are enforced
+try {
+    ByteUtilities.decode(oversizedHexString); // May throw SecurityException
+} catch (SecurityException e) {
+    // Handle security violation
+}
+```
+
+---
+
+## MathUtilities Security Configuration
+
+MathUtilities provides configurable security options to prevent resource exhaustion attacks through oversized arrays, strings, and permutation operations.
+
+### Security Properties
+
+```properties
+# Master security switch (disabled by default)
+mathutilities.security.enabled=false
+
+# Array size limit for min/max operations (0 = disabled)
+mathutilities.max.array.size=100000
+
+# String length limit for parsing operations (0 = disabled)
+mathutilities.max.string.length=100000
+
+# List size limit for permutation operations (0 = disabled)
+mathutilities.max.permutation.size=10
+```
+
+### Security Features
+
+**Resource Exhaustion Protection:**
+- Array size validation prevents memory exhaustion in min/max operations
+- String length limits prevent excessive memory use during number parsing
+- Permutation size limits prevent factorial computation explosion (10! = 3.6M operations)
+- Configurable limits with practical defaults for each operation type
+
+### Usage Examples
+
+**Default Behavior (Security Disabled):**
+```java
+// Security is disabled by default for backward compatibility
+MathUtilities.minimum(veryLargeArray);        // No limits enforced
+MathUtilities.parseToMinimalNumericType(longString); // No limits enforced
+MathUtilities.nextPermutation(largeList);     // No limits enforced
+```
+
+**Enhanced Security Configuration:**
+```java
+// Enable security with default limits
+System.setProperty("mathutilities.security.enabled", "true");
+
+// Or enable with custom limits
+System.setProperty("mathutilities.security.enabled", "true");
+System.setProperty("mathutilities.max.array.size", "1000");
+System.setProperty("mathutilities.max.string.length", "100");
+System.setProperty("mathutilities.max.permutation.size", "8");
+
+// Now limits are enforced
+try {
+    MathUtilities.minimum(oversizedArray); // May throw SecurityException
+} catch (SecurityException e) {
+    // Handle security violation
+}
+```
+
+---
+
+## Executor Security Configuration
+
+⚠️ **BREAKING CHANGE:** As of this version, Executor is **disabled by default** for security reasons.
+
+### Security Properties
+
+```properties
+# Command execution control (disabled by default for security)
+executor.enabled=false
+```
+
+### Security Features
+
+**Command Execution Control:**
+- Complete disable/enable control for all command execution
+- Disabled by default to prevent accidental command injection
+- Must be explicitly enabled for any command execution functionality
+- Clear error messages provide instructions for enabling
+
+### Breaking Change Notice
+
+**Previous Behavior:** Executor was enabled by default
+**New Behavior:** Executor is disabled by default and must be explicitly enabled
+
+### Usage Examples
+
+**Migration Required (Breaking Change):**
+```java
+// OLD CODE (no longer works):
+Executor exec = new Executor();
+exec.exec("ls -l"); // Throws SecurityException
+
+// NEW CODE (explicit enablement required):
+System.setProperty("executor.enabled", "true");
+Executor exec = new Executor();
+exec.exec("ls -l"); // Now works
+```
+
+**Recommended Production Usage:**
+```java
+// Only enable when command execution is actually needed
+if (commandExecutionRequired) {
+    System.setProperty("executor.enabled", "true");
+    
+    // Use Executor for trusted operations only
+    Executor exec = new Executor();
+    ExecutionResult result = exec.execute(trustedCommand);
+    
+    // Consider disabling after use in high-security environments
+    System.setProperty("executor.enabled", "false");
+}
+```
+
+---
+
+## Security Configuration Summary
+
+All java-util security features follow consistent patterns:
+
+### Common Principles
+
+1. **Disabled by Default:** All security features are disabled by default for backward compatibility (except Executor for security reasons)
+2. **Master Switches:** Each utility class has a `[classname].security.enabled` property
+3. **Configurable Limits:** Individual limits can be customized via system properties
+4. **Zero Disables:** Setting limits to 0 or negative values disables that specific check
+5. **Clear Errors:** SecurityExceptions provide clear guidance on configuration
+
+### Property Naming Convention
+
+```properties
+# Master switch pattern
+[classname].security.enabled=false
+
+# Individual limit patterns  
+[classname].max.[feature].[type]=[limit]
+```
+
+### Examples of Consistent Configuration
+
+```properties
+# System utilities
+systemutilities.security.enabled=false
+systemutilities.max.command.length=1000
+
+# String utilities  
+stringutilities.security.enabled=false
+stringutilities.max.string.length=1000000
+
+# Array utilities
+arrayutilities.security.enabled=false
+arrayutilities.max.array.size=1000000
+
+# Byte utilities
+byteutilities.security.enabled=false
+byteutilities.max.hex.string.length=1000000
+
+# Math utilities
+mathutilities.security.enabled=false
+mathutilities.max.array.size=100000
+
+# Exception: Executor (disabled by default for security)
+executor.enabled=false
+```
 

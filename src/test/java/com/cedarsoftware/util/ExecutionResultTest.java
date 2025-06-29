@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -7,6 +9,25 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class ExecutionResultTest {
+    private String originalExecutorEnabled;
+
+    @BeforeEach
+    void setUp() {
+        // Save original executor.enabled state
+        originalExecutorEnabled = System.getProperty("executor.enabled");
+        // Enable executor for tests
+        System.setProperty("executor.enabled", "true");
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Restore original executor.enabled state
+        if (originalExecutorEnabled == null) {
+            System.clearProperty("executor.enabled");
+        } else {
+            System.setProperty("executor.enabled", originalExecutorEnabled);
+        }
+    }
 
     @Test
     public void testGetOutAndErrorSuccess() {

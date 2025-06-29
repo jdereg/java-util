@@ -37,6 +37,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -292,6 +293,22 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(Map.class, Enum.class), new Object[][]{
                 { mapOf("name", "funky bunch"), new IllegalArgumentException("Unsupported conversion, source type [UnmodifiableMap ({name=funky bunch})] target type 'Enum'")},
+        });
+        
+        // String to Map conversion tests (for enum-like strings)
+        TEST_DB.put(pair(String.class, Map.class), new Object[][]{
+                { "FRIDAY", mapOf("name", "FRIDAY")},
+                { "HTTP_OK", mapOf("name", "HTTP_OK")},
+                { "MAX_VALUE", mapOf("name", "MAX_VALUE")},
+                { "hello", new IllegalArgumentException("Unsupported conversion, source type [String (hello)] target type 'Map'")},
+                { "camelCase", new IllegalArgumentException("Unsupported conversion, source type [String (camelCase)] target type 'Map'")},
+        });
+        
+        // String to CustomType conversion tests (from ConverterStaticMethodsTest)
+        TEST_DB.put(pair(String.class, CustomType.class), new Object[][]{
+                { "test", new CustomType("test")},
+                { "hello", new CustomType("hello")},
+                { "", new CustomType("")},
         });
     }
 
@@ -4721,6 +4738,10 @@ class ConverterEverythingTest {
 
     @BeforeAll
     static void statPrep() {
+        // Register custom conversion for String -> CustomType
+        com.cedarsoftware.util.Converter.addConversion(String.class, CustomType.class, 
+            (from, converter) -> new CustomType((String) from));
+        
         Map<Class<?>, Set<Class<?>>> map = com.cedarsoftware.util.Converter.allSupportedConversions();
 
         for (Map.Entry<Class<?>, Set<Class<?>>> entry : map.entrySet()) {
@@ -4761,5 +4782,32 @@ class ConverterEverythingTest {
     @MethodSource("generateTestEverythingParamsInReverse")
     void testConvertReverse(String shortNameSource, String shortNameTarget, Object source, Object target, Class<?> sourceClass, Class<?> targetClass, int index) {
         testConvert(shortNameSource, shortNameTarget, source, target, sourceClass, targetClass, index);
+    }
+
+    // Test class for String -> CustomType conversion testing
+    static class CustomType {
+        final String value;
+        
+        CustomType(String value) { 
+            this.value = value; 
+        }
+        
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            CustomType that = (CustomType) obj;
+            return Objects.equals(value, that.value);
+        }
+        
+        @Override
+        public int hashCode() {
+            return Objects.hash(value);
+        }
+        
+        @Override
+        public String toString() {
+            return "CustomType{value='" + value + "'}";
+        }
     }
 }

@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +17,41 @@ import static org.junit.jupiter.api.Assertions.*;
  * and other array-related security vulnerabilities.
  */
 public class ArrayUtilitiesSecurityTest {
+    
+    private String originalSecurityEnabled;
+    private String originalComponentTypeValidationEnabled;
+    private String originalMaxArraySize;
+    private String originalDangerousClassPatterns;
+    
+    @BeforeEach
+    public void setUp() {
+        // Save original system property values
+        originalSecurityEnabled = System.getProperty("arrayutilities.security.enabled");
+        originalComponentTypeValidationEnabled = System.getProperty("arrayutilities.component.type.validation.enabled");
+        originalMaxArraySize = System.getProperty("arrayutilities.max.array.size");
+        originalDangerousClassPatterns = System.getProperty("arrayutilities.dangerous.class.patterns");
+        
+        // Enable security features for testing
+        System.setProperty("arrayutilities.security.enabled", "true");
+        System.setProperty("arrayutilities.component.type.validation.enabled", "true");
+    }
+    
+    @AfterEach
+    public void tearDown() {
+        // Restore original system property values
+        restoreProperty("arrayutilities.security.enabled", originalSecurityEnabled);
+        restoreProperty("arrayutilities.component.type.validation.enabled", originalComponentTypeValidationEnabled);
+        restoreProperty("arrayutilities.max.array.size", originalMaxArraySize);
+        restoreProperty("arrayutilities.dangerous.class.patterns", originalDangerousClassPatterns);
+    }
+    
+    private void restoreProperty(String key, String originalValue) {
+        if (originalValue == null) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, originalValue);
+        }
+    }
     
     // Test component type validation
     
@@ -370,5 +407,53 @@ public class ArrayUtilitiesSecurityTest {
         assertDoesNotThrow(() -> {
             ArrayUtilities.nullToEmpty(java.util.List.class, null);
         }, "List should be allowed");
+    }
+    
+    // Test backward compatibility (security disabled by default)
+    
+    @Test
+    public void testSecurity_disabledByDefault() {
+        // Clear security properties to test defaults
+        System.clearProperty("arrayutilities.security.enabled");
+        System.clearProperty("arrayutilities.component.type.validation.enabled");
+        
+        // Dangerous classes should be allowed when security is disabled
+        assertDoesNotThrow(() -> {
+            ArrayUtilities.nullToEmpty(Runtime.class, null);
+        }, "Runtime should be allowed when security is disabled");
+        
+        assertDoesNotThrow(() -> {
+            ArrayUtilities.nullToEmpty(System.class, null);
+        }, "System should be allowed when security is disabled");
+        
+        // Large arrays should be allowed when security is disabled
+        assertDoesNotThrow(() -> {
+            ArrayUtilities.validateArraySize(Long.MAX_VALUE);
+        }, "Large arrays should be allowed when security is disabled");
+    }
+    
+    // Test configurable dangerous class patterns
+    
+    @Test
+    public void testSecurity_configurableDangerousClassPatterns() {
+        // Set custom dangerous class patterns
+        System.setProperty("arrayutilities.dangerous.class.patterns", "java.lang.String,java.util.");
+        
+        // String should now be blocked
+        Exception exception1 = assertThrows(SecurityException.class, () -> {
+            ArrayUtilities.nullToEmpty(String.class, null);
+        });
+        assertTrue(exception1.getMessage().contains("Array creation denied"));
+        
+        // java.util.List should be blocked (package pattern)
+        Exception exception2 = assertThrows(SecurityException.class, () -> {
+            ArrayUtilities.nullToEmpty(java.util.List.class, null);
+        });
+        assertTrue(exception2.getMessage().contains("Array creation denied"));
+        
+        // Integer should still be allowed
+        assertDoesNotThrow(() -> {
+            ArrayUtilities.nullToEmpty(Integer.class, null);
+        }, "Integer should be allowed with custom patterns");
     }
 }

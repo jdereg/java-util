@@ -211,6 +211,16 @@ public class ClassUtilities {
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
     private static volatile boolean useUnsafe = false;
     private static volatile Unsafe unsafe;
+
+    // Configurable Security Controls
+    // Note: Core class blocking security is ALWAYS enabled for safety
+    private static final int DEFAULT_MAX_CLASS_LOAD_DEPTH = 100;
+    private static final int DEFAULT_MAX_CONSTRUCTOR_ARGS = 50;
+    private static final int DEFAULT_MAX_REFLECTION_OPERATIONS_PER_CALL = 1000;
+    private static final int DEFAULT_MAX_RESOURCE_NAME_LENGTH = 1000;
+
+    // Thread-local depth tracking for enhanced security
+    private static final ThreadLocal<Integer> CLASS_LOAD_DEPTH = ThreadLocal.withInitial(() -> 0);
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new ClassValueMap<>();
     /**
@@ -593,7 +603,16 @@ public class ClassUtilities {
             throw new SecurityException("For security reasons, cannot load: " + name);
         }
 
-        c = loadClass(name, classLoader);
+        // Enhanced security: Validate class loading depth
+        int currentDepth = CLASS_LOAD_DEPTH.get();
+        validateEnhancedSecurity("Class loading depth", currentDepth, getMaxClassLoadDepth());
+        
+        try {
+            CLASS_LOAD_DEPTH.set(currentDepth + 1);
+            c = loadClass(name, classLoader);
+        } finally {
+            CLASS_LOAD_DEPTH.set(currentDepth);
+        }
 
         // Perform full security check on loaded class
         SecurityChecker.verifyClass(c);
@@ -1673,6 +1692,11 @@ public class ClassUtilities {
         // Do security check FIRST
         SecurityChecker.verifyClass(c);
 
+        // Enhanced security: Validate constructor argument count
+        if (argumentValues != null) {
+            validateEnhancedSecurity("Constructor argument", argumentValues.size(), getMaxConstructorArgs());
+        }
+
         if (visitedClasses.contains(c)) {
             throw new IllegalStateException("Circular reference detected for " + c.getName());
         }
@@ -1990,8 +2014,9 @@ public class ClassUtilities {
         }
         
         // Security: Limit resource name length to prevent buffer overflow
-        if (resourceName.length() > 1000) {
-            throw new SecurityException("Resource name too long (max 1000): " + resourceName.length());
+        int maxLength = getMaxResourceNameLength();
+        if (resourceName.length() > maxLength) {
+            throw new SecurityException("Resource name too long (max " + maxLength + "): " + resourceName.length());
         }
     }
     
@@ -2305,6 +2330,87 @@ public class ClassUtilities {
                 throw new SecurityException(
                         "For security reasons, access to this class is not allowed: " + clazz.getName());
             }
+        }
+    }
+
+    // Configurable Security Feature Methods
+    // Note: These provide enhanced security features beyond the always-on core security
+
+    private static boolean isEnhancedSecurityEnabled() {
+        String enabled = System.getProperty("classutilities.enhanced.security.enabled");
+        return "true".equalsIgnoreCase(enabled);
+    }
+
+    private static int getMaxClassLoadDepth() {
+        if (!isEnhancedSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String maxDepthProp = System.getProperty("classutilities.max.class.load.depth");
+        if (maxDepthProp != null) {
+            try {
+                int value = Integer.parseInt(maxDepthProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_CLASS_LOAD_DEPTH;
+    }
+
+    private static int getMaxConstructorArgs() {
+        if (!isEnhancedSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String maxArgsProp = System.getProperty("classutilities.max.constructor.args");
+        if (maxArgsProp != null) {
+            try {
+                int value = Integer.parseInt(maxArgsProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_CONSTRUCTOR_ARGS;
+    }
+
+    private static int getMaxReflectionOperations() {
+        if (!isEnhancedSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String maxOpsProp = System.getProperty("classutilities.max.reflection.operations");
+        if (maxOpsProp != null) {
+            try {
+                int value = Integer.parseInt(maxOpsProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_REFLECTION_OPERATIONS_PER_CALL;
+    }
+
+    private static int getMaxResourceNameLength() {
+        if (!isEnhancedSecurityEnabled()) {
+            return DEFAULT_MAX_RESOURCE_NAME_LENGTH; // Always have some limit
+        }
+        String maxLengthProp = System.getProperty("classutilities.max.resource.name.length");
+        if (maxLengthProp != null) {
+            try {
+                int value = Integer.parseInt(maxLengthProp);
+                return Math.max(100, value); // Minimum 100 characters
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_RESOURCE_NAME_LENGTH;
+    }
+
+    private static void validateEnhancedSecurity(String operation, int currentCount, int maxAllowed) {
+        if (!isEnhancedSecurityEnabled() || maxAllowed <= 0) {
+            return; // Security disabled
+        }
+        if (currentCount > maxAllowed) {
+            throw new SecurityException(operation + " count exceeded limit: " + currentCount + " > " + maxAllowed);
         }
     }
 }

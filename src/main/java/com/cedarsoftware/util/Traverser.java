@@ -23,6 +23,41 @@ import com.cedarsoftware.util.LoggingConfig;
  * detects cycles within the graph to prevent infinite loops. For each visited node,
  * complete field information including metadata is provided.
  *
+ * <h2>Security Configuration</h2>
+ * <p>Traverser provides configurable security controls to prevent resource exhaustion
+ * and stack overflow attacks from malicious or deeply nested object graphs.
+ * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security controls can be enabled via system properties:</p>
+ * <ul>
+ *   <li><code>traverser.security.enabled=false</code> &mdash; Master switch for all security features</li>
+ *   <li><code>traverser.max.stack.depth=0</code> &mdash; Maximum stack depth (0 = disabled)</li>
+ *   <li><code>traverser.max.objects.visited=0</code> &mdash; Maximum objects visited (0 = disabled)</li>
+ *   <li><code>traverser.max.collection.size=0</code> &mdash; Maximum collection size to process (0 = disabled)</li>
+ *   <li><code>traverser.max.array.length=0</code> &mdash; Maximum array length to process (0 = disabled)</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>Stack Depth Limiting:</b> Prevents stack overflow from deeply nested object graphs</li>
+ *   <li><b>Object Count Limiting:</b> Prevents memory exhaustion from large object graphs</li>
+ *   <li><b>Collection Size Limiting:</b> Limits processing of oversized collections and maps</li>
+ *   <li><b>Array Length Limiting:</b> Limits processing of oversized arrays</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * // Enable security with custom limits
+ * System.setProperty("traverser.security.enabled", "true");
+ * System.setProperty("traverser.max.stack.depth", "1000");
+ * System.setProperty("traverser.max.objects.visited", "50000");
+ *
+ * // These will now enforce security controls
+ * Traverser.traverse(root, classesToSkip, visit -> {
+ *     // Process visit - will throw SecurityException if limits exceeded
+ * });
+ * }</pre>
+ *
  * <p>
  * <b>Usage Examples:</b>
  * </p>
@@ -89,6 +124,131 @@ public class Traverser {
 
     private static final Logger LOG = Logger.getLogger(Traverser.class.getName());
     static { LoggingConfig.init(); }
+    
+    // Default security limits  
+    private static final int DEFAULT_MAX_STACK_DEPTH = 1000000;  // 1M depth for heap-based traversal
+    private static final int DEFAULT_MAX_OBJECTS_VISITED = 100000;
+    private static final int DEFAULT_MAX_COLLECTION_SIZE = 50000;
+    private static final int DEFAULT_MAX_ARRAY_LENGTH = 50000;
+    
+    static {
+        // Initialize system properties with defaults if not already set (backward compatibility)
+        initializeSystemPropertyDefaults();
+    }
+    
+    private static void initializeSystemPropertyDefaults() {
+        // Set default values if not explicitly configured
+        if (System.getProperty("traverser.max.stack.depth") == null) {
+            System.setProperty("traverser.max.stack.depth", "0"); // Disabled by default
+        }
+        if (System.getProperty("traverser.max.objects.visited") == null) {
+            System.setProperty("traverser.max.objects.visited", "0"); // Disabled by default
+        }
+        if (System.getProperty("traverser.max.collection.size") == null) {
+            System.setProperty("traverser.max.collection.size", "0"); // Disabled by default
+        }
+        if (System.getProperty("traverser.max.array.length") == null) {
+            System.setProperty("traverser.max.array.length", "0"); // Disabled by default
+        }
+    }
+    
+    // Security configuration methods
+    
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("traverser.security.enabled", "false"));
+    }
+    
+    private static int getMaxStackDepth() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String maxDepthProp = System.getProperty("traverser.max.stack.depth");
+        if (maxDepthProp != null) {
+            try {
+                int value = Integer.parseInt(maxDepthProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_STACK_DEPTH;
+    }
+    
+    private static int getMaxObjectsVisited() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String maxObjectsProp = System.getProperty("traverser.max.objects.visited");
+        if (maxObjectsProp != null) {
+            try {
+                int value = Integer.parseInt(maxObjectsProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_OBJECTS_VISITED;
+    }
+    
+    private static int getMaxCollectionSize() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String maxSizeProp = System.getProperty("traverser.max.collection.size");
+        if (maxSizeProp != null) {
+            try {
+                int value = Integer.parseInt(maxSizeProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_COLLECTION_SIZE;
+    }
+    
+    private static int getMaxArrayLength() {
+        if (!isSecurityEnabled()) {
+            return 0; // Disabled
+        }
+        String maxLengthProp = System.getProperty("traverser.max.array.length");
+        if (maxLengthProp != null) {
+            try {
+                int value = Integer.parseInt(maxLengthProp);
+                return Math.max(0, value); // 0 means disabled
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_ARRAY_LENGTH;
+    }
+    
+    private static void validateStackDepth(int currentDepth) {
+        int maxDepth = getMaxStackDepth();
+        if (maxDepth > 0 && currentDepth > maxDepth) {
+            throw new SecurityException("Stack depth exceeded limit (max " + maxDepth + "): " + currentDepth);
+        }
+    }
+    
+    private static void validateObjectsVisited(int objectsVisited) {
+        int maxObjects = getMaxObjectsVisited();
+        if (maxObjects > 0 && objectsVisited > maxObjects) {
+            throw new SecurityException("Objects visited exceeded limit (max " + maxObjects + "): " + objectsVisited);
+        }
+    }
+    
+    private static void validateCollectionSize(int size) {
+        int maxSize = getMaxCollectionSize();
+        if (maxSize > 0 && size > maxSize) {
+            throw new SecurityException("Collection size exceeded limit (max " + maxSize + "): " + size);
+        }
+    }
+    
+    private static void validateArrayLength(int length) {
+        int maxLength = getMaxArrayLength();
+        if (maxLength > 0 && length > maxLength) {
+            throw new SecurityException("Array length exceeded limit (max " + maxLength + "): " + length);
+        }
+    }
 
     /**
      * Represents a node visit during traversal, containing the node and its field information.
@@ -156,6 +316,18 @@ public class Traverser {
     private final Set<Object> objVisited = Collections.newSetFromMap(new IdentityHashMap<>());
     private final Consumer<NodeVisit> nodeVisitor;
     private final boolean collectFields;
+    private int objectsVisited = 0;
+    
+    // Helper class to track object and its depth in heap-based traversal
+    private static class TraversalNode {
+        final Object object;
+        final int depth;
+        
+        TraversalNode(Object object, int depth) {
+            this.object = object;
+            this.depth = depth;
+        }
+    }
 
     private Traverser(Consumer<NodeVisit> nodeVisitor, boolean collectFields) {
         this.nodeVisitor = nodeVisitor;
@@ -216,11 +388,23 @@ public class Traverser {
             return;
         }
 
-        Deque<Object> stack = new ArrayDeque<>();
-        stack.add(root);
+        Deque<TraversalNode> stack = new ArrayDeque<>();
+        stack.add(new TraversalNode(root, 1));
+        objectsVisited = 0;
+
+        // Hoist loop invariants: security limits don't change during traversal
+        final int maxStackDepth = getMaxStackDepth();
+        final int maxObjectsVisited = getMaxObjectsVisited();
 
         while (!stack.isEmpty()) {
-            Object current = stack.pollFirst();
+            TraversalNode node = stack.pollFirst();
+            Object current = node.object;
+            int currentDepth = node.depth;
+            
+            // Security: Check stack depth limit (optimized)
+            if (maxStackDepth > 0 && currentDepth > maxStackDepth) {
+                throw new SecurityException("Stack depth exceeded limit (max " + maxStackDepth + "): " + currentDepth);
+            }
 
             if (current == null || objVisited.contains(current)) {
                 continue;
@@ -232,6 +416,12 @@ public class Traverser {
             }
 
             objVisited.add(current);
+            objectsVisited++;
+            
+            // Security: Check objects visited limit (optimized)
+            if (maxObjectsVisited > 0 && objectsVisited > maxObjectsVisited) {
+                throw new SecurityException("Objects visited exceeded limit (max " + maxObjectsVisited + "): " + objectsVisited);
+            }
 
             if (collectFields) {
                 nodeVisitor.accept(new NodeVisit(current, collectFields(current)));
@@ -240,13 +430,13 @@ public class Traverser {
             }
 
             if (clazz.isArray()) {
-                processArray(stack, current, classesToSkip);
+                processArray(stack, current, classesToSkip, currentDepth);
             } else if (current instanceof Collection) {
-                processCollection(stack, (Collection<?>) current, classesToSkip);
+                processCollection(stack, (Collection<?>) current, classesToSkip, currentDepth);
             } else if (current instanceof Map) {
-                processMap(stack, (Map<?, ?>) current, classesToSkip);
+                processMap(stack, (Map<?, ?>) current, classesToSkip, currentDepth);
             } else {
-                processFields(stack, current, classesToSkip);
+                processFields(stack, current, classesToSkip, currentDepth);
             }
         }
     }
@@ -280,43 +470,36 @@ public class Traverser {
         return false;
     }
 
-    private void processArray(Deque<Object> stack, Object array, Set<Class<?>> classesToSkip) {
-        int length = Array.getLength(array);
-        Class<?> componentType = array.getClass().getComponentType();
 
-        if (!componentType.isPrimitive()) {
-            for (int i = 0; i < length; i++) {
-                Object element = Array.get(array, i);
-                if (element != null && !shouldSkipClass(element.getClass(), classesToSkip)) {
-                    stack.addFirst(element);
-                }
-            }
-        }
-    }
-
-    private void processCollection(Deque<Object> stack, Collection<?> collection, Set<Class<?>> classesToSkip) {
+    private void processCollection(Deque<TraversalNode> stack, Collection<?> collection, Set<Class<?>> classesToSkip, int depth) {
+        // Security: Validate collection size
+        validateCollectionSize(collection.size());
+        
         for (Object element : collection) {
             if (element != null && !shouldSkipClass(element.getClass(), classesToSkip)) {
-                stack.addFirst(element);
+                stack.addFirst(new TraversalNode(element, depth + 1));
             }
         }
     }
 
-    private void processMap(Deque<Object> stack, Map<?, ?> map, Set<Class<?>> classesToSkip) {
+    private void processMap(Deque<TraversalNode> stack, Map<?, ?> map, Set<Class<?>> classesToSkip, int depth) {
+        // Security: Validate map size  
+        validateCollectionSize(map.size());
+        
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
 
             if (key != null && !shouldSkipClass(key.getClass(), classesToSkip)) {
-                stack.addFirst(key);
+                stack.addFirst(new TraversalNode(key, depth + 1));
             }
             if (value != null && !shouldSkipClass(value.getClass(), classesToSkip)) {
-                stack.addFirst(value);
+                stack.addFirst(new TraversalNode(value, depth + 1));
             }
         }
     }
 
-    private void processFields(Deque<Object> stack, Object object, Set<Class<?>> classesToSkip) {
+    private void processFields(Deque<TraversalNode> stack, Object object, Set<Class<?>> classesToSkip, int depth) {
         Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(
                 object.getClass(),
                 field -> ReflectionUtils.DEFAULT_FIELD_FILTER.test(field) && !field.isSynthetic());
@@ -325,11 +508,29 @@ public class Traverser {
                 try {
                     Object value = field.get(object);
                     if (value != null && !shouldSkipClass(value.getClass(), classesToSkip)) {
-                        stack.addFirst(value);
+                        stack.addFirst(new TraversalNode(value, depth + 1));
                     }
                 } catch (IllegalAccessException ignored) {
                 }
             }
         }
+    }
+    
+    private void processArray(Deque<TraversalNode> stack, Object array, Set<Class<?>> classesToSkip, int depth) {
+        int length = Array.getLength(array);
+        Class<?> componentType = array.getClass().getComponentType();
+
+        if (!componentType.isPrimitive()) {
+            // Security: Validate array length only for object arrays
+            validateArrayLength(length);
+            
+            for (int i = 0; i < length; i++) {
+                Object element = Array.get(array, i);
+                if (element != null && !shouldSkipClass(element.getClass(), classesToSkip)) {
+                    stack.addFirst(new TraversalNode(element, depth + 1));
+                }
+            }
+        }
+        // Primitive arrays are not traversed into, so no validation needed
     }
 }

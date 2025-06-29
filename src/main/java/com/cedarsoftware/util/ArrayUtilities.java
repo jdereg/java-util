@@ -29,6 +29,38 @@ import java.util.Objects;
  *       of a specified type ({@link #toArray}).</li>
  * </ul>
  *
+ * <h2>Security Configuration</h2>
+ * <p>ArrayUtilities provides configurable security controls to prevent various attack vectors including
+ * memory exhaustion, reflection attacks, and array manipulation exploits.
+ * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security controls can be enabled via system properties:</p>
+ * <ul>
+ *   <li><code>arrayutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
+ *   <li><code>arrayutilities.component.type.validation.enabled=false</code> &mdash; Block dangerous system classes</li>
+ *   <li><code>arrayutilities.max.array.size=2147483639</code> &mdash; Maximum array size (default=Integer.MAX_VALUE-8 when enabled)</li>
+ *   <li><code>arrayutilities.dangerous.class.patterns=java.lang.Runtime,java.lang.ProcessBuilder,...</code> &mdash; Comma-separated dangerous class patterns</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>Component Type Validation:</b> Prevents creation of arrays with dangerous system classes (Runtime, ProcessBuilder, etc.)</li>
+ *   <li><b>Array Size Validation:</b> Prevents integer overflow and memory exhaustion through oversized arrays</li>
+ *   <li><b>Dangerous Class Filtering:</b> Blocks array creation for security-sensitive classes</li>
+ *   <li><b>Error Message Sanitization:</b> Prevents information disclosure in error messages</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * // Enable security with custom limits
+ * System.setProperty("arrayutilities.security.enabled", "true");
+ * System.setProperty("arrayutilities.max.array.size", "1000000");
+ * System.setProperty("arrayutilities.dangerous.classes.validation.enabled", "true");
+ *
+ * // These will now enforce security controls
+ * String[] array = ArrayUtilities.nullToEmpty(String.class, null);
+ * }</pre>
+ *
  * <h2>Usage Examples</h2>
  * <pre>{@code
  * // Check if an array is empty
@@ -86,8 +118,60 @@ public final class ArrayUtilities {
     public static final Character[] EMPTY_CHARACTER_ARRAY = new Character[0];
     public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
     
-    // Security: Maximum array size to prevent memory exhaustion attacks
-    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8; // JVM array size limit
+    // Default security limits (used when security is enabled)
+    private static final int DEFAULT_MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8; // JVM array size limit
+    
+    // Default dangerous class patterns (moved to system properties in static initializer)
+    private static final String DEFAULT_DANGEROUS_CLASS_PATTERNS = 
+        "java.lang.Runtime,java.lang.ProcessBuilder,java.lang.System,java.security.,javax.script.,sun.,com.sun.,java.lang.Class";
+    
+    static {
+        // Initialize system properties with defaults if not already set (backward compatibility)
+        initializeSystemPropertyDefaults();
+    }
+    
+    private static void initializeSystemPropertyDefaults() {
+        // Set dangerous class patterns if not explicitly configured
+        if (System.getProperty("arrayutilities.dangerous.class.patterns") == null) {
+            System.setProperty("arrayutilities.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
+        }
+        
+        // Set max array size if not explicitly configured
+        if (System.getProperty("arrayutilities.max.array.size") == null) {
+            System.setProperty("arrayutilities.max.array.size", String.valueOf(DEFAULT_MAX_ARRAY_SIZE));
+        }
+    }
+    
+    // Security configuration methods
+    
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("arrayutilities.security.enabled", "false"));
+    }
+    
+    private static boolean isComponentTypeValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("arrayutilities.component.type.validation.enabled", "false"));
+    }
+    
+    private static boolean isDangerousClassValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("arrayutilities.dangerous.classes.validation.enabled", "false"));
+    }
+    
+    private static long getMaxArraySize() {
+        String maxSizeProp = System.getProperty("arrayutilities.max.array.size");
+        if (maxSizeProp != null) {
+            try {
+                return Long.parseLong(maxSizeProp);
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_MAX_ARRAY_SIZE : Long.MAX_VALUE;
+    }
+    
+    private static String[] getDangerousClassPatterns() {
+        String patterns = System.getProperty("arrayutilities.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
+        return patterns.split(",");
+    }
 
     /**
      * Private constructor to promote using as static class.
@@ -101,25 +185,35 @@ public final class ArrayUtilities {
      * This prevents creation of arrays of dangerous system classes.
      * 
      * @param componentType the component type to validate
-     * @throws SecurityException if the component type is dangerous
+     * @throws SecurityException if the component type is dangerous and validation is enabled
      */
     private static void validateComponentType(Class<?> componentType) {
         if (componentType == null) {
             return; // Allow null check to be handled elsewhere
         }
         
-        String className = componentType.getName();
+        // Only validate if security features are enabled
+        if (!isSecurityEnabled() || !isComponentTypeValidationEnabled()) {
+            return;
+        }
         
-        // Security: Block creation of arrays containing dangerous system classes
-        if (className.startsWith("java.lang.Runtime") ||
-            className.startsWith("java.lang.ProcessBuilder") ||
-            className.startsWith("java.lang.System") ||
-            className.startsWith("java.security.") ||
-            className.startsWith("javax.script.") ||
-            className.startsWith("sun.") ||
-            className.startsWith("com.sun.") ||
-            className.equals("java.lang.Class")) {
-            throw new SecurityException("Array creation denied for security-sensitive class: " + className);
+        String className = componentType.getName();
+        String[] dangerousPatterns = getDangerousClassPatterns();
+        
+        // Check if class name matches any dangerous patterns
+        for (String pattern : dangerousPatterns) {
+            pattern = pattern.trim();
+            if (pattern.endsWith(".")) {
+                // Package prefix pattern (e.g., "java.security.")
+                if (className.startsWith(pattern)) {
+                    throw new SecurityException("Array creation denied for security-sensitive class: " + className);
+                }
+            } else {
+                // Exact class name pattern (e.g., "java.lang.Class")
+                if (className.equals(pattern)) {
+                    throw new SecurityException("Array creation denied for security-sensitive class: " + className);
+                }
+            }
         }
     }
     
@@ -127,14 +221,21 @@ public final class ArrayUtilities {
      * Security: Validates array size to prevent integer overflow and memory exhaustion.
      * 
      * @param size the proposed array size
-     * @throws SecurityException if size is negative or too large
+     * @throws SecurityException if size is negative or too large and validation is enabled
      */
     static void validateArraySize(long size) {
+        // Only validate if security features are enabled
+        if (!isSecurityEnabled()) {
+            return;
+        }
+        
         if (size < 0) {
             throw new SecurityException("Array size cannot be negative");
         }
-        if (size > MAX_ARRAY_SIZE) {
-            throw new SecurityException("Array size too large: " + size + " > " + MAX_ARRAY_SIZE);
+        
+        long maxSize = getMaxArraySize();
+        if (size > maxSize) {
+            throw new SecurityException("Array size too large: " + size + " > " + maxSize);
         }
     }
 

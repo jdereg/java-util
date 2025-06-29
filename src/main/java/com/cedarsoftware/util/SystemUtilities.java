@@ -30,6 +30,43 @@ import java.util.concurrent.atomic.AtomicInteger;
  * This class offers static methods for accessing and managing system resources, environment
  * settings, and runtime information.
  *
+ * <h2>Security Configuration</h2>
+ * <p>SystemUtilities provides configurable security controls to prevent various attack vectors including
+ * information disclosure, resource exhaustion, and system manipulation attacks.
+ * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security controls can be enabled via system properties:</p>
+ * <ul>
+ *   <li><code>systemutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
+ *   <li><code>systemutilities.environment.variable.validation.enabled=false</code> &mdash; Block sensitive environment variable access</li>
+ *   <li><code>systemutilities.file.system.validation.enabled=false</code> &mdash; Validate file system operations</li>
+ *   <li><code>systemutilities.resource.limits.enabled=false</code> &mdash; Enforce resource usage limits</li>
+ *   <li><code>systemutilities.max.shutdown.hooks=100</code> &mdash; Maximum number of shutdown hooks</li>
+ *   <li><code>systemutilities.max.temp.prefix.length=100</code> &mdash; Maximum temporary directory prefix length</li>
+ *   <li><code>systemutilities.sensitive.variable.patterns=password,secret,key,...</code> &mdash; Comma-separated sensitive variable patterns</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>Environment Variable Protection:</b> Prevents access to sensitive environment variables (passwords, tokens, etc.)</li>
+ *   <li><b>File System Validation:</b> Validates temporary directory prefixes to prevent path traversal attacks</li>
+ *   <li><b>Resource Limits:</b> Configurable limits on shutdown hooks and other resources to prevent exhaustion</li>
+ *   <li><b>Information Disclosure Prevention:</b> Sanitizes variable names and prevents credential exposure</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * // Enable security with custom settings
+ * System.setProperty("systemutilities.security.enabled", "true");
+ * System.setProperty("systemutilities.environment.variable.validation.enabled", "true");
+ * System.setProperty("systemutilities.file.system.validation.enabled", "true");
+ * System.setProperty("systemutilities.max.shutdown.hooks", "50");
+ *
+ * // These will now enforce security controls
+ * String var = SystemUtilities.getExternalVariable("NORMAL_VAR"); // works
+ * String pass = SystemUtilities.getExternalVariable("PASSWORD"); // returns null (filtered)
+ * }</pre>
+ *
  * <h2>Key Features:</h2>
  * <ul>
  *     <li>System environment and property access</li>
@@ -85,19 +122,85 @@ public final class SystemUtilities
     private static final Logger LOG = Logger.getLogger(SystemUtilities.class.getName());
     static { LoggingConfig.init(); }
     
-    // Security: Sensitive variable patterns that should not be exposed
-    private static final Set<String> SENSITIVE_VARIABLE_PATTERNS = Collections.unmodifiableSet(
-        new HashSet<>(Arrays.asList(
-            "PASSWORD", "PASSWD", "PASS", "SECRET", "KEY", "TOKEN", "CREDENTIAL", 
-            "AUTH", "APIKEY", "API_KEY", "PRIVATE", "CERT", "CERTIFICATE",
-            "DATABASE_URL", "DB_URL", "CONNECTION_STRING", "DSN",
-            "AWS_SECRET", "AZURE_CLIENT_SECRET", "GCP_SERVICE_ACCOUNT"
-        ))
-    );
+    // Default sensitive variable patterns (moved to system properties in static initializer)
+    private static final String DEFAULT_SENSITIVE_VARIABLE_PATTERNS = 
+        "PASSWORD,PASSWD,PASS,SECRET,KEY,TOKEN,CREDENTIAL,AUTH,APIKEY,API_KEY,PRIVATE,CERT,CERTIFICATE,DATABASE_URL,DB_URL,CONNECTION_STRING,DSN,AWS_SECRET,AZURE_CLIENT_SECRET,GCP_SERVICE_ACCOUNT";
+    
+    // Default resource limits
+    private static final int DEFAULT_MAX_SHUTDOWN_HOOKS = 100;
+    private static final int DEFAULT_MAX_TEMP_PREFIX_LENGTH = 100;
     
     // Security: Resource limits for system operations
     private static final AtomicInteger SHUTDOWN_HOOK_COUNT = new AtomicInteger(0);
-    private static final int MAX_SHUTDOWN_HOOKS = 100;
+    
+    static {
+        // Initialize system properties with defaults if not already set (backward compatibility)
+        initializeSystemPropertyDefaults();
+    }
+    
+    private static void initializeSystemPropertyDefaults() {
+        // Set sensitive variable patterns if not explicitly configured
+        if (System.getProperty("systemutilities.sensitive.variable.patterns") == null) {
+            System.setProperty("systemutilities.sensitive.variable.patterns", DEFAULT_SENSITIVE_VARIABLE_PATTERNS);
+        }
+        
+        // Set max shutdown hooks if not explicitly configured
+        if (System.getProperty("systemutilities.max.shutdown.hooks") == null) {
+            System.setProperty("systemutilities.max.shutdown.hooks", String.valueOf(DEFAULT_MAX_SHUTDOWN_HOOKS));
+        }
+        
+        // Set max temp prefix length if not explicitly configured
+        if (System.getProperty("systemutilities.max.temp.prefix.length") == null) {
+            System.setProperty("systemutilities.max.temp.prefix.length", String.valueOf(DEFAULT_MAX_TEMP_PREFIX_LENGTH));
+        }
+    }
+    
+    // Security configuration methods
+    
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("systemutilities.security.enabled", "false"));
+    }
+    
+    private static boolean isEnvironmentVariableValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("systemutilities.environment.variable.validation.enabled", "false"));
+    }
+    
+    private static boolean isFileSystemValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("systemutilities.file.system.validation.enabled", "false"));
+    }
+    
+    private static boolean isResourceLimitsEnabled() {
+        return Boolean.parseBoolean(System.getProperty("systemutilities.resource.limits.enabled", "false"));
+    }
+    
+    private static int getMaxShutdownHooks() {
+        String maxHooksProp = System.getProperty("systemutilities.max.shutdown.hooks");
+        if (maxHooksProp != null) {
+            try {
+                return Math.max(1, Integer.parseInt(maxHooksProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_MAX_SHUTDOWN_HOOKS : Integer.MAX_VALUE;
+    }
+    
+    private static int getMaxTempPrefixLength() {
+        String maxLengthProp = System.getProperty("systemutilities.max.temp.prefix.length");
+        if (maxLengthProp != null) {
+            try {
+                return Math.max(1, Integer.parseInt(maxLengthProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_MAX_TEMP_PREFIX_LENGTH : Integer.MAX_VALUE;
+    }
+    
+    private static Set<String> getSensitiveVariablePatterns() {
+        String patterns = System.getProperty("systemutilities.sensitive.variable.patterns", DEFAULT_SENSITIVE_VARIABLE_PATTERNS);
+        return new HashSet<>(Arrays.asList(patterns.split(",")));
+    }
 
     private SystemUtilities() {
     }
@@ -121,7 +224,7 @@ public final class SystemUtilities
         }
         
         // Security: Check if this is a sensitive variable that should be filtered
-        if (isSensitiveVariable(var)) {
+        if (isSecurityEnabled() && isEnvironmentVariableValidationEnabled() && isSensitiveVariable(var)) {
             LOG.log(Level.FINE, "Access to sensitive variable blocked: " + sanitizeVariableName(var));
             return null;
         }
@@ -169,7 +272,8 @@ public final class SystemUtilities
         }
         
         String upperVar = varName.toUpperCase();
-        return SENSITIVE_VARIABLE_PATTERNS.stream().anyMatch(upperVar::contains);
+        Set<String> sensitivePatterns = getSensitiveVariablePatterns();
+        return sensitivePatterns.stream().anyMatch(pattern -> upperVar.contains(pattern.trim().toUpperCase()));
     }
     
     /**
@@ -308,7 +412,14 @@ public final class SystemUtilities
      */
     public static File createTempDirectory(String prefix) {
         // Security: Validate prefix to prevent path traversal and injection
-        validateTempDirectoryPrefix(prefix);
+        if (isSecurityEnabled() && isFileSystemValidationEnabled()) {
+            validateTempDirectoryPrefix(prefix);
+        } else {
+            // Basic validation even when security is disabled
+            if (prefix == null) {
+                throw new IllegalArgumentException("Temporary directory prefix cannot be null");
+            }
+        }
         
         try {
             File tempDir = Files.createTempDirectory(prefix).toFile();
@@ -351,8 +462,9 @@ public final class SystemUtilities
         }
         
         // Limit length to prevent excessive resource usage
-        if (prefix.length() > 100) {
-            throw new IllegalArgumentException("Temporary directory prefix too long (max 100 characters): " + prefix.length());
+        int maxLength = getMaxTempPrefixLength();
+        if (prefix.length() > maxLength) {
+            throw new IllegalArgumentException("Temporary directory prefix too long (max " + maxLength + " characters): " + prefix.length());
         }
     }
 
@@ -388,7 +500,7 @@ public final class SystemUtilities
      */
     public static Map<String, String> getEnvironmentVariables(Predicate<String> filter) {
         return System.getenv().entrySet().stream()
-                .filter(e -> !isSensitiveVariable(e.getKey())) // Security: Filter sensitive variables
+                .filter(e -> !(isSecurityEnabled() && isEnvironmentVariableValidationEnabled() && isSensitiveVariable(e.getKey()))) // Security: Filter sensitive variables
                 .filter(e -> filter == null || filter.test(e.getKey()))
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
@@ -454,8 +566,8 @@ public final class SystemUtilities
      * Add shutdown hook with safe execution and resource limits.
      * 
      * <p><strong>Security Note:</strong> This method enforces a limit on the number of 
-     * shutdown hooks to prevent resource exhaustion attacks. The current limit is 
-     * {@value #MAX_SHUTDOWN_HOOKS} hooks.</p>
+     * shutdown hooks to prevent resource exhaustion attacks. The current default limit is 
+     * 100 hooks, configurable via system property.</p>
      * 
      * @param hook the runnable to execute during shutdown
      * @throws IllegalStateException if the maximum number of shutdown hooks is exceeded
@@ -467,10 +579,11 @@ public final class SystemUtilities
         }
         
         // Security: Enforce limit on shutdown hooks to prevent resource exhaustion
+        int maxHooks = getMaxShutdownHooks();
         int currentCount = SHUTDOWN_HOOK_COUNT.incrementAndGet();
-        if (currentCount > MAX_SHUTDOWN_HOOKS) {
+        if (isSecurityEnabled() && isResourceLimitsEnabled() && currentCount > maxHooks) {
             SHUTDOWN_HOOK_COUNT.decrementAndGet();
-            throw new IllegalStateException("Maximum number of shutdown hooks exceeded: " + MAX_SHUTDOWN_HOOKS);
+            throw new IllegalStateException("Maximum number of shutdown hooks exceeded: " + maxHooks);
         }
         
         try {

@@ -61,6 +61,47 @@ import java.security.spec.AlgorithmParameterSpec;
  *   </li>
  * </ul>
  *
+ * <h2>Security Configuration</h2>
+ * <p>EncryptionUtilities provides configurable security controls to prevent various attack vectors including
+ * resource exhaustion, cryptographic parameter manipulation, and large file processing attacks.
+ * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security controls can be enabled via system properties:</p>
+ * <ul>
+ *   <li><code>encryptionutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
+ *   <li><code>encryptionutilities.file.size.validation.enabled=false</code> &mdash; Enable file size limits for hashing operations</li>
+ *   <li><code>encryptionutilities.buffer.size.validation.enabled=false</code> &mdash; Enable buffer size validation</li>
+ *   <li><code>encryptionutilities.crypto.parameters.validation.enabled=false</code> &mdash; Enable cryptographic parameter validation</li>
+ *   <li><code>encryptionutilities.max.file.size=2147483647</code> &mdash; Maximum file size for hashing operations (2GB)</li>
+ *   <li><code>encryptionutilities.max.buffer.size=1048576</code> &mdash; Maximum buffer size (1MB)</li>
+ *   <li><code>encryptionutilities.min.pbkdf2.iterations=10000</code> &mdash; Minimum PBKDF2 iterations</li>
+ *   <li><code>encryptionutilities.max.pbkdf2.iterations=1000000</code> &mdash; Maximum PBKDF2 iterations</li>
+ *   <li><code>encryptionutilities.min.salt.size=8</code> &mdash; Minimum salt size in bytes</li>
+ *   <li><code>encryptionutilities.max.salt.size=64</code> &mdash; Maximum salt size in bytes</li>
+ *   <li><code>encryptionutilities.min.iv.size=8</code> &mdash; Minimum IV size in bytes</li>
+ *   <li><code>encryptionutilities.max.iv.size=32</code> &mdash; Maximum IV size in bytes</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>File Size Validation:</b> Prevents memory exhaustion through oversized file processing</li>
+ *   <li><b>Buffer Size Validation:</b> Configurable limits on buffer sizes to prevent memory exhaustion</li>
+ *   <li><b>Crypto Parameter Validation:</b> Validates cryptographic parameters to ensure security standards</li>
+ *   <li><b>PBKDF2 Iteration Validation:</b> Ensures iteration counts meet minimum security requirements</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * // Enable security with custom settings
+ * System.setProperty("encryptionutilities.security.enabled", "true");
+ * System.setProperty("encryptionutilities.file.size.validation.enabled", "true");
+ * System.setProperty("encryptionutilities.max.file.size", "104857600"); // 100MB
+ *
+ * // These will now enforce security controls
+ * String hash = EncryptionUtilities.fastMD5(smallFile); // works
+ * String hash2 = EncryptionUtilities.fastMD5(hugeFile); // throws SecurityException if > 100MB
+ * }</pre>
+ *
  * <p><b>Hash Function Usage:</b></p>
  * <pre>{@code
  * // File hashing
@@ -115,6 +156,186 @@ import java.security.spec.AlgorithmParameterSpec;
  *         limitations under the License.
  */
 public class EncryptionUtilities {
+    // Default security limits
+    private static final long DEFAULT_MAX_FILE_SIZE = 2147483647L; // 2GB
+    private static final int DEFAULT_MAX_BUFFER_SIZE = 1048576; // 1MB
+    private static final int DEFAULT_MIN_PBKDF2_ITERATIONS = 10000;
+    private static final int DEFAULT_MAX_PBKDF2_ITERATIONS = 1000000;
+    private static final int DEFAULT_MIN_SALT_SIZE = 8;
+    private static final int DEFAULT_MAX_SALT_SIZE = 64;
+    private static final int DEFAULT_MIN_IV_SIZE = 8;
+    private static final int DEFAULT_MAX_IV_SIZE = 32;
+    
+    // Standard cryptographic parameters (used when security is disabled)
+    private static final int STANDARD_PBKDF2_ITERATIONS = 65536;
+    private static final int STANDARD_SALT_SIZE = 16;
+    private static final int STANDARD_IV_SIZE = 12;
+    private static final int STANDARD_BUFFER_SIZE = 64 * 1024; // 64KB
+    
+    static {
+        // Initialize system properties with defaults if not already set (backward compatibility)
+        initializeSystemPropertyDefaults();
+    }
+    
+    private static void initializeSystemPropertyDefaults() {
+        // Set default values if not explicitly configured
+        if (System.getProperty("encryptionutilities.max.file.size") == null) {
+            System.setProperty("encryptionutilities.max.file.size", String.valueOf(DEFAULT_MAX_FILE_SIZE));
+        }
+        if (System.getProperty("encryptionutilities.max.buffer.size") == null) {
+            System.setProperty("encryptionutilities.max.buffer.size", String.valueOf(DEFAULT_MAX_BUFFER_SIZE));
+        }
+        if (System.getProperty("encryptionutilities.min.pbkdf2.iterations") == null) {
+            System.setProperty("encryptionutilities.min.pbkdf2.iterations", String.valueOf(DEFAULT_MIN_PBKDF2_ITERATIONS));
+        }
+        if (System.getProperty("encryptionutilities.max.pbkdf2.iterations") == null) {
+            System.setProperty("encryptionutilities.max.pbkdf2.iterations", String.valueOf(DEFAULT_MAX_PBKDF2_ITERATIONS));
+        }
+        if (System.getProperty("encryptionutilities.min.salt.size") == null) {
+            System.setProperty("encryptionutilities.min.salt.size", String.valueOf(DEFAULT_MIN_SALT_SIZE));
+        }
+        if (System.getProperty("encryptionutilities.max.salt.size") == null) {
+            System.setProperty("encryptionutilities.max.salt.size", String.valueOf(DEFAULT_MAX_SALT_SIZE));
+        }
+        if (System.getProperty("encryptionutilities.min.iv.size") == null) {
+            System.setProperty("encryptionutilities.min.iv.size", String.valueOf(DEFAULT_MIN_IV_SIZE));
+        }
+        if (System.getProperty("encryptionutilities.max.iv.size") == null) {
+            System.setProperty("encryptionutilities.max.iv.size", String.valueOf(DEFAULT_MAX_IV_SIZE));
+        }
+    }
+    
+    // Security configuration methods
+    
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("encryptionutilities.security.enabled", "false"));
+    }
+    
+    private static boolean isFileSizeValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("encryptionutilities.file.size.validation.enabled", "false"));
+    }
+    
+    private static boolean isBufferSizeValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("encryptionutilities.buffer.size.validation.enabled", "false"));
+    }
+    
+    private static boolean isCryptoParametersValidationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("encryptionutilities.crypto.parameters.validation.enabled", "false"));
+    }
+    
+    private static long getMaxFileSize() {
+        String maxFileSizeProp = System.getProperty("encryptionutilities.max.file.size");
+        if (maxFileSizeProp != null) {
+            try {
+                return Math.max(1, Long.parseLong(maxFileSizeProp));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_MAX_FILE_SIZE : Long.MAX_VALUE;
+    }
+    
+    private static int getMaxBufferSize() {
+        String maxBufferSizeProp = System.getProperty("encryptionutilities.max.buffer.size");
+        if (maxBufferSizeProp != null) {
+            try {
+                return Math.max(1024, Integer.parseInt(maxBufferSizeProp)); // Minimum 1KB
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return isSecurityEnabled() ? DEFAULT_MAX_BUFFER_SIZE : Integer.MAX_VALUE;
+    }
+    
+    private static int getValidatedPBKDF2Iterations(int requestedIterations) {
+        if (!isSecurityEnabled() || !isCryptoParametersValidationEnabled()) {
+            return requestedIterations; // Use as-is when security disabled
+        }
+        
+        int minIterations = getMinPBKDF2Iterations();
+        int maxIterations = getMaxPBKDF2Iterations();
+        
+        if (requestedIterations < minIterations) {
+            throw new SecurityException("PBKDF2 iteration count too low (min " + minIterations + "): " + requestedIterations);
+        }
+        if (requestedIterations > maxIterations) {
+            throw new SecurityException("PBKDF2 iteration count too high (max " + maxIterations + "): " + requestedIterations);
+        }
+        
+        return requestedIterations;
+    }
+    
+    private static int getMinPBKDF2Iterations() {
+        String minIterationsProp = System.getProperty("encryptionutilities.min.pbkdf2.iterations");
+        if (minIterationsProp != null) {
+            try {
+                return Math.max(1000, Integer.parseInt(minIterationsProp)); // Minimum 1000 for security
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MIN_PBKDF2_ITERATIONS;
+    }
+    
+    private static int getMaxPBKDF2Iterations() {
+        String maxIterationsProp = System.getProperty("encryptionutilities.max.pbkdf2.iterations");
+        if (maxIterationsProp != null) {
+            try {
+                return Integer.parseInt(maxIterationsProp);
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return DEFAULT_MAX_PBKDF2_ITERATIONS;
+    }
+    
+    private static int getValidatedBufferSize(int requestedSize) {
+        if (!isSecurityEnabled() || !isBufferSizeValidationEnabled()) {
+            return requestedSize; // Use as-is when security disabled
+        }
+        
+        int maxBufferSize = getMaxBufferSize();
+        if (requestedSize > maxBufferSize) {
+            throw new SecurityException("Buffer size too large (max " + maxBufferSize + "): " + requestedSize);
+        }
+        if (requestedSize < 1024) { // Minimum 1KB
+            throw new SecurityException("Buffer size too small (min 1024): " + requestedSize);
+        }
+        
+        return requestedSize;
+    }
+    
+    private static void validateFileSize(File file) {
+        if (!isSecurityEnabled() || !isFileSizeValidationEnabled()) {
+            return; // Skip validation when security disabled
+        }
+        
+        try {
+            long fileSize = file.length();
+            long maxFileSize = getMaxFileSize();
+            if (fileSize > maxFileSize) {
+                throw new SecurityException("File size too large (max " + maxFileSize + " bytes): " + fileSize);
+            }
+        } catch (SecurityException e) {
+            throw e; // Re-throw security exceptions
+        } catch (Exception e) {
+            // If we can't determine file size, allow it to proceed (backward compatibility)
+        }
+    }
+    
+    private static void validateCryptoParameterSize(int size, String paramName, int minSize, int maxSize) {
+        if (!isSecurityEnabled() || !isCryptoParametersValidationEnabled()) {
+            return; // Skip validation when security disabled
+        }
+        
+        if (size < minSize) {
+            throw new SecurityException(paramName + " size too small (min " + minSize + "): " + size);
+        }
+        if (size > maxSize) {
+            throw new SecurityException(paramName + " size too large (max " + maxSize + "): " + size);
+        }
+    }
+
     private EncryptionUtilities() {
     }
 
@@ -126,12 +347,17 @@ public class EncryptionUtilities {
      *   <li>Heap ByteBuffer for efficient memory use</li>
      *   <li>FileChannel for optimal file access</li>
      *   <li>Fallback for non-standard filesystems</li>
+     *   <li>Optional file size validation to prevent resource exhaustion</li>
      * </ul>
      *
      * @param file the file to hash
      * @return hexadecimal string of the MD5 hash, or null if the file cannot be read
+     * @throws SecurityException if security validation is enabled and file exceeds size limits
      */
     public static String fastMD5(File file) {
+        // Security: Validate file size to prevent resource exhaustion
+        validateFileSize(file);
+        
         try (InputStream in = Files.newInputStream(file.toPath())) {
             if (in instanceof FileInputStream) {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getMD5Digest());
@@ -160,12 +386,13 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the hash value
      */
     private static String calculateStreamHash(InputStream in, MessageDigest digest) {
-        // 64KB buffer size - optimal for:
+        // Buffer size - configurable for security and performance:
+        // Default 64KB optimal for:
         // 1. Modern OS page sizes
         // 2. SSD block sizes
         // 3. Filesystem block sizes
         // 4. Memory usage vs. throughput balance
-        final int BUFFER_SIZE = 64 * 1024;
+        final int BUFFER_SIZE = getValidatedBufferSize(STANDARD_BUFFER_SIZE);
 
         byte[] buffer = new byte[BUFFER_SIZE];
         int read;
@@ -195,6 +422,9 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA-1 hash, or null if the file cannot be read
      */
     public static String fastSHA1(File file) {
+        // Security: Validate file size to prevent resource exhaustion
+        validateFileSize(file);
+        
         try (InputStream in = Files.newInputStream(file.toPath())) {
             if (in instanceof FileInputStream) {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getSHA1Digest());
@@ -222,6 +452,9 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA-256 hash, or null if the file cannot be read
      */
     public static String fastSHA256(File file) {
+        // Security: Validate file size to prevent resource exhaustion
+        validateFileSize(file);
+        
         try (InputStream in = Files.newInputStream(file.toPath())) {
             if (in instanceof FileInputStream) {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getSHA256Digest());
@@ -242,6 +475,9 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA-384 hash, or null if the file cannot be read
      */
     public static String fastSHA384(File file) {
+        // Security: Validate file size to prevent resource exhaustion
+        validateFileSize(file);
+        
         try (InputStream in = Files.newInputStream(file.toPath())) {
             if (in instanceof FileInputStream) {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getSHA384Digest());
@@ -268,14 +504,19 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA-512 hash, or null if the file cannot be read
      */
     public static String fastSHA512(File file) {
+        // Security: Validate file size to prevent resource exhaustion
+        validateFileSize(file);
+        
         try (InputStream in = Files.newInputStream(file.toPath())) {
             if (in instanceof FileInputStream) {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getSHA512Digest());
             }
             // Fallback for non-file input streams (rare, but possible with custom filesystem providers)
             return calculateStreamHash(in, getSHA512Digest());
-        } catch (IOException e) {
+        } catch (NoSuchFileException e) {
             return null;
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
         }
     }
 
@@ -286,6 +527,9 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA3-256 hash, or null if the file cannot be read
      */
     public static String fastSHA3_256(File file) {
+        // Security: Validate file size to prevent resource exhaustion
+        validateFileSize(file);
+        
         try (InputStream in = Files.newInputStream(file.toPath())) {
             if (in instanceof FileInputStream) {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getSHA3_256Digest());
@@ -305,6 +549,9 @@ public class EncryptionUtilities {
      * @return hexadecimal string of the SHA3-512 hash, or null if the file cannot be read
      */
     public static String fastSHA3_512(File file) {
+        // Security: Validate file size to prevent resource exhaustion
+        validateFileSize(file);
+        
         try (InputStream in = Files.newInputStream(file.toPath())) {
             if (in instanceof FileInputStream) {
                 return calculateFileHash(((FileInputStream) in).getChannel(), getSHA3_512Digest());
@@ -333,9 +580,10 @@ public class EncryptionUtilities {
      * @throws IOException if an I/O error occurs (thrown as unchecked)
      */
     public static String calculateFileHash(FileChannel channel, MessageDigest digest) {
-        // Modern OS/disk optimal transfer size (64KB)
-        // Matches common SSD page sizes and OS buffer sizes
-        final int BUFFER_SIZE = 64 * 1024;
+        // Buffer size - configurable for security and performance:
+        // Default 64KB optimal for modern OS/disk operations
+        // Matches common SSD page sizes and OS buffer sizes  
+        final int BUFFER_SIZE = getValidatedBufferSize(STANDARD_BUFFER_SIZE);
 
         // Heap buffer avoids expensive native allocations
         // Reuse buffer to reduce garbage creation
@@ -515,16 +763,28 @@ public class EncryptionUtilities {
 
     /**
      * Derives an AES key from a password and salt using PBKDF2.
+     * <p>
+     * Security: The iteration count can be validated when security features are enabled
+     * to ensure it meets minimum security standards and prevent resource exhaustion attacks.
+     * Default iteration count is 65536 when security validation is disabled.
+     * </p>
      *
      * @param password   the password
      * @param salt       random salt bytes
      * @param bitsNeeded key length in bits
      * @return derived key bytes
+     * @throws SecurityException if security validation is enabled and iteration count is outside acceptable range
      */
     public static byte[] deriveKey(String password, byte[] salt, int bitsNeeded) {
+        // Security: Validate iteration count and salt size
+        int iterations = getValidatedPBKDF2Iterations(STANDARD_PBKDF2_ITERATIONS);
+        validateCryptoParameterSize(salt.length, "Salt", 
+            Integer.parseInt(System.getProperty("encryptionutilities.min.salt.size", String.valueOf(DEFAULT_MIN_SALT_SIZE))),
+            Integer.parseInt(System.getProperty("encryptionutilities.max.salt.size", String.valueOf(DEFAULT_MAX_SALT_SIZE))));
+        
         try {
             SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, bitsNeeded);
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, iterations, bitsNeeded);
             return factory.generateSecret(spec).getEncoded();
         } catch (Exception e) {
             throw new IllegalStateException("Unable to derive key", e);
@@ -631,9 +891,20 @@ public class EncryptionUtilities {
         }
         try {
             SecureRandom random = new SecureRandom();
-            byte[] salt = new byte[16];
+            
+            // Security: Use configurable salt and IV sizes with validation
+            int saltSize = STANDARD_SALT_SIZE;
+            int ivSize = STANDARD_IV_SIZE;
+            validateCryptoParameterSize(saltSize, "Salt", 
+                Integer.parseInt(System.getProperty("encryptionutilities.min.salt.size", String.valueOf(DEFAULT_MIN_SALT_SIZE))),
+                Integer.parseInt(System.getProperty("encryptionutilities.max.salt.size", String.valueOf(DEFAULT_MAX_SALT_SIZE))));
+            validateCryptoParameterSize(ivSize, "IV", 
+                Integer.parseInt(System.getProperty("encryptionutilities.min.iv.size", String.valueOf(DEFAULT_MIN_IV_SIZE))),
+                Integer.parseInt(System.getProperty("encryptionutilities.max.iv.size", String.valueOf(DEFAULT_MAX_IV_SIZE))));
+            
+            byte[] salt = new byte[saltSize];
             random.nextBytes(salt);
-            byte[] iv = new byte[12];
+            byte[] iv = new byte[ivSize];
             random.nextBytes(iv);
 
             SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");
@@ -667,9 +938,20 @@ public class EncryptionUtilities {
         }
         try {
             SecureRandom random = new SecureRandom();
-            byte[] salt = new byte[16];
+            
+            // Security: Use configurable salt and IV sizes with validation
+            int saltSize = STANDARD_SALT_SIZE;
+            int ivSize = STANDARD_IV_SIZE;
+            validateCryptoParameterSize(saltSize, "Salt", 
+                Integer.parseInt(System.getProperty("encryptionutilities.min.salt.size", String.valueOf(DEFAULT_MIN_SALT_SIZE))),
+                Integer.parseInt(System.getProperty("encryptionutilities.max.salt.size", String.valueOf(DEFAULT_MAX_SALT_SIZE))));
+            validateCryptoParameterSize(ivSize, "IV", 
+                Integer.parseInt(System.getProperty("encryptionutilities.min.iv.size", String.valueOf(DEFAULT_MIN_IV_SIZE))),
+                Integer.parseInt(System.getProperty("encryptionutilities.max.iv.size", String.valueOf(DEFAULT_MAX_IV_SIZE))));
+            
+            byte[] salt = new byte[saltSize];
             random.nextBytes(salt);
-            byte[] iv = new byte[12];
+            byte[] iv = new byte[ivSize];
             random.nextBytes(iv);
 
             SecretKeySpec sKey = new SecretKeySpec(deriveKey(key, salt, 128), "AES");

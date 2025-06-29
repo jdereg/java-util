@@ -24,7 +24,38 @@ import com.cedarsoftware.util.LoggingConfig;
  *   <li>Non-blocking output handling</li>
  * </ul>
  *
- * <p><strong>Example Usage:</strong></p>
+ * <h2>Security Configuration</h2>
+ * <p>Due to the inherent security risks of executing arbitrary system commands, Executor provides
+ * a simple security control to completely disable command execution when needed. Command execution 
+ * is <strong>enabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security control can be configured via system property:</p>
+ * <ul>
+ *   <li><code>executor.enabled=true</code> &mdash; Enable/disable all command execution (default: true)</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>Complete Disable:</b> When disabled, all command execution methods throw SecurityException</li>
+ *   <li><b>Backward Compatibility:</b> Enabled by default to preserve existing functionality</li>
+ *   <li><b>Simple Control:</b> Single property controls all execution methods</li>
+ * </ul>
+ *
+ * <h3>Security Warning</h3>
+ * <p><strong>⚠️ WARNING:</strong> This class executes arbitrary system commands with the privileges 
+ * of the JVM process. Only use with trusted input or disable entirely in security-sensitive environments.</p>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * // Disable command execution in production
+ * System.setProperty("executor.enabled", "false");
+ *
+ * // This will now throw SecurityException
+ * Executor exec = new Executor();
+ * exec.exec("ls -l"); // Throws SecurityException
+ * }</pre>
+ *
+ * <p><strong>Basic Usage:</strong></p>
  * <pre>{@code
  * Executor exec = new Executor();
  * int exitCode = exec.exec("ls -l");
@@ -58,12 +89,31 @@ public class Executor {
     private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
     private static final Logger LOG = Logger.getLogger(Executor.class.getName());
     static { LoggingConfig.init(); }
+    
+    /**
+     * Checks if command execution is enabled.
+     * @return true if command execution is allowed, false otherwise
+     */
+    private static boolean isExecutionEnabled() {
+        return Boolean.parseBoolean(System.getProperty("executor.enabled", "true"));
+    }
+    
+    /**
+     * Validates that command execution is enabled.
+     * @throws SecurityException if command execution is disabled
+     */
+    private static void validateExecutionEnabled() {
+        if (!isExecutionEnabled()) {
+            throw new SecurityException("Command execution is disabled via system property 'executor.enabled=false'");
+        }
+    }
 
     /**
      * Execute the supplied command line using the platform shell.
      *
      * @param command command to execute
      * @return result of the execution
+     * @throws SecurityException if command execution is disabled
      */
     public ExecutionResult execute(String command) {
         return execute(command, null, null);
@@ -74,6 +124,7 @@ public class Executor {
      *
      * @param cmdarray command and arguments
      * @return result of the execution
+     * @throws SecurityException if command execution is disabled
      */
     public ExecutionResult execute(String[] cmdarray) {
         return execute(cmdarray, null, null);
@@ -85,6 +136,7 @@ public class Executor {
      * @param command command line to run
      * @param envp    environment variables, may be {@code null}
      * @return result of the execution
+     * @throws SecurityException if command execution is disabled
      */
     public ExecutionResult execute(String command, String[] envp) {
         return execute(command, envp, null);
@@ -96,6 +148,7 @@ public class Executor {
      * @param cmdarray command and arguments
      * @param envp     environment variables, may be {@code null}
      * @return result of the execution
+     * @throws SecurityException if command execution is disabled
      */
     public ExecutionResult execute(String[] cmdarray, String[] envp) {
         return execute(cmdarray, envp, null);
@@ -108,8 +161,11 @@ public class Executor {
      * @param envp    environment variables or {@code null}
      * @param dir     working directory, may be {@code null}
      * @return result of the execution
+     * @throws SecurityException if command execution is disabled
      */
     public ExecutionResult execute(String command, String[] envp, File dir) {
+        validateExecutionEnabled();
+        
         try {
             Process proc = startProcess(command, envp, dir);
             return runIt(proc);
@@ -126,12 +182,15 @@ public class Executor {
      * @param envp     environment variables or {@code null}
      * @param dir      working directory, may be {@code null}
      * @return result of the execution
+     * @throws SecurityException if command execution is disabled
      */
     public ExecutionResult execute(String[] cmdarray, String[] envp, File dir) {
+        validateExecutionEnabled();
+        
         try {
             Process proc = startProcess(cmdarray, envp, dir);
             return runIt(proc);
-        } catch ( InterruptedException e) {
+        } catch (InterruptedException e) {
             LOG.log(Level.SEVERE, "Error occurred executing command: " + cmdArrayToString(cmdarray), e);
             return new ExecutionResult(-1, "", e.getMessage());
         }
@@ -170,6 +229,7 @@ public class Executor {
      * @param command the command to execute
      * @return the exit value of the process (0 typically indicates success),
      *         or -1 if an error occurred starting the process
+     * @throws SecurityException if command execution is disabled
      */
     public int exec(String command) {
         ExecutionResult result = execute(command);
@@ -185,6 +245,7 @@ public class Executor {
      * @param cmdarray array containing the command and its arguments
      * @return the exit value of the process (0 typically indicates success),
      *         or -1 if an error occurred starting the process
+     * @throws SecurityException if command execution is disabled
      */
     public int exec(String[] cmdarray) {
         ExecutionResult result = execute(cmdarray);
@@ -199,6 +260,7 @@ public class Executor {
      *             or null if the subprocess should inherit the environment of the current process
      * @return the exit value of the process (0 typically indicates success),
      *         or -1 if an error occurred starting the process
+     * @throws SecurityException if command execution is disabled
      */
     public int exec(String command, String[] envp) {
         ExecutionResult result = execute(command, envp);
@@ -213,6 +275,7 @@ public class Executor {
      *             or null if the subprocess should inherit the environment of the current process
      * @return the exit value of the process (0 typically indicates success),
      *         or -1 if an error occurred starting the process
+     * @throws SecurityException if command execution is disabled
      */
     public int exec(String[] cmdarray, String[] envp) {
         ExecutionResult result = execute(cmdarray, envp);
@@ -229,6 +292,7 @@ public class Executor {
      *            the working directory of the current process
      * @return the exit value of the process (0 typically indicates success),
      *         or -1 if an error occurred starting the process
+     * @throws SecurityException if command execution is disabled
      */
     public int exec(String command, String[] envp, File dir) {
         ExecutionResult result = execute(command, envp, dir);
@@ -245,6 +309,7 @@ public class Executor {
      *            the working directory of the current process
      * @return the exit value of the process (0 typically indicates success),
      *         or -1 if an error occurred starting the process
+     * @throws SecurityException if command execution is disabled
      */
     public int exec(String[] cmdarray, String[] envp, File dir) {
         ExecutionResult result = execute(cmdarray, envp, dir);

@@ -3075,6 +3075,53 @@ exec.exec(cmd);
 exec.exec("echo " + userInput);  // Unsafe
 ```
 
+### Security Configuration
+
+Executor provides a simple security control to completely disable command execution when needed. Due to the inherent security risks of executing arbitrary system commands, this utility allows you to disable all command execution functionality. **Command execution is enabled by default** for backward compatibility.
+
+**System Property Configuration:**
+```properties
+# Simple enable/disable control for all command execution
+executor.enabled=true
+```
+
+**Security Features:**
+- **Complete Disable:** When disabled, all command execution methods throw SecurityException
+- **Backward Compatibility:** Enabled by default to preserve existing functionality  
+- **Simple Control:** Single property controls all execution methods
+
+**Usage Examples:**
+
+**Disable Command Execution in Production:**
+```java
+// Disable all command execution for security
+System.setProperty("executor.enabled", "false");
+
+// All execution methods will now throw SecurityException
+Executor exec = new Executor();
+try {
+    exec.exec("ls -l");
+} catch (SecurityException e) {
+    // Command execution is disabled via system property 'executor.enabled=false'
+}
+```
+
+**Enable Command Execution (Default):**
+```java
+// Explicitly enable (though enabled by default)
+System.setProperty("executor.enabled", "true");
+
+// Command execution works normally
+Executor exec = new Executor();
+int exitCode = exec.exec("echo 'Hello World'");
+```
+
+**Security Considerations:**
+- ⚠️ **WARNING:** This class executes arbitrary system commands with the privileges of the JVM process
+- Only use with trusted input or disable entirely in security-sensitive environments
+- Consider disabling in production environments where command execution is not needed
+- All variants of `exec()` and `execute()` methods respect the security setting
+
 ### Resource Management
 ```java
 // Resources are automatically managed
@@ -4821,4 +4868,535 @@ int maxContentLength = UrlUtilities.getMaxContentLength();
 - **Resource Management:** Automatic cleanup of connections and streams
 
 This implementation provides robust HTTP/HTTPS client capabilities with emphasis on security, performance, and ease of use.
+
+---
+
+## ArrayUtilities Security Configuration
+
+[View Source](/src/main/java/com/cedarsoftware/util/ArrayUtilities.java)
+
+ArrayUtilities provides configurable security controls to prevent various attack vectors including memory exhaustion, reflection attacks, and array manipulation exploits. **All security features are disabled by default** for backward compatibility.
+
+### System Property Configuration
+
+```properties
+# Master switch - enables all security features
+arrayutilities.security.enabled=false
+
+# Component type validation - prevents dangerous system class arrays
+arrayutilities.component.type.validation.enabled=false
+
+# Maximum array size limit - prevents memory exhaustion
+arrayutilities.max.array.size=2147483639
+
+# Dangerous class patterns - configurable list of blocked classes
+arrayutilities.dangerous.class.patterns=java.lang.Runtime,java.lang.ProcessBuilder,java.lang.System,java.security.,javax.script.,sun.,com.sun.,java.lang.Class
+```
+
+### Security Features
+
+**Component Type Validation:**
+- Prevents creation of arrays with dangerous system classes
+- Configurable via comma-separated class patterns
+- Supports exact class names and package prefixes (ending with ".")
+
+**Array Size Validation:**
+- Prevents integer overflow and memory exhaustion attacks
+- Configurable maximum array size limit
+- Default limit: `Integer.MAX_VALUE - 8` (JVM array size limit)
+
+**Dangerous Class Filtering:**
+- Blocks array creation for security-sensitive classes
+- Configurable patterns support package prefixes and exact matches
+- Default patterns include Runtime, ProcessBuilder, System, security classes
+
+**Error Message Sanitization:**
+- Prevents information disclosure in error messages
+- Generic error messages for security violations
+
+### Usage Examples
+
+**Enable Security with Default Settings:**
+```java
+// Enable all security features
+System.setProperty("arrayutilities.security.enabled", "true");
+System.setProperty("arrayutilities.component.type.validation.enabled", "true");
+
+// These will now be blocked
+try {
+    Runtime[] runtimes = ArrayUtilities.nullToEmpty(Runtime.class, null);
+} catch (SecurityException e) {
+    // Array creation denied for security-sensitive class: java.lang.Runtime
+}
+```
+
+**Custom Security Configuration:**
+```java
+// Enable security with custom limits and patterns
+System.setProperty("arrayutilities.security.enabled", "true");
+System.setProperty("arrayutilities.component.type.validation.enabled", "true");
+System.setProperty("arrayutilities.max.array.size", "1000000"); // 1M limit
+System.setProperty("arrayutilities.dangerous.class.patterns", "java.lang.Runtime,com.example.DangerousClass");
+
+// Safe operations work normally
+String[] strings = ArrayUtilities.nullToEmpty(String.class, null);
+String[] combined = ArrayUtilities.addAll(new String[]{"a"}, new String[]{"b"});
+```
+
+**Backward Compatibility (Default Behavior):**
+```java
+// By default, all security features are disabled
+// These operations work without restrictions
+Runtime[] runtimes = ArrayUtilities.nullToEmpty(Runtime.class, null);
+String[] huge = ArrayUtilities.toArray(String.class, hugeCollection);
+```
+
+### Configuration Details
+
+**Class Pattern Matching:**
+- **Exact matches:** `java.lang.Runtime` blocks only the Runtime class
+- **Package prefixes:** `java.security.` blocks all classes in java.security package
+- **Multiple patterns:** Comma-separated list of patterns
+
+**Static Initialization:**
+- Default dangerous class patterns are set automatically if not configured
+- Ensures backward compatibility when users haven't set system properties
+- Users can override defaults by setting system properties before class loading
+
+### Security Considerations
+
+**When to Enable:**
+- Production environments handling untrusted input
+- Applications creating arrays from user-controlled data
+- Systems requiring protection against reflection attacks
+
+**Performance Impact:**
+- Minimal overhead when security is disabled (default)
+- Small validation cost when enabled
+- No impact on normal array operations
+
+**Thread Safety:**
+- All security checks are thread-safe
+- System property changes require application restart
+- Configuration is read dynamically for maximum flexibility
+
+## ReflectionUtils Security Configuration
+
+[View Source](/src/main/java/com/cedarsoftware/util/ReflectionUtils.java)
+
+ReflectionUtils provides configurable security controls to prevent various attack vectors including unauthorized access to dangerous classes, sensitive field exposure, and reflection-based attacks. **All security features are disabled by default** for backward compatibility.
+
+### System Property Configuration
+
+```properties
+# Master switch - enables all security features
+reflectionutils.security.enabled=false
+
+# Dangerous class validation - prevents reflection access to system classes
+reflectionutils.dangerous.class.validation.enabled=false
+
+# Sensitive field validation - blocks access to sensitive fields
+reflectionutils.sensitive.field.validation.enabled=false
+
+# Maximum cache size per cache type - prevents memory exhaustion
+reflectionutils.max.cache.size=50000
+
+# Dangerous class patterns - configurable list of blocked classes
+reflectionutils.dangerous.class.patterns=java.lang.Runtime,java.lang.Process,java.lang.ProcessBuilder,sun.misc.Unsafe,jdk.internal.misc.Unsafe,javax.script.ScriptEngine,javax.script.ScriptEngineManager
+
+# Sensitive field patterns - configurable list of blocked field names
+reflectionutils.sensitive.field.patterns=password,passwd,secret,secretkey,apikey,api_key,authtoken,accesstoken,credential,confidential,adminkey,private
+```
+
+### Security Features
+
+**Dangerous Class Protection:**
+- Prevents reflection access to system classes that could enable privilege escalation
+- Configurable via comma-separated class patterns
+- Supports exact class names and package prefixes
+- Trusted caller validation allows java-util library internal access
+
+**Sensitive Field Protection:**
+- Blocks access to fields containing sensitive information (passwords, tokens, etc.)
+- Configurable field name patterns with case-insensitive matching
+- Only applies to user classes (not JDK classes)
+- Protects against credential exposure via reflection
+
+**Cache Size Limits:**
+- Configurable limits to prevent memory exhaustion attacks
+- Separate limits for different cache types (methods, fields, constructors)
+- Default limit: 50,000 entries per cache when enabled
+
+**Trusted Caller Validation:**
+- Allows java-util library internal access while blocking external callers
+- Based on stack trace analysis to identify caller package
+- Prevents circumvention of security controls
+
+### Usage Examples
+
+**Enable Security with Default Settings:**
+```java
+// Enable all security features
+System.setProperty("reflectionutils.security.enabled", "true");
+System.setProperty("reflectionutils.dangerous.class.validation.enabled", "true");
+System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");
+
+// These will now be blocked for external callers
+try {
+    Constructor<Runtime> ctor = ReflectionUtils.getConstructor(Runtime.class);
+} catch (SecurityException e) {
+    // Access denied for external callers to dangerous classes
+}
+
+try {
+    Field passwordField = ReflectionUtils.getField(MyClass.class, "password");
+} catch (SecurityException e) {
+    // Access denied: Sensitive field access not permitted
+}
+```
+
+**Custom Security Configuration:**
+```java
+// Enable security with custom patterns
+System.setProperty("reflectionutils.security.enabled", "true");
+System.setProperty("reflectionutils.sensitive.field.validation.enabled", "true");
+System.setProperty("reflectionutils.max.cache.size", "10000");
+System.setProperty("reflectionutils.sensitive.field.patterns", "apiKey,secretToken,password");
+
+// Safe operations work normally
+Method method = ReflectionUtils.getMethod(String.class, "valueOf", int.class);
+Field normalField = ReflectionUtils.getField(MyClass.class, "normalData");
+```
+
+**Backward Compatibility (Default Behavior):**
+```java
+// By default, all security features are disabled
+// These operations work without restrictions
+Constructor<Runtime> ctor = ReflectionUtils.getConstructor(Runtime.class);
+Field sensitiveField = ReflectionUtils.getField(MyClass.class, "password");
+Method systemMethod = ReflectionUtils.getMethod(System.class, "getProperty", String.class);
+```
+
+### Configuration Details
+
+**Class Pattern Matching:**
+- **Exact matches:** `java.lang.Runtime` blocks only the Runtime class
+- **Package prefixes:** `java.security.` blocks all classes in java.security package  
+- **Multiple patterns:** Comma-separated list of patterns
+
+**Field Pattern Matching:**
+- **Case-insensitive:** `password` matches "password", "Password", "PASSWORD"
+- **Contains matching:** `secret` matches "secretKey", "mySecret", "secretData"
+- **Only user classes:** JDK classes (java.*, javax.*, sun.*) are excluded from field validation
+
+**Trusted Caller Detection:**
+- Internal java-util classes are considered trusted callers
+- Based on stack trace analysis of calling package
+- Allows legitimate internal library operations while blocking external abuse
+
+**Static Initialization:**
+- Default patterns are set automatically if not configured
+- Ensures backward compatibility when users haven't set system properties
+- Users can override defaults by setting system properties before class loading
+
+### Security Considerations
+
+**When to Enable:**
+- Production environments handling untrusted input
+- Applications using reflection with user-controlled class/field names
+- Systems requiring protection against credential exposure
+- Multi-tenant environments requiring strict reflection controls
+
+**Performance Impact:**
+- Minimal overhead when security is disabled (default)
+- Small validation cost when enabled
+- Caching reduces repeated security checks
+- No impact on normal reflection operations
+
+**Thread Safety:**
+- All security checks are thread-safe
+- System property changes require application restart
+- Cache operations are concurrent and lock-free
+
+## SystemUtilities Security Configuration
+
+[View Source](/src/main/java/com/cedarsoftware/util/SystemUtilities.java)
+
+SystemUtilities provides configurable security controls to prevent various attack vectors including information disclosure, resource exhaustion, and system manipulation attacks. **All security features are disabled by default** for backward compatibility.
+
+### System Property Configuration
+
+```properties
+# Master switch - enables all security features
+systemutilities.security.enabled=false
+
+# Environment variable validation - blocks sensitive environment variable access
+systemutilities.environment.variable.validation.enabled=false
+
+# File system validation - validates file system operations
+systemutilities.file.system.validation.enabled=false
+
+# Resource limits - enforces resource usage limits
+systemutilities.resource.limits.enabled=false
+
+# Maximum number of shutdown hooks - prevents resource exhaustion
+systemutilities.max.shutdown.hooks=100
+
+# Maximum temporary directory prefix length - prevents DoS attacks
+systemutilities.max.temp.prefix.length=100
+
+# Sensitive variable patterns - configurable list of blocked variable patterns
+systemutilities.sensitive.variable.patterns=PASSWORD,PASSWD,PASS,SECRET,KEY,TOKEN,CREDENTIAL,AUTH,APIKEY,API_KEY,PRIVATE,CERT,CERTIFICATE,DATABASE_URL,DB_URL,CONNECTION_STRING,DSN,AWS_SECRET,AZURE_CLIENT_SECRET,GCP_SERVICE_ACCOUNT
+```
+
+### Security Features
+
+**Environment Variable Protection:**
+- Prevents access to sensitive environment variables (passwords, tokens, etc.)
+- Configurable patterns with case-insensitive matching
+- Sanitizes variable names in logging to prevent information disclosure
+- Separate unsafe methods available for authorized access
+
+**File System Validation:**
+- Validates temporary directory prefixes to prevent path traversal attacks
+- Configurable length limits to prevent DoS attacks
+- Blocks dangerous characters and null bytes
+- Canonical path resolution for security
+
+**Resource Limits:**
+- Configurable limits on shutdown hooks to prevent exhaustion
+- Configurable temporary directory prefix length limits
+- Thread-safe counters and atomic operations
+- Graceful error handling and cleanup
+
+**Information Disclosure Prevention:**
+- Sanitizes sensitive variable names in logs
+- Prevents credential exposure via reflection
+- Generic error messages for security violations
+
+### Usage Examples
+
+**Enable Security with Default Settings:**
+```java
+// Enable all security features
+System.setProperty("systemutilities.security.enabled", "true");
+System.setProperty("systemutilities.environment.variable.validation.enabled", "true");
+System.setProperty("systemutilities.file.system.validation.enabled", "true");
+System.setProperty("systemutilities.resource.limits.enabled", "true");
+
+// These will now be filtered for security
+try {
+    String password = SystemUtilities.getExternalVariable("PASSWORD");
+    // Returns null (filtered)
+} catch (SecurityException e) {
+    // Sensitive variables are filtered, not thrown as exceptions
+}
+
+// Dangerous file operations will be blocked
+try {
+    SystemUtilities.createTempDirectory("../malicious");
+} catch (IllegalArgumentException e) {
+    // Path traversal attempt blocked
+}
+```
+
+**Custom Security Configuration:**
+```java
+// Enable security with custom patterns and limits
+System.setProperty("systemutilities.security.enabled", "true");
+System.setProperty("systemutilities.environment.variable.validation.enabled", "true");
+System.setProperty("systemutilities.resource.limits.enabled", "true");
+System.setProperty("systemutilities.max.shutdown.hooks", "50");
+System.setProperty("systemutilities.sensitive.variable.patterns", "CUSTOM_SECRET,API_TOKEN,AUTH_KEY");
+
+// Safe operations work normally
+String normalVar = SystemUtilities.getExternalVariable("JAVA_HOME");
+File tempDir = SystemUtilities.createTempDirectory("myapp");
+SystemUtilities.addShutdownHook(() -> System.out.println("Cleanup"));
+```
+
+**Backward Compatibility (Default Behavior):**
+```java
+// By default, all security features are disabled
+// These operations work without restrictions
+String password = SystemUtilities.getExternalVariable("PASSWORD"); // returns actual value
+File tempDir = SystemUtilities.createTempDirectory("../test"); // allowed
+Map<String, String> allEnvVars = SystemUtilities.getEnvironmentVariables(null); // includes sensitive vars
+```
+
+### Configuration Details
+
+**Variable Pattern Matching:**
+- **Case-insensitive:** `PASSWORD` matches "password", "Password", "PASSWORD"
+- **Contains matching:** `SECRET` matches "API_SECRET", "SECRET_KEY", "MY_SECRET"
+- **Multiple patterns:** Comma-separated list of patterns
+- **Custom patterns:** Override defaults completely or extend them
+
+**Resource Limit Enforcement:**
+- **Shutdown hooks:** Configurable maximum number to prevent memory exhaustion
+- **Prefix length:** Configurable maximum length for temporary directory names
+- **Thread-safe:** All counters use atomic operations for thread safety
+- **Graceful handling:** Limits enforced only when explicitly enabled
+
+**Static Initialization:**
+- Default patterns are set automatically if not configured
+- Ensures backward compatibility when users haven't set system properties
+- Users can override defaults by setting system properties before class loading
+
+### Security Considerations
+
+**When to Enable:**
+- Production environments handling untrusted input
+- Applications that expose environment variables via APIs
+- Systems requiring protection against credential disclosure
+- Multi-tenant environments requiring strict resource controls
+
+**Performance Impact:**
+- Minimal overhead when security is disabled (default)
+- Small validation cost when enabled (pattern matching, bounds checking)
+- No impact on normal system operations
+- Thread-safe operations with minimal contention
+
+**Thread Safety:**
+- All security checks are thread-safe
+- System property changes require application restart
+- Resource counters use atomic operations
+- Configuration is read dynamically for maximum flexibility
+
+---
+
+## DateUtilities Security Configuration
+
+[View Source](/src/main/java/com/cedarsoftware/util/DateUtilities.java)
+
+DateUtilities provides configurable security controls to prevent various attack vectors including ReDoS (Regular Expression Denial of Service) attacks, input validation bypasses, and resource exhaustion attacks. **All security features are disabled by default** for backward compatibility.
+
+### System Property Configuration
+
+Configure security features via system properties:
+
+```bash
+# Enable DateUtilities security features
+-Ddateutilities.security.enabled=true
+-Ddateutilities.input.validation.enabled=true
+-Ddateutilities.regex.timeout.enabled=true
+-Ddateutilities.malformed.string.protection.enabled=true
+
+# Configure security limits
+-Ddateutilities.max.input.length=1000
+-Ddateutilities.max.epoch.digits=19
+-Ddateutilities.regex.timeout.milliseconds=1000
+```
+
+### Security Features
+
+**Input Length Validation:**
+- Prevents memory exhaustion through oversized input strings
+- Configurable maximum input string length (default: 1000 characters)
+- Protects against attack vectors that supply enormous strings
+
+**ReDoS Protection:**
+- Configurable timeouts for regex operations to prevent catastrophic backtracking
+- Default timeout: 1000 milliseconds per regex operation
+- Protects against specially crafted input designed to cause exponential regex behavior
+
+**Malformed Input Protection:**
+- Enhanced validation to detect and reject malicious input patterns
+- Detects excessive repetition patterns that could cause ReDoS
+- Identifies excessive nesting/grouping that could consume excessive resources
+- Blocks input containing invalid control characters
+
+**Epoch Range Validation:**
+- Prevents integer overflow in epoch millisecond parsing
+- Configurable maximum digits for epoch values (default: 19 digits)
+- Protects against attempts to supply oversized numeric values
+
+### Usage Examples
+
+**Secure Configuration (Recommended for Production):**
+```java
+// Enable comprehensive security
+System.setProperty("dateutilities.security.enabled", "true");
+System.setProperty("dateutilities.input.validation.enabled", "true");
+System.setProperty("dateutilities.regex.timeout.enabled", "true");
+System.setProperty("dateutilities.malformed.string.protection.enabled", "true");
+System.setProperty("dateutilities.max.input.length", "500");
+
+// These operations will enforce security controls
+Date validDate = DateUtilities.parseDate("2024-01-15 14:30:00"); // works
+
+try {
+    String maliciousInput = StringUtilities.repeat("a", 1000);
+    DateUtilities.parseDate(maliciousInput); // throws SecurityException
+} catch (SecurityException e) {
+    // Handle security violation
+}
+```
+
+**Custom Security Limits:**
+```java
+// Configure custom limits for specific environments
+System.setProperty("dateutilities.security.enabled", "true");
+System.setProperty("dateutilities.input.validation.enabled", "true");
+System.setProperty("dateutilities.max.input.length", "250");
+System.setProperty("dateutilities.max.epoch.digits", "15");
+System.setProperty("dateutilities.regex.timeout.milliseconds", "500");
+
+// Parsing respects the configured limits
+Date date = DateUtilities.parseDate("2024-01-15"); // works
+```
+
+**Backward Compatibility (Default Behavior):**
+```java
+// By default, all security features are disabled
+// These operations work without restrictions
+Date longInput = DateUtilities.parseDate(veryLongDateString); // allowed
+Date bigEpoch = DateUtilities.parseDate("123456789012345678901234567890"); // allowed (if valid Long)
+```
+
+### Configuration Details
+
+**Input Validation:**
+- **Length checking:** Validates input string length before processing
+- **Character validation:** Detects invalid control characters and null bytes
+- **Epoch validation:** Limits the number of digits in epoch millisecond values
+- **Early rejection:** Invalid input is rejected before expensive parsing operations
+
+**ReDoS Protection:**
+- **Timeout-based:** Each regex operation has a configurable timeout
+- **Fail-fast:** Operations that exceed timeout are immediately terminated
+- **Pattern-specific:** Different patterns may have different performance characteristics
+- **Safe fallback:** Timeout violations throw SecurityException with clear error messages
+
+**Malformed Input Detection:**
+- **Repetition analysis:** Detects patterns with excessive character repetition
+- **Nesting detection:** Identifies deeply nested structures that could cause stack issues
+- **Pattern validation:** Uses heuristics to identify potentially problematic input
+- **Configurable sensitivity:** Detection thresholds can be adjusted via configuration
+
+### Security Considerations
+
+**When to Enable:**
+- Production environments processing untrusted date input
+- APIs accepting date strings from external sources
+- Applications requiring protection against ReDoS attacks
+- Systems with strict resource usage requirements
+
+**Performance Impact:**
+- Minimal overhead when security is disabled (default)
+- Small validation cost when enabled (length checks, pattern analysis)
+- Regex timeout protection adds slight overhead to pattern matching
+- Input validation happens before expensive parsing operations
+
+**Thread Safety:**
+- All security checks are thread-safe
+- System property changes require application restart
+- No shared mutable state between threads
+- Configuration is read dynamically for maximum flexibility
+
+**Attack Vectors Addressed:**
+- **ReDoS attacks:** Malicious regex patterns designed to cause exponential backtracking
+- **Memory exhaustion:** Oversized input strings that consume excessive memory
+- **Resource exhaustion:** Patterns designed to consume excessive CPU time
+- **Input validation bypass:** Attempts to circumvent normal parsing logic
 

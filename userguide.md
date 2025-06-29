@@ -3311,6 +3311,38 @@ do {
 // [3, 2, 1]
 ```
 
+### Feature Options
+
+MathUtilities provides configurable security options through system properties. All security features are **disabled by default** for backward compatibility:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `math.max.array.size` | `0` | Array size limit for min/max operations (0=disabled) |
+| `math.max.string.length` | `0` | String length limit for parsing operations (0=disabled) |
+| `math.max.permutation.size` | `0` | List size limit for permutation generation (0=disabled) |
+
+**Usage Examples:**
+
+```java
+// Production environment with security limits
+System.setProperty("math.max.array.size", "10000");
+System.setProperty("math.max.string.length", "1000");
+System.setProperty("math.max.permutation.size", "100");
+
+// Development environment with higher limits
+System.setProperty("math.max.array.size", "100000");
+System.setProperty("math.max.string.length", "10000");
+System.setProperty("math.max.permutation.size", "500");
+
+// Testing environment - all security features disabled (default)
+// No system properties needed - all limits default to 0 (disabled)
+```
+
+**Security Benefits:**
+- **Array Size Limits**: Prevents memory exhaustion from extremely large arrays in min/max operations
+- **String Length Limits**: Protects against malicious input with very long numeric strings
+- **Permutation Size Limits**: Guards against factorial explosion in permutation generation
+
 ### Implementation Notes
 
 **Null Handling:**

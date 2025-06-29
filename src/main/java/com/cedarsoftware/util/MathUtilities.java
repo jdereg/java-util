@@ -28,6 +28,15 @@ import static java.util.Collections.swap;
  *   <li>Thread-safe operations</li>
  * </ul>
  *
+ * <p><strong>Security Configuration:</strong></p>
+ * <p>MathUtilities provides configurable security options through system properties.
+ * All security features are <strong>disabled by default</strong> for backward compatibility:</p>
+ * <ul>
+ *   <li><code>math.max.array.size=0</code> &mdash; Array size limit for min/max operations (0=disabled)</li>
+ *   <li><code>math.max.string.length=0</code> &mdash; String length limit for parsing (0=disabled)</li>
+ *   <li><code>math.max.permutation.size=0</code> &mdash; List size limit for permutations (0=disabled)</li>
+ * </ul>
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC
@@ -51,6 +60,15 @@ public final class MathUtilities
     public static final BigDecimal BIG_DEC_DOUBLE_MIN = BigDecimal.valueOf(-Double.MAX_VALUE);
     public static final BigDecimal BIG_DEC_DOUBLE_MAX = BigDecimal.valueOf(Double.MAX_VALUE);
 
+    // Security limits to prevent resource exhaustion attacks
+    // 0 or negative values = disabled, positive values = enabled with limit
+    private static final int MAX_ARRAY_SIZE = Integer.parseInt(
+            System.getProperty("math.max.array.size", "0"));
+    private static final int MAX_STRING_LENGTH = Integer.parseInt(
+            System.getProperty("math.max.string.length", "0"));
+    private static final int MAX_PERMUTATION_SIZE = Integer.parseInt(
+            System.getProperty("math.max.permutation.size", "0"));
+
     private MathUtilities()
     {
         super();
@@ -68,6 +86,11 @@ public final class MathUtilities
         if (len == 0)
         {
             throw new IllegalArgumentException("values cannot be empty");
+        }
+        // Security check: validate array size
+        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
         }
         long current = values[0];
 
@@ -92,6 +115,11 @@ public final class MathUtilities
         {
             throw new IllegalArgumentException("values cannot be empty");
         }
+        // Security check: validate array size
+        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+        }
         long current = values[0];
 
         for (int i=1; i < len; i++)
@@ -114,6 +142,11 @@ public final class MathUtilities
         if (len == 0)
         {
             throw new IllegalArgumentException("values cannot be empty");
+        }
+        // Security check: validate array size
+        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
         }
         double current = values[0];
 
@@ -138,6 +171,11 @@ public final class MathUtilities
         {
             throw new IllegalArgumentException("values cannot be empty");
         }
+        // Security check: validate array size
+        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+        }
         double current = values[0];
 
         for (int i=1; i < len; i++)
@@ -160,6 +198,11 @@ public final class MathUtilities
         if (len == 0)
         {
             throw new IllegalArgumentException("values cannot be empty");
+        }
+        // Security check: validate array size
+        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
         }
         if (len == 1)
         {
@@ -196,6 +239,11 @@ public final class MathUtilities
         {
             throw new IllegalArgumentException("values cannot be empty");
         }
+        // Security check: validate array size
+        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+        }
         if (len == 1)
         {
             if (values[0] == null)
@@ -231,6 +279,11 @@ public final class MathUtilities
         {
             throw new IllegalArgumentException("values cannot be empty");
         }
+        // Security check: validate array size
+        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+        }
         if (len == 1)
         {
             if (values[0] == null)
@@ -265,6 +318,11 @@ public final class MathUtilities
         if (len == 0)
         {
             throw new IllegalArgumentException("values cannot be empty");
+        }
+        // Security check: validate array size
+        if (MAX_ARRAY_SIZE > 0 && len > MAX_ARRAY_SIZE)
+        {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
         }
         if (len == 1)
         {
@@ -317,6 +375,12 @@ public final class MathUtilities
     public static Number parseToMinimalNumericType(String numStr)
     {
         Objects.requireNonNull(numStr, "numStr");
+        
+        // Security check: validate string length
+        if (MAX_STRING_LENGTH > 0 && numStr.length() > MAX_STRING_LENGTH)
+        {
+            throw new SecurityException("String length exceeds maximum allowed: " + MAX_STRING_LENGTH);
+        }
 
         boolean negative = false;
         boolean positive = false;
@@ -428,6 +492,12 @@ public final class MathUtilities
         if (list == null)
         {
             throw new IllegalArgumentException("list cannot be null");
+        }
+        
+        // Security check: validate list size
+        if (MAX_PERMUTATION_SIZE > 0 && list.size() > MAX_PERMUTATION_SIZE)
+        {
+            throw new SecurityException("List size exceeds maximum allowed for permutation: " + MAX_PERMUTATION_SIZE);
         }
         int k = list.size() - 2;
         while (k >= 0 && list.get(k).compareTo(list.get(k + 1)) >= 0) {

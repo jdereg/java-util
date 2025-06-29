@@ -2339,6 +2339,73 @@ DeepEquals.deepEquals(new HashSet<>(list1), new HashSet<>(list2));
 DeepEquals.deepEquals(map1, map2);
 ```
 
+### Feature Options
+
+DeepEquals provides configurable security and performance options through system properties. All security features are **disabled by default** for backward compatibility.
+
+#### Security Options
+
+**Error Message Sanitization:**
+```bash
+# Enable sanitization of sensitive data in error messages
+-Ddeepequals.secure.errors=true
+```
+- **Default:** `false` (disabled)
+- **Description:** When enabled, sensitive field names (password, secret, token, etc.) are redacted as `[REDACTED]` in error messages. String values, URLs, and URIs are also sanitized to prevent information disclosure.
+
+#### Memory Protection Options
+
+**Collection Size Limit:**
+```bash
+# Set maximum collection size (0 = disabled)
+-Ddeepequals.max.collection.size=50000
+```
+- **Default:** `0` (disabled)
+- **Description:** Prevents memory exhaustion attacks by limiting collection sizes during comparison. Set to 0 or negative to disable.
+
+**Array Size Limit:**
+```bash
+# Set maximum array size (0 = disabled)
+-Ddeepequals.max.array.size=50000
+```
+- **Default:** `0` (disabled)
+- **Description:** Prevents memory exhaustion attacks by limiting array sizes during comparison. Set to 0 or negative to disable.
+
+**Map Size Limit:**
+```bash
+# Set maximum map size (0 = disabled)
+-Ddeepequals.max.map.size=50000
+```
+- **Default:** `0` (disabled)
+- **Description:** Prevents memory exhaustion attacks by limiting map sizes during comparison. Set to 0 or negative to disable.
+
+**Object Field Count Limit:**
+```bash
+# Set maximum object field count (0 = disabled)
+-Ddeepequals.max.object.fields=1000
+```
+- **Default:** `0` (disabled)
+- **Description:** Prevents memory exhaustion attacks by limiting the number of fields in objects during comparison. Set to 0 or negative to disable.
+
+**Recursion Depth Limit:**
+```bash
+# Set maximum recursion depth (0 = disabled)
+-Ddeepequals.max.recursion.depth=500
+```
+- **Default:** `0` (disabled)
+- **Description:** Prevents stack overflow attacks by limiting recursion depth during comparison. Set to 0 or negative to disable.
+
+#### Usage Examples:
+```bash
+# Enable all security protections with reasonable limits
+-Ddeepequals.secure.errors=true \
+-Ddeepequals.max.collection.size=100000 \
+-Ddeepequals.max.array.size=100000 \
+-Ddeepequals.max.map.size=100000 \
+-Ddeepequals.max.object.fields=1000 \
+-Ddeepequals.max.recursion.depth=1000
+```
+
 ### Implementation Notes
 - Thread-safe design
 - Efficient circular reference detection
@@ -2516,6 +2583,125 @@ bytes = IOUtilities.inputStreamToBytes(inputStream);
 // Transfer exact number of bytes
 byte[] buffer = new byte[1024];
 IOUtilities.transfer(inputStream, buffer);
+```
+
+### Feature Options
+
+IOUtilities provides configurable security and performance options through system properties. Most security features have **safe defaults** but can be customized as needed.
+
+#### Debug and Logging Options
+
+**General Debug Logging:**
+```bash
+# Enable debug logging for I/O operations
+-Dio.debug=true
+```
+- **Default:** `false` (disabled)
+- **Description:** Enables fine-level logging for I/O operations and security validations.
+
+**Detailed URL Logging:**
+```bash
+# Enable detailed URL logging (shows full URLs)
+-Dio.debug.detailed.urls=true
+```
+- **Default:** `false` (disabled)
+- **Description:** Shows full URLs in logs when enabled (normally sanitized for security).
+
+**Detailed Path Logging:**
+```bash
+# Enable detailed file path logging
+-Dio.debug.detailed.paths=true
+```
+- **Default:** `false` (disabled)
+- **Description:** Shows full file paths in logs when enabled (normally sanitized for security).
+
+#### Connection and Timeout Options
+
+**Connection Timeout:**
+```bash
+# Set HTTP connection timeout in milliseconds (1000-300000ms)
+-Dio.connect.timeout=10000
+```
+- **Default:** `5000` (5 seconds)
+- **Description:** Timeout for establishing HTTP connections. Bounded between 1000ms and 300000ms for security.
+
+**Read Timeout:**
+```bash
+# Set HTTP read timeout in milliseconds (1000-300000ms)
+-Dio.read.timeout=60000
+```
+- **Default:** `30000` (30 seconds)
+- **Description:** Timeout for reading HTTP responses. Bounded between 1000ms and 300000ms for security.
+
+#### Security Options
+
+**Stream Size Limit:**
+```bash
+# Set maximum stream size in bytes (default 2GB)
+-Dio.max.stream.size=1073741824
+```
+- **Default:** `2147483647` (2GB)
+- **Description:** Prevents memory exhaustion attacks by limiting stream size.
+
+**Decompression Size Limit:**
+```bash
+# Set maximum decompressed data size in bytes (default 2GB)
+-Dio.max.decompression.size=1073741824
+```
+- **Default:** `2147483647` (2GB)
+- **Description:** Prevents zip bomb attacks by limiting decompressed output size.
+
+**Path Validation Control:**
+```bash
+# Disable file path security validation (not recommended)
+-Dio.path.validation.disabled=true
+```
+- **Default:** `false` (validation enabled)
+- **Description:** Disables path traversal and security validation. Use with caution.
+
+**URL Protocol Validation:**
+```bash
+# Disable URL protocol validation (not recommended)
+-Dio.url.protocol.validation.disabled=true
+```
+- **Default:** `false` (validation enabled)
+- **Description:** Disables URL protocol security checks. Use with caution.
+
+**Allowed Protocols:**
+```bash
+# Configure allowed URL protocols
+-Dio.allowed.protocols=http,https,file
+```
+- **Default:** `"http,https,file,jar"`
+- **Description:** Comma-separated list of allowed URL protocols to prevent SSRF attacks.
+
+**File Protocol Validation:**
+```bash
+# Disable file protocol validation (not recommended)
+-Dio.file.protocol.validation.disabled=true
+```
+- **Default:** `false` (validation enabled)
+- **Description:** Disables file:// URL security checks. Use with caution.
+
+#### Usage Examples:
+```bash
+# Production setup with enhanced security
+-Dio.max.stream.size=104857600 \
+-Dio.max.decompression.size=104857600 \
+-Dio.allowed.protocols=https \
+-Dio.connect.timeout=10000 \
+-Dio.read.timeout=30000
+
+# Development setup with debugging
+-Dio.debug=true \
+-Dio.debug.detailed.urls=true \
+-Dio.debug.detailed.paths=true \
+-Dio.connect.timeout=30000
+
+# Disable security validations (testing only - not recommended for production)
+-Dio.path.validation.disabled=true \
+-Dio.url.protocol.validation.disabled=true \
+-Dio.file.protocol.validation.disabled=true
 ```
 
 ### Implementation Notes

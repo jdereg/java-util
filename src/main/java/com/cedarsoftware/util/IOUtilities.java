@@ -69,6 +69,23 @@ import java.util.logging.Logger;
  * byte[] uncompressed = IOUtilities.uncompressBytes(compressed);
  * }</pre>
  *
+ * <p><strong>Security and Performance Configuration:</strong></p>
+ * <p>IOUtilities provides configurable security and performance options through system properties.
+ * Most security features have <strong>safe defaults</strong> but can be customized as needed:</p>
+ * <ul>
+ *   <li><code>io.debug=false</code> &mdash; Enable debug logging</li>
+ *   <li><code>io.connect.timeout=5000</code> &mdash; Connection timeout (1s-5min)</li>
+ *   <li><code>io.read.timeout=30000</code> &mdash; Read timeout (1s-5min)</li>
+ *   <li><code>io.max.stream.size=2147483647</code> &mdash; Stream size limit (2GB)</li>
+ *   <li><code>io.max.decompression.size=2147483647</code> &mdash; Decompression size limit (2GB)</li>
+ *   <li><code>io.path.validation.disabled=false</code> &mdash; Path security validation enabled</li>
+ *   <li><code>io.url.protocol.validation.disabled=false</code> &mdash; URL protocol validation enabled</li>
+ *   <li><code>io.allowed.protocols=http,https,file,jar</code> &mdash; Allowed URL protocols</li>
+ *   <li><code>io.file.protocol.validation.disabled=false</code> &mdash; File protocol validation enabled</li>
+ *   <li><code>io.debug.detailed.urls=false</code> &mdash; Detailed URL logging disabled</li>
+ *   <li><code>io.debug.detailed.paths=false</code> &mdash; Detailed path logging disabled</li>
+ * </ul>
+ *
  * @author Ken Partlow
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

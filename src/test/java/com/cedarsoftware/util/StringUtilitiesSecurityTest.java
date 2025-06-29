@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -10,6 +12,59 @@ import static org.junit.jupiter.api.Assertions.*;
  * and other security vulnerabilities.
  */
 public class StringUtilitiesSecurityTest {
+    
+    private String originalSecurityEnabled;
+    private String originalHexDecodeSize;
+    private String originalWildcardLength;
+    private String originalWildcardCount;
+    private String originalLevenshteinStringLength;
+    private String originalDamerauLevenshteinStringLength;
+    private String originalRepeatCount;
+    private String originalRepeatTotalSize;
+    
+    @BeforeEach
+    public void setUp() {
+        // Save original system property values
+        originalSecurityEnabled = System.getProperty("stringutilities.security.enabled");
+        originalHexDecodeSize = System.getProperty("stringutilities.max.hex.decode.size");
+        originalWildcardLength = System.getProperty("stringutilities.max.wildcard.length");
+        originalWildcardCount = System.getProperty("stringutilities.max.wildcard.count");
+        originalLevenshteinStringLength = System.getProperty("stringutilities.max.levenshtein.string.length");
+        originalDamerauLevenshteinStringLength = System.getProperty("stringutilities.max.damerau.levenshtein.string.length");
+        originalRepeatCount = System.getProperty("stringutilities.max.repeat.count");
+        originalRepeatTotalSize = System.getProperty("stringutilities.max.repeat.total.size");
+        
+        // Enable security with test limits
+        System.setProperty("stringutilities.security.enabled", "true");
+        System.setProperty("stringutilities.max.hex.decode.size", "100000");
+        System.setProperty("stringutilities.max.wildcard.length", "1000");
+        System.setProperty("stringutilities.max.wildcard.count", "100");
+        System.setProperty("stringutilities.max.levenshtein.string.length", "10000");
+        System.setProperty("stringutilities.max.damerau.levenshtein.string.length", "5000");
+        System.setProperty("stringutilities.max.repeat.count", "10000");
+        System.setProperty("stringutilities.max.repeat.total.size", "10000000");
+    }
+    
+    @AfterEach
+    public void tearDown() {
+        // Restore original system property values
+        restoreProperty("stringutilities.security.enabled", originalSecurityEnabled);
+        restoreProperty("stringutilities.max.hex.decode.size", originalHexDecodeSize);
+        restoreProperty("stringutilities.max.wildcard.length", originalWildcardLength);
+        restoreProperty("stringutilities.max.wildcard.count", originalWildcardCount);
+        restoreProperty("stringutilities.max.levenshtein.string.length", originalLevenshteinStringLength);
+        restoreProperty("stringutilities.max.damerau.levenshtein.string.length", originalDamerauLevenshteinStringLength);
+        restoreProperty("stringutilities.max.repeat.count", originalRepeatCount);
+        restoreProperty("stringutilities.max.repeat.total.size", originalRepeatTotalSize);
+    }
+    
+    private void restoreProperty(String key, String originalValue) {
+        if (originalValue == null) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, originalValue);
+        }
+    }
     
     // Test regex injection vulnerability fixes
     

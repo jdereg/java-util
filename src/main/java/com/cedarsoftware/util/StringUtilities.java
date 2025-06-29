@@ -53,6 +53,29 @@ import static java.lang.Character.toLowerCase;
  *   </li>
  * </ul>
  *
+ * <h2>Security Configuration</h2>
+ * <p>StringUtilities provides configurable security controls to prevent various attack vectors.
+ * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security controls can be enabled via system properties:</p>
+ * <ul>
+ *   <li><code>stringutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
+ *   <li><code>stringutilities.max.hex.decode.size=0</code> &mdash; Max hex string size for decode() (0=disabled)</li>
+ *   <li><code>stringutilities.max.wildcard.length=0</code> &mdash; Max wildcard pattern length (0=disabled)</li>
+ *   <li><code>stringutilities.max.wildcard.count=0</code> &mdash; Max wildcard characters in pattern (0=disabled)</li>
+ *   <li><code>stringutilities.max.levenshtein.string.length=0</code> &mdash; Max string length for Levenshtein distance (0=disabled)</li>
+ *   <li><code>stringutilities.max.damerau.levenshtein.string.length=0</code> &mdash; Max string length for Damerau-Levenshtein distance (0=disabled)</li>
+ *   <li><code>stringutilities.max.repeat.count=0</code> &mdash; Max repeat count for repeat() method (0=disabled)</li>
+ *   <li><code>stringutilities.max.repeat.total.size=0</code> &mdash; Max total size for repeat() result (0=disabled)</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>Memory Exhaustion Protection:</b> Limits string sizes to prevent out-of-memory attacks</li>
+ *   <li><b>ReDoS Prevention:</b> Limits wildcard pattern complexity to prevent regular expression denial of service</li>
+ *   <li><b>Integer Overflow Protection:</b> Prevents arithmetic overflow in size calculations</li>
+ * </ul>
+ *
  * <h2>Usage Examples</h2>
  *
  * <h3>String Comparison:</h3>
@@ -122,6 +145,40 @@ public final class StringUtilities {
     public static final String FOLDER_SEPARATOR = File.separator;
 
     public static final String EMPTY = "";
+    
+    // Security configuration - all disabled by default for backward compatibility
+    // These are checked dynamically to allow runtime configuration changes for testing
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("stringutilities.security.enabled", "false"));
+    }
+    
+    private static int getMaxHexDecodeSize() {
+        return Integer.parseInt(System.getProperty("stringutilities.max.hex.decode.size", "0"));
+    }
+    
+    private static int getMaxWildcardLength() {
+        return Integer.parseInt(System.getProperty("stringutilities.max.wildcard.length", "0"));
+    }
+    
+    private static int getMaxWildcardCount() {
+        return Integer.parseInt(System.getProperty("stringutilities.max.wildcard.count", "0"));
+    }
+    
+    private static int getMaxLevenshteinStringLength() {
+        return Integer.parseInt(System.getProperty("stringutilities.max.levenshtein.string.length", "0"));
+    }
+    
+    private static int getMaxDamerauLevenshteinStringLength() {
+        return Integer.parseInt(System.getProperty("stringutilities.max.damerau.levenshtein.string.length", "0"));
+    }
+    
+    private static int getMaxRepeatCount() {
+        return Integer.parseInt(System.getProperty("stringutilities.max.repeat.count", "0"));
+    }
+    
+    private static int getMaxRepeatTotalSize() {
+        return Integer.parseInt(System.getProperty("stringutilities.max.repeat.total.size", "0"));
+    }
 
     /**
      * <p>Constructor is declared private since all methods are static.</p>
@@ -409,9 +466,12 @@ public final class StringUtilities {
             return null;
         }
         
-        // Security: Limit input size to prevent memory exhaustion
-        if (s.length() > 100000) {
-            throw new IllegalArgumentException("Input string too long for hex decoding (max 100000): " + s.length());
+        // Security: Limit input size to prevent memory exhaustion (configurable)
+        if (isSecurityEnabled()) {
+            int maxSize = getMaxHexDecodeSize();
+            if (maxSize > 0 && s.length() > maxSize) {
+                throw new IllegalArgumentException("Input string too long for hex decoding (max " + maxSize + "): " + s.length());
+            }
         }
         
         int len = s.length();
@@ -501,18 +561,24 @@ public final class StringUtilities {
             throw new IllegalArgumentException("Wildcard pattern cannot be null");
         }
         
-        // Security: Prevent ReDoS attacks by limiting pattern length and complexity
-        if (wildcard.length() > 1000) {
-            throw new IllegalArgumentException("Wildcard pattern too long (max 1000 characters): " + wildcard.length());
-        }
-        
-        // Security: Count wildcards to prevent patterns with excessive complexity
-        int wildcardCount = 0;
-        for (int i = 0; i < wildcard.length(); i++) {
-            if (wildcard.charAt(i) == '*' || wildcard.charAt(i) == '?') {
-                wildcardCount++;
-                if (wildcardCount > 100) {
-                    throw new IllegalArgumentException("Too many wildcards in pattern (max 100): " + wildcardCount);
+        // Security: Prevent ReDoS attacks by limiting pattern length and complexity (configurable)
+        if (isSecurityEnabled()) {
+            int maxLength = getMaxWildcardLength();
+            if (maxLength > 0 && wildcard.length() > maxLength) {
+                throw new IllegalArgumentException("Wildcard pattern too long (max " + maxLength + " characters): " + wildcard.length());
+            }
+            
+            // Security: Count wildcards to prevent patterns with excessive complexity (configurable)
+            int maxCount = getMaxWildcardCount();
+            if (maxCount > 0) {
+                int wildcardCount = 0;
+                for (int i = 0; i < wildcard.length(); i++) {
+                    if (wildcard.charAt(i) == '*' || wildcard.charAt(i) == '?') {
+                        wildcardCount++;
+                        if (wildcardCount > maxCount) {
+                            throw new IllegalArgumentException("Too many wildcards in pattern (max " + maxCount + "): " + wildcardCount);
+                        }
+                    }
                 }
             }
         }
@@ -567,12 +633,17 @@ public final class StringUtilities {
      * @return the 'edit distance' (Levenshtein distance) between the two strings.
      */
     public static int levenshteinDistance(CharSequence s, CharSequence t) {
-        // Security: Prevent memory exhaustion attacks with very long strings
-        if (s != null && s.length() > 10000) {
-            throw new IllegalArgumentException("First string too long for distance calculation (max 10000): " + s.length());
-        }
-        if (t != null && t.length() > 10000) {
-            throw new IllegalArgumentException("Second string too long for distance calculation (max 10000): " + t.length());
+        // Security: Prevent memory exhaustion attacks with very long strings (configurable)
+        if (isSecurityEnabled()) {
+            int maxLength = getMaxLevenshteinStringLength();
+            if (maxLength > 0) {
+                if (s != null && s.length() > maxLength) {
+                    throw new IllegalArgumentException("First string too long for distance calculation (max " + maxLength + "): " + s.length());
+                }
+                if (t != null && t.length() > maxLength) {
+                    throw new IllegalArgumentException("Second string too long for distance calculation (max " + maxLength + "): " + t.length());
+                }
+            }
         }
         
         // degenerate cases
@@ -630,12 +701,17 @@ public final class StringUtilities {
      * string
      */
     public static int damerauLevenshteinDistance(CharSequence source, CharSequence target) {
-        // Security: Prevent memory exhaustion attacks with very long strings
-        if (source != null && source.length() > 5000) {
-            throw new IllegalArgumentException("Source string too long for Damerau-Levenshtein calculation (max 5000): " + source.length());
-        }
-        if (target != null && target.length() > 5000) {
-            throw new IllegalArgumentException("Target string too long for Damerau-Levenshtein calculation (max 5000): " + target.length());
+        // Security: Prevent memory exhaustion attacks with very long strings (configurable)
+        if (isSecurityEnabled()) {
+            int maxLength = getMaxDamerauLevenshteinStringLength();
+            if (maxLength > 0) {
+                if (source != null && source.length() > maxLength) {
+                    throw new IllegalArgumentException("Source string too long for Damerau-Levenshtein calculation (max " + maxLength + "): " + source.length());
+                }
+                if (target != null && target.length() > maxLength) {
+                    throw new IllegalArgumentException("Target string too long for Damerau-Levenshtein calculation (max " + maxLength + "): " + target.length());
+                }
+            }
         }
         
         if (source == null || EMPTY.contentEquals(source)) {
@@ -747,15 +823,10 @@ public final class StringUtilities {
      * @param encoding encoding to use
      */
     public static byte[] getBytes(String s, String encoding) {
-        if (s == null) {
-            return null;
-        }
-        
         try {
-            return s.getBytes(encoding);
+            return s == null ? null : s.getBytes(encoding);
         }
         catch (UnsupportedEncodingException e) {
-            // Maintain backward compatibility while improving security
             throw new IllegalArgumentException(String.format("Encoding (%s) is not supported by your JVM", encoding), e);
         }
     }
@@ -1097,23 +1168,27 @@ public final class StringUtilities {
             return EMPTY;
         }
         
-        // Security: Prevent memory exhaustion and integer overflow attacks
-        if (count > 10000) {
-            throw new IllegalArgumentException("count too large (max 10000): " + count);
+        // Security: Prevent memory exhaustion and integer overflow attacks (configurable)
+        if (isSecurityEnabled()) {
+            int maxCount = getMaxRepeatCount();
+            if (maxCount > 0 && count > maxCount) {
+                throw new IllegalArgumentException("count too large (max " + maxCount + "): " + count);
+            }
+            
+            // Security: Check for integer overflow in total length calculation
+            long totalLength = (long) s.length() * count;
+            if (totalLength > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("Result would be too large: " + totalLength + " characters");
+            }
+            
+            // Security: Limit total memory allocation to reasonable size
+            int maxTotalSize = getMaxRepeatTotalSize();
+            if (maxTotalSize > 0 && totalLength > maxTotalSize) {
+                throw new IllegalArgumentException("Result too large (max " + maxTotalSize + "): " + totalLength + " characters");
+            }
         }
         
-        // Security: Check for integer overflow in total length calculation
-        long totalLength = (long) s.length() * count;
-        if (totalLength > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("Result would be too large: " + totalLength + " characters");
-        }
-        
-        // Security: Limit total memory allocation to reasonable size (10MB)
-        if (totalLength > 10_000_000) {
-            throw new IllegalArgumentException("Result too large (max 10MB): " + totalLength + " characters");
-        }
-        
-        StringBuilder result = new StringBuilder((int) totalLength);
+        StringBuilder result = new StringBuilder(s.length() * count);
         for (int i = 0; i < count; i++) {
             result.append(s);
         }

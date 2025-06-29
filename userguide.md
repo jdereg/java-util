@@ -3890,6 +3890,53 @@ StringUtilities.FOLDER_SEPARATOR // Forward slash "/"
 
 Both constants are immutable (`final`).
 
+### Security Configuration
+
+StringUtilities provides configurable security controls to prevent various attack vectors including memory exhaustion, ReDoS (Regular Expression Denial of Service), and integer overflow attacks. **All security features are disabled by default** for backward compatibility.
+
+**System Property Configuration:**
+```properties
+# Master switch - enables all security features
+stringutilities.security.enabled=false
+
+# Individual security limits (0 = disabled)
+stringutilities.max.hex.decode.size=0
+stringutilities.max.wildcard.length=0
+stringutilities.max.wildcard.count=0
+stringutilities.max.levenshtein.string.length=0
+stringutilities.max.damerau.levenshtein.string.length=0
+stringutilities.max.repeat.count=0
+stringutilities.max.repeat.total.size=0
+```
+
+**Usage Example:**
+```java
+// Enable security with custom limits
+System.setProperty("stringutilities.security.enabled", "true");
+System.setProperty("stringutilities.max.hex.decode.size", "100000");
+System.setProperty("stringutilities.max.wildcard.length", "1000");
+System.setProperty("stringutilities.max.wildcard.count", "100");
+System.setProperty("stringutilities.max.levenshtein.string.length", "10000");
+System.setProperty("stringutilities.max.damerau.levenshtein.string.length", "5000");
+System.setProperty("stringutilities.max.repeat.count", "10000");
+System.setProperty("stringutilities.max.repeat.total.size", "10000000");
+
+// These will now throw IllegalArgumentException if limits are exceeded
+StringUtilities.decode(veryLongHexString);         // Checks hex.decode.size
+StringUtilities.wildcardToRegexString(pattern);   // Checks wildcard limits
+StringUtilities.levenshteinDistance(s1, s2);      // Checks string length
+StringUtilities.repeat("a", 50000);               // Checks repeat limits
+```
+
+**Security Features:**
+
+- **Memory Exhaustion Protection:** Prevents out-of-memory attacks by limiting input sizes
+- **ReDoS Prevention:** Limits wildcard pattern complexity in `wildcardToRegexString()`
+- **Integer Overflow Protection:** Prevents arithmetic overflow in size calculations
+- **Configurable Limits:** All limits can be customized or disabled independently
+
+**Backward Compatibility:** When security is disabled (default), all methods behave exactly as before with no performance impact.
+
 This implementation provides robust string manipulation capabilities with emphasis on null safety, performance, and convenience.
 
 ---

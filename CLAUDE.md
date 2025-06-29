@@ -187,7 +187,9 @@ mvn clean test
 
 ### Step 3: Implement the Single Change
 - Make targeted improvement to address the ONE selected issue
-- **During development**: Use single test execution for speed (`mvn test -Dtest=SpecificTest`)
+- **During development iterations**: Use targeted test execution for speed (`mvn test -Dtest=SpecificTest`)
+  - This allows quick feedback loops while developing the specific feature/fix
+  - Continue iterating until the targeted tests pass and functionality works
 - **MANDATORY**: Add comprehensive JUnit tests for this specific change:
   - Tests that verify the improvement works correctly
   - Tests for edge cases and boundary conditions  
@@ -195,16 +197,25 @@ mvn clean test
 - Follow coding best practices and maintain API compatibility
 - Update Javadoc and comments where appropriate
 
-### Step 4: Validate Changes - ABSOLUTELY MANDATORY
-- **🚨 CRITICAL - NON-NEGOTIABLE 🚨**: Run full test suite: `mvn clean test`
+### Step 4: Completion Gate - ABSOLUTELY MANDATORY
+**When you believe the issue/fix is complete and targeted tests are passing:**
+
+- **🚨 CRITICAL - NON-NEGOTIABLE 🚨**: Run FULL test suite: `mvn test`
+  - **This takes only ~16 seconds but tests ALL 11,500+ tests**
+  - **This is the quality gate that ensures project health**
 - **🚨 VERIFY ALL TESTS PASS 🚨**: Ensure 11,500+ tests pass (not ~10,000)
 - **🚨 ZERO TOLERANCE FOR TEST FAILURES 🚨**: All tests must be 100% passing before proceeding
-- **If even ONE test fails**: Fix issues immediately before continuing to next step
+- **If even ONE test fails**: Fix issues immediately, run full tests again
 - **NEVER move to Step 5, 6, 7, or 8 until ALL tests pass**
 - **NEVER start new work until ALL tests pass**
-- Mark improvement todos as "completed" only when tests pass
+- Mark improvement todos as "completed" only when ALL tests pass
 
 **⚠️ WARNING: Skipping full test validation is a CRITICAL PROCESS VIOLATION ⚠️**
+
+**THE PROCESS:**
+1. **Development Phase**: Use targeted tests (`mvn test -Dtest=SpecificTest`) for fast iteration
+2. **Completion Gate**: Run full test suite (`mvn test`) when you think you're done
+3. **Quality Verification**: ALL 11,500+ tests must pass before proceeding
 
 ### Step 5: Update Documentation (for this ONE change)
 - **changelog.md**: Add entry for this specific change under appropriate version
@@ -220,9 +231,13 @@ Present a commit approval request to the human with:
 - Test results confirmation (ALL 11,500+ tests passing)
 - Documentation updates made for this change
 - Clear description of this change and its benefits
-- Ask: "Should I commit this change? (Y/N)"
+- Ask: "Should I commit this change?"
 
-**CRITICAL**: NEVER commit without explicit human approval (Y/N response)
+**CRITICAL COMMIT RULES:**
+- **ONLY commit if human responds exactly "Y" or "Yes"**
+- **If human does NOT write "Y" or "Yes", do NOT commit**
+- **If human does not respond "Y" or "Yes", pay close attention to next instruction**
+- **NEVER commit without explicit "Y" or "Yes" approval**
 
 ### Step 7: Atomic Commit (Only After Human Approval)
 - **Immediately commit this ONE change** after receiving "Y" approval

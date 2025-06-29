@@ -85,12 +85,57 @@ public final class ArrayUtilities {
     public static final char[] EMPTY_CHAR_ARRAY = new char[0];
     public static final Character[] EMPTY_CHARACTER_ARRAY = new Character[0];
     public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
+    
+    // Security: Maximum array size to prevent memory exhaustion attacks
+    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8; // JVM array size limit
 
     /**
      * Private constructor to promote using as static class.
      */
     private ArrayUtilities() {
         super();
+    }
+    
+    /**
+     * Security: Validates that the component type is safe for array creation.
+     * This prevents creation of arrays of dangerous system classes.
+     * 
+     * @param componentType the component type to validate
+     * @throws SecurityException if the component type is dangerous
+     */
+    private static void validateComponentType(Class<?> componentType) {
+        if (componentType == null) {
+            return; // Allow null check to be handled elsewhere
+        }
+        
+        String className = componentType.getName();
+        
+        // Security: Block creation of arrays containing dangerous system classes
+        if (className.startsWith("java.lang.Runtime") ||
+            className.startsWith("java.lang.ProcessBuilder") ||
+            className.startsWith("java.lang.System") ||
+            className.startsWith("java.security.") ||
+            className.startsWith("javax.script.") ||
+            className.startsWith("sun.") ||
+            className.startsWith("com.sun.") ||
+            className.equals("java.lang.Class")) {
+            throw new SecurityException("Array creation denied for security-sensitive class: " + className);
+        }
+    }
+    
+    /**
+     * Security: Validates array size to prevent integer overflow and memory exhaustion.
+     * 
+     * @param size the proposed array size
+     * @throws SecurityException if size is negative or too large
+     */
+    static void validateArraySize(long size) {
+        if (size < 0) {
+            throw new SecurityException("Array size cannot be negative");
+        }
+        if (size > MAX_ARRAY_SIZE) {
+            throw new SecurityException("Array size too large: " + size + " > " + MAX_ARRAY_SIZE);
+        }
     }
 
     /**
@@ -172,6 +217,8 @@ public final class ArrayUtilities {
     @SuppressWarnings("unchecked")
     public static <T> T[] nullToEmpty(Class<T> componentType, T[] array) {
         Objects.requireNonNull(componentType, "componentType is null");
+        // Security: Validate component type before array creation
+        validateComponentType(componentType);
         return array == null ? (T[]) Array.newInstance(componentType, 0) : array;
     }
 
@@ -242,7 +289,16 @@ public final class ArrayUtilities {
         } else if (array2 == null) {
             return shallowCopy(array1);
         }
-        final T[] newArray = (T[]) Array.newInstance(array1.getClass().getComponentType(), array1.length + array2.length);
+        
+        // Security: Check for integer overflow when combining arrays
+        long combinedLength = (long) array1.length + (long) array2.length;
+        validateArraySize(combinedLength);
+        
+        Class<?> componentType = array1.getClass().getComponentType();
+        // Security: Validate component type before array creation
+        validateComponentType(componentType);
+        
+        final T[] newArray = (T[]) Array.newInstance(componentType, (int) combinedLength);
         System.arraycopy(array1, 0, newArray, 0, array1.length);
         System.arraycopy(array2, 0, newArray, array1.length, array2.length);
         return newArray;
@@ -275,10 +331,15 @@ public final class ArrayUtilities {
         Objects.requireNonNull(array, "array cannot be null");
         final int len = array.length;
         if (pos < 0 || pos >= len) {
-            throw new ArrayIndexOutOfBoundsException("Index: " + pos + ", Length: " + len);
+            // Security: Don't expose array contents in error message
+            throw new ArrayIndexOutOfBoundsException("Invalid array index");
         }
 
-        T[] dest = (T[]) Array.newInstance(array.getClass().getComponentType(), len - 1);
+        Class<?> componentType = array.getClass().getComponentType();
+        // Security: Validate component type before array creation
+        validateComponentType(componentType);
+        
+        T[] dest = (T[]) Array.newInstance(componentType, len - 1);
         System.arraycopy(array, 0, dest, 0, pos);
         System.arraycopy(array, pos + 1, dest, pos, len - pos - 1);
         return dest;
@@ -296,12 +357,20 @@ public final class ArrayUtilities {
     @SuppressWarnings("unchecked")
     public static <T> T[] addItem(Class<T> componentType, T[] array, T item) {
         Objects.requireNonNull(componentType, "componentType is null");
+        // Security: Validate component type before array creation
+        validateComponentType(componentType);
+        
         if (array == null) {
             T[] result = (T[]) Array.newInstance(componentType, 1);
             result[0] = item;
             return result;
         }
-        T[] newArray = Arrays.copyOf(array, array.length + 1);
+        
+        // Security: Check for integer overflow when adding item
+        long newLength = (long) array.length + 1;
+        validateArraySize(newLength);
+        
+        T[] newArray = Arrays.copyOf(array, (int) newLength);
         newArray[array.length] = item;
         return newArray;
     }
@@ -398,6 +467,12 @@ public final class ArrayUtilities {
     public static <T> T[] toArray(Class<T> classToCastTo, Collection<?> c) {
         Objects.requireNonNull(classToCastTo, "classToCastTo is null");
         Objects.requireNonNull(c, "collection is null");
+        
+        // Security: Validate component type before array creation
+        validateComponentType(classToCastTo);
+        
+        // Security: Validate collection size to prevent memory exhaustion
+        validateArraySize(c.size());
 
         T[] array = (T[]) Array.newInstance(classToCastTo, c.size());
         return c.toArray(array);

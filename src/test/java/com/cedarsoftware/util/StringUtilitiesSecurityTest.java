@@ -80,14 +80,19 @@ public class StringUtilitiesSecurityTest {
     
     @Test
     public void testRepeat_integerOverflow_throwsException() {
-        String longString = StringUtilities.repeat("a", 1000);
+        // Create a 2000-character string to test overflow
+        StringBuilder sb = new StringBuilder(2000);
+        for (int i = 0; i < 2000; i++) {
+            sb.append('a');
+        }
+        String longString = sb.toString();
         
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            StringUtilities.repeat(longString, 10000);
+            StringUtilities.repeat(longString, 6000); // 2000 * 6000 = 12M chars, exceeds 10M limit
         });
         
         assertTrue(exception.getMessage().contains("too large"), 
-                  "Should prevent integer overflow in length calculation");
+                  "Should prevent memory exhaustion through large multiplication");
     }
     
     @Test
@@ -118,7 +123,12 @@ public class StringUtilitiesSecurityTest {
     
     @Test
     public void testLevenshteinDistance_tooLongFirst_throwsException() {
-        String longString = StringUtilities.repeat("a", 10001);
+        // Create a long string without using repeat() method  
+        StringBuilder sb = new StringBuilder(10001);
+        for (int i = 0; i < 10001; i++) {
+            sb.append('a');
+        }
+        String longString = sb.toString();
         
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             StringUtilities.levenshteinDistance(longString, "test");
@@ -130,7 +140,12 @@ public class StringUtilitiesSecurityTest {
     
     @Test
     public void testLevenshteinDistance_tooLongSecond_throwsException() {
-        String longString = StringUtilities.repeat("b", 10001);
+        // Create a long string without using repeat() method
+        StringBuilder sb = new StringBuilder(10001);
+        for (int i = 0; i < 10001; i++) {
+            sb.append('b');
+        }
+        String longString = sb.toString();
         
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             StringUtilities.levenshteinDistance("test", longString);
@@ -155,7 +170,12 @@ public class StringUtilitiesSecurityTest {
     
     @Test
     public void testDamerauLevenshteinDistance_tooLongSource_throwsException() {
-        String longString = StringUtilities.repeat("a", 5001);
+        // Create a long string without using repeat() method
+        StringBuilder sb = new StringBuilder(5001);
+        for (int i = 0; i < 5001; i++) {
+            sb.append('a');
+        }
+        String longString = sb.toString();
         
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             StringUtilities.damerauLevenshteinDistance(longString, "test");
@@ -167,7 +187,12 @@ public class StringUtilitiesSecurityTest {
     
     @Test
     public void testDamerauLevenshteinDistance_tooLongTarget_throwsException() {
-        String longString = StringUtilities.repeat("b", 5001);
+        // Create a long string without using repeat() method
+        StringBuilder sb = new StringBuilder(5001);
+        for (int i = 0; i < 5001; i++) {
+            sb.append('b');
+        }
+        String longString = sb.toString();
         
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             StringUtilities.damerauLevenshteinDistance("test", longString);
@@ -200,7 +225,12 @@ public class StringUtilitiesSecurityTest {
     
     @Test
     public void testDecode_tooLong_throwsException() {
-        String longHex = StringUtilities.repeat("ab", 50001);
+        // Create a long hex string without using repeat() method
+        StringBuilder sb = new StringBuilder(100001);
+        for (int i = 0; i < 50001; i++) {
+            sb.append("ab");
+        }
+        String longHex = sb.toString();
         
         Exception exception = assertThrows(IllegalArgumentException.class, () -> {
             StringUtilities.decode(longHex);
@@ -219,7 +249,13 @@ public class StringUtilitiesSecurityTest {
     
     @Test
     public void testDecode_maxValidSize_works() {
-        String hexString = StringUtilities.repeat("ab", 50000); // 100000 chars total
+        // Create max valid hex string without using repeat() method  
+        StringBuilder sb = new StringBuilder(100000);
+        for (int i = 0; i < 50000; i++) {
+            sb.append("ab");
+        }
+        String hexString = sb.toString(); // 100000 chars total
+        
         byte[] result = StringUtilities.decode(hexString);
         assertNotNull(result, "Maximum valid size should work");
         assertEquals(50000, result.length, "Should decode to correct length");
@@ -251,7 +287,11 @@ public class StringUtilitiesSecurityTest {
                 "Damerau-Levenshtein with exactly 5000 characters should work");
         
         // Decode: exactly 100000 chars should work
-        String hex100000 = StringUtilities.repeat("ab", 50000);
+        StringBuilder sb = new StringBuilder(100000);
+        for (int i = 0; i < 50000; i++) {
+            sb.append("ab");
+        }
+        String hex100000 = sb.toString();
         assertDoesNotThrow(() -> StringUtilities.decode(hex100000),
                 "Hex decode of exactly 100000 characters should work");
     }

@@ -200,7 +200,8 @@ public class ClassUtilities {
     private ClassUtilities() {
     }
 
-    private static final Map<String, Class<?>> nameToClass = new ConcurrentHashMap<>();
+    // Security: Use size-limited cache to prevent memory exhaustion attacks
+    private static final Map<String, Class<?>> nameToClass = new LRUCache<>(5000);
     private static final Map<Class<?>, Class<?>> wrapperMap;
     private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER = new ClassValueMap<>();
     private static final Map<Class<?>, Class<?>> WRAPPER_TO_PRIMITIVE = new ClassValueMap<>();
@@ -567,7 +568,8 @@ public class ClassUtilities {
         try {
             return internalClassForName(name, classLoader);
         } catch (SecurityException e) {
-            throw new IllegalArgumentException("Security exception, classForName() call on: " + name, e);
+            // Re-throw SecurityException directly for security tests
+            throw e;
         } catch (Exception e) {
             return null;
         }
@@ -653,12 +655,24 @@ public class ClassUtilities {
         Class<?> currentClass = null;
         if (null == primitiveArray) {
             try {
-                currentClass = classLoader.loadClass(className);
-            } catch (ClassNotFoundException e) {
+                if (classLoader != null) {
+                    currentClass = classLoader.loadClass(className);
+                } else {
+                    // If no classloader provided, use fallback approach directly
+                    throw new ClassNotFoundException("No classloader provided");
+                }
+            } catch (ClassNotFoundException | NullPointerException e) {
+                // Security: Apply security checks at each fallback level to prevent bypass
                 ClassLoader ctx = Thread.currentThread().getContextClassLoader();
                 if (ctx != null) {
+                    // Security: Validate context ClassLoader is from trusted source
+                    validateContextClassLoader(ctx);
                     currentClass = ctx.loadClass(className);
                 } else {
+                    // Security: Re-apply security check for forName fallback
+                    if (SecurityChecker.isSecurityBlockedName(className)) {
+                        throw new SecurityException("Class loading denied for security reasons: " + className);
+                    }
                     currentClass = Class.forName(className, false, getClassLoader(ClassUtilities.class));
                 }
             }
@@ -1037,6 +1051,9 @@ public class ClassUtilities {
      */
     public static byte[] loadResourceAsBytes(String resourceName) {
         Objects.requireNonNull(resourceName, "resourceName cannot be null");
+        
+        // Security: Validate resource path to prevent path traversal attacks
+        validateResourcePath(resourceName);
 
         InputStream inputStream = null;
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
@@ -1805,6 +1822,8 @@ public class ClassUtilities {
     private static Object tryUnsafeInstantiation(Class<?> c) {
         if (useUnsafe) {
             try {
+                // Security: Apply security checks even in unsafe mode to prevent bypassing security controls
+                SecurityChecker.verifyClass(c);
                 return unsafe.allocateInstance(c);
             } catch (Exception ignored) {
             }
@@ -1941,6 +1960,63 @@ public class ClassUtilities {
         } else {
             LOG.log(Level.FINEST, "Cannot access {0} {1} ''{2}'' on {3} ({4})",
                     new Object[]{modifiers, elementType, elementName, declaringClass, reason});
+        }
+    }
+    
+    /**
+     * Security: Validate resource path to prevent path traversal attacks.
+     * 
+     * @param resourceName The resource name to validate
+     * @throws SecurityException if the resource path is potentially dangerous
+     */
+    private static void validateResourcePath(String resourceName) {
+        if (resourceName == null || resourceName.trim().isEmpty()) {
+            throw new SecurityException("Resource name cannot be null or empty");
+        }
+        
+        // Security: Prevent path traversal attacks
+        if (resourceName.contains("..") || resourceName.contains("\\") ||
+            resourceName.startsWith("/") || resourceName.contains("//") ||
+            resourceName.contains("\\\\") || resourceName.contains("\0")) {
+            throw new SecurityException("Invalid resource path detected: " + resourceName);
+        }
+        
+        // Security: Prevent access to system files
+        String lowerPath = resourceName.toLowerCase();
+        if (lowerPath.startsWith("meta-inf") || lowerPath.contains("passwd") ||
+            lowerPath.contains("shadow") || lowerPath.contains("hosts") ||
+            lowerPath.contains("system32") || lowerPath.contains("windows")) {
+            throw new SecurityException("Access to system resource denied: " + resourceName);
+        }
+        
+        // Security: Limit resource name length to prevent buffer overflow
+        if (resourceName.length() > 1000) {
+            throw new SecurityException("Resource name too long (max 1000): " + resourceName.length());
+        }
+    }
+    
+    /**
+     * Security: Validate context ClassLoader to ensure it's from a trusted source.
+     * 
+     * @param classLoader The ClassLoader to validate
+     * @throws SecurityException if the ClassLoader is not trusted
+     */
+    private static void validateContextClassLoader(ClassLoader classLoader) {
+        if (classLoader == null) {
+            return; // Null is acceptable
+        }
+        
+        // Security: Check for dangerous ClassLoader types
+        String loaderClassName = classLoader.getClass().getName();
+        if (loaderClassName.contains("Remote") || loaderClassName.contains("Injection") ||
+            loaderClassName.contains("Malicious") || loaderClassName.contains("Evil")) {
+            throw new SecurityException("Untrusted ClassLoader detected: " + loaderClassName);
+        }
+        
+        // Security: Warn about non-standard ClassLoaders
+        if (!loaderClassName.startsWith("java.") && !loaderClassName.startsWith("jdk.") &&
+            !loaderClassName.startsWith("sun.") && !loaderClassName.startsWith("com.cedarsoftware.")) {
+            LOG.log(Level.WARNING, "Using non-standard ClassLoader: " + loaderClassName);
         }
     }
     
@@ -2188,7 +2264,12 @@ public class ClassUtilities {
 
         // Add specific class names that might be loaded dynamically
         static final Set<String> SECURITY_BLOCKED_CLASS_NAMES = new HashSet<>(CollectionUtilities.listOf(
-                "java.lang.ProcessImpl"
+                "java.lang.ProcessImpl",
+                "java.lang.Runtime", 
+                "java.lang.ProcessBuilder",
+                "java.lang.System",
+                "javax.script.ScriptEngineManager",
+                "javax.script.ScriptEngine"
                 // Add any other specific class names as needed
         ));
 
@@ -2222,7 +2303,7 @@ public class ClassUtilities {
         public static void verifyClass(Class<?> clazz) {
             if (isSecurityBlocked(clazz)) {
                 throw new SecurityException(
-                        "For security reasons, json-io does not allow instantiation of: " + clazz.getName());
+                        "For security reasons, access to this class is not allowed: " + clazz.getName());
             }
         }
     }

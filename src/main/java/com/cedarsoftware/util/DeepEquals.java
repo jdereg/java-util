@@ -143,6 +143,29 @@ public class DeepEquals {
     // Epsilon values for floating-point comparisons
     private static final double doubleEpsilon = 1e-15;
     
+    // Configuration for security-safe error messages
+    private static final boolean SECURE_ERROR_MESSAGES = Boolean.parseBoolean(
+            System.getProperty("deepequals.secure.errors", "false"));
+    
+    // Fields that should be redacted in error messages for security
+    private static final Set<String> SENSITIVE_FIELD_NAMES = CollectionUtilities.setOf(
+            "password", "pwd", "passwd", "secret", "key", "token", "credential", 
+            "auth", "authorization", "authentication", "api_key", "apikey"
+    );
+    
+    // Security limits to prevent memory exhaustion attacks
+    // 0 or negative values = disabled, positive values = enabled with limit
+    private static final int MAX_COLLECTION_SIZE = Integer.parseInt(
+            System.getProperty("deepequals.max.collection.size", "0"));
+    private static final int MAX_ARRAY_SIZE = Integer.parseInt(
+            System.getProperty("deepequals.max.array.size", "0"));
+    private static final int MAX_MAP_SIZE = Integer.parseInt(
+            System.getProperty("deepequals.max.map.size", "0"));
+    private static final int MAX_OBJECT_FIELDS = Integer.parseInt(
+            System.getProperty("deepequals.max.object.fields", "0"));
+    private static final int MAX_RECURSION_DEPTH = Integer.parseInt(
+            System.getProperty("deepequals.max.recursion.depth", "0"));
+    
     // Class to hold information about items being compared
     private final static class ItemsToCompare {
         private final Object _key1;
@@ -279,7 +302,7 @@ public class DeepEquals {
 
     private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<Object> visited) {
         Deque<ItemsToCompare> stack = new LinkedList<>();
-        boolean result = deepEquals(a, b, stack, options, visited);
+        boolean result = deepEquals(a, b, stack, options, visited, 0);
 
         boolean isRecurive = Objects.equals(true, options.get("recursive_call"));
         if (!result && !stack.isEmpty()) {
@@ -288,11 +311,6 @@ public class DeepEquals {
             String breadcrumb = generateBreadcrumb(stack);
             ((Map<String, Object>) options).put(DIFF, breadcrumb);
             ((Map<String, Object>) options).put("diff_item", top);
-//            if (!isRecurive) {
-//                System.out.println(breadcrumb);
-//                System.out.println("--------------------");
-//                System.out.flush();
-//            }
         }
 
         return result;
@@ -300,11 +318,17 @@ public class DeepEquals {
 
     // Recursive deepEquals implementation
     private static boolean deepEquals(Object a, Object b, Deque<ItemsToCompare> stack,
-                                      Map<String, ?> options, Set<Object> visited) {
+                                      Map<String, ?> options, Set<Object> visited, int depth) {
         Collection<Class<?>> ignoreCustomEquals = (Collection<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
         boolean allowAllCustomEquals = ignoreCustomEquals == null;
         boolean hasNonEmptyIgnoreSet = (ignoreCustomEquals != null && !ignoreCustomEquals.isEmpty());
         final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
+        
+        // Security check: prevent excessive recursion depth
+        if (MAX_RECURSION_DEPTH > 0 && depth > MAX_RECURSION_DEPTH) {
+            throw new SecurityException("Maximum recursion depth exceeded: " + MAX_RECURSION_DEPTH);
+        }
+        
         stack.addFirst(new ItemsToCompare(a, b));
 
         while (!stack.isEmpty()) {
@@ -522,6 +546,11 @@ public class DeepEquals {
                                                        Set<Object> visited) {
         ItemsToCompare currentItem = stack.peek();
 
+        // Security check: validate collection sizes
+        if (MAX_COLLECTION_SIZE > 0 && (col1.size() > MAX_COLLECTION_SIZE || col2.size() > MAX_COLLECTION_SIZE)) {
+            throw new SecurityException("Collection size exceeds maximum allowed: " + MAX_COLLECTION_SIZE);
+        }
+
         // Check sizes first
         if (col1.size() != col2.size()) {
             stack.addFirst(new ItemsToCompare(col1, col2, currentItem, Difference.COLLECTION_SIZE_MISMATCH));
@@ -572,6 +601,11 @@ public class DeepEquals {
     private static boolean decomposeOrderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack) {
         ItemsToCompare currentItem = stack.peek();
 
+        // Security check: validate collection sizes
+        if (MAX_COLLECTION_SIZE > 0 && (col1.size() > MAX_COLLECTION_SIZE || col2.size() > MAX_COLLECTION_SIZE)) {
+            throw new SecurityException("Collection size exceeds maximum allowed: " + MAX_COLLECTION_SIZE);
+        }
+
         // Check sizes first
         if (col1.size() != col2.size()) {
             stack.addFirst(new ItemsToCompare(col1, col2, currentItem, Difference.COLLECTION_SIZE_MISMATCH));
@@ -595,6 +629,11 @@ public class DeepEquals {
     
     private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Map<String, ?> options, Set<Object> visited) {
         ItemsToCompare currentItem = stack.peek();
+
+        // Security check: validate map sizes
+        if (MAX_MAP_SIZE > 0 && (map1.size() > MAX_MAP_SIZE || map2.size() > MAX_MAP_SIZE)) {
+            throw new SecurityException("Map size exceeds maximum allowed: " + MAX_MAP_SIZE);
+        }
 
         // Check sizes first
         if (map1.size() != map2.size()) {
@@ -694,6 +733,12 @@ public class DeepEquals {
         // 3. Check lengths
         int len1 = Array.getLength(array1);
         int len2 = Array.getLength(array2);
+        
+        // Security check: validate array sizes
+        if (MAX_ARRAY_SIZE > 0 && (len1 > MAX_ARRAY_SIZE || len2 > MAX_ARRAY_SIZE)) {
+            throw new SecurityException("Array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
+        }
+        
         if (len1 != len2) {
             stack.addFirst(new ItemsToCompare(array1, array2, currentItem, Difference.ARRAY_LENGTH_MISMATCH));
             return false;
@@ -714,6 +759,11 @@ public class DeepEquals {
 
         // Get all fields from the object
         Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj1.getClass());
+
+        // Security check: validate field count
+        if (MAX_OBJECT_FIELDS > 0 && fields.size() > MAX_OBJECT_FIELDS) {
+            throw new SecurityException("Object field count exceeds maximum allowed: " + MAX_OBJECT_FIELDS);
+        }
 
         // Push each field for comparison
         for (Field field : fields) {
@@ -1323,7 +1373,15 @@ public class DeepEquals {
                 first = false;
 
                 Object fieldValue = field.get(value);
-                sb.append(field.getName()).append(": ");
+                String fieldName = field.getName();
+                
+                // Check if field is sensitive and security is enabled
+                if (SECURE_ERROR_MESSAGES && isSensitiveField(fieldName)) {
+                    sb.append(fieldName).append(": [REDACTED]");
+                    continue;
+                }
+                
+                sb.append(fieldName).append(": ");
 
                 if (fieldValue == null) {
                     sb.append("null");
@@ -1332,7 +1390,7 @@ public class DeepEquals {
 
                 Class<?> fieldType = field.getType();
                 if (Converter.isSimpleTypeConversionSupported(fieldType)) {
-                    // Simple type - show value
+                    // Simple type - show value (already has security filtering)
                     sb.append(formatSimpleValue(fieldValue));
                 }
                 else if (fieldType.isArray()) {
@@ -1380,7 +1438,10 @@ public class DeepEquals {
             return String.valueOf(((AtomicLong) value).get());
         }
 
-        if (value instanceof String) return "\"" + value + "\"";
+        if (value instanceof String) {
+            String str = (String) value;
+            return SECURE_ERROR_MESSAGES ? sanitizeStringValue(str) : "\"" + str + "\"";
+        }
         if (value instanceof Character) return "'" + value + "'";
         if (value instanceof Number) {
             return formatNumber((Number) value);
@@ -1394,16 +1455,19 @@ public class DeepEquals {
             return "TimeZone: " + timeZone.getID();
         }
         if (value instanceof URI) {
-            return value.toString();  // Just the URI string
+            return SECURE_ERROR_MESSAGES ? sanitizeUriValue((URI) value) : value.toString();
         }
         if (value instanceof URL) {
-            return value.toString();  // Just the URL string
+            return SECURE_ERROR_MESSAGES ? sanitizeUrlValue((URL) value) : value.toString();
         }
         if (value instanceof UUID) {
-            return value.toString();  // Just the UUID string
+            return value.toString();  // UUID is generally safe to display
         }
 
-        // For other types, just show type and toString
+        // For other types, show type and sanitized toString if security enabled
+        if (SECURE_ERROR_MESSAGES) {
+            return value.getClass().getSimpleName() + ":[REDACTED]";
+        }
         return value.getClass().getSimpleName() + ":" + value;
     }
     
@@ -1786,5 +1850,115 @@ public class DeepEquals {
         if (container instanceof Map) return ((Map<?,?>) container).size();
         if (container.getClass().isArray()) return Array.getLength(container);
         return 0;
+    }
+
+    private static String sanitizeStringValue(String str) {
+        if (str == null) return "null";
+        if (str.length() == 0) return "\"\"";
+        
+        // Check if string looks like sensitive data
+        String lowerStr = str.toLowerCase();
+        if (looksLikeSensitiveData(lowerStr)) {
+            return "\"[REDACTED:" + str.length() + " chars]\"";
+        }
+        
+        // Limit string length in error messages
+        if (str.length() > 100) {
+            return "\"" + str.substring(0, 97) + "...\"";
+        }
+        
+        return "\"" + str + "\"";
+    }
+
+    private static String sanitizeUriValue(URI uri) {
+        if (uri == null) return "null";
+        
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        int port = uri.getPort();
+        String path = uri.getPath();
+        
+        // Remove query parameters and fragment that might contain sensitive data
+        StringBuilder sanitized = new StringBuilder();
+        if (scheme != null) {
+            sanitized.append(scheme).append("://");
+        }
+        if (host != null) {
+            sanitized.append(host);
+        }
+        if (port != -1) {
+            sanitized.append(":").append(port);
+        }
+        if (path != null && !path.isEmpty()) {
+            sanitized.append(path);
+        }
+        
+        // Indicate if query or fragment was removed
+        if (uri.getQuery() != null || uri.getFragment() != null) {
+            sanitized.append("?[QUERY_REDACTED]");
+        }
+        
+        return sanitized.toString();
+    }
+
+    private static String sanitizeUrlValue(URL url) {
+        if (url == null) return "null";
+        
+        String protocol = url.getProtocol();
+        String host = url.getHost();
+        int port = url.getPort();
+        String path = url.getPath();
+        
+        // Remove query parameters and fragment that might contain sensitive data
+        StringBuilder sanitized = new StringBuilder();
+        if (protocol != null) {
+            sanitized.append(protocol).append("://");
+        }
+        if (host != null) {
+            sanitized.append(host);
+        }
+        if (port != -1) {
+            sanitized.append(":").append(port);
+        }
+        if (path != null && !path.isEmpty()) {
+            sanitized.append(path);
+        }
+        
+        // Indicate if query was removed
+        if (url.getQuery() != null || url.getRef() != null) {
+            sanitized.append("?[QUERY_REDACTED]");
+        }
+        
+        return sanitized.toString();
+    }
+
+    private static boolean looksLikeSensitiveData(String lowerStr) {
+        // Check for patterns that look like sensitive data
+        if (lowerStr.matches(".*\\b(password|pwd|secret|token|key|credential|auth)\\b.*")) {
+            return true;
+        }
+        
+        // Check for patterns that look like encoded data (base64, hex)
+        if (lowerStr.matches("^[a-f0-9]{32,}$") || // Hex patterns 32+ chars
+            lowerStr.matches("^[a-zA-Z0-9+/]+=*$")) { // Base64 patterns
+            return true;
+        }
+        
+        // Check for UUID patterns
+        if (lowerStr.matches("^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$")) {
+            return false; // UUIDs are generally safe to display
+        }
+        
+        return false;
+    }
+
+    private static boolean isSensitiveField(String fieldName) {
+        if (fieldName == null) return false;
+        String lowerFieldName = fieldName.toLowerCase();
+        return SENSITIVE_FIELD_NAMES.contains(lowerFieldName) ||
+               lowerFieldName.contains("password") ||
+               lowerFieldName.contains("secret") ||
+               lowerFieldName.contains("token") ||
+               lowerFieldName.contains("key");
     }
 }

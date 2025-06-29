@@ -405,6 +405,15 @@ public final class StringUtilities {
      * @return the decoded bytes or {@code null} if the input is malformed
      */
     public static byte[] decode(String s) {
+        if (s == null) {
+            return null;
+        }
+        
+        // Security: Limit input size to prevent memory exhaustion
+        if (s.length() > 100000) {
+            throw new IllegalArgumentException("Input string too long for hex decoding (max 100000): " + s.length());
+        }
+        
         int len = s.length();
         if (len % 2 != 0) {
             return null;
@@ -488,6 +497,26 @@ public final class StringUtilities {
      * Convert strings containing DOS-style '*' or '?' to a regex String.
      */
     public static String wildcardToRegexString(String wildcard) {
+        if (wildcard == null) {
+            throw new IllegalArgumentException("Wildcard pattern cannot be null");
+        }
+        
+        // Security: Prevent ReDoS attacks by limiting pattern length and complexity
+        if (wildcard.length() > 1000) {
+            throw new IllegalArgumentException("Wildcard pattern too long (max 1000 characters): " + wildcard.length());
+        }
+        
+        // Security: Count wildcards to prevent patterns with excessive complexity
+        int wildcardCount = 0;
+        for (int i = 0; i < wildcard.length(); i++) {
+            if (wildcard.charAt(i) == '*' || wildcard.charAt(i) == '?') {
+                wildcardCount++;
+                if (wildcardCount > 100) {
+                    throw new IllegalArgumentException("Too many wildcards in pattern (max 100): " + wildcardCount);
+                }
+            }
+        }
+        
         int len = wildcard.length();
         StringBuilder s = new StringBuilder(len);
         s.append('^');
@@ -538,6 +567,14 @@ public final class StringUtilities {
      * @return the 'edit distance' (Levenshtein distance) between the two strings.
      */
     public static int levenshteinDistance(CharSequence s, CharSequence t) {
+        // Security: Prevent memory exhaustion attacks with very long strings
+        if (s != null && s.length() > 10000) {
+            throw new IllegalArgumentException("First string too long for distance calculation (max 10000): " + s.length());
+        }
+        if (t != null && t.length() > 10000) {
+            throw new IllegalArgumentException("Second string too long for distance calculation (max 10000): " + t.length());
+        }
+        
         // degenerate cases
         if (s == null || EMPTY.contentEquals(s)) {
             return t == null || EMPTY.contentEquals(t) ? 0 : t.length();
@@ -593,6 +630,14 @@ public final class StringUtilities {
      * string
      */
     public static int damerauLevenshteinDistance(CharSequence source, CharSequence target) {
+        // Security: Prevent memory exhaustion attacks with very long strings
+        if (source != null && source.length() > 5000) {
+            throw new IllegalArgumentException("Source string too long for Damerau-Levenshtein calculation (max 5000): " + source.length());
+        }
+        if (target != null && target.length() > 5000) {
+            throw new IllegalArgumentException("Target string too long for Damerau-Levenshtein calculation (max 5000): " + target.length());
+        }
+        
         if (source == null || EMPTY.contentEquals(source)) {
             return target == null || EMPTY.contentEquals(target) ? 0 : target.length();
         } else if (target == null || EMPTY.contentEquals(target)) {
@@ -702,10 +747,15 @@ public final class StringUtilities {
      * @param encoding encoding to use
      */
     public static byte[] getBytes(String s, String encoding) {
+        if (s == null) {
+            return null;
+        }
+        
         try {
-            return s == null ? null : s.getBytes(encoding);
+            return s.getBytes(encoding);
         }
         catch (UnsupportedEncodingException e) {
+            // Maintain backward compatibility while improving security
             throw new IllegalArgumentException(String.format("Encoding (%s) is not supported by your JVM", encoding), e);
         }
     }
@@ -1046,7 +1096,24 @@ public final class StringUtilities {
         if (count == 0) {
             return EMPTY;
         }
-        StringBuilder result = new StringBuilder(s.length() * count);
+        
+        // Security: Prevent memory exhaustion and integer overflow attacks
+        if (count > 10000) {
+            throw new IllegalArgumentException("count too large (max 10000): " + count);
+        }
+        
+        // Security: Check for integer overflow in total length calculation
+        long totalLength = (long) s.length() * count;
+        if (totalLength > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Result would be too large: " + totalLength + " characters");
+        }
+        
+        // Security: Limit total memory allocation to reasonable size (10MB)
+        if (totalLength > 10_000_000) {
+            throw new IllegalArgumentException("Result too large (max 10MB): " + totalLength + " characters");
+        }
+        
+        StringBuilder result = new StringBuilder((int) totalLength);
         for (int i = 0; i < count; i++) {
             result.append(s);
         }

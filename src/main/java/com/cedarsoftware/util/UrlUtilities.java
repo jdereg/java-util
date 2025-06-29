@@ -82,6 +82,10 @@ public final class UrlUtilities {
 
     private static volatile int defaultReadTimeout = 220000;
     private static volatile int defaultConnectTimeout = 45000;
+    
+    // Security: Resource consumption limits for download operations
+    private static volatile long maxDownloadSize = 100 * 1024 * 1024; // 100MB default limit
+    private static volatile int maxContentLength = 500 * 1024 * 1024; // 500MB Content-Length header limit
 
     private static final Pattern resPattern = Pattern.compile("^res://", Pattern.CASE_INSENSITIVE);
 
@@ -216,6 +220,50 @@ public final class UrlUtilities {
     public static int getDefaultReadTimeout() {
         return defaultReadTimeout;
     }
+    
+    /**
+     * Set the maximum download size limit for URL content fetching operations.
+     * This prevents memory exhaustion attacks from maliciously large downloads.
+     * 
+     * @param maxSizeBytes Maximum download size in bytes (default: 100MB)
+     */
+    public static void setMaxDownloadSize(long maxSizeBytes) {
+        if (maxSizeBytes <= 0) {
+            throw new IllegalArgumentException("Max download size must be positive: " + maxSizeBytes);
+        }
+        maxDownloadSize = maxSizeBytes;
+    }
+    
+    /**
+     * Get the current maximum download size limit.
+     * 
+     * @return Maximum download size in bytes
+     */
+    public static long getMaxDownloadSize() {
+        return maxDownloadSize;
+    }
+    
+    /**
+     * Set the maximum Content-Length header value that will be accepted.
+     * This prevents acceptance of responses claiming to be larger than reasonable limits.
+     * 
+     * @param maxLengthBytes Maximum Content-Length in bytes (default: 500MB)
+     */
+    public static void setMaxContentLength(int maxLengthBytes) {
+        if (maxLengthBytes <= 0) {
+            throw new IllegalArgumentException("Max content length must be positive: " + maxLengthBytes);
+        }
+        maxContentLength = maxLengthBytes;
+    }
+    
+    /**
+     * Get the current maximum Content-Length header limit.
+     * 
+     * @return Maximum Content-Length in bytes
+     */
+    public static int getMaxContentLength() {
+        return maxContentLength;
+    }
 
     public static void readErrorResponse(URLConnection c) {
         if (c == null) {
@@ -241,6 +289,144 @@ public final class UrlUtilities {
             IOUtilities.close(in);
         }
     }
+    
+    /**
+     * Transfer data from input stream to output stream with size limits to prevent resource exhaustion.
+     * 
+     * @param input Source input stream
+     * @param output Destination output stream  
+     * @param maxBytes Maximum bytes to transfer before throwing SecurityException
+     * @throws SecurityException if transfer exceeds maxBytes limit
+     * @throws IOException if an I/O error occurs
+     */
+    private static void transferWithLimit(InputStream input, java.io.OutputStream output, long maxBytes) throws IOException {
+        byte[] buffer = new byte[8192];
+        long totalBytes = 0;
+        int bytesRead;
+        
+        while ((bytesRead = input.read(buffer)) != -1) {
+            totalBytes += bytesRead;
+            
+            // Security: Enforce download size limit to prevent memory exhaustion
+            if (totalBytes > maxBytes) {
+                throw new SecurityException("Download size exceeds maximum allowed: " + totalBytes + " > " + maxBytes);
+            }
+            
+            output.write(buffer, 0, bytesRead);
+        }
+    }
+    
+    /**
+     * Validate Content-Length header to prevent acceptance of unreasonably large responses.
+     * 
+     * @param connection The URL connection to check
+     * @throws SecurityException if Content-Length exceeds the configured limit
+     */
+    private static void validateContentLength(URLConnection connection) {
+        int contentLength = connection.getContentLength();
+        
+        // Content-Length of -1 means unknown length, which is acceptable
+        if (contentLength == -1) {
+            return;
+        }
+        
+        // Check for unreasonably large declared content length
+        if (contentLength > maxContentLength) {
+            throw new SecurityException("Content-Length exceeds maximum allowed: " + contentLength + " > " + maxContentLength);
+        }
+        
+        // Check for invalid content length values (should not be less than -1)
+        if (contentLength < -1) {
+            throw new SecurityException("Invalid Content-Length value: " + contentLength);
+        }
+    }
+    
+    /**
+     * Validate cookie name to prevent injection attacks and enforce security constraints.
+     * 
+     * @param cookieName The cookie name to validate
+     * @throws SecurityException if cookie name contains dangerous characters or is too long
+     */
+    private static void validateCookieName(String cookieName) {
+        if (cookieName == null || cookieName.trim().isEmpty()) {
+            throw new SecurityException("Cookie name cannot be null or empty");
+        }
+        
+        // Security: Limit cookie name length to prevent memory exhaustion
+        if (cookieName.length() > 256) {
+            throw new SecurityException("Cookie name too long (max 256): " + cookieName.length());
+        }
+        
+        // Security: Check for dangerous characters that could indicate injection attempts
+        if (cookieName.contains("\n") || cookieName.contains("\r") || cookieName.contains("\0") || 
+            cookieName.contains(";") || cookieName.contains("=") || cookieName.contains(" ")) {
+            throw new SecurityException("Cookie name contains dangerous characters: " + cookieName);
+        }
+        
+        // Security: Block suspicious cookie names that could be used for attacks
+        String lowerName = cookieName.toLowerCase();
+        if (lowerName.startsWith("__secure-") || lowerName.startsWith("__host-")) {
+            // These are browser-reserved prefixes that applications shouldn't create
+            LOG.warning("Cookie name uses reserved prefix: " + cookieName);
+        }
+    }
+    
+    /**
+     * Validate cookie value to prevent injection attacks and enforce security constraints.
+     * 
+     * @param cookieValue The cookie value to validate  
+     * @throws SecurityException if cookie value contains dangerous characters or is too long
+     */
+    private static void validateCookieValue(String cookieValue) {
+        if (cookieValue == null) {
+            return; // Null values are acceptable for cookies
+        }
+        
+        // Security: Limit cookie value length to prevent memory exhaustion
+        if (cookieValue.length() > 4096) {
+            throw new SecurityException("Cookie value too long (max 4096): " + cookieValue.length());
+        }
+        
+        // Security: Check for dangerous characters that could indicate injection attempts
+        if (cookieValue.contains("\n") || cookieValue.contains("\r") || cookieValue.contains("\0")) {
+            throw new SecurityException("Cookie value contains dangerous control characters");
+        }
+    }
+    
+    /**
+     * Validate cookie domain to prevent domain-related security issues.
+     * 
+     * @param cookieDomain The cookie domain to validate
+     * @param requestHost The host from the original request
+     * @throws SecurityException if domain is invalid or potentially malicious
+     */
+    private static void validateCookieDomain(String cookieDomain, String requestHost) {
+        if (cookieDomain == null || requestHost == null) {
+            return; // No domain validation needed
+        }
+        
+        // Security: Prevent domain hijacking by ensuring cookie domain matches request host
+        String normalizedDomain = cookieDomain.toLowerCase().trim();
+        String normalizedHost = requestHost.toLowerCase().trim();
+        
+        // Remove leading dot from domain if present  
+        if (normalizedDomain.startsWith(".")) {
+            normalizedDomain = normalizedDomain.substring(1);
+        }
+        
+        // Security: Ensure cookie domain is a suffix of the request host
+        if (!normalizedHost.equals(normalizedDomain) && !normalizedHost.endsWith("." + normalizedDomain)) {
+            throw new SecurityException("Cookie domain mismatch - potential domain hijacking: " + 
+                                      cookieDomain + " vs " + requestHost);
+        }
+        
+        // Security: Block suspicious TLDs and prevent cookies from being set on public suffixes
+        if (normalizedDomain.equals("com") || normalizedDomain.equals("org") || 
+            normalizedDomain.equals("net") || normalizedDomain.equals("edu") ||
+            normalizedDomain.equals("localhost") || normalizedDomain.equals("local")) {
+            throw new SecurityException("Cookie domain cannot be set on public suffix: " + cookieDomain);
+        }
+    }
 
     public static void disconnect(HttpURLConnection c) {
         if (c != null) {
@@ -264,6 +450,7 @@ public final class UrlUtilities {
     public static void getCookies(URLConnection conn, Map<String, Map<String, Map<String, String>>> store) {
         // let's determine the domain from where these cookies are being sent
         String domain = getCookieDomainFromHost(conn.getURL().getHost());
+        String requestHost = conn.getURL().getHost();
         Map<String, Map<String, String>> domainStore; // this is where we will store cookies for this domain
 
         // now let's check the store to see if we have an entry for this domain
@@ -285,29 +472,59 @@ public final class UrlUtilities {
         String headerName;
         for (int i = 1; (headerName = conn.getHeaderFieldKey(i)) != null; i++) {
             if (headerName.equalsIgnoreCase(SET_COOKIE)) {
-                Map<String, String> cookie = new ConcurrentHashMap<>();
-                StringTokenizer st = new StringTokenizer(conn.getHeaderField(i), COOKIE_VALUE_DELIMITER);
+                try {
+                    Map<String, String> cookie = new ConcurrentHashMap<>();
+                    StringTokenizer st = new StringTokenizer(conn.getHeaderField(i), COOKIE_VALUE_DELIMITER);
 
-                // the specification dictates that the first name/value pair
-                // in the string is the cookie name and value, so let's handle
-                // them as a special case:
+                    // the specification dictates that the first name/value pair
+                    // in the string is the cookie name and value, so let's handle
+                    // them as a special case:
 
-                if (st.hasMoreTokens()) {
-                    String token = st.nextToken();
-                    String key = token.substring(0, token.indexOf(NAME_VALUE_SEPARATOR)).trim();
-                    String value = token.substring(token.indexOf(NAME_VALUE_SEPARATOR) + 1);
-                    domainStore.put(key, cookie);
-                    cookie.put(key, value);
-                }
-
-                while (st.hasMoreTokens()) {
-                    String token = st.nextToken();
-                    int pos = token.indexOf(NAME_VALUE_SEPARATOR);
-                    if (pos != -1) {
-                        String key = token.substring(0, pos).toLowerCase().trim();
-                        String value = token.substring(token.indexOf(NAME_VALUE_SEPARATOR) + 1);
+                    if (st.hasMoreTokens()) {
+                        String token = st.nextToken().trim();
+                        int sepIndex = token.indexOf(NAME_VALUE_SEPARATOR);
+                        if (sepIndex == -1) {
+                            continue; // Skip invalid cookie format
+                        }
+                        
+                        String key = token.substring(0, sepIndex).trim();
+                        String value = token.substring(sepIndex + 1);
+                        
+                        // Security: Validate cookie name and value
+                        validateCookieName(key);
+                        validateCookieValue(value);
+                        
+                        domainStore.put(key, cookie);
                         cookie.put(key, value);
                     }
+
+                    while (st.hasMoreTokens()) {
+                        String token = st.nextToken().trim();
+                        int pos = token.indexOf(NAME_VALUE_SEPARATOR);
+                        if (pos != -1) {
+                            String key = token.substring(0, pos).toLowerCase().trim();
+                            String value = token.substring(pos + 1).trim();
+                            
+                            // Security: Validate cookie attributes
+                            if ("domain".equals(key)) {
+                                validateCookieDomain(value, requestHost);
+                            }
+                            
+                            // Security: Validate attribute value length
+                            if (value.length() > 4096) {
+                                LOG.warning("Cookie attribute value too long, truncating: " + key);
+                                continue;
+                            }
+                            
+                            cookie.put(key, value);
+                        }
+                    }
+                } catch (SecurityException e) {
+                    // Security: Log and skip dangerous cookies rather than failing completely
+                    LOG.log(Level.WARNING, "Rejecting dangerous cookie from " + requestHost + ": " + e.getMessage());
+                } catch (Exception e) {
+                    // General parsing errors - log and continue
+                    LOG.log(Level.WARNING, "Error parsing cookie from " + requestHost + ": " + e.getMessage());
                 }
             }
         }
@@ -342,11 +559,27 @@ public final class UrlUtilities {
             // check cookie to ensure path matches and cookie is not expired
             // if all is cool, add cookie to header string
             if (comparePaths((String) cookie.get(PATH), path) && isNotExpired((String) cookie.get(EXPIRES))) {
-                cookieStringBuffer.append(cookieName);
-                cookieStringBuffer.append('=');
-                cookieStringBuffer.append((String) cookie.get(cookieName));
-                if (cookieNames.hasNext()) {
-                    cookieStringBuffer.append(SET_COOKIE_SEPARATOR);
+                try {
+                    // Security: Validate cookie before sending
+                    validateCookieName(cookieName);
+                    String cookieValue = (String) cookie.get(cookieName);
+                    validateCookieValue(cookieValue);
+                    
+                    // Security: Limit total cookie header size to prevent header injection
+                    if (cookieStringBuffer.length() + cookieName.length() + cookieValue.length() + 10 > 8192) {
+                        LOG.warning("Cookie header size limit reached, stopping cookie addition");
+                        break;
+                    }
+                    
+                    cookieStringBuffer.append(cookieName);
+                    cookieStringBuffer.append('=');
+                    cookieStringBuffer.append(cookieValue);
+                    if (cookieNames.hasNext()) {
+                        cookieStringBuffer.append(SET_COOKIE_SEPARATOR);
+                    }
+                } catch (SecurityException e) {
+                    // Security: Skip dangerous cookies rather than failing
+                    LOG.log(Level.WARNING, "Skipping dangerous cookie in request: " + e.getMessage());
                 }
             }
         }
@@ -511,7 +744,12 @@ public final class UrlUtilities {
 
             FastByteArrayOutputStream out = new FastByteArrayOutputStream(65536);
             InputStream stream = IOUtilities.getInputStream(c);
-            IOUtilities.transfer(stream, out);
+            
+            // Security: Validate Content-Length header after connection is established
+            validateContentLength(c);
+            
+            // Security: Use size-limited transfer to prevent memory exhaustion
+            transferWithLimit(stream, out, maxDownloadSize);
             stream.close();
 
             if (outCookies != null) {   // [optional] Fetch cookies from server and update outCookie Map (pick up JSESSIONID, other headers)
@@ -522,6 +760,10 @@ public final class UrlUtilities {
         } catch (SSLHandshakeException e) {   // Don't read error response.  it will just cause another exception.
             LOG.log(Level.WARNING, e.getMessage(), e);
             return null;
+        } catch (SecurityException e) {
+            // Security exceptions should be logged and re-thrown to alert callers
+            LOG.log(Level.SEVERE, "Security violation in URL download: " + e.getMessage(), e);
+            return null; // Return null for backward compatibility, but log the security issue
         } catch (Exception e) {
             readErrorResponse(c);
             LOG.log(Level.WARNING, e.getMessage(), e);
@@ -547,9 +789,16 @@ public final class UrlUtilities {
         URLConnection c = null;
         try {
             c = getConnection(url, inCookies, true, false, false, allowAllCerts);
+            
             InputStream stream = IOUtilities.getInputStream(c);
-            IOUtilities.transfer(stream, out);
+            
+            // Security: Validate Content-Length header after connection is established
+            validateContentLength(c);
+            
+            // Security: Use size-limited transfer to prevent memory exhaustion
+            transferWithLimit(stream, out, maxDownloadSize);
             stream.close();
+            
             if (outCookies != null) {
                 getCookies(c, outCookies);
             }

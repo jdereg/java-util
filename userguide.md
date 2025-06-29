@@ -1590,6 +1590,34 @@ A utility class providing static methods for byte array operations and hexadecim
 - Performance optimized
 - Null-safe methods
 
+### Feature Options
+
+ByteUtilities provides configurable security options through system properties. All security features are **disabled by default** for backward compatibility:
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `bytes.max.hex.string.length` | `0` | Hex string length limit for decode operations (0=disabled) |
+| `bytes.max.array.size` | `0` | Byte array size limit for encode operations (0=disabled) |
+
+**Usage Examples:**
+
+```java
+// Production environment with security limits
+System.setProperty("bytes.max.hex.string.length", "100000");
+System.setProperty("bytes.max.array.size", "50000");
+
+// Development environment with higher limits
+System.setProperty("bytes.max.hex.string.length", "1000000");
+System.setProperty("bytes.max.array.size", "500000");
+
+// Testing environment - all security features disabled (default)
+// No system properties needed - all limits default to 0 (disabled)
+```
+
+**Security Benefits:**
+- **Hex String Length Limits**: Prevents memory exhaustion from extremely long hex strings in decode operations
+- **Byte Array Size Limits**: Guards against memory exhaustion from very large byte arrays in encode operations
+
 ### Usage Examples
 
 **Hex Encoding and Decoding:**

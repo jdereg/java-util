@@ -30,6 +30,14 @@ import java.util.Arrays;
  * boolean isGzip = ByteUtilities.isGzipped(data); // true
  * }</pre>
  *
+ * <h2>Security Configuration</h2>
+ * <p>ByteUtilities provides configurable security options through system properties.
+ * All security features are <strong>disabled by default</strong> for backward compatibility:</p>
+ * <ul>
+ *   <li><code>bytes.max.hex.string.length=0</code> &mdash; Hex string length limit for decode operations (0=disabled)</li>
+ *   <li><code>bytes.max.array.size=0</code> &mdash; Byte array size limit for encode operations (0=disabled)</li>
+ * </ul>
+ *
  * <h2>Design Notes</h2>
  * <ul>
  *   <li>The class is designed as a utility class, and its constructor is private to prevent instantiation.</li>
@@ -64,6 +72,13 @@ import java.util.Arrays;
  *         limitations under the License.
  */
 public final class ByteUtilities {
+    // Security limits to prevent resource exhaustion attacks
+    // 0 or negative values = disabled, positive values = enabled with limit
+    private static final int MAX_HEX_STRING_LENGTH = Integer.parseInt(
+            System.getProperty("bytes.max.hex.string.length", "0"));
+    private static final int MAX_ARRAY_SIZE = Integer.parseInt(
+            System.getProperty("bytes.max.array.size", "0"));
+
     // For encode: Array of hex digits.
     static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
@@ -121,6 +136,12 @@ public final class ByteUtilities {
             return null;
         }
         final int len = s.length();
+        
+        // Security check: validate hex string length
+        if (MAX_HEX_STRING_LENGTH > 0 && len > MAX_HEX_STRING_LENGTH) {
+            throw new SecurityException("Hex string length exceeds maximum allowed: " + MAX_HEX_STRING_LENGTH);
+        }
+        
         // Must be even length
         if ((len & 1) != 0) {
             return null;
@@ -152,6 +173,11 @@ public final class ByteUtilities {
     public static String encode(final byte[] bytes) {
         if (bytes == null) {
             return null;
+        }
+        
+        // Security check: validate byte array size
+        if (MAX_ARRAY_SIZE > 0 && bytes.length > MAX_ARRAY_SIZE) {
+            throw new SecurityException("Byte array size exceeds maximum allowed: " + MAX_ARRAY_SIZE);
         }
         char[] hexChars = new char[bytes.length * 2];
         for (int i = 0, j = 0; i < bytes.length; i++) {

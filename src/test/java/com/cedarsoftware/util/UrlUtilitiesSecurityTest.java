@@ -25,12 +25,32 @@ public class UrlUtilitiesSecurityTest {
     
     private long originalMaxDownloadSize;
     private int originalMaxContentLength;
+    private String originalSecurityEnabled;
+    private String originalMaxDownloadSizeProp;
+    private String originalMaxContentLengthProp;
+    private String originalAllowInternalHosts;
+    private String originalAllowedProtocols;
+    private String originalStrictCookieDomain;
     
     @BeforeEach
     public void setUp() {
         // Store original limits
         originalMaxDownloadSize = UrlUtilities.getMaxDownloadSize();
         originalMaxContentLength = UrlUtilities.getMaxContentLength();
+        
+        // Save original system property values
+        originalSecurityEnabled = System.getProperty("urlutilities.security.enabled");
+        originalMaxDownloadSizeProp = System.getProperty("urlutilities.max.download.size");
+        originalMaxContentLengthProp = System.getProperty("urlutilities.max.content.length");
+        originalAllowInternalHosts = System.getProperty("urlutilities.allow.internal.hosts");
+        originalAllowedProtocols = System.getProperty("urlutilities.allowed.protocols");
+        originalStrictCookieDomain = System.getProperty("urlutilities.strict.cookie.domain");
+        
+        // Enable security with test limits (don't set specific size limits via properties for these tests)
+        System.setProperty("urlutilities.security.enabled", "true");
+        System.setProperty("urlutilities.allow.internal.hosts", "true");
+        System.setProperty("urlutilities.allowed.protocols", "http,https,ftp");
+        System.setProperty("urlutilities.strict.cookie.domain", "false");
     }
     
     @AfterEach
@@ -38,6 +58,22 @@ public class UrlUtilitiesSecurityTest {
         // Restore original limits
         UrlUtilities.setMaxDownloadSize(originalMaxDownloadSize);
         UrlUtilities.setMaxContentLength(originalMaxContentLength);
+        
+        // Restore original system property values
+        restoreProperty("urlutilities.security.enabled", originalSecurityEnabled);
+        restoreProperty("urlutilities.max.download.size", originalMaxDownloadSizeProp);
+        restoreProperty("urlutilities.max.content.length", originalMaxContentLengthProp);
+        restoreProperty("urlutilities.allow.internal.hosts", originalAllowInternalHosts);
+        restoreProperty("urlutilities.allowed.protocols", originalAllowedProtocols);
+        restoreProperty("urlutilities.strict.cookie.domain", originalStrictCookieDomain);
+    }
+    
+    private void restoreProperty(String key, String originalValue) {
+        if (originalValue == null) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, originalValue);
+        }
     }
     
     // Test resource consumption limits for downloads

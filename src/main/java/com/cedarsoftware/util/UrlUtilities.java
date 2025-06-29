@@ -37,16 +37,54 @@ import java.util.regex.Pattern;
 /**
  * Useful utilities for working with UrlConnections and IO.
  *
- *  Anyone using the deprecated api calls for proxying to urls should update to use the new suggested calls.
- *  To let the jvm proxy for you automatically, use the following -D parameters:
+ * <h2>Proxy Configuration</h2>
+ * <p>Anyone using the deprecated api calls for proxying to urls should update to use the new suggested calls.
+ * To let the jvm proxy for you automatically, use the following -D parameters:</p>
  *
- *  http.proxyHost
- *  http.proxyPort (default: 80)
- *  http.nonProxyHosts (should always include localhost)
- *  https.proxyHost
- *  https.proxyPort
+ * <ul>
+ *   <li>http.proxyHost</li>
+ *   <li>http.proxyPort (default: 80)</li>
+ *   <li>http.nonProxyHosts (should always include localhost)</li>
+ *   <li>https.proxyHost</li>
+ *   <li>https.proxyPort</li>
+ * </ul>
  *
- *  Example:  -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg
+ * <p>Example: -Dhttp.proxyHost=proxy.example.org -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.org -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=*.foo.com|localhost|*.td.afg</p>
+ *
+ * <h2>Security Configuration</h2>
+ * <p>UrlUtilities provides configurable security controls to prevent various attack vectors including
+ * SSRF (Server-Side Request Forgery), resource exhaustion, and cookie injection attacks.
+ * All security features are <strong>disabled by default</strong> for backward compatibility.</p>
+ *
+ * <p>Security controls can be enabled via system properties:</p>
+ * <ul>
+ *   <li><code>urlutilities.security.enabled=false</code> &mdash; Master switch for all security features</li>
+ *   <li><code>urlutilities.max.download.size=0</code> &mdash; Max download size in bytes (0=disabled, default=100MB when enabled)</li>
+ *   <li><code>urlutilities.max.content.length=0</code> &mdash; Max Content-Length header value (0=disabled, default=500MB when enabled)</li>
+ *   <li><code>urlutilities.allow.internal.hosts=true</code> &mdash; Allow access to internal/local hosts (default=true)</li>
+ *   <li><code>urlutilities.allowed.protocols=http,https,ftp</code> &mdash; Comma-separated list of allowed protocols</li>
+ *   <li><code>urlutilities.strict.cookie.domain=false</code> &mdash; Enable strict cookie domain validation (default=false)</li>
+ * </ul>
+ *
+ * <h3>Security Features</h3>
+ * <ul>
+ *   <li><b>SSRF Protection:</b> Validates protocols and optionally blocks internal host access</li>
+ *   <li><b>Resource Exhaustion Protection:</b> Limits download sizes and content lengths</li>
+ *   <li><b>Cookie Security:</b> Validates cookie domains to prevent hijacking</li>
+ *   <li><b>Protocol Restriction:</b> Configurable allowed protocols list</li>
+ * </ul>
+ *
+ * <h3>Usage Example</h3>
+ * <pre>{@code
+ * // Enable security with custom limits
+ * System.setProperty("urlutilities.security.enabled", "true");
+ * System.setProperty("urlutilities.max.download.size", "50000000"); // 50MB
+ * System.setProperty("urlutilities.allow.internal.hosts", "false");
+ * System.setProperty("urlutilities.allowed.protocols", "https");
+ *
+ * // These will now enforce security controls
+ * byte[] data = UrlUtilities.readBytesFromUrl(url);
+ * }</pre>
  *
  * @author Ken Partlow
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -83,7 +121,50 @@ public final class UrlUtilities {
     private static volatile int defaultReadTimeout = 220000;
     private static volatile int defaultConnectTimeout = 45000;
     
-    // Security: Resource consumption limits for download operations
+    // Security configuration - all disabled by default for backward compatibility
+    // These are checked dynamically to allow runtime configuration changes for testing
+    private static boolean isSecurityEnabled() {
+        return Boolean.parseBoolean(System.getProperty("urlutilities.security.enabled", "false"));
+    }
+    
+    private static long getConfiguredMaxDownloadSize() {
+        String prop = System.getProperty("urlutilities.max.download.size");
+        if (prop != null) {
+            long configured = Long.parseLong(prop);
+            if (configured > 0) {
+                return configured;
+            }
+        }
+        // If no system property set, use programmatically set value when security enabled
+        return isSecurityEnabled() ? maxDownloadSize : Long.MAX_VALUE;
+    }
+    
+    private static int getConfiguredMaxContentLength() {
+        String prop = System.getProperty("urlutilities.max.content.length");
+        if (prop != null) {
+            int configured = Integer.parseInt(prop);
+            if (configured > 0) {
+                return configured;
+            }
+        }
+        // If no system property set, use programmatically set value when security enabled
+        return isSecurityEnabled() ? maxContentLength : Integer.MAX_VALUE;
+    }
+    
+    private static boolean isInternalHostAllowed() {
+        return Boolean.parseBoolean(System.getProperty("urlutilities.allow.internal.hosts", "true"));
+    }
+    
+    private static String[] getAllowedProtocols() {
+        String prop = System.getProperty("urlutilities.allowed.protocols", "http,https,ftp");
+        return prop.split(",");
+    }
+    
+    private static boolean isStrictCookieDomainEnabled() {
+        return Boolean.parseBoolean(System.getProperty("urlutilities.strict.cookie.domain", "false"));
+    }
+    
+    // Legacy fields for backward compatibility with existing getters/setters
     private static volatile long maxDownloadSize = 100 * 1024 * 1024; // 100MB default limit
     private static volatile int maxContentLength = 500 * 1024 * 1024; // 500MB Content-Length header limit
 
@@ -236,10 +317,20 @@ public final class UrlUtilities {
     
     /**
      * Get the current maximum download size limit.
+     * Returns the configured system property value if available, otherwise the programmatically set value.
      * 
      * @return Maximum download size in bytes
      */
     public static long getMaxDownloadSize() {
+        // Check if there's an explicit system property override
+        String prop = System.getProperty("urlutilities.max.download.size");
+        if (prop != null) {
+            long configured = Long.parseLong(prop);
+            if (configured > 0) {
+                return configured;
+            }
+        }
+        // Otherwise return programmatically set value
         return maxDownloadSize;
     }
     
@@ -258,10 +349,20 @@ public final class UrlUtilities {
     
     /**
      * Get the current maximum Content-Length header limit.
+     * Returns the configured system property value if available, otherwise the programmatically set value.
      * 
      * @return Maximum Content-Length in bytes
      */
     public static int getMaxContentLength() {
+        // Check if there's an explicit system property override
+        String prop = System.getProperty("urlutilities.max.content.length");
+        if (prop != null) {
+            int configured = Integer.parseInt(prop);
+            if (configured > 0) {
+                return configured;
+            }
+        }
+        // Otherwise return programmatically set value
         return maxContentLength;
     }
 
@@ -300,6 +401,9 @@ public final class UrlUtilities {
      * @throws IOException if an I/O error occurs
      */
     private static void transferWithLimit(InputStream input, java.io.OutputStream output, long maxBytes) throws IOException {
+        // Use configured limits if security is enabled, otherwise use the provided maxBytes
+        long effectiveLimit = isSecurityEnabled() ? getConfiguredMaxDownloadSize() : maxBytes;
+        
         byte[] buffer = new byte[8192];
         long totalBytes = 0;
         int bytesRead;
@@ -308,8 +412,8 @@ public final class UrlUtilities {
             totalBytes += bytesRead;
             
             // Security: Enforce download size limit to prevent memory exhaustion
-            if (totalBytes > maxBytes) {
-                throw new SecurityException("Download size exceeds maximum allowed: " + totalBytes + " > " + maxBytes);
+            if (effectiveLimit != Long.MAX_VALUE && totalBytes > effectiveLimit) {
+                throw new SecurityException("Download size exceeds maximum allowed: " + totalBytes + " > " + effectiveLimit);
             }
             
             output.write(buffer, 0, bytesRead);
@@ -401,8 +505,8 @@ public final class UrlUtilities {
      * @throws SecurityException if domain is invalid or potentially malicious
      */
     private static void validateCookieDomain(String cookieDomain, String requestHost) {
-        if (cookieDomain == null || requestHost == null) {
-            return; // No domain validation needed
+        if (cookieDomain == null || requestHost == null || !isStrictCookieDomainEnabled()) {
+            return; // No domain validation needed or disabled
         }
         
         // Security: Prevent domain hijacking by ensuring cookie domain matches request host

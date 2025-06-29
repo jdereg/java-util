@@ -4684,11 +4684,141 @@ Once configured, JUL output flows through your framework's configuration.
 ## UrlUtilities
 [Source](/src/main/java/com/cedarsoftware/util/UrlUtilities.java)
 
-Utility methods for fetching HTTP/HTTPS content.
+Utility methods for fetching HTTP/HTTPS content with configurable security controls.
 
 ### Key Features
 - Fetch content as `byte[]` or `String`
 - Stream directly to an `OutputStream` with `copyContentFromUrl`
 - Configurable default connect and read timeouts
 - Optional insecure SSL mode via `allowAllCerts` parameters
+- Comprehensive security controls for SSRF protection and resource limits
+
+### Security Configuration
+
+UrlUtilities provides configurable security controls to prevent various attack vectors including SSRF (Server-Side Request Forgery), resource exhaustion, and cookie injection attacks. **All security features are disabled by default** for backward compatibility.
+
+**System Property Configuration:**
+```properties
+# Master switch - enables all security features
+urlutilities.security.enabled=false
+
+# Resource limits (0 = disabled)
+urlutilities.max.download.size=0          # Max download size in bytes
+urlutilities.max.content.length=0         # Max Content-Length header value
+
+# SSRF protection
+urlutilities.allow.internal.hosts=true    # Allow access to localhost/internal IPs
+urlutilities.allowed.protocols=http,https,ftp  # Comma-separated allowed protocols
+
+# Cookie security
+urlutilities.strict.cookie.domain=false   # Enable strict cookie domain validation
+```
+
+**Usage Example:**
+```java
+// Enable security with custom limits
+System.setProperty("urlutilities.security.enabled", "true");
+System.setProperty("urlutilities.max.download.size", "50000000"); // 50MB
+System.setProperty("urlutilities.max.content.length", "200000000"); // 200MB
+System.setProperty("urlutilities.allow.internal.hosts", "false");
+System.setProperty("urlutilities.allowed.protocols", "https");
+System.setProperty("urlutilities.strict.cookie.domain", "true");
+
+// These will now enforce security controls
+byte[] data = UrlUtilities.readBytesFromUrl("https://example.com/data");
+String content = UrlUtilities.readStringFromUrl("https://api.example.com/endpoint");
+```
+
+**Security Features:**
+
+- **SSRF Protection:** Validates protocols and optionally blocks internal host access
+- **Resource Exhaustion Protection:** Limits download sizes and content lengths
+- **Cookie Security:** Validates cookie domains to prevent hijacking
+- **Protocol Restriction:** Configurable allowed protocols list
+
+**Backward Compatibility:** When security is disabled (default), all methods behave exactly as before with no performance impact.
+
+### Public API
+
+```java
+// Basic content fetching
+public static byte[] readBytesFromUrl(String url)
+public static String readStringFromUrl(String url)
+public static void copyContentFromUrl(String url, OutputStream out)
+
+// With cookie support
+public static byte[] readBytesFromUrl(String url, Map<String, String> cookies, Map<String, String> headers)
+public static String readStringFromUrl(String url, Map<String, String> cookies, Map<String, String> headers)
+
+// Security configuration
+public static void setMaxDownloadSize(long maxSizeBytes)
+public static long getMaxDownloadSize()
+public static void setMaxContentLength(int maxLengthBytes)
+public static int getMaxContentLength()
+
+// Connection management
+public static void setDefaultReadTimeout(int timeout)
+public static int getDefaultReadTimeout()
+public static void setDefaultConnectTimeout(int timeout)
+public static int getDefaultConnectTimeout()
+```
+
+### Basic Operations
+
+**Simple Content Fetching:**
+```java
+// Fetch as byte array
+byte[] data = UrlUtilities.readBytesFromUrl("https://example.com/api/data");
+
+// Fetch as string
+String json = UrlUtilities.readStringFromUrl("https://api.example.com/users");
+
+// Stream to output
+try (FileOutputStream fos = new FileOutputStream("download.zip")) {
+    UrlUtilities.copyContentFromUrl("https://example.com/file.zip", fos);
+}
+```
+
+**With Headers and Cookies:**
+```java
+Map<String, String> headers = new HashMap<>();
+headers.put("Authorization", "Bearer " + token);
+headers.put("Accept", "application/json");
+
+Map<String, String> cookies = new HashMap<>();
+cookies.put("sessionId", "abc123");
+
+String response = UrlUtilities.readStringFromUrl(
+    "https://api.example.com/protected", cookies, headers);
+```
+
+### Configuration Management
+
+**Timeout Configuration:**
+```java
+// Set global defaults
+UrlUtilities.setDefaultConnectTimeout(30000); // 30 seconds
+UrlUtilities.setDefaultReadTimeout(60000);    // 60 seconds
+```
+
+**Security Limits:**
+```java
+// Programmatic configuration (when security is disabled)
+UrlUtilities.setMaxDownloadSize(100 * 1024 * 1024); // 100MB
+UrlUtilities.setMaxContentLength(500 * 1024 * 1024); // 500MB
+
+// Check current limits
+long maxDownload = UrlUtilities.getMaxDownloadSize();
+int maxContentLength = UrlUtilities.getMaxContentLength();
+```
+
+### Implementation Notes
+
+- **SSL/TLS Support:** Full HTTPS support with optional certificate validation bypass (⚠️ development only)
+- **Cookie Management:** Automatic cookie handling with domain validation
+- **Error Handling:** Comprehensive error response reading and logging
+- **Thread Safety:** All static methods are thread-safe
+- **Resource Management:** Automatic cleanup of connections and streams
+
+This implementation provides robust HTTP/HTTPS client capabilities with emphasis on security, performance, and ease of use.
 

@@ -88,7 +88,7 @@ public class MapUtilities {
      * @param map Map to check, can be null
      * @return Returns true if map is empty or null
      */
-    public static boolean isEmpty(Map map) {
+    public static boolean isEmpty(Map<?, ?> map) {
         return map == null || map.isEmpty();
     }
 

@@ -15,26 +15,26 @@ class ConverterCollectionSupportTest {
 
     @Test
     void enumTargetSupportedFromCollection() {
-        assertTrue(Converter.isCollectionConversionSupported(List.class, Day.class));
+        assertTrue(Converter.isContainerConversionSupported(List.class, Day.class));
     }
 
     @Test
     void enumSetSourceSupportedToArray() {
-        assertTrue(Converter.isCollectionConversionSupported(EnumSet.class, String[].class));
+        assertTrue(Converter.isContainerConversionSupported(EnumSet.class, String[].class));
     }
 
     @Test
     void collectionSourceSupportedToCollection() {
-        assertTrue(Converter.isCollectionConversionSupported(List.class, Set.class));
+        assertTrue(Converter.isContainerConversionSupported(List.class, Set.class));
     }
 
     @Test
     void arrayToArrayWhenTargetNotCollection() {
-        assertTrue(Converter.isCollectionConversionSupported(String[].class, Integer[].class));
+        assertTrue(Converter.isContainerConversionSupported(String[].class, Integer[].class));
     }
 
     @Test
     void unsupportedTypesReturnFalse() {
-        assertFalse(Converter.isCollectionConversionSupported(String.class, Integer.class));
+        assertFalse(Converter.isContainerConversionSupported(String.class, Integer.class));
     }
 }

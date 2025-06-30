@@ -255,10 +255,10 @@ class ConverterLegacyApiTest {
 
     @Test
     void collectionConversionSupport() {
-        assertTrue(com.cedarsoftware.util.convert.Converter.isCollectionConversionSupported(String[].class, java.util.List.class));
-        assertFalse(com.cedarsoftware.util.convert.Converter.isCollectionConversionSupported(String.class, java.util.List.class));
+        assertTrue(com.cedarsoftware.util.convert.Converter.isContainerConversionSupported(String[].class, java.util.List.class));
+        assertFalse(com.cedarsoftware.util.convert.Converter.isContainerConversionSupported(String.class, java.util.List.class));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> com.cedarsoftware.util.convert.Converter.isCollectionConversionSupported(String[].class, java.util.EnumSet.class));
+                .isThrownBy(() -> com.cedarsoftware.util.convert.Converter.isContainerConversionSupported(String[].class, java.util.EnumSet.class));
     }
 
     @Test

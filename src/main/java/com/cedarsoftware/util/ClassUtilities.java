@@ -39,7 +39,6 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collection;
@@ -79,7 +78,6 @@ import java.util.SortedSet;
 import java.util.Stack;
 import java.util.StringJoiner;
 import java.util.TimeZone;
-import com.cedarsoftware.util.ReflectionUtils;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -762,7 +760,7 @@ public class ClassUtilities {
     }
 
     /**
-     * Converts a primitive class to its corresponding wrapper class.
+     * Converts primitive class to its corresponding wrapper class.
      * <p>
      * If the input class is already a non-primitive type, it is returned unchanged.
      * For primitive types, returns the corresponding wrapper class (e.g., {@code int.class} → {@code Integer.class}).

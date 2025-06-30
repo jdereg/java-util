@@ -1,5 +1,13 @@
 ### Revision History
 #### 3.6.0 (Unreleased)
+> * **Feature Enhancement**: Added comprehensive `java.awt.Color` conversion support to `Converter`:
+>   * Supports conversion from String formats: hex colors (`#FF0000`, `FF0000`), named colors (`red`, `blue`, etc.), `rgb(r,g,b)`, and `rgba(r,g,b,a)` formats
+>   * Supports conversion from Map format using keys: `red`, `green`, `blue`, `alpha`, `rgb`, `color`, and `value`
+>   * Supports conversion from int arrays: `[r,g,b]` and `[r,g,b,a]` formats with validation
+>   * Supports conversion from numeric types: Integer/Long packed RGB/ARGB values
+>   * Supports conversion to all above formats with proper round-trip compatibility
+>   * Added comprehensive test coverage with 34 test methods covering all conversion scenarios
+>   * Eliminates need for custom Color factories in json-io and other serialization libraries
 > * **Security Enhancement**: Fixed critical security vulnerabilities in `CompactMap` dynamic code generation:
 >   * Added strict input sanitization to prevent code injection attacks in class name generation
 >   * Fixed memory leak by using `WeakReference` for generated class caching to allow garbage collection

@@ -1376,15 +1376,18 @@ public final class Converter {
     }
 
     private static Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
-        ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
-        if (targetMap != null) {
-            return targetMap.get(target);
-        }
+        // TEMPORARY: Cache disabled for debugging - always return null to bypass cache
         return null;
+        // ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
+        // if (targetMap != null) {
+        //     return targetMap.get(target);
+        // }
+        // return null;
     }
 
     private static void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        FULL_CONVERSION_CACHE.computeIfAbsent(source, s -> new ClassValueMap<>()).put(target, converter);
+        // TEMPORARY: Cache disabled for debugging - do nothing
+        // FULL_CONVERSION_CACHE.computeIfAbsent(source, s -> new ClassValueMap<>()).put(target, converter);
     }
 
     // Cache JsonObject class to avoid repeated reflection lookups
@@ -2129,14 +2132,15 @@ public final class Converter {
     }
 
     private static void clearCachesForType(Class<?> source, Class<?> target) {
+        // TEMPORARY: Cache disabled for debugging - do nothing
         // Remove from FULL_CONVERSION_CACHE if it exists.
-        ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
-        if (targetMap != null) {
-            targetMap.remove(target);
-        }
-        SIMPLE_TYPE_CACHE.remove(source);
-        SIMPLE_TYPE_CACHE.remove(target);
-        SELF_CONVERSION_CACHE.remove(source);
-        SELF_CONVERSION_CACHE.remove(target);
+        // ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
+        // if (targetMap != null) {
+        //     targetMap.remove(target);
+        // }
+        // SIMPLE_TYPE_CACHE.remove(source);
+        // SIMPLE_TYPE_CACHE.remove(target);
+        // SELF_CONVERSION_CACHE.remove(source);
+        // SELF_CONVERSION_CACHE.remove(target);
     }
 }

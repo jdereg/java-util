@@ -261,6 +261,50 @@ class ColorConversionsTest {
         assertThat(result).isEqualTo(Color.RED);
     }
 
+    @Test
+    void testMapToColor_shortKeys_rgb() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("r", 255);
+        map.put("g", 128);
+        map.put("b", 64);
+
+        Color result = converter.convert(map, Color.class);
+        assertThat(result.getRed()).isEqualTo(255);
+        assertThat(result.getGreen()).isEqualTo(128);
+        assertThat(result.getBlue()).isEqualTo(64);
+        assertThat(result.getAlpha()).isEqualTo(255);
+    }
+
+    @Test
+    void testMapToColor_shortKeys_rgba() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("r", 255);
+        map.put("g", 128);
+        map.put("b", 64);
+        map.put("a", 192);
+
+        Color result = converter.convert(map, Color.class);
+        assertThat(result.getRed()).isEqualTo(255);
+        assertThat(result.getGreen()).isEqualTo(128);
+        assertThat(result.getBlue()).isEqualTo(64);
+        assertThat(result.getAlpha()).isEqualTo(192);
+    }
+
+    @Test
+    void testMapToColor_shortKeys_withTypeConversion() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("r", "255");      // String that needs conversion
+        map.put("g", 128.7);      // Double that needs conversion  
+        map.put("b", new java.util.concurrent.atomic.AtomicInteger(64)); // AtomicInteger
+        map.put("a", "192");      // String alpha
+
+        Color result = converter.convert(map, Color.class);
+        assertThat(result.getRed()).isEqualTo(255);
+        assertThat(result.getGreen()).isEqualTo(128);
+        assertThat(result.getBlue()).isEqualTo(64);
+        assertThat(result.getAlpha()).isEqualTo(192);
+    }
+
     // ========================================
     // Color to String Tests
     // ========================================
@@ -365,6 +409,22 @@ class ColorConversionsTest {
         Color restored = converter.convert(map, Color.class);
 
         assertThat(restored).isEqualTo(original);
+    }
+
+    @Test
+    void testRoundTrip_shortKeysMapToColor() {
+        // Test that short keys also work for round-trip with manually created map
+        Map<String, Object> shortKeyMap = new HashMap<>();
+        shortKeyMap.put("r", 255);
+        shortKeyMap.put("g", 128);
+        shortKeyMap.put("b", 64);
+        shortKeyMap.put("a", 192);
+        
+        Color color = converter.convert(shortKeyMap, Color.class);
+        assertThat(color.getRed()).isEqualTo(255);
+        assertThat(color.getGreen()).isEqualTo(128);
+        assertThat(color.getBlue()).isEqualTo(64);
+        assertThat(color.getAlpha()).isEqualTo(192);
     }
 
     @Test

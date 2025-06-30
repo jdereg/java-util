@@ -114,6 +114,10 @@ final class MapConversions {
     static final String ALPHA = "alpha";
     static final String RGB = "rgb";
     static final String COLOR = "color";
+    static final String R = "r";
+    static final String G = "g";
+    static final String B = "b";
+    static final String A = "a";
     private static final Object NO_MATCH = new Object();
 
     private MapConversions() {}
@@ -1044,6 +1048,8 @@ final class MapConversions {
      * Supports multiple map formats:
      * - {"red": r, "green": g, "blue": b} - RGB components (alpha defaults to 255)
      * - {"red": r, "green": g, "blue": b, "alpha": a} - RGBA components
+     * - {"r": r, "g": g, "b": b} - Short RGB components (alpha defaults to 255)
+     * - {"r": r, "g": g, "b": b, "a": a} - Short RGBA components
      * - {"rgb": packedValue} - Packed RGB integer
      * - {"color": "hexString"} - Hex color string like "#FF8040"
      * - {"value": colorValue} - Fallback to value-based conversion
@@ -1056,14 +1062,28 @@ final class MapConversions {
     static java.awt.Color toColor(Object from, Converter converter) {
         Map<?, ?> map = (Map<?, ?>) from;
 
-        // Try RGB components first (most explicit)
+        // Try full RGB components first (most explicit)
         if (map.containsKey(RED) && map.containsKey(GREEN) && map.containsKey(BLUE)) {
-            int r = converter.convert(map.get(RED), Integer.class);
-            int g = converter.convert(map.get(GREEN), Integer.class);
-            int b = converter.convert(map.get(BLUE), Integer.class);
+            int r = converter.convert(map.get(RED), int.class);
+            int g = converter.convert(map.get(GREEN), int.class);
+            int b = converter.convert(map.get(BLUE), int.class);
             
             if (map.containsKey(ALPHA)) {
-                int a = converter.convert(map.get(ALPHA), Integer.class);
+                int a = converter.convert(map.get(ALPHA), int.class);
+                return new java.awt.Color(r, g, b, a);
+            } else {
+                return new java.awt.Color(r, g, b);
+            }
+        }
+
+        // Try short RGB components (r, g, b)
+        if (map.containsKey(R) && map.containsKey(G) && map.containsKey(B)) {
+            int r = converter.convert(map.get(R), int.class);
+            int g = converter.convert(map.get(G), int.class);
+            int b = converter.convert(map.get(B), int.class);
+            
+            if (map.containsKey(A)) {
+                int a = converter.convert(map.get(A), int.class);
                 return new java.awt.Color(r, g, b, a);
             } else {
                 return new java.awt.Color(r, g, b);

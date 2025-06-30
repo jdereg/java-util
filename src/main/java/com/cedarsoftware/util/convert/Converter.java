@@ -32,9 +32,11 @@ import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TimeZone;
@@ -42,6 +44,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -49,6 +52,7 @@ import java.util.regex.Pattern;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
+import com.cedarsoftware.util.CompactMap;
 
 /**
  * Instance conversion utility for converting objects between various types.
@@ -1093,7 +1097,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(ZoneOffset.class, Map.class), ZoneOffsetConversions::toMap);
         CONVERSION_DB.put(pair(Class.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(UUID.class, Map.class), UUIDConversions::toMap);
-        CONVERSION_DB.put(pair(Map.class, Map.class), UNSUPPORTED);
         CONVERSION_DB.put(pair(String.class, Map.class), StringConversions::toMap);
         CONVERSION_DB.put(pair(Enum.class, Map.class), EnumConversions::toMap);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Map.class), OffsetDateTimeConversions::toMap);
@@ -1107,6 +1110,20 @@ public final class Converter {
         CONVERSION_DB.put(pair(Currency.class, Map.class), CurrencyConversions::toMap);
         CONVERSION_DB.put(pair(ByteBuffer.class, Map.class), ByteBufferConversions::toMap);
         CONVERSION_DB.put(pair(CharBuffer.class, Map.class), CharBufferConversions::toMap);
+        
+        // Record and Object conversions (JDK 14+ Records supported via reflection)
+        // REMOVED: Object.class -> Map.class was too broad and interfered with json-io
+        // TODO: Implement more targeted approach (whitelist/blacklist/context-aware/registration)
+        // CONVERSION_DB.put(pair(Object.class, Map.class), ObjectConversions.OBJECT_TO_MAP_CONVERTER);
+        
+        // Register Record.class -> Map.class conversion if Records are supported
+        try {
+            Class<?> recordClass = Class.forName("java.lang.Record");
+            CONVERSION_DB.put(pair(recordClass, Map.class), MapConversions::recordToMap);
+        } catch (ClassNotFoundException e) {
+            // Records not available in this JVM (JDK < 14)
+        }
+        
     }
 
     /**
@@ -1323,6 +1340,43 @@ public final class Converter {
             return (T) from; // Assignment compatible - use as-is
         }
 
+        // Final fallback: Universal Map and Object conversions (after all specific converters)
+        if (from instanceof Map && Map.class.isAssignableFrom(toType)) {
+            // Exclude JsonObject from universal Map conversion (Golden Idea) - COMMENTED OUT FOR TESTING
+            // if (!JSON_OBJECT_CLASS.isAssignableFrom(sourceType)) {
+                // Create cached converter for Map→Map conversion
+                final Class<?> finalToType = toType;
+                Convert<?> mapConverter = (fromObj, converter) -> MapConversions.mapToMapWithTarget(fromObj, converter, finalToType);
+                
+                // Execute and cache successful conversions
+                Object result = mapConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, mapConverter);
+                }
+                return (T) result;
+            // }
+        }
+        
+        // Universal Object → Map conversion (only when no specific converter exists)
+        if (!(from instanceof Map) && Map.class.isAssignableFrom(toType)) {
+            // Exclude JsonObject from universal Object conversion (Golden Idea) - COMMENTED OUT FOR TESTING
+            // if (!JSON_OBJECT_CLASS.isAssignableFrom(sourceType)) {
+                // Skip collections and arrays - they have their own conversion paths
+                if (!(from.getClass().isArray() || from instanceof Collection)) {
+                    // Create cached converter for Object→Map conversion
+                    final Class<?> finalToType = toType;
+                    Convert<?> objectConverter = (fromObj, converter) -> ObjectConversions.objectToMapWithTarget(fromObj, converter, finalToType);
+                    
+                    // Execute and cache successful conversions
+                    Object result = objectConverter.convert(from, this);
+                    if (result != null) {
+                        cacheConverter(sourceType, toType, objectConverter);
+                    }
+                    return (T) result;
+                }
+            // }
+        }
+
         throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) +
                 "] target type '" + getShortName(toType) + "'");
     }
@@ -1339,9 +1393,26 @@ public final class Converter {
         FULL_CONVERSION_CACHE.computeIfAbsent(source, s -> new ClassValueMap<>()).put(target, converter);
     }
 
+    // Cache JsonObject class to avoid repeated reflection lookups
+    private static final Class<?> JSON_OBJECT_CLASS;
+    
+    static {
+        Class<?> jsonObjectClass;
+        try {
+            jsonObjectClass = Class.forName("com.cedarsoftware.io.JsonObject");
+        } catch (ClassNotFoundException e) {
+            // JsonObject not available - use Void.class as a safe fallback that will never match
+            jsonObjectClass = Objects.class;
+        }
+        JSON_OBJECT_CLASS = jsonObjectClass;
+    }
+
+
+
     @SuppressWarnings("unchecked")
     private <T> T attemptCollectionConversion(Object from, Class<?> sourceType, Class<T> toType) {
-        // First validate source type is actually a collection/array type
+        // First validate source type is actually a collection/array type for traditional collection conversions
+        // Note: Map → Map conversions are handled in the main convert() method as final fallback
         if (!(from.getClass().isArray() || from instanceof Collection)) {
             return null;
         }
@@ -1720,9 +1791,10 @@ public final class Converter {
             return cached != UNSUPPORTED;
         }
 
-        // If either source or target is a collection/array type, this method is not applicable.
+        // If either source or target is a collection/array/map type, this method is not applicable.
         if (source.isArray() || target.isArray() ||
-                Collection.class.isAssignableFrom(source) || Collection.class.isAssignableFrom(target)) {
+                Collection.class.isAssignableFrom(source) || Collection.class.isAssignableFrom(target) ||
+                Map.class.isAssignableFrom(source) || Map.class.isAssignableFrom(target)) {
             return false;
         }
 

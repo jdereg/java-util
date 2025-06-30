@@ -1375,19 +1375,26 @@ public final class Converter {
                 "] target type '" + getShortName(toType) + "'");
     }
 
+    // DEBUGGING: Enable caches one by one to isolate the pollution source
+    private static final boolean ENABLE_FULL_CONVERSION_CACHE = false;  // DISABLED - This cache causes json-io test failures
+    private static final boolean ENABLE_SIMPLE_TYPE_CACHE = true;       // Enable to test simple type cache  
+    private static final boolean ENABLE_SELF_CONVERSION_CACHE = true;   // Enable to test self conversion cache
+
     private static Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
-        // TEMPORARY: Cache disabled for debugging - always return null to bypass cache
+        if (!ENABLE_FULL_CONVERSION_CACHE) {
+            return null;
+        }
+        ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
+        if (targetMap != null) {
+            return targetMap.get(target);
+        }
         return null;
-        // ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
-        // if (targetMap != null) {
-        //     return targetMap.get(target);
-        // }
-        // return null;
     }
 
     private static void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        // TEMPORARY: Cache disabled for debugging - do nothing
-        // FULL_CONVERSION_CACHE.computeIfAbsent(source, s -> new ClassValueMap<>()).put(target, converter);
+        if (ENABLE_FULL_CONVERSION_CACHE) {
+            FULL_CONVERSION_CACHE.computeIfAbsent(source, s -> new ClassValueMap<>()).put(target, converter);
+        }
     }
 
     // Cache JsonObject class to avoid repeated reflection lookups
@@ -1914,7 +1921,11 @@ public final class Converter {
      * @return {@code true} if a simple type conversion exists for the class
      */
     public boolean isSimpleTypeConversionSupported(Class<?> type) {
-        return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
+        if (ENABLE_SIMPLE_TYPE_CACHE) {
+            return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
+        } else {
+            return isSimpleTypeConversionSupported(type, type);
+        }
     }
     
     /**
@@ -1985,7 +1996,11 @@ public final class Converter {
      * @return {@code true} if a conversion exists for the class
      */
     public boolean isConversionSupportedFor(Class<?> type) {
-        return SELF_CONVERSION_CACHE.computeIfAbsent(type, t -> isConversionSupportedFor(t, t));
+        if (ENABLE_SELF_CONVERSION_CACHE) {
+            return SELF_CONVERSION_CACHE.computeIfAbsent(type, t -> isConversionSupportedFor(t, t));
+        } else {
+            return isConversionSupportedFor(type, type);
+        }
     }
 
     private static boolean isValidConversion(Convert<?> method) {
@@ -2132,15 +2147,53 @@ public final class Converter {
     }
 
     private static void clearCachesForType(Class<?> source, Class<?> target) {
-        // TEMPORARY: Cache disabled for debugging - do nothing
         // Remove from FULL_CONVERSION_CACHE if it exists.
-        // ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
-        // if (targetMap != null) {
-        //     targetMap.remove(target);
-        // }
-        // SIMPLE_TYPE_CACHE.remove(source);
-        // SIMPLE_TYPE_CACHE.remove(target);
-        // SELF_CONVERSION_CACHE.remove(source);
-        // SELF_CONVERSION_CACHE.remove(target);
+        ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
+        if (targetMap != null) {
+            targetMap.remove(target);
+        }
+        
+        // Also clear inheritance-based cache entries that might be affected
+        clearInheritanceBasedCaches(source, target);
+        
+        SIMPLE_TYPE_CACHE.remove(source);
+        SIMPLE_TYPE_CACHE.remove(target);
+        SELF_CONVERSION_CACHE.remove(source);
+        SELF_CONVERSION_CACHE.remove(target);
+    }
+    
+    /**
+     * Clear cache entries that might be affected by inheritance-based lookups.
+     * When a direct conversion is added, cached inheritance lookups should be invalidated.
+     */
+    private static void clearInheritanceBasedCaches(Class<?> source, Class<?> target) {
+        // Clear cache entries for parent classes and interfaces that might have
+        // inheritance-based converters that should now be superseded by the direct converter
+        
+        // Get all supertypes of the source class
+        SortedSet<ClassLevel> sourceHierarchy = getSuperClassesAndInterfaces(source);
+        for (ClassLevel classLevel : sourceHierarchy) {
+            Class<?> parentType = classLevel.clazz;
+            if (!parentType.equals(source)) {
+                // Clear cached conversions from parent types to the target
+                ClassValueMap<Convert<?>> parentTargetMap = FULL_CONVERSION_CACHE.get(parentType);
+                if (parentTargetMap != null) {
+                    parentTargetMap.remove(target);
+                }
+            }
+        }
+        
+        // Get all supertypes of the target class  
+        SortedSet<ClassLevel> targetHierarchy = getSuperClassesAndInterfaces(target);
+        for (ClassLevel classLevel : targetHierarchy) {
+            Class<?> parentType = classLevel.clazz;
+            if (!parentType.equals(target)) {
+                // Clear cached conversions from source to parent types
+                ClassValueMap<Convert<?>> sourceParentMap = FULL_CONVERSION_CACHE.get(source);
+                if (sourceParentMap != null) {
+                    sourceParentMap.remove(parentType);
+                }
+            }
+        }
     }
 }

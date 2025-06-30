@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.awt.Color;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -269,5 +270,22 @@ final class NumberConversions {
     static Year toYear(Object from, Converter converter) {
         Number number = (Number) from;
         return Year.of(number.shortValue());
+    }
+
+    /**
+     * Convert Number to java.awt.Color. Treats the number as a packed RGB or ARGB value.
+     * @param from Number (Integer, Long, etc.) representing packed RGB value
+     * @param converter Converter instance
+     * @return Color instance created from the packed RGB value
+     */
+    static Color toColor(Object from, Converter converter) {
+        Number number = (Number) from;
+        int rgb = number.intValue();
+        // Check if this might be an ARGB value (has meaningful alpha channel)
+        if ((rgb & 0xFF000000) != 0) {
+            return new Color(rgb, true); // Include alpha
+        } else {
+            return new Color(rgb); // RGB only
+        }
     }
 }

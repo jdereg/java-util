@@ -3,6 +3,7 @@ package com.cedarsoftware.util.convert;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.awt.Color;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -138,5 +139,39 @@ final class ArrayConversions {
             }
         }
         return array;
+    }
+
+    /**
+     * Convert int array to java.awt.Color. Supports [r,g,b] or [r,g,b,a] format.
+     * @param from int array with RGB or RGBA values
+     * @param converter Converter instance
+     * @return Color instance
+     * @throws IllegalArgumentException if array length is not 3 or 4, or values are out of range
+     */
+    static Color toColor(Object from, Converter converter) {
+        int[] array = (int[]) from;
+        
+        if (array.length < 3 || array.length > 4) {
+            throw new IllegalArgumentException("Color array must have 3 (RGB) or 4 (RGBA) elements, got: " + array.length);
+        }
+        
+        int r = array[0];
+        int g = array[1];
+        int b = array[2];
+        
+        // Validate RGB values
+        if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+            throw new IllegalArgumentException("RGB values must be between 0-255, got: [" + r + ", " + g + ", " + b + "]");
+        }
+        
+        if (array.length == 4) {
+            int a = array[3];
+            if (a < 0 || a > 255) {
+                throw new IllegalArgumentException("Alpha value must be between 0-255, got: " + a);
+            }
+            return new Color(r, g, b, a);
+        } else {
+            return new Color(r, g, b);
+        }
     }
 }

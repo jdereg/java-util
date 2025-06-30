@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -26,10 +27,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Currency;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
@@ -37,21 +35,18 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.WeakHashMap;
-import java.util.IdentityHashMap;
-import java.util.NavigableMap;
-import java.util.SortedMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
-import java.lang.reflect.Method;
 
-import com.cedarsoftware.util.CaseInsensitiveMap;
 import com.cedarsoftware.util.ClassUtilities;
-import com.cedarsoftware.util.CompactMap;
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
+import com.cedarsoftware.util.ConcurrentNavigableMapNullSafe;
+import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.ReflectionUtils;
 import com.cedarsoftware.util.StringUtilities;
 import com.cedarsoftware.util.SystemUtilities;
@@ -77,6 +72,9 @@ import static com.cedarsoftware.util.convert.Converter.getShortName;
  *         limitations under the License.
  */
 final class MapConversions {
+    private static final Logger LOG = Logger.getLogger(MapConversions.class.getName());
+    static { LoggingConfig.init(); }
+    
     static final String V = "_v";
     static final String VALUE = "value";
     static final String DATE = "date";
@@ -110,6 +108,12 @@ final class MapConversions {
     static final String DETAIL_MESSAGE = "detailMessage";
     static final String CAUSE = "cause";
     static final String CAUSE_MESSAGE = "causeMessage";
+    static final String RED = "red";
+    static final String GREEN = "green";
+    static final String BLUE = "blue";
+    static final String ALPHA = "alpha";
+    static final String RGB = "rgb";
+    static final String COLOR = "color";
     private static final Object NO_MATCH = new Object();
 
     private MapConversions() {}
@@ -630,13 +634,6 @@ final class MapConversions {
         return target;
     }
     
-    
-    
-    
-    
-    
-    
-    
     /**
      * JDK 8 compatible check for Record classes using SystemUtilities and ReflectionUtils caching.
      * Package-friendly to allow access from ObjectConversions.
@@ -740,35 +737,19 @@ final class MapConversions {
     private static SourceCharacteristics analyzeSource(Map<?, ?> sourceMap) {
         SourceCharacteristics source = new SourceCharacteristics();
         
-        // Basic properties
         source.size = sourceMap.size();
-        source.isEmpty = sourceMap.isEmpty();
-        
-        // Type-based characteristics
-        source.isLinkedHashMap = sourceMap instanceof LinkedHashMap;
         source.isSortedMap = sourceMap instanceof java.util.SortedMap;
-        source.isCaseInsensitiveMap = sourceMap instanceof CaseInsensitiveMap;
-        source.isCompactMap = sourceMap instanceof CompactMap;
         
         // Extract comparator if sorted
         if (source.isSortedMap) {
             source.comparator = ((java.util.SortedMap<Object, Object>) sourceMap).comparator();
         }
         
-        // Extract case sensitivity from CompactMap
-        if (source.isCompactMap) {
-            // TODO: isCaseInsensitive() is protected - find alternative way to detect case sensitivity
-            source.isCaseSensitive = true; // Default assumption for now
-        }
-        
-        // Check for nulls (expensive operation, only do if needed)
-        source.containsNulls = sourceMap.containsKey(null) || sourceMap.containsValue(null);
-        
         return source;
     }
     
     /**
-     * Analyzes target type to determine requirements
+     * Analyzes a target type to determine requirements
      */
     private static TargetCharacteristics analyzeTarget(Class<?> toType) {
         TargetCharacteristics target = new TargetCharacteristics();
@@ -781,66 +762,35 @@ final class MapConversions {
         
         String typeName = toType.getName();
         
-        // Standard JDK types
-        target.isHashMap = toType == HashMap.class;
-        target.isLinkedHashMap = toType == LinkedHashMap.class;
-        target.isTreeMap = toType == TreeMap.class;
-        target.isConcurrentHashMap = toType == ConcurrentHashMap.class;
-        target.isConcurrentSkipListMap = toType == ConcurrentSkipListMap.class;
-        target.isWeakHashMap = toType == WeakHashMap.class;
-        target.isIdentityHashMap = toType == IdentityHashMap.class;
+        // Collections wrapper types (require static factory methods)
+        target.isEmptyMap = typeName.endsWith("$EmptyMap");
+        target.isSingletonMap = typeName.endsWith("$SingletonMap");
+        target.isUnmodifiableMap = typeName.endsWith("$UnmodifiableMap");
+        target.isSynchronizedMap = typeName.endsWith("$SynchronizedMap");
+        target.isCheckedMap = typeName.endsWith("$CheckedMap");
+        
+        // Interface types (need concrete implementation selection)
         target.isConcurrentMapInterface = toType.getName().equals("java.util.concurrent.ConcurrentMap");
-        target.isNavigableMap = NavigableMap.class.isAssignableFrom(toType);
-        target.isSortedMap = SortedMap.class.isAssignableFrom(toType);
-        
-        // java-util types  
-        target.isCaseInsensitiveMap = toType == CaseInsensitiveMap.class;
-        target.isCompactMap = toType == CompactMap.class;
-        target.isConcurrentHashMapNullSafe = toType == ConcurrentHashMapNullSafe.class;
-        
-        // Collections "freak" wrapper types
-        target.isEmptyMap = typeName.contains("EmptyMap") || typeName.endsWith("$EmptyMap");
-        target.isSingletonMap = typeName.contains("SingletonMap") || typeName.endsWith("$SingletonMap");
-        target.isUnmodifiableMap = typeName.contains("UnmodifiableMap") || typeName.endsWith("$UnmodifiableMap");
-        target.isSynchronizedMap = typeName.contains("SynchronizedMap") || typeName.endsWith("$SynchronizedMap");
-        
-        // Generic Map interface
+        target.isConcurrentNavigableMapInterface = toType.getName().equals("java.util.concurrent.ConcurrentNavigableMap");
         target.isGenericMap = toType == Map.class;
+        
+        // Types requiring constructor arguments or special null handling
+        target.isTreeMap = toType == TreeMap.class;
+        target.isConcurrentSkipListMap = toType == ConcurrentSkipListMap.class;
+        target.isConcurrentHashMap = toType == ConcurrentHashMap.class; // Only for null handling logic
         
         return target;
     }
     
     /**
-     * Routes conversion based on source characteristics and target requirements
+     * Routes conversion based on source characteristics and target requirements.
+     * Only handles types that ClassUtilities.newInstance() cannot create.
      */
     private static Map<?, ?> routeConversion(Map<?, ?> sourceMap, SourceCharacteristics source, TargetCharacteristics target, Converter converter) {
         
-        // ========== SPECIAL COMPACTMAP SOURCE HANDLING ==========
-        // If source is CompactMap, always use ClassUtilities.newInstance() for target creation
-        if (source.isCompactMap) {
-            try {
-                Map<Object, Object> result = (Map<Object, Object>) ClassUtilities.newInstance(target.toType, (Object) null);
-                copyEntries(sourceMap, result, false, false);
-                return result;
-            } catch (Exception e) {
-                // Report ClassUtilities.newInstance() failure for CompactMap or subclasses
-                String sourceClass = sourceMap.getClass().getName();
-                String targetClass = target.toType.getName();
-                System.err.println("WARNING: ClassUtilities.newInstance() failed for CompactMap conversion:");
-                System.err.println("  Source: " + sourceClass + " → Target: " + targetClass);
-                System.err.println("  Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
-                System.err.println("  Falling back to LinkedHashMap");
-                
-                // Fallback to LinkedHashMap if target creation fails
-                LinkedHashMap<Object, Object> result = new LinkedHashMap<>();
-                copyEntries(sourceMap, result, false, false);
-                return result;
-            }
-        }
+        // ========== TYPES THAT ClassUtilities.newInstance() CANNOT HANDLE ==========
         
-        // ========== EASY CASES FIRST ==========
-        
-        // Collections "freak" types
+        // Collections wrapper types (static factory methods)
         if (target.isEmptyMap) {
             return Collections.emptyMap();
         }
@@ -867,117 +817,82 @@ final class MapConversions {
             return Collections.synchronizedMap(mutableCopy);
         }
         
-        // ========== STANDARD JDK TYPES ==========
-        
-        if (target.isHashMap) {
-            HashMap<Object, Object> result = new HashMap<>();
-            copyEntries(sourceMap, result, false, false);
-            return result;
+        if (target.isCheckedMap) {
+            // CheckedMap requires key and value types, but we don't have them at runtime
+            // Fall back to creating a regular HashMap and wrapping with Object.class types
+            Map<Object, Object> mutableCopy = new LinkedHashMap<>();
+            copyEntries(sourceMap, mutableCopy, false, false);
+            return Collections.checkedMap(mutableCopy, Object.class, Object.class);
         }
         
-        if (target.isLinkedHashMap) {
-            LinkedHashMap<Object, Object> result = new LinkedHashMap<>();
-            copyEntries(sourceMap, result, false, false);
-            return result;
-        }
-        
-        if (target.isTreeMap) {
-            TreeMap<Object, Object> result;
-            // Preserve comparator if source has one
-            if (source.isSortedMap && source.comparator != null) {
-                result = new TreeMap<>(source.comparator);
-            } else {
-                result = new TreeMap<>();
-            }
-            copyEntries(sourceMap, result, true, false); // Skip null keys, allow null values
-            return result;
-        }
-        
-        if (target.isConcurrentHashMap) {
-            ConcurrentHashMap<Object, Object> result = new ConcurrentHashMap<>();
-            copyEntries(sourceMap, result, true, true); // Skip both null keys and values
-            return result;
-        }
-        
-        if (target.isConcurrentSkipListMap) {
-            ConcurrentSkipListMap<Object, Object> result;
-            // Preserve comparator if source has one
-            if (source.isSortedMap && source.comparator != null) {
-                result = new ConcurrentSkipListMap<>(source.comparator);
-            } else {
-                result = new ConcurrentSkipListMap<>();
-            }
-            copyEntries(sourceMap, result, true, true); // Skip both null keys and values
-            return result;
-        }
-        
-        if (target.isWeakHashMap) {
-            WeakHashMap<Object, Object> result = new WeakHashMap<>();
-            copyEntries(sourceMap, result, false, false);
-            return result;
-        }
-        
-        if (target.isIdentityHashMap) {
-            IdentityHashMap<Object, Object> result = new IdentityHashMap<>();
-            copyEntries(sourceMap, result, false, false);
-            return result;
-        }
-        
+        // Interface types that need concrete implementation selection
         if (target.isConcurrentMapInterface) {
-            ConcurrentHashMapNullSafe<Object, Object> result = new ConcurrentHashMapNullSafe<>();
-            copyEntries(sourceMap, result, false, false); // NullSafe handles nulls
-            return result;
-        }
-        
-        // ========== JAVA-UTIL TYPES ==========
-        
-        if (target.isCaseInsensitiveMap) {
-            CaseInsensitiveMap<Object, Object> result = new CaseInsensitiveMap<>();
+            ConcurrentMap<Object, Object> result = new ConcurrentHashMapNullSafe<>();
             copyEntries(sourceMap, result, false, false);
             return result;
         }
         
-        if (target.isCompactMap) {
-            try {
-                // Use ClassUtilities.newInstance() to create CompactMap
-                CompactMap<Object, Object> result = (CompactMap<Object, Object>) ClassUtilities.newInstance(CompactMap.class, (Object) null);
-                copyEntries(sourceMap, result, false, false);
-                return result;
-            } catch (Exception e) {
-                // Fallback to LinkedHashMap if CompactMap creation fails
-                LinkedHashMap<Object, Object> result = new LinkedHashMap<>();
-                copyEntries(sourceMap, result, false, false);
-                return result;
-            }
-        }
-        
-        if (target.isConcurrentHashMapNullSafe) {
-            ConcurrentHashMapNullSafe<Object, Object> result = new ConcurrentHashMapNullSafe<>();
+        if (target.isConcurrentNavigableMapInterface) {
+            ConcurrentNavigableMap<Object, Object> result = new ConcurrentNavigableMapNullSafe<>();
             copyEntries(sourceMap, result, false, false);
             return result;
         }
-        
-        // ========== GENERIC MAP FALLBACK ==========
         
         if (target.isGenericMap) {
-            // Default to LinkedHashMap for generic Map interface
-            LinkedHashMap<Object, Object> result = new LinkedHashMap<>();
+            Map<Object, Object> result = new LinkedHashMap<>();
             copyEntries(sourceMap, result, false, false);
             return result;
         }
         
-        // ========== UNKNOWN TYPES - FALLBACK ==========
-        
-        // For unknown target types, try ClassUtilities.newInstance() as fallback
-        try {
-            Map<Object, Object> result = (Map<Object, Object>) ClassUtilities.newInstance(target.toType, (Object) null);
-            copyEntries(sourceMap, result, false, false);
+        // Types requiring constructor arguments (comparator preservation)
+        if (target.isTreeMap && source.isSortedMap && source.comparator != null) {
+            Map<Object, Object> result = new TreeMap<>(source.comparator);
+            copyEntries(sourceMap, result, true, false); // Skip null keys
             return result;
+        }
+        
+        if (target.isConcurrentSkipListMap && source.isSortedMap && source.comparator != null) {
+            ConcurrentNavigableMap<Object, Object> result = new ConcurrentSkipListMap<>(source.comparator);
+            copyEntries(sourceMap, result, true, true); // Skip null keys and values
+            return result;
+        }
+        
+        // ========== UNIVERSAL APPROACH FOR ALL OTHER TYPES ==========
+        
+        try {
+            Map<Object, Object> result;
+            
+            // Optimization: Use constructor(int initialCapacity) if available
+            if (sourceMap.size() > 0 && hasIntConstructor(target.toType)) {
+                result = (Map<Object, Object>) ClassUtilities.newInstance(target.toType, sourceMap.size());
+            } else {
+                result = (Map<Object, Object>) ClassUtilities.newInstance(target.toType, (Object) null);
+            }
+            
+            // Determine null handling based on target type
+            boolean skipNullKeys = target.isConcurrentHashMap || target.isConcurrentSkipListMap || target.isTreeMap;
+            boolean skipNullValues = target.isConcurrentHashMap || target.isConcurrentSkipListMap;
+            
+            copyEntries(sourceMap, result, skipNullKeys, skipNullValues);
+            return result;
+            
         } catch (Exception e) {
-            // Final fallback to LinkedHashMap
+            // Final fallback
             LinkedHashMap<Object, Object> result = new LinkedHashMap<>();
             copyEntries(sourceMap, result, false, false);
             return result;
+        }
+    }
+    
+    /**
+     * Checks if the target Map class has a constructor that takes a single int parameter.
+     * Such constructors are always for initial capacity in Map implementations.
+     */
+    private static boolean hasIntConstructor(Class<?> targetType) {
+        try {
+            return ReflectionUtils.getConstructor(targetType, int.class) != null;
+        } catch (Exception e) {
+            return false;
         }
     }
     
@@ -1013,13 +928,7 @@ final class MapConversions {
      */
     private static class SourceCharacteristics {
         int size;
-        boolean isEmpty;
-        boolean isLinkedHashMap;
         boolean isSortedMap;
-        boolean isCaseInsensitiveMap;
-        boolean isCompactMap;
-        boolean isCaseSensitive = true; // Default assumption
-        boolean containsNulls;
         java.util.Comparator<Object> comparator;
     }
     
@@ -1028,24 +937,23 @@ final class MapConversions {
      */
     private static class TargetCharacteristics {
         Class<?> toType;
-        boolean isGenericMap;
-        boolean isHashMap;
-        boolean isLinkedHashMap;
-        boolean isTreeMap;
-        boolean isConcurrentHashMap;
-        boolean isConcurrentSkipListMap;
-        boolean isWeakHashMap;
-        boolean isIdentityHashMap;
-        boolean isConcurrentMapInterface;
-        boolean isNavigableMap;
-        boolean isSortedMap;
-        boolean isCaseInsensitiveMap;
-        boolean isCompactMap;
-        boolean isConcurrentHashMapNullSafe;
+        
+        // Collections wrapper types (require static factory methods)
         boolean isEmptyMap;
         boolean isSingletonMap;
         boolean isUnmodifiableMap;
         boolean isSynchronizedMap;
+        boolean isCheckedMap;
+        
+        // Interface types (need concrete implementation selection)
+        boolean isConcurrentMapInterface;
+        boolean isConcurrentNavigableMapInterface;
+        boolean isGenericMap;
+        
+        // Types requiring constructor arguments or special null handling
+        boolean isTreeMap;
+        boolean isConcurrentSkipListMap;
+        boolean isConcurrentHashMap; // Only for null handling logic
     }
     
     /**
@@ -1127,5 +1035,48 @@ final class MapConversions {
             return map.get(hadKey);
         }
         return NO_MATCH;
+    }
+
+    private static final String[] COLOR_KEYS = {COLOR, VALUE, V};
+
+    /**
+     * Converts a Map to a java.awt.Color by extracting RGB/RGBA values.
+     * Supports multiple map formats:
+     * - {"red": r, "green": g, "blue": b} - RGB components (alpha defaults to 255)
+     * - {"red": r, "green": g, "blue": b, "alpha": a} - RGBA components
+     * - {"rgb": packedValue} - Packed RGB integer
+     * - {"color": "hexString"} - Hex color string like "#FF8040"
+     * - {"value": colorValue} - Fallback to value-based conversion
+     *
+     * @param from The Map containing color data
+     * @param converter The Converter instance for type conversions
+     * @return A Color instance
+     * @throws IllegalArgumentException if the map cannot be converted to a Color
+     */
+    static java.awt.Color toColor(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+
+        // Try RGB components first (most explicit)
+        if (map.containsKey(RED) && map.containsKey(GREEN) && map.containsKey(BLUE)) {
+            int r = converter.convert(map.get(RED), Integer.class);
+            int g = converter.convert(map.get(GREEN), Integer.class);
+            int b = converter.convert(map.get(BLUE), Integer.class);
+            
+            if (map.containsKey(ALPHA)) {
+                int a = converter.convert(map.get(ALPHA), Integer.class);
+                return new java.awt.Color(r, g, b, a);
+            } else {
+                return new java.awt.Color(r, g, b);
+            }
+        }
+
+        // Try packed RGB value
+        if (map.containsKey(RGB)) {
+            int rgb = converter.convert(map.get(RGB), Integer.class);
+            return new java.awt.Color(rgb, map.containsKey(ALPHA));
+        }
+
+        // Try standard key-based dispatch for hex strings or other formats
+        return dispatch(from, converter, java.awt.Color.class, COLOR_KEYS);
     }
 }

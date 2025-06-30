@@ -37,6 +37,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.awt.Color;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
@@ -662,5 +663,99 @@ final class StringConversions {
         
         // Otherwise, this is an unsupported conversion
         throw new IllegalArgumentException("Unsupported conversion, source type [String (" + str + ")] target type 'Map'");
+    }
+
+    /**
+     * Convert String to java.awt.Color. Supports multiple formats:
+     * - Hex strings: "#FF8040", "#80FF8040" (with alpha), "FF8040", "80FF8040"
+     * - Color names: "red", "green", "blue", "white", "black", etc.
+     * - RGB format: "rgb(255, 128, 64)" 
+     * - RGBA format: "rgba(255, 128, 64, 128)"
+     *
+     * @param from String representation of a color
+     * @param converter Converter instance
+     * @return Color instance
+     * @throws IllegalArgumentException if the string cannot be parsed as a color
+     */
+    static Color toColor(Object from, Converter converter) {
+        String str = ((String) from).trim().toLowerCase();
+        
+        if (StringUtilities.isEmpty(str)) {
+            throw new IllegalArgumentException("Cannot convert empty/null string to Color");
+        }
+
+        // Handle hex color strings (with or without #)
+        if (str.startsWith("#")) {
+            str = str.substring(1);
+        }
+        
+        // Check if it's a hex string
+        if (str.matches("^[0-9a-f]{6}$")) {
+            // RGB format: "ff8040"
+            int rgb = Integer.parseInt(str, 16);
+            return new Color(rgb);
+        } else if (str.matches("^[0-9a-f]{8}$")) {
+            // ARGB format: "80ff8040"
+            long argb = Long.parseLong(str, 16);
+            int alpha = (int) ((argb >> 24) & 0xFF);
+            int rgb = (int) (argb & 0xFFFFFF);
+            return new Color(rgb | (alpha << 24), true);
+        }
+
+        // Handle named colors
+        str = str.replace("_", "").replace(" ", "").replace("-", "");
+        
+        // Standard Color constants
+        switch (str) {
+            case "black": return Color.BLACK;
+            case "blue": return Color.BLUE;
+            case "cyan": return Color.CYAN;
+            case "darkgray": case "darkgrey": return Color.DARK_GRAY;
+            case "gray": case "grey": return Color.GRAY;
+            case "green": return Color.GREEN;
+            case "lightgray": case "lightgrey": return Color.LIGHT_GRAY;
+            case "magenta": return Color.MAGENTA;
+            case "orange": return Color.ORANGE;
+            case "pink": return Color.PINK;
+            case "red": return Color.RED;
+            case "white": return Color.WHITE;
+            case "yellow": return Color.YELLOW;
+        }
+
+        // Try rgb(r,g,b) format
+        String original = ((String) from).trim();
+        if (original.startsWith("rgb(") && original.endsWith(")")) {
+            String values = original.substring(4, original.length() - 1);
+            String[] components = values.split(",");
+            if (components.length == 3) {
+                try {
+                    int r = Integer.parseInt(components[0].trim());
+                    int g = Integer.parseInt(components[1].trim());
+                    int b = Integer.parseInt(components[2].trim());
+                    return new Color(r, g, b);
+                } catch (NumberFormatException e) {
+                    // Fall through to error
+                }
+            }
+        }
+
+        // Try rgba(r,g,b,a) format
+        if (original.startsWith("rgba(") && original.endsWith(")")) {
+            String values = original.substring(5, original.length() - 1);
+            String[] components = values.split(",");
+            if (components.length == 4) {
+                try {
+                    int r = Integer.parseInt(components[0].trim());
+                    int g = Integer.parseInt(components[1].trim());
+                    int b = Integer.parseInt(components[2].trim());
+                    int a = Integer.parseInt(components[3].trim());
+                    return new Color(r, g, b, a);
+                } catch (NumberFormatException e) {
+                    // Fall through to error
+                }
+            }
+        }
+
+        throw new IllegalArgumentException("Unable to parse color from string: " + from);
     }
 }

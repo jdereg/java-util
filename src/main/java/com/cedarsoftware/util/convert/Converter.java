@@ -1,5 +1,6 @@
 package com.cedarsoftware.util.convert;
 
+import java.awt.*;
 import java.io.Externalizable;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -26,13 +27,12 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -44,7 +44,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -52,7 +51,6 @@ import java.util.regex.Pattern;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
-import com.cedarsoftware.util.CompactMap;
 
 /**
  * Instance conversion utility for converting objects between various types.
@@ -329,6 +327,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigDecimal.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(Map.class, Integer.class), MapConversions::toInt);
         CONVERSION_DB.put(pair(String.class, Integer.class), StringConversions::toInt);
+        CONVERSION_DB.put(pair(Color.class, Integer.class), ColorConversions::toInteger);
         CONVERSION_DB.put(pair(LocalTime.class, Integer.class), LocalTimeConversions::toInteger);
         CONVERSION_DB.put(pair(OffsetTime.class, Integer.class), OffsetTimeConversions::toInteger);
         CONVERSION_DB.put(pair(Year.class, Integer.class), YearConversions::toInt);
@@ -363,6 +362,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Calendar.class, Long.class), CalendarConversions::toLong);
         CONVERSION_DB.put(pair(Map.class, Long.class), MapConversions::toLong);
         CONVERSION_DB.put(pair(String.class, Long.class), StringConversions::toLong);
+        CONVERSION_DB.put(pair(Color.class, Long.class), ColorConversions::toLong);
         CONVERSION_DB.put(pair(Year.class, Long.class), YearConversions::toLong);
 
         // toFloat
@@ -482,6 +482,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetTime.class, BigInteger.class), OffsetTimeConversions::toBigInteger);
         CONVERSION_DB.put(pair(OffsetDateTime.class, BigInteger.class), OffsetDateTimeConversions::toBigInteger);
         CONVERSION_DB.put(pair(UUID.class, BigInteger.class), UUIDConversions::toBigInteger);
+        CONVERSION_DB.put(pair(Color.class, BigInteger.class), ColorConversions::toBigInteger);
         CONVERSION_DB.put(pair(Calendar.class, BigInteger.class), CalendarConversions::toBigInteger);
         CONVERSION_DB.put(pair(Map.class, BigInteger.class), MapConversions::toBigInteger);
         CONVERSION_DB.put(pair(String.class, BigInteger.class), StringConversions::toBigInteger);
@@ -514,6 +515,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetTime.class, BigDecimal.class), OffsetTimeConversions::toBigDecimal);
         CONVERSION_DB.put(pair(OffsetDateTime.class, BigDecimal.class), OffsetDateTimeConversions::toBigDecimal);
         CONVERSION_DB.put(pair(UUID.class, BigDecimal.class), UUIDConversions::toBigDecimal);
+        CONVERSION_DB.put(pair(Color.class, BigDecimal.class), ColorConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Calendar.class, BigDecimal.class), CalendarConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Map.class, BigDecimal.class), MapConversions::toBigDecimal);
         CONVERSION_DB.put(pair(String.class, BigDecimal.class), StringConversions::toBigDecimal);
@@ -792,6 +794,15 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, Class.class), MapConversions::toClass);
         CONVERSION_DB.put(pair(String.class, Class.class), StringConversions::toClass);
 
+        // Color conversions supported
+        CONVERSION_DB.put(pair(Void.class, Color.class), VoidConversions::toNull);
+        CONVERSION_DB.put(pair(Color.class, Color.class), Converter::identity);
+        CONVERSION_DB.put(pair(String.class, Color.class), StringConversions::toColor);
+        CONVERSION_DB.put(pair(Map.class, Color.class), MapConversions::toColor);
+        CONVERSION_DB.put(pair(Integer.class, Color.class), NumberConversions::toColor);
+        CONVERSION_DB.put(pair(Long.class, Color.class), NumberConversions::toColor);
+        CONVERSION_DB.put(pair(int[].class, Color.class), ArrayConversions::toColor);
+
         // Locale conversions supported
         CONVERSION_DB.put(pair(Void.class, Locale.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Locale.class, Locale.class), Converter::identity);
@@ -827,6 +838,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalDateTime.class, String.class), LocalDateTimeConversions::toString);
         CONVERSION_DB.put(pair(ZonedDateTime.class, String.class), ZonedDateTimeConversions::toString);
         CONVERSION_DB.put(pair(UUID.class, String.class), StringConversions::toString);
+        CONVERSION_DB.put(pair(Color.class, String.class), ColorConversions::toString);
         CONVERSION_DB.put(pair(Calendar.class, String.class), CalendarConversions::toString);
         CONVERSION_DB.put(pair(Map.class, String.class), MapConversions::toString);
         CONVERSION_DB.put(pair(Enum.class, String.class), StringConversions::enumToString);
@@ -1097,6 +1109,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(ZoneOffset.class, Map.class), ZoneOffsetConversions::toMap);
         CONVERSION_DB.put(pair(Class.class, Map.class), MapConversions::initMap);
         CONVERSION_DB.put(pair(UUID.class, Map.class), UUIDConversions::toMap);
+        CONVERSION_DB.put(pair(Color.class, Map.class), ColorConversions::toMap);
+        CONVERSION_DB.put(pair(Color.class, int[].class), ColorConversions::toIntArray);
         CONVERSION_DB.put(pair(String.class, Map.class), StringConversions::toMap);
         CONVERSION_DB.put(pair(Enum.class, Map.class), EnumConversions::toMap);
         CONVERSION_DB.put(pair(OffsetDateTime.class, Map.class), OffsetDateTimeConversions::toMap);

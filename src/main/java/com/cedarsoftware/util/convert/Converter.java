@@ -1304,8 +1304,8 @@ public final class Converter {
             if (cached != null) {
                 return (T) cached.convert(from, this, toType);
             }
-            // Try collection conversion first.
-            T result = attemptCollectionConversion(from, sourceType, toType);
+            // Try container conversion first (Arrays, Collections, Maps).
+            T result = attemptContainerConversion(from, sourceType, toType);
             if (result != null) {
                 return result;
             }
@@ -1340,41 +1340,21 @@ public final class Converter {
             return (T) from; // Assignment compatible - use as-is
         }
 
-        // Final fallback: Universal Map and Object conversions (after all specific converters)
-        if (from instanceof Map && Map.class.isAssignableFrom(toType)) {
-            // Exclude JsonObject from universal Map conversion (Golden Idea) - COMMENTED OUT FOR TESTING
-            // if (!JSON_OBJECT_CLASS.isAssignableFrom(sourceType)) {
-                // Create cached converter for Map→Map conversion
-                final Class<?> finalToType = toType;
-                Convert<?> mapConverter = (fromObj, converter) -> MapConversions.mapToMapWithTarget(fromObj, converter, finalToType);
-                
-                // Execute and cache successful conversions
-                Object result = mapConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, mapConverter);
-                }
-                return (T) result;
-            // }
-        }
-        
         // Universal Object → Map conversion (only when no specific converter exists)
         if (!(from instanceof Map) && Map.class.isAssignableFrom(toType)) {
-            // Exclude JsonObject from universal Object conversion (Golden Idea) - COMMENTED OUT FOR TESTING
-            // if (!JSON_OBJECT_CLASS.isAssignableFrom(sourceType)) {
-                // Skip collections and arrays - they have their own conversion paths
-                if (!(from.getClass().isArray() || from instanceof Collection)) {
-                    // Create cached converter for Object→Map conversion
-                    final Class<?> finalToType = toType;
-                    Convert<?> objectConverter = (fromObj, converter) -> ObjectConversions.objectToMapWithTarget(fromObj, converter, finalToType);
-                    
-                    // Execute and cache successful conversions
-                    Object result = objectConverter.convert(from, this);
-                    if (result != null) {
-                        cacheConverter(sourceType, toType, objectConverter);
-                    }
-                    return (T) result;
+            // Skip collections and arrays - they have their own conversion paths
+            if (!(from.getClass().isArray() || from instanceof Collection)) {
+                // Create cached converter for Object→Map conversion
+                final Class<?> finalToType = toType;
+                Convert<?> objectConverter = (fromObj, converter) -> ObjectConversions.objectToMapWithTarget(fromObj, converter, finalToType);
+                
+                // Execute and cache successful conversions
+                Object result = objectConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, objectConverter);
                 }
-            // }
+                return (T) result;
+            }
         }
 
         throw new IllegalArgumentException("Unsupported conversion, source type [" + name(from) +
@@ -1410,10 +1390,9 @@ public final class Converter {
 
 
     @SuppressWarnings("unchecked")
-    private <T> T attemptCollectionConversion(Object from, Class<?> sourceType, Class<T> toType) {
-        // First validate source type is actually a collection/array type for traditional collection conversions
-        // Note: Map → Map conversions are handled in the main convert() method as final fallback
-        if (!(from.getClass().isArray() || from instanceof Collection)) {
+    private <T> T attemptContainerConversion(Object from, Class<?> sourceType, Class<T> toType) {
+        // Validate source type is a container type (Array, Collection, or Map)
+        if (!(from.getClass().isArray() || from instanceof Collection || from instanceof Map)) {
             return null;
         }
 
@@ -1422,34 +1401,109 @@ public final class Converter {
             throw new IllegalArgumentException("To convert to EnumSet, specify the Enum class to convert to as the 'toType.' Example: EnumSet<Day> daySet = (EnumSet<Day>)(Object)converter.convert(array, Day.class);");
         }
 
-        // Special handling for Collection/Array/EnumSet conversions
+        // Special handling for container → Enum conversions (creates EnumSet)
         if (toType.isEnum()) {
-            // When target is something like Day.class, we're actually creating an EnumSet<Day>
             if (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType)) {
-                return (T) EnumConversions.toEnumSet(from, toType);
+                // Array/Collection elements → EnumSet
+                final Class<?> finalToType = toType;
+                Convert<?> enumSetConverter = (fromObj, converter) -> EnumConversions.toEnumSet(fromObj, finalToType);
+                Object result = enumSetConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, enumSetConverter);
+                }
+                return (T) result;
+            } else if (Map.class.isAssignableFrom(sourceType)) {
+                // Map keys → EnumSet (brilliant use case!)
+                final Class<?> finalToType = toType;
+                Convert<?> mapKeysEnumSetConverter = (fromObj, converter) -> EnumConversions.toEnumSet(((Map<?, ?>) fromObj).keySet(), finalToType);
+                Object result = mapKeysEnumSetConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, mapKeysEnumSetConverter);
+                }
+                return (T) result;
             }
-        } else if (EnumSet.class.isAssignableFrom(sourceType)) {
+        } 
+        // EnumSet source conversions
+        else if (EnumSet.class.isAssignableFrom(sourceType)) {
             if (Collection.class.isAssignableFrom(toType)) {
-                Collection<Object> target = (Collection<Object>) CollectionHandling.createCollection(from, toType);
-                target.addAll((Collection<?>) from);
-                return (T) target;
+                final Class<?> finalToType = toType;
+                Convert<?> enumSetToCollectionConverter = (fromObj, converter) -> {
+                    Collection<Object> target = (Collection<Object>) CollectionHandling.createCollection(fromObj, finalToType);
+                    target.addAll((Collection<?>) fromObj);
+                    return target;
+                };
+                Object result = enumSetToCollectionConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, enumSetToCollectionConverter);
+                }
+                return (T) result;
             }
             if (toType.isArray()) {
-                return (T) ArrayConversions.enumSetToArray((EnumSet<?>) from, toType);
+                final Class<?> finalToType = toType;
+                Convert<?> enumSetToArrayConverter = (fromObj, converter) -> ArrayConversions.enumSetToArray((EnumSet<?>) fromObj, finalToType);
+                Object result = enumSetToArrayConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, enumSetToArrayConverter);
+                }
+                return (T) result;
             }
-        } else if (Collection.class.isAssignableFrom(sourceType)) {
+        } 
+        // Collection source conversions
+        else if (Collection.class.isAssignableFrom(sourceType)) {
             if (toType.isArray()) {
-                return (T) ArrayConversions.collectionToArray((Collection<?>) from, toType, this);
+                final Class<?> finalToType = toType;
+                Convert<?> collectionToArrayConverter = (fromObj, converter) -> ArrayConversions.collectionToArray((Collection<?>) fromObj, finalToType, converter);
+                Object result = collectionToArrayConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, collectionToArrayConverter);
+                }
+                return (T) result;
             } else if (Collection.class.isAssignableFrom(toType)) {
-                return (T) CollectionConversions.collectionToCollection((Collection<?>) from, toType);
+                final Class<?> finalToType = toType;
+                Convert<?> collectionToCollectionConverter = (fromObj, converter) -> CollectionConversions.collectionToCollection((Collection<?>) fromObj, finalToType);
+                Object result = collectionToCollectionConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, collectionToCollectionConverter);
+                }
+                return (T) result;
             }
-        } else if (sourceType.isArray()) {
+        } 
+        // Array source conversions
+        else if (sourceType.isArray()) {
             if (Collection.class.isAssignableFrom(toType)) {
-                return (T) CollectionConversions.arrayToCollection(from, (Class<? extends Collection<?>>) toType);
+                final Class<?> finalToType = toType;
+                Convert<?> arrayToCollectionConverter = (fromObj, converter) -> CollectionConversions.arrayToCollection(fromObj, (Class<? extends Collection<?>>) finalToType);
+                Object result = arrayToCollectionConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, arrayToCollectionConverter);
+                }
+                return (T) result;
             } else if (toType.isArray() && !sourceType.getComponentType().equals(toType.getComponentType())) {
                 // Handle array-to-array conversion when component types differ
-                return (T) ArrayConversions.arrayToArray(from, toType, this);
+                final Class<?> finalToType = toType;
+                Convert<?> arrayToArrayConverter = (fromObj, converter) -> ArrayConversions.arrayToArray(fromObj, finalToType, converter);
+                Object result = arrayToArrayConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, arrayToArrayConverter);
+                }
+                return (T) result;
             }
+        }
+        // Map source conversions
+        else if (Map.class.isAssignableFrom(sourceType)) {
+            if (Map.class.isAssignableFrom(toType)) {
+                // Map → Map universal conversion
+                final Class<?> finalToType = toType;
+                Convert<?> mapConverter = (fromObj, converter) -> MapConversions.mapToMapWithTarget(fromObj, converter, finalToType);
+                
+                // Execute and cache successful conversions
+                Object result = mapConverter.convert(from, this);
+                if (result != null) {
+                    cacheConverter(sourceType, toType, mapConverter);
+                }
+                return (T) result;
+            }
+            // Future: Could add Map → Collection conversions here (values, keySet, entrySet)
         }
 
         return null;
@@ -1686,8 +1740,8 @@ public final class Converter {
     }
 
     /**
-     * Determines if a collection-based conversion is supported between the specified source and target types.
-     * This method checks for valid conversions between arrays, collections, and EnumSets without actually
+     * Determines if a container-based conversion is supported between the specified source and target types.
+     * This method checks for valid conversions between arrays, collections, Maps, and EnumSets without actually
      * performing the conversion.
      *
      * <p>Supported conversions include:
@@ -1695,19 +1749,19 @@ public final class Converter {
      *   <li>Array to Collection</li>
      *   <li>Collection to Array</li>
      *   <li>Array to Array (when component types differ)</li>
-     *   <li>Array or Collection to EnumSet (when target is an Enum type)</li>
+     *   <li>Array, Collection, or Map to EnumSet (when target is an Enum type)</li>
      *   <li>EnumSet to Array or Collection</li>
      * </ul>
      * </p>
      *
      * @param sourceType The source type to convert from
      * @param target The target type to convert to
-     * @return true if a collection-based conversion is supported between the types, false otherwise
+     * @return true if a container-based conversion is supported between the types, false otherwise
      * @throws IllegalArgumentException if target is EnumSet.class (caller should specify specific Enum type instead)
      */
-    public static boolean isCollectionConversionSupported(Class<?> sourceType, Class<?> target) {
-        // Quick check: If the source is not an array, a Collection, or an EnumSet, no conversion is supported here.
-        if (!(sourceType.isArray() || Collection.class.isAssignableFrom(sourceType) || EnumSet.class.isAssignableFrom(sourceType))) {
+    public static boolean isContainerConversionSupported(Class<?> sourceType, Class<?> target) {
+        // Quick check: If the source is not an array, a Collection, Map, or an EnumSet, no conversion is supported here.
+        if (!(sourceType.isArray() || Collection.class.isAssignableFrom(sourceType) || Map.class.isAssignableFrom(sourceType) || EnumSet.class.isAssignableFrom(sourceType))) {
             return false;
         }
 
@@ -1721,9 +1775,9 @@ public final class Converter {
         }
 
         // If the target type is an Enum, then we're essentially looking to create an EnumSet<EnumType>.
-        // For that, the source must be either an array or a collection from which we can build the EnumSet.
+        // For that, the source must be either an array, a collection, or a Map (via keySet) from which we can build the EnumSet.
         if (target.isEnum()) {
-            return (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType));
+            return (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType) || Map.class.isAssignableFrom(sourceType));
         }
 
         // If the source is an EnumSet, it can be converted to either an array or another collection.
@@ -1750,6 +1804,15 @@ public final class Converter {
 
         // Fallback: Shouldn't reach here given the initial conditions.
         return false;
+    }
+
+    /**
+     * @deprecated Use {@link #isContainerConversionSupported(Class, Class)} instead.
+     *             This method will be removed in a future version.
+     */
+    @Deprecated
+    public static boolean isCollectionConversionSupported(Class<?> sourceType, Class<?> target) {
+        return isContainerConversionSupported(sourceType, target);
     }
 
     /**
@@ -1877,8 +1940,8 @@ public final class Converter {
             return true;
         }
 
-        // Handle collection/array conversions.
-        if (isCollectionConversionSupported(source, target)) {
+        // Handle container conversions (arrays, collections, maps).
+        if (isContainerConversionSupported(source, target)) {
             // Special handling for array-to-array conversions:
             if (source.isArray() && target.isArray()) {
                 return target.getComponentType() == Object.class ||

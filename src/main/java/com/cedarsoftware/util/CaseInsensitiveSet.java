@@ -8,6 +8,9 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * A {@link java.util.Set} implementation that performs case-insensitive comparisons for {@link String} elements,
@@ -277,6 +280,11 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * preserves the original case of the strings, even though the set performs case-insensitive
      * comparisons.
      * </p>
+     * <p>
+     * When the backing map is a ConcurrentHashMap, the returned iterator is weakly consistent and
+     * will not throw {@link java.util.ConcurrentModificationException}. The iterator may reflect
+     * updates made during traversal, but is not required to do so.
+     * </p>
      *
      * @return an iterator over the elements in this set
      */
@@ -468,6 +476,150 @@ public class CaseInsensitiveSet<E> implements Set<E> {
     @Override
     public void clear() {
         map.clear();
+    }
+
+    /* ----------------------------------------------------------------- */
+    /*           Concurrent Operations (when backed by ConcurrentMap)    */
+    /* ----------------------------------------------------------------- */
+
+    /**
+     * Returns an estimate of the number of elements in this set when backed by a ConcurrentHashMap.
+     * This method provides better performance and handles large sets (size > Integer.MAX_VALUE).
+     * <p>
+     * When the backing map is not a ConcurrentHashMap, this method delegates to {@link #size()}.
+     * The estimate may not reflect recent additions or removals due to concurrent modifications.
+     * </p>
+     * 
+     * @return the estimated number of elements in this set
+     * @since 3.6.0
+     */
+    public long elementCount() {
+        if (map instanceof CaseInsensitiveMap) {
+            return ((CaseInsensitiveMap<E, Object>) map).mappingCount();
+        }
+        return size();
+    }
+
+    /**
+     * Performs the given action for each element in this set, with operations potentially 
+     * performed in parallel when the parallelism threshold is met and the set is backed 
+     * by a ConcurrentHashMap.
+     * <p>
+     * This method provides high-performance parallel iteration over set elements when using 
+     * concurrent backing maps. The parallelism threshold determines the minimum set size 
+     * required to enable parallel processing.
+     * </p>
+     * 
+     * @param parallelismThreshold the threshold for parallel execution (typically use 1 for parallel, 
+     *                           Long.MAX_VALUE for sequential)
+     * @param action the action to be performed for each element
+     * @throws NullPointerException if the specified action is null
+     * @since 3.6.0
+     */
+    public void forEach(long parallelismThreshold, Consumer<? super E> action) {
+        if (map instanceof CaseInsensitiveMap) {
+            ((CaseInsensitiveMap<E, Object>) map).forEachKey(parallelismThreshold, action);
+        } else {
+            // Fallback for non-CaseInsensitiveMap backing
+            if (parallelismThreshold <= 1 && size() >= parallelismThreshold) {
+                map.keySet().parallelStream().forEach(action);
+            } else {
+                map.keySet().forEach(action);
+            }
+        }
+    }
+
+    /**
+     * Returns a non-null result from applying the given search function to each element 
+     * in this set, or null if none are found. The search may be performed in parallel 
+     * when the parallelism threshold is met and the set is backed by a ConcurrentHashMap.
+     * <p>
+     * This method provides high-performance parallel search over set elements when using 
+     * concurrent backing maps. The search terminates early upon finding the first non-null result.
+     * </p>
+     * 
+     * @param <U> the type of the search result
+     * @param parallelismThreshold the threshold for parallel execution (typically use 1 for parallel,
+     *                           Long.MAX_VALUE for sequential)
+     * @param searchFunction the function to apply to each element
+     * @return a non-null result from applying the search function, or null if none found
+     * @throws NullPointerException if the specified search function is null
+     * @since 3.6.0
+     */
+    public <U> U searchElements(long parallelismThreshold, Function<? super E, ? extends U> searchFunction) {
+        if (map instanceof CaseInsensitiveMap) {
+            return ((CaseInsensitiveMap<E, Object>) map).searchKeys(parallelismThreshold, searchFunction);
+        } else {
+            // Fallback for non-CaseInsensitiveMap backing
+            if (parallelismThreshold <= 1 && size() >= parallelismThreshold) {
+                return map.keySet().parallelStream()
+                    .map(searchFunction)
+                    .filter(result -> result != null)
+                    .findFirst()
+                    .orElse(null);
+            } else {
+                for (E element : map.keySet()) {
+                    U result = searchFunction.apply(element);
+                    if (result != null) {
+                        return result;
+                    }
+                }
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Returns the result of accumulating all elements in this set using the given reducer 
+     * and transformer functions. The reduction may be performed in parallel when the 
+     * parallelism threshold is met and the set is backed by a ConcurrentHashMap.
+     * <p>
+     * This method provides high-performance parallel reduction over set elements when using 
+     * concurrent backing maps. The transformer is applied to each element before reduction.
+     * </p>
+     * 
+     * @param <U> the type of the transformed elements and the result
+     * @param parallelismThreshold the threshold for parallel execution (typically use 1 for parallel,
+     *                           Long.MAX_VALUE for sequential)
+     * @param transformer the function to transform each element before reduction
+     * @param reducer the function to combine transformed elements
+     * @return the result of the reduction, or null if the set is empty
+     * @throws NullPointerException if the specified transformer or reducer is null
+     * @since 3.6.0
+     */
+    public <U> U reduceElements(long parallelismThreshold, 
+                               Function<? super E, ? extends U> transformer,
+                               BiFunction<? super U, ? super U, ? extends U> reducer) {
+        if (map instanceof CaseInsensitiveMap) {
+            return ((CaseInsensitiveMap<E, Object>) map).reduceKeys(parallelismThreshold, transformer, reducer);
+        } else {
+            // Fallback for non-CaseInsensitiveMap backing - use manual iteration
+            U result = null;
+            for (E element : map.keySet()) {
+                U transformed = transformer.apply(element);
+                result = (result == null) ? transformed : reducer.apply(result, transformed);
+            }
+            return result;
+        }
+    }
+
+    /**
+     * Returns the underlying map used to implement this set.
+     * <p>
+     * This method provides access to the backing {@link CaseInsensitiveMap} implementation,
+     * allowing advanced operations and inspections. The returned map maintains the same
+     * case-insensitive semantics as this set.
+     * </p>
+     * <p>
+     * <strong>Warning:</strong> Modifying the returned map directly may affect this set's state.
+     * Use with caution and prefer the set's public methods when possible.
+     * </p>
+     * 
+     * @return the backing map implementation
+     * @since 3.6.0
+     */
+    public Map<E, Object> getBackingMap() {
+        return map;
     }
 
     @Deprecated

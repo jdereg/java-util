@@ -319,6 +319,28 @@ public class CompactSet<E> implements Set<E> {
         }
 
         /**
+         * Specifies the type of backing Map to use when the set grows beyond the compact size.
+         * This enables concurrent backing collections for thread-safe operations.
+         * <p>
+         * Examples:
+         * <ul>
+         *   <li>{@code ConcurrentHashMap.class} - for high-concurrency unordered access</li>
+         *   <li>{@code ConcurrentSkipListMap.class} - for concurrent sorted access</li>
+         *   <li>{@code LinkedHashMap.class} - for insertion-order preservation</li>
+         *   <li>{@code TreeMap.class} - for natural ordering</li>
+         * </ul>
+         * </p>
+         * 
+         * @param mapType the Map class to use as backing storage when size exceeds compact threshold
+         * @return this builder for method chaining
+         * @throws IllegalArgumentException if mapType is not a valid Map class or from allowed packages
+         */
+        public Builder<E> mapType(Class<? extends Map> mapType) {
+            mapBuilder.mapType(mapType);
+            return this;
+        }
+
+        /**
          * Creates a new CompactSet with the configured options.
          */
         public CompactSet<E> build() {

@@ -442,39 +442,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
              */
             @Override
             public Iterator<K> iterator() {
-                return new Iterator<K>() {
-                    private final Iterator<K> iter = map.keySet().iterator();
-
-                    /**
-                     * {@inheritDoc}
-                     */
-                    @Override
-                    public boolean hasNext() {
-                        return iter.hasNext();
-                    }
-
-                    /**
-                     * Returns the next key in the iteration. For String keys, returns the
-                     * original String rather than its case-insensitive representation.
-                     *
-                     * @return the next key in the iteration
-                     * @throws java.util.NoSuchElementException if the iteration has no more elements
-                     */
-                    @Override
-                    @SuppressWarnings("unchecked")
-                    public K next() {
-                        K next = iter.next();
-                        return (K) (next instanceof CaseInsensitiveString ? next.toString() : next);
-                    }
-
-                    /**
-                     * {@inheritDoc}
-                     */
-                    @Override
-                    public void remove() {
-                        iter.remove();
-                    }
-                };
+                return new ConcurrentAwareKeyIterator<>(map.keySet().iterator());
             }
 
             /**
@@ -764,36 +732,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
              */
             @Override
             public Iterator<Entry<K, V>> iterator() {
-                return new Iterator<Entry<K, V>>() {
-                    private final Iterator<Entry<K, V>> iter = map.entrySet().iterator();
-
-                    /**
-                     * {@inheritDoc}
-                     * <p>Returns true if there are more entries to iterate over.</p>
-                     */
-                    @Override
-                    public boolean hasNext() {
-                        return iter.hasNext();
-                    }
-
-                    /**
-                     * {@inheritDoc}
-                     * <p>Returns the next entry. The key will be returned in its original case if it was a String.</p>
-                     */
-                    @Override
-                    public Entry<K, V> next() {
-                        return new CaseInsensitiveEntry(iter.next());
-                    }
-
-                    /**
-                     * {@inheritDoc}
-                     * <p>Removes the last returned entry from the underlying map.</p>
-                     */
-                    @Override
-                    public void remove() {
-                        iter.remove();
-                    }
-                };
+                return new ConcurrentAwareEntryIterator(map.entrySet().iterator());
             }
         };
     }
@@ -1514,5 +1453,134 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
             return (K) CaseInsensitiveString.of((String) key);
         }
         return (K) key;
+    }
+
+    /**
+     * Concurrent-aware key iterator that properly handles ConcurrentHashMap backing maps.
+     * This iterator inherits the concurrent properties of the underlying iterator when backed 
+     * by a ConcurrentHashMap, including weak consistency and never throwing 
+     * ConcurrentModificationException.
+     */
+    private static class ConcurrentAwareKeyIterator<K> implements Iterator<K> {
+        private final Iterator<K> backingIterator;
+        private final boolean isConcurrentBacking;
+
+        ConcurrentAwareKeyIterator(Iterator<K> backingIterator) {
+            this.backingIterator = backingIterator;
+            // Check if this is a ConcurrentHashMap iterator by examining the class name
+            // ConcurrentHashMap iterators implement specific concurrent behavior
+            String iteratorClassName = backingIterator.getClass().getName();
+            this.isConcurrentBacking = iteratorClassName.contains("ConcurrentHashMap");
+        }
+
+        @Override
+        public boolean hasNext() {
+            return backingIterator.hasNext();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public K next() {
+            K next = backingIterator.next();
+            return (K) (next instanceof CaseInsensitiveString ? next.toString() : next);
+        }
+
+        @Override
+        public void remove() {
+            backingIterator.remove();
+        }
+
+        /**
+         * Returns true if this iterator is backed by a concurrent collection and therefore
+         * inherits concurrent properties such as weak consistency and never throwing
+         * ConcurrentModificationException.
+         * 
+         * @return true if backed by a concurrent collection
+         */
+        public boolean isConcurrentBacking() {
+            return isConcurrentBacking;
+        }
+
+        /**
+         * Performs the given action for each remaining element until all elements
+         * have been processed or the action throws an exception. For concurrent backing
+         * collections, this method provides optimized bulk traversal.
+         */
+        @Override
+        public void forEachRemaining(java.util.function.Consumer<? super K> action) {
+            if (isConcurrentBacking) {
+                // For concurrent backing, use optimized forEachRemaining if available
+                backingIterator.forEachRemaining(key -> {
+                    @SuppressWarnings("unchecked")
+                    K processedKey = (K) (key instanceof CaseInsensitiveString ? key.toString() : key);
+                    action.accept(processedKey);
+                });
+            } else {
+                // Default implementation for non-concurrent backing
+                Iterator.super.forEachRemaining(action);
+            }
+        }
+    }
+
+    /**
+     * Concurrent-aware entry iterator that properly handles ConcurrentHashMap backing maps.
+     * This iterator inherits the concurrent properties of the underlying iterator when backed 
+     * by a ConcurrentHashMap, including weak consistency and never throwing 
+     * ConcurrentModificationException.
+     */
+    private class ConcurrentAwareEntryIterator implements Iterator<Entry<K, V>> {
+        private final Iterator<Entry<K, V>> backingIterator;
+        private final boolean isConcurrentBacking;
+
+        ConcurrentAwareEntryIterator(Iterator<Entry<K, V>> backingIterator) {
+            this.backingIterator = backingIterator;
+            // Check if this is a ConcurrentHashMap iterator by examining the class name
+            String iteratorClassName = backingIterator.getClass().getName();
+            this.isConcurrentBacking = iteratorClassName.contains("ConcurrentHashMap");
+        }
+
+        @Override
+        public boolean hasNext() {
+            return backingIterator.hasNext();
+        }
+
+        @Override
+        public Entry<K, V> next() {
+            return new CaseInsensitiveEntry(backingIterator.next());
+        }
+
+        @Override
+        public void remove() {
+            backingIterator.remove();
+        }
+
+        /**
+         * Returns true if this iterator is backed by a concurrent collection and therefore
+         * inherits concurrent properties such as weak consistency and never throwing
+         * ConcurrentModificationException.
+         * 
+         * @return true if backed by a concurrent collection
+         */
+        public boolean isConcurrentBacking() {
+            return isConcurrentBacking;
+        }
+
+        /**
+         * Performs the given action for each remaining element until all elements
+         * have been processed or the action throws an exception. For concurrent backing
+         * collections, this method provides optimized bulk traversal.
+         */
+        @Override
+        public void forEachRemaining(java.util.function.Consumer<? super Entry<K, V>> action) {
+            if (isConcurrentBacking) {
+                // For concurrent backing, use optimized forEachRemaining if available
+                backingIterator.forEachRemaining(entry -> {
+                    action.accept(new CaseInsensitiveEntry(entry));
+                });
+            } else {
+                // Default implementation for non-concurrent backing
+                Iterator.super.forEachRemaining(action);
+            }
+        }
     }
 }

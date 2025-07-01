@@ -225,57 +225,16 @@ public Result getExpensiveResult(String key) {
 
 java-util is engineered for performance-critical applications with optimizations that deliver measurable improvements:
 
-### 🚀 Core Performance Highlights
 
-| Operation | Standard JDK | java-util | Improvement |
-|-----------|-------------|-----------|-------------|
-| **CompactMap (small)** | HashMap | Array-based storage | **60% less memory** |
-| **CompactMap (large)** | HashMap | Adaptive hash structure | **Comparable speed, 40% less memory** |
-| **CaseInsensitiveMap** | TreeMap + toLowerCase() | Optimized case folding | **3-5x faster lookups** |
-| **DeepEquals** | Manual traversal | Cycle-aware algorithm | **Safe + 2x faster** |
-| **Converter** | Manual casting + parsing | Direct type mapping | **10-50x faster conversions** |
-| **LRUCache (THREADED)** | Synchronized HashMap | Lock-free operations | **80% less contention** |
-| **TTLCache** | Timer + HashMap | Lazy expiration | **90% less overhead** |
+### 📊 Memory Efficiency - CompactMap, CompactSet
 
-### 📊 Memory Efficiency
+**CompactMap Dynamic Adaptation (it has one field):**
+- **map.size() == 0** → _Object field_ = null (Sentinel value)
+- **map.size() == 1** → _Object field_ = Map.Entry<Key, Value>
+- **map.size() == 2 ... compactSize()** → _Object field_ = Object[2*size] containing keys (even) values (odd)
+- **map.size() > compactSize()**: → _Object field_ = map // delegates to wrapped map
+- Great for applications with millions of small Maps
 
-**CompactMap Dynamic Adaptation:**
-- **1-8 items**: Array storage (linear search) - **60% memory savings**
-- **9-16 items**: Small hash table - **40% memory savings** 
-- **17+ items**: Full hash table - **20% memory savings**, comparable speed
-
-**CaseInsensitiveString Caching:**
-- **Cache hit rate**: 95%+ for typical web applications
-- **Memory overhead**: <1KB for 1000+ unique keys
-- **Performance gain**: 5x faster than String.toLowerCase()
-
-### ⚡ Throughput Benchmarks
-
-**Real-world scenario testing (2M operations):**
-
-```
-Converter type conversions:     850,000 ops/sec
-DeepEquals complex objects:     120,000 ops/sec  
-CaseInsensitiveMap lookups:     2,800,000 ops/sec
-CompactMap small collections:   3,200,000 ops/sec
-TTLCache with expiration:       1,100,000 ops/sec
-LRUCache THREADED strategy:     2,600,000 ops/sec
-```
-
-**Memory allocation reduction:**
-- **50-80% fewer allocations** vs manual implementations
-- **Garbage collection pressure reduced** by 60% in typical usage
-- **Long-term heap stability** with adaptive data structures
-
-### 🔬 Enterprise Validation
-
-Used successfully in production environments processing:
-- **100M+ daily conversions** (financial services)
-- **10M+ concurrent cache operations** (e-commerce platforms)  
-- **1TB+ daily object comparisons** (data synchronization systems)
-- **500K+ QPS case-insensitive lookups** (API gateways)
-
-> **Note**: Benchmarks run on JDK 17, Intel i7-12700K, 32GB RAM. Your results may vary based on JVM, hardware, and usage patterns.
 
 ## How java-util Compares
 
@@ -492,242 +451,15 @@ implementation 'com.cedarsoftware:java-util:3.6.0'
 
 ### 🚀 Framework Integration Examples
 
-java-util integrates seamlessly with popular Java frameworks and platforms:
+For comprehensive framework integration examples including Spring, Jakarta EE, Spring Boot Auto-Configuration, Microservices, Testing, and Performance Monitoring, see **[frameworks.md](frameworks.md)**.
 
-#### Spring Framework Integration
-
-**Configuration and Caching:**
-```java
-@Configuration
-public class CacheConfig {
-    
-    @Bean
-    @Primary
-    public CacheManager javaUtilCacheManager() {
-        return new CacheManager() {
-            private final TTLCache<String, Object> cache = 
-                new TTLCache<>(Duration.ofMinutes(30), 10000);
-            
-            @Override
-            public Cache getCache(String name) {
-                return new SimpleValueWrapper(cache);
-            }
-        };
-    }
-    
-    @Bean
-    public CaseInsensitiveMap<String, String> applicationProperties() {
-        return new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
-    }
-}
-
-@Service  
-public class DataService {
-    @Autowired
-    private CaseInsensitiveMap<String, String> properties;
-    
-    public String getConfig(String key) {
-        // Case-insensitive property lookup
-        return properties.get(key); // Works with "API_KEY", "api_key", "Api_Key"
-    }
-}
-```
-
-#### Jakarta EE / JEE Integration
-
-**CDI Producers and Validation:**
-```java
-@ApplicationScoped
-public class UtilityProducers {
-    
-    @Produces
-    @ApplicationScoped
-    public Converter typeConverter() {
-        return new Converter(); // Thread-safe singleton
-    }
-    
-    @Produces 
-    @RequestScoped
-    public LRUCache<String, UserSession> sessionCache() {
-        return new LRUCache<>(1000, LRUCache.StrategyType.THREADED);
-    }
-}
-
-@Stateless
-public class ValidationService {
-    @Inject
-    private Converter converter;
-    
-    public <T> T validateAndConvert(Object input, Class<T> targetType) {
-        if (input == null) return null;
-        
-        try {
-            return converter.convert(input, targetType);
-        } catch (Exception e) {
-            throw new ValidationException("Cannot convert to " + targetType.getName());
-        }
-    }
-}
-```
-
-#### Spring Boot Auto-Configuration
-
-**Custom Auto-Configuration:**
-```java
-@Configuration
-@ConditionalOnClass(Converter.class)
-@EnableConfigurationProperties(JavaUtilProperties.class)
-public class JavaUtilAutoConfiguration {
-    
-    @Bean
-    @ConditionalOnMissingBean
-    public Converter defaultConverter(JavaUtilProperties properties) {
-        Converter converter = new Converter();
-        
-        // Apply security settings from application.yml
-        if (properties.getSecurity().isEnabled()) {
-            System.setProperty("converter.security.enabled", "true");
-        }
-        
-        return converter;
-    }
-    
-    @Bean
-    @ConditionalOnProperty(prefix = "java-util.cache", name = "enabled", havingValue = "true")
-    public TTLCache<String, Object> applicationCache(JavaUtilProperties properties) {
-        return new TTLCache<>(
-            Duration.ofMinutes(properties.getCache().getTtlMinutes()),
-            properties.getCache().getMaxSize()
-        );
-    }
-}
-
-@ConfigurationProperties(prefix = "java-util")
-@Data
-public class JavaUtilProperties {
-    private Security security = new Security();
-    private Cache cache = new Cache();
-    
-    @Data
-    public static class Security {
-        private boolean enabled = false;
-        private int maxCollectionSize = 1000000;
-    }
-    
-    @Data  
-    public static class Cache {
-        private boolean enabled = true;
-        private int ttlMinutes = 30;
-        private int maxSize = 10000;
-    }
-}
-```
-
-#### Microservices & Cloud Native
-
-**Service Discovery & Configuration:**
-```java
-@Component
-public class ConfigurationManager {
-    private final CaseInsensitiveMap<String, String> envConfig;
-    private final TTLCache<String, ServiceInstance> serviceCache;
-    
-    public ConfigurationManager() {
-        // Environment variables (case-insensitive)
-        this.envConfig = new CaseInsensitiveMap<>();
-        System.getenv().forEach(envConfig::put);
-        
-        // Service discovery cache (5 minute TTL)
-        this.serviceCache = new TTLCache<>(Duration.ofMinutes(5), 1000);
-    }
-    
-    public String getConfigValue(String key) {
-        // Works with SPRING_PROFILES_ACTIVE, spring_profiles_active, etc.
-        return envConfig.get(key);
-    }
-    
-    @EventListener
-    public void onServiceDiscovery(ServiceRegisteredEvent event) {
-        serviceCache.put(event.getServiceId(), event.getServiceInstance());
-    }
-}
-```
-
-#### Testing Integration
-
-**Enhanced Test Comparisons:**
-```java
-@TestConfiguration
-public class TestConfig {
-    
-    @Bean
-    @Primary
-    public TestDataComparator testComparator() {
-        return new TestDataComparator();
-    }
-}
-
-public class TestDataComparator {
-    private final Map<String, Object> options = new HashMap<>();
-    
-    public void assertDeepEquals(Object expected, Object actual, String message) {
-        options.clear();
-        boolean equals = DeepEquals.deepEquals(expected, actual, options);
-        
-        if (!equals) {
-            String diff = (String) options.get("diff");
-            fail(message + "\nDifferences:\n" + diff);
-        }
-    }
-    
-    public <T> T roundTripConvert(Object source, Class<T> targetType) {
-        Converter converter = new Converter();
-        return converter.convert(source, targetType);
-    }
-}
-
-@ExtendWith(SpringExtension.class)
-class IntegrationTest {
-    @Autowired
-    private TestDataComparator comparator;
-    
-    @Test
-    void testComplexDataProcessing() {
-        ComplexData expected = createExpectedData();
-        ComplexData actual = processData();
-        
-        // Handles cycles, nested collections, etc.
-        comparator.assertDeepEquals(expected, actual, "Data processing failed");
-    }
-}
-```
-
-#### Performance Monitoring Integration
-
-**Micrometer Metrics:**
-```java
-@Component
-public class CacheMetrics {
-    private final MeterRegistry meterRegistry;
-    private final TTLCache<String, Object> cache;
-    
-    @EventListener
-    @Async
-    public void onCacheAccess(CacheAccessEvent event) {
-        Timer.Sample sample = Timer.start(meterRegistry);
-        
-        if (event.isHit()) {
-            meterRegistry.counter("cache.hits", "cache", event.getCacheName()).increment();
-        } else {
-            meterRegistry.counter("cache.misses", "cache", event.getCacheName()).increment();  
-        }
-        
-        sample.stop(Timer.builder("cache.access.duration")
-            .tag("cache", event.getCacheName())
-            .register(meterRegistry));
-    }
-}
-```
+Key integrations include:
+- **Spring Framework** - Configuration beans and case-insensitive property handling
+- **Jakarta EE/JEE** - CDI producers and validation services  
+- **Spring Boot** - Auto-configuration with corrected cache constructors
+- **Microservices** - Service discovery and cloud-native configuration
+- **Testing** - Enhanced test comparisons with DeepEquals
+- **Monitoring** - Micrometer metrics integration
 
 ## Feature Options
 

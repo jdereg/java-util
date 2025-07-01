@@ -889,4 +889,79 @@ class ConverterArrayCollectionTest {
         assertInstanceOf(List.class, result[2]);
         assertEquals(3, ((List<?>) result[2]).size());
     }
+
+    @Test
+    @DisplayName("Convert jagged multi-dimensional arrays to nested collections and back (README example)")
+    void testJaggedMultiDimensionalArrayConversion() {
+        // Multi-dimensional arrays ↔ nested collections (any depth, any size!)
+        String[][][] jagged = {
+            {{"a", "b", "c"}, {"d"}},           // First sub-array: 3 elements, then 1 element  
+            {{"e", "f"}, {"g", "h", "i", "j"}}, // Second sub-array: 2 elements, then 4 elements
+            {{"k"}}                             // Third sub-array: just 1 element
+        };
+
+        // Convert to nested List structure
+        List<List<List<String>>> nested = converter.convert(jagged, List.class);  
+        assertNotNull(nested, "Converted nested list should not be null");
+        
+        // Verify structure is preserved
+        assertEquals(3, nested.size(), "Top level should have 3 elements");
+        
+        // Check first sub-array: [["a", "b", "c"], ["d"]]
+        assertEquals(2, nested.get(0).size(), "First sub-array should have 2 elements");
+        assertEquals(3, nested.get(0).get(0).size(), "First element should have 3 items");
+        assertEquals(1, nested.get(0).get(1).size(), "Second element should have 1 item");
+        assertEquals("a", nested.get(0).get(0).get(0));
+        assertEquals("b", nested.get(0).get(0).get(1));
+        assertEquals("c", nested.get(0).get(0).get(2));
+        assertEquals("d", nested.get(0).get(1).get(0));
+        
+        // Check second sub-array: [["e", "f"], ["g", "h", "i", "j"]]
+        assertEquals(2, nested.get(1).size(), "Second sub-array should have 2 elements");
+        assertEquals(2, nested.get(1).get(0).size(), "First element should have 2 items");
+        assertEquals(4, nested.get(1).get(1).size(), "Second element should have 4 items");
+        assertEquals("e", nested.get(1).get(0).get(0));
+        assertEquals("f", nested.get(1).get(0).get(1));
+        assertEquals("g", nested.get(1).get(1).get(0));
+        assertEquals("h", nested.get(1).get(1).get(1));
+        assertEquals("i", nested.get(1).get(1).get(2));
+        assertEquals("j", nested.get(1).get(1).get(3));
+        
+        // Check third sub-array: [["k"]]
+        assertEquals(1, nested.get(2).size(), "Third sub-array should have 1 element");
+        assertEquals(1, nested.get(2).get(0).size(), "First element should have 1 item");
+        assertEquals("k", nested.get(2).get(0).get(0));
+
+        // Convert back to array - preserves jagged structure perfectly!
+        char[][][] backToArray = converter.convert(nested, char[][][].class);
+        assertNotNull(backToArray, "Converted back array should not be null");
+        
+        // Verify round-trip conversion preserves structure
+        assertEquals(3, backToArray.length, "Top level should have 3 elements");
+        
+        // Check first sub-array structure
+        assertEquals(2, backToArray[0].length, "First sub-array should have 2 elements");
+        assertEquals(3, backToArray[0][0].length, "First element should have 3 items");
+        assertEquals(1, backToArray[0][1].length, "Second element should have 1 item");
+        assertEquals('a', backToArray[0][0][0]);
+        assertEquals('b', backToArray[0][0][1]);
+        assertEquals('c', backToArray[0][0][2]);
+        assertEquals('d', backToArray[0][1][0]);
+        
+        // Check second sub-array structure
+        assertEquals(2, backToArray[1].length, "Second sub-array should have 2 elements");
+        assertEquals(2, backToArray[1][0].length, "First element should have 2 items");
+        assertEquals(4, backToArray[1][1].length, "Second element should have 4 items");
+        assertEquals('e', backToArray[1][0][0]);
+        assertEquals('f', backToArray[1][0][1]);
+        assertEquals('g', backToArray[1][1][0]);
+        assertEquals('h', backToArray[1][1][1]);
+        assertEquals('i', backToArray[1][1][2]);
+        assertEquals('j', backToArray[1][1][3]);
+        
+        // Check third sub-array structure
+        assertEquals(1, backToArray[2].length, "Third sub-array should have 1 element");
+        assertEquals(1, backToArray[2][0].length, "First element should have 1 item");
+        assertEquals('k', backToArray[2][0][0]);
+    }
 }

@@ -140,7 +140,7 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
     }
 
     @Override
-    protected Object maskNullKey(K key) {
+    protected Object maskNullKey(Object key) {
         if (key == null) {
             return NULL_KEY_SENTINEL;
         }
@@ -353,12 +353,12 @@ public class ConcurrentNavigableMapNullSafe<K, V> extends AbstractConcurrentNull
 
         @Override
         public boolean contains(Object o) {
-            return owner.internalMap.containsKey(owner.maskNullKey((K) o));
+            return owner.internalMap.containsKey(owner.maskNullKey(o));
         }
 
         @Override
         public boolean remove(Object o) {
-            return owner.internalMap.remove(owner.maskNullKey((K) o)) != null;
+            return owner.internalMap.remove(owner.maskNullKey(o)) != null;
         }
 
         @Override

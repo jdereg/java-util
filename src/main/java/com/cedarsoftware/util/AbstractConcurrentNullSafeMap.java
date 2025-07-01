@@ -107,7 +107,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
     }
 
     // Helper methods to handle nulls
-    protected Object maskNullKey(K key) {
+    protected Object maskNullKey(Object key) {
         return key == null ? NullSentinel.NULL_KEY : key;
     }
 
@@ -116,7 +116,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
         return key == NullSentinel.NULL_KEY ? null : (K) key;
     }
 
-    protected Object maskNullValue(V value) {
+    protected Object maskNullValue(Object value) {
         return value == null ? NullSentinel.NULL_VALUE : value;
     }
 
@@ -139,7 +139,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public boolean containsKey(Object key) {
-        return internalMap.containsKey(maskNullKey((K) key));
+        return internalMap.containsKey(maskNullKey(key));
     }
 
     @Override
@@ -152,7 +152,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public V get(Object key) {
-        Object val = internalMap.get(maskNullKey((K) key));
+        Object val = internalMap.get(maskNullKey(key));
         return unmaskNullValue(val);
     }
 
@@ -164,7 +164,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public V remove(Object key) {
-        Object prev = internalMap.remove(maskNullKey((K) key));
+        Object prev = internalMap.remove(maskNullKey(key));
         return unmaskNullValue(prev);
     }
 
@@ -182,7 +182,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public V getOrDefault(Object key, V defaultValue) {
-        Object val = internalMap.get(maskNullKey((K) key));
+        Object val = internalMap.get(maskNullKey(key));
         return (val != null) ? unmaskNullValue(val) : defaultValue;
     }
 
@@ -194,7 +194,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
     @Override
     public boolean remove(Object key, Object value) {
-        return internalMap.remove(maskNullKey((K) key), maskNullValue((V) value));
+        return internalMap.remove(maskNullKey(key), maskNullValue(value));
     }
 
     @Override
@@ -287,7 +287,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
             @Override
             public boolean contains(Object o) {
-                return internalMap.containsValue(maskNullValue((V) o));
+                return internalMap.containsValue(maskNullValue(o));
             }
 
             @Override
@@ -329,12 +329,12 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
 
             @Override
             public boolean contains(Object o) {
-                return internalMap.containsKey(maskNullKey((K) o));
+                return internalMap.containsKey(maskNullKey(o));
             }
 
             @Override
             public boolean remove(Object o) {
-                return internalMap.remove(maskNullKey((K) o)) != null;
+                return internalMap.remove(maskNullKey(o)) != null;
             }
 
             @Override
@@ -414,15 +414,15 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
             public boolean contains(Object o) {
                 if (!(o instanceof Entry)) return false;
                 Entry<?, ?> e = (Entry<?, ?>) o;
-                Object val = internalMap.get(maskNullKey((K) e.getKey()));
-                return maskNullValue((V) e.getValue()).equals(val);
+                Object val = internalMap.get(maskNullKey(e.getKey()));
+                return maskNullValue(e.getValue()).equals(val);
             }
 
             @Override
             public boolean remove(Object o) {
                 if (!(o instanceof Entry)) return false;
                 Entry<?, ?> e = (Entry<?, ?>) o;
-                return internalMap.remove(maskNullKey((K) e.getKey()), maskNullValue((V) e.getValue()));
+                return internalMap.remove(maskNullKey(e.getKey()), maskNullValue(e.getValue()));
             }
 
             @Override

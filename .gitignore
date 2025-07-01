@@ -9,3 +9,6 @@ CVS/
 .project
 .settings/
 .nondex
+
+# Compiled class files
+*.class

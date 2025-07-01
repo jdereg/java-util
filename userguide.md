@@ -1813,9 +1813,24 @@ boolean privateConstructors = ClassUtilities.areAllConstructorsPrivate(Math.clas
 // Load class by name
 Class<?> clazz = ClassUtilities.forName("java.util.ArrayList", myClassLoader);
 
-// Create new instance
-List<Object> args = Arrays.asList("arg1", 42);
-Object instance = ClassUtilities.newInstance(converter, MyClass.class, args);
+// Create new instance - multiple approaches supported
+
+// 1. Using Map with parameter names (preferred for complex constructors)
+Map<String, Object> params = new HashMap<>();
+params.put("name", "John Doe");
+params.put("age", 30);
+params.put("email", "john@example.com");
+Object instance = ClassUtilities.newInstance(MyClass.class, params);
+
+// 2. Using Collection for positional arguments
+List<Object> args = Arrays.asList("John Doe", 30, "john@example.com");
+Object instance2 = ClassUtilities.newInstance(converter, MyClass.class, args);
+
+// 3. Single argument constructor
+Object instance3 = ClassUtilities.newInstance(MyClass.class, "single-arg");
+
+// 4. No-arg constructor
+Object instance4 = ClassUtilities.newInstance(MyClass.class, null);
 
 // Convert primitive types
 Class<?> wrapper = ClassUtilities.toPrimitiveWrapperClass(int.class);
@@ -1843,6 +1858,29 @@ ClassUtilities.addPermanentClassAlias(ArrayList.class, "list");
 ClassUtilities.removePermanentClassAlias("list");
 ```
 
+### Key Features
+
+**Smart Constructor Matching:**
+- **Parameter name matching** - Uses Map keys to match constructor parameter names (requires `-parameters` compiler flag)
+- **Type-based fallback** - Falls back to type matching when parameter names unavailable
+- **Multiple argument formats** - Supports Map, Collection, Object[], or single values
+- **Constructor caching** - Caches successful constructor matches for performance
+
+```java
+// Example: Constructor matching by parameter names
+public class User {
+    public User(String name, int age, String email) { ... }
+}
+
+// Map keys match parameter names automatically
+Map<String, Object> userData = mapOf(
+    "email", "user@example.com",  // Order doesn't matter
+    "name", "John Doe",           // when using parameter names
+    "age", 25
+);
+User user = (User) ClassUtilities.newInstance(User.class, userData);
+```
+
 ### Performance Characteristics
 - Constructor caching for improved instantiation
 - Optimized class loading
@@ -1860,8 +1898,12 @@ ClassUtilities.removePermanentClassAlias("list");
 
 ### Best Practices
 ```java
-// Prefer cached constructors
-Object obj = ClassUtilities.newInstance(converter, MyClass.class, args);
+// Prefer Map-based construction with parameter names for complex objects
+Map<String, Object> params = mapOf("name", "value", "count", 42);
+Object obj = ClassUtilities.newInstance(MyClass.class, params);
+
+// Use converter for precise type handling when needed
+Object obj2 = ClassUtilities.newInstance(converter, MyClass.class, params);
 
 // Use appropriate ClassLoader
 ClassLoader loader = ClassUtilities.getClassLoader(anchorClass);
@@ -1870,6 +1912,9 @@ ClassLoader loader = ClassUtilities.getClassLoader(anchorClass);
 if (ClassUtilities.isPrimitive(clazz)) {
     clazz = ClassUtilities.toPrimitiveWrapperClass(clazz);
 }
+
+// For single argument constructors, pass the value directly
+Object simple = ClassUtilities.newInstance(String.class, "initial-value");
 ```
 
 ### Security Considerations

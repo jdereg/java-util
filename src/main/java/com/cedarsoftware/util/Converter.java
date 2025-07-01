@@ -69,8 +69,8 @@ import com.cedarsoftware.util.convert.DefaultConverterOptions;
  * </p>
  * <p>
  * <strong>Extensibility:</strong> Additional conversions can be added by specifying the source class, target class,
- * and a conversion function (e.g., a lambda). Use the {@link #addConversion(Class, Class, Convert)} method to register
- * custom converters. This allows for the inclusion of new Collection types and other custom types as needed.
+ * and a conversion function (e.g., a lambda). Custom converters can be registered using ConverterOptions 
+ * when creating a Converter instance. This allows for the inclusion of new Collection types and other custom types as needed.
  * </p>
  *
  * <p>
@@ -180,8 +180,6 @@ public final class Converter
      *         default primitive values (e.g., 0 for numeric types, {@code false} for boolean), and default characters.</li>
      *     <li><b>Inheritance-Based Conversions:</b> Automatically considers superclass and interface hierarchies
      *         to find the most suitable converter when a direct conversion is not available.</li>
-     *     <li><b>Custom Converters:</b> Allows users to register custom conversion logic for specific source-target type pairs
-     *         using the {@link #addConversion(Class, Class, Convert)} method.</li>
      *     <li><b>Thread-Safe:</b> Designed to be thread-safe, allowing concurrent conversions without compromising data integrity.</li>
      * </ul>
      * </p>
@@ -278,13 +276,6 @@ public final class Converter
      * </ul>
      * </p>
      *
-     * <h3>Extensibility:</h3>
-     * <p>
-     * Users can extend the Converter's capabilities by registering custom converters for specific type pairs.
-     * This is accomplished using the {@link #addConversion(Class, Class, Convert)} method, which accepts the source type,
-     * target type, and a {@link Convert} functional interface implementation that defines the conversion logic.
-     * </p>
-     *
      * <h3>Performance Considerations:</h3>
      * <p>
      * The Converter uses caching mechanisms to store and retrieve converters, ensuring efficient performance
@@ -298,7 +289,6 @@ public final class Converter
      * @return An instance of {@code toType} representing the converted value of {@code from}.
      * @throws IllegalArgumentException if {@code toType} is {@code null} or if the conversion is not supported.
      * @see #getSupportedConversions()
-     * @see #addConversion(Class, Class, Convert)
      */
     public static <T> T convert(Object from, Class<T> toType) {
         return instance.convert(from, toType);
@@ -421,32 +411,6 @@ public final class Converter
         return instance.getSupportedConversions();
     }
 
-    /**
-     * Adds a new conversion function for converting from one type to another. If a conversion already exists
-     * for the specified source and target types, the existing conversion will be overwritten.
-     *
-     * <p>When {@code convert(source, target)} is called, the conversion function is located by matching the class
-     * of the source instance and the target class. If an exact match is found, that conversion function is used.
-     * If no exact match is found, the method attempts to find the most appropriate conversion by traversing
-     * the class hierarchy of the source and target types (including interfaces), excluding common marker
-     * interfaces such as {@link java.io.Serializable}, {@link java.lang.Comparable}, and {@link java.lang.Cloneable}.
-     * The nearest match based on class inheritance and interface implementation is used.
-     *
-     * <p>This method allows you to explicitly define custom conversions between types. It also supports the automatic
-     * handling of primitive types by converting them to their corresponding wrapper types (e.g., {@code int} to {@code Integer}).
-     *
-     * <p><strong>Note:</strong> This method utilizes the {@link ClassUtilities#toPrimitiveWrapperClass(Class)} utility
-     * to ensure that primitive types are mapped to their respective wrapper classes before attempting to locate
-     * or store the conversion.
-     *
-     * @param source             The source class (type) to convert from.
-     * @param target             The target class (type) to convert to.
-     * @param conversionFunction A function that converts an instance of the source type to an instance of the target type.
-     * @return The previous conversion function associated with the source and target types, or {@code null} if no conversion existed.
-     */
-    public static Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionFunction) {
-        return instance.addConversion(source, target, conversionFunction);
-    }
 
     /**
      * Convert from the passed in instance to a String.  If null is passed in, this method will return "".

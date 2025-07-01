@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import com.cedarsoftware.util.convert.Convert;
+import com.cedarsoftware.util.convert.DefaultConverterOptions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -12,9 +13,17 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConverterStaticMethodsTest {
 
-    private static class CustomType {
+    // Use an interface to ensure no built-in conversion exists
+    interface UnconvertibleType {
+        String getValue();
+    }
+    
+    private static class CustomType implements UnconvertibleType {
         final String value;
         CustomType(String value) { this.value = value; }
+        
+        @Override
+        public String getValue() { return value; }
     }
 
     @Test
@@ -32,26 +41,35 @@ class ConverterStaticMethodsTest {
     }
 
     @Test
-    void addConversionAddsAndReplaces() {
+    void customConversionsWorkWithConverterInstance() {
+        // Demonstrates the new pattern for adding custom conversions
         Convert<CustomType> fn1 = (from, conv) -> new CustomType((String) from);
         Convert<CustomType> fn2 = (from, conv) -> new CustomType(((String) from).toUpperCase());
-        try {
-            Convert<?> prev = Converter.addConversion(String.class, CustomType.class, fn1);
-            assertNull(prev);
-            CustomType result = Converter.convert("abc", CustomType.class);
-            assertEquals("abc", result.value);
+        
+        // Create a Converter instance for custom conversions
+        DefaultConverterOptions options = new DefaultConverterOptions();
+        com.cedarsoftware.util.convert.Converter converter = new com.cedarsoftware.util.convert.Converter(options);
+        
+        // Add first conversion
+        Convert<?> prev = converter.addConversion(String.class, CustomType.class, fn1);
+        assertNull(prev);
+        CustomType result = converter.convert("abc", CustomType.class);
+        assertEquals("abc", result.value);
 
-            prev = Converter.addConversion(String.class, CustomType.class, fn2);
-            assertSame(fn1, prev);
-            result = Converter.convert("abc", CustomType.class);
-            assertEquals("ABC", result.value);
-        } finally {
-            Converter.addConversion(String.class, CustomType.class, new Convert<Object>() {
-                @Override
-                public Object convert(Object from, com.cedarsoftware.util.convert.Converter converter) {
-                    return new CustomType((String)from);
-                }
-            });
+        // Replace with second conversion
+        prev = converter.addConversion(String.class, CustomType.class, fn2);
+        assertSame(fn1, prev);
+        result = converter.convert("abc", CustomType.class);
+        assertEquals("ABC", result.value);
+        
+        // Static converter should not have the custom conversion 
+        // Test with interface type to ensure no built-in conversion exists
+        try {
+            Converter.convert("abc", UnconvertibleType.class);
+            fail("Expected conversion to fail on static Converter without custom conversion");
+        } catch (IllegalArgumentException e) {
+            // Expected - static converter doesn't have our custom conversion
+            assertThat(e.getMessage()).contains("Unsupported conversion");
         }
     }
 }

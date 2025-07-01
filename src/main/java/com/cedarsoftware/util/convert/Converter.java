@@ -184,29 +184,34 @@ public final class Converter {
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
     private static Map<ConversionPair, Convert<?>> CONVERSION_DB = new HashMap<>(860, 0.8f);
     private static final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>();
-    private static final ClassValueMap<ClassValueMap<Convert<?>>> FULL_CONVERSION_CACHE = new ClassValueMap<>();
+    private static final ConcurrentHashMap<ConversionPair, Convert<?>> FULL_CONVERSION_CACHE = new ConcurrentHashMap<>();
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SIMPLE_TYPE_CACHE = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SELF_CONVERSION_CACHE = new ClassValueMap<>();
+    private static final AtomicLong INSTANCE_ID_GENERATOR = new AtomicLong(1);
     private final ConverterOptions options;
+    private final long instanceId;
 
-    // Efficient key that combines two Class instances for fast creation and lookup
+    // Efficient key that combines two Class instances and instance ID for fast creation and lookup
     public static final class ConversionPair {
         private final Class<?> source;
         private final Class<?> target;
+        private final long instanceId; // Unique instance identifier
         private final int hash;
 
-        private ConversionPair(Class<?> source, Class<?> target) {
+        private ConversionPair(Class<?> source, Class<?> target, long instanceId) {
             this.source = source;
             this.target = target;
-            this.hash = 31 * source.hashCode() + target.hashCode();
+            this.instanceId = instanceId;
+            // Combine class hash codes with instance ID
+            this.hash = 31 * (31 * source.hashCode() + target.hashCode()) + Long.hashCode(instanceId);
         }
 
-        public Class<?> getSource() {  // Added getter
+        public Class<?> getSource() {
             return source;
         }
 
-        public Class<?> getTarget() {  // Added getter
+        public Class<?> getTarget() {
             return target;
         }
 
@@ -215,7 +220,7 @@ public final class Converter {
             if (this == obj) return true;
             if (!(obj instanceof ConversionPair)) return false;
             ConversionPair other = (ConversionPair) obj;
-            return source == other.source && target == other.target;
+            return source == other.source && target == other.target && instanceId == other.instanceId;
         }
 
         @Override
@@ -224,9 +229,14 @@ public final class Converter {
         }
     }
 
-    // Helper method to get or create a cached key
+    // Helper method to create a conversion pair key with instance ID context
+    public static ConversionPair pair(Class<?> source, Class<?> target, long instanceId) {
+        return new ConversionPair(source, target, instanceId);
+    }
+    
+    // Helper method for static contexts that don't have instance context (legacy support)
     public static ConversionPair pair(Class<?> source, Class<?> target) {
-        return new ConversionPair(source, target);
+        return new ConversionPair(source, target, 0); // Use 0 for static/shared conversions
     }
     
     static {
@@ -1152,6 +1162,7 @@ public final class Converter {
      */
     public Converter(ConverterOptions options) {
         this.options = options;
+        this.instanceId = INSTANCE_ID_GENERATOR.getAndIncrement();
         USER_DB.putAll(this.options.getConverterOverrides());
     }
 
@@ -1338,6 +1349,10 @@ public final class Converter {
         // Then check the factory conversion database.
         conversionMethod = CONVERSION_DB.get(key);
         if (isValidConversion(conversionMethod)) {
+            // Cache built-in conversions with instance ID 0 to keep them shared across instances
+            ConversionPair sharedKey = pair(sourceType, toType, 0);
+            FULL_CONVERSION_CACHE.put(sharedKey, conversionMethod);
+            // Also cache with current instance ID for faster future lookup
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
         }
@@ -1357,7 +1372,7 @@ public final class Converter {
         // Universal Object → Map conversion (only when no specific converter exists)
         if (!(from instanceof Map) && Map.class.isAssignableFrom(toType)) {
             // Skip collections and arrays - they have their own conversion paths
-            if (!(from.getClass().isArray() || from instanceof Collection)) {
+            if (!(from != null && from.getClass().isArray() || from instanceof Collection)) {
                 // Create cached converter for Object→Map conversion
                 final Class<?> finalToType = toType;
                 Convert<?> objectConverter = (fromObj, converter) -> ObjectConversions.objectToMapWithTarget(fromObj, converter, finalToType);
@@ -1375,26 +1390,22 @@ public final class Converter {
                 "] target type '" + getShortName(toType) + "'");
     }
 
-    // DEBUGGING: Enable caches one by one to isolate the pollution source
-    private static final boolean ENABLE_FULL_CONVERSION_CACHE = false;  // DISABLED - This cache causes json-io test failures
-    private static final boolean ENABLE_SIMPLE_TYPE_CACHE = true;       // Enable to test simple type cache  
-    private static final boolean ENABLE_SELF_CONVERSION_CACHE = true;   // Enable to test self conversion cache
-
-    private static Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
-        if (!ENABLE_FULL_CONVERSION_CACHE) {
-            return null;
+    private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
+        // First check instance-specific cache
+        ConversionPair key = pair(source, target, this.instanceId);
+        Convert<?> converter = FULL_CONVERSION_CACHE.get(key);
+        if (converter != null) {
+            return converter;
         }
-        ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
-        if (targetMap != null) {
-            return targetMap.get(target);
-        }
-        return null;
+        
+        // Fall back to shared conversions (instance ID 0)
+        ConversionPair sharedKey = pair(source, target, 0);
+        return FULL_CONVERSION_CACHE.get(sharedKey);
     }
 
-    private static void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        if (ENABLE_FULL_CONVERSION_CACHE) {
-            FULL_CONVERSION_CACHE.computeIfAbsent(source, s -> new ClassValueMap<>()).put(target, converter);
-        }
+    private void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
+        ConversionPair key = pair(source, target, this.instanceId);
+        FULL_CONVERSION_CACHE.put(key, converter);
     }
 
     // Cache JsonObject class to avoid repeated reflection lookups
@@ -1921,11 +1932,7 @@ public final class Converter {
      * @return {@code true} if a simple type conversion exists for the class
      */
     public boolean isSimpleTypeConversionSupported(Class<?> type) {
-        if (ENABLE_SIMPLE_TYPE_CACHE) {
-            return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
-        } else {
-            return isSimpleTypeConversionSupported(type, type);
-        }
+        return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
     }
     
     /**
@@ -1996,11 +2003,7 @@ public final class Converter {
      * @return {@code true} if a conversion exists for the class
      */
     public boolean isConversionSupportedFor(Class<?> type) {
-        if (ENABLE_SELF_CONVERSION_CACHE) {
-            return SELF_CONVERSION_CACHE.computeIfAbsent(type, t -> isConversionSupportedFor(t, t));
-        } else {
-            return isConversionSupportedFor(type, type);
-        }
+        return SELF_CONVERSION_CACHE.computeIfAbsent(type, t -> isConversionSupportedFor(t, t));
     }
 
     private static boolean isValidConversion(Convert<?> method) {
@@ -2147,53 +2150,25 @@ public final class Converter {
     }
 
     private static void clearCachesForType(Class<?> source, Class<?> target) {
-        // Remove from FULL_CONVERSION_CACHE if it exists.
-        ClassValueMap<Convert<?>> targetMap = FULL_CONVERSION_CACHE.get(source);
-        if (targetMap != null) {
-            targetMap.remove(target);
-        }
-        
-        // Also clear inheritance-based cache entries that might be affected
-        clearInheritanceBasedCaches(source, target);
-        
+        // Note: Since cache keys now include instance ID, we need to clear all cache entries
+        // that match the source/target classes regardless of instance. This is less efficient
+        // but necessary for the static addConversion API.
+        FULL_CONVERSION_CACHE.entrySet().removeIf(entry -> {
+            ConversionPair key = entry.getKey();
+            return (key.getSource() == source && key.getTarget() == target) ||
+                   // Also clear inheritance-based entries
+                   isInheritanceRelated(key.getSource(), key.getTarget(), source, target);
+        });
+
         SIMPLE_TYPE_CACHE.remove(source);
         SIMPLE_TYPE_CACHE.remove(target);
         SELF_CONVERSION_CACHE.remove(source);
         SELF_CONVERSION_CACHE.remove(target);
     }
     
-    /**
-     * Clear cache entries that might be affected by inheritance-based lookups.
-     * When a direct conversion is added, cached inheritance lookups should be invalidated.
-     */
-    private static void clearInheritanceBasedCaches(Class<?> source, Class<?> target) {
-        // Clear cache entries for parent classes and interfaces that might have
-        // inheritance-based converters that should now be superseded by the direct converter
-        
-        // Get all supertypes of the source class
-        SortedSet<ClassLevel> sourceHierarchy = getSuperClassesAndInterfaces(source);
-        for (ClassLevel classLevel : sourceHierarchy) {
-            Class<?> parentType = classLevel.clazz;
-            if (!parentType.equals(source)) {
-                // Clear cached conversions from parent types to the target
-                ClassValueMap<Convert<?>> parentTargetMap = FULL_CONVERSION_CACHE.get(parentType);
-                if (parentTargetMap != null) {
-                    parentTargetMap.remove(target);
-                }
-            }
-        }
-        
-        // Get all supertypes of the target class  
-        SortedSet<ClassLevel> targetHierarchy = getSuperClassesAndInterfaces(target);
-        for (ClassLevel classLevel : targetHierarchy) {
-            Class<?> parentType = classLevel.clazz;
-            if (!parentType.equals(target)) {
-                // Clear cached conversions from source to parent types
-                ClassValueMap<Convert<?>> sourceParentMap = FULL_CONVERSION_CACHE.get(source);
-                if (sourceParentMap != null) {
-                    sourceParentMap.remove(parentType);
-                }
-            }
-        }
+    private static boolean isInheritanceRelated(Class<?> keySource, Class<?> keyTarget, Class<?> source, Class<?> target) {
+        // Check if this cache entry might be affected by inheritance-based lookups
+        return (keySource != source && (source.isAssignableFrom(keySource) || keySource.isAssignableFrom(source))) ||
+               (keyTarget != target && (target.isAssignableFrom(keyTarget) || keyTarget.isAssignableFrom(target)));
     }
 }

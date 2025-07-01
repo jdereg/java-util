@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -1111,20 +1112,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      *
      * <p>This wrapper ensures users' Function implementations receive the same key type they originally
      * put into the map, maintaining the map's encapsulation of its case-insensitive implementation.</p>
+     * 
+     * <p>Thread-safe: uses immutable CaseInsensitiveString objects and thread-safe unwrapping.</p>
      *
      * @param func the original function to be wrapped
      * @param <R>  the type of result returned by the Function
      * @return a wrapped Function that provides the original key value to the wrapped function
      */
     private <R> Function<? super K, ? extends R> wrapFunctionForKey(Function<? super K, ? extends R> func) {
-        return k -> {
-            // If key is a CaseInsensitiveString, extract its original String.
-            // Otherwise, use the key as is.
-            K originalKey = (k instanceof CaseInsensitiveString)
-                    ? (K) ((CaseInsensitiveString) k).original
-                    : k;
-            return func.apply(originalKey);
-        };
+        return k -> func.apply(unwrapKey(k));
     }
     
     /**
@@ -1135,20 +1131,15 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      *
      * <p>This wrapper ensures users' BiFunction implementations receive the same key type they originally
      * put into the map, maintaining the map's encapsulation of its case-insensitive implementation.</p>
+     * 
+     * <p>Thread-safe: uses immutable CaseInsensitiveString objects and thread-safe unwrapping.</p>
      *
      * @param func the original bi-function to be wrapped
      * @param <R>  the type of result returned by the BiFunction
      * @return a wrapped BiFunction that provides the original key value to the wrapped function
      */
     private <R> BiFunction<? super K, ? super V, ? extends R> wrapBiFunctionForKey(BiFunction<? super K, ? super V, ? extends R> func) {
-        return (k, v) -> {
-            // If key is a CaseInsensitiveString, extract its original String.
-            // Otherwise, use the key as is.
-            K originalKey = (k instanceof CaseInsensitiveString)
-                    ? (K) ((CaseInsensitiveString) k).original
-                    : k;
-            return func.apply(originalKey, v);
-        };
+        return (k, v) -> func.apply(unwrapKey(k), v);
     }
 
     /**
@@ -1271,10 +1262,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     @Override
     public void forEach(BiConsumer<? super K, ? super V> action) {
         // Unwrap keys before calling action
-        map.forEach((k, v) -> {
-            K originalKey = (k instanceof CaseInsensitiveString) ? (K) ((CaseInsensitiveString) k).original : k;
-            action.accept(originalKey, v);
-        });
+        map.forEach((k, v) -> action.accept(unwrapKey(k), v));
     }
 
     /**
@@ -1289,10 +1277,236 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     @Override
     public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
         // Unwrap keys before applying the function to values
-        map.replaceAll((k, v) -> {
-            K originalKey = (k instanceof CaseInsensitiveString) ? (K) ((CaseInsensitiveString) k).original : k;
-            return function.apply(originalKey, v);
-        });
+        map.replaceAll((k, v) -> function.apply(unwrapKey(k), v));
+    }
+
+    /**
+     * Returns the number of mappings. This method should be used instead of {@link #size()} because
+     * a ConcurrentHashMap may contain more mappings than can be represented as an int. The value
+     * returned is an estimate; the actual count may differ if there are concurrent insertions or removals.
+     * 
+     * <p>This method delegates to {@link ConcurrentHashMap#mappingCount()} when the backing map
+     * is a ConcurrentHashMap, otherwise returns {@link #size()}.</p>
+     * 
+     * @return the number of mappings
+     * @since 3.7.0
+     */
+    public long mappingCount() {
+        if (map instanceof ConcurrentHashMap) {
+            return ((ConcurrentHashMap<K, V>) map).mappingCount();
+        }
+        return size();
+    }
+
+    /**
+     * Performs the given action for each entry in this map until all entries have been processed
+     * or the action throws an exception. Exceptions thrown by the action are relayed to the caller.
+     * The iteration may be performed in parallel if the backing map supports it and the parallelismThreshold
+     * is met.
+     *
+     * <p>For String keys, the action receives the original String key rather than the
+     * internal case-insensitive representation.</p>
+     *
+     * @param parallelismThreshold the (estimated) number of elements needed for this operation
+     *                           to be executed in parallel
+     * @param action the action to be performed for each entry
+     * @throws NullPointerException if the specified action is null
+     * @since 3.7.0
+     */
+    public void forEach(long parallelismThreshold, BiConsumer<? super K, ? super V> action) {
+        Objects.requireNonNull(action, "Action cannot be null");
+        if (map instanceof ConcurrentHashMap) {
+            ((ConcurrentHashMap<K, V>) map).forEach(parallelismThreshold, (k, v) -> 
+                action.accept(unwrapKey(k), v));
+        } else {
+            forEach(action);
+        }
+    }
+
+    /**
+     * Performs the given action for each key in this map until all entries have been processed
+     * or the action throws an exception.
+     *
+     * <p>For String keys, the action receives the original String key rather than the
+     * internal case-insensitive representation.</p>
+     *
+     * @param parallelismThreshold the (estimated) number of elements needed for this operation
+     *                           to be executed in parallel  
+     * @param action the action to be performed for each key
+     * @throws NullPointerException if the specified action is null
+     * @since 3.7.0
+     */
+    public void forEachKey(long parallelismThreshold, Consumer<? super K> action) {
+        Objects.requireNonNull(action, "Action cannot be null");
+        if (map instanceof ConcurrentHashMap) {
+            ((ConcurrentHashMap<K, V>) map).forEachKey(parallelismThreshold, k -> 
+                action.accept(unwrapKey(k)));
+        } else {
+            keySet().forEach(action);
+        }
+    }
+
+    /**
+     * Performs the given action for each value in this map until all entries have been processed
+     * or the action throws an exception.
+     *
+     * @param parallelismThreshold the (estimated) number of elements needed for this operation
+     *                           to be executed in parallel
+     * @param action the action to be performed for each value
+     * @throws NullPointerException if the specified action is null
+     * @since 3.7.0
+     */
+    public void forEachValue(long parallelismThreshold, Consumer<? super V> action) {
+        Objects.requireNonNull(action, "Action cannot be null");
+        if (map instanceof ConcurrentHashMap) {
+            ((ConcurrentHashMap<K, V>) map).forEachValue(parallelismThreshold, action);
+        } else {
+            values().forEach(action);
+        }
+    }
+
+    /**
+     * Returns a non-null result from applying the given search function on each key,
+     * or null if none. Upon success, further element processing is suppressed and the 
+     * results of any other parallel invocations of the search function are ignored.
+     *
+     * <p>For String keys, the search function receives the original String key rather than the
+     * internal case-insensitive representation.</p>
+     *
+     * @param parallelismThreshold the (estimated) number of elements needed for this operation
+     *                           to be executed in parallel
+     * @param searchFunction a function returning a non-null result on success, else null
+     * @param <U> the return type of the search function
+     * @return a non-null result from applying the given search function on each key, or null if none
+     * @throws NullPointerException if the search function is null
+     * @since 3.7.0
+     */
+    public <U> U searchKeys(long parallelismThreshold, Function<? super K, ? extends U> searchFunction) {
+        Objects.requireNonNull(searchFunction, "Search function cannot be null");
+        if (map instanceof ConcurrentHashMap) {
+            return ((ConcurrentHashMap<K, V>) map).searchKeys(parallelismThreshold, k -> 
+                searchFunction.apply(unwrapKey(k)));
+        } else {
+            // Fallback for non-concurrent maps - sequential search
+            for (K key : keySet()) {
+                U result = searchFunction.apply(key);
+                if (result != null) {
+                    return result;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Returns a non-null result from applying the given search function on each value,
+     * or null if none.
+     *
+     * @param parallelismThreshold the (estimated) number of elements needed for this operation
+     *                           to be executed in parallel
+     * @param searchFunction a function returning a non-null result on success, else null
+     * @param <U> the return type of the search function
+     * @return a non-null result from applying the given search function on each value, or null if none
+     * @throws NullPointerException if the search function is null
+     * @since 3.7.0
+     */
+    public <U> U searchValues(long parallelismThreshold, Function<? super V, ? extends U> searchFunction) {
+        Objects.requireNonNull(searchFunction, "Search function cannot be null");
+        if (map instanceof ConcurrentHashMap) {
+            return ((ConcurrentHashMap<K, V>) map).searchValues(parallelismThreshold, searchFunction);
+        } else {
+            // Fallback for non-concurrent maps - sequential search
+            for (V value : values()) {
+                U result = searchFunction.apply(value);
+                if (result != null) {
+                    return result;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Returns the result of accumulating all keys using the given reducer to combine values,
+     * or null if none.
+     *
+     * <p>For String keys, the transformer and reducer receive the original String key rather than the
+     * internal case-insensitive representation.</p>
+     *
+     * @param parallelismThreshold the (estimated) number of elements needed for this operation
+     *                           to be executed in parallel
+     * @param transformer a function returning the transformation for an element, or null if there is no transformation
+     * @param reducer a commutative associative combining function
+     * @param <U> the return type of the transformer
+     * @return the result of accumulating all keys, or null if none
+     * @throws NullPointerException if the transformer or reducer is null
+     * @since 3.7.0
+     */
+    public <U> U reduceKeys(long parallelismThreshold, Function<? super K, ? extends U> transformer, 
+                           BiFunction<? super U, ? super U, ? extends U> reducer) {
+        Objects.requireNonNull(transformer, "Transformer cannot be null");
+        Objects.requireNonNull(reducer, "Reducer cannot be null");
+        if (map instanceof ConcurrentHashMap) {
+            return ((ConcurrentHashMap<K, V>) map).reduceKeys(parallelismThreshold, 
+                k -> transformer.apply(unwrapKey(k)), reducer);
+        } else {
+            // Fallback for non-concurrent maps - sequential reduce
+            U result = null;
+            for (K key : keySet()) {
+                U transformed = transformer.apply(key);
+                if (transformed != null) {
+                    result = (result == null) ? transformed : reducer.apply(result, transformed);
+                }
+            }
+            return result;
+        }
+    }
+
+    /**
+     * Returns the result of accumulating all values using the given reducer to combine values,
+     * or null if none.
+     *
+     * @param parallelismThreshold the (estimated) number of elements needed for this operation
+     *                           to be executed in parallel
+     * @param transformer a function returning the transformation for an element, or null if there is no transformation
+     * @param reducer a commutative associative combining function
+     * @param <U> the return type of the transformer
+     * @return the result of accumulating all values, or null if none
+     * @throws NullPointerException if the transformer or reducer is null
+     * @since 3.7.0
+     */
+    public <U> U reduceValues(long parallelismThreshold, Function<? super V, ? extends U> transformer,
+                             BiFunction<? super U, ? super U, ? extends U> reducer) {
+        Objects.requireNonNull(transformer, "Transformer cannot be null");
+        Objects.requireNonNull(reducer, "Reducer cannot be null");
+        if (map instanceof ConcurrentHashMap) {
+            return ((ConcurrentHashMap<K, V>) map).reduceValues(parallelismThreshold, transformer, reducer);
+        } else {
+            // Fallback for non-concurrent maps - sequential reduce
+            U result = null;
+            for (V value : values()) {
+                U transformed = transformer.apply(value);
+                if (transformed != null) {
+                    result = (result == null) ? transformed : reducer.apply(result, transformed);
+                }
+            }
+            return result;
+        }
+    }
+
+    /**
+     * Thread-safe helper method to unwrap CaseInsensitiveString back to original String.
+     * This method is used by function wrappers to ensure users receive the original key type.
+     * 
+     * @param key the key to unwrap (may be CaseInsensitiveString or any other type)
+     * @return the original key if it was a CaseInsensitiveString, otherwise the key itself
+     */
+    @SuppressWarnings("unchecked")
+    private K unwrapKey(K key) {
+        // Thread-safe: instanceof check and field access on immutable CaseInsensitiveString
+        return (key instanceof CaseInsensitiveString) 
+            ? (K) ((CaseInsensitiveString) key).original 
+            : key;
     }
 
     @SuppressWarnings("unchecked")

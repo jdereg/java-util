@@ -19,46 +19,224 @@ The `.jar` file classes are version 52 `(JDK 1.8)`
 As of version 3.5.0 the library is built with the `-parameters`
 compiler flag. Parameter names are now retained for tasks such as
 constructor discovery (increased the jar size by about 10K.)
-## Compatibility
 
-### JPMS (Java Platform Module System)
+## Quick Start
 
-This library is fully compatible with JPMS, commonly known as Java Modules. It includes a `module-info.class` file that 
-specifies module dependencies and exports. 
+Experience the power of java-util with these popular utilities that solve common development challenges:
 
-### OSGi
+### 🔍 DeepEquals - Compare Complex Object Graphs
+Perfect for testing and validation - handles cycles, collections, and deep nesting automatically:
 
-This library also supports OSGi environments. It comes with pre-configured OSGi metadata in the `MANIFEST.MF` file, ensuring easy integration into any OSGi-based application.
+```java
+// Compare complex test outputs without worrying about object cycles
+List<User> expected = loadExpectedUsers();
+List<User> actual = processUsers();
 
-### Using in an OSGi Runtime
-
-The jar already ships with all necessary OSGi headers and a `module-info.class`. No `Import-Package` entries for `java.*` packages are required when consuming the bundle.
-
-To add the bundle to an Eclipse feature or any OSGi runtime simply reference it:
-
-```xml
-<plugin id="com.cedarsoftware.java-util" version="3.6.0"/>
+// Standard equals() fails with nested objects and cycles
+// DeepEquals handles everything automatically
+if (DeepEquals.deepEquals(expected, actual)) {
+    System.out.println("Test passed!");
+} else {
+    // Get detailed diff for debugging
+    Map<String, Object> options = new HashMap<>();
+    DeepEquals.deepEquals(expected, actual, options);
+    System.out.println("Differences: " + options.get("diff"));
+}
 ```
 
-Both of these features ensure that our library can be seamlessly integrated into modular Java applications, providing robust dependency management and encapsulation.
+**Visual diff output makes debugging obvious:**
 
----
-To include in your project:
-##### Gradle
-```groovy
-implementation 'com.cedarsoftware:java-util:3.6.0'
+<span style="color: #007acc">
+
+```
+// Object field mismatch - pinpoints exactly what's different
+[field value mismatch] ▶ Person {name: "Jim Bob", age: 27} ▶ .age
+  Expected: 27
+  Found: 34
+
+// Collection element differences with precise indexing  
+[collection element mismatch] ▶ Container {strings: List(0..2), numbers: List(0..2)} ▶ .strings(0)
+  Expected: "a"
+  Found: "x"
+
+// Complex nested structures with visual navigation
+[array element mismatch] ▶ University {name: "Test University", departmentsByCode: Map(0..1)} ▶ 
+  .departmentsByCode 《"CS" ⇨ Department {code: "CS", programs: List(0..2)}》.programs(0).requiredCourses
+  Expected length: 2
+  Found length: 3
+
+// Map differences show key-value relationships clearly
+[map value mismatch] ▶ LinkedHashMap(0..0) ▶ 《"user.email" ⇨ "old@example.com"》
+  Expected: "old@example.com"  
+  Found: "new@example.com"
 ```
 
-##### Maven
-```xml
-<dependency>
-  <groupId>com.cedarsoftware</groupId>
-  <artifactId>java-util</artifactId>
-  <version>3.6.0</version>
-</dependency>
+</span>
+
+### 🔄 Converter - Universal Type Conversion
+Convert between any meaningful types with mind-bending intelligence:
+
+```java
+// Multi-dimensional arrays ↔ nested collections (any depth, any size!)
+String[][][] jagged = {
+    {{"a", "b", "c"}, {"d"}},           // First sub-array: 3 elements, then 1 element  
+    {{"e", "f"}, {"g", "h", "i", "j"}}, // Second sub-array: 2 elements, then 4 elements
+    {{"k"}}                             // Third sub-array: just 1 element
+};
+List<List<List<String>>> nested = Converter.convert(jagged, List.class);  
+// Result: [[[a, b, c], [d]], [[e, f], [g, h, i, j]], [[k]]]
+
+char[][][] backToArray = Converter.convert(nested, char[][][].class);       // Preserves jagged structure perfectly!
+
+// EnumSet magic - detects collections and creates EnumSet automatically  
+String[] permissions = {"READ", "WRITE", "ADMIN"};  
+EnumSet<Permission> perms = Converter.convert(permissions, Permission.class);  // Array → EnumSet<Permission>
+
+List<String> statusList = Arrays.asList("ACTIVE", "PENDING", "COMPLETE");
+EnumSet<Status> statuses = Converter.convert(statusList, Status.class);       // Collection → EnumSet<Status>
+
+Map<String, Object> config = Map.of("DEBUG", true, "INFO", false, "WARN", true);
+EnumSet<LogLevel> levels = Converter.convert(config, LogLevel.class);         // Map keySet() → EnumSet<LogLevel>
+
+// UUID as 128-bit number - who even thinks of this?!
+UUID uuid = UUID.randomUUID();
+BigInteger bigInt = Converter.convert(uuid, BigInteger.class);
+// Result: 340282366920938463463374607431768211456 (UUID as massive integer!)
+UUID restored = Converter.convert(bigInt, UUID.class);                   // Back to UUID!
+
+// Base64 string directly to ByteBuffer 
+String base64Data = "SGVsbG8gV29ybGQ=";  // "Hello World" encoded
+ByteBuffer buffer = Converter.convert(base64Data, ByteBuffer.class);
+// Result: Ready-to-use ByteBuffer, no manual decoding!
+
+// Map to Color - understands RGB semantics
+Map<String, Object> colorMap = Map.of("red", 255, "green", 128, "blue", 0, "alpha", 200);
+Color orange = Converter.convert(colorMap, Color.class);
+// Result: java.awt.Color[r=255,g=128,b=0,a=200] - it even handles alpha!
+
+// Calendar to atomic types - extracts time AND makes it thread-safe
+Calendar cal = Calendar.getInstance(); 
+AtomicLong atomicTime = Converter.convert(cal, AtomicLong.class);        // Thread-safe epoch millis
+AtomicInteger atomicYear = Converter.convert(cal, AtomicInteger.class);  // Just the year, atomically
+
+// Add your own exotic conversions
+Converter converter = new Converter();
+converter.addConversion(MyClass.class, String.class, obj -> obj.toJson());
+
+// See ALL available conversions - the full power revealed!
+Map<String, Set<String>> supported = Converter.getSupportedConversions();
+// Result: {"String" -> ["Integer", "Long", "Date", "UUID", "BigInteger", ...], 
+//          "UUID" -> ["String", "BigInteger", "Map", ...], ...}
+
+Set<String> allConversions = Converter.allSupportedConversions();  
+// Result: ["String -> Integer", "String -> Long", "UUID -> BigInteger", 
+//          "Map -> Color", "Calendar -> AtomicLong", ...]
 ```
----
-# java-util
+
+**Beyond these 1000+ direct type conversions, Converter also handles:**
+- 🔄 **Collection ↔ Collection** (List ↔ Set ↔ Queue, any combination)
+- 📦 **Collection ↔ Array** (any collection to any array type, preserving elements)  
+- 📦 **Collection ↔ EnumSet** (any collection to EnumSet&lt;targetType&gt; one-dimensional)
+- 🎯 **Array ↔ Array** (int[] ↔ String[] ↔ Long[], automatic element conversion)
+- 🧩 **Array ↔ Collection** (jagged arrays to nested collections, preserving structure)
+- 🧩 **Array ↔ EnumSet** (jagged arrays to nested collections, preserving structure)
+- 🗺️ **Map ↔ Map** (HashMap ↔ LinkedHashMap ↔ ConcurrentHashMap, comparator-aware)
+- 🗺️ **Map ↔ EnumSet** (keySet() of Map to EnumSet&lt;targetType&gt;)
+- 🌟 **N-dimensional support** (jagged arrays, nested collections, any depth)
+
+### 🗝️ CaseInsensitiveMap - Fast, Case-Preserving Maps
+High-performance maps that ignore case but preserve original key formatting:
+
+```java
+// Default: acts like LinkedHashMap but case-insensitive
+CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
+headers.put("Content-Type", "application/json");
+headers.put("User-Agent", "MyApp/1.0");
+
+// Case-insensitive lookup, but keys retain original case
+String contentType = headers.get("content-type");  // "application/json"
+String userAgent = headers.get("USER-AGENT");      // "MyApp/1.0"
+
+// Walking keySet() returns original case
+for (String key : headers.keySet()) {
+    System.out.println(key);  // "Content-Type", "User-Agent"
+}
+
+// Supports heterogeneous keys (String + non-String)
+CaseInsensitiveMap<Object, String> mixed = new CaseInsensitiveMap<>();
+mixed.put("StringKey", "value1");
+mixed.put(42, "value2");           // Non-string keys work fine
+
+// Wrap existing maps for thread-safety
+Map<String, String> concurrent = new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
+```
+
+### ⏰ TTLCache - Time-Based Caching with LRU
+Automatic expiration with optional size limits - supports null keys and values:
+
+```java
+// Cache with 30-second TTL
+TTLCache<String, User> userCache = new TTLCache<>(Duration.ofSeconds(30));
+
+// Add items - they auto-expire after TTL
+userCache.put("user123", loadUser("123"));
+userCache.put(null, defaultUser);  // Null keys supported
+
+// Optional: Add LRU eviction with max size
+TTLCache<String, String> sessionCache = new TTLCache<>(
+    Duration.ofMinutes(15),  // 15-minute TTL
+    1000                     // Max 1000 items (LRU eviction)
+);
+
+// Use like any Map - items auto-expire
+sessionCache.put("session-abc", "user-data");
+String userData = sessionCache.get("session-abc");  // null if expired
+
+// Perfect for caching expensive operations
+TTLCache<String, Result> resultCache = new TTLCache<>(Duration.ofMinutes(5));
+public Result getExpensiveResult(String key) {
+    return resultCache.computeIfAbsent(key, k -> performExpensiveOperation(k));
+}
+```
+
+**Why developers love these utilities:**
+- **Zero dependencies** - No classpath conflicts
+- **Null-safe** - Handle edge cases gracefully  
+- **High performance** - Optimized for real-world usage
+- **JDK 8+ compatible** - Works everywhere
+- **Production proven** - Used in high-scale applications
+
+## How java-util Compares
+
+| Feature | JDK Collections | Google Guava | Eclipse Collections | Apache Commons | **java-util**               |
+|---------|----------------|--------------|---------------------|----------------|-----------------------------|
+| **Dependencies** | None | 3+ libraries | 2+ libraries | Multiple | **None**                    |
+| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | **~500KB total**            |
+| **JDK Compatibility** | 8+ | 11+ (latest) | 11+ | 8+ | **8+**           |
+| **Null-Safe Concurrent** | ❌ | ❌ | ❌ | ❌ | **✅ ConcurrentMapNullSafe** |
+| **Memory-Adaptive Collections** | ❌ | ❌ | ✅ | ❌ | **✅ CompactMap/Set**        |
+| **Case-Preserving Maps** | ❌ | ❌ | ❌ | Limited | **✅ Retains original case** |
+| **Universal Type Conversion** | ❌ | Limited | ❌ | Limited | **✅ 1000+ conversions**     |
+| **Deep Object Comparison** | ❌ | Limited | ❌ | ❌ | **✅ Handles cycles**        |
+| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | **✅ 70+ feature options**   |
+| **TTL Caching** | ❌ | ✅ | ❌ | ❌ | **✅ + LRU combo**           |
+| **Thread-Safe with Nulls** | ❌ | ❌ | ❌ | ❌ | **✅ All concurrent types**  |
+| **JPMS/OSGi Ready** | ✅ | ⚠️ | ✅ | ⚠️ | **✅ Pre-configured**        |
+| **Security Controls** | ❌ | ❌ | ❌ | ❌ | **✅ Input validation**      |
+
+### Key Differentiators
+
+**🎯 Zero Dependencies**: Unlike Guava (Checker Framework, Error Prone, J2ObjC) or Eclipse Collections (JUnit, SLF4J), java-util has zero runtime dependencies - no classpath conflicts ever.
+
+**🔒 Null-Safe Concurrency**: java-util is the only library providing thread-safe collections that handle null keys and values safely (`ConcurrentHashMapNullSafe`, `ConcurrentSetNullSafe`).
+
+**🧠 Smart Memory Management**: `CompactMap` and `CompactSet` automatically adapt from array-based storage (small size) to hash-based storage (large size) - optimal memory usage at every scale.
+
+**🔄 Universal Conversion**: Convert between any meaningful Java types - primitives, collections, dates, enums, custom objects. Other libraries require multiple dependencies to achieve the same coverage.
+
+**⚙️ Production Flexibility**: 70+ runtime configuration options allow zero-downtime security hardening and environment-specific tuning that enterprise applications demand.
+
+## Core Components
 
 ### Sets
 - **[CompactSet](userguide.md#compactset)** - Memory-efficient Set that dynamically adapts its storage structure based on size
@@ -99,13 +277,170 @@ implementation 'com.cedarsoftware:java-util:3.6.0'
 - **[TypeUtilities](userguide.md#typeutilities)** - Advanced Java type introspection and generic resolution utilities
 - **[UniqueIdGenerator](userguide.md#uniqueidgenerator)** - Distributed-safe unique identifier generation
 
+## Integration and Module Support
+
+### JPMS (Java Platform Module System)
+
+This library is fully compatible with JPMS, commonly known as Java Modules. It includes a `module-info.class` file that 
+specifies module dependencies and exports. 
+
+### OSGi
+
+This library also supports OSGi environments. It comes with pre-configured OSGi metadata in the `MANIFEST.MF` file, ensuring easy integration into any OSGi-based application.
+
+### Using in an OSGi Runtime
+
+The jar already ships with all necessary OSGi headers and a `module-info.class`. No `Import-Package` entries for `java.*` packages are required when consuming the bundle.
+
+To add the bundle to an Eclipse feature or any OSGi runtime simply reference it:
+
+```xml
+<plugin id="com.cedarsoftware.java-util" version="3.6.0"/>
+```
+
+Both of these features ensure that our library can be seamlessly integrated into modular Java applications, providing robust dependency management and encapsulation.
+
+### Maven and Gradle Integration
+
+To include in your project:
+
+##### Gradle
+```groovy
+implementation 'com.cedarsoftware:java-util:3.6.0'
+```
+
+##### Maven
+```xml
+<dependency>
+  <groupId>com.cedarsoftware</groupId>
+  <artifactId>java-util</artifactId>
+  <version>3.6.0</version>
+</dependency>
+```
+
+## Feature Options
+
+Modern enterprise applications demand libraries that adapt to diverse security requirements, performance constraints, and operational environments. Following the architectural principles embraced by industry leaders like Google (with their extensive use of feature flags), Netflix (with their chaos engineering configurations), Amazon (with their service-specific tuning), and Meta (with their A/B testing infrastructure), java-util embraces a **flexible feature options approach** that puts control directly in the hands of developers and operations teams.
+
+This approach aligns with current best practices in cloud-native development, including GitOps configurations, service mesh policies, and progressive delivery patterns that define the cutting edge of modern software architecture.
+
+Rather than forcing a one-size-fits-all configuration, java-util provides granular control over every aspect of its behavior through system properties. This approach enables:
+
+- **Zero-downtime security hardening** - Enable security features without code changes
+- **Environment-specific tuning** - Different limits for development vs. production
+- **Gradual rollout strategies** - Test new security features with feature flags
+- **Compliance flexibility** - Meet varying regulatory requirements across deployments
+- **Performance optimization** - Fine-tune resource limits based on actual usage patterns
+
+All security features are **disabled by default** to ensure seamless upgrades, with the flexibility to enable and configure them per environment. This design philosophy allows java-util to serve both lightweight applications and enterprise-grade systems from the same codebase.
+
+| Fully Qualified Property Name | Allowed Values | Default Value | Description |
+|-------------------------------|----------------|---------------|-------------|
+| **ArrayUtilities** | | | |
+| `arrayutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all ArrayUtilities security features |
+| `arrayutilities.component.type.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Block dangerous system classes in array operations |
+| `arrayutilities.max.array.size` | Integer | <span style="color: #007acc">2147483639</span> | Maximum array size (Integer.MAX_VALUE-8) |
+| `arrayutilities.dangerous.class.patterns` | Comma-separated patterns | <span style="color: #007acc; font-size: 7pt">java.lang.Runtime,<br>java.lang.ProcessBuilder,<br>java.lang.System,<br>java.security.,javax.script.,<br>sun.,com.sun.,java.lang.Class</span> | Dangerous class patterns to block |
+| **ByteUtilities** | | | |
+| `byteutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all ByteUtilities security features |
+| `byteutilities.max.hex.string.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Hex string length limit for decode operations |
+| `byteutilities.max.array.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Byte array size limit for encode operations |
+| **DateUtilities** | | | |
+| `dateutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all DateUtilities security features |
+| `dateutilities.input.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable input length and content validation |
+| `dateutilities.regex.timeout.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable regex timeout protection |
+| `dateutilities.malformed.string.protection.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable malformed input protection |
+| `dateutilities.max.input.length` | Integer | <span style="color: #007acc">1000</span> | Maximum input string length |
+| `dateutilities.max.epoch.digits` | Integer | <span style="color: #007acc">19</span> | Maximum digits for epoch milliseconds |
+| `dateutilities.regex.timeout.milliseconds` | Long | <span style="color: #007acc">1000</span> | Timeout for regex operations in milliseconds |
+| **DeepEquals** | | | |
+| `deepequals.secure.errors` | `true`, `false` | <span style="color: #007acc">false</span> | Enable error message sanitization |
+| `deepequals.max.collection.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Collection size limit |
+| `deepequals.max.array.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Array size limit |
+| `deepequals.max.map.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Map size limit |
+| `deepequals.max.object.fields` | Integer | <span style="color: #007acc">0</span> (disabled) | Object field count limit |
+| `deepequals.max.recursion.depth` | Integer | <span style="color: #007acc">0</span> (disabled) | Recursion depth limit |
+| **EncryptionUtilities** | | | |
+| `encryptionutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all EncryptionUtilities security features |
+| `encryptionutilities.file.size.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable file size limits for hashing operations |
+| `encryptionutilities.buffer.size.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable buffer size validation |
+| `encryptionutilities.crypto.parameters.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable cryptographic parameter validation |
+| `encryptionutilities.max.file.size` | Long | <span style="color: #007acc">2147483647</span> | Maximum file size for hashing operations (2GB) |
+| `encryptionutilities.max.buffer.size` | Integer | <span style="color: #007acc">1048576</span> | Maximum buffer size (1MB) |
+| `encryptionutilities.min.pbkdf2.iterations` | Integer | <span style="color: #007acc">10000</span> | Minimum PBKDF2 iterations |
+| `encryptionutilities.max.pbkdf2.iterations` | Integer | <span style="color: #007acc">1000000</span> | Maximum PBKDF2 iterations |
+| `encryptionutilities.min.salt.size` | Integer | <span style="color: #007acc">8</span> | Minimum salt size in bytes |
+| `encryptionutilities.max.salt.size` | Integer | <span style="color: #007acc">64</span> | Maximum salt size in bytes |
+| `encryptionutilities.min.iv.size` | Integer | <span style="color: #007acc">8</span> | Minimum IV size in bytes |
+| `encryptionutilities.max.iv.size` | Integer | <span style="color: #007acc">32</span> | Maximum IV size in bytes |
+| **IOUtilities** | | | |
+| `io.debug` | `true`, `false` | <span style="color: #007acc">false</span> | Enable debug logging |
+| `io.connect.timeout` | Integer (1000-300000) | <span style="color: #007acc">5000</span> | Connection timeout (1s-5min) |
+| `io.read.timeout` | Integer (1000-300000) | <span style="color: #007acc">30000</span> | Read timeout (1s-5min) |
+| `io.max.stream.size` | Long | <span style="color: #007acc">2147483647</span> | Stream size limit (2GB) |
+| `io.max.decompression.size` | Long | <span style="color: #007acc">2147483647</span> | Decompression size limit (2GB) |
+| `io.path.validation.disabled` | `true`, `false` | <span style="color: #007acc">false</span> | Path security validation enabled |
+| `io.url.protocol.validation.disabled` | `true`, `false` | <span style="color: #007acc">false</span> | URL protocol validation enabled |
+| `io.allowed.protocols` | Comma-separated | <span style="color: #007acc">http,https,file,jar</span> | Allowed URL protocols |
+| `io.file.protocol.validation.disabled` | `true`, `false` | <span style="color: #007acc">false</span> | File protocol validation enabled |
+| `io.debug.detailed.urls` | `true`, `false` | <span style="color: #007acc">false</span> | Detailed URL logging disabled |
+| `io.debug.detailed.paths` | `true`, `false` | <span style="color: #007acc">false</span> | Detailed path logging disabled |
+| **MathUtilities** | | | |
+| `mathutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all MathUtilities security features |
+| `mathutilities.max.array.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Array size limit for min/max operations |
+| `mathutilities.max.string.length` | Integer | <span style="color: #007acc">0</span> (disabled) | String length limit for parsing |
+| `mathutilities.max.permutation.size` | Integer | <span style="color: #007acc">0</span> (disabled) | List size limit for permutations |
+| **ReflectionUtils** | | | |
+| `reflectionutils.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all ReflectionUtils security features |
+| `reflectionutils.dangerous.class.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Block dangerous class access |
+| `reflectionutils.sensitive.field.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Block sensitive field access |
+| `reflectionutils.max.cache.size` | Integer | <span style="color: #007acc">50000</span> | Maximum cache size per cache type |
+| `reflectionutils.dangerous.class.patterns` | Comma-separated patterns | <span style="color: #007acc; font-size: 7pt">java.lang.Runtime,java.lang.Process,<br>java.lang.ProcessBuilder,sun.misc.Unsafe,<br>jdk.internal.misc.Unsafe,<br>javax.script.ScriptEngine,<br>javax.script.ScriptEngineManager</span> | Dangerous class patterns |
+| `reflectionutils.sensitive.field.patterns` | Comma-separated patterns | <span style="color: #007acc; font-size: 7pt">password,passwd,secret,secretkey,<br>apikey,api_key,authtoken,accesstoken,<br>credential,confidential,adminkey,private</span> | Sensitive field patterns |
+| `reflection.utils.cache.size` | Integer | <span style="color: #007acc">1500</span> | Reflection cache size |
+| **StringUtilities** | | | |
+| `stringutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all StringUtilities security features |
+| `stringutilities.max.hex.decode.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Max hex string size for decode() |
+| `stringutilities.max.wildcard.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Max wildcard pattern length |
+| `stringutilities.max.wildcard.count` | Integer | <span style="color: #007acc">0</span> (disabled) | Max wildcard characters in pattern |
+| `stringutilities.max.levenshtein.string.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Max string length for Levenshtein distance |
+| `stringutilities.max.damerau.levenshtein.string.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Max string length for Damerau-Levenshtein |
+| `stringutilities.max.repeat.count` | Integer | <span style="color: #007acc">0</span> (disabled) | Max repeat count for repeat() method |
+| `stringutilities.max.repeat.total.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Max total size for repeat() result |
+| **SystemUtilities** | | | |
+| `systemutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all SystemUtilities security features |
+| `systemutilities.environment.variable.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Block sensitive environment variable access |
+| `systemutilities.file.system.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Validate file system operations |
+| `systemutilities.resource.limits.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enforce resource usage limits |
+| `systemutilities.max.shutdown.hooks` | Integer | <span style="color: #007acc">100</span> | Maximum number of shutdown hooks |
+| `systemutilities.max.temp.prefix.length` | Integer | <span style="color: #007acc">100</span> | Maximum temporary directory prefix length |
+| `systemutilities.sensitive.variable.patterns` | Comma-separated patterns | <span style="color: #007acc; font-size: 7pt">PASSWORD,PASSWD,PASS,SECRET,KEY,<br>TOKEN,CREDENTIAL,AUTH,APIKEY,API_KEY,<br>PRIVATE,CERT,CERTIFICATE,DATABASE_URL,<br>DB_URL,CONNECTION_STRING,DSN,<br>AWS_SECRET,AZURE_CLIENT_SECRET,<br>GCP_SERVICE_ACCOUNT</span> | Sensitive variable patterns |
+| **Traverser** | | | |
+| `traverser.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all Traverser security features |
+| `traverser.max.stack.depth` | Integer | <span style="color: #007acc">0</span> (disabled) | Maximum stack depth |
+| `traverser.max.objects.visited` | Integer | <span style="color: #007acc">0</span> (disabled) | Maximum objects visited |
+| `traverser.max.collection.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Maximum collection size to process |
+| `traverser.max.array.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Maximum array length to process |
+| **UrlUtilities** | | | |
+| `urlutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all UrlUtilities security features |
+| `urlutilities.max.download.size` | Long | <span style="color: #007acc">0</span> (disabled) | Max download size in bytes |
+| `urlutilities.max.content.length` | Long | <span style="color: #007acc">0</span> (disabled) | Max Content-Length header value |
+| `urlutilities.allow.internal.hosts` | `true`, `false` | <span style="color: #007acc">true</span> | Allow access to internal/local hosts |
+| `urlutilities.allowed.protocols` | Comma-separated | <span style="color: #007acc">http,https,ftp</span> | Allowed protocols |
+| `urlutilities.strict.cookie.domain` | `true`, `false` | <span style="color: #007acc">false</span> | Enable strict cookie domain validation |
+| **Other** | | | |
+| `java.util.force.jre` | `true`, `false` | <span style="color: #007acc">false</span> | Force JRE simulation (testing only) |
+
+> **Note:** All security features are disabled by default for backward compatibility. Most properties accepting `0` disable the feature entirely. Properties can be set via system properties (`-D` flags) or environment variables.
+
 ### Logging
 
 Because `java-util` has no dependencies on other libraries, `java-util` uses the Java built-in `java.util.logging` for all output. See the
 [user guide](userguide.md#redirecting-javautillogging) for ways to route
 these logs to SLF4J or Log4j&nbsp;2.
 
-[View detailed documentation](userguide.md)
+### User Guide
+[View detailed documentation on all utilities.](userguide.md)
 
 See [changelog.md](/changelog.md) for revision history.
 

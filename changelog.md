@@ -10,6 +10,20 @@
 >   * Values are converted through `converter.convert()` allowing String, AtomicInteger, Double, etc. as color component values
 >   * Added comprehensive test coverage with 38 test methods covering all conversion scenarios
 >   * Eliminates need for custom Color factories in json-io and other serialization libraries
+> * **BREAKING CHANGE**: Removed static `addConversion()` method from `com.cedarsoftware.util.Converter`:
+>   * The static method `Converter.addConversion(Class, Class, Convert)` has been removed to prevent global state pollution
+>   * **Workaround**: To add custom conversion functions, create a `Converter` instance and add conversions to that instance:
+>     ```java
+>     // OLD (no longer supported):
+>     Converter.addConversion(String.class, CustomType.class, converter);
+>     
+>     // NEW (recommended approach):
+>     ConverterOptions options = new ConverterOptions();
+>     Converter converter = new Converter(options);
+>     converter.addConversion(String.class, CustomType.class, converter);
+>     ```
+>   * This ensures that custom conversions are isolated to specific `Converter` instances rather than affecting the global static instance
+>   * The static `Converter.getInstance()` method remains available for accessing the default shared instance
 > * **Security Enhancement**: Fixed critical security vulnerabilities in `CompactMap` dynamic code generation:
 >   * Added strict input sanitization to prevent code injection attacks in class name generation
 >   * Fixed memory leak by using `WeakReference` for generated class caching to allow garbage collection

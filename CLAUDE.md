@@ -270,3 +270,70 @@ For non-systematic changes, individual experiments, or small targeted fixes, the
 - Commit messages should still be descriptive and follow format
 
 **This loop ensures systematic code improvement with proper testing, documentation, and human oversight for all changes.**
+
+## 📦 DEPLOYMENT PROCESS 📦
+
+**Maven deployment to Maven Central via Sonatype OSSRH**
+
+### Prerequisites Check
+Before deployment, verify the following conditions are met:
+
+1. **Clean Working Directory**: No uncommitted local files
+```bash
+git status
+# Should show: "nothing to commit, working tree clean"
+```
+
+2. **Remote Sync**: All local commits are pushed to remote
+```bash
+git push origin master
+# Should be up to date with origin/master
+```
+
+3. **Dependency Verification**: json-io dependency must be correct version
+   - json-io is test-scope only (java-util has zero runtime dependencies)
+   - json-io version must be "1 behind" the current java-util version
+   - This prevents circular dependency (java-util → json-io → java-util)
+   - Current: json-io 4.55.0 in pom.xml (test scope)
+
+### Deployment Steps
+
+1. **Run Maven Deploy with Release Profile**
+```bash
+mvn clean deploy -DperformRelease=true
+```
+   - This will take significant time due to additional tests enabled with performRelease=true
+   - Includes GPG signing of artifacts (requires GPG key and passphrase configured)
+   - Uploads to Sonatype OSSRH staging repository
+   - Automatically releases to Maven Central (autoReleaseAfterClose=true)
+
+2. **Tag the Release**
+```bash
+git tag -a x.y.z -m "x.y.zYYYYMMDDHHMMSS"
+```
+   - Replace x.y.z with actual version (e.g., 3.6.0)
+   - Replace YYYYMMDDHHMMSS with current timestamp in 24-hour format
+   - Example: `git tag -a 3.6.0 -m "3.6.020250101120000"`
+
+3. **Push Tags to Remote**
+```bash
+git push --tags
+```
+
+### Configuration Details
+- **Sonatype OSSRH**: Configured in pom.xml distributionManagement
+- **GPG Signing**: Automated via maven-gpg-plugin when performRelease=true
+- **Nexus Staging**: Uses nexus-staging-maven-plugin with autoReleaseAfterClose
+- **Bundle Generation**: OSGi bundle via maven-bundle-plugin
+- **JPMS Module**: Module-info.java added via moditect-maven-plugin
+
+### Security Notes
+- GPG key and passphrase must be configured in Maven settings.xml
+- OSSRH credentials required for Sonatype deployment
+- Never commit GPG passphrases or credentials to repository
+
+### Post-Deployment Verification
+1. Check Maven Central: https://search.maven.org/artifact/com.cedarsoftware/java-util
+2. Verify OSGi bundle metadata in deployed JAR
+3. Confirm module-info.class present for JPMS support
+4. Test dependency resolution in downstream projects (json-io, n-cube)

@@ -1,5 +1,7 @@
 ### Revision History
-#### 3.6.0 (Unreleased)
+#### 3.7.0 (Unreleased)
+
+#### 3.6.0
 > * **Feature Enhancement**: Added comprehensive `java.awt.Color` conversion support to `Converter`:
 >   * Supports conversion from String formats: hex colors (`#FF0000`, `FF0000`), named colors (`red`, `blue`, etc.), `rgb(r,g,b)`, and `rgba(r,g,b,a)` formats
 >   * Supports conversion from Map format using keys: `red`, `green`, `blue`, `alpha`, `rgb`, `color`, and `value`
@@ -91,6 +93,43 @@
 >   * Improved documentation for null handling and method contracts
 > * **Performance Optimization**: Replaced inefficient `String.matches()` with pre-compiled regex patterns in `ClassUtilities`
 > * Updated a few more spots where internal reflection updated `ReflectionUtils` caching for better performance.
+> * **Performance Enhancement**: Added concurrent performance optimizations to `CaseInsensitiveMap`:
+>   * Added `mappingCount()` method for efficient concurrent map size queries
+>   * Added bulk parallel operations: `forEach(long, BiConsumer)`, `forEachKey(long, Consumer)`, `forEachValue(long, Consumer)`
+>   * Added parallel search operations: `searchKeys(long, Function)`, `searchValues(long, Function)`, `searchEntries(long, Function)`
+>   * Added parallel reduce operations: `reduceKeys(long, Function, BinaryOperator)`, `reduceValues(long, Function, BinaryOperator)`, `reduceEntries(long, Function, BinaryOperator)`
+>   * Enhanced iterator implementations with concurrent-aware behavior for ConcurrentHashMap backing maps
+>   * Optimized for ~95% native ConcurrentHashMap performance while maintaining case-insensitive functionality
+>   * Added centralized thread-safe key unwrapping with comprehensive documentation
+> * **Enhancement**: Brought `CompactSet` to parity with `CompactMap` for concurrent functionality:
+>   * Added `mapType()` method to `CompactSet.Builder` for specifying concurrent backing map types
+>   * Added support for `ConcurrentHashMap` and `ConcurrentSkipListSet` backing collections
+>   * Enhanced builder pattern to support all concurrent collection types available in `CompactMap`
+>   * Maintains automatic size-based transitions while respecting concurrent backing map selection
+> * **Enhancement**: Brought `CaseInsensitiveSet` to parity with `CaseInsensitiveMap` concurrent capabilities:
+>   * Added `elementCount()` method for efficient concurrent set size queries (delegates to backing map's `mappingCount()`)
+>   * Added bulk parallel operations: `forEach(long, Consumer)`, `searchElements(long, Function)`, `reduceElements(long, Function, BinaryOperator)`
+>   * Enhanced iterator implementation with concurrent-aware behavior inheriting from backing `CaseInsensitiveMap`
+>   * Added `getBackingMap()` method for direct access to underlying `CaseInsensitiveMap` instance
+>   * Full feature parity ensures consistent concurrent performance characteristics across case-insensitive collections
+> * **Code Quality**: Eliminated all unchecked cast warnings in concurrent null-safe map classes:
+>   * Updated `AbstractConcurrentNullSafeMap` method signatures to accept `Object` parameters instead of generic types
+>   * Updated `ConcurrentNavigableMapNullSafe` method signatures for type safety compliance
+>   * Improved overall type safety without breaking existing API compatibility
+>   * Reduced compiler warnings from 15 to 0 across concurrent collection classes
+> * **Documentation**: Comprehensive README.md enhancements for professional project presentation:
+>   * Added comprehensive badge section with Maven Central, Javadoc, license, and compatibility information
+>   * Enhanced Quick Start section with practical code examples for common use cases
+>   * Added Performance Benchmarks section showcasing speed improvements and memory efficiency
+>   * Created comprehensive Feature Matrix table comparing java-util collections with JDK alternatives
+>   * Added Security Features showcase highlighting 70+ security controls and defensive programming practices
+>   * Enhanced Integration examples for Spring, Jakarta EE, Spring Boot, and microservices architectures
+>   * Extracted Framework Integration Examples to separate `frameworks.md` file with corrected cache constructor examples
+> * **Testing**: Added comprehensive test coverage for all new concurrent functionality:
+>   * 27 new JUnit tests for `CaseInsensitiveMap` concurrent operations covering thread safety and performance
+>   * 15 new JUnit tests for `CompactSet` concurrent functionality and builder pattern enhancements  
+>   * 23 new JUnit tests for `CaseInsensitiveSet` concurrent operations and feature parity validation
+>   * Added multi-dimensional array conversion test matching README.md example for better documentation accuracy
 #### 3.5.0
 > * `Converter.getInstance()` exposes the default instance used by the static API
 > * `ClassUtilities.newInstance()` accepts `Map` arguments using parameter names and falls back to the no‑arg constructor

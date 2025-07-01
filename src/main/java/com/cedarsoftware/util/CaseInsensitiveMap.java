@@ -210,8 +210,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      * @param lruCache the new LRUCache instance to use for caching CaseInsensitiveString objects
      * @throws NullPointerException if the provided cache is null
      */
-    @SuppressWarnings("unchecked, rawtypes")
-    public static void replaceCache(LRUCache lruCache) {
+    public static void replaceCache(LRUCache<String, CaseInsensitiveString> lruCache) {
         Objects.requireNonNull(lruCache, "Cache cannot be null");
         CaseInsensitiveString.COMMON_STRINGS_REF.set(lruCache);
     }
@@ -251,9 +250,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
         for (Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>> entry : mapRegistry.get()) {
             if (entry.getKey().isInstance(source)) {
                 @SuppressWarnings("unchecked")
-                Function<Integer, ? extends Map<?, ?>> rawFactory = entry.getValue();
-                @SuppressWarnings("unchecked")
-                Map<K, V> newMap = (Map<K, V>) rawFactory.apply(size);
+                Map<K, V> newMap = (Map<K, V>) entry.getValue().apply(size);
                 return copy(source, newMap);
             }
         }
@@ -340,9 +337,11 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
         }
 
         // OPTIMIZATION: If source is also CaseInsensitiveMap, keys are already normalized.
-        if (source instanceof CaseInsensitiveMap) {
+        if (source instanceof CaseInsensitiveMap<?, ?>) {
             // Directly copy from the wrapped map which has normalized keys
-            dest.putAll(((CaseInsensitiveMap<K, V>) source).map);
+            @SuppressWarnings("unchecked")
+            CaseInsensitiveMap<K, V> ciSource = (CaseInsensitiveMap<K, V>) source;
+            dest.putAll(ciSource.map);
         } else {
             // Original logic for general maps
             for (Entry<K, V> entry : source.entrySet()) {
@@ -914,7 +913,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
             
         // Add static cache for common strings - use AtomicReference for thread safety
         private static final AtomicReference<Map<String, CaseInsensitiveString>> COMMON_STRINGS_REF = 
-            new AtomicReference<>(new LRUCache<>(DEFAULT_CACHE_SIZE, LRUCache.StrategyType.THREADED));
+            new AtomicReference<>(new LRUCache<String, CaseInsensitiveString>(DEFAULT_CACHE_SIZE, LRUCache.StrategyType.THREADED));
         private static volatile int maxCacheLengthString = DEFAULT_MAX_STRING_LENGTH;
 
         // Pre-populate with common values

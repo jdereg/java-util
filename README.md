@@ -226,7 +226,7 @@ public Result getExpensiveResult(String key) {
 java-util is engineered for performance-critical applications with optimizations that deliver measurable improvements:
 
 
-### 📊 Memory Efficiency - CompactMap, CompactSet
+### 📊 Memory Efficiency
 
 **CompactMap Dynamic Adaptation (it has one field):**
 - **map.size() == 0** → _Object field_ = null (Sentinel value)
@@ -238,21 +238,21 @@ java-util is engineered for performance-critical applications with optimizations
 
 ## How java-util Compares
 
-| Feature | JDK Collections | Google Guava | Eclipse Collections | Apache Commons | **java-util**               |
-|---------|----------------|--------------|---------------------|----------------|-----------------------------|
-| **Dependencies** | None | 3+ libraries | 2+ libraries | Multiple | **None**                    |
-| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | **~500KB total**            |
-| **JDK Compatibility** | 8+ | 11+ (latest) | 11+ | 8+ | **8+**           |
-| **Null-Safe Concurrent** | ❌ | ❌ | ❌ | ❌ | **✅ ConcurrentMapNullSafe** |
-| **Memory-Adaptive Collections** | ❌ | ❌ | ✅ | ❌ | **✅ CompactMap/Set**        |
-| **Case-Preserving Maps** | ❌ | ❌ | ❌ | Limited | **✅ Retains original case** |
-| **Universal Type Conversion** | ❌ | Limited | ❌ | Limited | **✅ 1000+ conversions**     |
-| **Deep Object Comparison** | ❌ | Limited | ❌ | ❌ | **✅ Handles cycles**        |
-| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | **✅ 70+ feature options**   |
-| **TTL Caching** | ❌ | ✅ | ❌ | ❌ | **✅ + LRU combo**           |
-| **Thread-Safe with Nulls** | ❌ | ❌ | ❌ | ❌ | **✅ All concurrent types**  |
-| **JPMS/OSGi Ready** | ✅ | ⚠️ | ✅ | ⚠️ | **✅ Pre-configured**        |
-| **Security Controls** | ❌ | ❌ | ❌ | ❌ | **✅ Input validation**      |
+| Feature | JDK Collections | Google Guava | Eclipse Collections | Apache Commons | **java-util**    |
+|---------|----------------|--------------|---------------------|----------------|------------------|
+| **Dependencies** | None | 3+ libraries | 2+ libraries | Multiple | None             |
+| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | ~500KB total     |
+| **JDK Compatibility** | 8+ | 11+ (latest) | 11+ | 8+ | 8+               |
+| **Null-Safe Concurrent** | ❌ | ❌ | ❌ | ❌ | ✅ ConcurrentMapNullSafe |
+| **Memory-Adaptive Collections** | ❌ | ❌ | ✅ | ❌ | ✅ CompactMap/Set |
+| **Case-Preserving Maps** | ❌ | ❌ | ❌ | Limited | ✅ Retains original case |
+| **Universal Type Conversion** | ❌ | Limited | ❌ | Limited | ✅ 1000+ conversions |
+| **Deep Object Comparison** | ❌ | Limited | ❌ | ❌ | ✅ Handles cycles |
+| **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | ✅ 70+ feature options |
+| **TTL Caching** | ❌ | ✅ | ❌ | ❌ | ✅ + LRU combo    |
+| **Thread-Safe with Nulls** | ❌ | ❌ | ❌ | ❌ | ✅ All concurrent types |
+| **JPMS/OSGi Ready** | ✅ | ⚠️ | ✅ | ⚠️ | ✅ Pre-configured |
+| **Security Controls** | ❌ | ❌ | ❌ | ❌ | ✅ Input validation |
 
 ### Key Differentiators
 

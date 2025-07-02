@@ -1,0 +1,163 @@
+package com.cedarsoftware.util.convert;
+
+import java.awt.Dimension;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Conversions to and from java.awt.Dimension.
+ * Supports conversion from various formats including Map with width/height keys,
+ * int arrays, and strings to Dimension objects, as well as converting Dimension
+ * objects to these various representations.
+ *
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
+ */
+final class DimensionConversions {
+
+    private DimensionConversions() {
+    }
+
+    /**
+     * Convert Dimension to String representation.
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return String like "800x600"
+     */
+    static String toString(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return dimension.width + "x" + dimension.height;
+    }
+
+    /**
+     * Convert Dimension to Map with width and height keys.
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return Map with "width" and "height" keys
+     */
+    static Map<String, Object> toMap(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(MapConversions.WIDTH, dimension.width);
+        target.put(MapConversions.HEIGHT, dimension.height);
+        return target;
+    }
+
+    /**
+     * Convert Dimension to int array [width, height].
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return int array with width and height values
+     */
+    static int[] toIntArray(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return new int[]{dimension.width, dimension.height};
+    }
+
+    /**
+     * Convert Dimension to Integer (area: width * height).
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return Area as integer value
+     */
+    static Integer toInteger(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return dimension.width * dimension.height;
+    }
+
+    /**
+     * Convert Dimension to Long (area: width * height as long).
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return Area as long value
+     */
+    static Long toLong(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return (long) dimension.width * dimension.height;
+    }
+
+    /**
+     * Convert Dimension to BigInteger (area).
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return BigInteger representation of area
+     */
+    static BigInteger toBigInteger(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return BigInteger.valueOf((long) dimension.width * dimension.height);
+    }
+
+    /**
+     * Convert Dimension to BigDecimal (area).
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return BigDecimal representation of area
+     */
+    static BigDecimal toBigDecimal(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return BigDecimal.valueOf((long) dimension.width * dimension.height);
+    }
+
+    /**
+     * Convert Dimension to Point (width becomes x, height becomes y).
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return Point with x=width and y=height
+     */
+    static Point toPoint(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return new Point(dimension.width, dimension.height);
+    }
+
+    /**
+     * Convert Dimension to Boolean. (0,0) → false, anything else → true.
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return Boolean value
+     */
+    static Boolean toBoolean(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return dimension.width != 0 || dimension.height != 0;
+    }
+
+    /**
+     * Convert Dimension to Rectangle (size becomes dimensions, position is 0,0).
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return Rectangle with x=0, y=0, width=width, height=height
+     */
+    static Rectangle toRectangle(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        return new Rectangle(0, 0, dimension.width, dimension.height);
+    }
+
+    /**
+     * Convert Dimension to Insets (uniform insets with all sides equal to minimum dimension).
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return Insets with all sides = min(width, height)
+     */
+    static Insets toInsets(Object from, Converter converter) {
+        Dimension dimension = (Dimension) from;
+        int value = Math.min(dimension.width, dimension.height);
+        return new Insets(value, value, value, value);
+    }
+}

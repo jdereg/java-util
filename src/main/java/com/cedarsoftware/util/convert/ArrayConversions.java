@@ -1,9 +1,13 @@
 package com.cedarsoftware.util.convert;
 
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.awt.Color;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -173,5 +177,154 @@ final class ArrayConversions {
         } else {
             return new Color(r, g, b);
         }
+    }
+
+    /**
+     * Convert int array to Dimension. Array must contain exactly 2 elements: [width, height].
+     * @param from int array with width and height values
+     * @param converter Converter instance
+     * @return Dimension instance  
+     * @throws IllegalArgumentException if array length is not 2, or values are negative
+     */
+    static Dimension toDimension(Object from, Converter converter) {
+        int[] array = (int[]) from;
+        
+        if (array.length != 2) {
+            throw new IllegalArgumentException("Dimension array must have exactly 2 elements [width, height], got: " + array.length);
+        }
+        
+        int width = array[0];
+        int height = array[1];
+        
+        // Validate width and height (should be non-negative for Dimension)
+        if (width < 0 || height < 0) {
+            throw new IllegalArgumentException("Width and height must be non-negative, got: [" + width + ", " + height + "]");
+        }
+        
+        return new Dimension(width, height);
+    }
+
+    /**
+     * Convert int array to Point. Array must contain exactly 2 elements: [x, y].
+     * @param from int array with x and y values
+     * @param converter Converter instance
+     * @return Point instance  
+     * @throws IllegalArgumentException if array length is not 2
+     */
+    static Point toPoint(Object from, Converter converter) {
+        int[] array = (int[]) from;
+        
+        if (array.length != 2) {
+            throw new IllegalArgumentException("Point array must have exactly 2 elements [x, y], got: " + array.length);
+        }
+        
+        int x = array[0];
+        int y = array[1];
+        
+        return new Point(x, y);
+    }
+
+    /**
+     * Convert int array to Rectangle. Array must contain exactly 4 elements: [x, y, width, height].
+     * @param from int array with x, y, width, and height values
+     * @param converter Converter instance
+     * @return Rectangle instance  
+     * @throws IllegalArgumentException if array length is not 4, or width/height are negative
+     */
+    static Rectangle toRectangle(Object from, Converter converter) {
+        int[] array = (int[]) from;
+        
+        if (array.length != 4) {
+            throw new IllegalArgumentException("Rectangle array must have exactly 4 elements [x, y, width, height], got: " + array.length);
+        }
+        
+        int x = array[0];
+        int y = array[1];
+        int width = array[2];
+        int height = array[3];
+        
+        // Validate width and height (should be non-negative for Rectangle)
+        if (width < 0 || height < 0) {
+            throw new IllegalArgumentException("Width and height must be non-negative, got: [width=" + width + ", height=" + height + "]");
+        }
+        
+        return new Rectangle(x, y, width, height);
+    }
+
+    /**
+     * Convert int array to Insets. Array must contain exactly 4 elements: [top, left, bottom, right].
+     * @param from int array with top, left, bottom, and right values
+     * @param converter Converter instance
+     * @return Insets instance  
+     * @throws IllegalArgumentException if array length is not 4, or values are negative
+     */
+    static Insets toInsets(Object from, Converter converter) {
+        int[] array = (int[]) from;
+        
+        if (array.length != 4) {
+            throw new IllegalArgumentException("Insets array must have exactly 4 elements [top, left, bottom, right], got: " + array.length);
+        }
+        
+        int top = array[0];
+        int left = array[1];
+        int bottom = array[2];
+        int right = array[3];
+        
+        // Note: Insets can have negative values (unlike Dimension/Rectangle width/height)
+        // so we don't validate for non-negative values here
+        
+        return new Insets(top, left, bottom, right);
+    }
+
+    /**
+     * Convert char[] to File.
+     *
+     * @param from char[] array to convert
+     * @param converter Converter instance
+     * @return File instance
+     */
+    static java.io.File charArrayToFile(Object from, Converter converter) {
+        char[] array = (char[]) from;
+        String path = new String(array);
+        return converter.convert(path, java.io.File.class);
+    }
+
+    /**
+     * Convert byte[] to File.
+     *
+     * @param from byte[] array to convert
+     * @param converter Converter instance
+     * @return File instance
+     */
+    static java.io.File byteArrayToFile(Object from, Converter converter) {
+        byte[] array = (byte[]) from;
+        String path = new String(array, java.nio.charset.StandardCharsets.UTF_8);
+        return converter.convert(path, java.io.File.class);
+    }
+
+    /**
+     * Convert char[] to Path.
+     *
+     * @param from char[] array to convert
+     * @param converter Converter instance
+     * @return Path instance
+     */
+    static java.nio.file.Path charArrayToPath(Object from, Converter converter) {
+        char[] array = (char[]) from;
+        String path = new String(array);
+        return converter.convert(path, java.nio.file.Path.class);
+    }
+
+    /**
+     * Convert byte[] to Path.
+     *
+     * @param from byte[] array to convert
+     * @param converter Converter instance
+     * @return Path instance
+     */
+    static java.nio.file.Path byteArrayToPath(Object from, Converter converter) {
+        byte[] array = (byte[]) from;
+        String path = new String(array, java.nio.charset.StandardCharsets.UTF_8);
+        return converter.convert(path, java.nio.file.Path.class);
     }
 }

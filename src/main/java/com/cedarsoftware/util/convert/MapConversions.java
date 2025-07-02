@@ -1,5 +1,9 @@
 package com.cedarsoftware.util.convert;
 
+import java.awt.Dimension;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -102,6 +106,8 @@ final class MapConversions {
     static final String ID = "id";
     static final String URI_KEY = "URI";
     static final String URL_KEY = "URL";
+    static final String FILE_KEY = "file";
+    static final String PATH_KEY = "path";
     static final String UUID = "UUID";
     static final String CLASS = "class";
     static final String MESSAGE = "message";
@@ -118,6 +124,16 @@ final class MapConversions {
     static final String G = "g";
     static final String B = "b";
     static final String A = "a";
+    static final String WIDTH = "width";
+    static final String HEIGHT = "height";
+    static final String W = "w";
+    static final String H = "h";
+    static final String X = "x";
+    static final String Y = "y";
+    static final String TOP = "top";
+    static final String LEFT = "left";
+    static final String BOTTOM = "bottom";
+    static final String RIGHT = "right";
     private static final Object NO_MATCH = new Object();
 
     private MapConversions() {}
@@ -1042,6 +1058,12 @@ final class MapConversions {
     }
 
     private static final String[] COLOR_KEYS = {COLOR, VALUE, V};
+    private static final String[] DIMENSION_KEYS = {WIDTH, HEIGHT, VALUE, V};
+    private static final String[] POINT_KEYS = {X, Y, VALUE, V};
+    private static final String[] RECTANGLE_KEYS = {X, Y, WIDTH, HEIGHT, VALUE, V};
+    private static final String[] INSETS_KEYS = {TOP, LEFT, BOTTOM, RIGHT, VALUE, V};
+    private static final String[] FILE_KEYS = {FILE_KEY, VALUE, V};
+    private static final String[] PATH_KEYS = {PATH_KEY, VALUE, V};
 
     /**
      * Converts a Map to a java.awt.Color by extracting RGB/RGBA values.
@@ -1098,5 +1120,147 @@ final class MapConversions {
 
         // Try standard key-based dispatch for hex strings or other formats
         return dispatch(from, converter, java.awt.Color.class, COLOR_KEYS);
+    }
+
+    /**
+     * Converts a Map to a java.awt.Dimension by extracting width and height values.
+     * Supports multiple map formats:
+     * - {"width": w, "height": h} - Width and height components
+     * - {"w": w, "h": h} - Short width and height components
+     * - {"value": "800x600"} - String format value for dispatch
+     *
+     * @param from The Map containing dimension data
+     * @param converter The Converter instance for type conversions
+     * @return A Dimension instance
+     * @throws IllegalArgumentException if the map cannot be converted to a Dimension
+     */
+    static Dimension toDimension(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+
+        // Try full width/height components first (most explicit)
+        if (map.containsKey(WIDTH) && map.containsKey(HEIGHT)) {
+            int w = converter.convert(map.get(WIDTH), int.class);
+            int h = converter.convert(map.get(HEIGHT), int.class);
+            return new Dimension(w, h);
+        }
+
+        // Try short width/height components (w, h)
+        if (map.containsKey(W) && map.containsKey(H)) {
+            int w = converter.convert(map.get(W), int.class);
+            int h = converter.convert(map.get(H), int.class);
+            return new Dimension(w, h);
+        }
+
+        // Try standard key-based dispatch for string formats or other formats
+        return dispatch(from, converter, Dimension.class, DIMENSION_KEYS);
+    }
+
+    /**
+     * Converts a Map to a java.awt.Point by extracting x and y values.
+     * Supports multiple map formats:
+     * - {"x": x, "y": y} - X and Y components
+     * - {"value": "(100,200)"} - String format value for dispatch
+     *
+     * @param from The Map containing point data
+     * @param converter The Converter instance for type conversions
+     * @return A Point instance
+     * @throws IllegalArgumentException if the map cannot be converted to a Point
+     */
+    static Point toPoint(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+
+        // Try x/y components (most explicit)
+        if (map.containsKey(X) && map.containsKey(Y)) {
+            int x = converter.convert(map.get(X), int.class);
+            int y = converter.convert(map.get(Y), int.class);
+            return new Point(x, y);
+        }
+
+        // Try standard key-based dispatch for string formats or other formats
+        return dispatch(from, converter, Point.class, POINT_KEYS);
+    }
+
+    /**
+     * Converts a Map to a java.awt.Rectangle by extracting x, y, width, and height values.
+     * Supports multiple map formats:
+     * - {"x": x, "y": y, "width": w, "height": h} - Full Rectangle components
+     * - {"value": "(10,20,100,50)"} - String format value for dispatch
+     *
+     * @param from The Map containing rectangle data
+     * @param converter The Converter instance for type conversions
+     * @return A Rectangle instance
+     * @throws IllegalArgumentException if the map cannot be converted to a Rectangle
+     */
+    static Rectangle toRectangle(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+
+        // Try x/y/width/height components (most explicit)
+        if (map.containsKey(X) && map.containsKey(Y) && map.containsKey(WIDTH) && map.containsKey(HEIGHT)) {
+            int x = converter.convert(map.get(X), int.class);
+            int y = converter.convert(map.get(Y), int.class);
+            int width = converter.convert(map.get(WIDTH), int.class);
+            int height = converter.convert(map.get(HEIGHT), int.class);
+            return new Rectangle(x, y, width, height);
+        }
+
+        // Try standard key-based dispatch for string formats or other formats
+        return dispatch(from, converter, Rectangle.class, RECTANGLE_KEYS);
+    }
+
+    /**
+     * Converts a Map to a java.awt.Insets by extracting top, left, bottom, and right values.
+     * Supports multiple map formats:
+     * - {"top": t, "left": l, "bottom": b, "right": r} - Full Insets components
+     * - {"value": "(5,10,5,10)"} - String format value for dispatch
+     *
+     * @param from The Map containing insets data
+     * @param converter The Converter instance for type conversions
+     * @return An Insets instance
+     * @throws IllegalArgumentException if the map cannot be converted to Insets
+     */
+    static Insets toInsets(Object from, Converter converter) {
+        Map<?, ?> map = (Map<?, ?>) from;
+
+        // Try top/left/bottom/right components (most explicit)
+        if (map.containsKey(TOP) && map.containsKey(LEFT) && map.containsKey(BOTTOM) && map.containsKey(RIGHT)) {
+            int top = converter.convert(map.get(TOP), int.class);
+            int left = converter.convert(map.get(LEFT), int.class);
+            int bottom = converter.convert(map.get(BOTTOM), int.class);
+            int right = converter.convert(map.get(RIGHT), int.class);
+            return new Insets(top, left, bottom, right);
+        }
+
+        // Try standard key-based dispatch for string formats or other formats
+        return dispatch(from, converter, Insets.class, INSETS_KEYS);
+    }
+
+    /**
+     * Converts a Map to a java.io.File by extracting file path.
+     * Supports multiple map formats:
+     * - {"file": "/path/to/file"} - File path component
+     * - {"value": "/path/to/file"} - String format value for dispatch
+     *
+     * @param from The Map containing file data
+     * @param converter The Converter instance for type conversions
+     * @return A File instance
+     * @throws IllegalArgumentException if the map cannot be converted to a File
+     */
+    static java.io.File toFile(Object from, Converter converter) {
+        return dispatch(from, converter, java.io.File.class, FILE_KEYS);
+    }
+
+    /**
+     * Converts a Map to a java.nio.file.Path by extracting path.
+     * Supports multiple map formats:
+     * - {"path": "/path/to/file"} - Path component
+     * - {"value": "/path/to/file"} - String format value for dispatch
+     *
+     * @param from The Map containing path data
+     * @param converter The Converter instance for type conversions
+     * @return A Path instance
+     * @throws IllegalArgumentException if the map cannot be converted to a Path
+     */
+    static java.nio.file.Path toPath(Object from, Converter converter) {
+        return dispatch(from, converter, java.nio.file.Path.class, PATH_KEYS);
     }
 }

@@ -18,6 +18,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)
@@ -287,5 +291,338 @@ final class NumberConversions {
         } else {
             return new Color(rgb); // RGB only
         }
+    }
+
+    /**
+     * Convert Number to Dimension. The number is treated as both width and height (square dimension).
+     * @param from Number to convert (will be used as both width and height)  
+     * @param converter Converter instance
+     * @return Dimension instance with width = height = number
+     */
+    static Dimension toDimension(Object from, Converter converter) {
+        Number number = (Number) from;
+        int size = number.intValue();
+        
+        // Validate size (should be non-negative for Dimension)
+        if (size < 0) {
+            throw new IllegalArgumentException("Dimension size must be non-negative, got: " + size);
+        }
+        
+        return new Dimension(size, size);
+    }
+
+    /**
+     * Convert Number to Point. The number is treated as both x and y coordinates (square point).
+     * @param from Number to convert (will be used as both x and y)  
+     * @param converter Converter instance
+     * @return Point instance with x = y = number
+     */
+    static Point toPoint(Object from, Converter converter) {
+        Number number = (Number) from;
+        int coordinate = number.intValue();
+        
+        return new Point(coordinate, coordinate);
+    }
+
+    // ========================================
+    // Atomic Types to Dimension/Point (Recursive Approach)
+    // ========================================
+
+    /**
+     * Convert AtomicInteger to Dimension by recursively converting to Integer first.
+     * @param from AtomicInteger to convert
+     * @param converter Converter instance
+     * @return Dimension instance
+     */
+    static Dimension atomicIntegerToDimension(Object from, Converter converter) {
+        AtomicInteger atomic = (AtomicInteger) from;
+        return converter.convert(atomic.get(), Dimension.class);
+    }
+
+    /**
+     * Convert AtomicLong to Dimension by recursively converting to Long first.
+     * @param from AtomicLong to convert
+     * @param converter Converter instance
+     * @return Dimension instance
+     */
+    static Dimension atomicLongToDimension(Object from, Converter converter) {
+        AtomicLong atomic = (AtomicLong) from;
+        return converter.convert(atomic.get(), Dimension.class);
+    }
+
+    /**
+     * Convert AtomicBoolean to Dimension by recursively converting to Boolean first.
+     * @param from AtomicBoolean to convert
+     * @param converter Converter instance
+     * @return Dimension instance
+     */
+    static Dimension atomicBooleanToDimension(Object from, Converter converter) {
+        AtomicBoolean atomic = (AtomicBoolean) from;
+        return converter.convert(atomic.get(), Dimension.class);
+    }
+
+    /**
+     * Convert AtomicInteger to Point by recursively converting to Integer first.
+     * @param from AtomicInteger to convert
+     * @param converter Converter instance
+     * @return Point instance
+     */
+    static Point atomicIntegerToPoint(Object from, Converter converter) {
+        AtomicInteger atomic = (AtomicInteger) from;
+        return converter.convert(atomic.get(), Point.class);
+    }
+
+    /**
+     * Convert AtomicLong to Point by recursively converting to Long first.
+     * @param from AtomicLong to convert
+     * @param converter Converter instance
+     * @return Point instance
+     */
+    static Point atomicLongToPoint(Object from, Converter converter) {
+        AtomicLong atomic = (AtomicLong) from;
+        return converter.convert(atomic.get(), Point.class);
+    }
+
+    /**
+     * Convert AtomicBoolean to Point by recursively converting to Boolean first.
+     * @param from AtomicBoolean to convert
+     * @param converter Converter instance
+     * @return Point instance
+     */
+    static Point atomicBooleanToPoint(Object from, Converter converter) {
+        AtomicBoolean atomic = (AtomicBoolean) from;
+        return converter.convert(atomic.get(), Point.class);
+    }
+
+    // ========================================
+    // Boolean to Dimension/Point (Direct Approach)
+    // ========================================
+
+    /**
+     * Convert Boolean to Dimension. false → (0,0), true → (1,1).
+     * @param from Boolean to convert
+     * @param converter Converter instance
+     * @return Dimension instance
+     */
+    static Dimension booleanToDimension(Object from, Converter converter) {
+        Boolean bool = (Boolean) from;
+        return bool ? new Dimension(1, 1) : new Dimension(0, 0);
+    }
+
+    /**
+     * Convert Boolean to Point. false → (0,0), true → (1,1).
+     * @param from Boolean to convert
+     * @param converter Converter instance
+     * @return Point instance
+     */
+    static Point booleanToPoint(Object from, Converter converter) {
+        Boolean bool = (Boolean) from;
+        return bool ? new Point(1, 1) : new Point(0, 0);
+    }
+
+    /**
+     * Convert Boolean to Rectangle. false → (0,0,0,0), true → (1,1,1,1).
+     * @param from Boolean to convert
+     * @param converter Converter instance
+     * @return Rectangle instance
+     */
+    static Rectangle booleanToRectangle(Object from, Converter converter) {
+        Boolean bool = (Boolean) from;
+        return bool ? new Rectangle(1, 1, 1, 1) : new Rectangle(0, 0, 0, 0);
+    }
+
+    /**
+     * Convert Long to Rectangle by treating as area and creating square.
+     * @param from Long to convert (will be used as area for square Rectangle)
+     * @param converter Converter instance
+     * @return Rectangle instance with x=0, y=0, and width=height=sqrt(area)
+     */
+    static Rectangle longToRectangle(Object from, Converter converter) {
+        Long number = (Long) from;
+        if (number < 0) {
+            throw new IllegalArgumentException("Rectangle area must be non-negative, got: " + number);
+        }
+        int side = (int) Math.sqrt(number);
+        return new Rectangle(0, 0, side, side);
+    }
+
+    /**
+     * Convert Integer to Rectangle by treating as area and creating square.
+     * @param from Integer to convert (will be used as area for square Rectangle)
+     * @param converter Converter instance
+     * @return Rectangle instance with x=0, y=0, and width=height=sqrt(area)
+     */
+    static Rectangle integerToRectangle(Object from, Converter converter) {
+        Integer number = (Integer) from;
+        if (number < 0) {
+            throw new IllegalArgumentException("Rectangle area must be non-negative, got: " + number);
+        }
+        int side = (int) Math.sqrt(number);
+        return new Rectangle(0, 0, side, side);
+    }
+
+    /**
+     * Convert BigInteger to Rectangle by treating as area and creating square.
+     * @param from BigInteger to convert
+     * @param converter Converter instance
+     * @return Rectangle instance
+     */
+    static Rectangle bigIntegerToRectangle(Object from, Converter converter) {
+        BigInteger bigInt = (BigInteger) from;
+        if (bigInt.compareTo(BigInteger.ZERO) < 0) {
+            throw new IllegalArgumentException("Rectangle area must be non-negative, got: " + bigInt);
+        }
+        // For very large numbers, cap at Integer.MAX_VALUE
+        long longValue = bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0 ? 
+            Integer.MAX_VALUE : bigInt.longValue();
+        int side = (int) Math.sqrt(longValue);
+        return new Rectangle(0, 0, side, side);
+    }
+
+    // Atomic types (recursive approach)
+    static Rectangle atomicIntegerToRectangle(Object from, Converter converter) {
+        AtomicInteger atomic = (AtomicInteger) from;
+        return converter.convert(atomic.get(), Rectangle.class);
+    }
+
+    static Rectangle atomicLongToRectangle(Object from, Converter converter) {
+        AtomicLong atomic = (AtomicLong) from;
+        return converter.convert(atomic.get(), Rectangle.class);
+    }
+
+    static Rectangle atomicBooleanToRectangle(Object from, Converter converter) {
+        AtomicBoolean atomic = (AtomicBoolean) from;
+        return converter.convert(atomic.get(), Rectangle.class);
+    }
+
+    // ========================================
+    // Number to Insets Conversions
+    // ========================================
+
+    /**
+     * Convert Long to Insets. Creates uniform insets with same value for all sides.
+     * @param from Long to convert (will be used for all sides)
+     * @param converter Converter instance
+     * @return Insets instance with top=left=bottom=right=number
+     */
+    static Insets longToInsets(Object from, Converter converter) {
+        Long number = (Long) from;
+        int value = number.intValue();
+        return new Insets(value, value, value, value);
+    }
+
+    /**
+     * Convert Integer to Insets. Creates uniform insets with same value for all sides.
+     * @param from Integer to convert (will be used for all sides)
+     * @param converter Converter instance
+     * @return Insets instance with top=left=bottom=right=number
+     */
+    static Insets integerToInsets(Object from, Converter converter) {
+        Integer number = (Integer) from;
+        return new Insets(number, number, number, number);
+    }
+
+    /**
+     * Convert BigInteger to Insets. Creates uniform insets with same value for all sides.
+     * @param from BigInteger to convert
+     * @param converter Converter instance
+     * @return Insets instance
+     */
+    static Insets bigIntegerToInsets(Object from, Converter converter) {
+        BigInteger bigInt = (BigInteger) from;
+        // For very large numbers, cap at Integer.MAX_VALUE
+        int value = bigInt.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0 ? 
+            Integer.MAX_VALUE : bigInt.intValue();
+        return new Insets(value, value, value, value);
+    }
+
+    /**
+     * Convert Boolean to Insets. false → (0,0,0,0), true → (1,1,1,1).
+     * @param from Boolean to convert
+     * @param converter Converter instance
+     * @return Insets instance
+     */
+    static Insets booleanToInsets(Object from, Converter converter) {
+        Boolean bool = (Boolean) from;
+        return bool ? new Insets(1, 1, 1, 1) : new Insets(0, 0, 0, 0);
+    }
+
+    // Atomic types (recursive approach)
+    static Insets atomicIntegerToInsets(Object from, Converter converter) {
+        AtomicInteger atomic = (AtomicInteger) from;
+        return converter.convert(atomic.get(), Insets.class);
+    }
+
+    static Insets atomicLongToInsets(Object from, Converter converter) {
+        AtomicLong atomic = (AtomicLong) from;
+        return converter.convert(atomic.get(), Insets.class);
+    }
+
+    static Insets atomicBooleanToInsets(Object from, Converter converter) {
+        AtomicBoolean atomic = (AtomicBoolean) from;
+        return converter.convert(atomic.get(), Insets.class);
+    }
+
+    // ========================================
+    // BigDecimal to AWT Types (Direct Approach)
+    // ========================================
+
+    /**
+     * Convert BigDecimal to Point. Creates square point with both coordinates equal to the number.
+     * @param from BigDecimal to convert (will be used as both x and y)  
+     * @param converter Converter instance
+     * @return Point instance with x = y = number
+     */
+    static Point bigDecimalToPoint(Object from, Converter converter) {
+        BigDecimal bigDecimal = (BigDecimal) from;
+        int coordinate = bigDecimal.intValue();
+        return new Point(coordinate, coordinate);
+    }
+
+    /**
+     * Convert BigDecimal to Dimension. Creates square dimension with both dimensions equal to the number.
+     * @param from BigDecimal to convert (will be used as both width and height)  
+     * @param converter Converter instance
+     * @return Dimension instance with width = height = number
+     */
+    static Dimension bigDecimalToDimension(Object from, Converter converter) {
+        BigDecimal bigDecimal = (BigDecimal) from;
+        int size = bigDecimal.intValue();
+        
+        // Validate size (should be non-negative for Dimension)
+        if (size < 0) {
+            throw new IllegalArgumentException("Dimension size must be non-negative, got: " + size);
+        }
+        
+        return new Dimension(size, size);
+    }
+
+    /**
+     * Convert BigDecimal to Rectangle by treating as area and creating square.
+     * @param from BigDecimal to convert (will be used as area for square Rectangle)
+     * @param converter Converter instance
+     * @return Rectangle instance with x=0, y=0, and width=height=sqrt(area)
+     */
+    static Rectangle bigDecimalToRectangle(Object from, Converter converter) {
+        BigDecimal bigDecimal = (BigDecimal) from;
+        if (bigDecimal.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Rectangle area must be non-negative, got: " + bigDecimal);
+        }
+        // Convert to double for sqrt, then back to int
+        double doubleValue = bigDecimal.doubleValue();
+        int side = (int) Math.sqrt(doubleValue);
+        return new Rectangle(0, 0, side, side);
+    }
+
+    /**
+     * Convert BigDecimal to Insets. Creates uniform insets with same value for all sides.
+     * @param from BigDecimal to convert (will be used for all sides)
+     * @param converter Converter instance
+     * @return Insets instance with top=left=bottom=right=number
+     */
+    static Insets bigDecimalToInsets(Object from, Converter converter) {
+        BigDecimal bigDecimal = (BigDecimal) from;
+        int value = bigDecimal.intValue();
+        return new Insets(value, value, value, value);
     }
 }

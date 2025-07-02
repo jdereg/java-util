@@ -1,5 +1,9 @@
 package com.cedarsoftware.util.convert;
 
+import java.awt.Dimension;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -757,5 +761,274 @@ final class StringConversions {
         }
 
         throw new IllegalArgumentException("Unable to parse color from string: " + from);
+    }
+
+    /**
+     * Convert String to Dimension. Supports formats like:
+     * - "800x600" (width x height)
+     * - "800,600" (width,height)
+     * - "800 600" (width height with space)
+     *
+     * @param from String representation of a dimension
+     * @param converter Converter instance
+     * @return Dimension instance
+     * @throws IllegalArgumentException if the string cannot be parsed as a dimension
+     */
+    static Dimension toDimension(Object from, Converter converter) {
+        String str = ((String) from).trim();
+        
+        if (StringUtilities.isEmpty(str)) {
+            throw new IllegalArgumentException("Cannot convert empty/null string to Dimension");
+        }
+
+        // Try "800x600" format (most common)
+        if (str.contains("x")) {
+            String[] components = str.split("x");
+            if (components.length == 2) {
+                try {
+                    int width = Integer.parseInt(components[0].trim());
+                    int height = Integer.parseInt(components[1].trim());
+                    return new Dimension(width, height);
+                } catch (NumberFormatException e) {
+                    // Fall through to try other formats
+                }
+            }
+        }
+        
+        // Try "800,600" format (comma-separated)
+        if (str.contains(",")) {
+            String[] components = str.split(",");
+            if (components.length == 2) {
+                try {
+                    int width = Integer.parseInt(components[0].trim());
+                    int height = Integer.parseInt(components[1].trim());
+                    return new Dimension(width, height);
+                } catch (NumberFormatException e) {
+                    // Fall through to try other formats
+                }
+            }
+        }
+        
+        // Try "800 600" format (space-separated)
+        if (str.contains(" ")) {
+            String[] components = str.split("\\s+");
+            if (components.length == 2) {
+                try {
+                    int width = Integer.parseInt(components[0].trim());
+                    int height = Integer.parseInt(components[1].trim());
+                    return new Dimension(width, height);
+                } catch (NumberFormatException e) {
+                    // Fall through to error
+                }
+            }
+        }
+
+        throw new IllegalArgumentException("Unable to parse dimension from string: " + from);
+    }
+
+    /**
+     * Convert String to Point. Supports formats like:
+     * - "(100,200)" (parentheses with comma)
+     * - "100,200" (comma-separated)
+     * - "100 200" (space-separated)
+     *
+     * @param from String representation of a point
+     * @param converter Converter instance
+     * @return Point instance
+     * @throws IllegalArgumentException if the string cannot be parsed as a point
+     */
+    static Point toPoint(Object from, Converter converter) {
+        String str = ((String) from).trim();
+        
+        if (StringUtilities.isEmpty(str)) {
+            throw new IllegalArgumentException("Cannot convert empty/null string to Point");
+        }
+
+        // Remove parentheses if present: "(100,200)" -> "100,200"
+        if (str.startsWith("(") && str.endsWith(")")) {
+            str = str.substring(1, str.length() - 1).trim();
+        }
+
+        // Try "100,200" format (comma-separated)
+        if (str.contains(",")) {
+            String[] components = str.split(",");
+            if (components.length == 2) {
+                try {
+                    int x = Integer.parseInt(components[0].trim());
+                    int y = Integer.parseInt(components[1].trim());
+                    return new Point(x, y);
+                } catch (NumberFormatException e) {
+                    // Fall through to try other formats
+                }
+            }
+        }
+        
+        // Try "100 200" format (space-separated)
+        if (str.contains(" ")) {
+            String[] components = str.split("\\s+");
+            if (components.length == 2) {
+                try {
+                    int x = Integer.parseInt(components[0].trim());
+                    int y = Integer.parseInt(components[1].trim());
+                    return new Point(x, y);
+                } catch (NumberFormatException e) {
+                    // Fall through to error
+                }
+            }
+        }
+
+        throw new IllegalArgumentException("Unable to parse point from string: " + from);
+    }
+
+    /**
+     * Convert String to Rectangle. Supports formats like:
+     * - "(10,20,100,50)" (parentheses with commas)
+     * - "10,20,100,50" (comma-separated)
+     * - "10 20 100 50" (space-separated)
+     *
+     * @param from String representation of a rectangle
+     * @param converter Converter instance
+     * @return Rectangle instance
+     * @throws IllegalArgumentException if the string cannot be parsed as a rectangle
+     */
+    static Rectangle toRectangle(Object from, Converter converter) {
+        String str = ((String) from).trim();
+        
+        if (StringUtilities.isEmpty(str)) {
+            throw new IllegalArgumentException("Cannot convert empty/null string to Rectangle");
+        }
+
+        // Remove parentheses if present: "(10,20,100,50)" -> "10,20,100,50"
+        if (str.startsWith("(") && str.endsWith(")")) {
+            str = str.substring(1, str.length() - 1).trim();
+        }
+
+        // Try "10,20,100,50" format (comma-separated)
+        if (str.contains(",")) {
+            String[] components = str.split(",");
+            if (components.length == 4) {
+                try {
+                    int x = Integer.parseInt(components[0].trim());
+                    int y = Integer.parseInt(components[1].trim());
+                    int width = Integer.parseInt(components[2].trim());
+                    int height = Integer.parseInt(components[3].trim());
+                    return new Rectangle(x, y, width, height);
+                } catch (NumberFormatException e) {
+                    // Fall through to try other formats
+                }
+            }
+        }
+        
+        // Try "10 20 100 50" format (space-separated)
+        if (str.contains(" ")) {
+            String[] components = str.split("\\s+");
+            if (components.length == 4) {
+                try {
+                    int x = Integer.parseInt(components[0].trim());
+                    int y = Integer.parseInt(components[1].trim());
+                    int width = Integer.parseInt(components[2].trim());
+                    int height = Integer.parseInt(components[3].trim());
+                    return new Rectangle(x, y, width, height);
+                } catch (NumberFormatException e) {
+                    // Fall through to error
+                }
+            }
+        }
+
+        throw new IllegalArgumentException("Unable to parse rectangle from string: " + from);
+    }
+
+    /**
+     * Convert String to Insets. Supports formats like:
+     * - "(5,10,5,10)" (parentheses with commas)
+     * - "5,10,5,10" (comma-separated)
+     * - "5 10 5 10" (space-separated)
+     *
+     * @param from String representation of insets
+     * @param converter Converter instance
+     * @return Insets instance
+     * @throws IllegalArgumentException if the string cannot be parsed as insets
+     */
+    static Insets toInsets(Object from, Converter converter) {
+        String str = ((String) from).trim();
+        
+        if (StringUtilities.isEmpty(str)) {
+            throw new IllegalArgumentException("Cannot convert empty/null string to Insets");
+        }
+
+        // Remove parentheses if present: "(5,10,5,10)" -> "5,10,5,10"
+        if (str.startsWith("(") && str.endsWith(")")) {
+            str = str.substring(1, str.length() - 1).trim();
+        }
+
+        // Try "5,10,5,10" format (comma-separated)
+        if (str.contains(",")) {
+            String[] components = str.split(",");
+            if (components.length == 4) {
+                try {
+                    int top = Integer.parseInt(components[0].trim());
+                    int left = Integer.parseInt(components[1].trim());
+                    int bottom = Integer.parseInt(components[2].trim());
+                    int right = Integer.parseInt(components[3].trim());
+                    return new Insets(top, left, bottom, right);
+                } catch (NumberFormatException e) {
+                    // Fall through to try other formats
+                }
+            }
+        }
+        
+        // Try "5 10 5 10" format (space-separated)
+        if (str.contains(" ")) {
+            String[] components = str.split("\\s+");
+            if (components.length == 4) {
+                try {
+                    int top = Integer.parseInt(components[0].trim());
+                    int left = Integer.parseInt(components[1].trim());
+                    int bottom = Integer.parseInt(components[2].trim());
+                    int right = Integer.parseInt(components[3].trim());
+                    return new Insets(top, left, bottom, right);
+                } catch (NumberFormatException e) {
+                    // Fall through to error
+                }
+            }
+        }
+
+        throw new IllegalArgumentException("Unable to parse insets from string: " + from);
+    }
+
+    /**
+     * Convert String to File.
+     *
+     * @param from String path to convert
+     * @param converter Converter instance
+     * @return File instance
+     * @throws IllegalArgumentException if the string cannot be converted to File
+     */
+    static java.io.File toFile(Object from, Converter converter) {
+        String str = ((String) from).trim();
+        
+        if (StringUtilities.isEmpty(str)) {
+            throw new IllegalArgumentException("Cannot convert empty/null string to File");
+        }
+
+        return new java.io.File(str);
+    }
+
+    /**
+     * Convert String to Path.
+     *
+     * @param from String path to convert
+     * @param converter Converter instance
+     * @return Path instance
+     * @throws IllegalArgumentException if the string cannot be converted to Path
+     */
+    static java.nio.file.Path toPath(Object from, Converter converter) {
+        String str = ((String) from).trim();
+        
+        if (StringUtilities.isEmpty(str)) {
+            throw new IllegalArgumentException("Cannot convert empty/null string to Path");
+        }
+
+        return java.nio.file.Paths.get(str);
     }
 }

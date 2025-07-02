@@ -68,7 +68,7 @@ final class CalendarConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        return BigInteger.valueOf(((Calendar) from).getTime().getTime() * 1_000_000L);
+        return BigInteger.valueOf(((Calendar) from).getTime().getTime());
     }
 
     static Date toDate(Object from, Converter converter) {

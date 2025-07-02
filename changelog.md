@@ -1,5 +1,12 @@
 ### Revision History
 #### 3.7.0 (Unreleased)
+> * **BREAKING CHANGE**: Fixed time conversion precision rules in `Converter` to align with internal class capabilities:
+>   * **Legacy time classes** (Calendar, Date, java.sql.Date) now convert to/from integer types (long, BigInteger) using **millisecond precision**
+>   * **Modern time classes** (Instant, ZonedDateTime, LocalDateTime, etc.) continue to use **nanosecond precision** for integer types
+>   * **All time classes** continue to use **fractional seconds** for decimal types (double, BigDecimal)
+>   * **Impact**: Code relying on Calendar/Date → BigInteger returning nanoseconds will need updates
+>   * **Rationale**: Legacy classes internally store milliseconds, so conversions should match their native precision for logical consistency and round-trip compatibility
+>   * Fixed implementation bugs where some conversions incorrectly used microsecond scale instead of the intended precision
 
 #### 3.6.0
 > * **Feature Enhancement**: Added comprehensive `java.awt.Color` conversion support to `Converter`:

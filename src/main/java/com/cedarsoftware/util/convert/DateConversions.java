@@ -119,8 +119,8 @@ final class DateConversions {
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {
-        Instant instant = toInstant(from, converter);
-        return InstantConversions.toBigInteger(instant, converter);
+        Date date = (Date) from;
+        return BigInteger.valueOf(date.getTime());
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {

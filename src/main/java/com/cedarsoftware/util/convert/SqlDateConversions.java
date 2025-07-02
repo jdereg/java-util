@@ -68,8 +68,7 @@ public class SqlDateConversions {
         return BigInteger.valueOf(sqlDate.toLocalDate()
                         .atStartOfDay(converter.getOptions().getZoneId())
                         .toInstant()
-                        .toEpochMilli())
-                .multiply(BigIntegerConversions.MILLION);
+                        .toEpochMilli());
     }
 
     static BigDecimal toBigDecimal(Object from, Converter converter) {

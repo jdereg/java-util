@@ -162,7 +162,7 @@ class ConversionDateTest {
     @Test
     void testBigNumberToDateConversions() {
         long now = System.currentTimeMillis();
-        BigInteger bigInt = new BigInteger("" + (now * 1_000_000));      // nanos
+        BigInteger bigInt = new BigInteger("" + now);                    // millis (legacy class rule)
         BigDecimal bigDec = new BigDecimal(now / 1000);                  // seconds
 
         LocalDate expectedLD = Instant.ofEpochMilli(now)

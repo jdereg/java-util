@@ -2047,6 +2047,46 @@ LocalDateTime ldt = converter.convert(date, LocalDateTime.class);
 ZonedDateTime zdt = converter.convert(instant, ZonedDateTime.class);
 ```
 
+**Time Conversion Precision Rules:**
+The Converter applies different precision rules based on time class capabilities:
+
+```java
+// Legacy time classes (millisecond precision internally)
+Calendar cal = Calendar.getInstance();
+long millis = converter.convert(cal, long.class);        // milliseconds
+BigInteger bigInt = converter.convert(cal, BigInteger.class); // milliseconds
+double seconds = converter.convert(cal, double.class);   // fractional seconds
+
+Date date = new Date();
+long dateMillis = converter.convert(date, long.class);   // milliseconds
+BigInteger dateBigInt = converter.convert(date, BigInteger.class); // milliseconds
+
+java.sql.Date sqlDate = new java.sql.Date(System.currentTimeMillis());
+long sqlMillis = converter.convert(sqlDate, long.class); // milliseconds
+BigInteger sqlBigInt = converter.convert(sqlDate, BigInteger.class); // milliseconds
+
+// Modern time classes (nanosecond precision internally)
+Instant instant = Instant.now();
+long nanos = converter.convert(instant, long.class);     // nanoseconds
+BigInteger bigNanos = converter.convert(instant, BigInteger.class); // nanoseconds
+double instantSeconds = converter.convert(instant, double.class); // fractional seconds
+
+ZonedDateTime zdt = ZonedDateTime.now();
+long zdtNanos = converter.convert(zdt, long.class);      // nanoseconds
+BigInteger zdtBigNanos = converter.convert(zdt, BigInteger.class); // nanoseconds
+
+// Round-trip consistency based on class precision
+Calendar original = Calendar.getInstance();
+BigInteger converted = converter.convert(original, BigInteger.class); // milliseconds
+Calendar roundTrip = converter.convert(converted, Calendar.class);    // treats as milliseconds
+// original.equals(roundTrip) is true
+```
+
+This precision-based approach ensures:
+- **Logical consistency**: Each time class uses its native precision
+- **Round-trip compatibility**: Conversions preserve original values
+- **No data loss**: Precision matches internal storage capabilities
+
 ### Checking Conversion Support
 
 ```java

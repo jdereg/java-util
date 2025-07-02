@@ -1511,7 +1511,6 @@ class ConverterTest
 
         Converter converter = new Converter(createCustomZones(zoneId));
         BigInteger actual = converter.convert(calendar, BigInteger.class);
-        actual = actual.divide(BigInteger.valueOf(1_000_000));
         assertThat(actual.longValue()).isEqualTo(epochMilli);
     }
 
@@ -2023,7 +2022,7 @@ class ConverterTest
     @Test
     void testBigInteger_withCalendar() {
         Calendar today = Calendar.getInstance();
-        BigInteger bd = BigInteger.valueOf(today.getTime().getTime()).multiply(BigInteger.valueOf(1_000_000));
+        BigInteger bd = BigInteger.valueOf(today.getTime().getTime());
         assertEquals(bd, this.converter.convert(today, BigInteger.class));
     }
 
@@ -2094,7 +2093,7 @@ class ConverterTest
                 Arguments.of(1705601070270L),
                 Arguments.of( new AtomicLong(1705601070270L)),
                 Arguments.of( 1705601070.270798659898d),
-                Arguments.of( BigInteger.valueOf(1705601070270000000L)),
+                Arguments.of( BigInteger.valueOf(1705601070270L)),
                 Arguments.of( new BigDecimal("1705601070.270")),
                 Arguments.of("1705601070270")
         );

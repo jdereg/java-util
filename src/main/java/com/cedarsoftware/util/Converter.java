@@ -87,6 +87,32 @@ import com.cedarsoftware.util.convert.DefaultConverterOptions;
  * </p>
  *
  * <p>
+ * <strong>Time Conversion Precision Rules:</strong>
+ * The Converter applies different precision rules based on the internal capabilities of time classes:
+ * <ul>
+ *     <li><strong>Legacy time classes</strong> (Calendar, Date, java.sql.Date): Convert to/from integer types 
+ *         (long, BigInteger) using <strong>millisecond precision</strong> to match their internal storage</li>
+ *     <li><strong>Modern time classes</strong> (Instant, ZonedDateTime, LocalDateTime, etc.): Convert to/from 
+ *         integer types using <strong>nanosecond precision</strong> to match their internal storage</li>
+ *     <li><strong>All time classes</strong>: Convert to/from decimal types (double, BigDecimal) using 
+ *         <strong>fractional seconds</strong> for consistent decimal representation</li>
+ * </ul>
+ * Examples:
+ * <pre>{@code
+ *     Calendar cal = Calendar.getInstance();
+ *     long millis = converter.convert(cal, long.class);        // milliseconds
+ *     BigInteger bigInt = converter.convert(cal, BigInteger.class); // milliseconds
+ *     double seconds = converter.convert(cal, double.class);   // fractional seconds
+ *     
+ *     Instant instant = Instant.now();
+ *     long nanos = converter.convert(instant, long.class);     // nanoseconds
+ *     BigInteger bigNanos = converter.convert(instant, BigInteger.class); // nanoseconds
+ *     double seconds = converter.convert(instant, double.class); // fractional seconds
+ * }</pre>
+ * This ensures logical consistency and round-trip compatibility based on each time class's native precision.
+ * </p>
+ *
+ * <p>
  * <strong>Usage Example:</strong>
  * <pre>{@code
  *     ConverterOptions options = new ConverterOptions();

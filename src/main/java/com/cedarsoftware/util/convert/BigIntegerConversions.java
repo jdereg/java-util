@@ -70,13 +70,14 @@ final class BigIntegerConversions {
     }
 
     static Date toDate(Object from, Converter converter) {
-        return Date.from(toInstant(from, converter));
+        BigInteger epochMillis = (BigInteger) from;
+        return new Date(epochMillis.longValue());
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
-        BigInteger nanos = (BigInteger) from;
+        BigInteger epochMillis = (BigInteger) from;
         return java.sql.Date.valueOf(
-                Instant.ofEpochMilli(nanos.divide(MILLION).longValue())
+                Instant.ofEpochMilli(epochMillis.longValue())
                         .atZone(converter.getOptions().getZoneId())
                         .toLocalDate()
         );
@@ -87,8 +88,7 @@ final class BigIntegerConversions {
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
-        BigInteger epochNanos = (BigInteger) from;
-        BigInteger epochMillis = epochNanos.divide(MILLION);
+        BigInteger epochMillis = (BigInteger) from;
         Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
         calendar.setTimeInMillis(epochMillis.longValue());
         return calendar;

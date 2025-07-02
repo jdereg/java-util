@@ -2833,33 +2833,33 @@ class ConverterEverythingTest {
                 {BigDecimal.valueOf(-16777216), BigInteger.valueOf(-16777216), true},
         });
         TEST_DB.put(pair(Date.class, BigInteger.class), new Object[][]{
-                {date("0000-01-01T00:00:00Z"), new BigInteger("-62167219200000000000"), true},
-                {date("0001-02-18T19:58:01Z"), new BigInteger("-62131377719000000000"), true},
-                {date("1969-12-31T23:59:59Z"), BigInteger.valueOf(-1_000_000_000), true},
-                {date("1969-12-31T23:59:59.1Z"), BigInteger.valueOf(-900000000), true},
-                {date("1969-12-31T23:59:59.9Z"), BigInteger.valueOf(-100000000), true},
+                {date("0000-01-01T00:00:00Z"), new BigInteger("-62167219200000"), true},
+                {date("0001-02-18T19:58:01Z"), new BigInteger("-62131377719000"), true},
+                {date("1969-12-31T23:59:59Z"), BigInteger.valueOf(-1000), true},
+                {date("1969-12-31T23:59:59.1Z"), BigInteger.valueOf(-900), true},
+                {date("1969-12-31T23:59:59.9Z"), BigInteger.valueOf(-100), true},
                 {date("1970-01-01T00:00:00Z"), BigInteger.ZERO, true},
-                {date("1970-01-01T00:00:00.1Z"), BigInteger.valueOf(100000000), true},
-                {date("1970-01-01T00:00:00.9Z"), BigInteger.valueOf(900000000), true},
-                {date("1970-01-01T00:00:01Z"), BigInteger.valueOf(1000000000), true},
-                {date("9999-02-18T19:58:01Z"), new BigInteger("253374983881000000000"), true},
+                {date("1970-01-01T00:00:00.1Z"), BigInteger.valueOf(100), true},
+                {date("1970-01-01T00:00:00.9Z"), BigInteger.valueOf(900), true},
+                {date("1970-01-01T00:00:01Z"), BigInteger.valueOf(1000), true},
+                {date("9999-02-18T19:58:01Z"), new BigInteger("253374983881000"), true},
         });
         TEST_DB.put(pair(java.sql.Date.class, BigInteger.class), new Object[][]{
                 // Bidirectional tests (true) - all at midnight Tokyo time
                 {java.sql.Date.valueOf("1888-01-02"),
-                        BigInteger.valueOf(Instant.parse("1888-01-01T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true},  // 1888-01-02 00:00 Tokyo
+                        BigInteger.valueOf(Instant.parse("1888-01-01T15:00:00Z").toEpochMilli()), true},  // 1888-01-02 00:00 Tokyo
 
                 {java.sql.Date.valueOf("1969-12-31"),
-                        BigInteger.valueOf(Instant.parse("1969-12-30T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true},  // 1969-12-31 00:00 Tokyo
+                        BigInteger.valueOf(Instant.parse("1969-12-30T15:00:00Z").toEpochMilli()), true},  // 1969-12-31 00:00 Tokyo
 
                 {java.sql.Date.valueOf("1970-01-01"),
-                        BigInteger.valueOf(Instant.parse("1969-12-31T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true},  // 1970-01-01 00:00 Tokyo
+                        BigInteger.valueOf(Instant.parse("1969-12-31T15:00:00Z").toEpochMilli()), true},  // 1970-01-01 00:00 Tokyo
 
                 {java.sql.Date.valueOf("1970-01-02"),
-                        BigInteger.valueOf(Instant.parse("1970-01-01T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true},  // 1970-01-02 00:00 Tokyo
+                        BigInteger.valueOf(Instant.parse("1970-01-01T15:00:00Z").toEpochMilli()), true},  // 1970-01-02 00:00 Tokyo
 
                 {java.sql.Date.valueOf("2023-06-15"),
-                        BigInteger.valueOf(Instant.parse("2023-06-14T15:00:00Z").toEpochMilli()).multiply(BigInteger.valueOf(1_000_000)), true}   // 2023-06-15 00:00 Tokyo
+                        BigInteger.valueOf(Instant.parse("2023-06-14T15:00:00Z").toEpochMilli()), true}   // 2023-06-15 00:00 Tokyo
         });
         TEST_DB.put(pair(Timestamp.class, BigInteger.class), new Object[][]{
                 // Timestamp uses a proleptic Gregorian calendar starting at year 1, hence no 0000 tests.
@@ -2906,9 +2906,9 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.000000001Z").toLocalDateTime(), new BigInteger("1"), true},
         });
         TEST_DB.put(pair(Calendar.class, BigInteger.class), new Object[][]{
-                {cal(-1), BigInteger.valueOf(-1000000), true},
+                {cal(-1), BigInteger.valueOf(-1), true},
                 {cal(0), BigInteger.ZERO, true},
-                {cal(1), BigInteger.valueOf(1000000), true},
+                {cal(1), BigInteger.valueOf(1), true},
         });
         TEST_DB.put(pair(Map.class, BigInteger.class), new Object[][]{
                 {mapOf("_v", 0), BigInteger.ZERO},

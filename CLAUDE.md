@@ -281,7 +281,7 @@ Before deployment, verify the following conditions are met:
 0. **Version Updates**: Ensure version numbers are updated in documentation files
    - Update README.md version references (e.g., 3.5.0 → 3.6.0)
    - Update changelog.md: move current "(Unreleased)" to release version, add new "(Unreleased)" section for next version
-   - Add recent git commit history to changelog for the release version
+   - Add recent git commit history to changelog for the release version, for each item you cannot already find in the changelog.md
 
 1. **Clean Working Directory**: No uncommitted local files
 ```bash

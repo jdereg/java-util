@@ -940,7 +940,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(File.class, String.class), FileConversions::toString);
         CONVERSION_DB.put(pair(Path.class, String.class), PathConversions::toString);
         CONVERSION_DB.put(pair(TimeZone.class, String.class), TimeZoneConversions::toString);
-        CONVERSION_DB.put(pair(StringBuilder.class, String.class), UniversalConversions::stringBuilderToString);
         CONVERSION_DB.put(pair(StringBuffer.class, String.class), UniversalConversions::stringBufferToString);
         CONVERSION_DB.put(pair(Pattern.class, String.class), PatternConversions::toString);
         CONVERSION_DB.put(pair(Currency.class, String.class), CurrencyConversions::toString);
@@ -1063,7 +1062,6 @@ public final class Converter {
         // toStringBuffer
         CONVERSION_DB.put(pair(Void.class, StringBuffer.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, StringBuffer.class), StringConversions::toStringBuffer);
-        CONVERSION_DB.put(pair(StringBuilder.class, StringBuffer.class), StringConversions::toStringBuffer);
         CONVERSION_DB.put(pair(StringBuffer.class, StringBuffer.class), StringConversions::toStringBuffer);
         CONVERSION_DB.put(pair(ByteBuffer.class, StringBuffer.class), ByteBufferConversions::toStringBuffer);
         CONVERSION_DB.put(pair(CharBuffer.class, StringBuffer.class), CharBufferConversions::toStringBuffer);
@@ -1075,7 +1073,6 @@ public final class Converter {
         // toStringBuilder
         CONVERSION_DB.put(pair(Void.class, StringBuilder.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, StringBuilder.class), StringConversions::toStringBuilder);
-        CONVERSION_DB.put(pair(StringBuilder.class, StringBuilder.class), StringConversions::toStringBuilder);
         CONVERSION_DB.put(pair(StringBuffer.class, StringBuilder.class), StringConversions::toStringBuilder);
         CONVERSION_DB.put(pair(ByteBuffer.class, StringBuilder.class), ByteBufferConversions::toStringBuilder);
         CONVERSION_DB.put(pair(CharBuffer.class, StringBuilder.class), CharBufferConversions::toStringBuilder);
@@ -1341,10 +1338,8 @@ public final class Converter {
                             UniversalConversions::atomicLongToLong, null),
 
                     // String builders → String (lossless via .toString())
-                    new SurrogatePrimaryPair(StringBuffer.class, String.class,
-                            UniversalConversions::stringBufferToString, null),
-                    new SurrogatePrimaryPair(StringBuilder.class, String.class,
-                            UniversalConversions::stringBuilderToString, null),
+                    new SurrogatePrimaryPair(CharSequence.class, String.class,
+                            UniversalConversions::charSequenceToString, null),
 
                     // Date & Time
                     new SurrogatePrimaryPair(Calendar.class, ZonedDateTime.class, 
@@ -1385,7 +1380,9 @@ public final class Converter {
                     new SurrogatePrimaryPair(String.class, StringBuffer.class, null,
                             UniversalConversions::stringToStringBuffer),
                     new SurrogatePrimaryPair(String.class, StringBuilder.class, null,
-                            UniversalConversions::stringToStringBuilder)
+                            UniversalConversions::stringToStringBuilder),
+                    new SurrogatePrimaryPair(String.class, CharSequence.class, null,
+                            UniversalConversions::stringToCharSequence)
             );
         }
         return PRIMARY_TO_SURROGATE_PAIRS;

@@ -103,6 +103,15 @@ final class UniversalConversions {
         return sb.toString();
     }
 
+    /**
+     * Universal bridge: CharSequence → String.
+     * Extracts the String value from CharSequence for further conversion.
+     */
+    static String charSequenceToString(Object from, Converter converter) {
+        CharSequence cs = (CharSequence) from;
+        return cs.toString();
+    }
+
     // ========================================
     // Atomic → Primitive Bridge Methods
     // ========================================
@@ -181,6 +190,15 @@ final class UniversalConversions {
     static StringBuffer stringToStringBuffer(Object from, Converter converter) {
         String value = (String) from;
         return new StringBuffer(value);
+    }
+
+    /**
+     * Universal reverse bridge: String → CharSequence.
+     * Returns the String as CharSequence for reverse bridge access.
+     */
+    static CharSequence stringToCharSequence(Object from, Converter converter) {
+        String value = (String) from;
+        return value; // String implements CharSequence
     }
 
     // ========================================

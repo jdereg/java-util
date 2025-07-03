@@ -806,6 +806,30 @@ public class ClassUtilities {
     }
 
     /**
+     * Converts a wrapper class to its corresponding primitive class.
+     * If the passed in class is not a wrapper class, it returns the same class.
+     * 
+     * <p><strong>Examples:</strong></p>
+     * <pre>{@code
+     * Class<?> intPrimitive = ClassUtilities.toPrimitiveClass(Integer.class);   // Returns int.class
+     * Class<?> boolPrimitive = ClassUtilities.toPrimitiveClass(Boolean.class);  // Returns boolean.class
+     * Class<?> sameClass = ClassUtilities.toPrimitiveClass(String.class);       // Returns String.class
+     * }</pre>
+     *
+     * @param wrapperClass the wrapper class to convert
+     * @return the corresponding primitive class, or the same class if not a wrapper
+     * @throws IllegalArgumentException if the passed in class is null
+     */
+    public static Class<?> toPrimitiveClass(Class<?> wrapperClass) {
+        if (wrapperClass == null) {
+            throw new IllegalArgumentException("Passed in class cannot be null");
+        }
+
+        Class<?> primitive = WRAPPER_TO_PRIMITIVE.get(wrapperClass);
+        return primitive != null ? primitive : wrapperClass;
+    }
+
+    /**
      * Determines if one class is the wrapper type of the other.
      * <p>
      * This method checks if there is a primitive-wrapper relationship between two classes.

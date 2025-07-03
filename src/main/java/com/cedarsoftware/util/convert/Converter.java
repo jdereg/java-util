@@ -2523,86 +2523,53 @@ public final class Converter {
      * @return The previous conversion method associated with the source and target types, or {@code null} if no conversion existed.
      */
     public static Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
-        Class<?> originalSource = source;
-        Class<?> originalTarget = target;
-        Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
-        Class<?> wrapperTarget = ClassUtilities.toPrimitiveWrapperClass(target);
-        Class<?> primitiveSource = toPrimitiveClass(source);
-        Class<?> primitiveTarget = toPrimitiveClass(target);
+        // Collect all type variations (primitive and wrapper) for both source and target
+        Set<Class<?>> sourceTypes = getTypeVariations(source);
+        Set<Class<?>> targetTypes = getTypeVariations(target);
 
-        // Clear any cached converter for all related types.
-        clearCachesForType(originalSource, originalTarget);
-        clearCachesForType(wrapperSource, wrapperTarget);
-        if (primitiveSource != null) {
-            clearCachesForType(primitiveSource, originalTarget);
-        }
-        if (primitiveTarget != null) {
-            clearCachesForType(originalSource, primitiveTarget);
-        }
-        if (primitiveSource != null && primitiveTarget != null) {
-            clearCachesForType(primitiveSource, primitiveTarget);
-        }
-
-        // Always add the wrapper version (primary storage location)
-        Convert<?> previous = USER_DB.put(pair(wrapperSource, wrapperTarget), conversionMethod);
-
-        // Add all primitive/wrapper combinations that make sense
-        Set<ConversionPair> pairs = new HashSet<>();
-        pairs.add(pair(originalSource, originalTarget));
-        pairs.add(pair(wrapperSource, wrapperTarget));
-
-        if (primitiveSource != null) {
-            pairs.add(pair(primitiveSource, originalTarget));
-            pairs.add(pair(primitiveSource, wrapperTarget));
-            if (primitiveTarget != null) {
-                pairs.add(pair(primitiveSource, primitiveTarget));
+        // Clear caches for all combinations
+        for (Class<?> srcType : sourceTypes) {
+            for (Class<?> tgtType : targetTypes) {
+                clearCachesForType(srcType, tgtType);
             }
         }
 
-        if (primitiveTarget != null) {
-            pairs.add(pair(originalSource, primitiveTarget));
-            pairs.add(pair(wrapperSource, primitiveTarget));
-        }
+        // Store the wrapper version first to capture return value
+        Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
+        Class<?> wrapperTarget = ClassUtilities.toPrimitiveWrapperClass(target);
+        Convert<?> previous = USER_DB.put(pair(wrapperSource, wrapperTarget), conversionMethod);
 
-        // Add all unique pairs to USER_DB
-        for (ConversionPair pair : pairs) {
-            USER_DB.put(pair, conversionMethod);
+        // Add all type combinations to USER_DB
+        for (Class<?> srcType : sourceTypes) {
+            for (Class<?> tgtType : targetTypes) {
+                USER_DB.put(pair(srcType, tgtType), conversionMethod);
+            }
         }
 
         return previous;
     }
 
     /**
-     * Helper method to get the primitive class from a wrapper class.
-     * Returns null if the class is not a primitive wrapper.
+     * Helper method to get all type variations (primitive and wrapper) for a given class.
      */
-    private static Class<?> toPrimitiveClass(Class<?> wrapperClass) {
-        if (wrapperClass == Boolean.class) {
-            return boolean.class;
+    private static Set<Class<?>> getTypeVariations(Class<?> clazz) {
+        Set<Class<?>> types = new HashSet<>();
+        types.add(clazz);
+        
+        if (clazz.isPrimitive()) {
+            // If it's primitive, add the wrapper
+            types.add(ClassUtilities.toPrimitiveWrapperClass(clazz));
+        } else {
+            // If it's not primitive, check if it's a wrapper and add the primitive
+            Class<?> primitive = ClassUtilities.toPrimitiveClass(clazz);
+            if (primitive != clazz) {  // toPrimitiveClass returns same class if not a wrapper
+                types.add(primitive);
+            }
         }
-        if (wrapperClass == Byte.class) {
-            return byte.class;
-        }
-        if (wrapperClass == Character.class) {
-            return char.class;
-        }
-        if (wrapperClass == Short.class) {
-            return short.class;
-        }
-        if (wrapperClass == Integer.class) {
-            return int.class;
-        }
-        if (wrapperClass == Long.class) {
-            return long.class;
-        }
-        if (wrapperClass == Float.class) {
-            return float.class;
-        }
-        if (wrapperClass == Double.class) {
-            return double.class;
-        }
-        return null; // Not a primitive wrapper
+        
+        return types;
     }
+
 
     /**
      * Performs an identity conversion, returning the source object as-is.

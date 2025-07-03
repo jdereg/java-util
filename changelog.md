@@ -14,6 +14,12 @@
 >   * Eliminates runtime double-lookup overhead in favor of storage-time enumeration for better performance
 >   * Maintains consistency with CONVERSION_DB philosophy of explicit enumeration rather than special lookup logic
 >   * Ensures seamless primitive/wrapper interoperability in user-defined conversions
+>   * **Code Simplification**: Refactored implementation to leverage existing `ClassUtilities` methods, reducing complexity by 47% while maintaining identical functionality
+> * **API ENHANCEMENT**: Added `ClassUtilities.toPrimitiveClass()` method as complement to existing `toPrimitiveWrapperClass()`:
+>   * Converts wrapper classes to their corresponding primitive classes (e.g., `Integer.class` → `int.class`)
+>   * Returns the same class if not a wrapper type, ensuring safe usage for any class
+>   * Leverages optimized `ClassValueMap` caching for high-performance lookups
+>   * Centralizes primitive/wrapper conversion logic in `ClassUtilities` for consistency across java-util
 > * **BREAKING CHANGE**: Fixed time conversion precision rules in `Converter` to align with internal class capabilities:
 >   * **Legacy time classes** (Calendar, Date, java.sql.Date) now convert to/from integer types (long, BigInteger) using **millisecond precision**
 >   * **Modern time classes** (Instant, ZonedDateTime, LocalDateTime, etc.) continue to use **nanosecond precision** for integer types

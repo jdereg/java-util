@@ -1832,9 +1832,17 @@ Object instance3 = ClassUtilities.newInstance(MyClass.class, "single-arg");
 // 4. No-arg constructor
 Object instance4 = ClassUtilities.newInstance(MyClass.class, null);
 
-// Convert primitive types
+// Convert primitive types to wrappers
 Class<?> wrapper = ClassUtilities.toPrimitiveWrapperClass(int.class);
 // Result: Integer.class
+
+// Convert wrapper types to primitives
+Class<?> primitive = ClassUtilities.toPrimitiveClass(Integer.class);
+// Result: int.class
+
+// Safe for non-wrapper types (returns same class)
+Class<?> same = ClassUtilities.toPrimitiveClass(String.class);
+// Result: String.class
 ```
 
 **Resource Loading:**

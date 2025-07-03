@@ -1,5 +1,19 @@
 ### Revision History
 #### 3.7.0 (Unreleased)
+> * **MAJOR FEATURE**: Added comprehensive array-like type bridge system to `Converter`, expanding conversion capability by 39% (1,567 total conversion pairs):
+>   * **Atomic Arrays**: Added full bidirectional conversion support for `AtomicIntegerArray`, `AtomicLongArray`, and `AtomicReferenceArray`
+>   * **NIO Buffers**: Added complete bridge system for all NIO buffer types (`IntBuffer`, `LongBuffer`, `FloatBuffer`, `DoubleBuffer`, `ShortBuffer`) with existing `ByteBuffer` and `CharBuffer`
+>   * **BitSet Integration**: Added intelligent `BitSet` conversion support with bridges to `boolean[]` (bit values), `int[]` (set bit indices), and `byte[]` (raw representation)
+>   * **Stream API**: Added bidirectional conversion support for `IntStream`, `LongStream`, and `DoubleStream` primitive streams
+>   * **Universal Array Access**: Each array-like type now has access to the entire universal array conversion ecosystem - for example, `AtomicIntegerArray` → `int[]` → `Color` works seamlessly
+>   * **Performance Optimized**: All bridges use efficient extraction/creation patterns with minimal overhead
+>   * Removed redundant array surrogate pairs that were duplicating universal array system functionality
+> * **ARCHITECTURE IMPROVEMENT**: Enhanced `addConversion()` method with comprehensive primitive/wrapper support:
+>   * When adding a conversion involving primitive or wrapper types, the system now automatically creates ALL relevant combinations
+>   * Example: `addConversion(UUID.class, Boolean.class, converter)` now creates entries for both `(UUID, Boolean)` and `(UUID, boolean)`
+>   * Eliminates runtime double-lookup overhead in favor of storage-time enumeration for better performance
+>   * Maintains consistency with CONVERSION_DB philosophy of explicit enumeration rather than special lookup logic
+>   * Ensures seamless primitive/wrapper interoperability in user-defined conversions
 > * **BREAKING CHANGE**: Fixed time conversion precision rules in `Converter` to align with internal class capabilities:
 >   * **Legacy time classes** (Calendar, Date, java.sql.Date) now convert to/from integer types (long, BigInteger) using **millisecond precision**
 >   * **Modern time classes** (Instant, ZonedDateTime, LocalDateTime, etc.) continue to use **nanosecond precision** for integer types

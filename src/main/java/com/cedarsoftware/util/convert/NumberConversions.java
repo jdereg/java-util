@@ -328,27 +328,9 @@ final class NumberConversions {
     // Atomic Types to Dimension/Point (Recursive Approach)
     // ========================================
 
-    /**
-     * Convert AtomicInteger to Dimension by recursively converting to Integer first.
-     * @param from AtomicInteger to convert
-     * @param converter Converter instance
-     * @return Dimension instance
-     */
-    static Dimension atomicIntegerToDimension(Object from, Converter converter) {
-        AtomicInteger atomic = (AtomicInteger) from;
-        return converter.convert(atomic.get(), Dimension.class);
-    }
+    // atomicIntegerToDimension removed - now bridged via AtomicInteger → Integer → Dimension
 
-    /**
-     * Convert AtomicLong to Dimension by recursively converting to Long first.
-     * @param from AtomicLong to convert
-     * @param converter Converter instance
-     * @return Dimension instance
-     */
-    static Dimension atomicLongToDimension(Object from, Converter converter) {
-        AtomicLong atomic = (AtomicLong) from;
-        return converter.convert(atomic.get(), Dimension.class);
-    }
+    // atomicLongToDimension removed - now bridged via AtomicLong → Long → Dimension
 
     /**
      * Convert AtomicBoolean to Dimension by recursively converting to Boolean first.
@@ -361,27 +343,9 @@ final class NumberConversions {
         return converter.convert(atomic.get(), Dimension.class);
     }
 
-    /**
-     * Convert AtomicInteger to Point by recursively converting to Integer first.
-     * @param from AtomicInteger to convert
-     * @param converter Converter instance
-     * @return Point instance
-     */
-    static Point atomicIntegerToPoint(Object from, Converter converter) {
-        AtomicInteger atomic = (AtomicInteger) from;
-        return converter.convert(atomic.get(), Point.class);
-    }
+    // atomicIntegerToPoint removed - now bridged via AtomicInteger → Integer → Point
 
-    /**
-     * Convert AtomicLong to Point by recursively converting to Long first.
-     * @param from AtomicLong to convert
-     * @param converter Converter instance
-     * @return Point instance
-     */
-    static Point atomicLongToPoint(Object from, Converter converter) {
-        AtomicLong atomic = (AtomicLong) from;
-        return converter.convert(atomic.get(), Point.class);
-    }
+    // atomicLongToPoint removed - now bridged via AtomicLong → Long → Point
 
     /**
      * Convert AtomicBoolean to Point by recursively converting to Boolean first.
@@ -480,15 +444,9 @@ final class NumberConversions {
     }
 
     // Atomic types (recursive approach)
-    static Rectangle atomicIntegerToRectangle(Object from, Converter converter) {
-        AtomicInteger atomic = (AtomicInteger) from;
-        return converter.convert(atomic.get(), Rectangle.class);
-    }
+    // atomicIntegerToRectangle removed - now bridged via AtomicInteger → Integer → Rectangle
 
-    static Rectangle atomicLongToRectangle(Object from, Converter converter) {
-        AtomicLong atomic = (AtomicLong) from;
-        return converter.convert(atomic.get(), Rectangle.class);
-    }
+    // atomicLongToRectangle removed - now bridged via AtomicLong → Long → Rectangle
 
     static Rectangle atomicBooleanToRectangle(Object from, Converter converter) {
         AtomicBoolean atomic = (AtomicBoolean) from;
@@ -548,15 +506,9 @@ final class NumberConversions {
     }
 
     // Atomic types (recursive approach)
-    static Insets atomicIntegerToInsets(Object from, Converter converter) {
-        AtomicInteger atomic = (AtomicInteger) from;
-        return converter.convert(atomic.get(), Insets.class);
-    }
+    // atomicIntegerToInsets removed - now bridged via AtomicInteger → Integer → Insets
 
-    static Insets atomicLongToInsets(Object from, Converter converter) {
-        AtomicLong atomic = (AtomicLong) from;
-        return converter.convert(atomic.get(), Insets.class);
-    }
+    // atomicLongToInsets removed - now bridged via AtomicLong → Long → Insets
 
     static Insets atomicBooleanToInsets(Object from, Converter converter) {
         AtomicBoolean atomic = (AtomicBoolean) from;

@@ -10,6 +10,11 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.ShortBuffer;
 import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -27,6 +32,8 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,6 +42,7 @@ import java.util.Currency;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -48,8 +56,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.regex.Pattern;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
@@ -166,19 +180,19 @@ import com.cedarsoftware.util.ClassValueMap;
  * </ul>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
- *         Copyright (c) Cedar Software LLC
- *         <br><br>
- *         Licensed under the Apache License, Version 2.0 (the "License");
- *         you may not use this file except in compliance with the License.
- *         You may obtain a copy of the License at
- *         <br><br>
- *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
- *         <br><br>
- *         Unless required by applicable law or agreed to in writing, software
- *         distributed under the License is distributed on an "AS IS" BASIS,
- *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *         See the License for the specific language governing permissions and
- *         limitations under the License.
+ * Copyright (c) Cedar Software LLC
+ * <br><br>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <br><br>
+ * <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ * <br><br>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 public final class Converter {
     private static final Convert<?> UNSUPPORTED = Converter::unsupported;
@@ -219,8 +233,12 @@ public final class Converter {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (!(obj instanceof ConversionPair)) return false;
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof ConversionPair)) {
+                return false;
+            }
             ConversionPair other = (ConversionPair) obj;
             return source == other.source && target == other.target && instanceId == other.instanceId;
         }
@@ -235,16 +253,15 @@ public final class Converter {
     public static ConversionPair pair(Class<?> source, Class<?> target, long instanceId) {
         return new ConversionPair(source, target, instanceId);
     }
-    
+
     // Helper method for static contexts that don't have instance context (legacy support)
     public static ConversionPair pair(Class<?> source, Class<?> target) {
         return new ConversionPair(source, target, 0); // Use 0 for static/shared conversions
     }
-    
+
     static {
         CUSTOM_ARRAY_NAMES.put(java.sql.Date[].class, "java.sql.Date[]");
         buildFactoryConversions();
-        CONVERSION_DB = Collections.unmodifiableMap(CONVERSION_DB);
     }
 
     /**
@@ -293,9 +310,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Byte.class), NumberConversions::toByte);
         CONVERSION_DB.put(pair(Boolean.class, Byte.class), BooleanConversions::toByte);
         CONVERSION_DB.put(pair(Character.class, Byte.class), CharacterConversions::toByte);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Byte.class), AtomicBooleanConversions::toByte);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Byte.class), NumberConversions::toByte);
-        CONVERSION_DB.put(pair(AtomicLong.class, Byte.class), NumberConversions::toByte);
         CONVERSION_DB.put(pair(BigInteger.class, Byte.class), NumberConversions::toByte);
         CONVERSION_DB.put(pair(BigDecimal.class, Byte.class), NumberConversions::toByte);
         CONVERSION_DB.put(pair(Map.class, Byte.class), MapConversions::toByte);
@@ -312,9 +326,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Short.class), NumberConversions::toShort);
         CONVERSION_DB.put(pair(Boolean.class, Short.class), BooleanConversions::toShort);
         CONVERSION_DB.put(pair(Character.class, Short.class), CharacterConversions::toShort);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Short.class), AtomicBooleanConversions::toShort);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Short.class), NumberConversions::toShort);
-        CONVERSION_DB.put(pair(AtomicLong.class, Short.class), NumberConversions::toShort);
         CONVERSION_DB.put(pair(BigInteger.class, Short.class), NumberConversions::toShort);
         CONVERSION_DB.put(pair(BigDecimal.class, Short.class), NumberConversions::toShort);
         CONVERSION_DB.put(pair(Map.class, Short.class), MapConversions::toShort);
@@ -323,6 +334,7 @@ public final class Converter {
 
         // toInteger
         CONVERSION_DB.put(pair(Void.class, int.class), NumberConversions::toIntZero);
+        CONVERSION_DB.put(pair(AtomicInteger.class, int.class), UniversalConversions::atomicIntegerToInt);
         CONVERSION_DB.put(pair(Void.class, Integer.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(Short.class, Integer.class), NumberConversions::toInt);
@@ -332,9 +344,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(Boolean.class, Integer.class), BooleanConversions::toInt);
         CONVERSION_DB.put(pair(Character.class, Integer.class), CharacterConversions::toInt);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Integer.class), AtomicBooleanConversions::toInt);
         CONVERSION_DB.put(pair(AtomicInteger.class, Integer.class), NumberConversions::toInt);
-        CONVERSION_DB.put(pair(AtomicLong.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(BigInteger.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(BigDecimal.class, Integer.class), NumberConversions::toInt);
         CONVERSION_DB.put(pair(Map.class, Integer.class), MapConversions::toInt);
@@ -350,6 +360,7 @@ public final class Converter {
 
         // toLong
         CONVERSION_DB.put(pair(Void.class, long.class), NumberConversions::toLongZero);
+        CONVERSION_DB.put(pair(AtomicLong.class, long.class), UniversalConversions::atomicLongToLong);
         CONVERSION_DB.put(pair(Void.class, Long.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, Long.class), NumberConversions::toLong);
         CONVERSION_DB.put(pair(Short.class, Long.class), NumberConversions::toLong);
@@ -359,11 +370,9 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Long.class), NumberConversions::toLong);
         CONVERSION_DB.put(pair(Boolean.class, Long.class), BooleanConversions::toLong);
         CONVERSION_DB.put(pair(Character.class, Long.class), CharacterConversions::toLong);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Long.class), AtomicBooleanConversions::toLong);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Long.class), NumberConversions::toLong);
-        CONVERSION_DB.put(pair(AtomicLong.class, Long.class), NumberConversions::toLong);
         CONVERSION_DB.put(pair(BigInteger.class, Long.class), NumberConversions::toLong);
         CONVERSION_DB.put(pair(BigDecimal.class, Long.class), NumberConversions::toLong);
+        CONVERSION_DB.put(pair(AtomicLong.class, Long.class), NumberConversions::toLong);
         CONVERSION_DB.put(pair(Date.class, Long.class), DateConversions::toLong);
         CONVERSION_DB.put(pair(java.sql.Date.class, Long.class), SqlDateConversions::toLong);
         CONVERSION_DB.put(pair(Timestamp.class, Long.class), TimestampConversions::toLong);
@@ -396,9 +405,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Float.class), NumberConversions::toFloat);
         CONVERSION_DB.put(pair(Boolean.class, Float.class), BooleanConversions::toFloat);
         CONVERSION_DB.put(pair(Character.class, Float.class), CharacterConversions::toFloat);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Float.class), AtomicBooleanConversions::toFloat);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Float.class), NumberConversions::toFloat);
-        CONVERSION_DB.put(pair(AtomicLong.class, Float.class), NumberConversions::toFloat);
         CONVERSION_DB.put(pair(BigInteger.class, Float.class), NumberConversions::toFloat);
         CONVERSION_DB.put(pair(BigDecimal.class, Float.class), NumberConversions::toFloat);
         CONVERSION_DB.put(pair(Map.class, Float.class), MapConversions::toFloat);
@@ -427,9 +433,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Date.class, Double.class), DateConversions::toDouble);
         CONVERSION_DB.put(pair(java.sql.Date.class, Double.class), SqlDateConversions::toDouble);
         CONVERSION_DB.put(pair(Timestamp.class, Double.class), TimestampConversions::toDouble);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Double.class), AtomicBooleanConversions::toDouble);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Double.class), NumberConversions::toDouble);
-        CONVERSION_DB.put(pair(AtomicLong.class, Double.class), NumberConversions::toDouble);
         CONVERSION_DB.put(pair(BigInteger.class, Double.class), NumberConversions::toDouble);
         CONVERSION_DB.put(pair(BigDecimal.class, Double.class), NumberConversions::toDouble);
         CONVERSION_DB.put(pair(Calendar.class, Double.class), CalendarConversions::toDouble);
@@ -439,6 +442,8 @@ public final class Converter {
 
         // Boolean/boolean conversions supported
         CONVERSION_DB.put(pair(Void.class, boolean.class), VoidConversions::toBoolean);
+        CONVERSION_DB.put(pair(AtomicBoolean.class, boolean.class), UniversalConversions::atomicBooleanToBoolean);
+        CONVERSION_DB.put(pair(AtomicBoolean.class, Boolean.class), AtomicBooleanConversions::toBoolean);
         CONVERSION_DB.put(pair(Void.class, Boolean.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(Byte.class, Boolean.class), NumberConversions::isIntTypeNotZero);
         CONVERSION_DB.put(pair(Short.class, Boolean.class), NumberConversions::isIntTypeNotZero);
@@ -448,9 +453,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Boolean.class), NumberConversions::isFloatTypeNotZero);
         CONVERSION_DB.put(pair(Boolean.class, Boolean.class), Converter::identity);
         CONVERSION_DB.put(pair(Character.class, Boolean.class), CharacterConversions::toBoolean);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Boolean.class), AtomicBooleanConversions::toBoolean);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Boolean.class), NumberConversions::isIntTypeNotZero);
-        CONVERSION_DB.put(pair(AtomicLong.class, Boolean.class), NumberConversions::isIntTypeNotZero);
         CONVERSION_DB.put(pair(BigInteger.class, Boolean.class), NumberConversions::isBigIntegerNotZero);
         CONVERSION_DB.put(pair(BigDecimal.class, Boolean.class), NumberConversions::isBigDecimalNotZero);
         CONVERSION_DB.put(pair(Map.class, Boolean.class), MapConversions::toBoolean);
@@ -471,9 +473,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Character.class), NumberConversions::toCharacter);
         CONVERSION_DB.put(pair(Boolean.class, Character.class), BooleanConversions::toCharacter);
         CONVERSION_DB.put(pair(Character.class, Character.class), Converter::identity);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Character.class), AtomicBooleanConversions::toCharacter);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Character.class), NumberConversions::toCharacter);
-        CONVERSION_DB.put(pair(AtomicLong.class, Character.class), NumberConversions::toCharacter);
         CONVERSION_DB.put(pair(BigInteger.class, Character.class), NumberConversions::toCharacter);
         CONVERSION_DB.put(pair(BigDecimal.class, Character.class), NumberConversions::toCharacter);
         CONVERSION_DB.put(pair(Map.class, Character.class), MapConversions::toCharacter);
@@ -481,9 +480,9 @@ public final class Converter {
 
         // BigInteger versions supported
         CONVERSION_DB.put(pair(Void.class, BigInteger.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Byte.class, BigInteger.class),  NumberConversions::integerTypeToBigInteger);
-        CONVERSION_DB.put(pair(Short.class, BigInteger.class),  NumberConversions::integerTypeToBigInteger);
-        CONVERSION_DB.put(pair(Integer.class, BigInteger.class),  NumberConversions::integerTypeToBigInteger);
+        CONVERSION_DB.put(pair(Byte.class, BigInteger.class), NumberConversions::integerTypeToBigInteger);
+        CONVERSION_DB.put(pair(Short.class, BigInteger.class), NumberConversions::integerTypeToBigInteger);
+        CONVERSION_DB.put(pair(Integer.class, BigInteger.class), NumberConversions::integerTypeToBigInteger);
         CONVERSION_DB.put(pair(Long.class, BigInteger.class), NumberConversions::integerTypeToBigInteger);
         CONVERSION_DB.put(pair(Float.class, BigInteger.class), NumberConversions::floatingPointToBigInteger);
         CONVERSION_DB.put(pair(Double.class, BigInteger.class), NumberConversions::floatingPointToBigInteger);
@@ -491,9 +490,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character.class, BigInteger.class), CharacterConversions::toBigInteger);
         CONVERSION_DB.put(pair(BigInteger.class, BigInteger.class), Converter::identity);
         CONVERSION_DB.put(pair(BigDecimal.class, BigInteger.class), BigDecimalConversions::toBigInteger);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, BigInteger.class), AtomicBooleanConversions::toBigInteger);
-        CONVERSION_DB.put(pair(AtomicInteger.class, BigInteger.class),  NumberConversions::integerTypeToBigInteger);
-        CONVERSION_DB.put(pair(AtomicLong.class, BigInteger.class),  NumberConversions::integerTypeToBigInteger);
         CONVERSION_DB.put(pair(Date.class, BigInteger.class), DateConversions::toBigInteger);
         CONVERSION_DB.put(pair(java.sql.Date.class, BigInteger.class), SqlDateConversions::toBigInteger);
         CONVERSION_DB.put(pair(Timestamp.class, BigInteger.class), TimestampConversions::toBigInteger);
@@ -528,9 +524,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character.class, BigDecimal.class), CharacterConversions::toBigDecimal);
         CONVERSION_DB.put(pair(BigDecimal.class, BigDecimal.class), Converter::identity);
         CONVERSION_DB.put(pair(BigInteger.class, BigDecimal.class), BigIntegerConversions::toBigDecimal);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, BigDecimal.class), AtomicBooleanConversions::toBigDecimal);
-        CONVERSION_DB.put(pair(AtomicInteger.class, BigDecimal.class), NumberConversions::integerTypeToBigDecimal);
-        CONVERSION_DB.put(pair(AtomicLong.class, BigDecimal.class), NumberConversions::integerTypeToBigDecimal);
         CONVERSION_DB.put(pair(Date.class, BigDecimal.class), DateConversions::toBigDecimal);
         CONVERSION_DB.put(pair(java.sql.Date.class, BigDecimal.class), SqlDateConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Timestamp.class, BigDecimal.class), TimestampConversions::toBigDecimal);
@@ -566,8 +559,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigInteger.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(BigDecimal.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(AtomicBoolean.class, AtomicBoolean.class), AtomicBooleanConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(AtomicInteger.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(AtomicLong.class, AtomicBoolean.class), NumberConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(Map.class, AtomicBoolean.class), MapConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(String.class, AtomicBoolean.class), StringConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(Year.class, AtomicBoolean.class), YearConversions::toAtomicBoolean);
@@ -585,8 +576,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigInteger.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(BigDecimal.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(AtomicInteger.class, AtomicInteger.class), AtomicIntegerConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, AtomicInteger.class), AtomicBooleanConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(AtomicLong.class, AtomicInteger.class), NumberConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(LocalTime.class, AtomicInteger.class), LocalTimeConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(OffsetTime.class, AtomicInteger.class), OffsetTimeConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(Map.class, AtomicInteger.class), MapConversions::toAtomicInteger);
@@ -605,8 +594,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Character.class, AtomicLong.class), CharacterConversions::toAtomicLong);
         CONVERSION_DB.put(pair(BigInteger.class, AtomicLong.class), NumberConversions::toAtomicLong);
         CONVERSION_DB.put(pair(BigDecimal.class, AtomicLong.class), NumberConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, AtomicLong.class), AtomicBooleanConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(AtomicInteger.class, AtomicLong.class), NumberConversions::toAtomicLong);
         CONVERSION_DB.put(pair(AtomicLong.class, AtomicLong.class), AtomicLongConversions::toAtomicLong);
         CONVERSION_DB.put(pair(Date.class, AtomicLong.class), DateConversions::toAtomicLong);
         CONVERSION_DB.put(pair(java.sql.Date.class, AtomicLong.class), SqlDateConversions::toAtomicLong);
@@ -630,7 +617,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Date.class), DoubleConversions::toDate);
         CONVERSION_DB.put(pair(BigInteger.class, Date.class), BigIntegerConversions::toDate);
         CONVERSION_DB.put(pair(BigDecimal.class, Date.class), BigDecimalConversions::toDate);
-        CONVERSION_DB.put(pair(AtomicLong.class, Date.class), NumberConversions::toDate);
         CONVERSION_DB.put(pair(Date.class, Date.class), DateConversions::toDate);
         CONVERSION_DB.put(pair(java.sql.Date.class, Date.class), SqlDateConversions::toDate);
         CONVERSION_DB.put(pair(Timestamp.class, Date.class), TimestampConversions::toDate);
@@ -649,7 +635,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, java.sql.Date.class), DoubleConversions::toSqlDate);
         CONVERSION_DB.put(pair(BigInteger.class, java.sql.Date.class), BigIntegerConversions::toSqlDate);
         CONVERSION_DB.put(pair(BigDecimal.class, java.sql.Date.class), BigDecimalConversions::toSqlDate);
-        CONVERSION_DB.put(pair(AtomicLong.class, java.sql.Date.class), NumberConversions::toSqlDate);
         CONVERSION_DB.put(pair(java.sql.Date.class, java.sql.Date.class), SqlDateConversions::toSqlDate);
         CONVERSION_DB.put(pair(Date.class, java.sql.Date.class), DateConversions::toSqlDate);
         CONVERSION_DB.put(pair(Timestamp.class, java.sql.Date.class), TimestampConversions::toSqlDate);
@@ -668,12 +653,11 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Timestamp.class), DoubleConversions::toTimestamp);
         CONVERSION_DB.put(pair(BigInteger.class, Timestamp.class), BigIntegerConversions::toTimestamp);
         CONVERSION_DB.put(pair(BigDecimal.class, Timestamp.class), BigDecimalConversions::toTimestamp);
-        CONVERSION_DB.put(pair(AtomicLong.class, Timestamp.class), NumberConversions::toTimestamp);
         CONVERSION_DB.put(pair(Timestamp.class, Timestamp.class), DateConversions::toTimestamp);
         CONVERSION_DB.put(pair(java.sql.Date.class, Timestamp.class), SqlDateConversions::toTimestamp);
         CONVERSION_DB.put(pair(Date.class, Timestamp.class), DateConversions::toTimestamp);
         CONVERSION_DB.put(pair(Duration.class, Timestamp.class), DurationConversions::toTimestamp);
-        CONVERSION_DB.put(pair(Instant.class,Timestamp.class), InstantConversions::toTimestamp);
+        CONVERSION_DB.put(pair(Instant.class, Timestamp.class), InstantConversions::toTimestamp);
         CONVERSION_DB.put(pair(LocalDate.class, Timestamp.class), LocalDateConversions::toTimestamp);
         CONVERSION_DB.put(pair(LocalDateTime.class, Timestamp.class), LocalDateTimeConversions::toTimestamp);
         CONVERSION_DB.put(pair(ZonedDateTime.class, Timestamp.class), ZonedDateTimeConversions::toTimestamp);
@@ -688,7 +672,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Calendar.class), DoubleConversions::toCalendar);
         CONVERSION_DB.put(pair(BigInteger.class, Calendar.class), BigIntegerConversions::toCalendar);
         CONVERSION_DB.put(pair(BigDecimal.class, Calendar.class), BigDecimalConversions::toCalendar);
-        CONVERSION_DB.put(pair(AtomicLong.class, Calendar.class), NumberConversions::toCalendar);
         CONVERSION_DB.put(pair(Date.class, Calendar.class), DateConversions::toCalendar);
         CONVERSION_DB.put(pair(java.sql.Date.class, Calendar.class), SqlDateConversions::toCalendar);
         CONVERSION_DB.put(pair(Timestamp.class, Calendar.class), TimestampConversions::toCalendar);
@@ -708,7 +691,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, LocalDate.class), DoubleConversions::toLocalDate);
         CONVERSION_DB.put(pair(BigInteger.class, LocalDate.class), BigIntegerConversions::toLocalDate);
         CONVERSION_DB.put(pair(BigDecimal.class, LocalDate.class), BigDecimalConversions::toLocalDate);
-        CONVERSION_DB.put(pair(AtomicLong.class, LocalDate.class), NumberConversions::toLocalDate);
         CONVERSION_DB.put(pair(java.sql.Date.class, LocalDate.class), SqlDateConversions::toLocalDate);
         CONVERSION_DB.put(pair(Timestamp.class, LocalDate.class), DateConversions::toLocalDate);
         CONVERSION_DB.put(pair(Date.class, LocalDate.class), DateConversions::toLocalDate);
@@ -727,7 +709,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, LocalDateTime.class), DoubleConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(BigInteger.class, LocalDateTime.class), BigIntegerConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(BigDecimal.class, LocalDateTime.class), BigDecimalConversions::toLocalDateTime);
-        CONVERSION_DB.put(pair(AtomicLong.class, LocalDateTime.class), NumberConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(java.sql.Date.class, LocalDateTime.class), SqlDateConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(Timestamp.class, LocalDateTime.class), TimestampConversions::toLocalDateTime);
         CONVERSION_DB.put(pair(Date.class, LocalDateTime.class), DateConversions::toLocalDateTime);
@@ -747,8 +728,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, LocalTime.class), DoubleConversions::toLocalTime);
         CONVERSION_DB.put(pair(BigInteger.class, LocalTime.class), BigIntegerConversions::toLocalTime);
         CONVERSION_DB.put(pair(BigDecimal.class, LocalTime.class), BigDecimalConversions::toLocalTime);
-        CONVERSION_DB.put(pair(AtomicInteger.class, LocalTime.class), NumberConversions::toLocalTime);
-        CONVERSION_DB.put(pair(AtomicLong.class, LocalTime.class), NumberConversions::toLocalTime);
         CONVERSION_DB.put(pair(Timestamp.class, LocalTime.class), DateConversions::toLocalTime);
         CONVERSION_DB.put(pair(Date.class, LocalTime.class), DateConversions::toLocalTime);
         CONVERSION_DB.put(pair(Instant.class, LocalTime.class), InstantConversions::toLocalTime);
@@ -766,7 +745,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, ZonedDateTime.class), DoubleConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(BigInteger.class, ZonedDateTime.class), BigIntegerConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(BigDecimal.class, ZonedDateTime.class), BigDecimalConversions::toZonedDateTime);
-        CONVERSION_DB.put(pair(AtomicLong.class, ZonedDateTime.class), NumberConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(java.sql.Date.class, ZonedDateTime.class), SqlDateConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(Timestamp.class, ZonedDateTime.class), DateConversions::toZonedDateTime);
         CONVERSION_DB.put(pair(Date.class, ZonedDateTime.class), DateConversions::toZonedDateTime);
@@ -785,7 +763,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, OffsetDateTime.class), MapConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(String.class, OffsetDateTime.class), StringConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(Long.class, OffsetDateTime.class), NumberConversions::toOffsetDateTime);
-        CONVERSION_DB.put(pair(AtomicLong.class, OffsetDateTime.class), NumberConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(Double.class, OffsetDateTime.class), DoubleConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(BigInteger.class, OffsetDateTime.class), BigIntegerConversions::toOffsetDateTime);
         CONVERSION_DB.put(pair(BigDecimal.class, OffsetDateTime.class), BigDecimalConversions::toOffsetDateTime);
@@ -805,8 +782,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, OffsetTime.class), DoubleConversions::toOffsetTime);
         CONVERSION_DB.put(pair(BigInteger.class, OffsetTime.class), BigIntegerConversions::toOffsetTime);
         CONVERSION_DB.put(pair(BigDecimal.class, OffsetTime.class), BigDecimalConversions::toOffsetTime);
-        CONVERSION_DB.put(pair(AtomicInteger.class, OffsetTime.class), NumberConversions::toOffsetTime);
-        CONVERSION_DB.put(pair(AtomicLong.class, OffsetTime.class), NumberConversions::toOffsetTime);
         CONVERSION_DB.put(pair(OffsetTime.class, OffsetTime.class), Converter::identity);
         CONVERSION_DB.put(pair(OffsetDateTime.class, OffsetTime.class), OffsetDateTimeConversions::toOffsetTime);
         CONVERSION_DB.put(pair(Map.class, OffsetTime.class), MapConversions::toOffsetTime);
@@ -844,9 +819,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, Dimension.class), NumberConversions::toDimension);
         CONVERSION_DB.put(pair(BigInteger.class, Dimension.class), NumberConversions::toDimension);
         CONVERSION_DB.put(pair(BigDecimal.class, Dimension.class), NumberConversions::bigDecimalToDimension);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Dimension.class), NumberConversions::atomicIntegerToDimension);
-        CONVERSION_DB.put(pair(AtomicLong.class, Dimension.class), NumberConversions::atomicLongToDimension);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Dimension.class), NumberConversions::atomicBooleanToDimension);
         CONVERSION_DB.put(pair(Boolean.class, Dimension.class), NumberConversions::booleanToDimension);
         CONVERSION_DB.put(pair(int[].class, Dimension.class), ArrayConversions::toDimension);
         CONVERSION_DB.put(pair(Rectangle.class, Dimension.class), RectangleConversions::toDimension);
@@ -862,9 +834,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, Point.class), NumberConversions::toPoint);
         CONVERSION_DB.put(pair(BigInteger.class, Point.class), NumberConversions::toPoint);
         CONVERSION_DB.put(pair(BigDecimal.class, Point.class), NumberConversions::bigDecimalToPoint);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Point.class), NumberConversions::atomicIntegerToPoint);
-        CONVERSION_DB.put(pair(AtomicLong.class, Point.class), NumberConversions::atomicLongToPoint);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Point.class), NumberConversions::atomicBooleanToPoint);
         CONVERSION_DB.put(pair(Boolean.class, Point.class), NumberConversions::booleanToPoint);
         CONVERSION_DB.put(pair(int[].class, Point.class), ArrayConversions::toPoint);
         CONVERSION_DB.put(pair(Dimension.class, Point.class), DimensionConversions::toPoint);
@@ -880,9 +849,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, Rectangle.class), NumberConversions::longToRectangle);
         CONVERSION_DB.put(pair(BigInteger.class, Rectangle.class), NumberConversions::bigIntegerToRectangle);
         CONVERSION_DB.put(pair(BigDecimal.class, Rectangle.class), NumberConversions::bigDecimalToRectangle);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Rectangle.class), NumberConversions::atomicIntegerToRectangle);
-        CONVERSION_DB.put(pair(AtomicLong.class, Rectangle.class), NumberConversions::atomicLongToRectangle);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Rectangle.class), NumberConversions::atomicBooleanToRectangle);
         CONVERSION_DB.put(pair(Boolean.class, Rectangle.class), NumberConversions::booleanToRectangle);
         CONVERSION_DB.put(pair(int[].class, Rectangle.class), ArrayConversions::toRectangle);
         CONVERSION_DB.put(pair(Point.class, Rectangle.class), PointConversions::toRectangle);
@@ -898,9 +864,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, Insets.class), NumberConversions::longToInsets);
         CONVERSION_DB.put(pair(BigInteger.class, Insets.class), NumberConversions::bigIntegerToInsets);
         CONVERSION_DB.put(pair(BigDecimal.class, Insets.class), NumberConversions::bigDecimalToInsets);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Insets.class), NumberConversions::atomicIntegerToInsets);
-        CONVERSION_DB.put(pair(AtomicLong.class, Insets.class), NumberConversions::atomicLongToInsets);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Insets.class), NumberConversions::atomicBooleanToInsets);
         CONVERSION_DB.put(pair(Boolean.class, Insets.class), NumberConversions::booleanToInsets);
         CONVERSION_DB.put(pair(int[].class, Insets.class), ArrayConversions::toInsets);
         CONVERSION_DB.put(pair(Point.class, Insets.class), PointConversions::toInsets);
@@ -943,13 +906,10 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(Float.class, String.class), NumberConversions::floatToString);
         CONVERSION_DB.put(pair(Double.class, String.class), NumberConversions::doubleToString);
-        CONVERSION_DB.put(pair(Boolean.class, String.class), StringConversions::toString);
+        CONVERSION_DB.put(pair(Boolean.class, String.class), UniversalConversions::toString);
         CONVERSION_DB.put(pair(Character.class, String.class), CharacterConversions::toString);
-        CONVERSION_DB.put(pair(BigInteger.class, String.class), StringConversions::toString);
+        CONVERSION_DB.put(pair(BigInteger.class, String.class), UniversalConversions::toString);
         CONVERSION_DB.put(pair(BigDecimal.class, String.class), BigDecimalConversions::toString);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(AtomicInteger.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(AtomicLong.class, String.class), StringConversions::toString);
         CONVERSION_DB.put(pair(byte[].class, String.class), ByteArrayConversions::toString);
         CONVERSION_DB.put(pair(char[].class, String.class), CharArrayConversions::toString);
         CONVERSION_DB.put(pair(Character[].class, String.class), CharacterArrayConversions::toString);
@@ -963,7 +923,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(LocalTime.class, String.class), LocalTimeConversions::toString);
         CONVERSION_DB.put(pair(LocalDateTime.class, String.class), LocalDateTimeConversions::toString);
         CONVERSION_DB.put(pair(ZonedDateTime.class, String.class), ZonedDateTimeConversions::toString);
-        CONVERSION_DB.put(pair(UUID.class, String.class), StringConversions::toString);
+        CONVERSION_DB.put(pair(UUID.class, String.class), UniversalConversions::toString);
         CONVERSION_DB.put(pair(Color.class, String.class), ColorConversions::toString);
         CONVERSION_DB.put(pair(Dimension.class, String.class), DimensionConversions::toString);
         CONVERSION_DB.put(pair(Point.class, String.class), PointConversions::toString);
@@ -973,24 +933,24 @@ public final class Converter {
         CONVERSION_DB.put(pair(Map.class, String.class), MapConversions::toString);
         CONVERSION_DB.put(pair(Enum.class, String.class), StringConversions::enumToString);
         CONVERSION_DB.put(pair(String.class, String.class), Converter::identity);
-        CONVERSION_DB.put(pair(Duration.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(Instant.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(MonthDay.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(YearMonth.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(Period.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(ZoneId.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(ZoneOffset.class, String.class), StringConversions::toString);
+        CONVERSION_DB.put(pair(Duration.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(Instant.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(MonthDay.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(YearMonth.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(Period.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(ZoneId.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(ZoneOffset.class, String.class), UniversalConversions::toString);
         CONVERSION_DB.put(pair(OffsetTime.class, String.class), OffsetTimeConversions::toString);
         CONVERSION_DB.put(pair(OffsetDateTime.class, String.class), OffsetDateTimeConversions::toString);
         CONVERSION_DB.put(pair(Year.class, String.class), YearConversions::toString);
         CONVERSION_DB.put(pair(Locale.class, String.class), LocaleConversions::toString);
-        CONVERSION_DB.put(pair(URL.class, String.class), StringConversions::toString);
-        CONVERSION_DB.put(pair(URI.class, String.class), StringConversions::toString);
+        CONVERSION_DB.put(pair(URL.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(URI.class, String.class), UniversalConversions::toString);
         CONVERSION_DB.put(pair(File.class, String.class), FileConversions::toString);
         CONVERSION_DB.put(pair(Path.class, String.class), PathConversions::toString);
         CONVERSION_DB.put(pair(TimeZone.class, String.class), TimeZoneConversions::toString);
-        CONVERSION_DB.put(pair(StringBuilder.class, String.class), StringBuilderConversions::toString);
-        CONVERSION_DB.put(pair(StringBuffer.class, String.class), StringBufferConversions::toString);
+        CONVERSION_DB.put(pair(StringBuilder.class, String.class), UniversalConversions::stringBuilderToString);
+        CONVERSION_DB.put(pair(StringBuffer.class, String.class), UniversalConversions::stringBufferToString);
         CONVERSION_DB.put(pair(Pattern.class, String.class), PatternConversions::toString);
         CONVERSION_DB.put(pair(Currency.class, String.class), CurrencyConversions::toString);
 
@@ -1037,7 +997,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Duration.class, Duration.class), Converter::identity);
         CONVERSION_DB.put(pair(Long.class, Duration.class), NumberConversions::toDuration);
         CONVERSION_DB.put(pair(Double.class, Duration.class), DoubleConversions::toDuration);
-        CONVERSION_DB.put(pair(AtomicLong.class, Duration.class), NumberConversions::toDuration);
         CONVERSION_DB.put(pair(BigInteger.class, Duration.class), BigIntegerConversions::toDuration);
         CONVERSION_DB.put(pair(BigDecimal.class, Duration.class), BigDecimalConversions::toDuration);
         CONVERSION_DB.put(pair(Timestamp.class, Duration.class), TimestampConversions::toDuration);
@@ -1051,7 +1010,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Double.class, Instant.class), DoubleConversions::toInstant);
         CONVERSION_DB.put(pair(BigInteger.class, Instant.class), BigIntegerConversions::toInstant);
         CONVERSION_DB.put(pair(BigDecimal.class, Instant.class), BigDecimalConversions::toInstant);
-        CONVERSION_DB.put(pair(AtomicLong.class, Instant.class), NumberConversions::toInstant);
         CONVERSION_DB.put(pair(java.sql.Date.class, Instant.class), SqlDateConversions::toInstant);
         CONVERSION_DB.put(pair(Timestamp.class, Instant.class), DateConversions::toInstant);
         CONVERSION_DB.put(pair(Date.class, Instant.class), DateConversions::toInstant);
@@ -1140,8 +1098,6 @@ public final class Converter {
         // toByteArray
         CONVERSION_DB.put(pair(Void.class, byte[].class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, byte[].class), StringConversions::toByteArray);
-        CONVERSION_DB.put(pair(StringBuilder.class, byte[].class), StringConversions::toByteArray);
-        CONVERSION_DB.put(pair(StringBuffer.class, byte[].class), StringConversions::toByteArray);
         CONVERSION_DB.put(pair(ByteBuffer.class, byte[].class), ByteBufferConversions::toByteArray);
         CONVERSION_DB.put(pair(CharBuffer.class, byte[].class), CharBufferConversions::toByteArray);
         CONVERSION_DB.put(pair(char[].class, byte[].class), VoidConversions::toNull); // advertising convertion, implemented generically in ArrayConversions.
@@ -1152,8 +1108,6 @@ public final class Converter {
         // toCharArray
         CONVERSION_DB.put(pair(Void.class, char[].class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, char[].class), StringConversions::toCharArray);
-        CONVERSION_DB.put(pair(StringBuilder.class, char[].class), StringConversions::toCharArray);
-        CONVERSION_DB.put(pair(StringBuffer.class, char[].class), StringConversions::toCharArray);
         CONVERSION_DB.put(pair(ByteBuffer.class, char[].class), ByteBufferConversions::toCharArray);
         CONVERSION_DB.put(pair(CharBuffer.class, char[].class), CharBufferConversions::toCharArray);
         CONVERSION_DB.put(pair(char[].class, char[].class), CharArrayConversions::toCharArray);
@@ -1164,14 +1118,10 @@ public final class Converter {
         // toCharacterArray
         CONVERSION_DB.put(pair(Void.class, Character[].class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, Character[].class), StringConversions::toCharacterArray);
-        CONVERSION_DB.put(pair(StringBuffer.class, Character[].class), StringConversions::toCharacterArray);
-        CONVERSION_DB.put(pair(StringBuilder.class, Character[].class), StringConversions::toCharacterArray);
 
         // toCharBuffer
         CONVERSION_DB.put(pair(Void.class, CharBuffer.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, CharBuffer.class), StringConversions::toCharBuffer);
-        CONVERSION_DB.put(pair(StringBuilder.class, CharBuffer.class), StringConversions::toCharBuffer);
-        CONVERSION_DB.put(pair(StringBuffer.class, CharBuffer.class), StringConversions::toCharBuffer);
         CONVERSION_DB.put(pair(ByteBuffer.class, CharBuffer.class), ByteBufferConversions::toCharBuffer);
         CONVERSION_DB.put(pair(CharBuffer.class, CharBuffer.class), CharBufferConversions::toCharBuffer);
         CONVERSION_DB.put(pair(char[].class, CharBuffer.class), CharArrayConversions::toCharBuffer);
@@ -1181,8 +1131,6 @@ public final class Converter {
         // toByteBuffer
         CONVERSION_DB.put(pair(Void.class, ByteBuffer.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, ByteBuffer.class), StringConversions::toByteBuffer);
-        CONVERSION_DB.put(pair(StringBuilder.class, ByteBuffer.class), StringConversions::toByteBuffer);
-        CONVERSION_DB.put(pair(StringBuffer.class, ByteBuffer.class), StringConversions::toByteBuffer);
         CONVERSION_DB.put(pair(ByteBuffer.class, ByteBuffer.class), ByteBufferConversions::toByteBuffer);
         CONVERSION_DB.put(pair(CharBuffer.class, ByteBuffer.class), CharBufferConversions::toByteBuffer);
         CONVERSION_DB.put(pair(char[].class, ByteBuffer.class), CharArrayConversions::toByteBuffer);
@@ -1197,8 +1145,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Long.class, Year.class), NumberConversions::toYear);
         CONVERSION_DB.put(pair(Float.class, Year.class), NumberConversions::toYear);
         CONVERSION_DB.put(pair(Double.class, Year.class), NumberConversions::toYear);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Year.class), NumberConversions::toYear);
-        CONVERSION_DB.put(pair(AtomicLong.class, Year.class), NumberConversions::toYear);
         CONVERSION_DB.put(pair(BigInteger.class, Year.class), NumberConversions::toYear);
         CONVERSION_DB.put(pair(BigDecimal.class, Year.class), NumberConversions::toYear);
         CONVERSION_DB.put(pair(java.sql.Date.class, Year.class), SqlDateConversions::toYear);
@@ -1218,19 +1164,19 @@ public final class Converter {
 
         // Map conversions supported
         CONVERSION_DB.put(pair(Void.class, Map.class), VoidConversions::toNull);
-        CONVERSION_DB.put(pair(Byte.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Short.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Integer.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Long.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Float.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Double.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Boolean.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(Character.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(BigInteger.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(BigDecimal.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(AtomicBoolean.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(AtomicInteger.class, Map.class), MapConversions::initMap);
-        CONVERSION_DB.put(pair(AtomicLong.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(Byte.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(Short.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(Integer.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(Long.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(Float.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(Double.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(Boolean.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(Character.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(BigInteger.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(BigDecimal.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(AtomicBoolean.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(AtomicInteger.class, Map.class), UniversalConversions::toMap);
+        CONVERSION_DB.put(pair(AtomicLong.class, Map.class), UniversalConversions::toMap);
         CONVERSION_DB.put(pair(Date.class, Map.class), DateConversions::toMap);
         CONVERSION_DB.put(pair(java.sql.Date.class, Map.class), SqlDateConversions::toMap);
         CONVERSION_DB.put(pair(Timestamp.class, Map.class), TimestampConversions::toMap);
@@ -1247,7 +1193,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(TimeZone.class, Map.class), TimeZoneConversions::toMap);
         CONVERSION_DB.put(pair(ZoneId.class, Map.class), ZoneIdConversions::toMap);
         CONVERSION_DB.put(pair(ZoneOffset.class, Map.class), ZoneOffsetConversions::toMap);
-        CONVERSION_DB.put(pair(Class.class, Map.class), MapConversions::initMap);
+        CONVERSION_DB.put(pair(Class.class, Map.class), UniversalConversions::toMap);
         CONVERSION_DB.put(pair(UUID.class, Map.class), UUIDConversions::toMap);
         CONVERSION_DB.put(pair(Color.class, Map.class), ColorConversions::toMap);
         CONVERSION_DB.put(pair(Dimension.class, Map.class), DimensionConversions::toMap);
@@ -1269,14 +1215,87 @@ public final class Converter {
         CONVERSION_DB.put(pair(CharBuffer.class, Map.class), CharBufferConversions::toMap);
         CONVERSION_DB.put(pair(File.class, Map.class), FileConversions::toMap);
         CONVERSION_DB.put(pair(Path.class, Map.class), PathConversions::toMap);
-        
+
         // toIntArray
         CONVERSION_DB.put(pair(Color.class, int[].class), ColorConversions::toIntArray);
         CONVERSION_DB.put(pair(Dimension.class, int[].class), DimensionConversions::toIntArray);
         CONVERSION_DB.put(pair(Point.class, int[].class), PointConversions::toIntArray);
         CONVERSION_DB.put(pair(Rectangle.class, int[].class), RectangleConversions::toIntArray);
         CONVERSION_DB.put(pair(Insets.class, int[].class), InsetsConversions::toIntArray);
-        
+
+        // Array-like type bridges for universal array system access
+        // ========================================
+        // Atomic Array Bridges
+        // ========================================
+
+        // AtomicIntegerArray ↔ int[] bridges
+        CONVERSION_DB.put(pair(AtomicIntegerArray.class, int[].class), UniversalConversions::atomicIntegerArrayToIntArray);
+        CONVERSION_DB.put(pair(int[].class, AtomicIntegerArray.class), UniversalConversions::intArrayToAtomicIntegerArray);
+
+        // AtomicLongArray ↔ long[] bridges  
+        CONVERSION_DB.put(pair(AtomicLongArray.class, long[].class), UniversalConversions::atomicLongArrayToLongArray);
+        CONVERSION_DB.put(pair(long[].class, AtomicLongArray.class), UniversalConversions::longArrayToAtomicLongArray);
+
+        // AtomicReferenceArray ↔ Object[] bridges
+        CONVERSION_DB.put(pair(AtomicReferenceArray.class, Object[].class), UniversalConversions::atomicReferenceArrayToObjectArray);
+        CONVERSION_DB.put(pair(Object[].class, AtomicReferenceArray.class), UniversalConversions::objectArrayToAtomicReferenceArray);
+
+        // ========================================
+        // NIO Buffer Bridges
+        // ========================================
+
+        // IntBuffer ↔ int[] bridges
+        CONVERSION_DB.put(pair(IntBuffer.class, int[].class), UniversalConversions::intBufferToIntArray);
+        CONVERSION_DB.put(pair(int[].class, IntBuffer.class), UniversalConversions::intArrayToIntBuffer);
+
+        // LongBuffer ↔ long[] bridges
+        CONVERSION_DB.put(pair(LongBuffer.class, long[].class), UniversalConversions::longBufferToLongArray);
+        CONVERSION_DB.put(pair(long[].class, LongBuffer.class), UniversalConversions::longArrayToLongBuffer);
+
+        // FloatBuffer ↔ float[] bridges
+        CONVERSION_DB.put(pair(FloatBuffer.class, float[].class), UniversalConversions::floatBufferToFloatArray);
+        CONVERSION_DB.put(pair(float[].class, FloatBuffer.class), UniversalConversions::floatArrayToFloatBuffer);
+
+        // DoubleBuffer ↔ double[] bridges
+        CONVERSION_DB.put(pair(DoubleBuffer.class, double[].class), UniversalConversions::doubleBufferToDoubleArray);
+        CONVERSION_DB.put(pair(double[].class, DoubleBuffer.class), UniversalConversions::doubleArrayToDoubleBuffer);
+
+        // ShortBuffer ↔ short[] bridges
+        CONVERSION_DB.put(pair(ShortBuffer.class, short[].class), UniversalConversions::shortBufferToShortArray);
+        CONVERSION_DB.put(pair(short[].class, ShortBuffer.class), UniversalConversions::shortArrayToShortBuffer);
+
+        // ========================================
+        // BitSet Bridges
+        // ========================================
+
+        // BitSet ↔ boolean[] bridges
+        CONVERSION_DB.put(pair(BitSet.class, boolean[].class), UniversalConversions::bitSetToBooleanArray);
+        CONVERSION_DB.put(pair(boolean[].class, BitSet.class), UniversalConversions::booleanArrayToBitSet);
+
+        // BitSet ↔ int[] bridges (set bit indices)
+        CONVERSION_DB.put(pair(BitSet.class, int[].class), UniversalConversions::bitSetToIntArray);
+        CONVERSION_DB.put(pair(int[].class, BitSet.class), UniversalConversions::intArrayToBitSet);
+
+        // BitSet ↔ byte[] bridges
+        CONVERSION_DB.put(pair(BitSet.class, byte[].class), UniversalConversions::bitSetToByteArray);
+        CONVERSION_DB.put(pair(byte[].class, BitSet.class), UniversalConversions::byteArrayToBitSet);
+
+        // ========================================
+        // Stream Bridges
+        // ========================================
+
+        // IntStream ↔ int[] bridges
+        CONVERSION_DB.put(pair(IntStream.class, int[].class), UniversalConversions::intStreamToIntArray);
+        CONVERSION_DB.put(pair(int[].class, IntStream.class), UniversalConversions::intArrayToIntStream);
+
+        // LongStream ↔ long[] bridges
+        CONVERSION_DB.put(pair(LongStream.class, long[].class), UniversalConversions::longStreamToLongArray);
+        CONVERSION_DB.put(pair(long[].class, LongStream.class), UniversalConversions::longArrayToLongStream);
+
+        // DoubleStream ↔ double[] bridges
+        CONVERSION_DB.put(pair(DoubleStream.class, double[].class), UniversalConversions::doubleStreamToDoubleArray);
+        CONVERSION_DB.put(pair(double[].class, DoubleStream.class), UniversalConversions::doubleArrayToDoubleStream);
+
         // Register Record.class -> Map.class conversion if Records are supported
         try {
             Class<?> recordClass = Class.forName("java.lang.Record");
@@ -1284,7 +1303,260 @@ public final class Converter {
         } catch (ClassNotFoundException e) {
             // Records not available in this JVM (JDK < 14)
         }
-        
+
+        // Expand bridge conversions - discover multi-hop paths and add them to CONVERSION_DB
+        expandBridgeConversions();
+
+        // Make CONVERSION_DB unmodifiable after all expansions are complete
+        CONVERSION_DB = Collections.unmodifiableMap(CONVERSION_DB);
+    }
+
+    /**
+     * Configuration for surrogate-primary class pairs used in bridge pattern.
+     * Surrogate classes are alternative representations that can be bridged to primary classes
+     * for access to the primary class's conversion ecosystem.
+     */
+    private static Map<Class<?>, SurrogatePrimaryPair> SURROGATE_PRIMARY_PAIRS = null;
+
+    /**
+     * Cached list of surrogate → primary pairs for one-way expansion.
+     */
+    private static List<SurrogatePrimaryPair> SURROGATE_TO_PRIMARY_PAIRS = null;
+
+    /**
+     * Cached list of primary → surrogate pairs for reverse expansion.
+     */
+    private static List<SurrogatePrimaryPair> PRIMARY_TO_SURROGATE_PAIRS = null;
+
+    /**
+     * List 1: SURROGATE → PRIMARY (surrogateCanReachEverythingPrimaryCanReach)
+     * Every "surrogate" on the left can be loss-lessly collapsed to the "primary" on the
+     * right, so it is safe to give the surrogate all the outbound conversions that the
+     * primary already owns.
+     */
+    private static List<SurrogatePrimaryPair> getSurrogateToPrimaryPairs() {
+        if (SURROGATE_TO_PRIMARY_PAIRS == null) {
+            SURROGATE_TO_PRIMARY_PAIRS = Arrays.asList(
+                    // Primitives → Wrappers (lossless)
+                    new SurrogatePrimaryPair(byte.class, Byte.class, UniversalConversions::primitiveToWrapper, null),
+                    new SurrogatePrimaryPair(short.class, Short.class, UniversalConversions::primitiveToWrapper, null),
+                    new SurrogatePrimaryPair(int.class, Integer.class, UniversalConversions::primitiveToWrapper, null),
+                    new SurrogatePrimaryPair(long.class, Long.class, UniversalConversions::primitiveToWrapper, null),
+                    new SurrogatePrimaryPair(float.class, Float.class, UniversalConversions::primitiveToWrapper, null),
+                    new SurrogatePrimaryPair(double.class, Double.class, UniversalConversions::primitiveToWrapper, null),
+                    new SurrogatePrimaryPair(char.class, Character.class, UniversalConversions::primitiveToWrapper, null),
+                    new SurrogatePrimaryPair(boolean.class, Boolean.class, UniversalConversions::primitiveToWrapper, null),
+
+                    // Atomic types → Wrappers (lossless via .get())
+                    new SurrogatePrimaryPair(AtomicBoolean.class, Boolean.class,
+                            UniversalConversions::atomicBooleanToBoolean, null),
+                    new SurrogatePrimaryPair(AtomicInteger.class, Integer.class,
+                            UniversalConversions::atomicIntegerToInt, null),
+                    new SurrogatePrimaryPair(AtomicLong.class, Long.class,
+                            UniversalConversions::atomicLongToLong, null),
+
+                    // String builders → String (lossless via .toString())
+                    new SurrogatePrimaryPair(StringBuffer.class, String.class,
+                            UniversalConversions::stringBufferToString, null),
+                    new SurrogatePrimaryPair(StringBuilder.class, String.class,
+                            UniversalConversions::stringBuilderToString, null)
+
+                    // Array surrogate pairs removed - universal array system handles all array conversions
+                    // Legacy date/time pairs commented out until bridge methods are implemented
+            );
+        }
+        return SURROGATE_TO_PRIMARY_PAIRS;
+    }
+
+    /**
+     * List 2: PRIMARY → SURROGATE (everythingThatCanReachPrimaryCanAlsoReachSurrogate)
+     * These pairs let callers land on the surrogate instead of the primary when they
+     * are travelling into the ecosystem. They do not guarantee the reverse trip is
+     * perfect, so they only belong in this reverse list.
+     */
+    private static List<SurrogatePrimaryPair> getPrimaryToSurrogatePairs() {
+        if (PRIMARY_TO_SURROGATE_PAIRS == null) {
+            PRIMARY_TO_SURROGATE_PAIRS = Arrays.asList(
+                    // Wrappers → Primitives (safe conversion via auto-unboxing)
+                    new SurrogatePrimaryPair(Byte.class, byte.class, null, UniversalConversions::wrapperToPrimitive),
+                    new SurrogatePrimaryPair(Short.class, short.class, null, UniversalConversions::wrapperToPrimitive),
+                    new SurrogatePrimaryPair(Integer.class, int.class, null, UniversalConversions::wrapperToPrimitive),
+                    new SurrogatePrimaryPair(Long.class, long.class, null, UniversalConversions::wrapperToPrimitive),
+                    new SurrogatePrimaryPair(Float.class, float.class, null, UniversalConversions::wrapperToPrimitive),
+                    new SurrogatePrimaryPair(Double.class, double.class, null, UniversalConversions::wrapperToPrimitive),
+                    new SurrogatePrimaryPair(Character.class, char.class, null, UniversalConversions::wrapperToPrimitive),
+                    new SurrogatePrimaryPair(Boolean.class, boolean.class, null, UniversalConversions::wrapperToPrimitive),
+
+                    // Wrappers → Atomic types (create new atomic with same value)
+                    new SurrogatePrimaryPair(Boolean.class, AtomicBoolean.class, null,
+                            UniversalConversions::booleanToAtomicBoolean),
+                    new SurrogatePrimaryPair(Integer.class, AtomicInteger.class, null,
+                            UniversalConversions::integerToAtomicInteger),
+                    new SurrogatePrimaryPair(Long.class, AtomicLong.class, null,
+                            UniversalConversions::longToAtomicLong),
+
+                    // String → String builders (create new mutable builder)
+                    new SurrogatePrimaryPair(String.class, StringBuffer.class, null,
+                            UniversalConversions::stringToStringBuffer),
+                    new SurrogatePrimaryPair(String.class, StringBuilder.class, null,
+                            UniversalConversions::stringToStringBuilder)
+
+                    // Array surrogate pairs removed - universal array system handles all array conversions
+                    // Legacy date/time pairs commented out until bridge methods are implemented
+            );
+        }
+        return PRIMARY_TO_SURROGATE_PAIRS;
+    }
+
+    /**
+     * Represents a surrogate-primary class pair with bi-directional bridge conversion functions.
+     */
+    private static class SurrogatePrimaryPair {
+        final Class<?> surrogateClass;
+        final Class<?> primaryClass;
+        final Convert<?> surrogateToPrimaryConversion;
+        final Convert<?> primaryToSurrogateConversion;
+
+        SurrogatePrimaryPair(Class<?> surrogateClass, Class<?> primaryClass,
+                             Convert<?> surrogateToPrimaryConversion, Convert<?> primaryToSurrogateConversion) {
+            this.surrogateClass = surrogateClass;
+            this.primaryClass = primaryClass;
+            this.surrogateToPrimaryConversion = surrogateToPrimaryConversion;
+            this.primaryToSurrogateConversion = primaryToSurrogateConversion;
+        }
+    }
+
+    /**
+     * Expands bridge conversions by discovering multi-hop conversion paths and adding them to CONVERSION_DB.
+     * This allows for code reduction by eliminating redundant conversion definitions while maintaining
+     * the same or greater conversion capabilities.
+     * <p>
+     * For example, if we have:
+     * - AtomicInteger → Integer (bridge)
+     * - Integer → String (direct conversion)
+     * <p>
+     * This method will discover the AtomicInteger → String path and add it to CONVERSION_DB
+     * as a composite conversion function.
+     */
+    private static void expandBridgeConversions() {
+        // Track original size for logging
+        int originalSize = CONVERSION_DB.size();
+
+        // Expand all configured surrogate → primary bridges
+        expandSurrogateToPrimaryBridges();
+        expandPrimaryToSurrogateBridges();
+
+        int expandedSize = CONVERSION_DB.size();
+        // TODO: Add logging when ready
+        // System.out.println("Expanded CONVERSION_DB from " + originalSize + " to " + expandedSize + " entries via bridge discovery");
+    }
+
+    /**
+     * Expands surrogate → primary bridges from List 1.
+     * For each surrogate-primary pair, gives the surrogate access to all conversions
+     * that the primary class already owns.
+     * <p>
+     * Example: int.class → Integer.class
+     * If Integer can convert to String, then int can also convert to String.
+     */
+    private static void expandSurrogateToPrimaryBridges() {
+        // Create a snapshot of existing pairs to avoid ConcurrentModificationException
+        Set<ConversionPair> existingPairs = new HashSet<>(CONVERSION_DB.keySet());
+
+        // For each surrogate → primary configuration
+        for (SurrogatePrimaryPair config : getSurrogateToPrimaryPairs()) {
+            Class<?> surrogateClass = config.surrogateClass;
+            Class<?> primaryClass = config.primaryClass;
+
+            // FORWARD BRIDGES: Surrogate → Primary → Target
+            // Find all targets that the primary class can convert to
+            for (ConversionPair pair : existingPairs) {
+                if (pair.source.equals(primaryClass)) {
+                    Class<?> targetClass = pair.target;
+                    ConversionPair surrogateConversionPair = pair(surrogateClass, targetClass);
+
+                    // Only add if not already defined and not converting to itself
+                    if (!CONVERSION_DB.containsKey(surrogateConversionPair) && !targetClass.equals(surrogateClass)) {
+                        // Create composite conversion: Surrogate → primary → target
+                        Convert<?> originalConversion = CONVERSION_DB.get(pair);
+                        Convert<?> bridgeConversion = createSurrogateToPrimaryBridgeConversion(config, originalConversion);
+                        CONVERSION_DB.put(surrogateConversionPair, bridgeConversion);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Expands primary → surrogate bridges from List 2.
+     * For each primary-surrogate pair, allows everything that can reach the primary
+     * to also reach the surrogate.
+     * <p>
+     * Example: Integer.class → int.class
+     * If String can convert to Integer, then String can also convert to int.
+     */
+    private static void expandPrimaryToSurrogateBridges() {
+        // Create a snapshot of existing pairs to avoid ConcurrentModificationException
+        Set<ConversionPair> existingPairs = new HashSet<>(CONVERSION_DB.keySet());
+
+        // For each primary → surrogate configuration
+        for (SurrogatePrimaryPair config : getPrimaryToSurrogatePairs()) {
+            Class<?> primaryClass = config.surrogateClass;  // Note: in List 2, surrogate is the source
+            Class<?> surrogateClass = config.primaryClass;  // and primary is the target
+
+            // REVERSE BRIDGES: Source → Primary → Surrogate  
+            // Find all sources that can convert to the primary class
+            for (ConversionPair pair : existingPairs) {
+                if (pair.target.equals(primaryClass)) {
+                    Class<?> sourceClass = pair.source;
+                    ConversionPair sourceToSurrogateConversionPair = pair(sourceClass, surrogateClass);
+
+                    // Only add if not already defined and not converting from itself
+                    if (!CONVERSION_DB.containsKey(sourceToSurrogateConversionPair) && !sourceClass.equals(surrogateClass)) {
+                        // Create composite conversion: Source → primary → surrogate
+                        Convert<?> originalConversion = CONVERSION_DB.get(pair);
+                        Convert<?> bridgeConversion = createPrimaryToSurrogateBridgeConversion(config, originalConversion);
+                        CONVERSION_DB.put(sourceToSurrogateConversionPair, bridgeConversion);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Creates a composite conversion function that bridges from surrogate type to target via primary.
+     * Uses the configured bridge conversion to extract primary value, then applies existing primary conversion.
+     */
+    private static Convert<?> createSurrogateToPrimaryBridgeConversion(SurrogatePrimaryPair config, Convert<?> primaryToTargetConversion) {
+        Convert<?> surrogateToPrimaryConversion = config.surrogateToPrimaryConversion;
+        if (surrogateToPrimaryConversion == null) {
+            throw new IllegalArgumentException("No surrogate→primary conversion found for: " + config.surrogateClass);
+        }
+
+        return (from, converter) -> {
+            // First: Convert surrogate to primary (e.g., int → Integer, AtomicInteger → Integer)
+            Object primaryValue = surrogateToPrimaryConversion.convert(from, converter);
+            // Second: Convert primary to target using existing conversion
+            return primaryToTargetConversion.convert(primaryValue, converter);
+        };
+    }
+
+    /**
+     * Creates a composite conversion function that bridges from source type to surrogate via primary.
+     * Uses the existing source-to-primary conversion, then applies configured primary-to-surrogate bridge.
+     */
+    private static Convert<?> createPrimaryToSurrogateBridgeConversion(SurrogatePrimaryPair config, Convert<?> sourceToPrimaryConversion) {
+        Convert<?> primaryToSurrogateConversion = config.primaryToSurrogateConversion;
+        if (primaryToSurrogateConversion == null) {
+            throw new IllegalArgumentException("No primary→surrogate conversion found for: " + config.primaryClass);
+        }
+
+        return (from, converter) -> {
+            // First: Convert source to primary using existing conversion  
+            Object primaryValue = sourceToPrimaryConversion.convert(from, converter);
+            // Second: Convert primary to surrogate (e.g., Integer → int, Integer → AtomicInteger)
+            return primaryToSurrogateConversion.convert(primaryValue, converter);
+        };
     }
 
     /**
@@ -1458,10 +1730,6 @@ public final class Converter {
             }
         } else {
             sourceType = from.getClass();
-            // For non-null inputs, if toType is primitive, normalize it to its wrapper.
-            if (toType.isPrimitive()) {
-                toType = (Class<T>) ClassUtilities.toPrimitiveWrapperClass(toType);
-            }
             Convert<?> cached = getCachedConverter(sourceType, toType);
             if (cached != null) {
                 return (T) cached.convert(from, this, toType);
@@ -1513,7 +1781,7 @@ public final class Converter {
                 // Create cached converter for Object→Map conversion
                 final Class<?> finalToType = toType;
                 Convert<?> objectConverter = (fromObj, converter) -> ObjectConversions.objectToMapWithTarget(fromObj, converter, finalToType);
-                
+
                 // Execute and cache successful conversions
                 Object result = objectConverter.convert(from, this);
                 if (result != null) {
@@ -1534,7 +1802,7 @@ public final class Converter {
         if (converter != null) {
             return converter;
         }
-        
+
         // Fall back to shared conversions (instance ID 0)
         ConversionPair sharedKey = pair(source, target, 0);
         return FULL_CONVERSION_CACHE.get(sharedKey);
@@ -1547,7 +1815,7 @@ public final class Converter {
 
     // Cache JsonObject class to avoid repeated reflection lookups
     private static final Class<?> JSON_OBJECT_CLASS;
-    
+
     static {
         Class<?> jsonObjectClass;
         try {
@@ -1558,8 +1826,6 @@ public final class Converter {
         }
         JSON_OBJECT_CLASS = jsonObjectClass;
     }
-
-
 
     @SuppressWarnings("unchecked")
     private <T> T attemptContainerConversion(Object from, Class<?> sourceType, Class<T> toType) {
@@ -1594,7 +1860,7 @@ public final class Converter {
                 }
                 return (T) result;
             }
-        } 
+        }
         // EnumSet source conversions
         else if (EnumSet.class.isAssignableFrom(sourceType)) {
             if (Collection.class.isAssignableFrom(toType)) {
@@ -1619,7 +1885,7 @@ public final class Converter {
                 }
                 return (T) result;
             }
-        } 
+        }
         // Collection source conversions
         else if (Collection.class.isAssignableFrom(sourceType)) {
             if (toType.isArray()) {
@@ -1639,7 +1905,7 @@ public final class Converter {
                 }
                 return (T) result;
             }
-        } 
+        }
         // Array source conversions
         else if (sourceType.isArray()) {
             if (Collection.class.isAssignableFrom(toType)) {
@@ -1667,7 +1933,7 @@ public final class Converter {
                 // Map → Map universal conversion
                 final Class<?> finalToType = toType;
                 Convert<?> mapConverter = (fromObj, converter) -> MapConversions.mapToMapWithTarget(fromObj, converter, finalToType);
-                
+
                 // Execute and cache successful conversions
                 Object result = mapConverter.convert(from, this);
                 if (result != null) {
@@ -1700,7 +1966,7 @@ public final class Converter {
      * to its parent class java.util.Date, even if the java.util.Date converter is closer in the source type's hierarchy.</p>
      *
      * @param sourceType The source type to convert from
-     * @param toType The target type to convert to
+     * @param toType     The target type to convert to
      * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
 
@@ -1781,7 +2047,7 @@ public final class Converter {
         }
         return null;
     }
-    
+
     /**
      * Gets a sorted set of all superclasses and interfaces for a class,
      * with their inheritance distances.
@@ -1852,7 +2118,9 @@ public final class Converter {
 
         @Override
         public boolean equals(Object obj) {
-            if (!(obj instanceof ClassLevel)) return false;
+            if (!(obj instanceof ClassLevel)) {
+                return false;
+            }
             ClassLevel other = (ClassLevel) obj;
             return this.clazz.equals(other.clazz) && this.level == other.level;
         }
@@ -1872,8 +2140,8 @@ public final class Converter {
      * <li>For all other classes, returns the simple name</li>
      * </ul>
      *
-     * @param type  The class to get the short name for
-     * @return      The short name of the class
+     * @param type The class to get the short name for
+     * @return The short name of the class
      */
     static String getShortName(Class<?> type) {
         if (type.isArray()) {
@@ -1927,7 +2195,7 @@ public final class Converter {
      * </p>
      *
      * @param sourceType The source type to convert from
-     * @param target The target type to convert to
+     * @param target     The target type to convert to
      * @return true if a container-based conversion is supported between the types, false otherwise
      * @throws IllegalArgumentException if target is EnumSet.class (caller should specify specific Enum type instead)
      */
@@ -1980,7 +2248,7 @@ public final class Converter {
 
     /**
      * @deprecated Use {@link #isContainerConversionSupported(Class, Class)} instead.
-     *             This method will be removed in a future version.
+     * This method will be removed in a future version.
      */
     @Deprecated
     public static boolean isCollectionConversionSupported(Class<?> sourceType, Class<?> target) {
@@ -2016,7 +2284,7 @@ public final class Converter {
      * @param source The source class type to check
      * @param target The target class type to check
      * @return {@code true} if a non-collection conversion exists between the types,
-     *         {@code false} if either type is an array/collection or no conversion exists
+     * {@code false} if either type is an array/collection or no conversion exists
      * @see #isConversionSupportedFor(Class, Class)
      */
     public boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
@@ -2071,7 +2339,7 @@ public final class Converter {
     public boolean isSimpleTypeConversionSupported(Class<?> type) {
         return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
     }
-    
+
     /**
      * Determines whether a conversion from the specified source type to the target type is supported.
      * For array-to-array conversions, this method verifies that both array conversion and component type
@@ -2096,7 +2364,7 @@ public final class Converter {
      * @param source The source class type
      * @param target The target class type
      * @return true if the conversion is fully supported (including component type conversions for arrays),
-     *         false otherwise
+     * false otherwise
      */
     public boolean isConversionSupportedFor(Class<?> source, Class<?> target) {
         // First, check the FULL_CONVERSION_CACHE.
@@ -2152,7 +2420,7 @@ public final class Converter {
      *
      * @param source Class of source type.
      * @param target Class of target type.
-     * @return Convert instance 
+     * @return Convert instance
      */
     private static Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
@@ -2204,8 +2472,8 @@ public final class Converter {
     /**
      * Populates the provided map with supported conversions from the specified conversion database.
      *
-     * @param db      The conversion database containing conversion mappings.
-     * @param toFrom  The map to populate with supported conversions.
+     * @param db     The conversion database containing conversion mappings.
+     * @param toFrom The map to populate with supported conversions.
      */
     private static void addSupportedConversion(Map<ConversionPair, Convert<?>> db, Map<Class<?>, Set<Class<?>>> toFrom) {
         for (Map.Entry<ConversionPair, Convert<?>> entry : db.entrySet()) {
@@ -2219,8 +2487,8 @@ public final class Converter {
     /**
      * Populates the provided map with supported conversions from the specified conversion database, using class names.
      *
-     * @param db      The conversion database containing conversion mappings.
-     * @param toFrom  The map to populate with supported conversions by class names.
+     * @param db     The conversion database containing conversion mappings.
+     * @param toFrom The map to populate with supported conversions by class names.
      */
     private static void addSupportedConversionName(Map<ConversionPair, Convert<?>> db, Map<String, Set<String>> toFrom) {
         for (Map.Entry<ConversionPair, Convert<?>> entry : db.entrySet()) {
@@ -2249,19 +2517,93 @@ public final class Converter {
      * to ensure that primitive types are mapped to their respective wrapper classes before attempting to locate
      * or store the conversion.
      *
-     * @param source             The source class (type) to convert from.
-     * @param target             The target class (type) to convert to.
+     * @param source           The source class (type) to convert from.
+     * @param target           The target class (type) to convert to.
      * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
      * @return The previous conversion method associated with the source and target types, or {@code null} if no conversion existed.
      */
     public static Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
-        source = ClassUtilities.toPrimitiveWrapperClass(source);
-        target = ClassUtilities.toPrimitiveWrapperClass(target);
-        // Clear any cached converter for these types.
-        clearCachesForType(source, target);
-        return USER_DB.put(pair(source, target), conversionMethod);
+        Class<?> originalSource = source;
+        Class<?> originalTarget = target;
+        Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
+        Class<?> wrapperTarget = ClassUtilities.toPrimitiveWrapperClass(target);
+        Class<?> primitiveSource = toPrimitiveClass(source);
+        Class<?> primitiveTarget = toPrimitiveClass(target);
+
+        // Clear any cached converter for all related types.
+        clearCachesForType(originalSource, originalTarget);
+        clearCachesForType(wrapperSource, wrapperTarget);
+        if (primitiveSource != null) {
+            clearCachesForType(primitiveSource, originalTarget);
+        }
+        if (primitiveTarget != null) {
+            clearCachesForType(originalSource, primitiveTarget);
+        }
+        if (primitiveSource != null && primitiveTarget != null) {
+            clearCachesForType(primitiveSource, primitiveTarget);
+        }
+
+        // Always add the wrapper version (primary storage location)
+        Convert<?> previous = USER_DB.put(pair(wrapperSource, wrapperTarget), conversionMethod);
+
+        // Add all primitive/wrapper combinations that make sense
+        Set<ConversionPair> pairs = new HashSet<>();
+        pairs.add(pair(originalSource, originalTarget));
+        pairs.add(pair(wrapperSource, wrapperTarget));
+
+        if (primitiveSource != null) {
+            pairs.add(pair(primitiveSource, originalTarget));
+            pairs.add(pair(primitiveSource, wrapperTarget));
+            if (primitiveTarget != null) {
+                pairs.add(pair(primitiveSource, primitiveTarget));
+            }
+        }
+
+        if (primitiveTarget != null) {
+            pairs.add(pair(originalSource, primitiveTarget));
+            pairs.add(pair(wrapperSource, primitiveTarget));
+        }
+
+        // Add all unique pairs to USER_DB
+        for (ConversionPair pair : pairs) {
+            USER_DB.put(pair, conversionMethod);
+        }
+
+        return previous;
     }
-    
+
+    /**
+     * Helper method to get the primitive class from a wrapper class.
+     * Returns null if the class is not a primitive wrapper.
+     */
+    private static Class<?> toPrimitiveClass(Class<?> wrapperClass) {
+        if (wrapperClass == Boolean.class) {
+            return boolean.class;
+        }
+        if (wrapperClass == Byte.class) {
+            return byte.class;
+        }
+        if (wrapperClass == Character.class) {
+            return char.class;
+        }
+        if (wrapperClass == Short.class) {
+            return short.class;
+        }
+        if (wrapperClass == Integer.class) {
+            return int.class;
+        }
+        if (wrapperClass == Long.class) {
+            return long.class;
+        }
+        if (wrapperClass == Float.class) {
+            return float.class;
+        }
+        if (wrapperClass == Double.class) {
+            return double.class;
+        }
+        return null; // Not a primitive wrapper
+    }
+
     /**
      * Performs an identity conversion, returning the source object as-is.
      *
@@ -2293,8 +2635,8 @@ public final class Converter {
         FULL_CONVERSION_CACHE.entrySet().removeIf(entry -> {
             ConversionPair key = entry.getKey();
             return (key.getSource() == source && key.getTarget() == target) ||
-                   // Also clear inheritance-based entries
-                   isInheritanceRelated(key.getSource(), key.getTarget(), source, target);
+                    // Also clear inheritance-based entries
+                    isInheritanceRelated(key.getSource(), key.getTarget(), source, target);
         });
 
         SIMPLE_TYPE_CACHE.remove(source);
@@ -2302,10 +2644,10 @@ public final class Converter {
         SELF_CONVERSION_CACHE.remove(source);
         SELF_CONVERSION_CACHE.remove(target);
     }
-    
+
     private static boolean isInheritanceRelated(Class<?> keySource, Class<?> keyTarget, Class<?> source, Class<?> target) {
         // Check if this cache entry might be affected by inheritance-based lookups
         return (keySource != source && (source.isAssignableFrom(keySource) || keySource.isAssignableFrom(source))) ||
-               (keyTarget != target && (target.isAssignableFrom(keyTarget) || keyTarget.isAssignableFrom(target)));
+                (keyTarget != target && (target.isAssignableFrom(keyTarget) || keyTarget.isAssignableFrom(target)));
     }
 }

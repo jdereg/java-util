@@ -59,6 +59,7 @@ import static com.cedarsoftware.util.convert.MapConversions.CAUSE_MESSAGE;
 import static com.cedarsoftware.util.convert.MapConversions.CLASS;
 import static com.cedarsoftware.util.convert.MapConversions.LOCAL_DATE;
 import static com.cedarsoftware.util.convert.MapConversions.MESSAGE;
+import static com.cedarsoftware.util.convert.MapConversions.V;
 import static com.cedarsoftware.util.convert.MapConversions.ZONED_DATE_TIME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -3613,8 +3614,8 @@ class ConverterTest
         AtomicBoolean ab = new AtomicBoolean(true);
         Map<?, ?> map = this.converter.convert(ab, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(VALUE), ab);
-        assert map.get(VALUE).getClass().equals(AtomicBoolean.class);
+        assertEquals(map.get(V), ab);
+        assert map.get(V).getClass().equals(AtomicBoolean.class);
     }
 
     @Test
@@ -3633,8 +3634,8 @@ class ConverterTest
         AtomicLong al = new AtomicLong(12345678901234567L);
         Map<?, ?> map = this.converter.convert(al, Map.class);
         assert map.size() == 1;
-        assertEquals(map.get(VALUE), al);
-        assert map.get(VALUE).getClass().equals(AtomicLong.class);
+        assertEquals(map.get(V), al);
+        assert map.get(V).getClass().equals(AtomicLong.class);
     }
 
     @Test
@@ -4005,16 +4006,16 @@ class ConverterTest
 
         assertThatThrownBy(() -> this.converter.convert(uuid, boolean.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported conversion, source type [UUID (00000000-0000-0000-0000-000000000000)] target type 'Boolean'");
+                .hasMessageContaining("Unsupported conversion, source type [UUID (00000000-0000-0000-0000-000000000000)] target type 'boolean'");
 
         // Add in conversions
-        this.converter.addConversion(UUID.class, boolean.class, (fromInstance, converter) -> {
+        this.converter.addConversion(UUID.class, Boolean.class, (fromInstance, converter) -> {
             UUID uuid1 = (UUID) fromInstance;
-            return !"00000000-0000-0000-0000-000000000000".equals(uuid1.toString());
+            return Boolean.valueOf(!"00000000-0000-0000-0000-000000000000".equals(uuid1.toString()));
         });
 
         // Add in conversions
-        this.converter.addConversion(boolean.class, UUID.class, (fromInstance, converter) -> {
+        this.converter.addConversion(Boolean.class, UUID.class, (fromInstance, converter) -> {
             boolean state = (Boolean)fromInstance;
             if (state) {
                 return "00000000-0000-0000-0000-000000000001";

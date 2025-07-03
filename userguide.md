@@ -2140,12 +2140,58 @@ if (converter.isConversionSupportedFor(sourceType, targetType)) {
 }
 ```
 
+### Array-Like Type Conversions
+
+The Converter includes comprehensive support for array-like types through a universal bridge system, dramatically expanding conversion capabilities:
+
+**Atomic Array Support:**
+```java
+// AtomicIntegerArray, AtomicLongArray, AtomicReferenceArray
+AtomicIntegerArray atomicArray = new AtomicIntegerArray(new int[]{1, 2, 3});
+int[] primitiveArray = converter.convert(atomicArray, int[].class);
+Color color = converter.convert(atomicArray, Color.class); // Through int[] bridge
+```
+
+**NIO Buffer Support:**
+```java
+// All NIO buffer types: IntBuffer, LongBuffer, FloatBuffer, DoubleBuffer, ShortBuffer
+IntBuffer buffer = IntBuffer.wrap(new int[]{255, 0, 0});
+Color red = converter.convert(buffer, Color.class); // Through int[] bridge
+```
+
+**BitSet Integration:**
+```java
+// Multiple BitSet conversion strategies
+BitSet bits = new BitSet();
+bits.set(0); bits.set(2);
+boolean[] boolArray = converter.convert(bits, boolean[].class); // [true, false, true]
+int[] indices = converter.convert(bits, int[].class);           // [0, 2]
+byte[] bytes = converter.convert(bits, byte[].class);           // Raw representation
+```
+
+**Stream API Support:**
+```java
+// Primitive stream conversions
+IntStream stream = IntStream.of(1, 2, 3);
+List<Integer> list = converter.convert(stream, List.class);
+Color color = converter.convert(stream, Color.class); // Through int[] bridge
+```
+
+**Universal Array Access:**
+Each array-like type gains access to the entire universal array conversion ecosystem. For example:
+- `AtomicIntegerArray` → `int[]` → `Color` (RGB interpretation)
+- `BitSet` → `boolean[]` → `String` (comma-separated values)
+- `IntBuffer` → `int[]` → `LocalDate` (year/month/day interpretation)
+
+This bridge system expands total conversion pairs by 39% to over 1,500 supported conversions.
+
 ### Performance Considerations
 - Uses caching for conversion pairs (no instances created during convertion other than final converted item)
 - Optimized collection handling (array to collection, colletion to array, n-dimensional arrays and nested collections, collection/array to EnumSets)
 - Efficient type resolution: O(1) operation
 - Minimal object creation
 - Fast lookup for common conversions
+- Array-like bridges use efficient extraction/creation patterns with minimal overhead
 
 This implementation provides a robust and extensible conversion framework with support for a wide range of Java types and custom conversions.
 

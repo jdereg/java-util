@@ -218,6 +218,7 @@ class ConverterEverythingTest {
         loadAtomicLongTests();
         loadAtomicIntegerTests();
         loadAtomicBooleanTests();
+        loadSurrogateBridgeTests();
         loadMapTests();
         loadRecordTests();
         loadClassTests();
@@ -761,6 +762,116 @@ class ConverterEverythingTest {
                 { mapOf("_v", false), new AtomicBoolean(false)},
                 { mapOf("_v", BigInteger.valueOf(1)), new AtomicBoolean(true)},
                 { mapOf("_v", BigDecimal.ZERO), new AtomicBoolean(false)},
+        });
+    }
+
+    /**
+     * Surrogate Bridge Tests - Validates that the surrogate pair system works correctly
+     * 
+     * These tests verify that conversions automatically work for surrogate classes
+     * through the BFS expansion system without requiring explicit conversion methods.
+     */
+    private static void loadSurrogateBridgeTests() {
+        // Test AtomicBoolean surrogate conversions through Boolean bridge
+        TEST_DB.put(pair(AtomicBoolean.class, String.class), new Object[][]{
+                {new AtomicBoolean(true), "true", true},
+                {new AtomicBoolean(false), "false", true},
+        });
+        TEST_DB.put(pair(String.class, AtomicBoolean.class), new Object[][]{
+                {"true", new AtomicBoolean(true), true},
+                {"false", new AtomicBoolean(false), true},
+                {"1", new AtomicBoolean(true)},
+                {"0", new AtomicBoolean(false)},
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, Integer.class), new Object[][]{
+                {new AtomicBoolean(true), 1, true},
+                {new AtomicBoolean(false), 0, true},
+        });
+        TEST_DB.put(pair(Integer.class, AtomicBoolean.class), new Object[][]{
+                {1, new AtomicBoolean(true), true},
+                {0, new AtomicBoolean(false), true},
+                {-1, new AtomicBoolean(true)},
+                {42, new AtomicBoolean(true)},
+        });
+
+        // Test AtomicInteger surrogate conversions through Integer bridge
+        TEST_DB.put(pair(AtomicInteger.class, String.class), new Object[][]{
+                {new AtomicInteger(42), "42", true},
+                {new AtomicInteger(-1), "-1", true},
+                {new AtomicInteger(0), "0", true},
+        });
+        TEST_DB.put(pair(String.class, AtomicInteger.class), new Object[][]{
+                {"42", new AtomicInteger(42), true},
+                {"-1", new AtomicInteger(-1), true},
+                {"0", new AtomicInteger(0), true},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, Double.class), new Object[][]{
+                {new AtomicInteger(42), 42.0, true},
+                {new AtomicInteger(-1), -1.0, true},
+                {new AtomicInteger(0), 0.0, true},
+        });
+        TEST_DB.put(pair(Double.class, AtomicInteger.class), new Object[][]{
+                {42.0, new AtomicInteger(42), true},
+                {-1.0, new AtomicInteger(-1), true},
+                {0.0, new AtomicInteger(0), true},
+                {42.7, new AtomicInteger(42)}, // truncation behavior
+        });
+
+        // Test AtomicLong surrogate conversions through Long bridge
+        TEST_DB.put(pair(AtomicLong.class, String.class), new Object[][]{
+                {new AtomicLong(123456789L), "123456789", true},
+                {new AtomicLong(-1L), "-1", true},
+                {new AtomicLong(0L), "0", true},
+        });
+        TEST_DB.put(pair(String.class, AtomicLong.class), new Object[][]{
+                {"123456789", new AtomicLong(123456789L), true},
+                {"-1", new AtomicLong(-1L), true},
+                {"0", new AtomicLong(0L), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, Double.class), new Object[][]{
+                {new AtomicLong(123456L), 123456.0, true},
+                {new AtomicLong(-1L), -1.0, true},
+                {new AtomicLong(0L), 0.0, true},
+        });
+        TEST_DB.put(pair(Double.class, AtomicLong.class), new Object[][]{
+                {123456.0, new AtomicLong(123456L), true},
+                {-1.0, new AtomicLong(-1L), true},
+                {0.0, new AtomicLong(0L), true},
+                {123.7, new AtomicLong(123L)}, // truncation behavior
+        });
+
+        // Test cross-atomic conversions (AtomicBoolean ↔ AtomicInteger ↔ AtomicLong)
+        TEST_DB.put(pair(AtomicBoolean.class, AtomicInteger.class), new Object[][]{
+                {new AtomicBoolean(true), new AtomicInteger(1), true},
+                {new AtomicBoolean(false), new AtomicInteger(0), true},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, AtomicBoolean.class), new Object[][]{
+                {new AtomicInteger(1), new AtomicBoolean(true), true},
+                {new AtomicInteger(0), new AtomicBoolean(false), true},
+                {new AtomicInteger(-1), new AtomicBoolean(true)},
+                {new AtomicInteger(42), new AtomicBoolean(true)},
+        });
+        TEST_DB.put(pair(AtomicInteger.class, AtomicLong.class), new Object[][]{
+                {new AtomicInteger(42), new AtomicLong(42L), true},
+                {new AtomicInteger(-1), new AtomicLong(-1L), true},
+                {new AtomicInteger(0), new AtomicLong(0L), true},
+                {new AtomicInteger(Integer.MAX_VALUE), new AtomicLong((long)Integer.MAX_VALUE), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, AtomicInteger.class), new Object[][]{
+                {new AtomicLong(42L), new AtomicInteger(42), true},
+                {new AtomicLong(-1L), new AtomicInteger(-1), true},
+                {new AtomicLong(0L), new AtomicInteger(0), true},
+                {new AtomicLong((long)Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE), true},
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, AtomicLong.class), new Object[][]{
+                {new AtomicBoolean(true), new AtomicLong(1L), true},
+                {new AtomicBoolean(false), new AtomicLong(0L), true},
+        });
+        TEST_DB.put(pair(AtomicLong.class, AtomicBoolean.class), new Object[][]{
+                {new AtomicLong(1L), new AtomicBoolean(true), true},
+                {new AtomicLong(0L), new AtomicBoolean(false), true},
+                {new AtomicLong(-1L), new AtomicBoolean(true)},
+                {new AtomicLong(42L), new AtomicBoolean(true)},
         });
     }
 

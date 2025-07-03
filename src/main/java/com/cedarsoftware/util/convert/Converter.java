@@ -942,6 +942,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(TimeZone.class, String.class), TimeZoneConversions::toString);
         CONVERSION_DB.put(pair(Pattern.class, String.class), PatternConversions::toString);
         CONVERSION_DB.put(pair(Currency.class, String.class), CurrencyConversions::toString);
+        CONVERSION_DB.put(pair(StringBuilder.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(StringBuffer.class, String.class), UniversalConversions::toString);
 
         // Currency conversions
         CONVERSION_DB.put(pair(Void.class, Currency.class), VoidConversions::toNull);
@@ -1061,21 +1063,11 @@ public final class Converter {
         // toStringBuffer
         CONVERSION_DB.put(pair(Void.class, StringBuffer.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, StringBuffer.class), StringConversions::toStringBuffer);
-        CONVERSION_DB.put(pair(ByteBuffer.class, StringBuffer.class), ByteBufferConversions::toStringBuffer);
-        CONVERSION_DB.put(pair(CharBuffer.class, StringBuffer.class), CharBufferConversions::toStringBuffer);
-        CONVERSION_DB.put(pair(Character[].class, StringBuffer.class), CharacterArrayConversions::toStringBuffer);
-        CONVERSION_DB.put(pair(char[].class, StringBuffer.class), CharArrayConversions::toStringBuffer);
-        CONVERSION_DB.put(pair(byte[].class, StringBuffer.class), ByteArrayConversions::toStringBuffer);
         CONVERSION_DB.put(pair(Map.class, StringBuffer.class), MapConversions::toStringBuffer);
 
-        // toStringBuilder
+        // toStringBuilder - Bridge through String
         CONVERSION_DB.put(pair(Void.class, StringBuilder.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, StringBuilder.class), StringConversions::toStringBuilder);
-        CONVERSION_DB.put(pair(ByteBuffer.class, StringBuilder.class), ByteBufferConversions::toStringBuilder);
-        CONVERSION_DB.put(pair(CharBuffer.class, StringBuilder.class), CharBufferConversions::toStringBuilder);
-        CONVERSION_DB.put(pair(Character[].class, StringBuilder.class), CharacterArrayConversions::toStringBuilder);
-        CONVERSION_DB.put(pair(char[].class, StringBuilder.class), CharArrayConversions::toStringBuilder);
-        CONVERSION_DB.put(pair(byte[].class, StringBuilder.class), ByteArrayConversions::toStringBuilder);
         CONVERSION_DB.put(pair(Map.class, StringBuilder.class), MapConversions::toStringBuilder);
 
         // toByteArray

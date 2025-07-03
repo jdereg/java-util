@@ -1063,12 +1063,10 @@ public final class Converter {
         // toStringBuffer
         CONVERSION_DB.put(pair(Void.class, StringBuffer.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, StringBuffer.class), StringConversions::toStringBuffer);
-        CONVERSION_DB.put(pair(Map.class, StringBuffer.class), MapConversions::toStringBuffer);
 
         // toStringBuilder - Bridge through String
         CONVERSION_DB.put(pair(Void.class, StringBuilder.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, StringBuilder.class), StringConversions::toStringBuilder);
-        CONVERSION_DB.put(pair(Map.class, StringBuilder.class), MapConversions::toStringBuilder);
 
         // toByteArray
         CONVERSION_DB.put(pair(Void.class, byte[].class), VoidConversions::toNull);

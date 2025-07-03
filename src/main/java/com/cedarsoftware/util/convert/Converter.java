@@ -940,7 +940,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(File.class, String.class), FileConversions::toString);
         CONVERSION_DB.put(pair(Path.class, String.class), PathConversions::toString);
         CONVERSION_DB.put(pair(TimeZone.class, String.class), TimeZoneConversions::toString);
-        CONVERSION_DB.put(pair(StringBuffer.class, String.class), UniversalConversions::stringBufferToString);
         CONVERSION_DB.put(pair(Pattern.class, String.class), PatternConversions::toString);
         CONVERSION_DB.put(pair(Currency.class, String.class), CurrencyConversions::toString);
 
@@ -1062,7 +1061,6 @@ public final class Converter {
         // toStringBuffer
         CONVERSION_DB.put(pair(Void.class, StringBuffer.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, StringBuffer.class), StringConversions::toStringBuffer);
-        CONVERSION_DB.put(pair(StringBuffer.class, StringBuffer.class), StringConversions::toStringBuffer);
         CONVERSION_DB.put(pair(ByteBuffer.class, StringBuffer.class), ByteBufferConversions::toStringBuffer);
         CONVERSION_DB.put(pair(CharBuffer.class, StringBuffer.class), CharBufferConversions::toStringBuffer);
         CONVERSION_DB.put(pair(Character[].class, StringBuffer.class), CharacterArrayConversions::toStringBuffer);
@@ -1073,7 +1071,6 @@ public final class Converter {
         // toStringBuilder
         CONVERSION_DB.put(pair(Void.class, StringBuilder.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(String.class, StringBuilder.class), StringConversions::toStringBuilder);
-        CONVERSION_DB.put(pair(StringBuffer.class, StringBuilder.class), StringConversions::toStringBuilder);
         CONVERSION_DB.put(pair(ByteBuffer.class, StringBuilder.class), ByteBufferConversions::toStringBuilder);
         CONVERSION_DB.put(pair(CharBuffer.class, StringBuilder.class), CharBufferConversions::toStringBuilder);
         CONVERSION_DB.put(pair(Character[].class, StringBuilder.class), CharacterArrayConversions::toStringBuilder);

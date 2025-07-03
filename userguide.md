@@ -68,7 +68,29 @@ Choose from four ordering strategies:
 ### Implementation Notes
 - Built on top of `CompactMap` for memory efficiency
 - Maintains proper `Set` semantics while optimizing storage
-- Thread-safe when properly synchronized externally
+
+### Thread Safety and Concurrent Backing Maps
+
+> **⚠️ Important: CompactSet is NOT thread-safe**
+>
+> `CompactSet` is **not inherently thread-safe** and should not be used in concurrent scenarios without external synchronization. While the builder API allows specifying concurrent backing maps like `ConcurrentHashMap` via `.mapType()`, this does **NOT** make `CompactSet` thread-safe.
+>
+> **Why concurrent backing maps don't provide thread safety:**
+> - During the compact array phase (first `compactSize` elements), `CompactSet` uses internal array storage that has race conditions
+> - The transition from compact array to backing map is not atomic
+> - Iterator and bulk operations may span both storage phases
+>
+> **For thread safety:** Use `Collections.synchronizedSet()` or external synchronization around all `CompactSet` operations.
+>
+> ```java
+> // ❌ This is NOT thread-safe despite ConcurrentHashMap backing
+> CompactSet<String> set = CompactSet.<String>builder()
+>     .mapType(ConcurrentHashMap.class)
+>     .build();
+>
+> // ✅ This is thread-safe
+> Set<String> safeSet = Collections.synchronizedSet(new CompactLinkedSet<>());
+> ```
 
 ### Pre-built Classes
 We provide several pre-built classes for common use cases:
@@ -144,12 +166,36 @@ System.out.println(mixedSet);  // Outputs: [Apple, 123]
     - `SortedSet` → `TreeMap`
     - Others → `LinkedHashMap`
 
+### Thread Safety and Concurrent Usage
+
+> **✅ CaseInsensitiveSet is thread-safe when using concurrent backing maps**
+>
+> Unlike `CompactSet`, `CaseInsensitiveSet` can be made fully thread-safe by using concurrent backing map implementations. Thread safety depends entirely on the backing map implementation you choose.
+
+**Thread-safe usage examples:**
+```java
+// ✅ Thread-safe with ConcurrentHashMap backing
+CaseInsensitiveSet<String> concurrentSet = new CaseInsensitiveSet<>(
+    Arrays.asList("example"), 
+    new ConcurrentHashMap<>()
+);
+
+// ✅ Thread-safe with ConcurrentSkipListMap backing (sorted + concurrent)
+CaseInsensitiveSet<String> sortedConcurrentSet = new CaseInsensitiveSet<>(
+    Arrays.asList("example"), 
+    new ConcurrentSkipListMap<>()
+);
+
+// ❌ Not thread-safe with default LinkedHashMap backing
+CaseInsensitiveSet<String> notThreadSafe = new CaseInsensitiveSet<>();
+```
+
 ### Implementation Notes
 
-- Thread safety depends on the backing map implementation
-- String comparisons are case-insensitive but preserve original case
-- Set operations use the underlying `CaseInsensitiveMap` for consistent behavior
-- Maintains proper `Set` contract while providing case-insensitive functionality for strings
+- **Thread safety**: Fully thread-safe when using concurrent backing maps (`ConcurrentHashMap`, `ConcurrentSkipListMap`, etc.)
+- **String handling**: Case-insensitive comparisons while preserving original case
+- **Set operations**: Uses underlying `CaseInsensitiveMap` for consistent behavior
+- **Set contract**: Maintains proper `Set` contract while providing case-insensitive functionality for strings
 
 ---
 ## ConcurrentSet
@@ -541,11 +587,34 @@ CompactMap<String, Object> configured = CompactMap.<String, Object>builder()
 - Data structures requiring different ordering strategies
 - Systems with varying map sizes
 
-### Thread Safety Notes
-- Not thread-safe by default
-- Use Collections.synchronizedMap() for thread safety
-- Iterator operations require external synchronization
-- Atomic operations not guaranteed without synchronization
+### Thread Safety and Concurrent Backing Maps
+
+> **⚠️ Important: CompactMap is NOT thread-safe**
+>
+> `CompactMap` is **not inherently thread-safe** and should not be used in concurrent scenarios without external synchronization. While the builder API allows specifying concurrent backing maps like `ConcurrentHashMap` via `.mapType()`, this does **NOT** make `CompactMap` thread-safe.
+>
+> **Why concurrent backing maps don't provide thread safety:**
+> - During the compact array phase (first `compactSize` elements), `CompactMap` uses internal array storage that has race conditions  
+> - The transition from compact array to backing map is not atomic
+> - Iterator and bulk operations may span both storage phases
+> - Size calculations and modification detection are not synchronized
+>
+> **For thread safety:** Use `Collections.synchronizedMap()` or external synchronization around all `CompactMap` operations.
+>
+> ```java
+> // ❌ This is NOT thread-safe despite ConcurrentHashMap backing
+> CompactMap<String, Object> map = CompactMap.<String, Object>builder()
+>     .mapType(ConcurrentHashMap.class)
+>     .build();
+>
+> // ✅ This is thread-safe
+> Map<String, Object> safeMap = Collections.synchronizedMap(new CompactLinkedMap<>());
+> ```
+>
+> **Additional thread safety considerations:**
+> - Iterator operations require external synchronization even with `Collections.synchronizedMap()`
+> - Atomic operations are not guaranteed without proper synchronization
+> - Race conditions can cause data corruption during the compact array phase
 
 ### Pre-built Classes
 We provide several pre-built classes for common use cases:
@@ -569,7 +638,7 @@ A Map implementation that provides case-insensitive key comparison for String ke
 - Efficient caching of case-insensitive String representations
 - Support for various backing map implementations
 - Compatible with all standard Map operations
-- Thread-safe when using appropriate backing map
+- **Fully thread-safe when using concurrent backing maps**
 
 ### Usage Examples
 
@@ -625,8 +694,37 @@ scores.forEach((key, value) ->
 ### Performance Characteristics
 - Get/Put/Remove: O(1) with HashMap backing
 - Memory Usage: Efficient caching of case-insensitive strings
-- Thread Safety: Depends on backing map implementation
 - String Key Cache: Internal String key cache (≤ 100 characters by default) with API to change it
+
+### Thread Safety and Concurrent Usage
+
+> **✅ CaseInsensitiveMap is fully thread-safe with concurrent backing maps**
+>
+> Unlike `CompactMap`, `CaseInsensitiveMap` delegates all operations to its backing map, making it fully thread-safe when using concurrent map implementations.
+
+**Thread-safe usage examples:**
+```java
+// ✅ Thread-safe with ConcurrentHashMap backing
+CaseInsensitiveMap<String, Object> concurrentMap = 
+    new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
+
+// ✅ Thread-safe with ConcurrentSkipListMap backing (sorted + concurrent)
+CaseInsensitiveMap<String, Object> sortedConcurrentMap = 
+    new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
+
+// ❌ Not thread-safe with default LinkedHashMap backing
+CaseInsensitiveMap<String, Object> notThreadSafe = new CaseInsensitiveMap<>();
+
+// ✅ All concurrent map operations work correctly
+concurrentMap.putIfAbsent("key", "value");
+concurrentMap.computeIfAbsent("KEY", k -> "computed");  // Same key, case-insensitive
+```
+
+**Why it works:**
+- Simple wrapper around backing map - no complex internal state
+- All operations delegate directly to the backing map
+- Case-insensitive key transformation happens before delegation
+- No race conditions or multi-phase storage like `CompactMap`
 
 ### Use Cases
 - HTTP headers storage

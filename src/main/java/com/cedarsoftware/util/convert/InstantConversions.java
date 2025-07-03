@@ -59,7 +59,8 @@ final class InstantConversions {
     }
 
     static long toLong(Object from, Converter converter) {
-        return ((Instant) from).toEpochMilli();
+        Instant instant = (Instant) from;
+        return instant.getEpochSecond() * 1_000_000_000L + instant.getNano();
     }
     
     /**
@@ -88,11 +89,11 @@ final class InstantConversions {
     }
 
     static Date toDate(Object from, Converter converter) {
-        return new Date(toLong(from, converter));
+        return new Date(((Instant) from).toEpochMilli());
     }
 
     static Calendar toCalendar(Object from, Converter converter) {
-        return CalendarConversions.create(toLong(from, converter), converter);
+        return CalendarConversions.create(((Instant) from).toEpochMilli(), converter);
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {

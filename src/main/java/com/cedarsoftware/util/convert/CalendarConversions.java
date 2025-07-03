@@ -64,7 +64,7 @@ final class CalendarConversions {
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Calendar cal = (Calendar) from;
         long epochMillis = cal.getTime().getTime();
-        return new BigDecimal(epochMillis).divide(BigDecimalConversions.GRAND);
+        return new BigDecimal(epochMillis).divide(BigDecimal.valueOf(1000));
     }
 
     static BigInteger toBigInteger(Object from, Converter converter) {

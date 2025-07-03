@@ -215,6 +215,24 @@ final class NumberConversions {
     static Instant toInstant(Object from, Converter converter) {
         return Instant.ofEpochMilli(toLong(from, converter));
     }
+    
+    static Duration longNanosToDuration(Object from, Converter converter) {
+        return Duration.ofNanos(toLong(from, converter));
+    }
+    
+    static Instant longNanosToInstant(Object from, Converter converter) {
+        long nanos = toLong(from, converter);
+        return Instant.ofEpochSecond(nanos / 1_000_000_000L, nanos % 1_000_000_000L);
+    }
+    
+    static Duration atomicLongNanosToDuration(Object from, Converter converter) {
+        return Duration.ofNanos(toLong(from, converter));
+    }
+    
+    static Instant atomicLongNanosToInstant(Object from, Converter converter) {
+        long nanos = toLong(from, converter);
+        return Instant.ofEpochSecond(nanos / 1_000_000_000L, nanos % 1_000_000_000L);
+    }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
         return java.sql.Date.valueOf(
@@ -240,6 +258,16 @@ final class NumberConversions {
             throw new IllegalArgumentException("Input value [" + millis + "] for conversion to LocalTime must be >= 0 && <= 86399999", e);
         }
     }
+    
+    static LocalTime longNanosToLocalTime(Object from, Converter converter) {
+        long nanos = ((Number) from).longValue();
+        try {
+            return LocalTime.ofNanoOfDay(nanos);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Input value [" + nanos + "] for conversion to LocalTime must be >= 0 && <= 86399999999999", e);
+        }
+    }
+    
 
     static LocalDate toLocalDate(Object from, Converter converter) {
         return toZonedDateTime(from, converter).toLocalDate();

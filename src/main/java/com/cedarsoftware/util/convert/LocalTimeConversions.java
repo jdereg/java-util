@@ -42,12 +42,12 @@ final class LocalTimeConversions {
 
     static int toInteger(Object from, Converter converter) {
         LocalTime lt = (LocalTime) from;
-        return (int) (lt.toNanoOfDay() / 1_000_000); // Convert nanoseconds to milliseconds.
+        return (int) lt.toNanoOfDay(); // Return nanoseconds for modern time class precision consistency
     }
 
     static long toLong(Object from, Converter converter) {
         LocalTime lt = (LocalTime) from;
-        return lt.toNanoOfDay() / 1_000_000; // Convert nanoseconds to milliseconds.
+        return lt.toNanoOfDay(); // Return nanoseconds for modern time class precision consistency
     }
 
     static double toDouble(Object from, Converter converter) {
@@ -66,7 +66,7 @@ final class LocalTimeConversions {
     }
 
     static AtomicInteger toAtomicInteger(Object from, Converter converter) {
-        return new AtomicInteger((int)toLong(from, converter));
+        return new AtomicInteger(toInteger(from, converter));
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {

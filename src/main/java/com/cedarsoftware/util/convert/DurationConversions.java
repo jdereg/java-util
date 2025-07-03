@@ -40,12 +40,12 @@ final class DurationConversions {
     }
 
     static long toLong(Object from, Converter converter) {
-        return ((Duration) from).toMillis();
+        return ((Duration) from).toNanos();
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
         Duration duration = (Duration) from;
-        return new AtomicLong(duration.toMillis());
+        return new AtomicLong(duration.toNanos());
     }
     
     static BigInteger toBigInteger(Object from, Converter converter) {

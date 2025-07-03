@@ -505,6 +505,34 @@ final class UniversalConversions {
         return result;
     }
 
+    /**
+     * Universal bridge: AtomicReferenceArray → String[].
+     * Extracts the String array from AtomicReferenceArray for String array system access.
+     */
+    static String[] atomicReferenceArrayToStringArray(Object from, Converter converter) {
+        AtomicReferenceArray<?> atomicArray = (AtomicReferenceArray<?>) from;
+        int length = atomicArray.length();
+        String[] result = new String[length];
+        for (int i = 0; i < length; i++) {
+            Object element = atomicArray.get(i);
+            result[i] = element != null ? element.toString() : null;
+        }
+        return result;
+    }
+
+    /**
+     * Universal reverse bridge: String[] → AtomicReferenceArray.
+     * Creates AtomicReferenceArray from String array for reverse bridge access.
+     */
+    static AtomicReferenceArray<String> stringArrayToAtomicReferenceArray(Object from, Converter converter) {
+        String[] array = (String[]) from;
+        AtomicReferenceArray<String> result = new AtomicReferenceArray<>(array.length);
+        for (int i = 0; i < array.length; i++) {
+            result.set(i, array[i]);
+        }
+        return result;
+    }
+
     // ========================================
     // NIO Buffer Bridge Methods
     // ========================================
@@ -761,9 +789,9 @@ final class UniversalConversions {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-    static Object calendarToZonedDateTime(Object from, Converter converter) {
-        // TODO: Implement using existing CalendarConversions
-        throw new UnsupportedOperationException("Not yet implemented");
+    static ZonedDateTime calendarToZonedDateTime(Object from, Converter converter) {
+        Calendar calendar = (Calendar) from;
+        return calendar.toInstant().atZone(calendar.getTimeZone().toZoneId());
     }
 
     static Object timeZoneToZoneId(Object from, Converter converter) {

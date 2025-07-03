@@ -1394,6 +1394,14 @@ public final class Converter {
     }
 
     /**
+     * Direction enumeration for bridge expansion operations.
+     */
+    private enum BridgeDirection {
+        SURROGATE_TO_PRIMARY,
+        PRIMARY_TO_SURROGATE
+    }
+
+    /**
      * Expands bridge conversions by discovering multi-hop conversion paths and adding them to CONVERSION_DB.
      * This allows for code reduction by eliminating redundant conversion definitions while maintaining
      * the same or greater conversion capabilities.
@@ -1409,9 +1417,9 @@ public final class Converter {
         // Track original size for logging
         int originalSize = CONVERSION_DB.size();
 
-        // Expand all configured surrogate → primary bridges
-        expandSurrogateToPrimaryBridges();
-        expandPrimaryToSurrogateBridges();
+        // Expand all configured surrogate bridges in both directions
+        expandSurrogateBridges(BridgeDirection.SURROGATE_TO_PRIMARY);
+        expandSurrogateBridges(BridgeDirection.PRIMARY_TO_SURROGATE);
 
         int expandedSize = CONVERSION_DB.size();
         // TODO: Add logging when ready
@@ -1419,71 +1427,61 @@ public final class Converter {
     }
 
     /**
-     * Expands surrogate → primary bridges from List 1.
-     * For each surrogate-primary pair, gives the surrogate access to all conversions
-     * that the primary class already owns.
-     * <p>
-     * Example: int.class → Integer.class
-     * If Integer can convert to String, then int can also convert to String.
+     * Consolidated method for expanding surrogate bridges in both directions.
+     * Creates composite conversion functions that bridge through intermediate types.
+     * 
+     * @param direction The direction of bridge expansion (SURROGATE_TO_PRIMARY or PRIMARY_TO_SURROGATE)
      */
-    private static void expandSurrogateToPrimaryBridges() {
+    private static void expandSurrogateBridges(BridgeDirection direction) {
         // Create a snapshot of existing pairs to avoid ConcurrentModificationException
         Set<ConversionPair> existingPairs = new HashSet<>(CONVERSION_DB.keySet());
 
-        // For each surrogate → primary configuration
-        for (SurrogatePrimaryPair config : getSurrogateToPrimaryPairs()) {
-            Class<?> surrogateClass = config.surrogateClass;
-            Class<?> primaryClass = config.primaryClass;
+        // Get the appropriate configuration list based on direction
+        List<SurrogatePrimaryPair> configs = (direction == BridgeDirection.SURROGATE_TO_PRIMARY) ?
+            getSurrogateToPrimaryPairs() : getPrimaryToSurrogatePairs();
 
-            // FORWARD BRIDGES: Surrogate → Primary → Target
-            // Find all targets that the primary class can convert to
-            for (ConversionPair pair : existingPairs) {
-                if (pair.source.equals(primaryClass)) {
-                    Class<?> targetClass = pair.target;
-                    ConversionPair surrogateConversionPair = pair(surrogateClass, targetClass);
+        // Process each surrogate configuration
+        for (SurrogatePrimaryPair config : configs) {
+            if (direction == BridgeDirection.SURROGATE_TO_PRIMARY) {
+                // FORWARD BRIDGES: Surrogate → Primary → Target
+                // Example: int.class → Integer.class → String.class
+                Class<?> surrogateClass = config.surrogateClass;
+                Class<?> primaryClass = config.primaryClass;
 
-                    // Only add if not already defined and not converting to itself
-                    if (!CONVERSION_DB.containsKey(surrogateConversionPair) && !targetClass.equals(surrogateClass)) {
-                        // Create composite conversion: Surrogate → primary → target
-                        Convert<?> originalConversion = CONVERSION_DB.get(pair);
-                        Convert<?> bridgeConversion = createSurrogateToPrimaryBridgeConversion(config, originalConversion);
-                        CONVERSION_DB.put(surrogateConversionPair, bridgeConversion);
+                // Find all targets that the primary class can convert to
+                for (ConversionPair pair : existingPairs) {
+                    if (pair.source.equals(primaryClass)) {
+                        Class<?> targetClass = pair.target;
+                        ConversionPair surrogateConversionPair = pair(surrogateClass, targetClass);
+
+                        // Only add if not already defined and not converting to itself
+                        if (!CONVERSION_DB.containsKey(surrogateConversionPair) && !targetClass.equals(surrogateClass)) {
+                            // Create composite conversion: Surrogate → primary → target
+                            Convert<?> originalConversion = CONVERSION_DB.get(pair);
+                            Convert<?> bridgeConversion = createSurrogateToPrimaryBridgeConversion(config, originalConversion);
+                            CONVERSION_DB.put(surrogateConversionPair, bridgeConversion);
+                        }
                     }
                 }
-            }
-        }
-    }
+            } else {
+                // REVERSE BRIDGES: Source → Primary → Surrogate
+                // Example: String.class → Integer.class → int.class
+                Class<?> primaryClass = config.surrogateClass;  // Note: in List 2, surrogate is the source
+                Class<?> surrogateClass = config.primaryClass;  // and primary is the target
 
-    /**
-     * Expands primary → surrogate bridges from List 2.
-     * For each primary-surrogate pair, allows everything that can reach the primary
-     * to also reach the surrogate.
-     * <p>
-     * Example: Integer.class → int.class
-     * If String can convert to Integer, then String can also convert to int.
-     */
-    private static void expandPrimaryToSurrogateBridges() {
-        // Create a snapshot of existing pairs to avoid ConcurrentModificationException
-        Set<ConversionPair> existingPairs = new HashSet<>(CONVERSION_DB.keySet());
+                // Find all sources that can convert to the primary class
+                for (ConversionPair pair : existingPairs) {
+                    if (pair.target.equals(primaryClass)) {
+                        Class<?> sourceClass = pair.source;
+                        ConversionPair sourceToSurrogateConversionPair = pair(sourceClass, surrogateClass);
 
-        // For each primary → surrogate configuration
-        for (SurrogatePrimaryPair config : getPrimaryToSurrogatePairs()) {
-            Class<?> primaryClass = config.surrogateClass;  // Note: in List 2, surrogate is the source
-            Class<?> surrogateClass = config.primaryClass;  // and primary is the target
-
-            // REVERSE BRIDGES: Source → Primary → Surrogate  
-            // Find all sources that can convert to the primary class
-            for (ConversionPair pair : existingPairs) {
-                if (pair.target.equals(primaryClass)) {
-                    Class<?> sourceClass = pair.source;
-                    ConversionPair sourceToSurrogateConversionPair = pair(sourceClass, surrogateClass);
-
-                    // Only add if not already defined and not converting from itself
-                    if (!CONVERSION_DB.containsKey(sourceToSurrogateConversionPair) && !sourceClass.equals(surrogateClass)) {
-                        // Create composite conversion: Source → primary → surrogate
-                        Convert<?> originalConversion = CONVERSION_DB.get(pair);
-                        Convert<?> bridgeConversion = createPrimaryToSurrogateBridgeConversion(config, originalConversion);
-                        CONVERSION_DB.put(sourceToSurrogateConversionPair, bridgeConversion);
+                        // Only add if not already defined and not converting from itself
+                        if (!CONVERSION_DB.containsKey(sourceToSurrogateConversionPair) && !sourceClass.equals(surrogateClass)) {
+                            // Create composite conversion: Source → primary → surrogate
+                            Convert<?> originalConversion = CONVERSION_DB.get(pair);
+                            Convert<?> bridgeConversion = createPrimaryToSurrogateBridgeConversion(config, originalConversion);
+                            CONVERSION_DB.put(sourceToSurrogateConversionPair, bridgeConversion);
+                        }
                     }
                 }
             }

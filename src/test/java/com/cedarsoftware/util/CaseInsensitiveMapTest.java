@@ -2652,6 +2652,150 @@ void testComputeIfAbsent() {
         assertArrayEquals(expected, cis.codePoints().toArray());
     }
 
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
+    @Test
+    void testCaseInsensitiveMapPerformanceComparison() {
+        System.out.println("Performance Test: CaseInsensitiveMap vs TreeMap with String.CASE_INSENSITIVE_ORDER");
+        System.out.println("================================================================");
+        
+        Random random = new Random(42); // Fixed seed for reproducible results
+        
+        // Test 1: CaseInsensitiveMap backed by HashMap
+        System.out.println("\nTest 1: CaseInsensitiveMap(HashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        testMapPerformance(new CaseInsensitiveMap<>(new HashMap<>()), 
+                          new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
+                          "CaseInsensitiveMap(HashMap)", 
+                          "TreeMap(CASE_INSENSITIVE_ORDER)",
+                          random);
+        
+        // Test 2: CaseInsensitiveMap backed by LinkedHashMap  
+        System.out.println("\nTest 2: CaseInsensitiveMap(LinkedHashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        testMapPerformance(new CaseInsensitiveMap<>(new LinkedHashMap<>()), 
+                          new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
+                          "CaseInsensitiveMap(LinkedHashMap)", 
+                          "TreeMap(CASE_INSENSITIVE_ORDER)",
+                          random);
+        
+        // Test 3: CaseInsensitiveMap backed by TreeMap() vs TreeMap(String.CASE_INSENSITIVE_ORDER)
+        System.out.println("\nTest 3: CaseInsensitiveMap(TreeMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        testMapPerformance(new CaseInsensitiveMap<>(new TreeMap<>()), 
+                          new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
+                          "CaseInsensitiveMap(TreeMap)", 
+                          "TreeMap(CASE_INSENSITIVE_ORDER)",
+                          random);
+        
+        System.out.println("\n================================================================");
+        System.out.println("Performance test completed");
+    }
+    
+    private void testMapPerformance(Map<String, String> map1, Map<String, String> map2, 
+                                   String map1Name, String map2Name, Random random) {
+        
+        // Generate test data
+        String[] keys = new String[10000];
+        String[] values = new String[10000];
+        for (int i = 0; i < keys.length; i++) {
+            keys[i] = StringUtilities.getRandomString(random, 5, 15);
+            values[i] = StringUtilities.getRandomString(random, 10, 20);
+        }
+        
+        // JIT warmup - run both maps several times to ensure fair comparison
+        warmupMaps(map1, map2, keys, values, 3);
+        
+        // Test map1 performance
+        long map1Time = timeMapOperations(map1, keys, values, 2000);
+        
+        // Clear and test map2 performance  
+        long map2Time = timeMapOperations(map2, keys, values, 2000);
+        
+        // Calculate speedup
+
+        int map1Ops = countOps(map1, keys, values, 2000);
+        int map2Ops = countOps(map2, keys, values, 2000);
+        
+        System.out.printf("%-35s: %,d operations in %,d ms%n", map1Name, map1Ops, map1Time);
+        System.out.printf("%-35s: %,d operations in %,d ms%n", map2Name, map2Ops, map2Time);
+        
+        double opsSpeedup = (double) map1Ops / map2Ops;
+        System.out.printf("Operations speedup: %.2fx (%s performed %.2fx more operations)%n", 
+                         opsSpeedup, 
+                         opsSpeedup > 1.0 ? map1Name : map2Name, 
+                         opsSpeedup > 1.0 ? opsSpeedup : 1.0 / opsSpeedup);
+    }
+    
+    private void warmupMaps(Map<String, String> map1, Map<String, String> map2, 
+                           String[] keys, String[] values, int iterations) {
+        // Warmup both maps alternately to ensure fair JIT compilation
+        for (int i = 0; i < iterations; i++) {
+            performMapOperations(map1, keys, values, 100);
+            map1.clear();
+            performMapOperations(map2, keys, values, 100);
+            map2.clear();
+        }
+    }
+    
+    private long timeMapOperations(Map<String, String> map, String[] keys, String[] values, long durationMs) {
+        map.clear();
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + durationMs;
+        
+        int i = 0;
+        while (System.currentTimeMillis() < endTime) {
+            String key = keys[i % keys.length];
+            String value = values[i % values.length];
+            
+            map.put(key, value);
+            map.get(key.toLowerCase()); // Test case insensitive lookup
+            map.get(key.toUpperCase()); // Test case insensitive lookup
+            map.containsKey(key);
+            
+            i++;
+            if (i % 1000 == 0) {
+                map.clear(); // Periodically clear to test fresh insertions
+            }
+        }
+        
+        return System.currentTimeMillis() - startTime;
+    }
+    
+    private int countOps(Map<String, String> map, String[] keys, String[] values, long durationMs) {
+        map.clear();
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + durationMs;
+        
+        int operations = 0;
+        int i = 0;
+        while (System.currentTimeMillis() < endTime) {
+            String key = keys[i % keys.length];
+            String value = values[i % values.length];
+            
+            map.put(key, value);
+            map.get(key.toLowerCase());
+            map.get(key.toUpperCase());
+            map.containsKey(key);
+            
+            operations += 4; // 4 operations per loop
+            i++;
+            if (i % 1000 == 0) {
+                map.clear();
+            }
+        }
+        
+        return operations;
+    }
+    
+    private void performMapOperations(Map<String, String> map, String[] keys, String[] values, int count) {
+        for (int i = 0; i < count; i++) {
+            String key = keys[i % keys.length];
+            String value = values[i % values.length];
+            
+            map.put(key, value);
+            map.get(key.toLowerCase());
+            map.get(key.toUpperCase());
+            map.containsKey(key);
+        }
+    }
+
     // ---------------------------------------------------
     
     private CaseInsensitiveMap<String, Object> createSimpleMap()

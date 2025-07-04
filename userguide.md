@@ -197,6 +197,36 @@ CaseInsensitiveSet<String> notThreadSafe = new CaseInsensitiveSet<>();
 - **Set operations**: Uses underlying `CaseInsensitiveMap` for consistent behavior
 - **Set contract**: Maintains proper `Set` contract while providing case-insensitive functionality for strings
 
+### Concurrent Interface Compatibility
+
+When using concurrent backing maps, `CaseInsensitiveSet` retains the concurrent semantics of the underlying map implementation:
+
+```java
+// ConcurrentMap backing provides concurrent semantics
+CaseInsensitiveSet<String> concurrentSet = new CaseInsensitiveSet<>(
+    Arrays.asList("example"), 
+    new ConcurrentHashMap<>()
+);
+
+// All concurrent operations work with case-insensitive comparisons
+concurrentSet.add("Apple");
+concurrentSet.add("APPLE");  // No effect - same element
+concurrentSet.remove("apple");  // Case-insensitive removal
+
+// ConcurrentNavigableMap backing provides sorted + concurrent semantics  
+CaseInsensitiveSet<String> navSet = new CaseInsensitiveSet<>(
+    Arrays.asList("example"), 
+    new ConcurrentSkipListMap<>()
+);
+
+// Maintains sorted order with concurrent access
+navSet.add("banana");
+navSet.add("BANANA");  // No effect - same element
+navSet.add("apple");   // Maintains sorted order
+```
+
+The case-insensitive behavior applies to all set operations - `add`, `remove`, `contains`, and iteration all use case-insensitive comparison for String elements while maintaining the thread-safety and ordering guarantees of the backing concurrent map.
+
 ---
 ## ConcurrentSet
 [Source](/src/main/java/com/cedarsoftware/util/ConcurrentSet.java)
@@ -722,6 +752,31 @@ concurrentMap.computeIfAbsent("KEY", k -> "computed");  // Same key, case-insens
 
 **Why it works:**
 - Simple wrapper around backing map - no complex internal state
+- All operations delegate directly to the backing map, preserving concurrent semantics
+
+**Concurrent Interface Compatibility:**
+When using `ConcurrentMap` or `ConcurrentNavigableMap` backing implementations, `CaseInsensitiveMap` retains the full concurrent semantics of the underlying map:
+
+```java
+// ConcurrentMap semantics are preserved
+CaseInsensitiveMap<String, String> concurrentMap = 
+    new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
+
+// All ConcurrentMap methods work with case-insensitive keys
+concurrentMap.putIfAbsent("Key", "Value1");
+concurrentMap.putIfAbsent("KEY", "Value2");  // No effect - same key
+concurrentMap.replace("key", "Value1", "NewValue");  // Case-insensitive replace
+
+// ConcurrentNavigableMap semantics are preserved
+CaseInsensitiveMap<String, String> navMap = 
+    new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
+
+// All ConcurrentNavigableMap methods work with case-insensitive keys
+navMap.putIfAbsent("apple", "fruit");
+navMap.putIfAbsent("APPLE", "ignored");  // No effect - same key
+```
+
+The case-insensitive behavior applies to all concurrent operations - `putIfAbsent`, `replace`, `remove`, `compute*`, and `merge` operations all use case-insensitive key comparison for String keys while maintaining the thread-safety guarantees of the backing concurrent map.
 - All operations delegate directly to the backing map
 - Case-insensitive key transformation happens before delegation
 - No race conditions or multi-phase storage like `CompactMap`

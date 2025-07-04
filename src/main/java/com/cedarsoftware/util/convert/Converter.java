@@ -867,7 +867,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(String.class, File.class), StringConversions::toFile);
         CONVERSION_DB.put(pair(Map.class, File.class), MapConversions::toFile);
         CONVERSION_DB.put(pair(URI.class, File.class), UriConversions::toFile);
-        CONVERSION_DB.put(pair(URL.class, File.class), UrlConversions::toFile);
         CONVERSION_DB.put(pair(Path.class, File.class), PathConversions::toFile);
         CONVERSION_DB.put(pair(char[].class, File.class), ArrayConversions::charArrayToFile);
         CONVERSION_DB.put(pair(byte[].class, File.class), ArrayConversions::byteArrayToFile);
@@ -878,7 +877,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(String.class, Path.class), StringConversions::toPath);
         CONVERSION_DB.put(pair(Map.class, Path.class), MapConversions::toPath);
         CONVERSION_DB.put(pair(URI.class, Path.class), UriConversions::toPath);
-        CONVERSION_DB.put(pair(URL.class, Path.class), UrlConversions::toPath);
         CONVERSION_DB.put(pair(File.class, Path.class), FileConversions::toPath);
         CONVERSION_DB.put(pair(char[].class, Path.class), ArrayConversions::charArrayToPath);
         CONVERSION_DB.put(pair(byte[].class, Path.class), ArrayConversions::byteArrayToPath);
@@ -935,8 +933,8 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetDateTime.class, String.class), OffsetDateTimeConversions::toString);
         CONVERSION_DB.put(pair(Year.class, String.class), YearConversions::toString);
         CONVERSION_DB.put(pair(Locale.class, String.class), LocaleConversions::toString);
-        CONVERSION_DB.put(pair(URL.class, String.class), UniversalConversions::toString);
         CONVERSION_DB.put(pair(URI.class, String.class), UniversalConversions::toString);
+        CONVERSION_DB.put(pair(URL.class, String.class), UniversalConversions::toString);
         CONVERSION_DB.put(pair(File.class, String.class), FileConversions::toString);
         CONVERSION_DB.put(pair(Path.class, String.class), PathConversions::toString);
         CONVERSION_DB.put(pair(TimeZone.class, String.class), TimeZoneConversions::toString);
@@ -1328,6 +1326,10 @@ public final class Converter {
                     new SurrogatePrimaryPair(CharSequence.class, String.class,
                             UniversalConversions::charSequenceToString, null),
 
+                    // Resource identifiers → URI (lossless via URL.toURI())
+                    new SurrogatePrimaryPair(URL.class, URI.class,
+                            UrlConversions::toURI, null),
+
                     // Date & Time
                     new SurrogatePrimaryPair(Calendar.class, ZonedDateTime.class, 
                             UniversalConversions::calendarToZonedDateTime, null)
@@ -1369,7 +1371,11 @@ public final class Converter {
                     new SurrogatePrimaryPair(String.class, StringBuilder.class, null,
                             UniversalConversions::stringToStringBuilder),
                     new SurrogatePrimaryPair(String.class, CharSequence.class, null,
-                            UniversalConversions::stringToCharSequence)
+                            UniversalConversions::stringToCharSequence),
+
+                    // URI → URL (convert URI to URL for legacy compatibility)
+                    new SurrogatePrimaryPair(URI.class, URL.class, null,
+                            UriConversions::toURL)
             );
         }
         return PRIMARY_TO_SURROGATE_PAIRS;
@@ -1659,7 +1665,7 @@ public final class Converter {
      * <h3>Extensibility:</h3>
      * <p>
      * Users can extend the Converter's capabilities by registering custom converters for specific type pairs.
-     * This is accomplished using the {@link #addConversion(Class, Class, Convert)} method, which accepts the source type,
+     * This is achieved using the {@link #addConversion(Class, Class, Convert)} method, which accepts the source type,
      * target type, and a {@link Convert} functional interface implementation that defines the conversion logic.
      * </p>
      *
@@ -1807,111 +1813,71 @@ public final class Converter {
         // Special handling for container → Enum conversions (creates EnumSet)
         if (toType.isEnum()) {
             if (sourceType.isArray() || Collection.class.isAssignableFrom(sourceType)) {
-                // Array/Collection elements → EnumSet
-                final Class<?> finalToType = toType;
-                Convert<?> enumSetConverter = (fromObj, converter) -> EnumConversions.toEnumSet(fromObj, finalToType);
-                Object result = enumSetConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, enumSetConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> EnumConversions.toEnumSet(fromObj, toType));
             } else if (Map.class.isAssignableFrom(sourceType)) {
-                // Map keys → EnumSet (brilliant use case!)
-                final Class<?> finalToType = toType;
-                Convert<?> mapKeysEnumSetConverter = (fromObj, converter) -> EnumConversions.toEnumSet(((Map<?, ?>) fromObj).keySet(), finalToType);
-                Object result = mapKeysEnumSetConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, mapKeysEnumSetConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> EnumConversions.toEnumSet(((Map<?, ?>) fromObj).keySet(), toType));
             }
         }
         // EnumSet source conversions
         else if (EnumSet.class.isAssignableFrom(sourceType)) {
             if (Collection.class.isAssignableFrom(toType)) {
-                final Class<?> finalToType = toType;
-                Convert<?> enumSetToCollectionConverter = (fromObj, converter) -> {
-                    Collection<Object> target = (Collection<Object>) CollectionHandling.createCollection(fromObj, finalToType);
-                    target.addAll((Collection<?>) fromObj);
-                    return target;
-                };
-                Object result = enumSetToCollectionConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, enumSetToCollectionConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> {
+                            Collection<Object> target = (Collection<Object>) CollectionHandling.createCollection(fromObj, toType);
+                            target.addAll((Collection<?>) fromObj);
+                            return target;
+                        });
             }
             if (toType.isArray()) {
-                final Class<?> finalToType = toType;
-                Convert<?> enumSetToArrayConverter = (fromObj, converter) -> ArrayConversions.enumSetToArray((EnumSet<?>) fromObj, finalToType);
-                Object result = enumSetToArrayConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, enumSetToArrayConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> ArrayConversions.enumSetToArray((EnumSet<?>) fromObj, toType));
             }
         }
         // Collection source conversions
         else if (Collection.class.isAssignableFrom(sourceType)) {
             if (toType.isArray()) {
-                final Class<?> finalToType = toType;
-                Convert<?> collectionToArrayConverter = (fromObj, converter) -> ArrayConversions.collectionToArray((Collection<?>) fromObj, finalToType, converter);
-                Object result = collectionToArrayConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, collectionToArrayConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> ArrayConversions.collectionToArray((Collection<?>) fromObj, toType, converter));
             } else if (Collection.class.isAssignableFrom(toType)) {
-                final Class<?> finalToType = toType;
-                Convert<?> collectionToCollectionConverter = (fromObj, converter) -> CollectionConversions.collectionToCollection((Collection<?>) fromObj, finalToType);
-                Object result = collectionToCollectionConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, collectionToCollectionConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> CollectionConversions.collectionToCollection((Collection<?>) fromObj, toType));
             }
         }
         // Array source conversions
         else if (sourceType.isArray()) {
             if (Collection.class.isAssignableFrom(toType)) {
-                final Class<?> finalToType = toType;
-                Convert<?> arrayToCollectionConverter = (fromObj, converter) -> CollectionConversions.arrayToCollection(fromObj, (Class<? extends Collection<?>>) finalToType);
-                Object result = arrayToCollectionConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, arrayToCollectionConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> CollectionConversions.arrayToCollection(fromObj, (Class<? extends Collection<?>>) toType));
             } else if (toType.isArray() && !sourceType.getComponentType().equals(toType.getComponentType())) {
-                // Handle array-to-array conversion when component types differ
-                final Class<?> finalToType = toType;
-                Convert<?> arrayToArrayConverter = (fromObj, converter) -> ArrayConversions.arrayToArray(fromObj, finalToType, converter);
-                Object result = arrayToArrayConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, arrayToArrayConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> ArrayConversions.arrayToArray(fromObj, toType, converter));
             }
         }
         // Map source conversions
         else if (Map.class.isAssignableFrom(sourceType)) {
             if (Map.class.isAssignableFrom(toType)) {
-                // Map → Map universal conversion
-                final Class<?> finalToType = toType;
-                Convert<?> mapConverter = (fromObj, converter) -> MapConversions.mapToMapWithTarget(fromObj, converter, finalToType);
-
-                // Execute and cache successful conversions
-                Object result = mapConverter.convert(from, this);
-                if (result != null) {
-                    cacheConverter(sourceType, toType, mapConverter);
-                }
-                return (T) result;
+                return executeAndCache(sourceType, toType, from,
+                        (fromObj, converter) -> MapConversions.mapToMapWithTarget(fromObj, converter, toType));
             }
-            // Future: Could add Map → Collection conversions here (values, keySet, entrySet)
         }
 
         return null;
     }
 
+    /**
+     * Helper method to execute a converter and cache it if successful
+     */
+    @SuppressWarnings("unchecked")
+    private <T> T executeAndCache(Class<?> sourceType, Class<?> toType, Object from, Convert<?> converter) {
+        Object result = converter.convert(from, this);
+        if (result != null) {
+            cacheConverter(sourceType, toType, converter);
+        }
+        return (T) result;
+    }
+    
     /**
      * Retrieves the most suitable converter for converting from the specified source type to the desired target type.
      * This method searches through the class hierarchies of both source and target types to find the best matching

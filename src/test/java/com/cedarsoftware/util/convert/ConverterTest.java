@@ -46,6 +46,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 
+import com.cedarsoftware.util.convert.DefaultConverterOptions;
+
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_CHAR_ARRAY;
 import static com.cedarsoftware.util.Converter.zonedDateTimeToMillis;
@@ -4002,44 +4004,27 @@ class ConverterTest
     @Test
     void testUUIDtoBoolean()
     {
-        assert !this.converter.isConversionSupportedFor(UUID.class, boolean.class);
-        assert !this.converter.isConversionSupportedFor(UUID.class, Boolean.class);
-
-        assert !this.converter.isConversionSupportedFor(boolean.class, UUID.class);
-        assert !this.converter.isConversionSupportedFor(Boolean.class, UUID.class);
-
-        final UUID uuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
-
-        assertThatThrownBy(() -> this.converter.convert(uuid, boolean.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported conversion, source type [UUID (00000000-0000-0000-0000-000000000000)] target type 'boolean'");
-
-        // Add in conversions
-        this.converter.addConversion(UUID.class, Boolean.class, (fromInstance, converter) -> {
-            UUID uuid1 = (UUID) fromInstance;
-            return Boolean.valueOf(!"00000000-0000-0000-0000-000000000000".equals(uuid1.toString()));
-        });
-
-        // Add in conversions
-        this.converter.addConversion(Boolean.class, UUID.class, (fromInstance, converter) -> {
-            boolean state = (Boolean)fromInstance;
-            if (state) {
-                return "00000000-0000-0000-0000-000000000001";
-            } else {
-                return "00000000-0000-0000-0000-000000000000";
-            }
-        });
-
-        // Converts!
-        assert !this.converter.convert(UUID.fromString("00000000-0000-0000-0000-000000000000"), boolean.class);
-        assert this.converter.convert(UUID.fromString("00000000-0000-0000-0000-000000000001"), boolean.class);
-        assert this.converter.convert(UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), boolean.class);
-
+        // UUID ↔ Boolean conversions are now built-in
         assert this.converter.isConversionSupportedFor(UUID.class, boolean.class);
         assert this.converter.isConversionSupportedFor(UUID.class, Boolean.class);
 
         assert this.converter.isConversionSupportedFor(boolean.class, UUID.class);
         assert this.converter.isConversionSupportedFor(Boolean.class, UUID.class);
+
+        // Test UUID → Boolean conversions (false if all zeros, true otherwise)
+        assert !this.converter.convert(UUID.fromString("00000000-0000-0000-0000-000000000000"), boolean.class);
+        assert this.converter.convert(UUID.fromString("00000000-0000-0000-0000-000000000001"), boolean.class);
+        assert this.converter.convert(UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"), boolean.class);
+
+        // Test Boolean → UUID conversions (false=all zeros, true=all F's)
+        UUID falseUUID = this.converter.convert(false, UUID.class);
+        UUID trueUUID = this.converter.convert(true, UUID.class);
+        assert falseUUID.equals(UUID.fromString("00000000-0000-0000-0000-000000000000"));
+        assert trueUUID.equals(UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff"));
+
+        // Test round-trip conversions
+        assert !this.converter.convert(falseUUID, boolean.class);
+        assert this.converter.convert(trueUUID, boolean.class);
     }
 
     @Test
@@ -4246,6 +4231,21 @@ class ConverterTest
         Converter converter = new Converter(createCharsetOptions(charSet));
         char[] actual = converter.convert(source, char[].class);
         assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    void testCharBufferToCharSequence() {
+        Converter converter = new Converter(new DefaultConverterOptions());
+        
+        CharBuffer buffer1 = CharBuffer.wrap("Hello");
+        CharSequence result1 = converter.convert(buffer1, CharSequence.class);
+        assertThat(result1).isEqualTo("Hello");
+        assertThat(result1).isInstanceOf(String.class);
+        
+        CharBuffer buffer2 = CharBuffer.wrap("Test");
+        CharSequence result2 = converter.convert(buffer2, CharSequence.class);
+        assertThat(result2).isEqualTo("Test");
+        assertThat(result2).isInstanceOf(String.class);
     }
 
     @Test

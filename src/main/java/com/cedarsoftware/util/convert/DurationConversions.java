@@ -5,6 +5,8 @@ import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -72,5 +74,20 @@ final class DurationConversions {
         Instant epoch = Instant.EPOCH;
         Instant timeAfterDuration = epoch.plus(duration);
         return Timestamp.from(timeAfterDuration);
+    }
+    
+    static java.sql.Date toSqlDate(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        
+        // Add duration to epoch to get the target instant
+        Instant epoch = Instant.EPOCH;
+        Instant timeAfterDuration = epoch.plus(duration);
+        
+        // Convert to LocalDate in UTC to get day boundary alignment
+        // This ensures the result is always at 00:00:00 (start of day)
+        LocalDate localDate = timeAfterDuration.atOffset(ZoneOffset.UTC).toLocalDate();
+        
+        // Convert back to java.sql.Date
+        return java.sql.Date.valueOf(localDate);
     }
 }

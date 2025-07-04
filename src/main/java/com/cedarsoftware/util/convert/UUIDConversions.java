@@ -43,5 +43,11 @@ final class UUIDConversions {
         target.put(MapConversions.UUID, uuid.toString());
         return target;
     }
+
+    static Boolean toBoolean(Object from, Converter converter) {
+        UUID uuid = (UUID) from;
+        // false if all zeros, true otherwise
+        return uuid.getMostSignificantBits() != 0L || uuid.getLeastSignificantBits() != 0L;
+    }
 }
 

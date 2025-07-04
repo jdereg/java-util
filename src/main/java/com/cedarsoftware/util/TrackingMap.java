@@ -4,7 +4,17 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
+import java.util.Objects;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * A wrapper around a {@link Map} that tracks which keys have been accessed via {@code get} or {@code containsKey} methods.
@@ -34,8 +44,17 @@ import java.util.Set;
  * }</pre>
  *
  * <p>
- * <b>Thread Safety:</b> This class is <i>not</i> thread-safe. If multiple threads access a {@code TrackingMap}
- * concurrently and at least one of the threads modifies the map structurally, it must be synchronized externally.
+ * <b>Thread Safety:</b> This class is thread-safe when wrapping concurrent map implementations 
+ * ({@link ConcurrentMap}, {@link ConcurrentNavigableMap}). The thread safety is provided by using
+ * a concurrent tracking set and delegating all operations to the underlying concurrent map. 
+ * When wrapping non-concurrent maps, external synchronization is required.
+ * </p>
+ * 
+ * <p>
+ * <b>Concurrent Operations:</b> When wrapping a {@link ConcurrentMap} or {@link ConcurrentNavigableMap},
+ * this class provides additional methods that leverage the concurrent semantics of the backing map:
+ * {@code putIfAbsent()}, {@code replace()}, {@code compute*()}, {@code merge()}, and navigation methods.
+ * These operations maintain both the concurrent guarantees and the access tracking functionality.
  * </p>
  *
  * <p>
@@ -48,7 +67,8 @@ import java.util.Set;
  * @param <V> the type of mapped values
  *
  * @author
- *         Sean Kellner
+ *         Sean Kellner - original version
+ *         John DeRegnaucourt - correct ConcurrentMap and ConcurrentNavigableMap support when wrapped.
  *         <br>
  *         Copyright (c) Cedar Software LLC
  *         <br><br>
@@ -80,12 +100,12 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * @throws IllegalArgumentException if the provided {@code map} is {@code null}
      */
     public TrackingMap(Map<K, V> map) {
-        if (map == null)
-        {
+        if (map == null) {
             throw new IllegalArgumentException("Cannot construct a TrackingMap() with null");
         }
         internalMap = map;
-        readKeys = new HashSet<>();
+        // Use concurrent tracking set if wrapping a concurrent map for thread safety
+        readKeys = (map instanceof ConcurrentMap) ? ConcurrentHashMap.newKeySet() : new HashSet<>();
     }
 
     /**
@@ -255,11 +275,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Returns a {@link Set} of keys that have been accessed via {@code get} or {@code containsKey}.
-     *
-     * @return a {@link Set} of accessed keys
-     */
-    /**
      * Returns an unmodifiable view of the keys that have been accessed via
      * {@code get()} or {@code containsKey()}.
      * <p>
@@ -297,5 +312,653 @@ public class TrackingMap<K, V> implements Map<K, V> {
     @Deprecated
     public void setWrappedMap(Map<K, V> map) {
         replaceContents(map);
+    }
+
+    // ===== ConcurrentMap methods (available when backing map supports them) =====
+    
+    /**
+     * If the specified key is not already associated with a value,
+     * associate it with the given value.
+     * <p>
+     * Does not mark the key as accessed since this is a write operation.
+     * Available when the backing map is a {@link ConcurrentMap}.
+     *
+     * @param key key with which the specified value is to be associated
+     * @param value value to be associated with the specified key
+     * @return the previous value associated with the specified key, or {@code null}
+     *         if there was no mapping for the key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
+     */
+    public V putIfAbsent(K key, V value) {
+        if (internalMap instanceof ConcurrentMap) {
+            return internalMap.putIfAbsent(key, value);
+        }
+        // Fallback for non-concurrent maps with synchronization
+        synchronized (this) {
+            V existing = internalMap.get(key);
+            if (existing == null) {
+                return internalMap.put(key, value);
+            }
+            return existing;
+        }
+    }
+
+    /**
+     * Removes the entry for a key only if currently mapped to a given value.
+     * Also removes the key from the set of accessed keys if removal succeeds.
+     * Available when the backing map is a {@link ConcurrentMap}.
+     *
+     * @param key key with which the specified value is associated
+     * @param value value expected to be associated with the specified key
+     * @return {@code true} if the value was removed
+     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
+     */
+    public boolean remove(Object key, Object value) {
+        boolean removed;
+        if (internalMap instanceof ConcurrentMap) {
+            removed = internalMap.remove(key, value);
+        } else {
+            // Fallback for non-concurrent maps with synchronization
+            synchronized (this) {
+                Object curValue = internalMap.get(key);
+                if (Objects.equals(curValue, value)) {
+                    internalMap.remove(key);
+                    removed = true;
+                } else {
+                    removed = false;
+                }
+            }
+        }
+        if (removed) {
+            readKeys.remove(key);
+        }
+        return removed;
+    }
+
+    /**
+     * Replaces the entry for a key only if currently mapped to a given value.
+     * Available when the backing map is a {@link ConcurrentMap}.
+     *
+     * @param key key with which the specified value is associated
+     * @param oldValue value expected to be associated with the specified key
+     * @param newValue value to be associated with the specified key
+     * @return {@code true} if the value was replaced
+     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
+     */
+    public boolean replace(K key, V oldValue, V newValue) {
+        if (internalMap instanceof ConcurrentMap) {
+            return internalMap.replace(key, oldValue, newValue);
+        }
+        // Fallback for non-concurrent maps with synchronization
+        synchronized (this) {
+            Object curValue = internalMap.get(key);
+            if (Objects.equals(curValue, oldValue)) {
+                internalMap.put(key, newValue);
+                return true;
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Replaces the entry for a key only if currently mapped to some value.
+     * Available when the backing map is a {@link ConcurrentMap}.
+     *
+     * @param key key with which the specified value is associated
+     * @param value value to be associated with the specified key
+     * @return the previous value associated with the specified key, or {@code null}
+     *         if there was no mapping for the key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentMap operations
+     */
+    public V replace(K key, V value) {
+        if (internalMap instanceof ConcurrentMap) {
+            return internalMap.replace(key, value);
+        }
+        // Fallback for non-concurrent maps with synchronization
+        synchronized (this) {
+            if (internalMap.containsKey(key)) {
+                return internalMap.put(key, value);
+            }
+            return null;
+        }
+    }
+
+    // ===== Java 8+ Map methods with tracking =====
+    
+    /**
+     * If the specified key is not already associated with a value,
+     * attempts to compute its value using the given mapping function
+     * and enters it into this map unless null.
+     * Marks the key as accessed since this involves reading the current value.
+     *
+     * @param key key with which the specified value is to be associated
+     * @param mappingFunction the function to compute a value
+     * @return the current (existing or computed) value associated with
+     *         the specified key, or null if the computed value is null
+     */
+    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        V result = internalMap.computeIfAbsent(key, mappingFunction);
+        readKeys.add(key);
+        return result;
+    }
+
+    /**
+     * If the value for the specified key is present and non-null, attempts to
+     * compute a new mapping given the key and its current mapped value.
+     * Marks the key as accessed since this involves reading the current value.
+     *
+     * @param key key with which the specified value is to be associated
+     * @param remappingFunction the function to compute a value
+     * @return the new value associated with the specified key, or null if none
+     */
+    public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V result = internalMap.computeIfPresent(key, remappingFunction);
+        readKeys.add(key);
+        return result;
+    }
+
+    /**
+     * Attempts to compute a mapping for the specified key and its current
+     * mapped value (or null if there is no current mapping).
+     * Marks the key as accessed since this involves reading the current value.
+     *
+     * @param key key with which the specified value is to be associated
+     * @param remappingFunction the function to compute a value
+     * @return the new value associated with the specified key, or null if none
+     */
+    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V result = internalMap.compute(key, remappingFunction);
+        readKeys.add(key);
+        return result;
+    }
+
+    /**
+     * If the specified key is not already associated with a value or is
+     * associated with null, associates it with the given non-null value.
+     * Otherwise, replaces the associated value with the results of the given
+     * remapping function, or removes if the result is null.
+     * Marks the key as accessed since this involves reading the current value.
+     *
+     * @param key key with which the resulting value is to be associated
+     * @param value the non-null value to be merged with the existing value
+     * @param remappingFunction the function to recompute a value if present
+     * @return the new value associated with the specified key, or null if no
+     *         value is associated with the key
+     */
+    public V merge(K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        V result = internalMap.merge(key, value, remappingFunction);
+        readKeys.add(key);
+        return result;
+    }
+
+    /**
+     * Returns the value to which the specified key is mapped, or
+     * {@code defaultValue} if this map contains no mapping for the key.
+     * Marks the key as accessed.
+     *
+     * @param key the key whose associated value is to be returned
+     * @param defaultValue the default mapping of the key
+     * @return the value to which the specified key is mapped, or
+     *         {@code defaultValue} if this map contains no mapping for the key
+     */
+    public V getOrDefault(Object key, V defaultValue) {
+        V result = internalMap.getOrDefault(key, defaultValue);
+        readKeys.add(key);
+        return result;
+    }
+
+    /**
+     * Performs the given action for each entry in this map until all entries
+     * have been processed or the action throws an exception.
+     *
+     * @param action The action to be performed for each entry
+     */
+    public void forEach(BiConsumer<? super K, ? super V> action) {
+        internalMap.forEach(action);
+    }
+
+    /**
+     * Replaces each entry's value with the result of invoking the given
+     * function on that entry until all entries have been processed or the
+     * function throws an exception.
+     *
+     * @param function the function to apply to each entry
+     */
+    public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
+        internalMap.replaceAll(function);
+    }
+
+    // ===== NavigableMap methods (available when backing map supports them) =====
+    
+    /**
+     * Returns a key-value mapping associated with the greatest key strictly less
+     * than the given key, or null if there is no such key.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param key the key
+     * @return an entry with the greatest key less than key, or null if no such key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public Map.Entry<K, V> lowerEntry(K key) {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).lowerEntry(key);
+        if (entry != null) {
+            readKeys.add(entry.getKey());
+        }
+        return entry;
+    }
+
+    /**
+     * Returns the greatest key strictly less than the given key, or null if no such key.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param key the key
+     * @return the greatest key less than key, or null if no such key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public K lowerKey(K key) {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        K result = ((NavigableMap<K, V>) internalMap).lowerKey(key);
+        if (result != null) {
+            readKeys.add(result);
+        }
+        return result;
+    }
+
+    /**
+     * Returns a key-value mapping associated with the greatest key less than or
+     * equal to the given key, or null if there is no such key.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param key the key
+     * @return an entry with the greatest key less than or equal to key, or null if no such key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public Map.Entry<K, V> floorEntry(K key) {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).floorEntry(key);
+        if (entry != null) {
+            readKeys.add(entry.getKey());
+        }
+        return entry;
+    }
+
+    /**
+     * Returns the greatest key less than or equal to the given key, or null if no such key.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param key the key
+     * @return the greatest key less than or equal to key, or null if no such key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public K floorKey(K key) {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        K result = ((NavigableMap<K, V>) internalMap).floorKey(key);
+        if (result != null) {
+            readKeys.add(result);
+        }
+        return result;
+    }
+
+    /**
+     * Returns a key-value mapping associated with the least key greater than or
+     * equal to the given key, or null if there is no such key.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param key the key
+     * @return an entry with the least key greater than or equal to key, or null if no such key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public Map.Entry<K, V> ceilingEntry(K key) {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).ceilingEntry(key);
+        if (entry != null) {
+            readKeys.add(entry.getKey());
+        }
+        return entry;
+    }
+
+    /**
+     * Returns the least key greater than or equal to the given key, or null if no such key.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param key the key
+     * @return the least key greater than or equal to key, or null if no such key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public K ceilingKey(K key) {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        K result = ((NavigableMap<K, V>) internalMap).ceilingKey(key);
+        if (result != null) {
+            readKeys.add(result);
+        }
+        return result;
+    }
+
+    /**
+     * Returns a key-value mapping associated with the least key strictly greater
+     * than the given key, or null if there is no such key.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param key the key
+     * @return an entry with the least key greater than key, or null if no such key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public Map.Entry<K, V> higherEntry(K key) {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).higherEntry(key);
+        if (entry != null) {
+            readKeys.add(entry.getKey());
+        }
+        return entry;
+    }
+
+    /**
+     * Returns the least key strictly greater than the given key, or null if no such key.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param key the key
+     * @return the least key greater than key, or null if no such key
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public K higherKey(K key) {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        K result = ((NavigableMap<K, V>) internalMap).higherKey(key);
+        if (result != null) {
+            readKeys.add(result);
+        }
+        return result;
+    }
+
+    /**
+     * Returns a key-value mapping associated with the least key in this map,
+     * or null if the map is empty.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @return an entry with the least key, or null if this map is empty
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public Map.Entry<K, V> firstEntry() {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).firstEntry();
+        if (entry != null) {
+            readKeys.add(entry.getKey());
+        }
+        return entry;
+    }
+
+    /**
+     * Returns a key-value mapping associated with the greatest key in this map,
+     * or null if the map is empty.
+     * Marks the returned key as accessed if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @return an entry with the greatest key, or null if this map is empty
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public Map.Entry<K, V> lastEntry() {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).lastEntry();
+        if (entry != null) {
+            readKeys.add(entry.getKey());
+        }
+        return entry;
+    }
+
+    /**
+     * Removes and returns a key-value mapping associated with the least key
+     * in this map, or null if the map is empty.
+     * Removes the key from tracked keys if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @return the removed first entry of this map, or null if this map is empty
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public Map.Entry<K, V> pollFirstEntry() {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).pollFirstEntry();
+        if (entry != null) {
+            readKeys.remove(entry.getKey());
+        }
+        return entry;
+    }
+
+    /**
+     * Removes and returns a key-value mapping associated with the greatest key
+     * in this map, or null if the map is empty.
+     * Removes the key from tracked keys if present.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @return the removed last entry of this map, or null if this map is empty
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public Map.Entry<K, V> pollLastEntry() {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        Map.Entry<K, V> entry = ((NavigableMap<K, V>) internalMap).pollLastEntry();
+        if (entry != null) {
+            readKeys.remove(entry.getKey());
+        }
+        return entry;
+    }
+
+    /**
+     * Returns a NavigableSet view of the keys contained in this map.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @return a navigable set view of the keys in this map
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public NavigableSet<K> navigableKeySet() {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        return ((NavigableMap<K, V>) internalMap).navigableKeySet();
+    }
+
+    /**
+     * Returns a reverse order NavigableSet view of the keys contained in this map.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @return a reverse order navigable set view of the keys in this map
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public NavigableSet<K> descendingKeySet() {
+        if (!(internalMap instanceof NavigableMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+        return ((NavigableMap<K, V>) internalMap).descendingKeySet();
+    }
+
+    /**
+     * Returns a view of the portion of this map whose keys range from fromKey to toKey.
+     * Available when the backing map is a {@link ConcurrentNavigableMap}.
+     *
+     * @param fromKey low endpoint of the keys in the returned map
+     * @param fromInclusive true if the low endpoint is to be included in the returned view
+     * @param toKey high endpoint of the keys in the returned map
+     * @param toInclusive true if the high endpoint is to be included in the returned view
+     * @return a view of the portion of this map whose keys range from fromKey to toKey
+     * @throws UnsupportedOperationException if the wrapped map doesn't support ConcurrentNavigableMap operations
+     */
+    public TrackingMap<K, V> subMap(K fromKey, boolean fromInclusive, K toKey, boolean toInclusive) {
+        if (internalMap instanceof ConcurrentNavigableMap) {
+            NavigableMap<K, V> subMap = ((ConcurrentNavigableMap<K, V>) internalMap).subMap(fromKey, fromInclusive, toKey, toInclusive);
+            return new TrackingMap<>(subMap);
+        } else if (internalMap instanceof NavigableMap) {
+            NavigableMap<K, V> subMap = ((NavigableMap<K, V>) internalMap).subMap(fromKey, fromInclusive, toKey, toInclusive);
+            return new TrackingMap<>(subMap);
+        } else {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+    }
+
+    /**
+     * Returns a view of the portion of this map whose keys are less than (or
+     * equal to, if inclusive is true) toKey.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param toKey high endpoint of the keys in the returned map
+     * @param inclusive true if the high endpoint is to be included in the returned view
+     * @return a view of the portion of this map whose keys are less than toKey
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public TrackingMap<K, V> headMap(K toKey, boolean inclusive) {
+        if (internalMap instanceof ConcurrentNavigableMap) {
+            NavigableMap<K, V> headMap = ((ConcurrentNavigableMap<K, V>) internalMap).headMap(toKey, inclusive);
+            return new TrackingMap<>(headMap);
+        } else if (internalMap instanceof NavigableMap) {
+            NavigableMap<K, V> headMap = ((NavigableMap<K, V>) internalMap).headMap(toKey, inclusive);
+            return new TrackingMap<>(headMap);
+        } else {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+    }
+
+    /**
+     * Returns a view of the portion of this map whose keys are greater than (or
+     * equal to, if inclusive is true) fromKey.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param fromKey low endpoint of the keys in the returned map
+     * @param inclusive true if the low endpoint is to be included in the returned view
+     * @return a view of the portion of this map whose keys are greater than fromKey
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public TrackingMap<K, V> tailMap(K fromKey, boolean inclusive) {
+        if (internalMap instanceof ConcurrentNavigableMap) {
+            NavigableMap<K, V> tailMap = ((ConcurrentNavigableMap<K, V>) internalMap).tailMap(fromKey, inclusive);
+            return new TrackingMap<>(tailMap);
+        } else if (internalMap instanceof NavigableMap) {
+            NavigableMap<K, V> tailMap = ((NavigableMap<K, V>) internalMap).tailMap(fromKey, inclusive);
+            return new TrackingMap<>(tailMap);
+        } else {
+            throw new UnsupportedOperationException("Wrapped map does not support NavigableMap operations");
+        }
+    }
+
+    // ===== SortedMap methods =====
+    
+    /**
+     * Returns the comparator used to order the keys in this map, or null
+     * if this map uses the natural ordering of its keys.
+     * Available when the backing map is a {@link SortedMap}.
+     *
+     * @return the comparator used to order the keys in this map, or null
+     * @throws UnsupportedOperationException if the wrapped map doesn't support SortedMap operations
+     */
+    public java.util.Comparator<? super K> comparator() {
+        if (!(internalMap instanceof SortedMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support SortedMap operations");
+        }
+        return ((SortedMap<K, V>) internalMap).comparator();
+    }
+
+    /**
+     * Returns a view of the portion of this map whose keys range from fromKey,
+     * inclusive, to toKey, exclusive.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param fromKey low endpoint (inclusive) of the keys in the returned map
+     * @param toKey high endpoint (exclusive) of the keys in the returned map
+     * @return a view of the portion of this map whose keys range from fromKey to toKey
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public TrackingMap<K, V> subMap(K fromKey, K toKey) {
+        return subMap(fromKey, true, toKey, false);
+    }
+
+    /**
+     * Returns a view of the portion of this map whose keys are strictly less than toKey.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param toKey high endpoint (exclusive) of the keys in the returned map
+     * @return a view of the portion of this map whose keys are less than toKey
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public TrackingMap<K, V> headMap(K toKey) {
+        return headMap(toKey, false);
+    }
+
+    /**
+     * Returns a view of the portion of this map whose keys are greater than or equal to fromKey.
+     * Available when the backing map is a {@link NavigableMap}.
+     *
+     * @param fromKey low endpoint (inclusive) of the keys in the returned map
+     * @return a view of the portion of this map whose keys are greater than or equal to fromKey
+     * @throws UnsupportedOperationException if the wrapped map doesn't support NavigableMap operations
+     */
+    public TrackingMap<K, V> tailMap(K fromKey) {
+        return tailMap(fromKey, true);
+    }
+
+    /**
+     * Returns the first (lowest) key currently in this map.
+     * Marks the returned key as accessed.
+     * Available when the backing map is a {@link SortedMap}.
+     *
+     * @return the first (lowest) key currently in this map
+     * @throws UnsupportedOperationException if the wrapped map doesn't support SortedMap operations
+     */
+    public K firstKey() {
+        if (!(internalMap instanceof SortedMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support SortedMap operations");
+        }
+        K result = ((SortedMap<K, V>) internalMap).firstKey();
+        if (result != null) {
+            readKeys.add(result);
+        }
+        return result;
+    }
+
+    /**
+     * Returns the last (highest) key currently in this map.
+     * Marks the returned key as accessed.
+     * Available when the backing map is a {@link SortedMap}.
+     *
+     * @return the last (highest) key currently in this map
+     * @throws UnsupportedOperationException if the wrapped map doesn't support SortedMap operations
+     */
+    public K lastKey() {
+        if (!(internalMap instanceof SortedMap)) {
+            throw new UnsupportedOperationException("Wrapped map does not support SortedMap operations");
+        }
+        K result = ((SortedMap<K, V>) internalMap).lastKey();
+        if (result != null) {
+            readKeys.add(result);
+        }
+        return result;
     }
 }

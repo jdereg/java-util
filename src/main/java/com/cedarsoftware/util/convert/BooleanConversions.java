@@ -2,6 +2,7 @@ package com.cedarsoftware.util.convert;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -85,5 +86,11 @@ final class BooleanConversions {
         Boolean b = (Boolean) from;
         ConverterOptions options = converter.getOptions();
         return b ? options.trueChar() : options.falseChar();
+    }
+
+    static UUID toUUID(Object from, Converter converter) {
+        Boolean b = (Boolean) from;
+        // false=all zeros UUID, true=all F's UUID
+        return b ? new UUID(-1L, -1L) : new UUID(0L, 0L);
     }
 }

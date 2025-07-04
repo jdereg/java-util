@@ -408,7 +408,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigDecimal.class, Float.class), NumberConversions::toFloat);
         CONVERSION_DB.put(pair(Map.class, Float.class), MapConversions::toFloat);
         CONVERSION_DB.put(pair(String.class, Float.class), StringConversions::toFloat);
-        CONVERSION_DB.put(pair(Year.class, Float.class), YearConversions::toFloat);
 
         // toDouble
         CONVERSION_DB.put(pair(Void.class, double.class), NumberConversions::toDoubleZero);
@@ -436,7 +435,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(BigDecimal.class, Double.class), NumberConversions::toDouble);
         CONVERSION_DB.put(pair(Map.class, Double.class), MapConversions::toDouble);
         CONVERSION_DB.put(pair(String.class, Double.class), StringConversions::toDouble);
-        CONVERSION_DB.put(pair(Year.class, Double.class), YearConversions::toDouble);
 
         // Boolean/boolean conversions supported
         CONVERSION_DB.put(pair(Void.class, boolean.class), VoidConversions::toBoolean);
@@ -459,6 +457,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Point.class, Boolean.class), PointConversions::toBoolean);
         CONVERSION_DB.put(pair(Rectangle.class, Boolean.class), RectangleConversions::toBoolean);
         CONVERSION_DB.put(pair(Insets.class, Boolean.class), InsetsConversions::toBoolean);
+        CONVERSION_DB.put(pair(UUID.class, Boolean.class), UUIDConversions::toBoolean);
 
         // Character/char conversions supported
         CONVERSION_DB.put(pair(Void.class, char.class), VoidConversions::toCharacter);
@@ -542,7 +541,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(Calendar.class, BigDecimal.class), CalendarConversions::toBigDecimal);
         CONVERSION_DB.put(pair(Map.class, BigDecimal.class), MapConversions::toBigDecimal);
         CONVERSION_DB.put(pair(String.class, BigDecimal.class), StringConversions::toBigDecimal);
-        CONVERSION_DB.put(pair(Year.class, BigDecimal.class), YearConversions::toBigDecimal);
 
         // AtomicBoolean conversions supported
         CONVERSION_DB.put(pair(Void.class, AtomicBoolean.class), VoidConversions::toNull);
@@ -559,7 +557,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(AtomicBoolean.class, AtomicBoolean.class), AtomicBooleanConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(Map.class, AtomicBoolean.class), MapConversions::toAtomicBoolean);
         CONVERSION_DB.put(pair(String.class, AtomicBoolean.class), StringConversions::toAtomicBoolean);
-        CONVERSION_DB.put(pair(Year.class, AtomicBoolean.class), YearConversions::toAtomicBoolean);
 
         // AtomicInteger conversions supported
         CONVERSION_DB.put(pair(Void.class, AtomicInteger.class), VoidConversions::toNull);
@@ -578,7 +575,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetTime.class, AtomicInteger.class), OffsetTimeConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(Map.class, AtomicInteger.class), MapConversions::toAtomicInteger);
         CONVERSION_DB.put(pair(String.class, AtomicInteger.class), StringConversions::toAtomicInteger);
-        CONVERSION_DB.put(pair(Year.class, AtomicInteger.class), YearConversions::toAtomicInteger);
 
         // AtomicLong conversions supported
         CONVERSION_DB.put(pair(Void.class, AtomicLong.class), VoidConversions::toNull);
@@ -606,7 +602,6 @@ public final class Converter {
         CONVERSION_DB.put(pair(OffsetDateTime.class, AtomicLong.class), OffsetDateTimeConversions::toAtomicLong);
         CONVERSION_DB.put(pair(Map.class, AtomicLong.class), MapConversions::toAtomicLong);
         CONVERSION_DB.put(pair(String.class, AtomicLong.class), StringConversions::toAtomicLong);
-        CONVERSION_DB.put(pair(Year.class, AtomicLong.class), YearConversions::toAtomicLong);
 
         // Date conversions supported
         CONVERSION_DB.put(pair(Void.class, Date.class), VoidConversions::toNull);
@@ -634,6 +629,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(java.sql.Date.class, java.sql.Date.class), SqlDateConversions::toSqlDate);
         CONVERSION_DB.put(pair(Date.class, java.sql.Date.class), DateConversions::toSqlDate);
         CONVERSION_DB.put(pair(Timestamp.class, java.sql.Date.class), TimestampConversions::toSqlDate);
+        CONVERSION_DB.put(pair(Duration.class, java.sql.Date.class), DurationConversions::toSqlDate);
         CONVERSION_DB.put(pair(Instant.class, java.sql.Date.class), InstantConversions::toSqlDate);
         CONVERSION_DB.put(pair(LocalDate.class, java.sql.Date.class), LocalDateConversions::toSqlDate);
         CONVERSION_DB.put(pair(LocalDateTime.class, java.sql.Date.class), LocalDateTimeConversions::toSqlDate);
@@ -782,6 +778,7 @@ public final class Converter {
         CONVERSION_DB.put(pair(Void.class, UUID.class), VoidConversions::toNull);
         CONVERSION_DB.put(pair(UUID.class, UUID.class), Converter::identity);
         CONVERSION_DB.put(pair(String.class, UUID.class), StringConversions::toUUID);
+        CONVERSION_DB.put(pair(Boolean.class, UUID.class), BooleanConversions::toUUID);
         CONVERSION_DB.put(pair(BigInteger.class, UUID.class), BigIntegerConversions::toUUID);
         CONVERSION_DB.put(pair(BigDecimal.class, UUID.class), BigDecimalConversions::toUUID);
         CONVERSION_DB.put(pair(Map.class, UUID.class), MapConversions::toUUID);
@@ -1329,6 +1326,26 @@ public final class Converter {
                     // Resource identifiers → URI (lossless via URL.toURI())
                     new SurrogatePrimaryPair(URL.class, URI.class,
                             UrlConversions::toURI, null),
+
+                    // Year → Long (maximum reach for data pipelines)
+                    new SurrogatePrimaryPair(Year.class, Long.class,
+                            YearConversions::toLong, null),
+
+                    // YearMonth → String (maximum reach for temporal formatting)
+                    new SurrogatePrimaryPair(YearMonth.class, String.class,
+                            UniversalConversions::toString, null),
+
+                    // MonthDay → String (maximum reach for temporal formatting)
+                    new SurrogatePrimaryPair(MonthDay.class, String.class,
+                            UniversalConversions::toString, null),
+
+                    // Duration → Long (numeric reach for time calculations)
+                    new SurrogatePrimaryPair(Duration.class, Long.class,
+                            DurationConversions::toLong, null),
+
+                    // OffsetTime → String (maximum reach preserving offset info)
+                    new SurrogatePrimaryPair(OffsetTime.class, String.class,
+                            OffsetTimeConversions::toString, null),
 
                     // Date & Time
                     new SurrogatePrimaryPair(Calendar.class, ZonedDateTime.class, 

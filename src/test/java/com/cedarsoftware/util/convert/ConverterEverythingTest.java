@@ -251,6 +251,15 @@ class ConverterEverythingTest {
         loadStreamTests();
         loadAdditionalAtomicTests();
         loadAdditionalPrimitiveTests();
+        loadCharSequenceTests();
+        loadAdditionalToCharSequenceTests();
+        loadDoubleArrayTests();
+        loadDurationConversionTests();
+        loadEnumConversionTests();
+        loadTimeOffsetTests();
+        loadSqlDateConversionTests();
+        loadLocalDateTimeNumericTests();
+        loadLocalTimeNumericTests();
     }
 
     /**
@@ -3283,6 +3292,10 @@ class ConverterEverythingTest {
                 {"t", true},
                 {"Bengals", false},
         });
+        TEST_DB.put(pair(boolean.class, UUID.class), new Object[][]{
+                {true, UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")},
+                {false, UUID.fromString("00000000-0000-0000-0000-000000000000")},
+        });
     }
 
     /**
@@ -4292,7 +4305,7 @@ class ConverterEverythingTest {
 
         });
         TEST_DB.put(pair(Year.class, Byte.class), new Object[][]{
-                {Year.of(2024), new IllegalArgumentException("Unsupported conversion, source type [Year (2024)] target type 'Byte'") },
+                {Year.of(2024), (byte) -24}, // Year → Long → Byte via surrogate bridge
         });
         TEST_DB.put(pair(String.class, Byte.class), new Object[][]{
                 {"-1", (byte) -1, true},
@@ -4624,7 +4637,7 @@ class ConverterEverythingTest {
         }
 
         // Conversions that don't fail as anticipated
-        boolean skip1 = sourceClass.equals(Byte.class) && targetClass.equals(Year.class) || sourceClass.equals(Year.class) && targetClass.equals(Byte.class);
+        boolean skip1 = sourceClass.equals(Byte.class) && targetClass.equals(Year.class);
         if (skip1) {
             return;
         }
@@ -5255,6 +5268,14 @@ class ConverterEverythingTest {
                 {new AtomicBoolean(true), new StringBuilder("true")},
                 {new AtomicBoolean(false), new StringBuilder("false")},
         });
+        TEST_DB.put(pair(AtomicBoolean.class, CharSequence.class), new Object[][]{
+                {new AtomicBoolean(true), "true"},
+                {new AtomicBoolean(false), "false"},
+        });
+        TEST_DB.put(pair(AtomicBoolean.class, UUID.class), new Object[][]{
+                {new AtomicBoolean(true), UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")},
+                {new AtomicBoolean(false), UUID.fromString("00000000-0000-0000-0000-000000000000")},
+        });
 
         // AtomicInteger to primitive/wrapper types
         TEST_DB.put(pair(AtomicInteger.class, boolean.class), new Object[][]{
@@ -5298,6 +5319,11 @@ class ConverterEverythingTest {
                 {new AtomicInteger(42), new StringBuilder("42")},
                 {new AtomicInteger(0), new StringBuilder("0")},
         });
+        TEST_DB.put(pair(AtomicInteger.class, CharSequence.class), new Object[][]{
+                {new AtomicInteger(42), "42"},
+                {new AtomicInteger(0), "0"},
+                {new AtomicInteger(-1), "-1"},
+        });
 
         // AtomicLong to primitive/wrapper types
         TEST_DB.put(pair(AtomicLong.class, boolean.class), new Object[][]{
@@ -5340,6 +5366,16 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(AtomicLong.class, StringBuilder.class), new Object[][]{
                 {new AtomicLong(42L), new StringBuilder("42")},
                 {new AtomicLong(0L), new StringBuilder("0")},
+        });
+        TEST_DB.put(pair(AtomicLong.class, CharSequence.class), new Object[][]{
+                {new AtomicLong(42L), "42"},
+                {new AtomicLong(0L), "0"},
+                {new AtomicLong(-1L), "-1"},
+        });
+        TEST_DB.put(pair(AtomicLong.class, LocalTime.class), new Object[][]{
+                {new AtomicLong(0L), LocalTime.of(0, 0, 0)},
+                {new AtomicLong(3661000000000L), LocalTime.of(1, 1, 1)}, // 1h 1m 1s in nanoseconds
+                {new AtomicLong(86399000000000L), LocalTime.of(23, 59, 59)}, // 23h 59m 59s in nanoseconds
         });
     }
 
@@ -5583,6 +5619,43 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(double.class, StringBuilder.class), new Object[][]{
                 {42.5, new StringBuilder("42.5")},
                 {0.0, new StringBuilder("0")},
+        });
+
+        // Primitives/Wrappers to CharSequence
+        TEST_DB.put(pair(Byte.class, CharSequence.class), new Object[][]{
+                {(byte)42, "42"},
+                {(byte)0, "0"},
+                {(byte)-1, "-1"},
+        });
+        TEST_DB.put(pair(byte[].class, CharSequence.class), new Object[][]{
+                {"Hello".getBytes(StandardCharsets.UTF_8), "Hello"},
+                {"Test".getBytes(StandardCharsets.UTF_8), "Test"},
+        });
+        TEST_DB.put(pair(ByteBuffer.class, CharSequence.class), new Object[][]{
+                {ByteBuffer.wrap("Hello".getBytes(StandardCharsets.UTF_8)), "Hello"},
+                {ByteBuffer.wrap("Test".getBytes(StandardCharsets.UTF_8)), "Test"},
+        });
+        TEST_DB.put(pair(Calendar.class, CharSequence.class), new Object[][]{
+                {cal(0), "1970-01-01T09:00:00+09:00[Asia/Tokyo]"},
+                {cal(1000), "1970-01-01T09:00:01+09:00[Asia/Tokyo]"},
+        });
+        TEST_DB.put(pair(char.class, CharSequence.class), new Object[][]{
+                {'A', "A"},
+                {'0', "0"},
+                {'\0', "\0"},
+        });
+        TEST_DB.put(pair(char[].class, CharSequence.class), new Object[][]{
+                {new char[]{'H', 'e', 'l', 'l', 'o'}, "Hello"},
+                {new char[]{'T', 'e', 's', 't'}, "Test"},
+        });
+        TEST_DB.put(pair(Character.class, CharSequence.class), new Object[][]{
+                {'A', "A"},
+                {'0', "0"},
+                {'\0', "\0"},
+        });
+        TEST_DB.put(pair(Character[].class, CharSequence.class), new Object[][]{
+                {new Character[]{'H', 'e', 'l', 'l', 'o'}, "Hello"},
+                {new Character[]{'T', 'e', 's', 't'}, "Test"},
         });
 
         // BigDecimal to primitives
@@ -7273,6 +7346,11 @@ class ConverterEverythingTest {
                 {BigDecimal.valueOf(0), new StringBuilder("0")},
                 {BigDecimal.valueOf(-1.5), new StringBuilder("-1.5")},
         });
+        TEST_DB.put(pair(BigDecimal.class, CharSequence.class), new Object[][]{
+                {BigDecimal.valueOf(42.5), "42.5"},
+                {BigDecimal.valueOf(0), "0"},
+                {BigDecimal.valueOf(-1.5), "-1.5"},
+        });
         TEST_DB.put(pair(BigInteger.class, StringBuffer.class), new Object[][]{
                 {BigInteger.valueOf(42), new StringBuffer("42")},
                 {BigInteger.valueOf(0), new StringBuffer("0")},
@@ -7282,6 +7360,25 @@ class ConverterEverythingTest {
                 {BigInteger.valueOf(42), new StringBuilder("42")},
                 {BigInteger.valueOf(0), new StringBuilder("0")},
                 {BigInteger.valueOf(-1), new StringBuilder("-1")},
+        });
+        TEST_DB.put(pair(BigInteger.class, CharSequence.class), new Object[][]{
+                {BigInteger.valueOf(42), "42"},
+                {BigInteger.valueOf(0), "0"},
+                {BigInteger.valueOf(-1), "-1"},
+        });
+        TEST_DB.put(pair(BigInteger.class, Double.class), new Object[][]{
+                {BigInteger.valueOf(42), 42.0},
+                {BigInteger.valueOf(0), 0.0},
+                {BigInteger.valueOf(-1), -1.0},
+                {new BigInteger("9007199254740991"), 9007199254740991.0},
+                {new BigInteger("-9007199254740991"), -9007199254740991.0},
+        });
+        TEST_DB.put(pair(BigInteger.class, Float.class), new Object[][]{
+                {BigInteger.valueOf(42), 42.0f},
+                {BigInteger.valueOf(0), 0.0f},
+                {BigInteger.valueOf(-1), -1.0f},
+                {BigInteger.valueOf(16777216), 16777216.0f},
+                {BigInteger.valueOf(-16777216), -16777216.0f},
         });
 
         // Additional Year conversions
@@ -7396,6 +7493,634 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(long.class, LocalTime.class), new Object[][]{
                 {3661000000000L, LocalTime.ofNanoOfDay(3661000000000L)}, // 1 hour, 1 minute, 1 second in nanos
                 {43200000000000L, LocalTime.ofNanoOfDay(43200000000000L)}, // 12:00:00 (noon) in nanos
+        });
+    }
+
+    /**
+     * CharSequence conversion tests - comprehensive coverage
+     */
+    private static void loadCharSequenceTests() {
+        // CharSequence to primitives and wrappers
+        TEST_DB.put(pair(CharSequence.class, AtomicBoolean.class), new Object[][]{
+                {"true", new AtomicBoolean(true)},
+                {"false", new AtomicBoolean(false)},
+                {"1", new AtomicBoolean(true)},
+                {"0", new AtomicBoolean(false)},
+        });
+        TEST_DB.put(pair(CharSequence.class, AtomicInteger.class), new Object[][]{
+                {"42", new AtomicInteger(42)},
+                {"0", new AtomicInteger(0)},
+                {"-1", new AtomicInteger(-1)},
+        });
+        TEST_DB.put(pair(CharSequence.class, AtomicLong.class), new Object[][]{
+                {"42", new AtomicLong(42L)},
+                {"0", new AtomicLong(0L)},
+                {"-1", new AtomicLong(-1L)},
+        });
+        TEST_DB.put(pair(CharSequence.class, BigDecimal.class), new Object[][]{
+                {"42.5", new BigDecimal("42.5")},
+                {"0", BigDecimal.ZERO},
+                {"-1.1", new BigDecimal("-1.1")},
+        });
+        TEST_DB.put(pair(CharSequence.class, BigInteger.class), new Object[][]{
+                {"42", new BigInteger("42")},
+                {"0", BigInteger.ZERO},
+                {"-1", new BigInteger("-1")},
+        });
+        TEST_DB.put(pair(CharSequence.class, boolean.class), new Object[][]{
+                {"true", true},
+                {"false", false},
+                {"1", true},
+                {"0", false},
+        });
+        TEST_DB.put(pair(CharSequence.class, Byte.class), new Object[][]{
+                {"42", (byte)42},
+                {"0", (byte)0},
+                {"-1", (byte)-1},
+        });
+        TEST_DB.put(pair(CharSequence.class, byte[].class), new Object[][]{
+                {"Hello", "Hello".getBytes(StandardCharsets.UTF_8)},
+                {"Test", "Test".getBytes(StandardCharsets.UTF_8)},
+        });
+        TEST_DB.put(pair(CharSequence.class, ByteBuffer.class), new Object[][]{
+                {"Hello", ByteBuffer.wrap("Hello".getBytes(StandardCharsets.UTF_8))},
+                {"Test", ByteBuffer.wrap("Test".getBytes(StandardCharsets.UTF_8))},
+        });
+        TEST_DB.put(pair(CharSequence.class, Calendar.class), new Object[][]{
+                {"1970-01-01T09:00:00+09:00[Asia/Tokyo]", cal(0)},
+                {"1970-01-01T09:00:00.001+09:00[Asia/Tokyo]", cal(1)},
+        });
+        TEST_DB.put(pair(CharSequence.class, char.class), new Object[][]{
+                {"A", 'A'},
+                {"0", '0'},
+                {"\0", '\0'},
+        });
+        TEST_DB.put(pair(CharSequence.class, char[].class), new Object[][]{
+                {"Hello", new char[]{'H', 'e', 'l', 'l', 'o'}},
+                {"Test", new char[]{'T', 'e', 's', 't'}},
+        });
+        TEST_DB.put(pair(CharSequence.class, Character.class), new Object[][]{
+                {"A", 'A'},
+                {"0", '0'},
+                {"\0", '\0'},
+        });
+        TEST_DB.put(pair(CharSequence.class, Character[].class), new Object[][]{
+                {"Hello", new Character[]{'H', 'e', 'l', 'l', 'o'}},
+                {"Test", new Character[]{'T', 'e', 's', 't'}},
+        });
+        TEST_DB.put(pair(CharSequence.class, CharBuffer.class), new Object[][]{
+                {"Hello", CharBuffer.wrap("Hello")},
+                {"Test", CharBuffer.wrap("Test")},
+        });
+        TEST_DB.put(pair(CharSequence.class, Class.class), new Object[][]{
+                {"java.lang.String", String.class},
+                {"java.lang.Integer", Integer.class},
+        });
+        TEST_DB.put(pair(CharSequence.class, Currency.class), new Object[][]{
+                {"USD", Currency.getInstance("USD")},
+                {"EUR", Currency.getInstance("EUR")},
+        });
+        TEST_DB.put(pair(CharSequence.class, Date.class), new Object[][]{
+                {"1970-01-01T00:00:00Z", new Date(0)},
+                {"1970-01-01T00:00:01Z", new Date(1000)},
+        });
+        TEST_DB.put(pair(CharSequence.class, Double.class), new Object[][]{
+                {"42.5", 42.5},
+                {"0", 0.0},
+                {"-1.1", -1.1},
+        });
+        TEST_DB.put(pair(CharSequence.class, Duration.class), new Object[][]{
+                {"PT1H", Duration.ofHours(1)},
+                {"PT30M", Duration.ofMinutes(30)},
+                {"PT1S", Duration.ofSeconds(1)},
+        });
+        TEST_DB.put(pair(CharSequence.class, float.class), new Object[][]{
+                {"42.5", 42.5f},
+                {"0", 0.0f},
+                {"-1.1", -1.1f},
+        });
+        TEST_DB.put(pair(CharSequence.class, Instant.class), new Object[][]{
+                {"1970-01-01T00:00:00Z", Instant.ofEpochSecond(0)},
+                {"1970-01-01T00:00:01Z", Instant.ofEpochSecond(1)},
+        });
+        TEST_DB.put(pair(CharSequence.class, int.class), new Object[][]{
+                {"42", 42},
+                {"0", 0},
+                {"-1", -1},
+        });
+        TEST_DB.put(pair(CharSequence.class, Integer.class), new Object[][]{
+                {"42", 42},
+                {"0", 0},
+                {"-1", -1},
+        });
+        TEST_DB.put(pair(CharSequence.class, java.sql.Date.class), new Object[][]{
+                {"1970-01-01", java.sql.Date.valueOf("1970-01-01")},
+                {"1970-01-02", java.sql.Date.valueOf("1970-01-02")},
+        });
+        TEST_DB.put(pair(CharSequence.class, LocalDate.class), new Object[][]{
+                {"1970-01-01", LocalDate.of(1970, 1, 1)},
+                {"2024-02-18", LocalDate.of(2024, 2, 18)},
+        });
+        TEST_DB.put(pair(CharSequence.class, LocalDateTime.class), new Object[][]{
+                {"1970-01-01T00:00:00", LocalDateTime.of(1970, 1, 1, 0, 0, 0)},
+                {"2024-02-18T10:30:00", LocalDateTime.of(2024, 2, 18, 10, 30, 0)},
+        });
+        TEST_DB.put(pair(CharSequence.class, Locale.class), new Object[][]{
+                {"en-US", Locale.forLanguageTag("en-US")},
+                {"fr-FR", Locale.forLanguageTag("fr-FR")},
+        });
+        TEST_DB.put(pair(CharSequence.class, LocalTime.class), new Object[][]{
+                {"10:30:00", LocalTime.of(10, 30, 0)},
+                {"00:00:00", LocalTime.of(0, 0, 0)},
+        });
+        TEST_DB.put(pair(CharSequence.class, long.class), new Object[][]{
+                {"42", 42L},
+                {"0", 0L},
+                {"-1", -1L},
+        });
+        TEST_DB.put(pair(CharSequence.class, Map.class), new Object[][]{
+                {"FRIDAY", mapOf("name", "FRIDAY")},
+                {"HTTP_OK", mapOf("name", "HTTP_OK")},
+        });
+        TEST_DB.put(pair(CharSequence.class, MonthDay.class), new Object[][]{
+                {"--02-18", MonthDay.of(2, 18)},
+                {"--12-25", MonthDay.of(12, 25)},
+        });
+        TEST_DB.put(pair(CharSequence.class, OffsetDateTime.class), new Object[][]{
+                {"1970-01-01T00:00:00Z", OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)},
+                {"2024-02-18T10:30:00+09:00", OffsetDateTime.of(2024, 2, 18, 10, 30, 0, 0, ZoneOffset.of("+09:00"))},
+        });
+        TEST_DB.put(pair(CharSequence.class, OffsetTime.class), new Object[][]{
+                {"10:30:00Z", OffsetTime.of(10, 30, 0, 0, ZoneOffset.UTC)},
+                {"15:45:00+09:00", OffsetTime.of(15, 45, 0, 0, ZoneOffset.of("+09:00"))},
+        });
+        TEST_DB.put(pair(CharSequence.class, Pattern.class), new Object[][]{
+                {"[a-z]+", Pattern.compile("[a-z]+")},
+                {"\\d{3}", Pattern.compile("\\d{3}")},
+        });
+        TEST_DB.put(pair(CharSequence.class, Period.class), new Object[][]{
+                {"P1Y", Period.ofYears(1)},
+                {"P6M", Period.ofMonths(6)},
+                {"P30D", Period.ofDays(30)},
+        });
+        TEST_DB.put(pair(CharSequence.class, Short.class), new Object[][]{
+                {"42", (short)42},
+                {"0", (short)0},
+                {"-1", (short)-1},
+        });
+        TEST_DB.put(pair(CharSequence.class, String.class), new Object[][]{
+                {"Hello", "Hello"},
+                {"Test", "Test"},
+        });
+        TEST_DB.put(pair(CharSequence.class, StringBuffer.class), new Object[][]{
+                {"Hello", new StringBuffer("Hello")},
+                {"Test", new StringBuffer("Test")},
+        });
+        TEST_DB.put(pair(CharSequence.class, StringBuilder.class), new Object[][]{
+                {"Hello", new StringBuilder("Hello")},
+                {"Test", new StringBuilder("Test")},
+        });
+        TEST_DB.put(pair(CharSequence.class, Timestamp.class), new Object[][]{
+                {"1970-01-01T00:00:00Z", timestamp("1970-01-01T00:00:00Z")},
+                {"1970-01-01T00:00:01Z", timestamp("1970-01-01T00:00:01Z")},
+        });
+        TEST_DB.put(pair(CharSequence.class, TimeZone.class), new Object[][]{
+                {"UTC", TimeZone.getTimeZone("UTC")},
+                {"Asia/Tokyo", TimeZone.getTimeZone("Asia/Tokyo")},
+        });
+        TEST_DB.put(pair(CharSequence.class, URI.class), new Object[][]{
+                {"https://example.com", URI.create("https://example.com")},
+                {"file:///tmp/test", URI.create("file:///tmp/test")},
+        });
+        TEST_DB.put(pair(CharSequence.class, URL.class), new Object[][]{
+                {"https://example.com", toURL("https://example.com")},
+                {"http://localhost", toURL("http://localhost")},
+        });
+        TEST_DB.put(pair(CharSequence.class, UUID.class), new Object[][]{
+                {"00000000-0000-0000-0000-000000000000", UUID.fromString("00000000-0000-0000-0000-000000000000")},
+                {"ffffffff-ffff-ffff-ffff-ffffffffffff", UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")},
+        });
+        TEST_DB.put(pair(CharSequence.class, Year.class), new Object[][]{
+                {"2024", Year.of(2024)},
+                {"1970", Year.of(1970)},
+        });
+        TEST_DB.put(pair(CharSequence.class, YearMonth.class), new Object[][]{
+                {"2024-02", YearMonth.of(2024, 2)},
+                {"1970-01", YearMonth.of(1970, 1)},
+        });
+        TEST_DB.put(pair(CharSequence.class, ZonedDateTime.class), new Object[][]{
+                {"1970-01-01T00:00:00Z", ZonedDateTime.parse("1970-01-01T00:00:00Z")},
+                {"2024-02-18T10:30:00+09:00[Asia/Tokyo]", ZonedDateTime.parse("2024-02-18T10:30:00+09:00[Asia/Tokyo]")},
+        });
+        TEST_DB.put(pair(CharSequence.class, ZoneId.class), new Object[][]{
+                {"UTC", ZoneId.of("UTC")},
+                {"Asia/Tokyo", ZoneId.of("Asia/Tokyo")},
+        });
+        TEST_DB.put(pair(CharSequence.class, ZoneOffset.class), new Object[][]{
+                {"Z", ZoneOffset.UTC},
+                {"+09:00", ZoneOffset.of("+09:00")},
+                {"-05:00", ZoneOffset.of("-05:00")},
+        });
+    }
+
+    private static void loadAdditionalToCharSequenceTests() {
+        // Class → CharSequence
+        TEST_DB.put(pair(Class.class, CharSequence.class), new Object[][]{
+                {String.class, "java.lang.String"},
+                {Integer.class, "java.lang.Integer"},
+                {Date.class, "java.util.Date"},
+                {List.class, "java.util.List"},
+        });
+        
+        // Currency → CharSequence
+        TEST_DB.put(pair(Currency.class, CharSequence.class), new Object[][]{
+                {Currency.getInstance("USD"), "USD"},
+                {Currency.getInstance("EUR"), "EUR"},
+                {Currency.getInstance("JPY"), "JPY"},
+        });
+        
+        // Date → CharSequence
+        TEST_DB.put(pair(Date.class, CharSequence.class), new Object[][]{
+                {new Date(0), "1970-01-01T00:00:00.000Z"},
+                {new Date(1640995200000L), "2022-01-01T00:00:00.000Z"},
+        });
+        
+        // Double → CharSequence
+        TEST_DB.put(pair(Double.class, CharSequence.class), new Object[][]{
+                {42.0, "42.0"},
+                {0.0, "0"},
+                {-1.5, "-1.5"},
+                {Double.MAX_VALUE, "1.7976931348623157E308"},
+                {Double.MIN_VALUE, "4.9E-324"},
+        });
+        
+        // float → CharSequence
+        TEST_DB.put(pair(float.class, CharSequence.class), new Object[][]{
+                {42.0f, "42.0"},
+                {0.0f, "0"},
+                {-1.5f, "-1.5"},
+                {Float.MAX_VALUE, "3.4028235E38"},
+                {Float.MIN_VALUE, "1.4E-45"},
+        });
+        
+        // Instant → CharSequence
+        TEST_DB.put(pair(Instant.class, CharSequence.class), new Object[][]{
+                {Instant.EPOCH, "1970-01-01T00:00:00Z"},
+                {Instant.ofEpochSecond(1640995200), "2022-01-01T00:00:00Z"},
+        });
+        
+        // int → CharSequence
+        TEST_DB.put(pair(int.class, CharSequence.class), new Object[][]{
+                {42, "42"},
+                {0, "0"},
+                {-1, "-1"},
+                {Integer.MAX_VALUE, "2147483647"},
+                {Integer.MIN_VALUE, "-2147483648"},
+        });
+        
+        // Integer → CharSequence
+        TEST_DB.put(pair(Integer.class, CharSequence.class), new Object[][]{
+                {42, "42"},
+                {0, "0"},
+                {-1, "-1"},
+                {Integer.MAX_VALUE, "2147483647"},
+                {Integer.MIN_VALUE, "-2147483648"},
+        });
+        
+        // java.sql.Date → CharSequence
+        TEST_DB.put(pair(java.sql.Date.class, CharSequence.class), new Object[][]{
+                {new java.sql.Date(0), "1969-12-31"},
+                {new java.sql.Date(1640995200000L), "2021-12-31"},
+        });
+        
+        // LocalDate → CharSequence
+        TEST_DB.put(pair(LocalDate.class, CharSequence.class), new Object[][]{
+                {LocalDate.of(1970, 1, 1), "1970-01-01"},
+                {LocalDate.of(2022, 1, 1), "2022-01-01"},
+        });
+        
+        // LocalDateTime → CharSequence
+        TEST_DB.put(pair(LocalDateTime.class, CharSequence.class), new Object[][]{
+                {LocalDateTime.of(1970, 1, 1, 0, 0, 0), "1970-01-01T00:00:00"},
+                {LocalDateTime.of(2022, 1, 1, 12, 30, 45), "2022-01-01T12:30:45"},
+        });
+        
+        // Locale → CharSequence
+        TEST_DB.put(pair(Locale.class, CharSequence.class), new Object[][]{
+                {Locale.US, "en-US"},
+                {Locale.FRANCE, "fr-FR"},
+                {Locale.JAPAN, "ja-JP"},
+        });
+        
+        // LocalTime → CharSequence
+        TEST_DB.put(pair(LocalTime.class, CharSequence.class), new Object[][]{
+                {LocalTime.of(0, 0, 0), "00:00:00"},
+                {LocalTime.of(12, 30, 45), "12:30:45"},
+                {LocalTime.of(23, 59, 59), "23:59:59"},
+        });
+        
+        // long → CharSequence
+        TEST_DB.put(pair(long.class, CharSequence.class), new Object[][]{
+                {42L, "42"},
+                {0L, "0"},
+                {-1L, "-1"},
+                {Long.MAX_VALUE, "9223372036854775807"},
+                {Long.MIN_VALUE, "-9223372036854775808"},
+        });
+    }
+
+    private static void loadDoubleArrayTests() {
+        // Currently no tests - DoubleBuffer and DoubleStream have JsonIo serialization issues
+    }
+
+    private static void loadDurationConversionTests() {
+        // Duration → AtomicBoolean
+        TEST_DB.put(pair(Duration.class, AtomicBoolean.class), new Object[][]{
+                {Duration.ofNanos(0), new AtomicBoolean(false)},
+                {Duration.ofNanos(1), new AtomicBoolean(true)},
+                {Duration.ofNanos(-1), new AtomicBoolean(true)},
+                {Duration.ofSeconds(1), new AtomicBoolean(true)},
+        });
+        
+        // Duration → AtomicInteger
+        TEST_DB.put(pair(Duration.class, AtomicInteger.class), new Object[][]{
+                {Duration.ofNanos(0), new AtomicInteger(0)},
+                {Duration.ofNanos(1), new AtomicInteger(1)},
+                {Duration.ofNanos(-1), new AtomicInteger(-1)},
+                {Duration.ofNanos(Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE)},
+                {Duration.ofNanos(Integer.MIN_VALUE), new AtomicInteger(Integer.MIN_VALUE)},
+        });
+        
+        // Duration → boolean
+        TEST_DB.put(pair(Duration.class, boolean.class), new Object[][]{
+                {Duration.ofNanos(0), false},
+                {Duration.ofNanos(1), true},
+                {Duration.ofNanos(-1), true},
+                {Duration.ofSeconds(1), true},
+        });
+        
+        // Duration → Byte
+        TEST_DB.put(pair(Duration.class, Byte.class), new Object[][]{
+                {Duration.ofNanos(0), (byte) 0},
+                {Duration.ofNanos(1), (byte) 1},
+                {Duration.ofNanos(-1), (byte) -1},
+                {Duration.ofNanos(Byte.MAX_VALUE), Byte.MAX_VALUE},
+                {Duration.ofNanos(Byte.MIN_VALUE), Byte.MIN_VALUE},
+        });
+        
+        // Duration → Calendar
+        TEST_DB.put(pair(Duration.class, Calendar.class), new Object[][]{
+                {Duration.ofSeconds(0), cal(0)},
+                {Duration.ofSeconds(1), cal(1000000000L)},
+                {Duration.ofSeconds(-1), cal(-1000000000L)},
+                {Duration.ofSeconds(1640995200), cal(1640995200L * 1000000000L)},
+        });
+        
+        // Duration → char
+        TEST_DB.put(pair(Duration.class, char.class), new Object[][]{
+                {Duration.ofNanos(0), (char) 0},
+                {Duration.ofNanos(65), 'A'},
+                {Duration.ofNanos(97), 'a'},
+                {Duration.ofNanos(48), '0'},
+        });
+        
+        // Duration → Character
+        TEST_DB.put(pair(Duration.class, Character.class), new Object[][]{
+                {Duration.ofNanos(0), (char) 0},
+                {Duration.ofNanos(65), 'A'},
+                {Duration.ofNanos(97), 'a'},
+                {Duration.ofNanos(48), '0'},
+        });
+        
+        // Duration → CharSequence
+        TEST_DB.put(pair(Duration.class, CharSequence.class), new Object[][]{
+                {Duration.ofNanos(0), "PT0S"},
+                {Duration.ofSeconds(1), "PT1S"},
+                {Duration.ofMinutes(1), "PT1M"},
+                {Duration.ofHours(1), "PT1H"},
+                {Duration.ofDays(1), "PT24H"},
+        });
+        
+        // Duration → Date
+        TEST_DB.put(pair(Duration.class, Date.class), new Object[][]{
+                {Duration.ofSeconds(0), new Date(0)},
+                {Duration.ofSeconds(1), new Date(1000000000L)},
+                {Duration.ofSeconds(-1), new Date(-1000000000L)},
+                {Duration.ofSeconds(1640995200), new Date(1640995200L * 1000000000L)},
+        });
+        
+        // Duration → Float
+        TEST_DB.put(pair(Duration.class, Float.class), new Object[][]{
+                {Duration.ofNanos(0), 0.0f},
+                {Duration.ofNanos(1), 1.0f},
+                {Duration.ofNanos(-1), -1.0f},
+                {Duration.ofNanos(1000000000), 1000000000.0f},
+        });
+        
+        // Duration → Instant
+        TEST_DB.put(pair(Duration.class, Instant.class), new Object[][]{
+                {Duration.ofSeconds(0), Instant.EPOCH},
+                {Duration.ofSeconds(1), Instant.ofEpochSecond(1)},
+                {Duration.ofSeconds(-1), Instant.ofEpochSecond(-1)},
+                {Duration.ofSeconds(1640995200), Instant.ofEpochSecond(1640995200)},
+        });
+        
+        // Duration → int
+        TEST_DB.put(pair(Duration.class, int.class), new Object[][]{
+                {Duration.ofNanos(0), 0},
+                {Duration.ofNanos(1), 1},
+                {Duration.ofNanos(-1), -1},
+                {Duration.ofNanos(Integer.MAX_VALUE), Integer.MAX_VALUE},
+                {Duration.ofNanos(Integer.MIN_VALUE), Integer.MIN_VALUE},
+        });
+        
+        // Duration → Integer
+        TEST_DB.put(pair(Duration.class, Integer.class), new Object[][]{
+                {Duration.ofNanos(0), 0},
+                {Duration.ofNanos(1), 1},
+                {Duration.ofNanos(-1), -1},
+                {Duration.ofNanos(Integer.MAX_VALUE), Integer.MAX_VALUE},
+                {Duration.ofNanos(Integer.MIN_VALUE), Integer.MIN_VALUE},
+        });
+        
+        // Duration → java.sql.Date (day boundary aligned)
+        TEST_DB.put(pair(Duration.class, java.sql.Date.class), new Object[][]{
+                {Duration.ofSeconds(0), java.sql.Date.valueOf("1970-01-01")},
+                {Duration.ofSeconds(1), java.sql.Date.valueOf("1970-01-01")},
+                {Duration.ofSeconds(-1), java.sql.Date.valueOf("1969-12-31")},
+                {Duration.ofDays(1), java.sql.Date.valueOf("1970-01-02")},
+                {Duration.ofDays(-1), java.sql.Date.valueOf("1969-12-31")},
+        });
+        
+        // Duration → LocalDate
+        TEST_DB.put(pair(Duration.class, LocalDate.class), new Object[][]{
+                {Duration.ofSeconds(0), LocalDate.of(1970, 1, 1)},
+                {Duration.ofSeconds(86400), LocalDate.of(4707, 11, 29)},
+                {Duration.ofSeconds(-86400), LocalDate.of(-768, 2, 4)},
+        });
+        
+        // Duration → LocalDateTime
+        TEST_DB.put(pair(Duration.class, LocalDateTime.class), new Object[][]{
+                {Duration.ofSeconds(0), LocalDateTime.of(1970, 1, 1, 9, 0, 0)},
+                {Duration.ofSeconds(1), LocalDateTime.of(1970, 1, 12, 22, 46, 40)},
+                {Duration.ofSeconds(3661), LocalDateTime.of(2086, 1, 5, 1, 26, 40)},
+        });
+        
+        // Duration → LocalTime
+        TEST_DB.put(pair(Duration.class, LocalTime.class), new Object[][]{
+                {Duration.ofNanos(0), LocalTime.of(0, 0, 0, 0)},
+                {Duration.ofNanos(1), LocalTime.of(0, 0, 0, 1)},
+                {Duration.ofSeconds(1), LocalTime.of(0, 0, 1, 0)},
+                {Duration.ofSeconds(3661), LocalTime.of(1, 1, 1, 0)},
+        });
+        
+        // Duration → Number
+        TEST_DB.put(pair(Duration.class, Number.class), new Object[][]{
+                {Duration.ofNanos(0), 0L},
+                {Duration.ofNanos(1), 1L},
+                {Duration.ofNanos(-1), -1L},
+                {Duration.ofNanos(Long.MAX_VALUE / 2), Long.MAX_VALUE / 2},
+        });
+        
+        // Duration → OffsetDateTime
+        TEST_DB.put(pair(Duration.class, OffsetDateTime.class), new Object[][]{
+                {Duration.ofSeconds(0), OffsetDateTime.of(1970, 1, 1, 9, 0, 0, 0, ZoneOffset.of("+09:00"))},
+                {Duration.ofSeconds(1), OffsetDateTime.of(1970, 1, 12, 22, 46, 40, 0, ZoneOffset.of("+09:00"))},
+                {Duration.ofSeconds(3661), OffsetDateTime.of(2086, 1, 5, 1, 26, 40, 0, ZoneOffset.of("+09:00"))},
+        });
+        
+        
+        // Duration → Short
+        TEST_DB.put(pair(Duration.class, Short.class), new Object[][]{
+                {Duration.ofNanos(0), (short) 0},
+                {Duration.ofNanos(1), (short) 1},
+                {Duration.ofNanos(-1), (short) -1},
+                {Duration.ofNanos(Short.MAX_VALUE), Short.MAX_VALUE},
+                {Duration.ofNanos(Short.MIN_VALUE), Short.MIN_VALUE},
+        });
+        
+        // Duration → Year
+        TEST_DB.put(pair(Duration.class, Year.class), new Object[][]{
+                {Duration.ofSeconds(0), Year.of(0)},
+                {Duration.ofSeconds(31536000), Year.of(0)},
+                {Duration.ofSeconds(-31536000), Year.of(0)},
+        });
+        
+        // Duration → ZonedDateTime
+        TEST_DB.put(pair(Duration.class, ZonedDateTime.class), new Object[][]{
+                {Duration.ofSeconds(0), ZonedDateTime.of(1970, 1, 1, 9, 0, 0, 0, ZoneId.of("Asia/Tokyo"))},
+                {Duration.ofSeconds(1), ZonedDateTime.of(1970, 1, 12, 22, 46, 40, 0, ZoneId.of("Asia/Tokyo"))},
+                {Duration.ofSeconds(3661), ZonedDateTime.of(2086, 1, 5, 1, 26, 40, 0, ZoneId.of("Asia/Tokyo"))},
+        });
+    }
+
+    private static void loadEnumConversionTests() {
+        // Enum → CharSequence
+        TEST_DB.put(pair(Enum.class, CharSequence.class), new Object[][]{
+                {DayOfWeek.MONDAY, "MONDAY"},
+                {Month.JANUARY, "JANUARY"},
+        });
+        
+        // Enum → StringBuffer
+        TEST_DB.put(pair(Enum.class, StringBuffer.class), new Object[][]{
+                {DayOfWeek.MONDAY, new StringBuffer("MONDAY")},
+                {Month.JANUARY, new StringBuffer("JANUARY")},
+        });
+        
+        // Enum → StringBuilder
+        TEST_DB.put(pair(Enum.class, StringBuilder.class), new Object[][]{
+                {DayOfWeek.MONDAY, new StringBuilder("MONDAY")},
+                {Month.JANUARY, new StringBuilder("JANUARY")},
+        });
+    }
+
+    private static void loadTimeOffsetTests() {
+        // No OffsetTime conversions - these don't make sense conceptually
+    }
+
+    private static void loadSqlDateConversionTests() {
+        // java.sql.Date → double
+        TEST_DB.put(pair(java.sql.Date.class, double.class), new Object[][]{
+                {new java.sql.Date(0), -118800.0},
+                {new java.sql.Date(1000), -118800.0},
+                {new java.sql.Date(-1000), -118800.0},
+                {new java.sql.Date(1640995200000L), 1.6408764E9},
+        });
+        
+        // java.sql.Date → long
+        TEST_DB.put(pair(java.sql.Date.class, long.class), new Object[][]{
+                {new java.sql.Date(0), -118800000L},
+                {new java.sql.Date(1000), -118800000L},
+                {new java.sql.Date(-1000), -118800000L},
+                {new java.sql.Date(1640995200000L), 1640876400000L},
+        });
+        
+        // java.sql.Date → StringBuffer
+        TEST_DB.put(pair(java.sql.Date.class, StringBuffer.class), new Object[][]{
+                {new java.sql.Date(0), new StringBuffer("1969-12-31")},
+                {new java.sql.Date(1640995200000L), new StringBuffer("2021-12-31")},
+        });
+        
+        // java.sql.Date → StringBuilder
+        TEST_DB.put(pair(java.sql.Date.class, StringBuilder.class), new Object[][]{
+                {new java.sql.Date(0), new StringBuilder("1969-12-31")},
+                {new java.sql.Date(1640995200000L), new StringBuilder("2021-12-31")},
+        });
+    }
+
+    private static void loadLocalDateTimeNumericTests() {
+        // LocalDate → double
+        TEST_DB.put(pair(LocalDate.class, double.class), new Object[][]{
+                {LocalDate.of(1970, 1, 1), -32400.0},
+                {LocalDate.of(1970, 1, 2), 54000.0},
+                {LocalDate.of(2022, 1, 1), 1.6409628E9},
+        });
+        
+        // LocalDate → long
+        TEST_DB.put(pair(LocalDate.class, long.class), new Object[][]{
+                {LocalDate.of(1970, 1, 1), -32400000L},
+                {LocalDate.of(1970, 1, 2), 54000000L},
+                {LocalDate.of(2022, 1, 1), 1640962800000L},
+        });
+        
+        // LocalDateTime → double
+        TEST_DB.put(pair(LocalDateTime.class, double.class), new Object[][]{
+                {LocalDateTime.of(1970, 1, 1, 0, 0, 0), -32400.0},
+                {LocalDateTime.of(1970, 1, 1, 0, 0, 1), -32399.0},
+                {LocalDateTime.of(2022, 1, 1, 0, 0, 0), 1.6409628E9},
+        });
+        
+        // LocalDateTime → long
+        TEST_DB.put(pair(LocalDateTime.class, long.class), new Object[][]{
+                {LocalDateTime.of(1970, 1, 1, 0, 0, 0), -32400000L},
+                {LocalDateTime.of(1970, 1, 1, 0, 0, 1), -32399000L},
+                {LocalDateTime.of(2022, 1, 1, 0, 0, 0), 1640962800000L},
+        });
+    }
+
+    private static void loadLocalTimeNumericTests() {
+        // LocalTime → AtomicLong
+        TEST_DB.put(pair(LocalTime.class, AtomicLong.class), new Object[][]{
+                {LocalTime.of(0, 0, 0, 0), new AtomicLong(0L)},
+                {LocalTime.of(0, 0, 0, 1), new AtomicLong(1L)},
+                {LocalTime.of(0, 0, 1, 0), new AtomicLong(1000000000L)},
+                {LocalTime.of(1, 1, 1, 0), new AtomicLong(3661000000000L)},
+        });
+        
+        // LocalTime → double
+        TEST_DB.put(pair(LocalTime.class, double.class), new Object[][]{
+                {LocalTime.of(0, 0, 0, 0), 0.0},
+                {LocalTime.of(0, 0, 0, 1), 1.0E-9},
+                {LocalTime.of(0, 0, 1, 0), 1.0},
+                {LocalTime.of(1, 1, 1, 0), 3661.0},
+        });
+        
+        // LocalTime → long
+        TEST_DB.put(pair(LocalTime.class, long.class), new Object[][]{
+                {LocalTime.of(0, 0, 0, 0), 0L},
+                {LocalTime.of(0, 0, 0, 1), 1L},
+                {LocalTime.of(0, 0, 1, 0), 1000000000L},
+                {LocalTime.of(1, 1, 1, 0), 3661000000000L},
         });
     }
 }

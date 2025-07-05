@@ -321,6 +321,32 @@ public final class Converter
     }
 
     /**
+     * Adds a new conversion function for converting from one type to another in the global static context.
+     * This conversion will be available to all static {@link #convert(Object, Class)} calls but will NOT 
+     * be visible to individual Converter instances created via {@code new Converter()}.
+     *
+     * <p>This method provides complete isolation between static and instance conversion contexts:
+     * <ul>
+     *   <li>Static conversions (added via this method) are only accessible to static {@link #convert} calls</li>
+     *   <li>Instance conversions (added via {@link com.cedarsoftware.util.convert.Converter#addConversion}) 
+     *       are only accessible to that specific instance</li>
+     *   <li>Factory conversions (built-in conversions) are available to both static and instance contexts</li>
+     * </ul></p>
+     *
+     * <p>This isolation prevents global pollution where one application's custom conversions could 
+     * interfere with another application's conversion behavior.</p>
+     *
+     * @param source           The source class (type) to convert from.
+     * @param target           The target class (type) to convert to.
+     * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
+     * @return The previous conversion method associated with the source and target types in the static context, or {@code null} if no conversion existed.
+     * @see com.cedarsoftware.util.convert.Converter#addConversion(Convert, Class, Class) for instance-specific conversions
+     */
+    public static Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
+        return instance.addConversion(conversionMethod, source, target);
+    }
+
+    /**
      * Determines whether a conversion from the specified source type to the target type is supported.
      * For array-to-array conversions, this method verifies that both array conversion and component type
      * conversions are supported.

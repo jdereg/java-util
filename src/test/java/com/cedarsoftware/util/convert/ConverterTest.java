@@ -3983,13 +3983,13 @@ class ConverterTest
         assert 1000L == ((Number) o).longValue();
 
         // Add in conversion
-        this.converter.addConversion(UUID.class, DumbNumber.class, (fromInstance, converter) -> {
+        this.converter.addConversion((fromInstance, converter) -> {
             UUID uuid1 = (UUID) fromInstance;
             BigInteger mostSignificant = BigInteger.valueOf(uuid1.getMostSignificantBits());
             BigInteger leastSignificant = BigInteger.valueOf(uuid1.getLeastSignificantBits());
             // Shift the most significant bits to the left and add the least significant bits
             return new DumbNumber(mostSignificant.shiftLeft(64).add(leastSignificant).toString());
-        });
+        }, UUID.class, DumbNumber.class);
 
         // Converts!
         DumbNumber dn = this.converter.convert(uuid, DumbNumber.class);
@@ -4071,17 +4071,17 @@ class ConverterTest
     @Test
     void testNormieToWeirdoAndBack()
     {
-        this.converter.addConversion(Normie.class, Weirdo.class, (fromInstance, converter) -> {
+        this.converter.addConversion((fromInstance, converter) -> {
             Normie normie = (Normie) fromInstance;
             Weirdo weirdo = new Weirdo(normie.name);
             return weirdo;
-        });
+        }, Normie.class, Weirdo.class);
 
-        this.converter.addConversion(Weirdo.class, Normie.class, (fromInstance, converter) -> {
+        this.converter.addConversion((fromInstance, converter) -> {
             Weirdo weirdo = (Weirdo) fromInstance;
             Normie normie = new Normie(reverseString(weirdo.name));
             return normie;
-        });
+        }, Weirdo.class, Normie.class);
 
         Normie normie = new Normie("Joe");
         Weirdo weirdo = this.converter.convert(normie, Weirdo.class);

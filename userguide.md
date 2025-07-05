@@ -2148,7 +2148,8 @@ int y = Converter.convert(45.0, int.class);
 String dateStr = Converter.convert(date, String.class);
 
 // Instance based conversion (using com.cedarsoftware.util.convert.Converter)
-Converter converter = new Converter(new DefaultConverterOptions());
+com.cedarsoftware.util.convert.Converter converter = 
+    new com.cedarsoftware.util.convert.Converter(new DefaultConverterOptions());
 String str = converter.convert(42, String.class);
 ```
 
@@ -2156,9 +2157,16 @@ String str = converter.convert(42, String.class);
 The static API is the easiest to use. It uses the default `ConverterOptions` object. Simply call
 public static APIs on the `com.cedarsoftware.util.Converter` class.
 
-The instance API allows you to create a `com.cedarsoftware.util.converter.Converter` instance with a custom `ConverterOptions` object.  If you add custom conversions, they will be used by the `Converter` instance.
+The instance API allows you to create a `com.cedarsoftware.util.convert.Converter` instance with a custom `ConverterOptions` object. **For adding custom conversions, the instance API is strongly recommended** as it provides complete isolation between different conversion contexts.
+
+Key isolation benefits:
+- Static conversions (added via `Converter.addConversion()`) only affect static conversion calls
+- Instance conversions (added via `converter.addConversion()`) only affect that specific instance  
+- Factory conversions (built-in conversions) are available to both static and instance contexts
+- No cross-contamination between different applications or conversion contexts
+
 You can also store arbitrary settings in the options via `getCustomOptions()` and retrieve them later with `getCustomOption(name)`.
-You can create as many instances of the Converter as needed.  Often though, the static API is sufficient.
+You can create as many instances of the Converter as needed. For most use cases, either the static API or a single shared instance is sufficient.
 
 
 **Collection Conversions:**
@@ -2178,13 +2186,21 @@ EnumSet<Day> days = (EnumSet<Day>)(Object)converter.convert(enumArray, Day.class
 
 **Custom Conversions:**
 ```java
-// Add custom converter
-converter.addConversion(String.class, CustomType.class, 
+// Instance-specific custom converter (recommended)
+com.cedarsoftware.util.convert.Converter converter = 
+    new com.cedarsoftware.util.convert.Converter(new DefaultConverterOptions());
+converter.addConversion((from, conv) -> new CustomType(from), 
+    String.class, CustomType.class);
+
+// Static custom converter (affects global context)  
+Converter.addConversion(String.class, CustomType.class,
     (from, conv) -> new CustomType(from));
 
 // Use custom converter
 CustomType obj = converter.convert("value", CustomType.class);
 ```
+
+**Note:** Instance-specific conversions provide better isolation and are recommended for most applications to avoid global state pollution.
 
 ### Supported Conversions
 

@@ -50,14 +50,14 @@ class ConverterStaticMethodsTest {
         DefaultConverterOptions options = new DefaultConverterOptions();
         com.cedarsoftware.util.convert.Converter converter = new com.cedarsoftware.util.convert.Converter(options);
         
-        // Add first conversion
-        Convert<?> prev = converter.addConversion(String.class, CustomType.class, fn1);
+        // Add first conversion using new signature
+        Convert<?> prev = converter.addConversion(fn1, String.class, CustomType.class);
         assertNull(prev);
         CustomType result = converter.convert("abc", CustomType.class);
         assertEquals("abc", result.value);
 
         // Replace with second conversion
-        prev = converter.addConversion(String.class, CustomType.class, fn2);
+        prev = converter.addConversion(fn2, String.class, CustomType.class);
         assertSame(fn1, prev);
         result = converter.convert("abc", CustomType.class);
         assertEquals("ABC", result.value);

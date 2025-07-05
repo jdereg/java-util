@@ -51,7 +51,6 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -207,11 +206,6 @@ public final class Converter {
     private static final ClassValueMap<Boolean> SIMPLE_TYPE_CACHE = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SELF_CONVERSION_CACHE = new ClassValueMap<>();
     private static final AtomicLong INSTANCE_ID_GENERATOR = new AtomicLong(1);
-    
-    // Convenience method to add conversions to CONVERSION_DB using ConversionPair
-    private static void addConversionDB(ConversionPair pair, Convert<?> converter) {
-        CONVERSION_DB.put(pair.getSource(), pair.getTarget(), pair.getInstanceId(), converter);
-    }
     
     private final ConverterOptions options;
     private final long instanceId;
@@ -1447,16 +1441,9 @@ public final class Converter {
      * as a composite conversion function.
      */
     private static void expandBridgeConversions() {
-        // Track original size for logging
-        int originalSize = CONVERSION_DB.size();
-
         // Expand all configured surrogate bridges in both directions
         expandSurrogateBridges(BridgeDirection.SURROGATE_TO_PRIMARY);
         expandSurrogateBridges(BridgeDirection.PRIMARY_TO_SURROGATE);
-
-        int expandedSize = CONVERSION_DB.size();
-        // TODO: Add logging when ready
-        // System.out.println("Expanded CONVERSION_DB from " + originalSize + " to " + expandedSize + " entries via bridge discovery");
     }
 
     /**
@@ -1466,8 +1453,8 @@ public final class Converter {
      * @param direction The direction of bridge expansion (SURROGATE_TO_PRIMARY or PRIMARY_TO_SURROGATE)
      */
     private static void expandSurrogateBridges(BridgeDirection direction) {
-        // Create a snapshot of existing pairs to avoid ConcurrentModificationException
-        Set<ConversionPair> existingPairs = new HashSet<>();
+        // Create a snapshot of existing entries to avoid ConcurrentModificationException
+        List<MultiKeyMap.MultiKeyEntry<Convert<?>>> existingEntries = new ArrayList<>();
         for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : CONVERSION_DB.entries()) {
             // Skip entries that don't follow the classic (Class, Class, long) pattern
             // This includes coconut-wrapped single-key entries and other N-Key entries
@@ -1475,10 +1462,7 @@ public final class Converter {
                 Object source = entry.keys[0];
                 Object target = entry.keys[1];
                 if (source instanceof Class && target instanceof Class) {
-                    // Handle both Integer and Long instance IDs 
-                    Object instanceIdObj = entry.keys[2];
-                    long instanceId = (instanceIdObj instanceof Integer) ? ((Integer) instanceIdObj).longValue() : (Long) instanceIdObj;
-                    existingPairs.add(pair((Class<?>) source, (Class<?>) target, instanceId));
+                    existingEntries.add(entry);
                 }
             }
         }
@@ -1496,13 +1480,16 @@ public final class Converter {
                 Class<?> primaryClass = config.primaryClass;
 
                 // Find all targets that the primary class can convert to
-                for (ConversionPair pair : existingPairs) {
-                    if (pair.source.equals(primaryClass)) {
-                        Class<?> targetClass = pair.target;
+                for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : existingEntries) {
+                    Class<?> sourceClass = (Class<?>) entry.keys[0];
+                    Class<?> targetClass = (Class<?>) entry.keys[1];
+                    if (sourceClass.equals(primaryClass)) {
                         // Only add if not already defined and not converting to itself
                         if (CONVERSION_DB.get(surrogateClass, targetClass, 0L) == null && !targetClass.equals(surrogateClass)) {
                             // Create composite conversion: Surrogate → primary → target
-                            Convert<?> originalConversion = CONVERSION_DB.get(pair.getSource(), pair.getTarget(), pair.getInstanceId());
+                            Object instanceIdObj = entry.keys[2];
+                            long instanceId = (instanceIdObj instanceof Integer) ? ((Integer) instanceIdObj).longValue() : (Long) instanceIdObj;
+                            Convert<?> originalConversion = CONVERSION_DB.get(sourceClass, targetClass, instanceId);
                             Convert<?> bridgeConversion = createSurrogateToPrimaryBridgeConversion(config, originalConversion);
                             CONVERSION_DB.put(surrogateClass, targetClass, 0L, bridgeConversion);
                         }
@@ -1515,13 +1502,16 @@ public final class Converter {
                 Class<?> surrogateClass = config.primaryClass;  // and primary is the target
 
                 // Find all sources that can convert to the primary class
-                for (ConversionPair pair : existingPairs) {
-                    if (pair.target.equals(primaryClass)) {
-                        Class<?> sourceClass = pair.source;
+                for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : existingEntries) {
+                    Class<?> sourceClass = (Class<?>) entry.keys[0];
+                    Class<?> targetClass = (Class<?>) entry.keys[1];
+                    if (targetClass.equals(primaryClass)) {
                         // Only add if not already defined and not converting from itself
                         if (CONVERSION_DB.get(sourceClass, surrogateClass, 0L) == null && !sourceClass.equals(surrogateClass)) {
                             // Create composite conversion: Source → primary → surrogate
-                            Convert<?> originalConversion = CONVERSION_DB.get(pair.getSource(), pair.getTarget(), pair.getInstanceId());
+                            Object instanceIdObj = entry.keys[2];
+                            long instanceId = (instanceIdObj instanceof Integer) ? ((Integer) instanceIdObj).longValue() : (Long) instanceIdObj;
+                            Convert<?> originalConversion = CONVERSION_DB.get(sourceClass, targetClass, instanceId);
                             Convert<?> bridgeConversion = createPrimaryToSurrogateBridgeConversion(config, originalConversion);
                             CONVERSION_DB.put(sourceClass, surrogateClass, 0L, bridgeConversion);
                         }
@@ -1752,7 +1742,7 @@ public final class Converter {
             }
         }
 
-        // Check user-added conversions first with instance-specific precision.
+        // Check user-added conversions in this context (either instanceId 0L for static, or specific instanceId for instance)
         Convert<?> conversionMethod = USER_DB.get(sourceType, toType, this.instanceId);
         if (isValidConversion(conversionMethod)) {
             cacheConverter(sourceType, toType, conversionMethod);
@@ -1760,7 +1750,7 @@ public final class Converter {
         }
 
         // Then check the factory conversion database.
-        conversionMethod = CONVERSION_DB.get(sourceType, toType, this.instanceId);
+        conversionMethod = CONVERSION_DB.get(sourceType, toType, 0L);
         if (isValidConversion(conversionMethod)) {
             // Cache built-in conversions with instance ID 0 to keep them shared across instances
             FULL_CONVERSION_CACHE.put(sourceType, toType, 0L, conversionMethod);
@@ -1770,7 +1760,7 @@ public final class Converter {
         }
 
         // Attempt inheritance-based conversion.
-        conversionMethod = getInheritedConverter(sourceType, toType);
+        conversionMethod = getInheritedConverter(sourceType, toType, this.instanceId);
         if (isValidConversion(conversionMethod)) {
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
@@ -1933,8 +1923,7 @@ public final class Converter {
      * @param toType     The target type to convert to
      * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
-
-    private static Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType) {
+    private static Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType, long instanceId) {
         // Build the complete set of source types (including sourceType itself) with levels.
         Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
         sourceTypes.add(new ClassLevel(sourceType, 0));
@@ -1944,21 +1933,42 @@ public final class Converter {
 
         // Create pairs of source/target types with their associated levels.
         class ConversionPairWithLevel {
-            private final ConversionPair pair;
+            private final Class<?> source;
+            private final Class<?> target;
+            private final long instanceId;
             private final int sourceLevel;
             private final int targetLevel;
 
-            private ConversionPairWithLevel(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
-                this.pair = Converter.pair(source, target);
+            private ConversionPairWithLevel(Class<?> source, Class<?> target, long instanceId, int sourceLevel, int targetLevel) {
+                this.source = source;
+                this.target = target;
+                this.instanceId = instanceId;
                 this.sourceLevel = sourceLevel;
                 this.targetLevel = targetLevel;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) return true;
+                if (!(obj instanceof ConversionPairWithLevel)) return false;
+                ConversionPairWithLevel other = (ConversionPairWithLevel) obj;
+                return source == other.source && 
+                       target == other.target && 
+                       instanceId == other.instanceId &&
+                       sourceLevel == other.sourceLevel &&
+                       targetLevel == other.targetLevel;
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(source, target, instanceId, sourceLevel, targetLevel);
             }
         }
 
         List<ConversionPairWithLevel> pairs = new ArrayList<>();
         for (ClassLevel source : sourceTypes) {
             for (ClassLevel target : targetTypes) {
-                pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, source.level, target.level));
+                pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, instanceId, source.level, target.level));
             }
         }
 
@@ -1968,14 +1978,14 @@ public final class Converter {
         // - Then by combined inheritance distance.
         // - Finally, prefer concrete classes over interfaces.
         pairs.sort((p1, p2) -> {
-            boolean p1ExactTarget = p1.pair.getTarget() == toType;
-            boolean p2ExactTarget = p2.pair.getTarget() == toType;
+            boolean p1ExactTarget = p1.target == toType;
+            boolean p2ExactTarget = p2.target == toType;
             if (p1ExactTarget != p2ExactTarget) {
                 return p1ExactTarget ? -1 : 1;
             }
-            if (p1.pair.getTarget() != p2.pair.getTarget()) {
-                boolean p1AssignableToP2 = p2.pair.getTarget().isAssignableFrom(p1.pair.getTarget());
-                boolean p2AssignableToP1 = p1.pair.getTarget().isAssignableFrom(p2.pair.getTarget());
+            if (p1.target != p2.target) {
+                boolean p1AssignableToP2 = p2.target.isAssignableFrom(p1.target);
+                boolean p2AssignableToP1 = p1.target.isAssignableFrom(p2.target);
                 if (p1AssignableToP2 != p2AssignableToP1) {
                     return p1AssignableToP2 ? -1 : 1;
                 }
@@ -1985,13 +1995,13 @@ public final class Converter {
             if (dist1 != dist2) {
                 return dist1 - dist2;
             }
-            boolean p1FromInterface = p1.pair.getSource().isInterface();
-            boolean p2FromInterface = p2.pair.getSource().isInterface();
+            boolean p1FromInterface = p1.source.isInterface();
+            boolean p2FromInterface = p2.source.isInterface();
             if (p1FromInterface != p2FromInterface) {
                 return p1FromInterface ? 1 : -1;
             }
-            boolean p1ToInterface = p1.pair.getTarget().isInterface();
-            boolean p2ToInterface = p2.pair.getTarget().isInterface();
+            boolean p1ToInterface = p1.target.isInterface();
+            boolean p2ToInterface = p2.target.isInterface();
             if (p1ToInterface != p2ToInterface) {
                 return p1ToInterface ? 1 : -1;
             }
@@ -2000,12 +2010,11 @@ public final class Converter {
 
         // Iterate over sorted pairs and check the converter databases.
         for (ConversionPairWithLevel pairWithLevel : pairs) {
-            ConversionPair pair = pairWithLevel.pair;
-            Convert<?> tempConverter = USER_DB.get(pair.getSource(), pair.getTarget(), pair.getInstanceId());
+            Convert<?> tempConverter = USER_DB.get(pairWithLevel.source, pairWithLevel.target, pairWithLevel.instanceId);
             if (tempConverter != null) {
                 return tempConverter;
             }
-            tempConverter = CONVERSION_DB.get(pair.getSource(), pair.getTarget(), pair.getInstanceId());
+            tempConverter = CONVERSION_DB.get(pairWithLevel.source, pairWithLevel.target, 0L);
             if (tempConverter != null) {
                 return tempConverter;
             }
@@ -2282,7 +2291,7 @@ public final class Converter {
         }
 
         // Finally, attempt an inheritance-based lookup.
-        method = getInheritedConverter(source, target);
+        method = getInheritedConverter(source, target, 0L);
         if (isValidConversion(method)) {
             cacheConverter(source, target, method);
             return true;
@@ -2356,7 +2365,7 @@ public final class Converter {
         }
 
         // Finally, attempt inheritance-based conversion.
-        method = getInheritedConverter(source, target);
+        method = getInheritedConverter(source, target, 0L);
         if (isValidConversion(method)) {
             cacheConverter(source, target, method);
             return true;
@@ -2514,6 +2523,60 @@ public final class Converter {
         for (Class<?> srcType : sourceTypes) {
             for (Class<?> tgtType : targetTypes) {
                 USER_DB.put(srcType, tgtType, 0L, conversionMethod);
+            }
+        }
+
+        return previous;
+    }
+
+    /**
+     * Adds a new conversion function for converting from one type to another for this specific Converter instance.
+     * Unlike the static {@link #addConversion(Class, Class, Convert)} method, this instance method stores the 
+     * conversion only for this converter instance, avoiding global pollution of the conversion database.
+     *
+     * <p>This is the recommended approach for adding custom conversions as it prevents interference between
+     * different applications, libraries, or test cases that might be using java-util simultaneously.
+     * Each Converter instance maintains its own set of custom conversions in addition to accessing
+     * the shared factory conversions and any static user conversions.</p>
+     *
+     * <p>When {@code convert(source, target)} is called on this instance, the conversion function is located by:
+     * <ol>
+     *   <li>Checking instance-specific conversions first (added via this method)</li>
+     *   <li>Checking static user conversions (added via static {@link #addConversion} method)</li>
+     *   <li>Checking factory conversions (built-in conversions)</li>
+     *   <li>Attempting inheritance-based conversion lookup</li>
+     * </ol></p>
+     *
+     * <p>This method automatically handles primitive types by converting them to their corresponding wrapper types
+     * and stores conversions for all primitive/wrapper combinations, just like the static version.</p>
+     *
+     * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
+     * @param source           The source class (type) to convert from.
+     * @param target           The target class (type) to convert to.
+     * @return The previous conversion method associated with the source and target types for this instance, or {@code null} if no conversion existed.
+     */
+    public Convert<?> addConversion(Convert<?> conversionMethod, Class<?> source, Class<?> target) {
+        // Collect all type variations (primitive and wrapper) for both source and target
+        Set<Class<?>> sourceTypes = getTypeVariations(source);
+        Set<Class<?>> targetTypes = getTypeVariations(target);
+
+        // Clear caches for all combinations
+        for (Class<?> srcType : sourceTypes) {
+            for (Class<?> tgtType : targetTypes) {
+                clearCachesForType(srcType, tgtType);
+            }
+        }
+
+        // Store the wrapper version first to capture return value
+        Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
+        Class<?> wrapperTarget = ClassUtilities.toPrimitiveWrapperClass(target);
+        Convert<?> previous = USER_DB.get(wrapperSource, wrapperTarget, this.instanceId);
+        USER_DB.put(wrapperSource, wrapperTarget, this.instanceId, conversionMethod);
+
+        // Add all type combinations to USER_DB with this instance ID
+        for (Class<?> srcType : sourceTypes) {
+            for (Class<?> tgtType : targetTypes) {
+                USER_DB.put(srcType, tgtType, this.instanceId, conversionMethod);
             }
         }
 

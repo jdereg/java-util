@@ -571,6 +571,10 @@ All security features are **disabled by default** to ensure seamless upgrades, w
 | `urlutilities.allow.internal.hosts` | `true`, `false` | <span style="color: #007acc">true</span> | Allow access to internal/local hosts |
 | `urlutilities.allowed.protocols` | Comma-separated | <span style="color: #007acc">http,https,ftp</span> | Allowed protocols |
 | `urlutilities.strict.cookie.domain` | `true`, `false` | <span style="color: #007acc">false</span> | Enable strict cookie domain validation |
+| **Converter** | | | |
+| `converter.modern.time.long.precision` | `millis`, `nanos` | <span style="color: #007acc">millis</span> | Precision for Instant, ZonedDateTime, OffsetDateTime conversions |
+| `converter.duration.long.precision` | `millis`, `nanos` | <span style="color: #007acc">millis</span> | Precision for Duration conversions |
+| `converter.localtime.long.precision` | `millis`, `nanos` | <span style="color: #007acc">millis</span> | Precision for LocalTime conversions |
 | **Other** | | | |
 | `java.util.force.jre` | `true`, `false` | <span style="color: #007acc">false</span> | Force JRE simulation (testing only) |
 

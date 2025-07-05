@@ -1007,21 +1007,20 @@ class ConverterEverythingTest {
                 { BigInteger.valueOf(Long.MAX_VALUE), new AtomicLong(Long.MAX_VALUE), true},
         });
         TEST_DB.put(pair(Instant.class, AtomicLong.class), new Object[][]{
-                {Instant.parse("1969-12-31T23:59:59Z"), new AtomicLong(-1000000000L), true},  // -1 second in nanos
-                {Instant.parse("1969-12-31T23:59:59.999999999Z"), new AtomicLong(-1L), true},  // -1 nanosecond
+                {Instant.parse("1969-12-31T23:59:59Z"), new AtomicLong(-1000L), true},  // -1 second in millis
+                {Instant.parse("1969-12-31T23:59:59.999Z"), new AtomicLong(-1L), true},  // -1 millisecond (millisecond precision)
                 {Instant.parse("1970-01-01T00:00:00Z"), new AtomicLong(0L), true},  // epoch zero
-                {Instant.parse("1970-01-01T00:00:00.000000001Z"), new AtomicLong(1L), true},  // +1 nanosecond
-                {Instant.parse("1970-01-01T00:00:00.001Z"), new AtomicLong(1000000L), true},  // +1 millisecond in nanos
-                {Instant.parse("1970-01-01T00:00:01Z"), new AtomicLong(1000000000L), true},  // +1 second in nanos
+                {Instant.parse("1970-01-01T00:00:00.001Z"), new AtomicLong(1L), true},        // +1 millisecond
+                {Instant.parse("1970-01-01T00:00:01Z"), new AtomicLong(1000L), true},         // +1 second in millis
         });
         TEST_DB.put(pair(Duration.class, AtomicLong.class), new Object[][]{
-                {Duration.ofNanos(Long.MIN_VALUE / 2), new AtomicLong(Long.MIN_VALUE / 2), true},
-                {Duration.ofNanos(Integer.MIN_VALUE), new AtomicLong(Integer.MIN_VALUE), true},
-                {Duration.ofNanos(-1), new AtomicLong(-1), true},
-                {Duration.ofNanos(0), new AtomicLong(0), true},
-                {Duration.ofNanos(1), new AtomicLong(1), true},
-                {Duration.ofNanos(Integer.MAX_VALUE), new AtomicLong(Integer.MAX_VALUE), true},
-                {Duration.ofNanos(Long.MAX_VALUE / 2), new AtomicLong(Long.MAX_VALUE / 2), true},
+                {Duration.ofMillis(Long.MIN_VALUE / 2), new AtomicLong(Long.MIN_VALUE / 2), true},
+                {Duration.ofMillis(Integer.MIN_VALUE), new AtomicLong(Integer.MIN_VALUE), true},
+                {Duration.ofMillis(-1), new AtomicLong(-1), true},
+                {Duration.ofMillis(0), new AtomicLong(0), true},
+                {Duration.ofMillis(1), new AtomicLong(1), true},
+                {Duration.ofMillis(Integer.MAX_VALUE), new AtomicLong(Integer.MAX_VALUE), true},
+                {Duration.ofMillis(Long.MAX_VALUE / 2), new AtomicLong(Long.MAX_VALUE / 2), true},
         });
         TEST_DB.put(pair(String.class, AtomicLong.class), new Object[][]{
                 {"-1", new AtomicLong(-1), true},
@@ -1368,11 +1367,11 @@ class ConverterEverythingTest {
                 { LocalTime.parse("12:34:56"), LocalTime.parse("12:34:56"), true}
         });
         TEST_DB.put(pair(Long.class, LocalTime.class), new Object[][]{
-                { -1L, new IllegalArgumentException("Input value [-1] for conversion to LocalTime must be >= 0 && <= 86399999999999")},
+                { -1L, new IllegalArgumentException("Input value [-1] for conversion to LocalTime must be >= 0 && <= 86399999")},
                 { 0L, LocalTime.parse("00:00:00"), true},
-                { 1_000_000L, LocalTime.parse("00:00:00.001"), true}, // 1 millisecond in nanos
-                { 86399999999999L, LocalTime.parse("23:59:59.999999999"), true}, // 23:59:59.999999999 in nanos
-                { 86400000000000L, new IllegalArgumentException("Input value [86400000000000] for conversion to LocalTime must be >= 0 && <= 86399999999999")},
+                { 1L, LocalTime.parse("00:00:00.001"), true}, // 1 millisecond
+                { 86399999L, LocalTime.parse("23:59:59.999"), true}, // 23:59:59.999 (max milliseconds in day)
+                { 86400000L, new IllegalArgumentException("Input value [86400000] for conversion to LocalTime must be >= 0 && <= 86399999")},
         });
         TEST_DB.put(pair(Double.class, LocalTime.class), new Object[][]{
                 { -0.000000001, new IllegalArgumentException("value [-1.0E-9]")},
@@ -1458,6 +1457,17 @@ class ConverterEverythingTest {
                 {mapOf(LOCAL_TIME, "23:59"), LocalTime.parse("23:59") , true},
                 {mapOf(LOCAL_TIME, "23:59:59"), LocalTime.parse("23:59:59"), true },
                 {mapOf(VALUE, "23:59:59.999999999"), LocalTime.parse("23:59:59.999999999") },
+        });
+        
+        // LocalTime to integer types - unsupported (nanosecond resolution exceeds integer capacity)
+        TEST_DB.put(pair(LocalTime.class, AtomicInteger.class), new Object[][]{
+                {LocalTime.parse("12:34:56.123456789"), new IllegalArgumentException("Unsupported conversion, source type [LocalTime (12:34:56.123456789)] target type 'AtomicInteger'")},
+        });
+        TEST_DB.put(pair(LocalTime.class, int.class), new Object[][]{
+                {LocalTime.parse("12:34:56.123456789"), new IllegalArgumentException("Unsupported conversion, source type [LocalTime (12:34:56.123456789)] target type 'int'")},
+        });
+        TEST_DB.put(pair(LocalTime.class, Integer.class), new Object[][]{
+                {LocalTime.parse("12:34:56.123456789"), new IllegalArgumentException("Unsupported conversion, source type [LocalTime (12:34:56.123456789)] target type 'Integer'")},
         });
     }
 
@@ -2158,6 +2168,30 @@ class ConverterEverythingTest {
                 {mapOf(MONTH_DAY, mapOf("_v", "--06-30")), MonthDay.of(6, 30)},    // recursive on monthDay
                 {mapOf(VALUE, "--06-30"), MonthDay.of(6, 30)},                      // using VALUE key
         });
+        
+        // MonthDay → String (explicit conversion)
+        TEST_DB.put(pair(MonthDay.class, String.class), new Object[][]{
+                {MonthDay.of(1, 1), "--01-01"},
+                {MonthDay.of(12, 31), "--12-31"},
+                {MonthDay.of(6, 15), "--06-15"},
+                {MonthDay.of(2, 29), "--02-29"},  // leap day
+        });
+        
+        // MonthDay → Map (explicit conversion)
+        TEST_DB.put(pair(MonthDay.class, Map.class), new Object[][]{
+                {MonthDay.of(1, 1), mapOf(MONTH_DAY, "--01-01")},
+                {MonthDay.of(12, 31), mapOf(MONTH_DAY, "--12-31")},
+                {MonthDay.of(6, 15), mapOf(MONTH_DAY, "--06-15")},
+                {MonthDay.of(2, 29), mapOf(MONTH_DAY, "--02-29")},  // leap day
+        });
+        
+        // MonthDay → CharSequence (explicit conversion)
+        TEST_DB.put(pair(MonthDay.class, CharSequence.class), new Object[][]{
+                {MonthDay.of(1, 1), "--01-01"},
+                {MonthDay.of(12, 31), "--12-31"},
+                {MonthDay.of(6, 15), "--06-15"},
+                {MonthDay.of(2, 29), "--02-29"},  // leap day
+        });
     }
 
     /**
@@ -2224,6 +2258,31 @@ class ConverterEverythingTest {
                 { mapOf(OFFSET_DATE_TIME, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
                 { mapOf(VALUE, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
                 { mapOf(V, "2024-03-10T11:07:00.123456789+09:00"), OffsetDateTime.parse("2024-03-10T11:07:00.123456789+09:00")},
+        });
+        
+        // OffsetDateTime → CharSequence
+        TEST_DB.put(pair(OffsetDateTime.class, CharSequence.class), new Object[][]{
+                {OffsetDateTime.parse("1970-01-01T00:00:00Z"), "1970-01-01T00:00:00Z"},
+                {OffsetDateTime.parse("2024-02-18T15:31:55.987654321+09:00"), "2024-02-18T15:31:55.987654321+09:00"},
+                {OffsetDateTime.parse("1969-12-31T23:59:59.999999999-05:00"), "1969-12-31T23:59:59.999999999-05:00"},
+        });
+        
+        // OffsetDateTime → double
+        TEST_DB.put(pair(OffsetDateTime.class, double.class), new Object[][]{
+                {OffsetDateTime.parse("1970-01-01T00:00:00Z"), 0.0},
+                {OffsetDateTime.parse("1970-01-01T00:00:01Z"), 1.0},
+                {OffsetDateTime.parse("1969-12-31T23:59:59Z"), -1.0},
+                {OffsetDateTime.parse("1970-01-01T00:00:00.000000001Z"), 1.0E-9},
+                {OffsetDateTime.parse("1970-01-01T00:00:00.123456789Z"), 0.123456789},
+        });
+        
+        // OffsetDateTime → long
+        TEST_DB.put(pair(OffsetDateTime.class, long.class), new Object[][]{
+                {OffsetDateTime.parse("1970-01-01T00:00:00Z"), 0L},
+                {OffsetDateTime.parse("1970-01-01T00:00:00.001Z"), 1L},      // 1 millisecond
+                {OffsetDateTime.parse("1970-01-01T00:00:01Z"), 1000L},       // 1000 milliseconds = 1 second
+                {OffsetDateTime.parse("1969-12-31T23:59:59.999Z"), -1L},     // -1 millisecond
+                {OffsetDateTime.parse("1970-01-01T00:00:00.123456789Z"), 123L}, // 123 milliseconds
         });
     }
 
@@ -3296,6 +3355,10 @@ class ConverterEverythingTest {
                 {true, UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")},
                 {false, UUID.fromString("00000000-0000-0000-0000-000000000000")},
         });
+        TEST_DB.put(pair(Boolean.class, UUID.class), new Object[][]{
+                {true, UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")},
+                {false, UUID.fromString("00000000-0000-0000-0000-000000000000")},
+        });
     }
 
     /**
@@ -3744,21 +3807,20 @@ class ConverterEverythingTest {
                 {new Timestamp(Long.MAX_VALUE), Long.MAX_VALUE, true},
         });
         TEST_DB.put(pair(Duration.class, Long.class), new Object[][]{
-                {Duration.ofNanos(Long.MIN_VALUE / 2), Long.MIN_VALUE / 2, true},
-                {Duration.ofNanos(Integer.MIN_VALUE), (long) Integer.MIN_VALUE, true},
-                {Duration.ofNanos(-1), -1L, true},
-                {Duration.ofNanos(0), 0L, true},
-                {Duration.ofNanos(1), 1L, true},
-                {Duration.ofNanos(Integer.MAX_VALUE), (long) Integer.MAX_VALUE, true},
-                {Duration.ofNanos(Long.MAX_VALUE / 2), Long.MAX_VALUE / 2, true},
+                {Duration.ofMillis(Long.MIN_VALUE / 2), Long.MIN_VALUE / 2, true},
+                {Duration.ofMillis(Integer.MIN_VALUE), (long) Integer.MIN_VALUE, true},
+                {Duration.ofMillis(-1), -1L, true},
+                {Duration.ofMillis(0), 0L, true},
+                {Duration.ofMillis(1), 1L, true},
+                {Duration.ofMillis(Integer.MAX_VALUE), (long) Integer.MAX_VALUE, true},
+                {Duration.ofMillis(Long.MAX_VALUE / 2), Long.MAX_VALUE / 2, true},
         });
         TEST_DB.put(pair(Instant.class, Long.class), new Object[][]{
-                {Instant.parse("1969-12-31T23:59:59Z"), -1000000000L, true},  // -1 second in nanos
-                {Instant.parse("1969-12-31T23:59:59.999999999Z"), -1L, true}, // -1 nanosecond
+                {Instant.parse("1969-12-31T23:59:59Z"), -1000L, true},  // -1 second in millis
+                {Instant.parse("1969-12-31T23:59:59.999Z"), -1L, true}, // -1 millisecond (millisecond precision)
                 {Instant.parse("1970-01-01T00:00:00Z"), 0L, true},            // epoch zero
-                {Instant.parse("1970-01-01T00:00:00.000000001Z"), 1L, true},  // +1 nanosecond
-                {Instant.parse("1970-01-01T00:00:00.001Z"), 1000000L, true},  // +1 millisecond in nanos
-                {Instant.parse("1970-01-01T00:00:01Z"), 1000000000L, true},   // +1 second in nanos
+                {Instant.parse("1970-01-01T00:00:00.001Z"), 1L, true},        // +1 millisecond
+                {Instant.parse("1970-01-01T00:00:01Z"), 1000L, true},         // +1 second in millis
         });
         TEST_DB.put(pair(LocalDate.class, Long.class), new Object[][]{
                 {zdt("0000-01-01T00:00:00Z").toLocalDate(), -62167252739000L, true},
@@ -4674,6 +4736,13 @@ class ConverterEverythingTest {
         if (skip7) {
             return;
         }
+        // Skip LocalTime to integer conversions (explicitly marked as UNSUPPORTED with IllegalArgumentException)
+        boolean skip8 = sourceClass.equals(LocalTime.class) && 
+                       (targetClass.equals(int.class) || targetClass.equals(Integer.class) || 
+                        targetClass.equals(AtomicInteger.class));
+        if (skip8) {
+            return;
+        }
         WriteOptions writeOptions = new WriteOptionsBuilder().build();
         ReadOptions readOptions = new ReadOptionsBuilder().setZoneId(TOKYO_Z).build();
         String json = JsonIo.toJson(source, writeOptions);
@@ -4687,7 +4756,10 @@ class ConverterEverythingTest {
                 if (e instanceof JsonIoException) {
                     e = e.getCause();
                 }
-                assertEquals(e.getClass(), t.getClass());
+                assertEquals(e.getClass(), t.getClass(), 
+                    "Test conversion " + shortNameSource + " ==> " + shortNameTarget + 
+                    " expected exception type: " + t.getClass().getSimpleName() + 
+                    " but got: " + e.getClass().getSimpleName());
                 updateStat(pair(sourceClass, targetClass), true);
             }
         } else {
@@ -4929,30 +5001,6 @@ class ConverterEverythingTest {
         }
     }
 
-    @AfterAll
-    static void printStats() {
-        Set<String> testPairNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        int missing = 0;
-
-        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Boolean> entry : STAT_DB.entrySet()) {
-            Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
-            boolean value = entry.getValue();
-            if (!value) {
-                Class<?> sourceClass = pair.getKey();
-                Class<?> targetClass = pair.getValue();
-                if (isHardCase(sourceClass, targetClass)) {
-                    continue;
-                }
-                missing++;
-                testPairNames.add("\n  " + Converter.getShortName(pair.getKey()) + " ==> " + Converter.getShortName(pair.getValue()));
-            }
-        }
-        
-        LOG.info("Total conversion pairs      = " + STAT_DB.size());
-        LOG.info("Conversion pairs tested     = " + (STAT_DB.size() - missing));
-        LOG.info("Conversion pairs not tested = " + missing);
-        LOG.info("Tests needed " + testPairNames);
-    }
 
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParamsInReverse")
@@ -5374,8 +5422,8 @@ class ConverterEverythingTest {
         });
         TEST_DB.put(pair(AtomicLong.class, LocalTime.class), new Object[][]{
                 {new AtomicLong(0L), LocalTime.of(0, 0, 0)},
-                {new AtomicLong(3661000000000L), LocalTime.of(1, 1, 1)}, // 1h 1m 1s in nanoseconds
-                {new AtomicLong(86399000000000L), LocalTime.of(23, 59, 59)}, // 23h 59m 59s in nanoseconds
+                {new AtomicLong(3661000L), LocalTime.of(1, 1, 1)}, // 1h 1m 1s in milliseconds
+                {new AtomicLong(86399000L), LocalTime.of(23, 59, 59)}, // 23h 59m 59s in milliseconds
         });
     }
 
@@ -7278,14 +7326,14 @@ class ConverterEverythingTest {
                 {Duration.ofMinutes(30), (double)Duration.ofMinutes(30).getSeconds()},
         });
         TEST_DB.put(pair(Duration.class, long.class), new Object[][]{
-                {Duration.ofHours(2), Duration.ofHours(2).toNanos()},
-                {Duration.ofMinutes(30), Duration.ofMinutes(30).toNanos()},
+                {Duration.ofHours(2), Duration.ofHours(2).toMillis()},
+                {Duration.ofMinutes(30), Duration.ofMinutes(30).toMillis()},
         });
         TEST_DB.put(pair(Instant.class, double.class), new Object[][]{
                 {Instant.parse("2024-12-25T09:30:00Z"), (double)Instant.parse("2024-12-25T09:30:00Z").getEpochSecond()},
         });
         TEST_DB.put(pair(Instant.class, long.class), new Object[][]{
-                {Instant.parse("2024-12-25T09:30:00Z"), Instant.parse("2024-12-25T09:30:00Z").getEpochSecond() * 1_000_000_000L + Instant.parse("2024-12-25T09:30:00Z").getNano()},
+                {Instant.parse("2024-12-25T09:30:00Z"), Instant.parse("2024-12-25T09:30:00Z").toEpochMilli()},
         });
 
         // Reverse double → temporal/date conversions (obvious easy ones)
@@ -7484,15 +7532,15 @@ class ConverterEverythingTest {
         });
         // Add long to Duration (nanosecond precision for modern time classes - CORRECT implementation)
         TEST_DB.put(pair(long.class, Duration.class), new Object[][]{
-                {7200000000000L, Duration.ofNanos(7200000000000L)}, // 2 hours in nanos
-                {1800000000000L, Duration.ofNanos(1800000000000L)}, // 30 minutes in nanos
-                {3661000000000L, Duration.ofNanos(3661000000000L)}, // 1 hour, 1 minute, 1 second in nanos
+                {7200000L, Duration.ofMillis(7200000L)}, // 2 hours in millis
+                {1800000L, Duration.ofMillis(1800000L)}, // 30 minutes in millis
+                {3661000L, Duration.ofMillis(3661000L)}, // 1 hour, 1 minute, 1 second in millis
         });
         
-        // Add long to LocalTime (nanosecond precision for modern time classes - NOW CONSISTENT with Duration/Instant)
+        // Add long to LocalTime (millisecond precision for consistency with all long conversions)
         TEST_DB.put(pair(long.class, LocalTime.class), new Object[][]{
-                {3661000000000L, LocalTime.ofNanoOfDay(3661000000000L)}, // 1 hour, 1 minute, 1 second in nanos
-                {43200000000000L, LocalTime.ofNanoOfDay(43200000000000L)}, // 12:00:00 (noon) in nanos
+                {3661000L, LocalTime.of(1, 1, 1)}, // 1 hour, 1 minute, 1 second (3661000 milliseconds)
+                {43200000L, LocalTime.of(12, 0, 0)}, // 12:00:00 (noon) (43200000 milliseconds)
         });
     }
 
@@ -7533,7 +7581,18 @@ class ConverterEverythingTest {
                 {"1", true},
                 {"0", false},
         });
+        TEST_DB.put(pair(CharSequence.class, Boolean.class), new Object[][]{
+                {"true", true},
+                {"false", false},
+                {"1", true},
+                {"0", false},
+        });
         TEST_DB.put(pair(CharSequence.class, Byte.class), new Object[][]{
+                {"42", (byte)42},
+                {"0", (byte)0},
+                {"-1", (byte)-1},
+        });
+        TEST_DB.put(pair(CharSequence.class, byte.class), new Object[][]{
                 {"42", (byte)42},
                 {"0", (byte)0},
                 {"-1", (byte)-1},
@@ -7589,12 +7648,22 @@ class ConverterEverythingTest {
                 {"0", 0.0},
                 {"-1.1", -1.1},
         });
+        TEST_DB.put(pair(CharSequence.class, double.class), new Object[][]{
+                {"42.5", 42.5},
+                {"0", 0.0},
+                {"-1.1", -1.1},
+        });
         TEST_DB.put(pair(CharSequence.class, Duration.class), new Object[][]{
                 {"PT1H", Duration.ofHours(1)},
                 {"PT30M", Duration.ofMinutes(30)},
                 {"PT1S", Duration.ofSeconds(1)},
         });
         TEST_DB.put(pair(CharSequence.class, float.class), new Object[][]{
+                {"42.5", 42.5f},
+                {"0", 0.0f},
+                {"-1.1", -1.1f},
+        });
+        TEST_DB.put(pair(CharSequence.class, Float.class), new Object[][]{
                 {"42.5", 42.5f},
                 {"0", 0.0f},
                 {"-1.1", -1.1f},
@@ -7638,6 +7707,11 @@ class ConverterEverythingTest {
                 {"0", 0L},
                 {"-1", -1L},
         });
+        TEST_DB.put(pair(CharSequence.class, Long.class), new Object[][]{
+                {"42", 42L},
+                {"0", 0L},
+                {"-1", -1L},
+        });
         TEST_DB.put(pair(CharSequence.class, Map.class), new Object[][]{
                 {"FRIDAY", mapOf("name", "FRIDAY")},
                 {"HTTP_OK", mapOf("name", "HTTP_OK")},
@@ -7664,6 +7738,11 @@ class ConverterEverythingTest {
                 {"P30D", Period.ofDays(30)},
         });
         TEST_DB.put(pair(CharSequence.class, Short.class), new Object[][]{
+                {"42", (short)42},
+                {"0", (short)0},
+                {"-1", (short)-1},
+        });
+        TEST_DB.put(pair(CharSequence.class, short.class), new Object[][]{
                 {"42", (short)42},
                 {"0", (short)0},
                 {"-1", (short)-1},
@@ -7745,6 +7824,27 @@ class ConverterEverythingTest {
                 {new Date(1640995200000L), "2022-01-01T00:00:00.000Z"},
         });
         
+        // boolean → CharSequence
+        TEST_DB.put(pair(boolean.class, CharSequence.class), new Object[][]{
+                {true, "true"},
+                {false, "false"},
+        });
+        
+        // Boolean → CharSequence
+        TEST_DB.put(pair(Boolean.class, CharSequence.class), new Object[][]{
+                {true, "true"},
+                {false, "false"},
+        });
+        
+        // byte → CharSequence
+        TEST_DB.put(pair(byte.class, CharSequence.class), new Object[][]{
+                {(byte)42, "42"},
+                {(byte)0, "0"},
+                {(byte)-1, "-1"},
+                {Byte.MAX_VALUE, "127"},
+                {Byte.MIN_VALUE, "-128"},
+        });
+        
         // Double → CharSequence
         TEST_DB.put(pair(Double.class, CharSequence.class), new Object[][]{
                 {42.0, "42.0"},
@@ -7754,8 +7854,26 @@ class ConverterEverythingTest {
                 {Double.MIN_VALUE, "4.9E-324"},
         });
         
+        // double → CharSequence
+        TEST_DB.put(pair(double.class, CharSequence.class), new Object[][]{
+                {42.0, "42.0"},
+                {0.0, "0"},
+                {-1.5, "-1.5"},
+                {Double.MAX_VALUE, "1.7976931348623157E308"},
+                {Double.MIN_VALUE, "4.9E-324"},
+        });
+        
         // float → CharSequence
         TEST_DB.put(pair(float.class, CharSequence.class), new Object[][]{
+                {42.0f, "42.0"},
+                {0.0f, "0"},
+                {-1.5f, "-1.5"},
+                {Float.MAX_VALUE, "3.4028235E38"},
+                {Float.MIN_VALUE, "1.4E-45"},
+        });
+        
+        // Float → CharSequence
+        TEST_DB.put(pair(Float.class, CharSequence.class), new Object[][]{
                 {42.0f, "42.0"},
                 {0.0f, "0"},
                 {-1.5f, "-1.5"},
@@ -7827,6 +7945,23 @@ class ConverterEverythingTest {
                 {Long.MAX_VALUE, "9223372036854775807"},
                 {Long.MIN_VALUE, "-9223372036854775808"},
         });
+        
+        // Long → CharSequence
+        TEST_DB.put(pair(Long.class, CharSequence.class), new Object[][]{
+                {42L, "42"},
+                {0L, "0"},
+                {-1L, "-1"},
+                {Long.MAX_VALUE, "9223372036854775807"},
+                {Long.MIN_VALUE, "-9223372036854775808"},
+        });
+        
+        // Map → CharSequence
+        TEST_DB.put(pair(Map.class, CharSequence.class), new Object[][]{
+                {mapOf("_v", "hello"), "hello"},
+                {mapOf("value", "world"), "world"},
+                {mapOf("_v", 42), "42"},
+                {mapOf("value", true), "true"},
+        });
     }
 
     private static void loadDoubleArrayTests() {
@@ -7836,60 +7971,68 @@ class ConverterEverythingTest {
     private static void loadDurationConversionTests() {
         // Duration → AtomicBoolean
         TEST_DB.put(pair(Duration.class, AtomicBoolean.class), new Object[][]{
-                {Duration.ofNanos(0), new AtomicBoolean(false)},
-                {Duration.ofNanos(1), new AtomicBoolean(true)},
-                {Duration.ofNanos(-1), new AtomicBoolean(true)},
+                {Duration.ofMillis(0), new AtomicBoolean(false)},
+                {Duration.ofMillis(1), new AtomicBoolean(true)},
+                {Duration.ofMillis(-1), new AtomicBoolean(true)},
                 {Duration.ofSeconds(1), new AtomicBoolean(true)},
         });
         
         // Duration → AtomicInteger
         TEST_DB.put(pair(Duration.class, AtomicInteger.class), new Object[][]{
-                {Duration.ofNanos(0), new AtomicInteger(0)},
-                {Duration.ofNanos(1), new AtomicInteger(1)},
-                {Duration.ofNanos(-1), new AtomicInteger(-1)},
-                {Duration.ofNanos(Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE)},
-                {Duration.ofNanos(Integer.MIN_VALUE), new AtomicInteger(Integer.MIN_VALUE)},
+                {Duration.ofMillis(0), new AtomicInteger(0)},
+                {Duration.ofMillis(1), new AtomicInteger(1)},
+                {Duration.ofMillis(-1), new AtomicInteger(-1)},
+                {Duration.ofMillis(Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE)},
+                {Duration.ofMillis(Integer.MIN_VALUE), new AtomicInteger(Integer.MIN_VALUE)},
         });
         
         // Duration → boolean
         TEST_DB.put(pair(Duration.class, boolean.class), new Object[][]{
-                {Duration.ofNanos(0), false},
-                {Duration.ofNanos(1), true},
-                {Duration.ofNanos(-1), true},
+                {Duration.ofMillis(0), false},
+                {Duration.ofMillis(1), true},
+                {Duration.ofMillis(-1), true},
+                {Duration.ofSeconds(1), true},
+        });
+        
+        // Duration → Boolean
+        TEST_DB.put(pair(Duration.class, Boolean.class), new Object[][]{
+                {Duration.ofMillis(0), false},
+                {Duration.ofMillis(1), true},
+                {Duration.ofMillis(-1), true},
                 {Duration.ofSeconds(1), true},
         });
         
         // Duration → Byte
         TEST_DB.put(pair(Duration.class, Byte.class), new Object[][]{
-                {Duration.ofNanos(0), (byte) 0},
-                {Duration.ofNanos(1), (byte) 1},
-                {Duration.ofNanos(-1), (byte) -1},
-                {Duration.ofNanos(Byte.MAX_VALUE), Byte.MAX_VALUE},
-                {Duration.ofNanos(Byte.MIN_VALUE), Byte.MIN_VALUE},
+                {Duration.ofMillis(0), (byte) 0},
+                {Duration.ofMillis(1), (byte) 1},
+                {Duration.ofMillis(-1), (byte) -1},
+                {Duration.ofMillis(Byte.MAX_VALUE), Byte.MAX_VALUE},
+                {Duration.ofMillis(Byte.MIN_VALUE), Byte.MIN_VALUE},
         });
         
         // Duration → Calendar
         TEST_DB.put(pair(Duration.class, Calendar.class), new Object[][]{
                 {Duration.ofSeconds(0), cal(0)},
-                {Duration.ofSeconds(1), cal(1000000000L)},
-                {Duration.ofSeconds(-1), cal(-1000000000L)},
-                {Duration.ofSeconds(1640995200), cal(1640995200L * 1000000000L)},
+                {Duration.ofSeconds(1), cal(1000)}, // 1 second = 1000 milliseconds
+                {Duration.ofSeconds(-1), cal(-1000)}, // -1 second = -1000 milliseconds
+                {Duration.ofSeconds(1640995200), cal(1640995200L * 1000L)}, // convert seconds to milliseconds
         });
         
         // Duration → char
         TEST_DB.put(pair(Duration.class, char.class), new Object[][]{
-                {Duration.ofNanos(0), (char) 0},
-                {Duration.ofNanos(65), 'A'},
-                {Duration.ofNanos(97), 'a'},
-                {Duration.ofNanos(48), '0'},
+                {Duration.ofMillis(0), (char) 0},
+                {Duration.ofMillis(65), 'A'},
+                {Duration.ofMillis(97), 'a'},
+                {Duration.ofMillis(48), '0'},
         });
         
         // Duration → Character
         TEST_DB.put(pair(Duration.class, Character.class), new Object[][]{
-                {Duration.ofNanos(0), (char) 0},
-                {Duration.ofNanos(65), 'A'},
-                {Duration.ofNanos(97), 'a'},
-                {Duration.ofNanos(48), '0'},
+                {Duration.ofMillis(0), (char) 0},
+                {Duration.ofMillis(65), 'A'},
+                {Duration.ofMillis(97), 'a'},
+                {Duration.ofMillis(48), '0'},
         });
         
         // Duration → CharSequence
@@ -7904,17 +8047,17 @@ class ConverterEverythingTest {
         // Duration → Date
         TEST_DB.put(pair(Duration.class, Date.class), new Object[][]{
                 {Duration.ofSeconds(0), new Date(0)},
-                {Duration.ofSeconds(1), new Date(1000000000L)},
-                {Duration.ofSeconds(-1), new Date(-1000000000L)},
-                {Duration.ofSeconds(1640995200), new Date(1640995200L * 1000000000L)},
+                {Duration.ofSeconds(1), new Date(1000)}, // 1 second = 1000 milliseconds
+                {Duration.ofSeconds(-1), new Date(-1000)}, // -1 second = -1000 milliseconds
+                {Duration.ofSeconds(1640995200), new Date(1640995200L * 1000L)}, // convert seconds to milliseconds
         });
         
         // Duration → Float
         TEST_DB.put(pair(Duration.class, Float.class), new Object[][]{
-                {Duration.ofNanos(0), 0.0f},
-                {Duration.ofNanos(1), 1.0f},
-                {Duration.ofNanos(-1), -1.0f},
-                {Duration.ofNanos(1000000000), 1000000000.0f},
+                {Duration.ofMillis(0), 0.0f},
+                {Duration.ofMillis(1), 1.0f},
+                {Duration.ofMillis(-1), -1.0f},
+                {Duration.ofMillis(1000), 1000.0f},
         });
         
         // Duration → Instant
@@ -7927,20 +8070,20 @@ class ConverterEverythingTest {
         
         // Duration → int
         TEST_DB.put(pair(Duration.class, int.class), new Object[][]{
-                {Duration.ofNanos(0), 0},
-                {Duration.ofNanos(1), 1},
-                {Duration.ofNanos(-1), -1},
-                {Duration.ofNanos(Integer.MAX_VALUE), Integer.MAX_VALUE},
-                {Duration.ofNanos(Integer.MIN_VALUE), Integer.MIN_VALUE},
+                {Duration.ofMillis(0), 0},
+                {Duration.ofMillis(1), 1},
+                {Duration.ofMillis(-1), -1},
+                {Duration.ofMillis(Integer.MAX_VALUE), Integer.MAX_VALUE},
+                {Duration.ofMillis(Integer.MIN_VALUE), Integer.MIN_VALUE},
         });
         
         // Duration → Integer
         TEST_DB.put(pair(Duration.class, Integer.class), new Object[][]{
-                {Duration.ofNanos(0), 0},
-                {Duration.ofNanos(1), 1},
-                {Duration.ofNanos(-1), -1},
-                {Duration.ofNanos(Integer.MAX_VALUE), Integer.MAX_VALUE},
-                {Duration.ofNanos(Integer.MIN_VALUE), Integer.MIN_VALUE},
+                {Duration.ofMillis(0), 0},
+                {Duration.ofMillis(1), 1},
+                {Duration.ofMillis(-1), -1},
+                {Duration.ofMillis(Integer.MAX_VALUE), Integer.MAX_VALUE},
+                {Duration.ofMillis(Integer.MIN_VALUE), Integer.MIN_VALUE},
         });
         
         // Duration → java.sql.Date (day boundary aligned)
@@ -7955,62 +8098,62 @@ class ConverterEverythingTest {
         // Duration → LocalDate
         TEST_DB.put(pair(Duration.class, LocalDate.class), new Object[][]{
                 {Duration.ofSeconds(0), LocalDate.of(1970, 1, 1)},
-                {Duration.ofSeconds(86400), LocalDate.of(4707, 11, 29)},
-                {Duration.ofSeconds(-86400), LocalDate.of(-768, 2, 4)},
+                {Duration.ofSeconds(86400), LocalDate.of(1970, 1, 2)}, // +1 day
+                {Duration.ofSeconds(-86400), LocalDate.of(1969, 12, 31)}, // -1 day
         });
         
         // Duration → LocalDateTime
         TEST_DB.put(pair(Duration.class, LocalDateTime.class), new Object[][]{
-                {Duration.ofSeconds(0), LocalDateTime.of(1970, 1, 1, 9, 0, 0)},
-                {Duration.ofSeconds(1), LocalDateTime.of(1970, 1, 12, 22, 46, 40)},
-                {Duration.ofSeconds(3661), LocalDateTime.of(2086, 1, 5, 1, 26, 40)},
+                {Duration.ofSeconds(0), LocalDateTime.of(1970, 1, 1, 9, 0, 0)}, // epoch in Tokyo timezone
+                {Duration.ofSeconds(1), LocalDateTime.of(1970, 1, 1, 9, 0, 1)}, // +1 second
+                {Duration.ofSeconds(3661), LocalDateTime.of(1970, 1, 1, 10, 1, 1)}, // +1 hour, 1 minute, 1 second
         });
         
         // Duration → LocalTime
         TEST_DB.put(pair(Duration.class, LocalTime.class), new Object[][]{
-                {Duration.ofNanos(0), LocalTime.of(0, 0, 0, 0)},
-                {Duration.ofNanos(1), LocalTime.of(0, 0, 0, 1)},
+                {Duration.ofMillis(0), LocalTime.of(0, 0, 0, 0)},
+                {Duration.ofMillis(1), LocalTime.of(0, 0, 0, 1_000_000)}, // 1 millisecond = 1,000,000 nanoseconds
                 {Duration.ofSeconds(1), LocalTime.of(0, 0, 1, 0)},
                 {Duration.ofSeconds(3661), LocalTime.of(1, 1, 1, 0)},
         });
         
         // Duration → Number
         TEST_DB.put(pair(Duration.class, Number.class), new Object[][]{
-                {Duration.ofNanos(0), 0L},
-                {Duration.ofNanos(1), 1L},
-                {Duration.ofNanos(-1), -1L},
-                {Duration.ofNanos(Long.MAX_VALUE / 2), Long.MAX_VALUE / 2},
+                {Duration.ofMillis(0), 0L},
+                {Duration.ofMillis(1), 1L},
+                {Duration.ofMillis(-1), -1L},
+                {Duration.ofMillis(Long.MAX_VALUE / 2), Long.MAX_VALUE / 2},
         });
         
         // Duration → OffsetDateTime
         TEST_DB.put(pair(Duration.class, OffsetDateTime.class), new Object[][]{
-                {Duration.ofSeconds(0), OffsetDateTime.of(1970, 1, 1, 9, 0, 0, 0, ZoneOffset.of("+09:00"))},
-                {Duration.ofSeconds(1), OffsetDateTime.of(1970, 1, 12, 22, 46, 40, 0, ZoneOffset.of("+09:00"))},
-                {Duration.ofSeconds(3661), OffsetDateTime.of(2086, 1, 5, 1, 26, 40, 0, ZoneOffset.of("+09:00"))},
+                {Duration.ofSeconds(0), OffsetDateTime.of(1970, 1, 1, 9, 0, 0, 0, ZoneOffset.of("+09:00"))}, // epoch in Tokyo timezone
+                {Duration.ofSeconds(1), OffsetDateTime.of(1970, 1, 1, 9, 0, 1, 0, ZoneOffset.of("+09:00"))}, // +1 second
+                {Duration.ofSeconds(3661), OffsetDateTime.of(1970, 1, 1, 10, 1, 1, 0, ZoneOffset.of("+09:00"))}, // +1 hour, 1 minute, 1 second
         });
         
         
         // Duration → Short
         TEST_DB.put(pair(Duration.class, Short.class), new Object[][]{
-                {Duration.ofNanos(0), (short) 0},
-                {Duration.ofNanos(1), (short) 1},
-                {Duration.ofNanos(-1), (short) -1},
-                {Duration.ofNanos(Short.MAX_VALUE), Short.MAX_VALUE},
-                {Duration.ofNanos(Short.MIN_VALUE), Short.MIN_VALUE},
+                {Duration.ofMillis(0), (short) 0},
+                {Duration.ofMillis(1), (short) 1},
+                {Duration.ofMillis(-1), (short) -1},
+                {Duration.ofMillis(Short.MAX_VALUE), Short.MAX_VALUE},
+                {Duration.ofMillis(Short.MIN_VALUE), Short.MIN_VALUE},
         });
         
         // Duration → Year
         TEST_DB.put(pair(Duration.class, Year.class), new Object[][]{
-                {Duration.ofSeconds(0), Year.of(0)},
-                {Duration.ofSeconds(31536000), Year.of(0)},
-                {Duration.ofSeconds(-31536000), Year.of(0)},
+                {Duration.ofSeconds(0), Year.of(0)}, // 0 milliseconds → Year[0]
+                {Duration.ofSeconds(31536000), Year.of(11264)}, // 31,536,000,000 millis → shortValue() → Year[11264]
+                {Duration.ofSeconds(-31536000), Year.of(-11264)}, // -31,536,000,000 millis → shortValue() → Year[-11264]
         });
         
         // Duration → ZonedDateTime
         TEST_DB.put(pair(Duration.class, ZonedDateTime.class), new Object[][]{
-                {Duration.ofSeconds(0), ZonedDateTime.of(1970, 1, 1, 9, 0, 0, 0, ZoneId.of("Asia/Tokyo"))},
-                {Duration.ofSeconds(1), ZonedDateTime.of(1970, 1, 12, 22, 46, 40, 0, ZoneId.of("Asia/Tokyo"))},
-                {Duration.ofSeconds(3661), ZonedDateTime.of(2086, 1, 5, 1, 26, 40, 0, ZoneId.of("Asia/Tokyo"))},
+                {Duration.ofSeconds(0), ZonedDateTime.of(1970, 1, 1, 9, 0, 0, 0, ZoneId.of("Asia/Tokyo"))}, // epoch in Tokyo timezone
+                {Duration.ofSeconds(1), ZonedDateTime.of(1970, 1, 1, 9, 0, 1, 0, ZoneId.of("Asia/Tokyo"))}, // +1 second
+                {Duration.ofSeconds(3661), ZonedDateTime.of(1970, 1, 1, 10, 1, 1, 0, ZoneId.of("Asia/Tokyo"))}, // +1 hour, 1 minute, 1 second
         });
     }
 
@@ -8102,9 +8245,9 @@ class ConverterEverythingTest {
         // LocalTime → AtomicLong
         TEST_DB.put(pair(LocalTime.class, AtomicLong.class), new Object[][]{
                 {LocalTime.of(0, 0, 0, 0), new AtomicLong(0L)},
-                {LocalTime.of(0, 0, 0, 1), new AtomicLong(1L)},
-                {LocalTime.of(0, 0, 1, 0), new AtomicLong(1000000000L)},
-                {LocalTime.of(1, 1, 1, 0), new AtomicLong(3661000000000L)},
+                {LocalTime.of(0, 0, 0, 1), new AtomicLong(0L)}, // 1 nanosecond rounds down to 0 milliseconds
+                {LocalTime.of(0, 0, 1, 0), new AtomicLong(1000L)}, // 1 second = 1000 milliseconds
+                {LocalTime.of(1, 1, 1, 0), new AtomicLong(3661000L)}, // 1h 1m 1s = 3661 seconds = 3661000 milliseconds
         });
         
         // LocalTime → double
@@ -8118,9 +8261,9 @@ class ConverterEverythingTest {
         // LocalTime → long
         TEST_DB.put(pair(LocalTime.class, long.class), new Object[][]{
                 {LocalTime.of(0, 0, 0, 0), 0L},
-                {LocalTime.of(0, 0, 0, 1), 1L},
-                {LocalTime.of(0, 0, 1, 0), 1000000000L},
-                {LocalTime.of(1, 1, 1, 0), 3661000000000L},
+                {LocalTime.of(0, 0, 0, 1), 0L}, // 1 nanosecond rounds down to 0 milliseconds
+                {LocalTime.of(0, 0, 1, 0), 1000L}, // 1 second = 1000 milliseconds
+                {LocalTime.of(1, 1, 1, 0), 3661000L}, // 1h 1m 1s = 3661 seconds = 3661000 milliseconds
         });
     }
 }

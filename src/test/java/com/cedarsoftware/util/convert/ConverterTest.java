@@ -1193,9 +1193,8 @@ class ConverterTest
     void testLongToInstant(long epochMilli, ZoneId zoneId, LocalDateTime expected)
     {
         Converter converter = new Converter(createCustomZones(zoneId));
-        // Long values are now interpreted as nanoseconds for modern time classes
-        long epochNanos = epochMilli * 1_000_000L; // Convert test millis to nanos
-        Instant actual = converter.convert(epochNanos, Instant.class);
+        // Long values are now interpreted as milliseconds for modern time classes
+        Instant actual = converter.convert(epochMilli, Instant.class);
         assertThat(actual).isEqualTo(Instant.ofEpochMilli(epochMilli));
     }
 
@@ -1303,9 +1302,8 @@ class ConverterTest
         Instant instant = Instant.ofEpochMilli(epochMilli);
         Converter converter = new Converter(createCustomZones(zoneId));
         long actual = converter.convert(instant, long.class);
-        // Instant to Long now returns nanoseconds for modern time classes
-        long expectedNanos = epochMilli * 1_000_000L; // Convert millis to nanos
-        assertThat(actual).isEqualTo(expectedNanos);
+        // Instant to Long returns milliseconds (consistent with all long conversions)
+        assertThat(actual).isEqualTo(epochMilli);
     }
 
     @ParameterizedTest
@@ -1315,9 +1313,8 @@ class ConverterTest
         Instant instant = Instant.ofEpochMilli(epochMilli);
         Converter converter = new Converter(createCustomZones(zoneId));
         AtomicLong actual = converter.convert(instant, AtomicLong.class);
-        // Instant to AtomicLong now returns nanoseconds for modern time classes
-        long expectedNanos = epochMilli * 1_000_000L; // Convert millis to nanos
-        assertThat(actual.get()).isEqualTo(expectedNanos);
+        // Instant to AtomicLong returns milliseconds (consistent with all long conversions)
+        assertThat(actual.get()).isEqualTo(epochMilli);
     }
 
     @ParameterizedTest

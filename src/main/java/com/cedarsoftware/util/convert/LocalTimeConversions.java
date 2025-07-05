@@ -30,6 +30,9 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 final class LocalTimeConversions {
     static final BigDecimal BILLION = BigDecimal.valueOf(1_000_000_000);
+    
+    // Feature option constants for LocalTime precision control
+    public static final String LOCALTIME_LONG_PRECISION = "localtime.long.precision";
 
     private LocalTimeConversions() {}
 
@@ -40,14 +43,25 @@ final class LocalTimeConversions {
         return target;
     }
 
-    static int toInteger(Object from, Converter converter) {
-        LocalTime lt = (LocalTime) from;
-        return (int) lt.toNanoOfDay(); // Return nanoseconds for modern time class precision consistency
-    }
 
     static long toLong(Object from, Converter converter) {
         LocalTime lt = (LocalTime) from;
-        return lt.toNanoOfDay(); // Return nanoseconds for modern time class precision consistency
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter." + LOCALTIME_LONG_PRECISION);
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption(LOCALTIME_LONG_PRECISION);
+        }
+        
+        // Default to milliseconds if no override specified
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            return lt.toNanoOfDay();
+        } else {
+            return lt.toNanoOfDay() / 1_000_000; // Default: milliseconds within day
+        }
     }
 
     static double toDouble(Object from, Converter converter) {
@@ -65,9 +79,6 @@ final class LocalTimeConversions {
         return new BigDecimal(lt.toNanoOfDay()).divide(BILLION, 9, RoundingMode.HALF_UP);
     }
 
-    static AtomicInteger toAtomicInteger(Object from, Converter converter) {
-        return new AtomicInteger(toInteger(from, converter));
-    }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
         return new AtomicLong(toLong(from, converter));

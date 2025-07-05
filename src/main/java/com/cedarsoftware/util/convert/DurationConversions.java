@@ -31,6 +31,9 @@ import static com.cedarsoftware.util.convert.MapConversions.DURATION;
  *         limitations under the License.
  */
 final class DurationConversions {
+    
+    // Feature option constants for Duration precision control
+    public static final String DURATION_LONG_PRECISION = "duration.long.precision";
 
     private DurationConversions() {}
 
@@ -42,12 +45,27 @@ final class DurationConversions {
     }
 
     static long toLong(Object from, Converter converter) {
-        return ((Duration) from).toNanos();
+        Duration duration = (Duration) from;
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter." + DURATION_LONG_PRECISION);
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption(DURATION_LONG_PRECISION);
+        }
+        
+        // Default to milliseconds if no override specified
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            return duration.toNanos();
+        } else {
+            return duration.toMillis(); // Default: milliseconds
+        }
     }
 
     static AtomicLong toAtomicLong(Object from, Converter converter) {
-        Duration duration = (Duration) from;
-        return new AtomicLong(duration.toNanos());
+        return new AtomicLong(toLong(from, converter));
     }
     
     static BigInteger toBigInteger(Object from, Converter converter) {

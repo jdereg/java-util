@@ -37,6 +37,9 @@ import static com.cedarsoftware.util.convert.MapConversions.INSTANT;
  *         limitations under the License.
  */
 final class InstantConversions {
+    
+    // Feature option constants for modern time class precision control
+    public static final String MODERN_TIME_LONG_PRECISION = "modern.time.long.precision";
 
     private InstantConversions() {}
 
@@ -60,7 +63,24 @@ final class InstantConversions {
 
     static long toLong(Object from, Converter converter) {
         Instant instant = (Instant) from;
-        return instant.getEpochSecond() * 1_000_000_000L + instant.getNano();
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter." + MODERN_TIME_LONG_PRECISION);
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption(MODERN_TIME_LONG_PRECISION);
+        }
+        
+        // Default to milliseconds if no override specified
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            BigInteger seconds = BigInteger.valueOf(instant.getEpochSecond());
+            BigInteger nanos = BigInteger.valueOf(instant.getNano());
+            return seconds.multiply(BigInteger.valueOf(1_000_000_000L)).add(nanos).longValue();
+        } else {
+            return instant.toEpochMilli(); // Default: milliseconds
+        }
     }
     
     /**

@@ -175,13 +175,28 @@ final class NumberConversions {
     static Duration toDuration(Object from, Converter converter) {
         Number num = (Number) from;
 
-        // For whole number types, interpret the value as milliseconds.
+        // For whole number types, respect precision configuration
         if (num instanceof Long
                 || num instanceof Integer
                 || num instanceof BigInteger
                 || num instanceof AtomicLong
                 || num instanceof AtomicInteger) {
-            return Duration.ofMillis(num.longValue());
+                
+            // Check for precision override (system property takes precedence)
+            String systemPrecision = System.getProperty("cedarsoftware.converter.duration.long.precision");
+            String precision = systemPrecision;
+            
+            // Fall back to converter options if no system property
+            if (precision == null) {
+                precision = converter.getOptions().getCustomOption("duration.long.precision");
+            }
+            
+            // Default to milliseconds if no override specified
+            if (Converter.PRECISION_NANOS.equals(precision)) {
+                return Duration.ofNanos(num.longValue());
+            } else {
+                return Duration.ofMillis(num.longValue()); // Default: milliseconds
+            }
         }
         // For BigDecimal, interpret the value as seconds (with fractional seconds).
         else if (num instanceof BigDecimal) {
@@ -213,25 +228,111 @@ final class NumberConversions {
     }
 
     static Instant toInstant(Object from, Converter converter) {
-        return Instant.ofEpochMilli(toLong(from, converter));
+        long value = toLong(from, converter);
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter.modern.time.long.precision");
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption("modern.time.long.precision");
+        }
+        
+        // Default to milliseconds if no override specified
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            return Instant.ofEpochSecond(value / 1_000_000_000L, value % 1_000_000_000L);
+        } else {
+            return Instant.ofEpochMilli(value); // Default: milliseconds
+        }
     }
     
     static Duration longNanosToDuration(Object from, Converter converter) {
-        return Duration.ofNanos(toLong(from, converter));
+        long value = toLong(from, converter);
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter.duration.long.precision");
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption("duration.long.precision");
+        }
+        
+        // Handle precision-aware conversion
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            // Treat as nanoseconds
+            return Duration.ofNanos(value);
+        } else {
+            // Default: treat as milliseconds
+            return Duration.ofMillis(value);
+        }
     }
     
     static Instant longNanosToInstant(Object from, Converter converter) {
-        long nanos = toLong(from, converter);
-        return Instant.ofEpochSecond(nanos / 1_000_000_000L, nanos % 1_000_000_000L);
+        long value = toLong(from, converter);
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter.modern.time.long.precision");
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption("modern.time.long.precision");
+        }
+        
+        // Handle precision-aware conversion
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            // Treat as nanoseconds
+            return Instant.ofEpochSecond(value / 1_000_000_000L, value % 1_000_000_000L);
+        } else {
+            // Default: treat as milliseconds
+            return Instant.ofEpochMilli(value);
+        }
     }
     
     static Duration atomicLongNanosToDuration(Object from, Converter converter) {
-        return Duration.ofNanos(toLong(from, converter));
+        long value = toLong(from, converter);
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter.duration.long.precision");
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption("duration.long.precision");
+        }
+        
+        // Handle precision-aware conversion
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            // Treat as nanoseconds
+            return Duration.ofNanos(value);
+        } else {
+            // Default: treat as milliseconds
+            return Duration.ofMillis(value);
+        }
     }
     
     static Instant atomicLongNanosToInstant(Object from, Converter converter) {
-        long nanos = toLong(from, converter);
-        return Instant.ofEpochSecond(nanos / 1_000_000_000L, nanos % 1_000_000_000L);
+        long value = toLong(from, converter);
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter.modern.time.long.precision");
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption("modern.time.long.precision");
+        }
+        
+        // Handle precision-aware conversion
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            // Treat as nanoseconds
+            return Instant.ofEpochSecond(value / 1_000_000_000L, value % 1_000_000_000L);
+        } else {
+            // Default: treat as milliseconds
+            return Instant.ofEpochMilli(value);
+        }
     }
 
     static java.sql.Date toSqlDate(Object from, Converter converter) {
@@ -251,20 +352,67 @@ final class NumberConversions {
     }
 
     static LocalTime toLocalTime(Object from, Converter converter) {
-        long millis = ((Number) from).longValue();
-        try {
-            return LocalTime.ofNanoOfDay(millis * 1_000_000);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Input value [" + millis + "] for conversion to LocalTime must be >= 0 && <= 86399999", e);
+        long value = ((Number) from).longValue();
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter.localtime.long.precision");
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption("localtime.long.precision");
+        }
+        
+        // Default to milliseconds if no override specified
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            try {
+                return LocalTime.ofNanoOfDay(value);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Input value [" + value + "] for conversion to LocalTime must be >= 0 && <= 86399999999999", e);
+            }
+        } else {
+            try {
+                return LocalTime.ofNanoOfDay(value * 1_000_000); // Default: milliseconds
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Input value [" + value + "] for conversion to LocalTime must be >= 0 && <= 86399999", e);
+            }
         }
     }
     
     static LocalTime longNanosToLocalTime(Object from, Converter converter) {
-        long nanos = ((Number) from).longValue();
-        try {
-            return LocalTime.ofNanoOfDay(nanos);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Input value [" + nanos + "] for conversion to LocalTime must be >= 0 && <= 86399999999999", e);
+        long value = ((Number) from).longValue();
+        
+        // Check for precision override (system property takes precedence)
+        String systemPrecision = System.getProperty("cedarsoftware.converter.localtime.long.precision");
+        String precision = systemPrecision;
+        
+        // Fall back to converter options if no system property
+        if (precision == null) {
+            precision = converter.getOptions().getCustomOption("localtime.long.precision");
+        }
+        
+        if (Converter.PRECISION_NANOS.equals(precision)) {
+            // Treat as nanoseconds - validate range first
+            if (value < 0 || value > 86399999999999L) {
+                throw new IllegalArgumentException("Input value [" + value + "] for conversion to LocalTime must be >= 0 && <= 86399999999999");
+            }
+            try {
+                return LocalTime.ofNanoOfDay(value);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Input value [" + value + "] for conversion to LocalTime must be >= 0 && <= 86399999999999", e);
+            }
+        } else {
+            // Default: treat as milliseconds - validate range first  
+            if (value < 0 || value > 86399999L) {
+                throw new IllegalArgumentException("Input value [" + value + "] for conversion to LocalTime must be >= 0 && <= 86399999");
+            }
+            try {
+                long seconds = value / 1000L;
+                long millis = value % 1000L;
+                return LocalTime.ofSecondOfDay(seconds).plusNanos(millis * 1_000_000L);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Input value [" + value + "] for conversion to LocalTime must be >= 0 && <= 86399999", e);
+            }
         }
     }
     

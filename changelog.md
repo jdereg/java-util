@@ -20,13 +20,16 @@
 >   * Returns the same class if not a wrapper type, ensuring safe usage for any class
 >   * Leverages optimized `ClassValueMap` caching for high-performance lookups
 >   * Centralizes primitive/wrapper conversion logic in `ClassUtilities` for consistency across java-util
-> * **BREAKING CHANGE**: Fixed time conversion precision rules in `Converter` to align with internal class capabilities:
->   * **Legacy time classes** (Calendar, Date, java.sql.Date) now convert to/from integer types (long, BigInteger) using **millisecond precision**
->   * **Modern time classes** (Instant, ZonedDateTime, LocalDateTime, etc.) continue to use **nanosecond precision** for integer types
->   * **All time classes** continue to use **fractional seconds** for decimal types (double, BigDecimal)
->   * **Impact**: Code relying on Calendar/Date → BigInteger returning nanoseconds will need updates
->   * **Rationale**: Legacy classes internally store milliseconds, so conversions should match their native precision for logical consistency and round-trip compatibility
->   * Fixed implementation bugs where some conversions incorrectly used microsecond scale instead of the intended precision
+> * **BUG FIX**: Fixed time conversion precision inconsistencies in `Converter` for consistent long conversion behavior:
+>   * **Consistency Fix**: All time classes now consistently convert to/from `long` using **millisecond precision** (eliminates mixed millisecond/nanosecond behavior)
+>   * **Universal Rule**: `Duration` → long, `Instant` → long, `LocalTime` → long now all return milliseconds for predictable behavior
+>   * **Round-trip Compatibility**: Long ↔ time class conversions are now fully round-trip compatible with consistent precision
+>   * **BigInteger Unchanged**: BigInteger conversions continue to use precision-based rules (legacy classes = millis, modern classes = nanos)
+>   * **Feature Options**: Added configurable precision control for advanced use cases requiring nanosecond precision:
+>     * System properties: `cedarsoftware.converter.modern.time.long.precision`, `cedarsoftware.converter.duration.long.precision`, `cedarsoftware.converter.localtime.long.precision`
+>     * Per-instance options via `ConverterOptions.getCustomOption()` - see [Time Conversion Documentation](userguide.md#time-conversion-precision-rules) for details
+>   * **Impact**: Minimal - fixes inconsistent behavior and provides migration path through feature options
+>   * **Rationale**: Eliminates confusion from mixed precision behavior and provides simple, memorable conversion rules
 
 #### 3.6.0
 > * **Feature Enhancement**: Added comprehensive `java.awt.Color` conversion support to `Converter`:

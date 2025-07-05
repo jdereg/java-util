@@ -2159,7 +2159,7 @@ public static APIs on the `com.cedarsoftware.util.Converter` class.
 The instance API allows you to create a `com.cedarsoftware.util.converter.Converter` instance with a custom `ConverterOptions` object.  If you add custom conversions, they will be used by the `Converter` instance.
 You can also store arbitrary settings in the options via `getCustomOptions()` and retrieve them later with `getCustomOption(name)`.
 You can create as many instances of the Converter as needed.  Often though, the static API is sufficient.
-If you only use the static API but need an instance for integration with other frameworks, call `Converter.getInstance()` to obtain the default Converter.
+
 
 **Collection Conversions:**
 ```java
@@ -2209,44 +2209,183 @@ ZonedDateTime zdt = converter.convert(instant, ZonedDateTime.class);
 ```
 
 **Time Conversion Precision Rules:**
-The Converter applies different precision rules based on time class capabilities:
+The Converter applies consistent precision rules for time conversions to ensure predictable behavior and round-trip compatibility:
 
+#### Double and BigDecimal Conversions
+**All time structures ↔ `double`/`Double`/`BigDecimal` = seconds.fractional_seconds**
 ```java
-// Legacy time classes (millisecond precision internally)
-Calendar cal = Calendar.getInstance();
-long millis = converter.convert(cal, long.class);        // milliseconds
-BigInteger bigInt = converter.convert(cal, BigInteger.class); // milliseconds
-double seconds = converter.convert(cal, double.class);   // fractional seconds
+// Universal rule: always fractional seconds
+ZonedDateTime zdt = ZonedDateTime.now();
+double seconds = converter.convert(zdt, double.class);        // 1640995200.123456789
+BigDecimal bdSeconds = converter.convert(zdt, BigDecimal.class); // 1640995200.123456789
 
 Date date = new Date();
-long dateMillis = converter.convert(date, long.class);   // milliseconds
-BigInteger dateBigInt = converter.convert(date, BigInteger.class); // milliseconds
-
-java.sql.Date sqlDate = new java.sql.Date(System.currentTimeMillis());
-long sqlMillis = converter.convert(sqlDate, long.class); // milliseconds
-BigInteger sqlBigInt = converter.convert(sqlDate, BigInteger.class); // milliseconds
-
-// Modern time classes (nanosecond precision internally)
-Instant instant = Instant.now();
-long nanos = converter.convert(instant, long.class);     // nanoseconds
-BigInteger bigNanos = converter.convert(instant, BigInteger.class); // nanoseconds
-double instantSeconds = converter.convert(instant, double.class); // fractional seconds
-
-ZonedDateTime zdt = ZonedDateTime.now();
-long zdtNanos = converter.convert(zdt, long.class);      // nanoseconds
-BigInteger zdtBigNanos = converter.convert(zdt, BigInteger.class); // nanoseconds
-
-// Round-trip consistency based on class precision
-Calendar original = Calendar.getInstance();
-BigInteger converted = converter.convert(original, BigInteger.class); // milliseconds
-Calendar roundTrip = converter.convert(converted, Calendar.class);    // treats as milliseconds
-// original.equals(roundTrip) is true
+double dateSeconds = converter.convert(date, double.class);   // 1640995200.123 (ms precision)
 ```
 
-This precision-based approach ensures:
-- **Logical consistency**: Each time class uses its native precision
-- **Round-trip compatibility**: Conversions preserve original values
-- **No data loss**: Precision matches internal storage capabilities
+#### Long Conversions  
+**All time structures ↔ `long` = milliseconds**
+```java
+// Universal rule: ALL time classes → long = milliseconds
+Date date = new Date();
+long dateMillis = converter.convert(date, long.class);        // milliseconds since epoch
+
+ZonedDateTime zdt = ZonedDateTime.now();
+long zdtMillis = converter.convert(zdt, long.class);          // milliseconds since epoch
+
+OffsetDateTime odt = OffsetDateTime.now();
+long odtMillis = converter.convert(odt, long.class);          // milliseconds since epoch
+
+Instant instant = Instant.now();
+long instantMillis = converter.convert(instant, long.class);  // milliseconds since epoch
+
+LocalTime time = LocalTime.of(14, 30, 0);
+long timeMillis = converter.convert(time, long.class);        // milliseconds within day
+
+Duration duration = Duration.ofMinutes(5);
+long durationMillis = converter.convert(duration, long.class); // milliseconds of duration
+```
+
+#### BigInteger Conversions
+**Precision-based rule matching each time class's internal storage capabilities:**
+
+```java
+// Old time classes (millisecond precision core) → BigInteger = milliseconds
+Date date = new Date();
+BigInteger dateMillis = converter.convert(date, BigInteger.class);        // epoch milliseconds
+
+Calendar cal = Calendar.getInstance();
+BigInteger calMillis = converter.convert(cal, BigInteger.class);          // epoch milliseconds
+
+// New time classes (nanosecond precision core) → BigInteger = nanoseconds  
+Instant instant = Instant.now();
+BigInteger instantNanos = converter.convert(instant, BigInteger.class);   // epoch nanoseconds
+
+ZonedDateTime zdt = ZonedDateTime.now();
+BigInteger zdtNanos = converter.convert(zdt, BigInteger.class);           // epoch nanoseconds
+
+OffsetDateTime odt = OffsetDateTime.now();
+BigInteger odtNanos = converter.convert(odt, BigInteger.class);           // epoch nanoseconds
+
+// Special case: Timestamp supports nanoseconds
+Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+long tsMillis = converter.convert(timestamp, long.class);                 // milliseconds
+BigInteger tsNanos = converter.convert(timestamp, BigInteger.class);      // nanoseconds
+```
+
+#### Round-trip Consistency
+These precision rules ensure round-trip conversions preserve original values within the precision limits of each time class:
+
+```java
+// Round-trip examples
+Date original = new Date();
+BigInteger converted = converter.convert(original, BigInteger.class);     // milliseconds
+Date roundTrip = converter.convert(converted, Date.class);                // treats as milliseconds
+// original.equals(roundTrip) is true
+
+ZonedDateTime originalZdt = ZonedDateTime.now();
+long convertedLong = converter.convert(originalZdt, long.class);           // milliseconds
+ZonedDateTime roundTripZdt = converter.convert(convertedLong, ZonedDateTime.class); // treats as milliseconds
+// originalZdt equals roundTripZdt within millisecond precision
+```
+
+#### Design Rationale
+- **`long` uniformity**: Eliminates confusion by always using milliseconds, the most common time unit
+- **`BigInteger` precision-matching**: Preserves maximum precision available in each time class
+- **Backward compatibility**: Maintains existing behavior for most time classes
+- **Predictable behavior**: Simple, memorable rules with minimal special cases
+
+#### Feature Options for Precision Control
+
+The Converter provides configurable precision options to override the default millisecond behavior for specific use cases requiring nanosecond precision:
+
+**Valid Precision Values:**
+- `"millis"` (default) - Use millisecond precision
+- `"nanos"` - Use nanosecond precision
+
+**Configuration Methods:**
+1. **System Properties** (global scope)
+2. **Converter Options** (per-instance scope)
+
+**Available Feature Options:**
+
+##### Modern Time Class Precision
+Controls precision for `Instant`, `ZonedDateTime`, `OffsetDateTime`:
+```java
+// System property configuration (global)
+System.setProperty("cedarsoftware.converter.modern.time.long.precision", "nanos");
+
+// Per-instance configuration
+ConverterOptions options = new ConverterOptions() {
+    @Override
+    public <T> T getCustomOption(String name) {
+        if ("modern.time.long.precision".equals(name)) {
+            return (T) "nanos";
+        }
+        return null;
+    }
+};
+Converter converter = new Converter(options);
+
+Instant instant = Instant.now();
+long nanos = converter.convert(instant, long.class);  // Returns nanoseconds instead of milliseconds
+```
+
+##### Duration Precision
+Controls precision for `Duration` conversions:
+```java
+// System property configuration
+System.setProperty("cedarsoftware.converter.duration.long.precision", "nanos");
+
+// Per-instance configuration
+ConverterOptions options = new ConverterOptions() {
+    @Override
+    public <T> T getCustomOption(String name) {
+        if ("duration.long.precision".equals(name)) {
+            return (T) "nanos";
+        }
+        return null;
+    }
+};
+Converter converter = new Converter(options);
+
+Duration duration = Duration.ofNanos(1_500_000_000L);  // 1.5 seconds
+long nanos = converter.convert(duration, long.class);   // Returns 1500000000 instead of 1500
+```
+
+##### LocalTime Precision
+Controls precision for `LocalTime` conversions:
+```java
+// System property configuration
+System.setProperty("cedarsoftware.converter.localtime.long.precision", "nanos");
+
+// Per-instance configuration
+ConverterOptions options = new ConverterOptions() {
+    @Override
+    public <T> T getCustomOption(String name) {
+        if ("localtime.long.precision".equals(name)) {
+            return (T) "nanos";
+        }
+        return null;
+    }
+};
+Converter converter = new Converter(options);
+
+LocalTime time = LocalTime.of(12, 30, 45, 123456789);  // 12:30:45.123456789
+long nanos = converter.convert(time, long.class);       // Returns nanoseconds within day
+```
+
+**Precedence Order:**
+1. System properties (highest precedence)
+2. Converter custom options
+3. Default behavior (millis)
+
+**Important Notes:**
+- Feature options affect both directions: time class → long and long → time class
+- Reverse conversions (long → time class) respect the same precision settings
+- Round-trip conversions are consistent when using the same precision setting
+- System properties are global and affect all Converter instances
+- Custom options are per-instance and override global system properties
 
 ### Checking Conversion Support
 
@@ -2347,7 +2486,7 @@ Each array-like type gains access to the entire universal array conversion ecosy
 This bridge system expands total conversion pairs by 39% to over 1,500 supported conversions.
 
 ### Performance Considerations
-- Uses caching for conversion pairs (no instances created during convertion other than final converted item)
+- Uses caching for conversion pairs (no instances created during conversion other than final converted item)
 - Optimized collection handling (array to collection, colletion to array, n-dimensional arrays and nested collections, collection/array to EnumSets)
 - Efficient type resolution: O(1) operation
 - Minimal object creation

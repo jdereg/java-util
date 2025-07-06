@@ -31,6 +31,7 @@
 >     * Per-instance options via `ConverterOptions.getCustomOption()` - see [Time Conversion Documentation](userguide.md#time-conversion-precision-rules) for details
 >   * **Impact**: Minimal - fixes inconsistent behavior and provides migration path through feature options
 >   * **Rationale**: Eliminates confusion from mixed precision behavior and provides simple, memorable conversion rules
+> * Added `computeIfAbsent` support to `MultiKeyMap` for lazy value population
 
 #### 3.6.0
 > * **Feature Enhancement**: Added comprehensive `java.awt.Color` conversion support to `Converter`:

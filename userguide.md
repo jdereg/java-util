@@ -2127,8 +2127,8 @@ A high-performance, thread-safe Map implementation that supports multi-dimension
 
 ### Key Features
 
-- **Multi-dimensional keys**: Use 2, 3, 4... unlimited key components
-- **Zero heap pressure**: No array allocations for inline key arguments  
+- **Multi-dimensional keys**: Use 1, 2, 3, 4... unlimited key components
+- **Zero heap pressure**: No array allocations for inline key arguments for get() operations  
 - **Thread-safe**: Full concurrent access support
 - **Auto-unpacking**: Arrays automatically unpack into multi-key entries
 - **Premium API**: Elegant varargs interface for MultiKeyMap users
@@ -2143,27 +2143,12 @@ A high-performance, thread-safe Map implementation that supports multi-dimension
 MultiKeyMap provides three levels of API sophistication:
 
 1. **Premium API** (recommended): `put(value, key1, key2, key3, ...)`
-2. **Map compatible**: `put(keyArray, value)` with auto-unpacking
-3. **Escape hatch**: `putSingleKey(array, value)` for edge cases
-
-### Which API Should You Use?
-
-**Choose Premium API when:**
-- You're writing new code
-- You want zero heap allocations
-- You need unlimited key dimensions
-- You want the best developer experience
+2. **Map compatible**: `put(keyArray, value)` with auto-unpacking of Collections and Arrays
 
 ```java
 MultiKeyMap<Employee> map = new MultiKeyMap<>();  // Declare as MultiKeyMap
 map.put(employee, "dept", "sales", "junior");     // Premium varargs API
 ```
-
-**Choose Map Interface when:**
-- Working with existing Map-based code
-- Need compatibility with Map<Object, V> signatures
-- Have pre-built arrays ready to use
-- Want automatic array unpacking magic
 
 ```java
 Map<Object, Employee> map = new MultiKeyMap<>();  // Declare as Map

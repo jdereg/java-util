@@ -1,6 +1,6 @@
 ### Revision History
 #### 3.7.0 (Unreleased)
-> * **MAJOR FEATURE**: Added comprehensive array-like type bridge system to `Converter`, expanding conversion capability by 39% (1,567 total conversion pairs):
+> * **MAJOR FEATURE**: Added comprehensive array-like type bridge system to `Converter`, expanding conversion capability (1,800+ total conversion pairs):
 >   * **Atomic Arrays**: Added full bidirectional conversion support for `AtomicIntegerArray`, `AtomicLongArray`, and `AtomicReferenceArray`
 >   * **NIO Buffers**: Added complete bridge system for all NIO buffer types (`IntBuffer`, `LongBuffer`, `FloatBuffer`, `DoubleBuffer`, `ShortBuffer`) with existing `ByteBuffer` and `CharBuffer`
 >   * **BitSet Integration**: Added intelligent `BitSet` conversion support with bridges to `boolean[]` (bit values), `int[]` (set bit indices), and `byte[]` (raw representation)
@@ -8,6 +8,7 @@
 >   * **Universal Array Access**: Each array-like type now has access to the entire universal array conversion ecosystem - for example, `AtomicIntegerArray` → `int[]` → `Color` works seamlessly
 >   * **Performance Optimized**: All bridges use efficient extraction/creation patterns with minimal overhead
 >   * Removed redundant array surrogate pairs that were duplicating universal array system functionality
+>   * **MutliKeyMap** - Yes, a MultiKeyMap that supports n-keys, creates no heap pressure for get() { no allocations (new) within get() execution path}, full thread-safety for all operations. 
 > * **ARCHITECTURE IMPROVEMENT**: Enhanced `addConversion()` method with comprehensive primitive/wrapper support:
 >   * When adding a conversion involving primitive or wrapper types, the system now automatically creates ALL relevant combinations
 >   * Example: `addConversion(UUID.class, Boolean.class, converter)` now creates entries for both `(UUID, Boolean)` and `(UUID, boolean)`

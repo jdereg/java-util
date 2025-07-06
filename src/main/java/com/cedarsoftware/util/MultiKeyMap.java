@@ -141,7 +141,6 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         COLLECTION_KEY_FIRST
     }
     
-    
     private volatile Object[] buckets;  // Array of MultiKey<V>[] (or null), Collection, String[] (typed array)
     private final Object writeLock = new Object();
     private volatile int size = 0;
@@ -217,6 +216,22 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     }
     
     /**
+     * Creates a new MultiKeyMap with default capacity (16) and default load factor (0.75).
+     */
+    public MultiKeyMap() {
+        this(16); // Default initial capacity
+    }
+    
+    /**
+     * Creates a new MultiKeyMap with default capacity (16) and specified collection key behavior.
+     * 
+     * @param collectionKeyMode how to handle Collections/Arrays in get/remove/containsKey operations
+     */
+    public MultiKeyMap(CollectionKeyMode collectionKeyMode) {
+        this(16, DEFAULT_LOAD_FACTOR, collectionKeyMode);
+    }
+    
+    /**
      * Creates a new MultiKeyMap with the specified capacity and default load factor.
      * 
      * @param capacity the initial capacity
@@ -230,36 +245,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * Uses identity hash codes for Classes and standard hash codes for other objects.
      */
     private static int computeHash(Object... keys) {
-        if (keys == null || keys.length == 0) {
-            return 0;
-        }
-        
-        // Start with a non-zero seed for better distribution
-        int hash = 1;
-        
-        for (Object key : keys) {
-            int keyHash;
-            if (key == null) {
-                keyHash = 0;
-            } else if (key instanceof Class) {
-                // Use identity hash for Classes (faster than equals-based hash)
-                keyHash = System.identityHashCode(key);
-            } else {
-                // Use standard hash code for other objects
-                keyHash = key.hashCode();
-            }
-            
-            hash = hash * 31 + keyHash;
-        }
-        
-        // Aggressive bit mixing to break up patterns - MurmurHash3 inspired
-        hash ^= (hash >>> 16);
-        hash *= 0x85ebca6b;
-        hash ^= (hash >>> 13);
-        hash *= 0xc2b2ae35;
-        hash ^= (hash >>> 16);
-        
-        return hash;
+        return computeHashFromArray(keys);
     }
     
     /**
@@ -267,94 +253,78 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * Uses same hashing approach as multi-key hash for consistency.
      */
     private static int computeSingleKeyHash(Object key) {
-        if (key == null || key == NULL_SENTINEL) {
-            return 0;
-        } else if (key instanceof Class) {
-            // Use identity hash for Classes (faster than equals-based hash)
-            return System.identityHashCode(key);
-        } else {
-            // Use standard hash code for other objects
-            return key.hashCode();
-        }
+        return computeHashFromSingle(key);
     }
     
-    /**
-     * Computes hash directly from Collection elements to avoid array allocation.
-     * Uses same algorithm as computeHash for consistency.
-     */
+    private static int computeHashFromArray(Object[] keys) {
+        if (keys == null || keys.length == 0) {
+            return 0;
+        }
+        return computeHashInternal(keys, keys.length);
+    }
+    
     private static int computeHashFromCollection(Collection<?> keys) {
         if (keys == null || keys.isEmpty()) {
             return 0;
         }
-        
-        // Start with a non-zero seed for better distribution
-        int hash = 1;
-        
-        for (Object key : keys) {
-            int keyHash;
-            if (key == null) {
-                keyHash = 0;
-            } else if (key instanceof Class) {
-                // Use identity hash for Classes (faster than equals-based hash)
-                keyHash = System.identityHashCode(key);
-            } else {
-                // Use standard hash code for other objects
-                keyHash = key.hashCode();
-            }
-            
-            hash = hash * 31 + keyHash;
-        }
-        
-        // Aggressive bit mixing to break up patterns - MurmurHash3 inspired
-        hash ^= (hash >>> 16);
-        hash *= 0x85ebca6b;
-        hash ^= (hash >>> 13);
-        hash *= 0xc2b2ae35;
-        hash ^= (hash >>> 16);
-        
-        return hash;
+        return computeHashInternal(keys, keys.size());
     }
     
-    /**
-     * Computes hash directly from typed array elements to avoid conversion.
-     * Uses same algorithm as computeHash for consistency.
-     */
     private static int computeHashFromTypedArray(Object typedArray) {
         if (typedArray == null) {
             return 0;
         }
-        
         int length = Array.getLength(typedArray);
         if (length == 0) {
             return 0;
         }
+        return computeHashInternal(typedArray, length);
+    }
+    
+    private static int computeHashFromSingle(Object key) {
+        if (key == null || key == NULL_SENTINEL) {
+            return 0;
+        }
+        int keyHash = getKeyHash(key);
+        return finalizeHash(keyHash);
+    }
+    
+    private static int computeHashInternal(Object keys, int size) {
+        if (size == 0) return 0;
         
-        // Start with a non-zero seed for better distribution
         int hash = 1;
-        
-        for (int i = 0; i < length; i++) {
-            Object key = Array.get(typedArray, i);
-            int keyHash;
-            if (key == null) {
-                keyHash = 0;
-            } else if (key instanceof Class) {
-                // Use identity hash for Classes (faster than equals-based hash)
-                keyHash = System.identityHashCode(key);
-            } else {
-                // Use standard hash code for other objects
-                keyHash = key.hashCode();
+        if (keys instanceof Object[]) {
+            Object[] array = (Object[]) keys;
+            for (Object key : array) {
+                hash = hash * 31 + getKeyHash(key);
             }
-            
-            hash = hash * 31 + keyHash;
+        } else if (keys instanceof Collection) {
+            for (Object key : (Collection<?>) keys) {
+                hash = hash * 31 + getKeyHash(key);
+            }
+        } else {
+            // Typed array
+            for (int i = 0; i < size; i++) {
+                hash = hash * 31 + getKeyHash(Array.get(keys, i));
+            }
         }
         
-        // Aggressive bit mixing to break up patterns - MurmurHash3 inspired
+        return finalizeHash(hash);
+    }
+    
+    private static int getKeyHash(Object key) {
+        if (key == null) return 0;
+        return (key instanceof Class) ? 
+            System.identityHashCode(key) : key.hashCode();
+    }
+    
+    private static int finalizeHash(int hash) {
+        // MurmurHash3 finalization
         hash ^= (hash >>> 16);
         hash *= 0x85ebca6b;
         hash ^= (hash >>> 13);
         hash *= 0xc2b2ae35;
         hash ^= (hash >>> 16);
-        
         return hash;
     }
     
@@ -556,7 +526,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         
         // Scan the chain for exact match
         for (MultiKey<V> entry : chain) {
-            if (entry.hash == hash && keysEqualTypedArray(entry.keys, typedArray)) {
+            if (entry.hash == hash && keysMatch(entry.keys, typedArray)) {
                 return entry.value;
             }
         }
@@ -642,7 +612,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         
         // Scan the chain for exact match
         for (MultiKey<V> entry : chain) {
-            if (entry.hash == hash && keysEqualCollection(entry.keys, collection)) {
+            if (entry.hash == hash && keysMatch(entry.keys, collection)) {
                 return entry.value;  // Return actual value (could be null)
             }
         }
@@ -685,13 +655,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * Optimized for single-key lookups.
      */
     private boolean isSingleKeyMatch(Object storedKeys, Object singleKey) {
-        // If stored as Object[], it's multi-key storage - no match for single key lookup
-        if (storedKeys instanceof Object[]) {
-            return false;
-        }
-        
-        // Both are single keys - direct comparison
-        return Objects.equals(storedKeys, singleKey);
+        return keysMatch(storedKeys, singleKey);
     }
     
     /**
@@ -769,22 +733,34 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * Check if stored keys match the lookup key (single or multi).
      * Handles all combinations: Object vs Object, Object[] vs Object[], but NOT Object vs Object[]
      */
-    private boolean keysMatch(Object storedKeys, Object lookupKey) {
-        if (storedKeys instanceof Object[]) {
-            // Multi-key storage
-            if (lookupKey instanceof Object[]) {
-                return keysEqual((Object[]) storedKeys, (Object[]) lookupKey);
-            } else {
-                return false; // Multi-key storage vs single-key lookup = no match
-            }
+    private static boolean keysMatch(Object storedKeys, Object lookupKeys) {
+        if (storedKeys == lookupKeys) return true;
+        if (storedKeys == null || lookupKeys == null) return false;
+        
+        boolean storedIsArray = storedKeys instanceof Object[];
+        boolean lookupIsArray = lookupKeys instanceof Object[] || 
+                               (lookupKeys instanceof Collection) ||
+                               (lookupKeys != null && lookupKeys.getClass().isArray());
+        
+        // Type mismatch: single vs multi-key
+        if (storedIsArray != lookupIsArray) return false;
+        
+        if (storedIsArray) {
+            return matchMultiKeys((Object[]) storedKeys, lookupKeys);
         } else {
-            // Single-key storage
-            if (lookupKey instanceof Object[]) {
-                return false; // Single-key storage vs multi-key lookup = no match
-            } else {
-                return Objects.equals(storedKeys, lookupKey);
-            }
+            return Objects.equals(storedKeys, lookupKeys);
         }
+    }
+    
+    private static boolean matchMultiKeys(Object[] stored, Object lookup) {
+        if (lookup instanceof Object[]) {
+            return keysEqual(stored, (Object[]) lookup);
+        } else if (lookup instanceof Collection) {
+            return keysEqualCollection(stored, (Collection<?>) lookup);
+        } else if (lookup.getClass().isArray()) {
+            return keysEqualTypedArray(stored, lookup);
+        }
+        return false;
     }
     
     /**
@@ -798,121 +774,66 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         }
         
         for (int i = 0; i < keys1.length; i++) {
-            Object k1 = keys1[i];
-            Object k2 = keys2[i];
-            
-            if (k1 == k2) {
-                continue; // Same reference (includes null == null)
-            }
-            
-            if (k1 == null || k2 == null) {
-                return false; // One null, one not null
-            }
-            
-            // For Classes, use identity comparison for performance
-            if (k1 instanceof Class && k2 instanceof Class) {
-                return false; // Already checked == above, so they're different Classes
-            }
-            
-            // For other objects, use equals
-            if (!k1.equals(k2)) {
+            if (!keyEquals(keys1[i], keys2[i])) {
                 return false;
             }
         }
         
         return true;
+    }
+    
+    private static boolean keysEqualCollection(Object[] stored, Collection<?> lookup) {
+        if (stored.length != lookup.size()) {
+            return false;
+        }
+        
+        int i = 0;
+        for (Object lookupKey : lookup) {
+            if (!keyEquals(stored[i], lookupKey)) {
+                return false;
+            }
+            i++;
+        }
+        return true;
+    }
+    
+    private static boolean keysEqualTypedArray(Object[] stored, Object typedArray) {
+        int length = Array.getLength(typedArray);
+        if (stored.length != length) {
+            return false;
+        }
+        
+        for (int i = 0; i < length; i++) {
+            if (!keyEquals(stored[i], Array.get(typedArray, i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private static boolean keyEquals(Object k1, Object k2) {
+        if (k1 == k2) {
+            return true; // Same reference (includes null == null)
+        }
+        
+        if (k1 == null || k2 == null) {
+            return false; // One null, one not null
+        }
+        
+        // For Classes, use identity comparison for performance
+        if (k1 instanceof Class && k2 instanceof Class) {
+            return false; // Already checked == above, so they're different Classes
+        }
+        
+        // For other objects, use equals
+        return k1.equals(k2);
     }
     
     /**
      * Compares stored keys (Object or Object[]) with Collection keys for equality.
      * Uses same comparison logic as keysEqual for consistency.
      */
-    private static boolean keysEqualCollection(Object storedKeys, Collection<?> collectionKeys) {
-        if (storedKeys == null || collectionKeys == null) {
-            return false;
-        }
-        
-        // If stored as single key, no match with Collection (which represents multi-key)
-        if (!(storedKeys instanceof Object[])) {
-            return false;
-        }
-        
-        Object[] storedArray = (Object[]) storedKeys;
-        if (storedArray.length != collectionKeys.size()) {
-            return false;
-        }
-        
-        int i = 0;
-        for (Object collectionKey : collectionKeys) {
-            Object storedKey = storedArray[i++];
-            
-            if (storedKey == collectionKey) {
-                continue; // Same reference (includes null == null)
-            }
-            
-            if (storedKey == null || collectionKey == null) {
-                return false; // One null, one not null
-            }
-            
-            // For Classes, use identity comparison for performance
-            if (storedKey instanceof Class && collectionKey instanceof Class) {
-                return false; // Already checked == above, so they're different Classes
-            }
-            
-            // For other objects, use equals
-            if (!storedKey.equals(collectionKey)) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
     
-    /**
-     * Compares stored keys (Object or Object[]) with typed array keys for equality.
-     * Uses same comparison logic as keysEqual for consistency.
-     */
-    private static boolean keysEqualTypedArray(Object storedKeys, Object typedArray) {
-        if (storedKeys == null || typedArray == null) {
-            return false;
-        }
-        
-        // If stored as single key, no match with typed array (which represents multi-key)
-        if (!(storedKeys instanceof Object[])) {
-            return false;
-        }
-        
-        Object[] storedArray = (Object[]) storedKeys;
-        int arrayLength = Array.getLength(typedArray);
-        if (storedArray.length != arrayLength) {
-            return false;
-        }
-        
-        for (int i = 0; i < arrayLength; i++) {
-            Object storedKey = storedArray[i];
-            Object arrayKey = Array.get(typedArray, i);
-            
-            if (storedKey == arrayKey) {
-                continue; // Same reference (includes null == null)
-            }
-            
-            if (storedKey == null || arrayKey == null) {
-                return false; // One null, one not null
-            }
-            
-            // For Classes, use identity comparison for performance
-            if (storedKey instanceof Class && arrayKey instanceof Class) {
-                return false; // Already checked == above, so they're different Classes
-            }
-            
-            // For other objects, use equals
-            if (!storedKey.equals(arrayKey)) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
     
     
     /**
@@ -1137,26 +1058,16 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      */
     @SuppressWarnings("unchecked")
     private MultiKey<V>[] createChain(MultiKey<V> key) {
-        MultiKey<V>[] chain = new MultiKey[1];
-        chain[0] = key;
-        return chain;
+        return new MultiKey[]{key};
     }
     
     /**
      * Grows an existing chain by one element.
      * Creates a new array with the new key appended.
      */
-    @SuppressWarnings("unchecked")
     private MultiKey<V>[] growChain(MultiKey<V>[] oldChain, MultiKey<V> newKey) {
-        int oldLength = oldChain.length;
-        MultiKey<V>[] newChain = new MultiKey[oldLength + 1];
-        
-        // Copy existing entries
-        System.arraycopy(oldChain, 0, newChain, 0, oldLength);
-        
-        // Add new entry at the end
-        newChain[oldLength] = newKey;
-        
+        MultiKey<V>[] newChain = Arrays.copyOf(oldChain, oldChain.length + 1);
+        newChain[oldChain.length] = newKey;
         return newChain;
     }
     
@@ -1165,54 +1076,40 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * This method must be called from within a synchronized block.
      */
     private void resize() {
-        int oldCapacity = buckets.length;
-        int newCapacity = oldCapacity * 2;
-        
-        
-        // Save old buckets
         Object[] oldBuckets = buckets;
+        buckets = new Object[oldBuckets.length * 2];
         
-        // Create new buckets array
-        buckets = new Object[newCapacity];
-        int oldSize = size;
+        // Reset counters
         size = 0;
-        int oldMaxChainLength = maxChainLength;
         maxChainLength = 0;
         
-        // Rehash all entries from old buckets
+        // Rehash all entries
         for (Object bucket : oldBuckets) {
             if (bucket != null) {
                 @SuppressWarnings("unchecked")
                 MultiKey<V>[] chain = (MultiKey<V>[]) bucket;
-                
-                // Rehash each entry in the chain
-                for (MultiKey<V> key : chain) {
-                    // Recompute bucket index for new capacity
-                    int newBucketIndex = key.hash & (buckets.length - 1);
-                    
-                    @SuppressWarnings("unchecked")
-                    MultiKey<V>[] newChain = (MultiKey<V>[]) buckets[newBucketIndex];
-                    
-                    if (newChain == null) {
-                        // Create new single-element chain
-                        newChain = createChain(key);
-                        buckets[newBucketIndex] = newChain;
-                    } else {
-                        // Add to existing chain
-                        newChain = growChain(newChain, key);
-                        buckets[newBucketIndex] = newChain;
-                    }
-                    
-                    // Update max chain length
-                    if (newChain.length > maxChainLength) {
-                        maxChainLength = newChain.length;
-                    }
-                    
-                    size++;
+                for (MultiKey<V> entry : chain) {
+                    rehashEntry(entry);
                 }
             }
         }
+    }
+    
+    private void rehashEntry(MultiKey<V> entry) {
+        int bucketIndex = entry.hash & (buckets.length - 1);
         
+        @SuppressWarnings("unchecked")
+        MultiKey<V>[] chain = (MultiKey<V>[]) buckets[bucketIndex];
+        
+        if (chain == null) {
+            buckets[bucketIndex] = createChain(entry);
+        } else {
+            buckets[bucketIndex] = growChain(chain, entry);
+        }
+        
+        maxChainLength = Math.max(maxChainLength, 
+            ((MultiKey<V>[]) buckets[bucketIndex]).length);
+        size++;
     }
     
     /**
@@ -1757,7 +1654,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         
         // Scan the chain for exact match
         for (MultiKey<V> entry : chain) {
-            if (entry.hash == hash && keysEqualCollection(entry.keys, collection)) {
+            if (entry.hash == hash && keysMatch(entry.keys, collection)) {
                 return true;
             }
         }

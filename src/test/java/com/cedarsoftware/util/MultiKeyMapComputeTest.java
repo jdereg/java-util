@@ -1,0 +1,55 @@
+package com.cedarsoftware.util;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.Arrays;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Tests for the compute API on MultiKeyMap.
+ */
+class MultiKeyMapComputeTest {
+
+    @Test
+    void testComputeNewKey() {
+        MultiKeyMap<Integer> map = new MultiKeyMap<>(16);
+        Integer result = map.compute("a", (k, v) -> 1);
+        assertEquals(1, result);
+        assertEquals(1, map.get("a"));
+    }
+
+    @Test
+    void testComputeExistingKey() {
+        MultiKeyMap<Integer> map = new MultiKeyMap<>(16);
+        map.put(1, "a");
+        Integer result = map.compute("a", (k, v) -> v + 1);
+        assertEquals(2, result);
+        assertEquals(2, map.get("a"));
+    }
+
+    @Test
+    void testComputeToNullRemoves() {
+        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        map.put("x", "a");
+        map.compute("a", (k, v) -> null);
+        assertFalse(map.containsKey("a"));
+    }
+
+    @Test
+    void testComputeWithArrayKeys() {
+        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        Object[] key = {"k1", "k2"};
+        map.put("v1", key);
+        map.compute(key, (k, v) -> v + "2");
+        assertEquals("v12", map.get("k1", "k2"));
+    }
+
+    @Test
+    void testComputeWithCollectionKeys() {
+        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        map.put("v", Arrays.asList("a", "b"));
+        map.compute(Arrays.asList("a", "b"), (k, v) -> v + "3");
+        assertEquals("v3", map.get("a", "b"));
+    }
+}

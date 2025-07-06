@@ -385,6 +385,7 @@ System.setProperty("io.debug.detailed.paths", "true");
 - **[ConcurrentHashMapNullSafe](userguide.md#concurrenthashmapnullsafe)** - Thread-safe HashMap supporting null keys and values
 - **[ConcurrentNavigableMapNullSafe](userguide.md#concurrentnavigablemapnullsafe)** - Thread-safe NavigableMap supporting null keys and values
 - **[ClassValueMap](userguide.md#classvaluemap)** - High-performance Map optimized for fast Class key lookups using JVM-optimized ClassValue
+- **[MultiKeyMap](userguide.md#multikeymap)** - Concurrent map supporting multi-dimensional keys
 
 ### Lists
 - **[ConcurrentList](userguide.md#concurrentlist)** - Thread-safe List implementation with flexible wrapping options

@@ -2121,7 +2121,7 @@ This implementation provides a robust set of utilities for class manipulation an
 ---
 ## MultiKeyMap
 
-[View Source](/src/main/java/com/cedarsoftware/util/convert/MultiKeyMap.java)
+[View Source](/src/main/java/com/cedarsoftware/util/MultiKeyMap.java)
 
 A high-performance, thread-safe Map implementation that supports multi-dimensional keys (N-key lookups). Instead of creating complex composite key objects or nested Maps, MultiKeyMap allows you to use multiple discrete values as a single logical key.
 
@@ -2136,6 +2136,7 @@ A high-performance, thread-safe Map implementation that supports multi-dimension
 - **Escape hatch**: Force arrays to be single keys when needed
 - **computeIfAbsent support**: Lazily populate values when keys are missing
 - **putIfAbsent support**: Atomically add entries only when absent
+- **computeIfPresent/compute support**: Full `ConcurrentMap` API for atomic updates
 
 ### API Design Philosophy
 

@@ -38,7 +38,7 @@ class SingleKeyWrapperTest {
         map.put("single", "singleValue");
         
         // Add multi-key via varargs
-        map.put("key1", "key2", "key3", "tripleValue");
+        map.put("tripleValue", "key1", "key2", "key3");
         
         // Add multi-key via Object[] array
         map.put(new Object[]{"array1", "array2"}, "arrayValue");

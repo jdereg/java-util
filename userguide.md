@@ -2119,6 +2119,241 @@ Class<?> enumClass = ClassUtilities.getClassIfEnum(someClass);
 This implementation provides a robust set of utilities for class manipulation and reflection operations, with emphasis on security, performance, and compatibility across different Java environments.
 
 ---
+## MultiKeyMap
+
+[View Source](/src/main/java/com/cedarsoftware/util/convert/MultiKeyMap.java)
+
+A high-performance, thread-safe Map implementation that supports multi-dimensional keys (N-key lookups). Instead of creating complex composite key objects or nested Maps, MultiKeyMap allows you to use multiple discrete values as a single logical key.
+
+### Key Features
+
+- **Multi-dimensional keys**: Use 2, 3, 4... unlimited key components
+- **Zero heap pressure**: No array allocations for inline key arguments  
+- **Thread-safe**: Full concurrent access support
+- **Auto-unpacking**: Arrays automatically unpack into multi-key entries
+- **Premium API**: Elegant varargs interface for MultiKeyMap users
+- **Map compatible**: Works with Map interface for existing code
+- **Escape hatch**: Force arrays to be single keys when needed
+
+### API Design Philosophy
+
+MultiKeyMap provides three levels of API sophistication:
+
+1. **Premium API** (recommended): `put(value, key1, key2, key3, ...)`
+2. **Map compatible**: `put(keyArray, value)` with auto-unpacking
+3. **Escape hatch**: `putSingleKey(array, value)` for edge cases
+
+### Which API Should You Use?
+
+**Choose Premium API when:**
+- You're writing new code
+- You want zero heap allocations
+- You need unlimited key dimensions
+- You want the best developer experience
+
+```java
+MultiKeyMap<Employee> map = new MultiKeyMap<>();  // Declare as MultiKeyMap
+map.put(employee, "dept", "sales", "junior");     // Premium varargs API
+```
+
+**Choose Map Interface when:**
+- Working with existing Map-based code
+- Need compatibility with Map<Object, V> signatures
+- Have pre-built arrays ready to use
+- Want automatic array unpacking magic
+
+```java
+Map<Object, Employee> map = new MultiKeyMap<>();  // Declare as Map
+String[] keys = buildKeyArray();
+map.put(keys, employee);                          // Auto-unpacks array
+```
+
+**Choose Escape Hatch when:**
+- You actually want arrays/collections as single keys (rare)
+- Need explicit control over key interpretation
+
+```java
+MultiKeyMap<String> map = new MultiKeyMap<>();
+String[] arrayKey = {"config", "template"};
+map.putSingleKey(arrayKey, "data");               // Array IS the key
+```
+
+**Performance Guidance:**
+- **Best**: Premium API with inline arguments (zero allocations)
+- **Good**: Map interface with existing arrays (minimal allocations)  
+- **Rare**: Escape hatch for special cases
+
+### Usage Examples
+
+**Premium MultiKeyMap API (Recommended):**
+```java
+// Declare as MultiKeyMap to get premium APIs
+MultiKeyMap<Employee> empMap = new MultiKeyMap<>();
+
+// Zero allocation - no arrays created
+empMap.put(employee1, "dept", "engineering", "senior");
+empMap.put(employee2, "dept", "sales", "junior");
+empMap.put(employee3, "location", "building1", "floor2", "room101");
+
+// Unlimited keys - no artificial limits
+empMap.put(data, "dimension1", "dimension2", "dimension3", "dimension4", "dimension5");
+
+// Retrieve with same pattern
+Employee emp = empMap.get("dept", "engineering", "senior");
+boolean exists = empMap.containsKeys("location", "building1", "floor2", "room101");
+```
+
+**Map Interface with Auto-Unpacking:**
+```java
+// Declare as Map interface for compatibility
+Map<Object, Employee> map = new MultiKeyMap<>();
+
+// Standard Map put(key, value) with AUTOMATIC array unpacking
+String[] deptKeys = {"dept", "engineering", "senior"};
+map.put(deptKeys, employee);  // Array AUTO-UNPACKED → stored as 3-key entry
+
+int[] coordinates = {10, 20, 30};
+map.put(coordinates, data);  // Typed arrays also AUTO-UNPACK → 3-key entry
+
+List<String> pathList = Arrays.asList("config", "server", "port");
+map.put(pathList, "8080");  // Collections also AUTO-UNPACK → 3-key entry
+
+// Single values work normally
+map.put("manager", boss);  // Stored as single-key entry
+
+// Retrieve using arrays (also auto-unpacks)
+Employee emp = map.get(new String[]{"dept", "engineering", "senior"});
+```
+
+**Important Auto-Unpacking Rules:**
+- **Arrays** (`Object[]`, `String[]`, `int[]`, etc.) → **AUTO-UNPACK** into multi-key entries
+- **Collections** (`List`, `Set`, etc.) → **AUTO-UNPACK** into multi-key entries
+- **Other objects** → **Single keys**
+
+**Need an array or collection as a single key?** Use the escape hatch:
+```java
+// Cast to MultiKeyMap to access escape hatch
+MultiKeyMap<Employee> mkMap = (MultiKeyMap<Employee>) map;
+
+String[] arrayAsKey = {"template", "config"};
+mkMap.putSingleKey(arrayAsKey, employee);  // Forces array to be single key
+
+List<String> listAsKey = Arrays.asList("cache", "key");
+mkMap.putSingleKey(listAsKey, data);  // Forces collection to be single key
+```
+
+**Escape Hatch for Array/Collection Keys:**
+```java
+MultiKeyMap<String> configMap = new MultiKeyMap<>();
+
+String[] templateKey = {"config", "template", "default"};
+
+// Force array to be treated as single key (rare use case)
+configMap.putSingleKey(templateKey, "templateData");
+
+// Retrieve using same array reference
+String data = configMap.get(templateKey);  // Works as single key
+```
+
+### Performance Benefits
+
+**Zero Allocation Pattern:**
+```java
+// Traditional approach - creates composite key objects
+class CompositeKey {
+    final String dept, role, level;
+    // hashCode(), equals(), etc.
+}
+Map<CompositeKey, Employee> map = new HashMap<>();
+map.put(new CompositeKey("engineering", "dev", "senior"), emp);  // Heap allocation
+
+// MultiKeyMap approach - zero allocations
+MultiKeyMap<Employee> map = new MultiKeyMap<>();
+map.put(emp, "engineering", "dev", "senior");  // No objects created
+```
+
+**Heap Pressure Comparison:**
+- **Traditional**: `new CompositeKey()` object per lookup/insertion
+- **MultiKeyMap**: Zero allocations for inline arguments
+- **Benefit**: Especially significant for high-frequency lookups
+
+### Thread Safety
+
+MultiKeyMap is fully thread-safe and supports concurrent access:
+
+```java
+MultiKeyMap<CacheEntry> cache = new MultiKeyMap<>();
+
+// Safe concurrent access from multiple threads
+CompletableFuture.runAsync(() -> cache.put(data1, "user", "session", "temp"));
+CompletableFuture.runAsync(() -> cache.put(data2, "user", "profile", "prefs"));
+
+CacheEntry entry = cache.get("user", "session", "temp");  // Thread-safe
+```
+
+### When to Use MultiKeyMap
+
+**Ideal for:**
+- **Cache keys**: `cache.put(data, userId, sessionId, requestType)`
+- **Configuration**: `config.put(value, environment, service, setting)`
+- **Indexing**: `index.put(record, category, subcategory, item)`
+- **Coordinates**: `grid.put(value, x, y, z, time)`
+- **Hierarchical data**: `tree.put(node, level1, level2, level3)`
+
+**Consider alternatives for:**
+- Single key lookups (use regular Map)
+- Keys that are naturally composite objects
+- When you need Map.Entry iteration with composite keys
+
+### Migration from Nested Maps
+
+**Before (nested Maps):**
+```java
+Map<String, Map<String, Map<String, Employee>>> nested = new HashMap<>();
+nested.computeIfAbsent("dept", k -> new HashMap<>())
+      .computeIfAbsent("engineering", k -> new HashMap<>())
+      .put("senior", employee);
+
+// Retrieval is verbose
+Employee emp = nested.get("dept")?.get("engineering")?.get("senior");
+```
+
+**After (MultiKeyMap):**
+```java
+MultiKeyMap<Employee> flat = new MultiKeyMap<>();
+flat.put(employee, "dept", "engineering", "senior");
+
+// Retrieval is clean
+Employee emp = flat.get("dept", "engineering", "senior");
+```
+
+### Common Patterns
+
+**Configuration Management:**
+```java
+MultiKeyMap<String> config = new MultiKeyMap<>();
+config.put("localhost:8080", "env", "development", "database", "url");
+config.put("prod-db:5432", "env", "production", "database", "url");
+config.put("debug", "env", "development", "logging", "level");
+
+String dbUrl = config.get("env", "production", "database", "url");
+```
+
+**Multi-Dimensional Caching:**
+```java
+MultiKeyMap<Result> cache = new MultiKeyMap<>();
+
+// Cache results by multiple dimensions
+cache.put(result1, userId, "api", "v1", "users");
+cache.put(result2, userId, "api", "v1", "orders");
+
+// Fast multi-dimensional lookups
+Result cached = cache.get(userId, "api", "v1", "users");
+```
+
+This implementation provides a clean, efficient alternative to composite key objects and nested Maps, with excellent performance characteristics and a developer-friendly API.
+
+---
 ## Converter
 [Source](/src/main/java/com/cedarsoftware/util/convert/Converter.java)
 

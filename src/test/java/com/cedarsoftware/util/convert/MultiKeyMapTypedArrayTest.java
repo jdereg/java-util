@@ -14,7 +14,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("key1", "key2", "key3", "stringValue");
+        map.put("stringValue", "key1", "key2", "key3");
         
         // Retrieve using String[] - zero conversion
         String[] stringKeys = {"key1", "key2", "key3"};
@@ -37,7 +37,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs (boxed integers)
-        map.put(1, 2, 3, "intValue");
+        map.put("intValue", 1, 2, 3);
         
         // Retrieve using int[] - zero conversion via reflection
         int[] intKeys = {1, 2, 3};
@@ -57,7 +57,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put(1L, 2L, 3L, "longValue");
+        map.put("longValue", 1L, 2L, 3L);
         
         // Retrieve using long[] - zero conversion
         long[] longKeys = {1L, 2L, 3L};
@@ -77,7 +77,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put(String.class, Integer.class, Long.class, "classValue");
+        map.put("classValue", String.class, Integer.class, Long.class);
         
         // Retrieve using Class<?>[] - zero conversion
         Class<?>[] classKeys = {String.class, Integer.class, Long.class};
@@ -97,7 +97,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put(1.5, 2.5, 3.5, "doubleValue");
+        map.put("doubleValue", 1.5, 2.5, 3.5);
         
         // Retrieve using double[] - zero conversion
         double[] doubleKeys = {1.5, 2.5, 3.5};
@@ -117,7 +117,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put(true, false, true, "booleanValue");
+        map.put("booleanValue", true, false, true);
         
         // Retrieve using boolean[] - zero conversion
         boolean[] boolKeys = {true, false, true};
@@ -137,7 +137,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put('a', 'b', 'c', "charValue");
+        map.put("charValue", 'a', 'b', 'c');
         
         // Retrieve using char[] - zero conversion
         char[] charKeys = {'a', 'b', 'c'};
@@ -157,7 +157,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put((byte) 1, (byte) 2, (byte) 3, "byteValue");
+        map.put("byteValue", (byte) 1, (byte) 2, (byte) 3);
         
         // Retrieve using byte[] - zero conversion
         byte[] byteKeys = {1, 2, 3};
@@ -177,7 +177,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put((short) 1, (short) 2, (short) 3, "shortValue");
+        map.put("shortValue", (short) 1, (short) 2, (short) 3);
         
         // Retrieve using short[] - zero conversion
         short[] shortKeys = {1, 2, 3};
@@ -197,7 +197,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put(1.5f, 2.5f, 3.5f, "floatValue");
+        map.put("floatValue", 1.5f, 2.5f, 3.5f);
         
         // Retrieve using float[] - zero conversion
         float[] floatKeys = {1.5f, 2.5f, 3.5f};
@@ -217,7 +217,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs with mixed types
-        map.put("text", 42, 3.14, true, "mixedValue");
+        map.put("mixedValue", "text", 42, 3.14, true);
         
         // Create typed arrays of different types
         String[] stringKeys = {"text"};
@@ -241,7 +241,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs with nulls
-        map.put("key1", null, "key3", "nullValue");
+        map.put("nullValue", "key1", null, "key3");
         
         // String[] cannot contain null in a meaningful way for this test
         // but Object[] can
@@ -270,7 +270,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store once using varargs
-        map.put(String.class, Integer.class, 42L, "equalityTest");
+        map.put("equalityTest", String.class, Integer.class, 42L);
         
         // Should be retrievable via different array types
         Object[] objectArray = {String.class, Integer.class, 42L};
@@ -309,7 +309,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Populate with test data using varargs
         for (int i = 0; i < 100; i++) {
-            map.put(String.class, Integer.class, (long) i, "value" + i);
+            map.put("value" + i, String.class, Integer.class, (long) i);
         }
         
         // Create typed arrays for comparison
@@ -351,7 +351,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store once using varargs
-        map.put("x", "y", "z", "universalValue");
+        map.put("universalValue", "x", "y", "z");
         
         // Should be retrievable via all three APIs
         

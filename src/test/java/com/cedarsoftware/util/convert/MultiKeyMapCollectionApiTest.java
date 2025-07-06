@@ -15,8 +15,8 @@ class MultiKeyMapCollectionApiTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using Object[] varargs API
-        map.put(String.class, Integer.class, 42L, "test1");
-        map.put("key1", "key2", "key3", "test2");
+        map.put("test1", String.class, Integer.class, 42L);
+        map.put("test2", "key1", "key2", "key3");
         
         // Retrieve using Collection API - zero heap allocation
         List<Object> keys1 = Arrays.asList(String.class, Integer.class, 42L);
@@ -43,7 +43,7 @@ class MultiKeyMapCollectionApiTest {
         assertEquals("arrayValue", map.get(listKey));
         
         // Store using Collection (via varargs)
-        map.put(Double.class, Boolean.class, 2L, "collectionValue");
+        map.put("collectionValue", Double.class, Boolean.class, 2L);
         
         // Retrieve using equivalent array
         Object[] arrayKey2 = {Double.class, Boolean.class, 2L};
@@ -59,7 +59,7 @@ class MultiKeyMapCollectionApiTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Order matters for key equality
-        map.put("a", "b", "c", "ordered");
+        map.put("ordered", "a", "b", "c");
         
         List<Object> correctOrder = Arrays.asList("a", "b", "c");
         assertEquals("ordered", map.get(correctOrder));
@@ -85,14 +85,14 @@ class MultiKeyMapCollectionApiTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store key with null elements
-        map.put(String.class, null, 42L, "withNull");
+        map.put("withNull", String.class, null, 42L);
         
         // Retrieve using Collection with null
         List<Object> keysWithNull = Arrays.asList(String.class, null, 42L);
         assertEquals("withNull", map.get(keysWithNull));
         
         // All nulls
-        map.put(null, null, null, "allNulls");
+        map.put("allNulls", null, null, null);
         List<Object> allNullKeys = Arrays.asList(null, null, null);
         assertEquals("allNulls", map.get(allNullKeys));
     }
@@ -114,7 +114,7 @@ class MultiKeyMapCollectionApiTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store once
-        map.put("x", "y", "z", "value");
+        map.put("value", "x", "y", "z");
         
         // Retrieve with different Collection types - all should work
         List<Object> list = Arrays.asList("x", "y", "z");
@@ -136,14 +136,14 @@ class MultiKeyMapCollectionApiTest {
         
         List<String> myList = Arrays.asList("a", "b", "c");
         
-        // Store the List itself as a single key using explicit cast
-        map.put((Object) myList, "listAsKey");
+        // Store the List itself as a single key using putSingleKey
+        map.putSingleKey(myList, "listAsKey");
         
         // Store using separate arguments for multi-dimensional key
-        map.put("a", "b", "c", "elementsAsKey");
+        map.put("elementsAsKey", "a", "b", "c");
         
         // Retrieve appropriately
-        assertEquals("listAsKey", map.get((Object) myList));     // List is the key
+        assertEquals("listAsKey", map.getSingleKey(myList));     // List is the key
         assertEquals("elementsAsKey", map.get(myList));         // List elements are the key dimensions
         
         // Verify they're different entries
@@ -155,7 +155,7 @@ class MultiKeyMapCollectionApiTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store value for null key
-        map.put((Object) null, "nullValue");
+        map.putSingleKey(null, "nullValue");
         
         // Multiple get(null) calls should use pre-allocated array
         // (This test verifies functionality; heap allocation testing would require profiling tools)
@@ -174,7 +174,7 @@ class MultiKeyMapCollectionApiTest {
         
         // Populate with test data
         for (int i = 0; i < 100; i++) {
-            map.put(String.class, Integer.class, (long) i, "value" + i);
+            map.put("value" + i, String.class, Integer.class, (long) i);
         }
         
         // Create Collection for repeated lookups
@@ -236,7 +236,7 @@ class MultiKeyMapCollectionApiTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs (elements as separate keys)
-        map.put(String.class, Integer.class, 42L, "varargsKey");
+        map.put("varargsKey", String.class, Integer.class, 42L);
         
         // Retrieve using equivalent Collection
         List<Object> listKey = Arrays.asList(String.class, Integer.class, 42L);

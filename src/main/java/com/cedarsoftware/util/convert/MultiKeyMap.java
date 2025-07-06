@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
@@ -22,7 +23,7 @@ import java.util.Set;
  *   <li><b>N-Dimensional Keys:</b> Support for keys with any number of components (1, 2, 3, ... N)</li>
  *   <li><b>High Performance:</b> Optimized hash computation and separate chaining for excellent performance</li>
  *   <li><b>Thread-Safe:</b> Lock-free reads with synchronized writes for maximum concurrency</li>
- *   <li><b>Map Interface Compatible:</b> Supports single-key operations via "coconut wrapper" mechanism</li>
+ *   <li><b>Map Interface Compatible:</b> Supports single-key operations with zero-allocation polymorphic storage</li>
  *   <li><b>Flexible API:</b> Varargs methods for convenient multi-key operations</li>
  * </ul>
  * 
@@ -81,11 +82,49 @@ import java.util.Set;
  */
 public final class MultiKeyMap<V> implements Map<Object, V> {
     
+    /**
+     * Enum to control how keys are stored in put() operations.
+     * Used as optional last parameter in varargs put() method.
+     */
+    public enum KeyMode {
+        /**
+         * Store the preceding keys as a single key without auto-unpacking.
+         * Use this when you want Collections or Arrays to be treated as single keys
+         * rather than being auto-unpacked into multiple key dimensions.
+         */
+        SINGLE_KEY
+    }
+    
+    /**
+     * Enum to control how Collections and Arrays are handled in get/remove/containsKey operations.
+     */
+    public enum CollectionKeyMode {
+        /**
+         * Default behavior: Collections and Arrays are always unpacked into multi-key lookups.
+         * No fallback to treating them as single keys.
+         */
+        MULTI_KEY_ONLY,
+        
+        /**
+         * Try multi-key lookup first, then fallback to collection-as-key lookup if not found.
+         * Prioritizes the traditional multi-key behavior.
+         */
+        MULTI_KEY_FIRST,
+        
+        /**
+         * Try collection-as-key lookup first, then fallback to multi-key lookup if not found.
+         * Prioritizes treating Collections/Arrays as single keys.
+         */
+        COLLECTION_KEY_FIRST
+    }
+    
+    
     private volatile Object[] buckets;  // Array of MultiKey<V>[] (or null), Collection, String[] (typed array)
     private final Object writeLock = new Object();
     private volatile int size = 0;
     private volatile int maxChainLength = 0;
     private final float loadFactor;
+    private final CollectionKeyMode collectionKeyMode;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f; // Same as HashMap default
 
     /**
@@ -95,62 +134,31 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     private static final Object NULL_SENTINEL = new Object();
     
     /**
-     * Pre-allocated array for null key lookups to avoid heap allocation on get(null).
-     * This provides zero-heap-allocation performance for the common null key case.
+     * Sentinel value to distinguish between "key not found" vs "key found with null value".
+     * This allows efficient single-lookup double-try logic without containsKey() calls.
      */
-    private static final Object[] NULL_KEY_ARRAY = {new SingleKeyWrapper(null)};
+    private static final Object NOT_FOUND_SENTINEL = new Object();
     
     /**
-     * "Coconut wrapper" for single non-Object[] keys to achieve Map interface compliance.
-     * When a single key (that's not already an Object[]) is stored, we wrap it in this
-     * shell. When retrieving, we detect this wrapper and unwrap to return the original key.
-     * Uses sentinel value for null keys like ConcurrentHashMapNullSafe.
-     */
-    private static final class SingleKeyWrapper {
-        final Object innerKey;
-        
-        SingleKeyWrapper(Object key) {
-            // Use sentinel for null keys to avoid null pointer issues
-            this.innerKey = (key == null) ? NULL_SENTINEL : key;
-        }
-        
-        /**
-         * Get the original key, translating sentinel back to null.
-         */
-        Object getOriginalKey() {
-            return (innerKey == NULL_SENTINEL) ? null : innerKey;
-        }
-        
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (!(obj instanceof MultiKeyMap.SingleKeyWrapper)) return false;
-            SingleKeyWrapper other = (SingleKeyWrapper) obj;
-            return innerKey == other.innerKey || innerKey.equals(other.innerKey);
-        }
-        
-        @Override
-        public int hashCode() {
-            return innerKey.hashCode();
-        }
-        
-        @Override
-        public String toString() {
-            return "CoconutWrapper[" + getOriginalKey() + "]";
-        }
-    }
-
-    /**
-     * Represents an N-dimensional key-value mapping.
+     * Represents a key-value mapping that can store either single keys or N-dimensional keys.
+     * Uses polymorphic storage: Object (single key) or Object[] (multi-key).
      */
     private static final class MultiKey<V> {
-        final Object[] keys;
+        final Object keys;    // Object (single key) OR Object[] (multi-key) - no wrapper needed!
         final int hash;
         final V value;
         
-        MultiKey(Object[] keys, V value) {
-            this.keys = keys != null ? keys.clone() : new Object[0]; // Defensive copy with null check
-            this.hash = computeHash(this.keys);
+        // Constructor for single keys (including null → NULL_SENTINEL)
+        MultiKey(Object singleKey, V value) {
+            this.keys = (singleKey == null) ? NULL_SENTINEL : singleKey;
+            this.hash = computeSingleKeyHash(this.keys);
+            this.value = value;
+        }
+        
+        // Constructor for multi keys
+        MultiKey(Object[] multiKeys, V value) {
+            this.keys = multiKeys != null ? multiKeys.clone() : new Object[0]; // Defensive copy
+            this.hash = computeHash(multiKeys);
             this.value = value;
         }
 
@@ -163,6 +171,17 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * @param loadFactor the load factor threshold for resizing
      */
     public MultiKeyMap(int capacity, float loadFactor) {
+        this(capacity, loadFactor, CollectionKeyMode.MULTI_KEY_ONLY);
+    }
+    
+    /**
+     * Creates a new MultiKeyMap with specified capacity, load factor, and collection key behavior.
+     * 
+     * @param capacity the initial capacity
+     * @param loadFactor the load factor threshold for resizing
+     * @param collectionKeyMode how to handle Collections/Arrays in get/remove/containsKey operations
+     */
+    public MultiKeyMap(int capacity, float loadFactor, CollectionKeyMode collectionKeyMode) {
         if (loadFactor <= 0 || Float.isNaN(loadFactor)) {
             throw new IllegalArgumentException("Load factor must be positive: " + loadFactor);
         }
@@ -172,6 +191,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         
         this.buckets = new Object[capacity];
         this.loadFactor = loadFactor;
+        this.collectionKeyMode = (collectionKeyMode != null) ? collectionKeyMode : CollectionKeyMode.MULTI_KEY_ONLY;
     }
     
     /**
@@ -218,6 +238,22 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         hash ^= (hash >>> 16);
         
         return hash;
+    }
+    
+    /**
+     * Computes hash for single keys (including NULL_SENTINEL).
+     * Uses same hashing approach as multi-key hash for consistency.
+     */
+    private static int computeSingleKeyHash(Object key) {
+        if (key == null || key == NULL_SENTINEL) {
+            return 0;
+        } else if (key instanceof Class) {
+            // Use identity hash for Classes (faster than equals-based hash)
+            return System.identityHashCode(key);
+        } else {
+            // Use standard hash code for other objects
+            return key.hashCode();
+        }
     }
     
     /**
@@ -309,79 +345,160 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      */
     public V get(Object... keys) {
         // Special case: when get(null) is called on varargs method, Java passes keys=null
-        // Use pre-allocated array for zero heap allocation
+        // Use direct single-key lookup for zero heap allocation
         if (keys == null) {
-            return getInternal(NULL_KEY_ARRAY);
+            return getInternalDirect(null);
         }
         return getInternal(keys);
     }
     
     /**
-     * Map interface compatible get method with "coconut wrapper" unwrapping.
+     * Map interface compatible get method with zero-allocation direct storage.
      * Supports both single keys and N-dimensional keys via Object[] detection.
      * 
      * @param key either a single key or an Object[] containing multiple keys
      * @return the value associated with the key, or null if not found
      */
     public V get(Object key) {
-        if (key != null && key.getClass().isArray()) {
-            if (key instanceof Object[]) {
-                // Fast path: Object[] array - lookup directly
-                return getInternal((Object[]) key);
-            } else {
-                // Typed array path: String[], int[], etc. - use reflection for zero conversion
-                return getInternalFromTypedArray(key);
-            }
-        } else if (key == null) {
-            // Zero heap allocation for null key
-            return getInternal(NULL_KEY_ARRAY);
+        // Fast path for normal objects (most common case) - zero heap allocation
+        if (key == null) {
+            return getInternalDirect(null);
+        }
+        
+        Class<?> keyClass = key.getClass();
+        if (keyClass.isArray()) {
+            return getFromArray(key);
+        } else if (key instanceof Collection) {
+            return getFromCollection((Collection<?>) key);
         } else {
-            // Single key case: wrap in coconut shell and lookup
-            SingleKeyWrapper wrappedKey = new SingleKeyWrapper(key);
-            return getInternal(new Object[]{wrappedKey});
+            // Normal object
+            return getInternalDirect(key);
         }
     }
     
     /**
-     * Gets the value for the given Collection-based multi-dimensional key.
-     * This method provides zero-heap allocation by computing hash directly from Collection
-     * and matching without array conversion. Collection elements are treated as key dimensions.
-     * 
-     * @param keys Collection containing the key components (elements become key dimensions)
-     * @return the value associated with the key, or null if not found
+     * Handle Collection keys with mode-based logic.
      */
-    public V get(Collection<?> keys) {
-        if (keys == null) {
-            // Delegate to single-key method for null handling
-            return get((Object) null);
+    private V getFromCollection(Collection<?> collection) {
+        switch (collectionKeyMode) {
+            case MULTI_KEY_ONLY:
+                return getFromCollectionMultiKeyOnly(collection);
+            case MULTI_KEY_FIRST:
+                return getFromCollectionMultiKeyFirst(collection);
+            case COLLECTION_KEY_FIRST:
+                return getFromCollectionKeyFirst(collection);
+            default:
+                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
         }
-        if (keys.isEmpty()) {
-            return null;
-        }
-        
-        // Compute hash directly from Collection to avoid array allocation
-        int hash = computeHashFromCollection(keys);
-        
-        // Capture buckets reference to avoid race condition during resize
-        Object[] currentBuckets = buckets;
-        int bucketIndex = hash & (currentBuckets.length - 1);
-        
-        @SuppressWarnings("unchecked")
-        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
-        
-        if (chain == null) {
-            return null;
-        }
-        
-        // Scan the chain for exact match
-        for (MultiKey<V> entry : chain) {
-            if (entry.hash == hash && keysEqualCollection(entry.keys, keys)) {
-                return entry.value;
-            }
-        }
-        
-        return null;
     }
+    
+    /**
+     * Handle Array keys with mode-based logic.
+     */
+    private V getFromArray(Object array) {
+        switch (collectionKeyMode) {
+            case MULTI_KEY_ONLY:
+                return getFromArrayMultiKeyOnly(array);
+            case MULTI_KEY_FIRST:
+                return getFromArrayMultiKeyFirst(array);
+            case COLLECTION_KEY_FIRST:
+                return getFromArrayKeyFirst(array);
+            default:
+                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+        }
+    }
+    
+    /**
+     * Collection with MULTI_KEY_ONLY mode - only try multi-key lookup.
+     */
+    private V getFromCollectionMultiKeyOnly(Collection<?> collection) {
+        Object rawResult = getInternalFromCollectionRaw(collection);
+        return rawResult == NOT_FOUND_SENTINEL ? null : (V) rawResult;
+    }
+    
+    /**
+     * Collection with MULTI_KEY_FIRST mode - try multi-key first, then collection-as-key.
+     */
+    private V getFromCollectionMultiKeyFirst(Collection<?> collection) {
+        // Try multi-key first
+        Object rawResult = getInternalFromCollectionRaw(collection);
+        if (rawResult != NOT_FOUND_SENTINEL) {
+            return (V) rawResult;  // Found via multi-key (could be null value)
+        }
+        
+        // Multi-key not found, try collection-as-key with zero allocations!
+        return getInternalDirect(collection);
+    }
+    
+    /**
+     * Collection with COLLECTION_KEY_FIRST mode - try collection-as-key first, then multi-key.
+     */
+    private V getFromCollectionKeyFirst(Collection<?> collection) {
+        // Try collection-as-key first with zero allocations!
+        V result = getInternalDirect(collection);
+        if (result != null) {
+            return result;  // Found via collection-as-key
+        }
+        
+        // Collection-as-key not found, try multi-key
+        Object rawResult = getInternalFromCollectionRaw(collection);
+        return rawResult == NOT_FOUND_SENTINEL ? null : (V) rawResult;
+    }
+    
+    /**
+     * Array with MULTI_KEY_ONLY mode - only try multi-key lookup.
+     */
+    private V getFromArrayMultiKeyOnly(Object array) {
+        if (array instanceof Object[]) {
+            return getInternal((Object[]) array);
+        } else {
+            return getInternalFromTypedArray(array);
+        }
+    }
+    
+    /**
+     * Array with MULTI_KEY_FIRST mode - try multi-key first, then array-as-key.
+     */
+    private V getFromArrayMultiKeyFirst(Object array) {
+        // Try multi-key first
+        Object rawResult;
+        if (array instanceof Object[]) {
+            rawResult = getInternalRaw((Object[]) array);
+        } else {
+            // For typed arrays, we need to convert to check - less efficient but necessary
+            V result = getInternalFromTypedArray(array);
+            if (result != null) {
+                return result;
+            }
+            rawResult = NOT_FOUND_SENTINEL;  // Typed array lookup returned null
+        }
+        
+        if (rawResult != NOT_FOUND_SENTINEL) {
+            return (V) rawResult;  // Found via multi-key (could be null value)
+        }
+        
+        // Multi-key not found, try array-as-key with zero allocations!
+        return getInternalDirect(array);
+    }
+    
+    /**
+     * Array with COLLECTION_KEY_FIRST mode - try array-as-key first, then multi-key.
+     */
+    private V getFromArrayKeyFirst(Object array) {
+        // Try array-as-key first with zero allocations!
+        V result = getInternalDirect(array);
+        if (result != null) {
+            return result;  // Found via array-as-key
+        }
+        
+        // Array-as-key not found, try multi-key
+        if (array instanceof Object[]) {
+            return getInternal((Object[]) array);
+        } else {
+            return getInternalFromTypedArray(array);
+        }
+    }
+    
     
     /**
      * Gets the value for the given typed array-based multi-dimensional key.
@@ -444,12 +561,208 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         
         // Scan the chain for exact match - direct array access for maximum speed
         for (MultiKey<V> entry : chain) {
-            if (entry.hash == hash && keysEqual(entry.keys, keys)) {
+            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
                 return entry.value;
             }
         }
         
         return null;
+    }
+    
+    /**
+     * Internal get implementation that returns raw result with sentinels.
+     * Returns NOT_FOUND_SENTINEL if key doesn't exist, actual value (including null) if found.
+     */
+    private Object getInternalRaw(Object[] keys) {
+        int hash = computeHash(keys);
+        
+        // Capture buckets reference to avoid race condition during resize
+        Object[] currentBuckets = buckets;
+        int bucketIndex = hash & (currentBuckets.length - 1);
+        
+        @SuppressWarnings("unchecked")
+        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
+        
+        if (chain == null) {
+            return NOT_FOUND_SENTINEL;
+        }
+        
+        // Scan the chain for exact match
+        for (MultiKey<V> entry : chain) {
+            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+                return entry.value;  // Return actual value (could be null)
+            }
+        }
+        
+        return NOT_FOUND_SENTINEL;
+    }
+    
+    /**
+     * Internal get() implementation for Collections using sentinel return.
+     */
+    private Object getInternalFromCollectionRaw(Collection<?> collection) {
+        if (collection.isEmpty()) {
+            return NOT_FOUND_SENTINEL;
+        }
+        
+        int hash = computeHashFromCollection(collection);
+        
+        // Capture buckets reference to avoid race condition during resize
+        Object[] currentBuckets = buckets;
+        int bucketIndex = hash & (currentBuckets.length - 1);
+        
+        @SuppressWarnings("unchecked")
+        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
+        
+        if (chain == null) {
+            return NOT_FOUND_SENTINEL;
+        }
+        
+        // Scan the chain for exact match
+        for (MultiKey<V> entry : chain) {
+            if (entry.hash == hash && keysEqualCollection(entry.keys, collection)) {
+                return entry.value;  // Return actual value (could be null)
+            }
+        }
+        
+        return NOT_FOUND_SENTINEL;
+    }
+    
+    /**
+     * Direct single-key lookup with zero heap allocations.
+     * Uses polymorphic storage - no wrapper needed!
+     */
+    private V getInternalDirect(Object key) {
+        // Handle null key using NULL_SENTINEL
+        Object lookupKey = (key == null) ? NULL_SENTINEL : key;
+        int hash = computeSingleKeyHash(lookupKey);
+        
+        // Capture buckets reference to avoid race condition during resize
+        Object[] currentBuckets = buckets;
+        int bucketIndex = hash & (currentBuckets.length - 1);
+        
+        @SuppressWarnings("unchecked")
+        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
+        
+        if (chain == null) {
+            return null;
+        }
+        
+        // Scan the chain for exact match
+        for (MultiKey<V> entry : chain) {
+            if (entry.hash == hash && isSingleKeyMatch(entry.keys, lookupKey)) {
+                return entry.value;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Check if stored keys match the single lookup key.
+     * Optimized for single-key lookups.
+     */
+    private boolean isSingleKeyMatch(Object storedKeys, Object singleKey) {
+        // If stored as Object[], it's multi-key storage - no match for single key lookup
+        if (storedKeys instanceof Object[]) {
+            return false;
+        }
+        
+        // Both are single keys - direct comparison
+        return Objects.equals(storedKeys, singleKey);
+    }
+    
+    /**
+     * Direct single key removal - zero allocation for single key operations.
+     * Similar to getInternalDirect but removes the entry.
+     */
+    private V removeInternalDirect(Object key) {
+        // Handle null key using NULL_SENTINEL
+        Object lookupKey = (key == null) ? NULL_SENTINEL : key;
+        int hash = computeSingleKeyHash(lookupKey);
+        
+        // Capture buckets reference to avoid race condition during resize
+        Object[] currentBuckets = buckets;
+        int bucketIndex = hash & (currentBuckets.length - 1);
+        
+        @SuppressWarnings("unchecked")
+        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
+        
+        if (chain == null) {
+            return null;
+        }
+        
+        // Scan the chain for exact match and remove
+        for (int i = 0; i < chain.length; i++) {
+            MultiKey<V> entry = chain[i];
+            if (entry.hash == hash && isSingleKeyMatch(entry.keys, lookupKey)) {
+                // Found it - remove from chain
+                @SuppressWarnings("unchecked")
+                MultiKey<V>[] newChain = new MultiKey[chain.length - 1];
+                System.arraycopy(chain, 0, newChain, 0, i);
+                System.arraycopy(chain, i + 1, newChain, i, chain.length - i - 1);
+                
+                // Update bucket atomically
+                currentBuckets[bucketIndex] = (newChain.length == 0) ? null : newChain;
+                size--;
+                
+                return entry.value;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Direct single key containment check - zero allocation for single key operations.
+     * Similar to getInternalDirect but only checks existence.
+     */
+    private boolean containsKeyInternalDirect(Object key) {
+        // Handle null key using NULL_SENTINEL
+        Object lookupKey = (key == null) ? NULL_SENTINEL : key;
+        int hash = computeSingleKeyHash(lookupKey);
+        
+        // Capture buckets reference to avoid race condition during resize
+        Object[] currentBuckets = buckets;
+        int bucketIndex = hash & (currentBuckets.length - 1);
+        
+        @SuppressWarnings("unchecked")
+        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
+        
+        if (chain == null) {
+            return false;
+        }
+        
+        // Scan the chain for exact match
+        for (MultiKey<V> entry : chain) {
+            if (entry.hash == hash && isSingleKeyMatch(entry.keys, lookupKey)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if stored keys match the lookup key (single or multi).
+     * Handles all combinations: Object vs Object, Object[] vs Object[], but NOT Object vs Object[]
+     */
+    private boolean keysMatch(Object storedKeys, Object lookupKey) {
+        if (storedKeys instanceof Object[]) {
+            // Multi-key storage
+            if (lookupKey instanceof Object[]) {
+                return keysEqual((Object[]) storedKeys, (Object[]) lookupKey);
+            } else {
+                return false; // Multi-key storage vs single-key lookup = no match
+            }
+        } else {
+            // Single-key storage
+            if (lookupKey instanceof Object[]) {
+                return false; // Single-key storage vs multi-key lookup = no match
+            } else {
+                return Objects.equals(storedKeys, lookupKey);
+            }
+        }
     }
     
     /**
@@ -489,21 +802,27 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     }
     
     /**
-     * Compares stored Object[] keys with Collection keys for equality.
+     * Compares stored keys (Object or Object[]) with Collection keys for equality.
      * Uses same comparison logic as keysEqual for consistency.
      */
-    private static boolean keysEqualCollection(Object[] storedKeys, Collection<?> collectionKeys) {
+    private static boolean keysEqualCollection(Object storedKeys, Collection<?> collectionKeys) {
         if (storedKeys == null || collectionKeys == null) {
             return false;
         }
         
-        if (storedKeys.length != collectionKeys.size()) {
+        // If stored as single key, no match with Collection (which represents multi-key)
+        if (!(storedKeys instanceof Object[])) {
+            return false;
+        }
+        
+        Object[] storedArray = (Object[]) storedKeys;
+        if (storedArray.length != collectionKeys.size()) {
             return false;
         }
         
         int i = 0;
         for (Object collectionKey : collectionKeys) {
-            Object storedKey = storedKeys[i++];
+            Object storedKey = storedArray[i++];
             
             if (storedKey == collectionKey) {
                 continue; // Same reference (includes null == null)
@@ -528,21 +847,27 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     }
     
     /**
-     * Compares stored Object[] keys with typed array keys for equality.
+     * Compares stored keys (Object or Object[]) with typed array keys for equality.
      * Uses same comparison logic as keysEqual for consistency.
      */
-    private static boolean keysEqualTypedArray(Object[] storedKeys, Object typedArray) {
+    private static boolean keysEqualTypedArray(Object storedKeys, Object typedArray) {
         if (storedKeys == null || typedArray == null) {
             return false;
         }
         
+        // If stored as single key, no match with typed array (which represents multi-key)
+        if (!(storedKeys instanceof Object[])) {
+            return false;
+        }
+        
+        Object[] storedArray = (Object[]) storedKeys;
         int arrayLength = Array.getLength(typedArray);
-        if (storedKeys.length != arrayLength) {
+        if (storedArray.length != arrayLength) {
             return false;
         }
         
         for (int i = 0; i < arrayLength; i++) {
-            Object storedKey = storedKeys[i];
+            Object storedKey = storedArray[i];
             Object arrayKey = Array.get(typedArray, i);
             
             if (storedKey == arrayKey) {
@@ -569,92 +894,175 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     
     
     /**
-     * Stores a conversion function for the given N-dimensional key.
-     * If the key already exists, updates the conversion function.
+     * Premium varargs API - Store a value with unlimited multiple keys.
+     * This is the recommended API for MultiKeyMap users as it provides the best
+     * developer experience with unlimited keys and zero array allocations for
+     * inline arguments.
      * 
-     * @param keys the key components as an array
+     * <p>Examples:</p>
+     * <pre>{@code
+     * MultiKeyMap<Employee> map = new MultiKeyMap<>();
+     * 
+     * // Zero allocation - no arrays created
+     * map.put(employee, "dept", "engineering", "senior");
+     * map.put(person, "location", "building1", "floor2", "room101");
+     * 
+     * // Works with existing arrays too
+     * String[] keyArray = {"dept", "marketing", "director"};
+     * map.put(manager, keyArray);  // Passes array directly to varargs
+     * }</pre>
+     * 
      * @param value the value to store
+     * @param keys the key components (unlimited number)
      * @return the previous value associated with the key, or null if there was no mapping
      */
-    public V put(Object[] keys, V value) {
-        // Special case: when put(null, value) is called, Java resolves to this method
-        // We need to handle single null key using coconut wrapper
-        if (keys == null) {
-            SingleKeyWrapper wrappedKey = new SingleKeyWrapper(null);
-            return putInternal(new Object[]{wrappedKey}, value);
+    public V put(V value, Object... keys) {
+        // Handle null keys array (empty varargs call)
+        if (keys == null || keys.length == 0) {
+            return putInternalSingle(null, value);
         }
+        
+        // Prevent KeyMode enum from being stored as actual key
+        for (Object key : keys) {
+            if (key == KeyMode.SINGLE_KEY) {
+                // Only allow at the end as a flag, not as a regular key
+                if (key != keys[keys.length - 1]) {
+                    throw new IllegalArgumentException("KeyMode.SINGLE_KEY can only be used as the last parameter");
+                }
+            }
+        }
+        
+        // Check if last parameter is KeyMode.SINGLE_KEY (force single-key storage)
+        if (keys.length >= 2 && keys[keys.length - 1] == KeyMode.SINGLE_KEY) {
+            // Remove the KeyMode flag and treat remaining keys as single key
+            Object[] actualKeys = new Object[keys.length - 1];
+            System.arraycopy(keys, 0, actualKeys, 0, keys.length - 1);
+            
+            // Force single-key storage using new direct approach
+            if (actualKeys.length == 1) {
+                // Single key - store directly
+                return putInternalSingle(actualKeys[0], value);
+            } else {
+                // Multiple keys but user wants them as single composite key
+                return putInternalSingle(actualKeys, value);
+            }
+        }
+        
         return putInternal(keys, value);
     }
     
-    // Overloaded put methods for clean caller code (following JDK pattern)
-    // Note: Single-key put(Object, V) already exists for Map interface compatibility
-    
-    public V put(Object key1, Object key2, V value) {
-        return putInternal(new Object[]{key1, key2}, value);
-    }
-    
-    public V put(Object key1, Object key2, Object key3, V value) {
-        return putInternal(new Object[]{key1, key2, key3}, value);
-    }
-    
-    public V put(Object key1, Object key2, Object key3, Object key4, V value) {
-        return putInternal(new Object[]{key1, key2, key3, key4}, value);
-    }
-    
-    public V put(Object key1, Object key2, Object key3, Object key4, Object key5, V value) {
-        return putInternal(new Object[]{key1, key2, key3, key4, key5}, value);
-    }
-    
-    public V put(Object key1, Object key2, Object key3, Object key4, Object key5, Object key6, V value) {
-        return putInternal(new Object[]{key1, key2, key3, key4, key5, key6}, value);
-    }
-    
-    public V put(Object key1, Object key2, Object key3, Object key4, Object key5, Object key6, Object key7, V value) {
-        return putInternal(new Object[]{key1, key2, key3, key4, key5, key6, key7}, value);
-    }
-    
-    public V put(Object key1, Object key2, Object key3, Object key4, Object key5, Object key6, Object key7, Object key8, V value) {
-        return putInternal(new Object[]{key1, key2, key3, key4, key5, key6, key7, key8}, value);
-    }
-    
-    public V put(Object key1, Object key2, Object key3, Object key4, Object key5, Object key6, Object key7, Object key8, Object key9, V value) {
-        return putInternal(new Object[]{key1, key2, key3, key4, key5, key6, key7, key8, key9}, value);
-    }
-    
-    public V put(Object key1, Object key2, Object key3, Object key4, Object key5, Object key6, Object key7, Object key8, Object key9, Object key10, V value) {
-        return putInternal(new Object[]{key1, key2, key3, key4, key5, key6, key7, key8, key9, key10}, value);
-    }
-    
     /**
-     * Map interface compatible put method with "coconut wrapper" for single keys.
-     * Supports both single keys and N-dimensional keys via Object[] detection.
+     * Map interface compatible put method with auto-unpacking for arrays.
+     * This provides a great experience for Map users by automatically detecting
+     * and unpacking arrays into multi-key calls.
      * 
-     * @param key either a single key or an Object[] containing multiple keys
+     * <p><strong>Auto-unpacking behavior:</strong></p>
+     * <ul>
+     *   <li>If key is an array → automatically unpacked into multiple keys</li>
+     *   <li>If key is a Collection → automatically unpacked into multiple keys</li>
+     *   <li>Otherwise → treated as single key</li>
+     * </ul>
+     * 
+     * <p>Examples:</p>
+     * <pre>{@code
+     * Map<Object, Employee> map = new MultiKeyMap<>();
+     * 
+     * // Auto-unpacking: array becomes multi-key
+     * String[] keys = {"dept", "engineering", "senior"};
+     * map.put(keys, employee);  // Stored as 3-key entry
+     * 
+     * // Auto-unpacking: Collection becomes multi-key
+     * List<String> keyList = Arrays.asList("dept", "sales", "junior");
+     * map.put(keyList, employee);  // Stored as 3-key entry
+     * 
+     * // Single key: other objects stored normally  
+     * map.put("manager", boss);  // Stored as single-key entry
+     * 
+     * // Typed arrays also auto-unpack
+     * int[] intKeys = {1, 2, 3};
+     * map.put(intKeys, data);  // Stored as 3-key entry
+     * }</pre>
+     * 
+     * @param key single key, or array/Collection that will be auto-unpacked into multiple keys
      * @param value the value to store
      * @return the previous value associated with the key, or null if there was no mapping
+     * @see #putSingleKey(Object, Object) for forcing array to be treated as single key
      */
     public V put(Object key, V value) {
         if (key != null && key.getClass().isArray()) {
             if (key instanceof Object[]) {
-                // N-Key case: key is Object[] - store directly
-                return putInternal((Object[]) key, value);
+                // Auto-unpack Object[] into multi-key call
+                return put(value, (Object[]) key);
             } else {
-                // N-Key case: key is typed array - convert to Object[] first
+                // Auto-unpack typed array into multi-key call  
                 return putInternalFromTypedArray(key, value);
             }
+        } else if (key instanceof Collection) {
+            // Auto-unpack Collection into multi-key call
+            Collection<?> collection = (Collection<?>) key;
+            return put(value, collection.toArray());
         } else {
-            // Single key case: wrap in coconut shell and store
-            SingleKeyWrapper wrappedKey = new SingleKeyWrapper(key);
-            return putInternal(new Object[]{wrappedKey}, (V) value);
+            // Single key case
+            return putSingleKey(key, value);
         }
+    }
+    
+    /**
+     * Escape hatch method - forces the key to be treated as a single key,
+     * even if it's an array or collection. Use this when you actually want
+     * an array/collection to be the key itself, not unpacked into multiple keys.
+     * 
+     * <p>This method is rarely needed but provides complete control over key handling
+     * for edge cases where arrays or collections should be keys themselves.</p>
+     * 
+     * <p>Examples:</p>
+     * <pre>{@code
+     * MultiKeyMap<String> map = new MultiKeyMap<>();
+     * 
+     * String[] arrayAsKey = {"config", "template", "default"};
+     * 
+     * // Force array to be treated as single key
+     * map.putSingleKey(arrayAsKey, "templateData");
+     * 
+     * // Later retrieve using the same array reference
+     * String data = map.get(arrayAsKey);  // Returns "templateData"
+     * 
+     * // Compare with auto-unpacking behavior:
+     * // map.put(arrayAsKey, "templateData");  // Would store as 3-key entry
+     * }</pre>
+     * 
+     * @param key the key to store (will NOT be unpacked even if it's an array)
+     * @param value the value to store
+     * @return the previous value associated with the key, or null if there was no mapping
+     * @see #put(Object, Object) for auto-unpacking behavior
+     */
+    public V putSingleKey(Object key, V value) {
+        // Store as single key using new polymorphic storage - no wrapper needed!
+        return putInternalSingle(key, value);
     }
     
     /**
      * Internal put implementation that works with Object[] keys.
      */
     private V putInternal(Object[] keys, V value) {
-        int hash = computeHash(keys);
-        MultiKey<V> newKey = new MultiKey<>(keys, value);
+        MultiKey<V> newKey = new MultiKey<>(keys, value); // Uses multi-key constructor
+        return putInternalCommon(newKey);
+    }
+    
+    /**
+     * Internal put implementation for single keys using polymorphic storage.
+     * No wrapper needed - stores the key directly!
+     */
+    private V putInternalSingle(Object key, V value) {
+        MultiKey<V> newKey = new MultiKey<>(key, value); // Uses single-key constructor
+        return putInternalCommon(newKey);
+    }
+    
+    /**
+     * Common put logic for both single and multi-key entries.
+     */
+    private V putInternalCommon(MultiKey<V> newKey) {
+        int hash = newKey.hash;
         
         synchronized (writeLock) {
             // Bound hash to our table size inside the synchronized block
@@ -677,7 +1085,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
                 // Check for an existing key (update case)
                 for (int i = 0; i < chain.length; i++) {
                     MultiKey<V> existing = chain[i];
-                    if (existing.hash == hash && keysEqual(existing.keys, keys)) {
+                    if (existing.hash == hash && keysMatch(existing.keys, newKey.keys)) {
                         // Update existing entry in place - return old value
                         V oldValue = existing.value;
                         chain[i] = newKey;
@@ -718,6 +1126,21 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         }
         
         return putInternal(keys, value);
+    }
+    
+    /**
+     * Helper method to handle typed arrays (String[], int[], etc.) in remove operations.
+     * Converts typed arrays to Object[] arrays using reflection to avoid ClassCastException.
+     */
+    private V removeInternalFromTypedArray(Object typedArray) {
+        int length = Array.getLength(typedArray);
+        Object[] keys = new Object[length];
+        
+        for (int i = 0; i < length; i++) {
+            keys[i] = Array.get(typedArray, i);
+        }
+        
+        return removeInternal(keys);
     }
     
     
@@ -844,8 +1267,15 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         public final Object[] keys;
         public final V value;
 
-        MultiKeyEntry(Object[] keys, V value) {
-            this.keys = keys.clone(); // Defensive copy
+        // Universal constructor - handles both single keys and Object[] keys
+        MultiKeyEntry(Object keys, V value) {
+            if (keys instanceof Object[]) {
+                // Multi-key case
+                this.keys = ((Object[]) keys).clone();
+            } else {
+                // Single key case - wrap in Object[]
+                this.keys = new Object[]{keys};
+            }
             this.value = value;
         }
         
@@ -885,7 +1315,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         @Override
         public MultiKeyEntry<V> next() {
             if (nextEntry == null) {
-                throw new java.util.NoSuchElementException();
+                throw new NoSuchElementException();
             }
             
             MultiKeyEntry<V> result = nextEntry;
@@ -942,30 +1372,243 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      */
     public V remove(Object... keys) {
         // Special case: when remove(null) is called on varargs method, Java passes keys=null
-        // We need to handle single null key using coconut wrapper
+        // We need to handle single null key directly
         if (keys == null) {
-            SingleKeyWrapper wrappedKey = new SingleKeyWrapper(null);
-            return removeInternal(new Object[]{wrappedKey});
+            return removeInternalDirect(null);
         }
         return removeInternal(keys);
     }
     
     /**
-     * Map interface compatible remove method.
-     * Supports both single keys and N-dimensional keys via Object[] detection.
+     * Map interface compatible remove method with auto-unpacking for arrays and collections.
+     * This provides a great experience for Map users by automatically detecting
+     * and unpacking arrays/collections into multi-key calls.
      * 
-     * @param key either a single key or an Object[] containing multiple keys
+     * <p><strong>Auto-unpacking behavior:</strong></p>
+     * <ul>
+     *   <li>If key is an array → automatically unpacked into multiple keys</li>
+     *   <li>If key is a Collection → automatically unpacked into multiple keys</li>
+     *   <li>Otherwise → treated as single key</li>
+     * </ul>
+     * 
+     * <p>Examples:</p>
+     * <pre>{@code
+     * Map<Object, Employee> map = new MultiKeyMap<>();
+     * 
+     * // Auto-unpacking: array becomes multi-key
+     * String[] keys = {"dept", "engineering", "senior"};
+     * Employee removed = map.remove(keys);  // Removes 3-key entry
+     * 
+     * // Auto-unpacking: Collection becomes multi-key
+     * List<String> keyList = Arrays.asList("dept", "sales", "junior");
+     * Employee removed2 = map.remove(keyList);  // Removes 3-key entry
+     * 
+     * // Single key: other objects removed normally  
+     * Employee manager = map.remove("manager");  // Removes single-key entry
+     * 
+     * // Typed arrays also auto-unpack
+     * int[] intKeys = {1, 2, 3};
+     * Data removed3 = map.remove(intKeys);  // Removes 3-key entry
+     * }</pre>
+     * 
+     * @param key single key, or array/Collection that will be auto-unpacked into multiple keys
      * @return the previous value associated with the key, or null if there was no mapping
+     * @see #removeSingleKey(Object) for forcing array to be treated as single key
      */
     public V remove(Object key) {
-        if (key != null && key.getClass().isArray()) {
-            // N-Key case: key is Object[] - remove directly
-            return removeInternal((Object[]) key);
-        } else {
-            // Single key case: wrap in coconut shell and remove
-            SingleKeyWrapper wrappedKey = new SingleKeyWrapper(key);
-            return removeInternal(new Object[]{wrappedKey});
+        // Fast path for normal objects (most common case) - zero heap allocation
+        if (key == null) {
+            return removeInternalDirect(null);
         }
+        
+        Class<?> keyClass = key.getClass();
+        if (keyClass.isArray()) {
+            return removeFromArray(key);
+        } else if (key instanceof Collection) {
+            return removeFromCollection((Collection<?>) key);
+        } else {
+            // Normal object - most common case, optimized for zero heap allocation
+            return removeInternalSingleKeyDirect(key);
+        }
+    }
+    
+    /**
+     * Handle Collection keys with mode-based logic for remove operations.
+     */
+    private V removeFromCollection(Collection<?> collection) {
+        switch (collectionKeyMode) {
+            case MULTI_KEY_ONLY:
+                return removeFromCollectionMultiKeyOnly(collection);
+            case MULTI_KEY_FIRST:
+                return removeFromCollectionMultiKeyFirst(collection);
+            case COLLECTION_KEY_FIRST:
+                return removeFromCollectionKeyFirst(collection);
+            default:
+                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+        }
+    }
+    
+    /**
+     * Handle Array keys with mode-based logic for remove operations.
+     */
+    private V removeFromArray(Object array) {
+        switch (collectionKeyMode) {
+            case MULTI_KEY_ONLY:
+                return removeFromArrayMultiKeyOnly(array);
+            case MULTI_KEY_FIRST:
+                return removeFromArrayMultiKeyFirst(array);
+            case COLLECTION_KEY_FIRST:
+                return removeFromArrayKeyFirst(array);
+            default:
+                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+        }
+    }
+    
+    // Collection remove mode implementations
+    private V removeFromCollectionMultiKeyOnly(Collection<?> collection) {
+        // Only try multi-key removal
+        return removeInternalFromCollection(collection);
+    }
+    
+    private V removeFromCollectionMultiKeyFirst(Collection<?> collection) {
+        // Try multi-key first, then collection-as-key
+        V result = removeInternalFromCollection(collection);
+        if (result == null) {
+            result = removeSingleKey(collection);
+        }
+        return result;
+    }
+    
+    private V removeFromCollectionKeyFirst(Collection<?> collection) {
+        // Try collection-as-key first, then multi-key
+        V result = removeSingleKey(collection);
+        if (result == null) {
+            result = removeInternalFromCollection(collection);
+        }
+        return result;
+    }
+    
+    // Array remove mode implementations
+    private V removeFromArrayMultiKeyOnly(Object array) {
+        if (array instanceof Object[]) {
+            return removeInternal((Object[]) array);
+        } else {
+            return removeInternalFromTypedArray(array);
+        }
+    }
+    
+    private V removeFromArrayMultiKeyFirst(Object array) {
+        // Try multi-key first, then array-as-key
+        V result;
+        if (array instanceof Object[]) {
+            result = removeInternal((Object[]) array);
+        } else {
+            result = removeInternalFromTypedArray(array);
+        }
+        if (result == null) {
+            result = removeSingleKey(array);
+        }
+        return result;
+    }
+    
+    private V removeFromArrayKeyFirst(Object array) {
+        // Try array-as-key first, then multi-key
+        V result = removeSingleKey(array);
+        if (result == null) {
+            if (array instanceof Object[]) {
+                result = removeInternal((Object[]) array);
+            } else {
+                result = removeInternalFromTypedArray(array);
+            }
+        }
+        return result;
+    }
+    
+    /**
+     * Efficient Collection removal without array conversion.
+     */
+    private V removeInternalFromCollection(Collection<?> collection) {
+        if (collection.isEmpty()) {
+            return null;
+        }
+        
+        // TODO: Implement efficient Collection-based removal similar to get
+        // For now, convert to array (will optimize later)
+        return removeInternal(collection.toArray());
+    }
+    
+    /**
+     * Direct single-key removal without heap allocation.
+     */
+    private V removeInternalSingleKeyDirect(Object key) {
+        // For now, use the working removeSingleKey approach
+        // TODO: Optimize this to avoid wrapper and array allocation
+        return removeSingleKey(key);
+    }
+    
+    /**
+     * Escape hatch method - forces the key to be treated as a single key,
+     * even if it's an array or collection. Use this when you actually want
+     * an array/collection to be the key itself, not unpacked into multiple keys.
+     * 
+     * <p>This method is rarely needed but provides complete control over key handling
+     * for edge cases where arrays or collections should be keys themselves.</p>
+     * 
+     * <p>Examples:</p>
+     * <pre>{@code
+     * MultiKeyMap<String> map = new MultiKeyMap<>();
+     * 
+     * String[] arrayAsKey = {"config", "template", "default"};
+     * 
+     * // Force array to be treated as single key
+     * map.putSingleKey(arrayAsKey, "templateData");
+     * 
+     * // Later remove using the same array reference (as single key)
+     * String data = map.removeSingleKey(arrayAsKey);  // Returns "templateData"
+     * 
+     * // Compare with auto-unpacking behavior:
+     * // map.remove(arrayAsKey);  // Would try to remove 3-key entry
+     * }</pre>
+     * 
+     * @param key the key to remove (will NOT be unpacked even if it's an array)
+     * @return the previous value associated with the key, or null if there was no mapping
+     * @see #remove(Object) for auto-unpacking behavior
+     */
+    public V removeSingleKey(Object key) {
+        // Direct single key removal - zero allocation
+        return removeInternalDirect(key);
+    }
+    
+    /**
+     * Escape hatch method to retrieve a value using the provided object as a single key,
+     * without auto-unpacking arrays or Collections.
+     * <p>
+     * This method is useful when you want to use an array or Collection as the actual key
+     * rather than having it auto-unpacked into multiple key dimensions.
+     * 
+     * <p>Examples:</p>
+     * <pre>{@code
+     * MultiKeyMap<String> map = new MultiKeyMap<>();
+     * 
+     * String[] arrayAsKey = {"template", "data"};
+     * List<String> listAsKey = Arrays.asList("config", "values");
+     * 
+     * // Store arrays/collections as single keys
+     * map.putSingleKey(arrayAsKey, "templateData");
+     * map.putSingleKey(listAsKey, "configData");
+     * 
+     * // Retrieve using the array/collection as a single key
+     * String data1 = map.getSingleKey(arrayAsKey);  // Returns "templateData"
+     * String data2 = map.getSingleKey(listAsKey);   // Returns "configData"
+     * }</pre>
+     * 
+     * @param key the object to use as a single key (even if it's an array or Collection)
+     * @return the value associated with the single key, or null if not found
+     * @see #putSingleKey(Object, Object) for storing arrays/Collections as single keys
+     */
+    public V getSingleKey(Object key) {
+        // Direct single key lookup - zero allocation
+        return getInternalDirect(key);
     }
 
     @Override
@@ -994,7 +1637,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
             // Find and remove the entry
             for (int i = 0; i < chain.length; i++) {
                 MultiKey<V> existing = chain[i];
-                if (existing.hash == hash && keysEqual(existing.keys, keys)) {
+                if (existing.hash == hash && keysMatch(existing.keys, keys)) {
                     
                     V oldValue = existing.value;
                     
@@ -1036,10 +1679,9 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      */
     public boolean containsKey(Object... keys) {
         // Special case: when containsKey(null) is called on varargs method, Java passes keys=null
-        // We need to handle single null key using coconut wrapper
+        // We need to handle single null key directly
         if (keys == null) {
-            SingleKeyWrapper wrappedKey = new SingleKeyWrapper(null);
-            return getInternal(new Object[]{wrappedKey}) != null;
+            return containsKeyInternalDirect(null);
         }
         return getInternal(keys) != null;
     }
@@ -1047,41 +1689,27 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     /**
      * Map interface compatible containsKey method.
      * Supports both single keys and N-dimensional keys via Object[] detection.
+     * Uses efficient decision tree pattern: Normal objects first, then Arrays, then Collections.
      * 
      * @param key either a single key or an Object[] containing multiple keys
      * @return true if a mapping exists for the key
      */
     public boolean containsKey(Object key) {
-        if (key != null && key.getClass().isArray()) {
-            if (key instanceof Object[]) {
-                // N-Key case: key is Object[] - check directly
-                return containsKeyInternal((Object[]) key);
-            } else {
-                // N-Key case: key is typed array - convert to Object[] first
-                return containsKeyFromTypedArray(key);
-            }
+        // Fast path for normal objects (most common case) - zero heap allocation
+        if (key == null) {
+            return containsKeyInternalDirect(null);
+        }
+        
+        Class<?> keyClass = key.getClass();
+        if (keyClass.isArray()) {
+            return containsKeyFromArray(key);
+        } else if (key instanceof Collection) {
+            return containsKeyFromCollection((Collection<?>) key);
         } else {
-            // Single key case: wrap in coconut shell and check
-            SingleKeyWrapper wrappedKey = new SingleKeyWrapper(key);
-            return containsKeyInternal(new Object[]{wrappedKey});
+            return containsKeyInternalDirect(key);
         }
     }
     
-    /**
-     * Returns true if this map contains a mapping for the specified Collection-based key.
-     * 
-     * @param keys the key components as a Collection
-     * @return true if a mapping exists for the key
-     */
-    public boolean containsKey(Collection<?> keys) {
-        if (keys == null) {
-            return false;
-        }
-        
-        // Convert Collection to Object[] and check
-        Object[] keyArray = keys.toArray();
-        return containsKeyInternal(keyArray);
-    }
     
     /**
      * Internal containsKey implementation that works with Object[] keys.
@@ -1099,7 +1727,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         }
         
         for (MultiKey<V> existing : chain) {
-            if (existing.hash == hash && keysEqual(existing.keys, keys)) {
+            if (existing.hash == hash && keysMatch(existing.keys, keys)) {
                 return true;
             }
         }
@@ -1118,6 +1746,135 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         }
         
         return containsKeyInternal(keys);
+    }
+    
+    /**
+     * Handles containsKey for array keys with mode-based logic.
+     */
+    private boolean containsKeyFromArray(Object key) {
+        if (key instanceof Object[]) {
+            return containsKeyFromObjectArray((Object[]) key);
+        } else {
+            return containsKeyFromTypedArray(key);
+        }
+    }
+    
+    /**
+     * Handles containsKey for Object[] keys with mode-based logic.
+     */
+    private boolean containsKeyFromObjectArray(Object[] key) {
+        if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_ONLY) {
+            return containsKeyInternal(key);
+        } else if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_FIRST) {
+            return containsKeyMultiFirst(key);
+        } else { // COLLECTION_KEY_FIRST
+            return containsKeyCollectionFirst(key);
+        }
+    }
+    
+    /**
+     * Handles containsKey for Collection keys with mode-based logic.
+     */
+    private boolean containsKeyFromCollection(Collection<?> collection) {
+        if (collection.isEmpty()) {
+            return false;
+        }
+        
+        if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_ONLY) {
+            return containsKeyFromCollectionAsMultiKey(collection);
+        } else if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_FIRST) {
+            return containsKeyFromCollectionMultiFirst(collection);
+        } else { // COLLECTION_KEY_FIRST
+            return containsKeyFromCollectionCollectionFirst(collection);
+        }
+    }
+    
+    /**
+     * Try multi-key first, then single-key for Object[] keys.
+     */
+    private boolean containsKeyMultiFirst(Object[] key) {
+        // First try: multi-key lookup
+        boolean found = containsKeyInternal(key);
+        if (found) {
+            return true;
+        }
+        
+        // Second try: single-key lookup (direct, zero allocation)
+        return containsKeyInternalDirect(key);
+    }
+    
+    /**
+     * Try single-key first, then multi-key for Object[] keys.
+     */
+    private boolean containsKeyCollectionFirst(Object[] key) {
+        // First try: single-key lookup (direct, zero allocation)
+        boolean found = containsKeyInternalDirect(key);
+        if (found) {
+            return true;
+        }
+        
+        // Second try: multi-key lookup
+        return containsKeyInternal(key);
+    }
+    
+    /**
+     * Multi-key only lookup for Collections.
+     */
+    private boolean containsKeyFromCollectionAsMultiKey(Collection<?> collection) {
+        // Compute hash directly from Collection to avoid array allocation
+        int hash = computeHashFromCollection(collection);
+        int bucketIndex = hash & (buckets.length - 1);
+        
+        @SuppressWarnings("unchecked")
+        MultiKey<V>[] chain = (MultiKey<V>[]) buckets[bucketIndex];
+        
+        if (chain == null) {
+            return false;
+        }
+        
+        // Scan the chain for exact match
+        for (MultiKey<V> entry : chain) {
+            if (entry.hash == hash && keysEqualCollection(entry.keys, collection)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Try multi-key first, then single-key for Collections.
+     */
+    private boolean containsKeyFromCollectionMultiFirst(Collection<?> collection) {
+        // First try: multi-key lookup
+        boolean found = containsKeyFromCollectionAsMultiKey(collection);
+        if (found) {
+            return true;
+        }
+        
+        // Second try: single-key lookup (direct, zero allocation)
+        return containsKeyInternalDirect(collection);
+    }
+    
+    /**
+     * Try single-key first, then multi-key for Collections.
+     */
+    private boolean containsKeyFromCollectionCollectionFirst(Collection<?> collection) {
+        // First try: single-key lookup (direct, zero allocation)
+        boolean found = containsKeyInternalDirect(collection);
+        if (found) {
+            return true;
+        }
+        
+        // Second try: multi-key lookup
+        return containsKeyFromCollectionAsMultiKey(collection);
+    }
+    
+    /**
+     * Direct single-key containsKey for normal objects (zero heap allocation).
+     */
+    private boolean containsKeyInternalSingleKeyDirect(Object key) {
+        // Direct single key containment check - zero allocation
+        return containsKeyInternalDirect(key);
     }
     
     
@@ -1154,13 +1911,14 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     public Set<Object> keySet() {
         Set<Object> keys = new HashSet<>();
         for (MultiKeyEntry<V> entry : entries()) {
-            // For single-key entries (coconut wrapped), unwrap the key
-            if (entry.keys.length == 1 && entry.keys[0] instanceof MultiKeyMap.SingleKeyWrapper) {
-                SingleKeyWrapper wrapper = (SingleKeyWrapper) entry.keys[0];
-                Object originalKey = (wrapper.innerKey == NULL_SENTINEL) ? null : wrapper.innerKey;
+            // For Map interface compliance: treat length-1 arrays as single keys
+            if (entry.keys.length == 1) {
+                // Single key case - unwrap from array and NULL_SENTINEL if needed
+                Object singleKey = entry.keys[0];
+                Object originalKey = (singleKey == NULL_SENTINEL) ? null : singleKey;
                 keys.add(originalKey);
             } else {
-                // For multi-key entries, add the Object[] array as the key
+                // Multi-key case - add the Object[] array as the key
                 keys.add(entry.keys);
             }
         }
@@ -1177,12 +1935,13 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         Set<Map.Entry<Object, V>> entrySet = new HashSet<>();
         for (MultiKeyEntry<V> multiEntry : entries()) {
             Object key;
-            // For single-key entries (coconut wrapped), unwrap the key
-            if (multiEntry.keys.length == 1 && multiEntry.keys[0] instanceof MultiKeyMap.SingleKeyWrapper) {
-                SingleKeyWrapper wrapper = (SingleKeyWrapper) multiEntry.keys[0];
-                key = (wrapper.innerKey == NULL_SENTINEL) ? null : wrapper.innerKey;
+            // For Map interface compliance: treat length-1 arrays as single keys
+            if (multiEntry.keys.length == 1) {
+                // Single key case - unwrap from array and NULL_SENTINEL if needed
+                Object singleKey = multiEntry.keys[0];
+                key = (singleKey == NULL_SENTINEL) ? null : singleKey;
             } else {
-                // For multi-key entries, use the Object[] array as the key
+                // Multi-key case - use the Object[] array as the key
                 key = multiEntry.keys;
             }
             
@@ -1200,12 +1959,13 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         int hash = 0;
         for (MultiKeyEntry<V> entry : entries()) {
             Object key;
-            // For single-key entries (coconut wrapped), unwrap the key
-            if (entry.keys.length == 1 && entry.keys[0] instanceof MultiKeyMap.SingleKeyWrapper) {
-                SingleKeyWrapper wrapper = (SingleKeyWrapper) entry.keys[0];
-                key = (wrapper.innerKey == NULL_SENTINEL) ? null : wrapper.innerKey;
+            // For Map interface compliance: treat length-1 arrays as single keys
+            if (entry.keys.length == 1) {
+                // Single key case - unwrap from array and NULL_SENTINEL if needed
+                Object singleKey = entry.keys[0];
+                key = (singleKey == NULL_SENTINEL) ? null : singleKey;
             } else {
-                // For multi-key entries, use the Object[] array
+                // Multi-key case - use Arrays.hashCode for the Object[] array
                 key = Arrays.hashCode(entry.keys);
             }
             
@@ -1232,12 +1992,13 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         try {
             for (MultiKeyEntry<V> entry : entries()) {
                 Object key;
-                // For single-key entries (coconut wrapped), unwrap the key
-                if (entry.keys.length == 1 && entry.keys[0] instanceof MultiKeyMap.SingleKeyWrapper) {
-                    SingleKeyWrapper wrapper = (SingleKeyWrapper) entry.keys[0];
-                    key = (wrapper.innerKey == NULL_SENTINEL) ? null : wrapper.innerKey;
+                // For Map interface compliance: treat length-1 arrays as single keys
+                if (entry.keys.length == 1) {
+                    // Single key case - unwrap from array and NULL_SENTINEL if needed
+                    Object singleKey = entry.keys[0];
+                    key = (singleKey == NULL_SENTINEL) ? null : singleKey;
                 } else {
-                    // For multi-key entries, use the Object[] array
+                    // Multi-key case - use the Object[] array as the key
                     key = entry.keys;
                 }
                 
@@ -1279,14 +2040,14 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
             }
             first = false;
             
-            // Format the key
-            if (entry.keys.length == 1 && entry.keys[0] instanceof MultiKeyMap.SingleKeyWrapper) {
-                // Single-key entry (coconut wrapped)
-                SingleKeyWrapper wrapper = (SingleKeyWrapper) entry.keys[0];
-                Object originalKey = (wrapper.innerKey == NULL_SENTINEL) ? null : wrapper.innerKey;
+            // Format the key for Map interface compliance
+            if (entry.keys.length == 1) {
+                // Single key case - unwrap from array and NULL_SENTINEL if needed
+                Object singleKey = entry.keys[0];
+                Object originalKey = (singleKey == NULL_SENTINEL) ? null : singleKey;
                 sb.append(originalKey);
             } else {
-                // Multi-key entry - show as array
+                // Multi-key case - show as array
                 sb.append(Arrays.toString(entry.keys));
             }
             

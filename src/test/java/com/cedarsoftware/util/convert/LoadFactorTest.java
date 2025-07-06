@@ -15,7 +15,7 @@ class LoadFactorTest {
         
         // Add entries to trigger resize at 50% instead of 75%
         for (int i = 0; i < 20; i++) {
-            map.put(String.class, Integer.class, (long) i, "value" + i);
+            map.put("value" + i, String.class, Integer.class, (long) i);
         }
         
         // Should have resized multiple times with 0.5f load factor
@@ -30,7 +30,7 @@ class LoadFactorTest {
         
         // Should not resize until we hit 12 entries (16 * 0.75)
         for (int i = 0; i < 15; i++) {
-            map.put(String.class, Integer.class, (long) i, "value" + i);
+            map.put("value" + i, String.class, Integer.class, (long) i);
         }
         
         assertTrue(map.size() == 15, "Should have 15 entries");

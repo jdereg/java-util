@@ -244,7 +244,7 @@ class MultiKeyMapMapInterfaceTest {
         Map<Object, String> map = multiMap; // Polymorphic reference
         
         // Test varargs put (MultiKeyMap specific)
-        multiMap.put("key1", "key2", "key3", "multiValue");
+        multiMap.put("multiValue", "key1", "key2", "key3");
         
         // Should be accessible via Map interface with Object[] key
         Object[] keys = {"key1", "key2", "key3"};

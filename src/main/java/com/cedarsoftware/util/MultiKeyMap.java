@@ -1448,6 +1448,32 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     /**
      * {@inheritDoc}
      * <p>
+     * Uses a double-check locking pattern to avoid unnecessary synchronization
+     * when a value is already present. If the key is absent or currently mapped
+     * to {@code null}, the provided value is stored.
+     *
+     * @see Map#putIfAbsent(Object, Object)
+     */
+    @Override
+    public V putIfAbsent(Object key, V value) {
+        V existing = get(key);
+        if (existing != null) {
+            return existing;
+        }
+
+        synchronized (writeLock) {
+            existing = get(key);
+            if (existing == null) {
+                put(key, value);
+                return null;
+            }
+            return existing;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
      * Performs a double-check locking pattern to avoid unnecessary
      * synchronization when the value already exists. If the value is absent
      * or {@code null}, the mapping function is invoked and the result stored

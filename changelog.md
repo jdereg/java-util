@@ -32,6 +32,7 @@
 >   * **Impact**: Minimal - fixes inconsistent behavior and provides migration path through feature options
 >   * **Rationale**: Eliminates confusion from mixed precision behavior and provides simple, memorable conversion rules
 > * Added `computeIfAbsent` support to `MultiKeyMap` for lazy value population
+> * Added `putIfAbsent` support to `MultiKeyMap` for atomic insert when key is missing or mapped to null
 
 #### 3.6.0
 > * **Feature Enhancement**: Added comprehensive `java.awt.Color` conversion support to `Converter`:

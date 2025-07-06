@@ -2135,6 +2135,7 @@ A high-performance, thread-safe Map implementation that supports multi-dimension
 - **Map compatible**: Works with Map interface for existing code
 - **Escape hatch**: Force arrays to be single keys when needed
 - **computeIfAbsent support**: Lazily populate values when keys are missing
+- **putIfAbsent support**: Atomically add entries only when absent
 
 ### API Design Philosophy
 
@@ -2358,6 +2359,12 @@ MultiKeyMap<String> cache = new MultiKeyMap<>();
 String value = cache.computeIfAbsent(
         new Object[]{"region", id},
         k -> loadFromStore((Object[]) k));
+```
+
+**Atomic Insert with putIfAbsent:**
+```java
+MultiKeyMap<String> config = new MultiKeyMap<>();
+config.putIfAbsent(new Object[]{"env", "prod"}, "prodConfig");
 ```
 
 This implementation provides a clean, efficient alternative to composite key objects and nested Maps, with excellent performance characteristics and a developer-friendly API.

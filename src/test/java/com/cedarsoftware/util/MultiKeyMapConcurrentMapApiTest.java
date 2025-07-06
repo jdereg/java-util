@@ -1,0 +1,31 @@
+package com.cedarsoftware.util;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Tests for additional ConcurrentMap APIs on MultiKeyMap.
+ */
+class MultiKeyMapConcurrentMapApiTest {
+
+    @Test
+    void testRemoveWithValue() {
+        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        map.put("val", "a");
+        assertFalse(map.remove("a", "x"));
+        assertTrue(map.remove("a", "val"));
+        assertFalse(map.containsKey("a"));
+    }
+
+    @Test
+    void testReplaceMethods() {
+        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        assertNull(map.replace("a", "x"));
+        map.put("orig", "a");
+        assertTrue(map.replace("a", "orig", "new"));
+        assertEquals("new", map.get("a"));
+        assertEquals("new", map.replace("a", "latest"));
+        assertEquals("latest", map.get("a"));
+    }
+}

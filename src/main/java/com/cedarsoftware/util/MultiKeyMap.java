@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -104,7 +106,7 @@ import java.util.function.Function;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public final class MultiKeyMap<V> implements Map<Object, V> {
+public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     /**
      * Enum to control how keys are stored in put() operations.
@@ -1500,6 +1502,110 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
                 }
             }
             return value; // may be null or value from second read
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Applies the remapping function if the specified key is present and
+     * currently mapped to a non-null value. The operation is performed under
+     * a single synchronization to ensure atomicity.
+     *
+     * @see Map#computeIfPresent(Object, BiFunction)
+     */
+    @Override
+    public V computeIfPresent(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction, "remappingFunction must not be null");
+
+        V oldValue = get(key);
+        if (oldValue == null) {
+            return null;
+        }
+
+        synchronized (writeLock) {
+            oldValue = get(key);
+            if (oldValue == null) {
+                return null;
+            }
+            V newValue = remappingFunction.apply(key, oldValue);
+            if (newValue != null) {
+                put(key, newValue);
+                return newValue;
+            } else {
+                remove(key);
+                return null;
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Computes a new mapping for the specified key using the given remapping
+     * function. The entire computation occurs while synchronized on the map's
+     * write lock to provide atomic behavior.
+     *
+     * @see Map#compute(Object, BiFunction)
+     */
+    @Override
+    public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction, "remappingFunction must not be null");
+
+        synchronized (writeLock) {
+            boolean contains = containsKey(key);
+            V oldValue = get(key);
+            V newValue = remappingFunction.apply(key, oldValue);
+
+            if (newValue == null) {
+                if (contains) {
+                    remove(key);
+                }
+                return null;
+            }
+
+            put(key, newValue);
+            return newValue;
+        }
+    }
+
+    @Override
+    public boolean remove(Object key, Object value) {
+        synchronized (writeLock) {
+            if (!containsKey(key)) {
+                return false;
+            }
+            V current = get(key);
+            if (!Objects.equals(current, value)) {
+                return false;
+            }
+            remove(key);
+            return true;
+        }
+    }
+
+    @Override
+    public V replace(Object key, V value) {
+        synchronized (writeLock) {
+            if (!containsKey(key)) {
+                return null;
+            }
+            return put(key, value);
+        }
+    }
+
+    @Override
+    public boolean replace(Object key, V oldValue, V newValue) {
+        synchronized (writeLock) {
+            if (!containsKey(key)) {
+                return false;
+            }
+            V current = get(key);
+            if (!Objects.equals(current, oldValue)) {
+                return false;
+            }
+            put(key, newValue);
+            return true;
         }
     }
 

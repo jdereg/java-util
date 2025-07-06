@@ -20,6 +20,7 @@
 >   * Returns the same class if not a wrapper type, ensuring safe usage for any class
 >   * Leverages optimized `ClassValueMap` caching for high-performance lookups
 >   * Centralizes primitive/wrapper conversion logic in `ClassUtilities` for consistency across java-util
+> * **BUG FIX**: Fixed race in `MultiKeyMap` resizing so `get()` never returns null while entries are rehashed.
 > * **BUG FIX**: Fixed time conversion precision inconsistencies in `Converter` for consistent long conversion behavior:
 >   * **Consistency Fix**: All time classes now consistently convert to/from `long` using **millisecond precision** (eliminates mixed millisecond/nanosecond behavior)
 >   * **Universal Rule**: `Duration` → long, `Instant` → long, `LocalTime` → long now all return milliseconds for predictable behavior

@@ -1077,39 +1077,45 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      */
     private void resize() {
         Object[] oldBuckets = buckets;
-        buckets = new Object[oldBuckets.length * 2];
-        
-        // Reset counters
-        size = 0;
-        maxChainLength = 0;
-        
-        // Rehash all entries
+        Object[] newBuckets = new Object[oldBuckets.length * 2];
+
+        int newSize = 0;
+        int newMaxChainLength = 0;
+
+        // Rehash all entries into the newBuckets array
         for (Object bucket : oldBuckets) {
             if (bucket != null) {
                 @SuppressWarnings("unchecked")
                 MultiKey<V>[] chain = (MultiKey<V>[]) bucket;
                 for (MultiKey<V> entry : chain) {
-                    rehashEntry(entry);
+                    int len = rehashEntry(entry, newBuckets);
+                    newSize++;
+                    if (len > newMaxChainLength) {
+                        newMaxChainLength = len;
+                    }
                 }
             }
         }
+
+        buckets = newBuckets;
+        size = newSize;
+        maxChainLength = newMaxChainLength;
     }
-    
-    private void rehashEntry(MultiKey<V> entry) {
-        int bucketIndex = entry.hash & (buckets.length - 1);
-        
+
+    private int rehashEntry(MultiKey<V> entry, Object[] targetBuckets) {
+        int bucketIndex = entry.hash & (targetBuckets.length - 1);
+
         @SuppressWarnings("unchecked")
-        MultiKey<V>[] chain = (MultiKey<V>[]) buckets[bucketIndex];
-        
+        MultiKey<V>[] chain = (MultiKey<V>[]) targetBuckets[bucketIndex];
+
         if (chain == null) {
-            buckets[bucketIndex] = createChain(entry);
+            targetBuckets[bucketIndex] = createChain(entry);
+            return 1;
         } else {
-            buckets[bucketIndex] = growChain(chain, entry);
+            chain = growChain(chain, entry);
+            targetBuckets[bucketIndex] = chain;
+            return chain.length;
         }
-        
-        maxChainLength = Math.max(maxChainLength, 
-            ((MultiKey<V>[]) buckets[bucketIndex]).length);
-        size++;
     }
     
     /**

@@ -14,7 +14,7 @@ class MultiKeyMapConcurrentGetTest {
     @Test
     void testConcurrentGetsDuringResize() throws Exception {
         final MultiKeyMap<String> map = new MultiKeyMap<>(4, 0.60f);
-        final int total = 200;
+        final int total = 2000;
         final CountDownLatch startLatch = new CountDownLatch(1);
         final CountDownLatch doneLatch = new CountDownLatch(2);
         final AtomicBoolean failed = new AtomicBoolean(false);

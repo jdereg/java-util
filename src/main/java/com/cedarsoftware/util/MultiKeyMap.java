@@ -1071,7 +1071,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         newChain[oldChain.length] = newKey;
         return newChain;
     }
-    
+
     /**
      * Resizes the hash table to double its current capacity and rehashes all entries.
      * This method must be called from within a synchronized block.

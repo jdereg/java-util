@@ -64,6 +64,7 @@ import java.util.stream.LongStream;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.ClassValueMap;
+import com.cedarsoftware.util.MultiKeyMap;
 
 /**
  * Instance conversion utility for converting objects between various types.

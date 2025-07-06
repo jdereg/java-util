@@ -1,4 +1,4 @@
-package com.cedarsoftware.util.convert;
+package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -130,43 +130,7 @@ class MultiKeyMapCollectionApiTest {
         assertEquals("value", map.get(linkedList));
     }
     
-    @Test
-    void testCollectionVsSingleKeyDisambiguation() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(16);
-        
-        List<String> myList = Arrays.asList("a", "b", "c");
-        
-        // Store the List itself as a single key using putSingleKey
-        map.putSingleKey(myList, "listAsKey");
-        
-        // Store using separate arguments for multi-dimensional key
-        map.put("elementsAsKey", "a", "b", "c");
-        
-        // Retrieve appropriately
-        assertEquals("listAsKey", map.getSingleKey(myList));     // List is the key
-        assertEquals("elementsAsKey", map.get(myList));         // List elements are the key dimensions
-        
-        // Verify they're different entries
-        assertEquals(2, map.size());
-    }
     
-    @Test
-    void testZeroHeapNullOptimization() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(16);
-        
-        // Store value for null key
-        map.putSingleKey(null, "nullValue");
-        
-        // Multiple get(null) calls should use pre-allocated array
-        // (This test verifies functionality; heap allocation testing would require profiling tools)
-        assertEquals("nullValue", map.get((Object) null));
-        assertEquals("nullValue", map.get((Object) null));
-        assertEquals("nullValue", map.get((Object) null));
-        
-        // Varargs null handling
-        Object[] nullArray = null;
-        assertEquals("nullValue", map.get(nullArray));
-    }
     
     @Test
     void testPerformanceComparison() {

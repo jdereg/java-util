@@ -1,4 +1,4 @@
-package com.cedarsoftware.util.convert;
+package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -21,10 +21,11 @@ import java.util.Set;
  * <h3>Key Features:</h3>
  * <ul>
  *   <li><b>N-Dimensional Keys:</b> Support for keys with any number of components (1, 2, 3, ... N)</li>
- *   <li><b>High Performance:</b> Optimized hash computation and separate chaining for excellent performance</li>
+ *   <li><b>High Performance:</b> Zero-allocation polymorphic storage, optimized hash computation</li>
  *   <li><b>Thread-Safe:</b> Lock-free reads with synchronized writes for maximum concurrency</li>
- *   <li><b>Map Interface Compatible:</b> Supports single-key operations with zero-allocation polymorphic storage</li>
+ *   <li><b>Map Interface Compatible:</b> Supports single-key operations via standard Map interface</li>
  *   <li><b>Flexible API:</b> Varargs methods for convenient multi-key operations</li>
+ *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections and Arrays</li>
  * </ul>
  * 
  * <h3>Usage Examples:</h3>
@@ -32,27 +33,49 @@ import java.util.Set;
  * // Create a multi-key map
  * MultiKeyMap<String> map = new MultiKeyMap<>(1024);
  * 
- * // Store values with different key dimensions
+ * // Store values with different key dimensions using Map interface
  * map.put("single-key", "value1");                         // 1D key
- * map.put("key1", "key2", "value2");                       // 2D key
- * map.put("key1", "key2", "key3", "value3");               // 3D key
- * map.put(new Object[]{"k1", "k2", "k3", "k4"}, "value4"); // 4D key via array
- * map.put("k1", "k2", "k3", "k4", "k5", "value5");         // 5D key via array
- * // and so on...unlimited
+ * map.put(new Object[]{"k1", "k2"}, "value2");             // 2D key via array
+ * map.put(Arrays.asList("k1", "k2", "k3"), "value3");      // 3D key via Collection
+ * 
+ * // OR use convenient varargs methods (requires MultiKeyMap variable type)
+ * MultiKeyMap<String> mkMap = new MultiKeyMap<>();
+ * mkMap.put("value1", "single-key");                       // 1D key
+ * mkMap.put("value2", "key1", "key2");                     // 2D key  
+ * mkMap.put("value3", "key1", "key2", "key3");             // 3D key
+ * mkMap.put("value4", "k1", "k2", "k3", "k4");             // 4D key
+ * // ... unlimited dimensions
  *
- * // Retrieve values
+ * // Retrieve values using matching signatures
  * String val1 = map.get("single-key");
- * String val2 = map.get("key1", "key2");
- * String val3 = map.get("key1", "key2", "key3");
- * String val4 = map.get(new Object[]{"k1", "k2", "k3", "k4"});
- * String val5 = map.get("k1", "k2", "k3", "k4", "k5);
- * // and so on...unlimited
+ * String val2 = map.get(new Object[]{"k1", "k2"});
+ * String val3 = mkMap.get("key1", "key2");
+ * String val4 = mkMap.get("k1", "k2", "k3", "k4");
+ * }</pre>
+ * 
+ * <h3>Collection and Array Handling:</h3>
+ * <p>MultiKeyMap provides flexible handling of Collections and Arrays through the 
+ * {@link CollectionKeyMode} enum:</p>
+ * <ul>
+ *   <li><b>MULTI_KEY_ONLY:</b> Collections/Arrays are always unpacked into multi-key lookups</li>
+ *   <li><b>MULTI_KEY_FIRST:</b> Try unpacking first, fallback to treating as single key</li>
+ *   <li><b>COLLECTION_KEY_FIRST:</b> Try as single key first, fallback to unpacking</li>
+ * </ul>
+ * 
+ * <pre>{@code
+ * // Configure collection handling behavior
+ * MultiKeyMap<String> map = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTION_KEY_FIRST);
+ * 
+ * String[] arrayKey = {"config", "database", "url"};
+ * map.put(arrayKey, "jdbc:mysql://localhost:3306/db");     // Array treated as single key
+ * String url = map.get(arrayKey);                          // Retrieved as single key
  * }</pre>
  * 
  * <h3>Performance Characteristics:</h3>
  * <ul>
  *   <li><b>Time Complexity:</b> O(1) average case for get/put/remove operations</li>
  *   <li><b>Space Complexity:</b> O(n) where n is the number of stored key-value pairs</li>
+ *   <li><b>Memory Efficiency:</b> Polymorphic storage (Object vs Object[]) eliminates wrappers</li>
  *   <li><b>Concurrency:</b> Lock-free reads, synchronized writes</li>
  *   <li><b>Load Factor:</b> Configurable, defaults to 0.75 for optimal performance</li>
  * </ul>
@@ -161,7 +184,6 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
             this.hash = computeHash(multiKeys);
             this.value = value;
         }
-
     }
     
     /**
@@ -986,7 +1008,6 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * @param key single key, or array/Collection that will be auto-unpacked into multiple keys
      * @param value the value to store
      * @return the previous value associated with the key, or null if there was no mapping
-     * @see #putSingleKey(Object, Object) for forcing array to be treated as single key
      */
     public V put(Object key, V value) {
         if (key != null && key.getClass().isArray()) {
@@ -1003,43 +1024,10 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
             return put(value, collection.toArray());
         } else {
             // Single key case
-            return putSingleKey(key, value);
+            return putInternalSingle(key, value);
         }
     }
     
-    /**
-     * Escape hatch method - forces the key to be treated as a single key,
-     * even if it's an array or collection. Use this when you actually want
-     * an array/collection to be the key itself, not unpacked into multiple keys.
-     * 
-     * <p>This method is rarely needed but provides complete control over key handling
-     * for edge cases where arrays or collections should be keys themselves.</p>
-     * 
-     * <p>Examples:</p>
-     * <pre>{@code
-     * MultiKeyMap<String> map = new MultiKeyMap<>();
-     * 
-     * String[] arrayAsKey = {"config", "template", "default"};
-     * 
-     * // Force array to be treated as single key
-     * map.putSingleKey(arrayAsKey, "templateData");
-     * 
-     * // Later retrieve using the same array reference
-     * String data = map.get(arrayAsKey);  // Returns "templateData"
-     * 
-     * // Compare with auto-unpacking behavior:
-     * // map.put(arrayAsKey, "templateData");  // Would store as 3-key entry
-     * }</pre>
-     * 
-     * @param key the key to store (will NOT be unpacked even if it's an array)
-     * @param value the value to store
-     * @return the previous value associated with the key, or null if there was no mapping
-     * @see #put(Object, Object) for auto-unpacking behavior
-     */
-    public V putSingleKey(Object key, V value) {
-        // Store as single key using new polymorphic storage - no wrapper needed!
-        return putInternalSingle(key, value);
-    }
     
     /**
      * Internal put implementation that works with Object[] keys.
@@ -1413,7 +1401,6 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * 
      * @param key single key, or array/Collection that will be auto-unpacked into multiple keys
      * @return the previous value associated with the key, or null if there was no mapping
-     * @see #removeSingleKey(Object) for forcing array to be treated as single key
      */
     public V remove(Object key) {
         // Fast path for normal objects (most common case) - zero heap allocation
@@ -1474,14 +1461,14 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         // Try multi-key first, then collection-as-key
         V result = removeInternalFromCollection(collection);
         if (result == null) {
-            result = removeSingleKey(collection);
+            result = removeInternalDirect(collection);
         }
         return result;
     }
     
     private V removeFromCollectionKeyFirst(Collection<?> collection) {
         // Try collection-as-key first, then multi-key
-        V result = removeSingleKey(collection);
+        V result = removeInternalDirect(collection);
         if (result == null) {
             result = removeInternalFromCollection(collection);
         }
@@ -1506,14 +1493,14 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
             result = removeInternalFromTypedArray(array);
         }
         if (result == null) {
-            result = removeSingleKey(array);
+            result = removeInternalDirect(array);
         }
         return result;
     }
     
     private V removeFromArrayKeyFirst(Object array) {
         // Try array-as-key first, then multi-key
-        V result = removeSingleKey(array);
+        V result = removeInternalDirect(array);
         if (result == null) {
             if (array instanceof Object[]) {
                 result = removeInternal((Object[]) array);
@@ -1541,75 +1528,11 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
      * Direct single-key removal without heap allocation.
      */
     private V removeInternalSingleKeyDirect(Object key) {
-        // For now, use the working removeSingleKey approach
-        // TODO: Optimize this to avoid wrapper and array allocation
-        return removeSingleKey(key);
-    }
-    
-    /**
-     * Escape hatch method - forces the key to be treated as a single key,
-     * even if it's an array or collection. Use this when you actually want
-     * an array/collection to be the key itself, not unpacked into multiple keys.
-     * 
-     * <p>This method is rarely needed but provides complete control over key handling
-     * for edge cases where arrays or collections should be keys themselves.</p>
-     * 
-     * <p>Examples:</p>
-     * <pre>{@code
-     * MultiKeyMap<String> map = new MultiKeyMap<>();
-     * 
-     * String[] arrayAsKey = {"config", "template", "default"};
-     * 
-     * // Force array to be treated as single key
-     * map.putSingleKey(arrayAsKey, "templateData");
-     * 
-     * // Later remove using the same array reference (as single key)
-     * String data = map.removeSingleKey(arrayAsKey);  // Returns "templateData"
-     * 
-     * // Compare with auto-unpacking behavior:
-     * // map.remove(arrayAsKey);  // Would try to remove 3-key entry
-     * }</pre>
-     * 
-     * @param key the key to remove (will NOT be unpacked even if it's an array)
-     * @return the previous value associated with the key, or null if there was no mapping
-     * @see #remove(Object) for auto-unpacking behavior
-     */
-    public V removeSingleKey(Object key) {
         // Direct single key removal - zero allocation
         return removeInternalDirect(key);
     }
     
-    /**
-     * Escape hatch method to retrieve a value using the provided object as a single key,
-     * without auto-unpacking arrays or Collections.
-     * <p>
-     * This method is useful when you want to use an array or Collection as the actual key
-     * rather than having it auto-unpacked into multiple key dimensions.
-     * 
-     * <p>Examples:</p>
-     * <pre>{@code
-     * MultiKeyMap<String> map = new MultiKeyMap<>();
-     * 
-     * String[] arrayAsKey = {"template", "data"};
-     * List<String> listAsKey = Arrays.asList("config", "values");
-     * 
-     * // Store arrays/collections as single keys
-     * map.putSingleKey(arrayAsKey, "templateData");
-     * map.putSingleKey(listAsKey, "configData");
-     * 
-     * // Retrieve using the array/collection as a single key
-     * String data1 = map.getSingleKey(arrayAsKey);  // Returns "templateData"
-     * String data2 = map.getSingleKey(listAsKey);   // Returns "configData"
-     * }</pre>
-     * 
-     * @param key the object to use as a single key (even if it's an array or Collection)
-     * @return the value associated with the single key, or null if not found
-     * @see #putSingleKey(Object, Object) for storing arrays/Collections as single keys
-     */
-    public V getSingleKey(Object key) {
-        // Direct single key lookup - zero allocation
-        return getInternalDirect(key);
-    }
+    
 
     @Override
     public void putAll(Map<? extends Object, ? extends V> m) {
@@ -1868,15 +1791,6 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
         // Second try: multi-key lookup
         return containsKeyFromCollectionAsMultiKey(collection);
     }
-    
-    /**
-     * Direct single-key containsKey for normal objects (zero heap allocation).
-     */
-    private boolean containsKeyInternalSingleKeyDirect(Object key) {
-        // Direct single key containment check - zero allocation
-        return containsKeyInternalDirect(key);
-    }
-    
     
     /**
      * Removes all of the mappings from this map.

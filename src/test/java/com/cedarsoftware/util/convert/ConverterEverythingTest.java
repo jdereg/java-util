@@ -8266,4 +8266,54 @@ class ConverterEverythingTest {
                 {LocalTime.of(1, 1, 1, 0), 3661000L}, // 1h 1m 1s = 3661 seconds = 3661000 milliseconds
         });
     }
+
+    /**
+     * Initialize all possible conversion pairs for coverage tracking
+     */
+    @BeforeAll
+    static void initializeAllPossibleConversions() {
+        // Get all supported conversions from the converter
+        Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+        
+        // Initialize all possible pairs as "not tested"
+        for (Map.Entry<Class<?>, Set<Class<?>>> entry : conversions.entrySet()) {
+            Class<?> sourceClass = entry.getKey();
+            Set<Class<?>> targetClasses = entry.getValue();
+            for (Class<?> targetClass : targetClasses) {
+                updateStat(pair(sourceClass, targetClass), false);
+            }
+        }
+    }
+
+    /**
+     * Print test coverage statistics after all tests complete
+     */
+    @AfterAll
+    static void printStats() {
+        Set<String> testPairNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        int missing = 0;
+
+        for (Map.Entry<Map.Entry<Class<?>, Class<?>>, Boolean> entry : STAT_DB.entrySet()) {
+            Map.Entry<Class<?>, Class<?>> pair = entry.getKey();
+            boolean value = entry.getValue();
+            if (!value) {
+                Class<?> sourceClass = pair.getKey();
+                Class<?> targetClass = pair.getValue();
+                if (isHardCase(sourceClass, targetClass)) {
+                    continue;
+                }
+                missing++;
+                testPairNames.add("\n  " + Converter.getShortName(pair.getKey()) + " ==> " + Converter.getShortName(pair.getValue()));
+            }
+        }
+        
+        System.out.println("\n=== CONVERSION TEST COVERAGE ANALYSIS ===");
+        System.out.println("Total conversion pairs      = " + STAT_DB.size());
+        System.out.println("Conversion pairs tested     = " + (STAT_DB.size() - missing));
+        System.out.println("Conversion pairs not tested = " + missing);
+        if (missing > 0) {
+            System.out.println("Tests needed:" + String.join("", testPairNames));
+        }
+        System.out.println("===========================================\n");
+    }
 }

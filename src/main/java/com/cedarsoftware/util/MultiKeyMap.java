@@ -1873,6 +1873,7 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     /**
      * Returns a string representation of this map.
      * Shows the key-value mappings in the format {key1=value1, key2=value2}.
+     * Handles self-references to prevent infinite recursion.
      */
     @Override
     public String toString() {
@@ -1895,16 +1896,46 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
                 // Single key case - unwrap from array and NULL_SENTINEL if needed
                 Object singleKey = entry.keys[0];
                 Object originalKey = (singleKey == NULL_SENTINEL) ? null : singleKey;
-                sb.append(originalKey);
+                appendSafeKey(sb, originalKey);
             } else {
-                // Multi-key case - show as array
-                sb.append(Arrays.toString(entry.keys));
+                // Multi-key case - show as array with self-reference detection
+                appendSafeMultiKey(sb, entry.keys);
             }
             
-            sb.append('=').append(entry.value);
+            sb.append('=');
+            appendSafeValue(sb, entry.value);
         }
         
         return sb.append('}').toString();
+    }
+    
+    private void appendSafeKey(StringBuilder sb, Object key) {
+        if (key == this) {
+            sb.append("(this Map)");
+        } else {
+            sb.append(key);
+        }
+    }
+    
+    private void appendSafeMultiKey(StringBuilder sb, Object[] keys) {
+        sb.append('[');
+        for (int i = 0; i < keys.length; i++) {
+            if (i > 0) sb.append(", ");
+            if (keys[i] == this) {
+                sb.append("(this Map)");
+            } else {
+                sb.append(keys[i]);
+            }
+        }
+        sb.append(']');
+    }
+    
+    private void appendSafeValue(StringBuilder sb, Object value) {
+        if (value == this) {
+            sb.append("(this Map)");
+        } else {
+            sb.append(value);
+        }
     }
     
     /**

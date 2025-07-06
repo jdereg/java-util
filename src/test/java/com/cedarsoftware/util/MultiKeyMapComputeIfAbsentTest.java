@@ -39,7 +39,7 @@ class MultiKeyMapComputeIfAbsentTest {
     @Test
     void testReplaceNullValue() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
-        map.put("nullKey", null);
+        map.put("nullKey", (String) null);
 
         String value = map.computeIfAbsent("nullKey", k -> "filled");
         assertEquals("filled", value);

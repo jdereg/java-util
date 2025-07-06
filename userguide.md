@@ -2134,6 +2134,7 @@ A high-performance, thread-safe Map implementation that supports multi-dimension
 - **Premium API**: Elegant varargs interface for MultiKeyMap users
 - **Map compatible**: Works with Map interface for existing code
 - **Escape hatch**: Force arrays to be single keys when needed
+- **computeIfAbsent support**: Lazily populate values when keys are missing
 
 ### API Design Philosophy
 
@@ -2349,6 +2350,14 @@ cache.put(result2, userId, "api", "v1", "orders");
 
 // Fast multi-dimensional lookups
 Result cached = cache.get(userId, "api", "v1", "users");
+```
+
+**Lazy Loading with computeIfAbsent:**
+```java
+MultiKeyMap<String> cache = new MultiKeyMap<>();
+String value = cache.computeIfAbsent(
+        new Object[]{"region", id},
+        k -> loadFromStore((Object[]) k));
 ```
 
 This implementation provides a clean, efficient alternative to composite key objects and nested Maps, with excellent performance characteristics and a developer-friendly API.

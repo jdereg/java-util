@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * High-performance N-dimensional key-value Map implementation using separate chaining.
@@ -1441,6 +1442,38 @@ public final class MultiKeyMap<V> implements Map<Object, V> {
     public void putAll(Map<? extends Object, ? extends V> m) {
         for (Map.Entry<? extends Object, ? extends V> entry : m.entrySet()) {
             put(entry.getKey(), entry.getValue());
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Performs a double-check locking pattern to avoid unnecessary
+     * synchronization when the value already exists. If the value is absent
+     * or {@code null}, the mapping function is invoked and the result stored
+     * if non-null.
+     *
+     * @see Map#computeIfAbsent(Object, Function)
+     */
+    @Override
+    public V computeIfAbsent(Object key, Function<? super Object, ? extends V> mappingFunction) {
+        Objects.requireNonNull(mappingFunction, "mappingFunction must not be null");
+
+        V value = get(key);
+        if (value != null) {
+            return value;
+        }
+
+        synchronized (writeLock) {
+            value = get(key);
+            if (value == null) {
+                V newValue = mappingFunction.apply(key);
+                if (newValue != null) {
+                    put(key, newValue);
+                    return newValue;
+                }
+            }
+            return value; // may be null or value from second read
         }
     }
 

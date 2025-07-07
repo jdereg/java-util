@@ -379,28 +379,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
-     * Creates a MultiKey from any key object with unified logic.
-     * Follows Codex's approach for type safety and consistency.
-     */
-    private MultiKey<V> createMultiKey(Object key, V value) {
-        if (key != null && key.getClass().isArray()) {
-            if (key instanceof Object[]) {
-                return new MultiKey<>((Object[]) key, value);
-            }
-            int length = Array.getLength(key);
-            Object[] arr = new Object[length];
-            for (int i = 0; i < length; i++) {
-                arr[i] = Array.get(key, i);
-            }
-            return new MultiKey<>(arr, value);
-        } else if (key instanceof Collection) {
-            Collection<?> col = (Collection<?>) key;
-            return new MultiKey<>(col.toArray(), value);
-        }
-        return new MultiKey<>(key, value);
-    }
-    
-    /**
      * Selects the appropriate stripe lock based on the hash code.
      * Uses fast bit masking for optimal performance.
      */
@@ -484,18 +462,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
-     * Handle Array keys with mode-based logic.
+     * Handle Array keys - always expand into multi-key lookup.
+     * Arrays are always unpacked regardless of CollectionKeyMode setting.
      */
     private V getFromArray(Object array) {
-        switch (collectionKeyMode) {
-            case MULTI_KEY_ONLY:
-                return getFromArrayMultiKeyOnly(array);
-            case MULTI_KEY_FIRST:
-                return getFromArrayMultiKeyFirst(array);
-            case COLLECTION_KEY_FIRST:
-                return getFromArrayKeyFirst(array);
-            default:
-                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+        if (array instanceof Object[]) {
+            return getInternal((Object[]) array);
+        } else {
+            return getInternalFromTypedArray(array);
         }
     }
     
@@ -535,61 +509,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Object rawResult = getInternalFromCollectionRaw(collection);
         return rawResult == NOT_FOUND_SENTINEL ? null : (V) rawResult;
     }
-    
-    /**
-     * Array with MULTI_KEY_ONLY mode - only try multi-key lookup.
-     */
-    private V getFromArrayMultiKeyOnly(Object array) {
-        if (array instanceof Object[]) {
-            return getInternal((Object[]) array);
-        } else {
-            return getInternalFromTypedArray(array);
-        }
-    }
-    
-    /**
-     * Array with MULTI_KEY_FIRST mode - try multi-key first, then array-as-key.
-     */
-    private V getFromArrayMultiKeyFirst(Object array) {
-        // Try multi-key first
-        Object rawResult;
-        if (array instanceof Object[]) {
-            rawResult = getInternalRaw((Object[]) array);
-        } else {
-            // For typed arrays, we need to convert to check - less efficient but necessary
-            V result = getInternalFromTypedArray(array);
-            if (result != null) {
-                return result;
-            }
-            rawResult = NOT_FOUND_SENTINEL;  // Typed array lookup returned null
-        }
-        
-        if (rawResult != NOT_FOUND_SENTINEL) {
-            return (V) rawResult;  // Found via multi-key (could be null value)
-        }
-        
-        // Multi-key not found, try array-as-key with zero allocations!
-        return getInternalDirect(array);
-    }
-    
-    /**
-     * Array with COLLECTION_KEY_FIRST mode - try array-as-key first, then multi-key.
-     */
-    private V getFromArrayKeyFirst(Object array) {
-        // Try array-as-key first with zero allocations!
-        V result = getInternalDirect(array);
-        if (result != null) {
-            return result;  // Found via array-as-key
-        }
-        
-        // Array-as-key not found, try multi-key
-        if (array instanceof Object[]) {
-            return getInternal((Object[]) array);
-        } else {
-            return getInternalFromTypedArray(array);
-        }
-    }
-    
     
     /**
      * Gets the value for the given typed array-based multi-dimensional key.
@@ -658,34 +577,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         return null;
-    }
-    
-    /**
-     * Internal get implementation that returns raw result with sentinels.
-     * Returns NOT_FOUND_SENTINEL if key doesn't exist, actual value (including null) if found.
-     */
-    private Object getInternalRaw(Object[] keys) {
-        int hash = computeHash(keys);
-        
-        // Capture buckets reference to avoid race condition during resize
-        Object[] currentBuckets = buckets;
-        int bucketIndex = hash & (currentBuckets.length - 1);
-        
-        @SuppressWarnings("unchecked")
-        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
-        
-        if (chain == null) {
-            return NOT_FOUND_SENTINEL;
-        }
-        
-        // Scan the chain for exact match
-        for (MultiKey<V> entry : chain) {
-            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
-                return entry.value;  // Return actual value (could be null)
-            }
-        }
-        
-        return NOT_FOUND_SENTINEL;
     }
     
     /**
@@ -938,14 +829,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
-     * Compares stored keys (Object or Object[]) with Collection keys for equality.
-     * Uses same comparison logic as keysEqual for consistency.
-     */
-    
-    
-    
-    /**
-     * Premium varargs API - Store a value with unlimited multiple keys.
+     * Premium var-args API - Store a value with unlimited multiple keys.
      * This is the recommended API for MultiKeyMap users as it provides the best
      * developer experience with unlimited keys and zero array allocations for
      * inline arguments.
@@ -1041,22 +925,39 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V put(Object key, V value) {
         if (key != null && key.getClass().isArray()) {
             if (key instanceof Object[]) {
-                // Auto-unpack Object[] into multi-key call
+                // Always unpack arrays into multi-key call
                 return put(value, (Object[]) key);
             } else {
-                // Auto-unpack typed array into multi-key call  
+                // Always unpack typed arrays into multi-key call  
                 return putInternalFromTypedArray(key, value);
             }
         } else if (key instanceof Collection) {
-            // Auto-unpack Collection into multi-key call
-            Collection<?> collection = (Collection<?>) key;
-            return put(value, collection.toArray());
+            // Handle Collection based on CollectionKeyMode
+            return putFromCollection((Collection<?>) key, value);
         } else {
             // Single key case
             return putInternalSingle(key, value);
         }
     }
     
+    /**
+     * Handle Collection keys in put operations based on CollectionKeyMode.
+     */
+    private V putFromCollection(Collection<?> collection, V value) {
+        switch (collectionKeyMode) {
+            case MULTI_KEY_ONLY:
+                // Always unpack Collection into multi-key call
+                return put(value, collection.toArray());
+            case MULTI_KEY_FIRST:
+                // Try as multi-key, but since put is deterministic, just unpack
+                return put(value, collection.toArray());
+            case COLLECTION_KEY_FIRST:
+                // Treat Collection as single key
+                return putInternalSingle(collection, value);
+            default:
+                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+        }
+    }
     
     /**
      * Internal put implementation that works with Object[] keys.
@@ -1089,8 +990,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (chain == null) {
             chain = createChain(newKey);
             buckets[bucketIndex] = chain;
-            int newSize = atomicSize.incrementAndGet();
-            size = newSize; // Update volatile field for backward compatibility
+            size = atomicSize.incrementAndGet(); // Update volatile field for backward compatibility
 
             if (1 > maxChainLength) {
                 maxChainLength = 1;
@@ -1109,8 +1009,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         chain = growChain(chain, newKey);
         buckets[bucketIndex] = chain;
-        int newSize = atomicSize.incrementAndGet();
-        size = newSize; // Update volatile field for backward compatibility
+        size = atomicSize.incrementAndGet(); // Update volatile field for backward compatibility
 
         if (chain.length > maxChainLength) {
             maxChainLength = chain.length;
@@ -1174,7 +1073,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         return removeInternal(keys);
     }
-    
     
     /**
      * Creates a new single-element chain array.
@@ -1432,18 +1330,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
-     * Handle Array keys with mode-based logic for remove operations.
+     * Handle Array keys - always expand arrays into multi-key remove operations.
      */
     private V removeFromArray(Object array) {
-        switch (collectionKeyMode) {
-            case MULTI_KEY_ONLY:
-                return removeFromArrayMultiKeyOnly(array);
-            case MULTI_KEY_FIRST:
-                return removeFromArrayMultiKeyFirst(array);
-            case COLLECTION_KEY_FIRST:
-                return removeFromArrayKeyFirst(array);
-            default:
-                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+        if (array instanceof Object[]) {
+            // Always expand Object arrays into multi-key remove
+            return removeInternal((Object[]) array);
+        } else {
+            // Always expand typed arrays into multi-key remove
+            return removeInternalFromTypedArray(array);
         }
     }
     
@@ -1471,42 +1366,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return result;
     }
     
-    // Array remove mode implementations
-    private V removeFromArrayMultiKeyOnly(Object array) {
-        if (array instanceof Object[]) {
-            return removeInternal((Object[]) array);
-        } else {
-            return removeInternalFromTypedArray(array);
-        }
-    }
-    
-    private V removeFromArrayMultiKeyFirst(Object array) {
-        // Try multi-key first, then array-as-key
-        V result;
-        if (array instanceof Object[]) {
-            result = removeInternal((Object[]) array);
-        } else {
-            result = removeInternalFromTypedArray(array);
-        }
-        if (result == null) {
-            result = removeInternalDirect(array);
-        }
-        return result;
-    }
-    
-    private V removeFromArrayKeyFirst(Object array) {
-        // Try array-as-key first, then multi-key
-        V result = removeInternalDirect(array);
-        if (result == null) {
-            if (array instanceof Object[]) {
-                result = removeInternal((Object[]) array);
-            } else {
-                result = removeInternalFromTypedArray(array);
-            }
-        }
-        return result;
-    }
-    
     /**
      * Efficient Collection removal without array conversion.
      */
@@ -1527,8 +1386,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Direct single key removal - zero allocation
         return removeInternalDirect(key);
     }
-    
-    
 
     @Override
     public void putAll(Map<? extends Object, ? extends V> m) {
@@ -1774,7 +1631,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
     
-    
     /**
      * Returns true if this map contains a mapping for the specified N-dimensional key.
      * 
@@ -1814,7 +1670,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
     
-    
     /**
      * Internal containsKey implementation that works with Object[] keys.
      * Actually checks for key existence, not just non-null values.
@@ -1853,26 +1708,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
-     * Handles containsKey for array keys with mode-based logic.
+     * Handles containsKey for array keys - always expand arrays into multi-key checks.
      */
     private boolean containsKeyFromArray(Object key) {
         if (key instanceof Object[]) {
-            return containsKeyFromObjectArray((Object[]) key);
+            // Always expand Object arrays into multi-key check
+            return containsKeyInternal((Object[]) key);
         } else {
+            // Always expand typed arrays into multi-key check
             return containsKeyFromTypedArray(key);
-        }
-    }
-    
-    /**
-     * Handles containsKey for Object[] keys with mode-based logic.
-     */
-    private boolean containsKeyFromObjectArray(Object[] key) {
-        if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_ONLY) {
-            return containsKeyInternal(key);
-        } else if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_FIRST) {
-            return containsKeyMultiFirst(key);
-        } else { // COLLECTION_KEY_FIRST
-            return containsKeyCollectionFirst(key);
         }
     }
     
@@ -1891,34 +1735,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else { // COLLECTION_KEY_FIRST
             return containsKeyFromCollectionCollectionFirst(collection);
         }
-    }
-    
-    /**
-     * Try multi-key first, then single-key for Object[] keys.
-     */
-    private boolean containsKeyMultiFirst(Object[] key) {
-        // First try: multi-key lookup
-        boolean found = containsKeyInternal(key);
-        if (found) {
-            return true;
-        }
-        
-        // Second try: single-key lookup (direct, zero allocation)
-        return containsKeyInternalDirect(key);
-    }
-    
-    /**
-     * Try single-key first, then multi-key for Object[] keys.
-     */
-    private boolean containsKeyCollectionFirst(Object[] key) {
-        // First try: single-key lookup (direct, zero allocation)
-        boolean found = containsKeyInternalDirect(key);
-        if (found) {
-            return true;
-        }
-        
-        // Second try: multi-key lookup
-        return containsKeyInternal(key);
     }
     
     /**
@@ -1974,7 +1790,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
-     * Removes all of the mappings from this map.
+     * Removes all the mappings from this map.
      * The map will be empty after this call returns.
      */
     public void clear() {

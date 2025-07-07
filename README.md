@@ -182,8 +182,9 @@ CaseInsensitiveMap<Object, String> mixed = new CaseInsensitiveMap<>();
 mixed.put("StringKey", "value1");
 mixed.put(42, "value2");           // Non-string keys work fine
 
-// Wrap existing maps for thread-safety
-Map<String, String> concurrent = new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
+// Use ConcurrentHashMap as backing implementation for thread-safety
+Map<String, String> existingData = Map.of("Content-Type", "application/json");
+Map<String, String> concurrent = new CaseInsensitiveMap<>(existingData, new ConcurrentHashMap<>());
 ```
 
 ### 🗝️ MultiKeyMap - N-Dimensional Key-Value Mapping

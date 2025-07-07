@@ -28,9 +28,14 @@ class MultiKeyMapLockStripingTest {
     
     @Test
     void testBasicConcurrentPuts() throws InterruptedException {
+        System.out.println("=== Starting Basic Concurrent Puts Test ===");
+        System.out.println("Threads: " + NUM_THREADS + ", Operations per thread: " + OPERATIONS_PER_THREAD);
+        
         ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
         CountDownLatch latch = new CountDownLatch(NUM_THREADS);
         AtomicInteger errors = new AtomicInteger(0);
+        
+        long startTime = System.nanoTime();
         
         // Each thread puts unique keys
         for (int t = 0; t < NUM_THREADS; t++) {
@@ -53,6 +58,14 @@ class MultiKeyMapLockStripingTest {
         
         latch.await(30, TimeUnit.SECONDS);
         executor.shutdown();
+        
+        long endTime = System.nanoTime();
+        long totalTime = endTime - startTime;
+        
+        System.out.println("Test completed in " + (totalTime / 1_000_000) + "ms");
+        System.out.println("Operations per second: " + (NUM_THREADS * OPERATIONS_PER_THREAD * 1_000_000_000L / totalTime));
+        
+//        map.printContentionStatistics();
         
         assertEquals(0, errors.get(), "No errors should occur during concurrent puts");
         assertEquals(NUM_THREADS * OPERATIONS_PER_THREAD, map.size(), "All entries should be present");
@@ -109,6 +122,8 @@ class MultiKeyMapLockStripingTest {
     
     @Test
     void testConcurrentMixedOperations() throws InterruptedException {
+        System.out.println("\n=== Starting Concurrent Mixed Operations Test ===");
+        
         // Pre-populate with some data
         for (int i = 0; i < 100; i++) {
             map.put("initial_" + i, "initialValue_" + i);
@@ -118,6 +133,8 @@ class MultiKeyMapLockStripingTest {
         CountDownLatch latch = new CountDownLatch(NUM_THREADS);
         AtomicInteger errors = new AtomicInteger(0);
         AtomicInteger totalOps = new AtomicInteger(0);
+        
+        long startTime = System.nanoTime();
         
         for (int t = 0; t < NUM_THREADS; t++) {
             final int threadId = t;
@@ -161,6 +178,14 @@ class MultiKeyMapLockStripingTest {
         latch.await(30, TimeUnit.SECONDS);
         executor.shutdown();
         
+        long endTime = System.nanoTime();
+        long totalTime = endTime - startTime;
+        
+        System.out.println("Mixed operations test completed in " + (totalTime / 1_000_000) + "ms");
+        System.out.println("Operations per second: " + (totalOps.get() * 1_000_000_000L / totalTime));
+        
+//        map.printContentionStatistics();
+        
         assertEquals(0, errors.get(), "No errors should occur during mixed operations");
         assertTrue(totalOps.get() > 0, "Operations should have been performed");
         System.out.println("Completed " + totalOps.get() + " concurrent operations successfully");
@@ -168,12 +193,16 @@ class MultiKeyMapLockStripingTest {
     
     @Test 
     void testConcurrentResizeOperations() throws InterruptedException {
+        System.out.println("\n=== Starting Concurrent Resize Operations Test ===");
+        
         // Start with small capacity to force resizes
         map = new MultiKeyMap<>(8);
         
         ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
         CountDownLatch latch = new CountDownLatch(NUM_THREADS);
         AtomicInteger errors = new AtomicInteger(0);
+        
+        long startTime = System.nanoTime();
         
         for (int t = 0; t < NUM_THREADS; t++) {
             final int threadId = t;
@@ -201,6 +230,14 @@ class MultiKeyMapLockStripingTest {
         
         latch.await(30, TimeUnit.SECONDS);
         executor.shutdown();
+        
+        long endTime = System.nanoTime();
+        long totalTime = endTime - startTime;
+        
+        System.out.println("Resize operations test completed in " + (totalTime / 1_000_000) + "ms");
+        System.out.println("Final map size: " + map.size());
+        
+//        map.printContentionStatistics();
         
         assertEquals(0, errors.get(), "No errors should occur during concurrent resize operations");
         

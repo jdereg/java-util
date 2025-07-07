@@ -30,12 +30,15 @@ class MultiKeyMapConcurrencyTest {
     @Test
     void testConcurrentReadsAndWrites() throws InterruptedException {
         System.out.println("=== Concurrent Reads and Writes Test ===");
+        System.out.println("Threads: " + NUM_THREADS + ", Operations per thread: " + OPERATIONS_PER_THREAD);
         
         MultiKeyMap<String> map = new MultiKeyMap<>(CAPACITY);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(NUM_THREADS);
         AtomicBoolean testFailed = new AtomicBoolean(false);
         AtomicReference<Exception> firstException = new AtomicReference<>();
+        
+        long testStartTime = System.nanoTime();
         
         // Create threads that perform mixed read/write operations
         for (int threadId = 0; threadId < NUM_THREADS; threadId++) {
@@ -73,13 +76,20 @@ class MultiKeyMapConcurrencyTest {
         startLatch.countDown(); // Start all threads
         assertTrue(doneLatch.await(30, TimeUnit.SECONDS), "Test should complete within 30 seconds");
         
+        long testEndTime = System.nanoTime();
+        long totalTime = testEndTime - testStartTime;
+        
         if (testFailed.get()) {
             fail("Concurrency test failed: " + firstException.get().getMessage(), firstException.get());
         }
         
+        System.out.println("Test completed in " + (totalTime / 1_000_000) + "ms");
+        System.out.println("Operations per second: " + (NUM_THREADS * OPERATIONS_PER_THREAD * 1_000_000_000L / totalTime));
         System.out.println("Final map size: " + map.size());
         System.out.println("Max chain length: " + map.getMaxChainLength());
         System.out.println("Load factor: " + String.format("%.2f", map.getLoadFactor()));
+        
+//        map.printContentionStatistics();
         
         assertTrue(map.size() > 0, "Map should have some entries after concurrent operations");
         assertTrue(map.getMaxChainLength() >= 1, "Should have at least one chain");
@@ -134,6 +144,7 @@ class MultiKeyMapConcurrencyTest {
     @Test
     void testHighContentionScenario() throws InterruptedException {
         System.out.println("\n=== High Contention Scenario Test ===");
+        System.out.println("This test uses LIMITED KEY SET to force high lock contention");
         
         MultiKeyMap<String> map = new MultiKeyMap<>(CAPACITY);
         ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
@@ -146,6 +157,11 @@ class MultiKeyMapConcurrencyTest {
         Class<?>[] sources = {String.class, Integer.class, Long.class};
         Class<?>[] targets = {Double.class, Boolean.class, Byte.class};
         long[] instanceIds = {0L, 1L, 2L};
+        
+        System.out.println("Key combinations: " + (sources.length * targets.length * instanceIds.length) + 
+                          " (designed to create contention)");
+        
+        long testStartTime = System.nanoTime();
         
         for (int threadId = 0; threadId < NUM_THREADS; threadId++) {
             final int id = threadId;
@@ -180,10 +196,17 @@ class MultiKeyMapConcurrencyTest {
         executor.shutdown();
         assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
         
+        long testEndTime = System.nanoTime();
+        long totalTime = testEndTime - testStartTime;
+        
+        System.out.println("High contention test completed in " + (totalTime / 1_000_000) + "ms");
+        System.out.println("Operations per second: " + (completedOps.get() * 1_000_000_000L / totalTime));
         System.out.println("Completed operations: " + completedOps.get());
         System.out.println("Write operations: " + writeOps.get());
         System.out.println("Read operations: " + readOps.get());
         System.out.println("Final map size: " + map.size());
+        
+//        map.printContentionStatistics();
         
         // Verify all expected operations completed
         assertEquals(NUM_THREADS * OPERATIONS_PER_THREAD, completedOps.get());
@@ -251,6 +274,8 @@ class MultiKeyMapConcurrencyTest {
         System.out.println("Operations per second: " + (totalOperations.get() / TEST_DURATION_SECONDS));
         System.out.println("Exceptions encountered: " + exceptionCount.get());
         System.out.println("Final map size: " + map.size());
+        
+//        map.printContentionStatistics();
         
         assertEquals(0, exceptionCount.get(), "Should not encounter any exceptions during stress test");
         assertTrue(totalOperations.get() > 0, "Should have completed some operations");

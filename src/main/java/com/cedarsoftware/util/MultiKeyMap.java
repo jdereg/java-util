@@ -1610,6 +1610,34 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
+     * {@inheritDoc}
+     * <p>
+     * If the specified key is not already associated with a value or is
+     * associated with null, associates it with the given non-null value.
+     * Otherwise, replaces the associated value with the results of the given
+     * remapping function, or removes if the result is null.
+     *
+     * @see Map#merge(Object, Object, BiFunction)
+     */
+    @Override
+    public V merge(Object key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        Objects.requireNonNull(remappingFunction, "remappingFunction must not be null");
+        Objects.requireNonNull(value, "value must not be null");
+
+        synchronized (writeLock) {
+            V oldValue = get(key);
+            V newValue = (oldValue == null) ? value :
+                         remappingFunction.apply(oldValue, value);
+            if (newValue == null) {
+                remove(key);
+            } else {
+                put(key, newValue);
+            }
+            return newValue;
+        }
+    }
+
+    /**
      * Internal remove implementation that works with Object[] keys.
      */
     private V removeInternal(Object[] keys) {

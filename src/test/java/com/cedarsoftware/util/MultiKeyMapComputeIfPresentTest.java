@@ -15,7 +15,7 @@ class MultiKeyMapComputeIfPresentTest {
     @Test
     void testComputeIfPresentOnExistingKey() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
-        map.put("value", "a");
+        map.put((Object) "a", (String) "value");
 
         String result = map.computeIfPresent("a", (k, v) -> v + "-new");
         assertEquals("value-new", result);
@@ -40,14 +40,18 @@ class MultiKeyMapComputeIfPresentTest {
 
     @Test
     void testComputeIfPresentWithArraysAndCollections() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(16);
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        
+        // Test with array as single key (Map interface semantics)
         Object[] arrayKey = {"x", "y"};
-        map.put("val", arrayKey);
+        map.put(arrayKey, "val");  // Store with array as single key
         map.computeIfPresent(arrayKey, (k, v) -> v + "1");
-        assertEquals("val1", map.get("x", "y"));
+        assertEquals("val1", map.get(arrayKey));
 
-        map.put("list", Arrays.asList("a", "b"));
-        map.computeIfPresent(Arrays.asList("a", "b"), (k, v) -> v + "2");
-        assertEquals("list2", map.get("a", "b"));
+        // Test with Collection as single key (Map interface semantics)  
+        java.util.List<String> listKey = Arrays.asList("a", "b");
+        map.put(listKey, "list");  // Store with Collection as single key
+        map.computeIfPresent(listKey, (k, v) -> v + "2");
+        assertEquals("list2", map.get(listKey));
     }
 }

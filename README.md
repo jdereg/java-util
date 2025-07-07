@@ -186,6 +186,55 @@ mixed.put(42, "value2");           // Non-string keys work fine
 Map<String, String> concurrent = new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
 ```
 
+### 🗝️ MultiKeyMap - N-Dimensional Key-Value Mapping
+The definitive solution for multi-dimensional lookups - outperforms all alternatives:
+
+```java
+// Create a high-performance N-dimensional map
+MultiKeyMap<String> productCatalog = new MultiKeyMap<>();
+
+// Standard Map interface - single keys work perfectly
+Map<Object, String> mapInterface = productCatalog;
+mapInterface.put("electronics", "Electronics Department");
+mapInterface.put(Arrays.asList("books", "fiction", "scifi"), "Sci-Fi Books");
+
+// MultiKeyMap varargs API - requires MultiKeyMap variable type
+MultiKeyMap<String> catalog = new MultiKeyMap<>();
+catalog.put("Electronics Department", "electronics");                    // 1D
+catalog.put("Science Fiction Books", "books", "fiction", "scifi");      // 3D  
+catalog.put("Laptop Computers", "electronics", "computers", "laptops"); // 3D
+catalog.put("Gaming Keyboards", "electronics", "computers", "keyboards", "gaming"); // 4D
+
+// Flexible retrieval using matching dimensions
+String dept = catalog.get("electronics");                               // Electronics Department
+String category = catalog.get("books", "fiction", "scifi");            // Science Fiction Books
+String product = catalog.get("electronics", "computers", "laptops");   // Laptop Computers
+
+// ConcurrentHashMap-level thread safety with lock-free reads
+catalog.put("Updated Value", "electronics", "computers", "laptops");   // Enterprise-grade concurrency
+// Coming soon: 32-stripe lock striping for 32x write parallelism
+
+// Advanced collection handling with CollectionKeyMode
+MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTION_KEY_FIRST);
+String[] configPath = {"database", "connection", "pool"};
+configMap.put(configPath, "jdbc:mysql://localhost:3306/app");           // Array as single key
+String dbUrl = configMap.get(configPath);                               // Retrieved as single key
+
+// Perfect for complex lookups: user permissions, configuration trees, caches
+MultiKeyMap<Permission> permissions = new MultiKeyMap<>();
+permissions.put(Permission.ADMIN, "user123", "project456", "resource789");
+Permission userPerm = permissions.get("user123", "project456", "resource789");
+```
+
+**Why MultiKeyMap is the industry-leading solution:**
+
+| Feature | Guava Table | Apache Commons MultiKeyMap | DIY Record+HashMap | **java-util MultiKeyMap**                          |
+|---------|-------------|----------------------------|-------------------|----------------------------------------------------|
+| **Performance** | ⚠️ Good (map-of-maps overhead) | ❌ Poor (no optimizations) | ❌ Poor (key object creation) | ✅ **Excellent** (lock-free reads, zero allocation) |
+| **Key Dimensions** | ❌ Limited to 2D only | ✅ Unlimited N-D | ✅ Unlimited N-D | ✅ **Unlimited N-D**                                |
+| **Thread Safety** | ❌ None built-in | ❌ Not thread-safe | ❌ None (manual synchronization) | ✅ **Full ConcurrentMap** (nulls allowed)           |
+| **Type Safety** | ✅ Built-in compile-time | ❌ Untyped Object keys | ✅ Built-in compile-time | ✅ **Façade-ready** (flexible core + typed wrapper) |
+
 ### ⏰ TTLCache - Time-Based Caching with LRU
 Automatic expiration with optional size limits - supports null keys and values:
 

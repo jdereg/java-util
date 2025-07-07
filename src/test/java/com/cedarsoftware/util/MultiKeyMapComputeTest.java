@@ -22,7 +22,7 @@ class MultiKeyMapComputeTest {
     @Test
     void testComputeExistingKey() {
         MultiKeyMap<Integer> map = new MultiKeyMap<>(16);
-        map.put(1, "a");
+        map.put((Object) "a", (Integer) 1);  // Use Map interface semantics
         Integer result = map.compute("a", (k, v) -> v + 1);
         assertEquals(2, result);
         assertEquals(2, map.get("a"));
@@ -48,8 +48,9 @@ class MultiKeyMapComputeTest {
     @Test
     void testComputeWithCollectionKeys() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
-        map.put("v", Arrays.asList("a", "b"));
-        map.compute(Arrays.asList("a", "b"), (k, v) -> v + "3");
-        assertEquals("v3", map.get("a", "b"));
+        java.util.List<String> listKey = Arrays.asList("a", "b");
+        map.put(listKey, "v");  // Use Collection as single key (Map interface semantics)
+        map.compute(listKey, (k, v) -> v + "3");
+        assertEquals("v3", map.get(listKey));
     }
 }

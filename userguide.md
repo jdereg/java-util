@@ -2128,13 +2128,13 @@ The **definitive N-dimensional key-value Map implementation** for Java. MultiKey
 ### Why MultiKeyMap is Best-in-Class
 
 **Performance Leader:**
-- **Lock-free reads** with synchronized writes for maximum concurrency
+- **Lock-free reads** with auto-tuned stripe locking that scales with your server cores
 - **Zero-allocation polymorphic storage** (Object vs Object[]) eliminates wrapper objects
 - **Optimized hash computation** using MurmurHash3 finalization
 - **Outperforms Guava Table** for single-key lookups due to direct access vs "map of maps"
 
 **Ultimate Flexibility:**
-- **Any number of keys** (1, 2, 3, 4... unlimited dimensions)
+- **Any number of keys** (1, 2, 3, 4... unlimited keys)
 - **Any key types** (String, Integer, custom objects, mixed types)
 - **Thread-safe ConcurrentMap** interface with full null support
 - **Type-safe façade ready** - wrap with strongly-typed interface for compile-time safety
@@ -2169,14 +2169,14 @@ String computed = map.computeIfAbsent("new-key", k -> "computed-value");
 String replaced = map.replace("single-key", "new-value");
 ```
 
-#### MultiKeyMap Varargs APIs  
+#### MultiKeyMap Var-args APIs  
 **For elegant multi-dimensional operations (requires MultiKeyMap variable type):**
 
 ```java
-// Declare as MultiKeyMap to access powerful varargs APIs
+// Declare as MultiKeyMap to access powerful var-args APIs
 MultiKeyMap<String> mkMap = new MultiKeyMap<>();
 
-// Elegant varargs methods - no array creation needed
+// Elegant var-args methods - no array creation needed
 mkMap.put("value1", "single-key");                         // 1D key
 mkMap.put("value2", "key1", "key2");                       // 2D key
 mkMap.put("value3", "key1", "key2", "key3");               // 3D key
@@ -2194,7 +2194,7 @@ boolean exists = mkMap.containsKeys("key1", "key2", "key3");
 mkMap.remove("key1", "key2", "key3", "key4");
 ```
 
-**Key Point:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful varargs methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
+**Key Point:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful var-args methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
 
 ### Collection and Array Handling
 
@@ -2214,10 +2214,44 @@ configMap.put(configPath, "connection-string");            // Array treated as s
 String dbConfig = configMap.get(configPath);                // Retrieved as single key
 ```
 
-**CollectionKeyMode Options:**
-- **MULTI_KEY_ONLY**: Collections/Arrays always unpack into multi-key lookups
-- **MULTI_KEY_FIRST**: Try unpacking first, fallback to single key
-- **COLLECTION_KEY_FIRST**: Try as single key first, fallback to unpacking
+**Two Different APIs with Different Behaviors:**
+
+### Map Interface: `map.put(key, value)`
+
+**When key is a regular object (String, Integer, Employee, etc.):**
+- Works like a standard Map - direct key-value mapping
+
+**When key is a Collection/Array:**
+- **MULTI_KEY_ONLY** (default): Elements are unpacked and combined into a multi-dimensional key
+  ```java
+  map.put(Arrays.asList("a", 75.0, true), value);  // Stored as 3D key: ("a", 75.0, true)
+  String result = map.get(Arrays.asList("a", 75.0, true));  // Collection/array is unpacked into 3D key
+  ```
+
+- **MULTI_KEY_FIRST**: Try unpacking first, then try as single composite key
+  ```java
+  map.put(Arrays.asList("a", 75.0, true), value);  // Stored as 3D key: ("a", 75.0, true) 
+  String result = map.get(Arrays.asList("a", 75.0, true));  // Collection/array is unpacked into 3D key
+  // If not found, tries: map.get(theActualCollectionObject)
+  ```
+
+- **COLLECTION_KEY_FIRST**: Try as single composite key first, then try unpacking
+  ```java
+  map.put(myCol, value);  // Stored with myCol object as the key
+  String result = map.get(myCol);  // Found by myCol as key (like a regular Map)
+  // If not found, tries unpacking myCol elements into n-dimensional key and using that
+  ```
+
+### MultiKeyMap Var-args API: `map.put(value, key1, key2, key3, ...)`
+
+**Always combines all arguments into a multi-dimensional key:**
+- `map.put(value, "a", 75.0, true)` → Stored as 3D key: ("a", 75.0, true)
+- `map.put(value, "x", myArray, myList)` → Array/Collection elements are unpacked and combined with "x"
+- CollectionKeyMode settings do **not** affect this API - collections/arrays are always unpacked
+
+**Retrieval with var-args:**
+- `map.get("a", 75.0, true)` → Looks up 3D key: ("a", 75.0, true) 
+- `map.get("x", arrayElements..., listElements...)` → All elements combined into one n-dimensional lookup key
 
 ### Performance Characteristics
 
@@ -2253,7 +2287,7 @@ MultiKeyMap provides **enterprise-grade thread safety** comparable to `Concurren
 #### **ConcurrentHashMap-Level Safety**
 MultiKeyMap follows the same proven concurrency model as Java's `ConcurrentHashMap`:
 - **Lock-free reads** for maximum throughput
-- **Minimally synchronized writes** for data consistency
+- **Auto-tuned stripe locking** that scales with your server's cores for data consistency
 - **Atomic operations** via full ConcurrentMap API
 - **Memory visibility guarantees** using volatile fields and proper ordering
 - **Null safety** (unique enhancement over ConcurrentHashMap)
@@ -2265,12 +2299,12 @@ MultiKeyMap<String> cache = new MultiKeyMap<>();
 
 // Lock-free reads - unlimited concurrent readers
 String value = cache.get("key1", "key2", "key3");           // Lock-free, no contention
-boolean exists = cache.containsKeys("key1", "key2");        // Lock-free, maximum throughput
+boolean exists = cache.containsKey("key1", "key2");         // Lock-free, maximum throughput
 int size = cache.size();                                    // Lock-free, consistent snapshot
 
-// Synchronized writes - minimal locking, maximum concurrency  
-cache.put("new-value", "key1", "key2", "key3");            // Synchronized, brief lock
-cache.remove("key1", "key2");                              // Synchronized, brief lock
+// Auto-tuned stripe locking - scales with your server's cores
+cache.put("new-value", "key1", "key2", "key3");            // Stripe-locked, minimal contention
+cache.remove("key1", "key2");                              // Stripe-locked, minimal contention
 
 // Full ConcurrentMap atomic operations
 String computed = cache.computeIfAbsent(
@@ -2294,7 +2328,7 @@ String nullValue = cache.get("null-key");                   // Returns null safe
 
 #### **Performance Characteristics**
 - **Read scalability**: Lock-free reads scale linearly with CPU cores
-- **Write performance**: Synchronized writes with minimal lock contention
+- **Write performance**: Auto-tuned stripe locking with minimal lock contention
 - **Memory consistency**: Volatile fields ensure cross-thread visibility
 - **Cache-friendly**: Optimized memory layout for CPU cache efficiency
 
@@ -2304,13 +2338,13 @@ MultiKeyMap's concurrency implementation provides the same reliability guarantee
 - **Memory safety**: No race conditions or visibility issues
 - **Deadlock-free**: Simple locking hierarchy prevents deadlocks  
 - **High availability**: Lock-free reads never block, ensuring system responsiveness
-- **Scalable architecture**: Ready for upcoming lock-striping enhancements
+- **Scalable architecture**: Auto-tuned stripe locking scales with your hardware
 
-#### **Upcoming Enhancement: Lock Striping**
-MultiKeyMap will soon feature **32-stripe lock striping** for even higher write concurrency:
-- **32x write parallelism**: Multiple concurrent writers in different hash ranges
-- **ConcurrentHashMap-style segmentation**: Industry-proven approach
-- **Backward compatible**: Zero API changes, pure performance enhancement
+#### **Auto-Tuned Stripe Locking**
+MultiKeyMap features intelligent stripe locking that automatically adapts to your server:
+- **Hardware-adaptive parallelism**: Scales from 8 to 64+ stripes based on CPU cores
+- **ConcurrentHashMap-style segmentation**: Industry-proven approach with auto-tuning
+- **Zero configuration**: Automatically optimizes for your deployment environment
 - **Enterprise ready**: Production-grade concurrent data structure
 
 ### Type-Safe Façade Pattern
@@ -2331,7 +2365,7 @@ public class UserPermissionMap {
     }
     
     public boolean hasPermission(String userId, String projectId, String resource) {
-        return permissions.containsKeys(userId, projectId, resource);
+        return permissions.containsKey(userId, projectId, resource);
     }
 }
 
@@ -4408,7 +4442,7 @@ try {
 
 **Efficient Min/Max:**
 ```java
-// Use varargs for multiple values
+// Use var-args for multiple values
 long min = MathUtilities.minimum(val1, val2, val3);
 
 // Use appropriate type

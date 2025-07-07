@@ -296,6 +296,7 @@ java-util is engineered for performance-critical applications with optimizations
 | **Memory-Adaptive Collections** | ❌ | ❌ | ✅ | ❌ | ✅ CompactMap/Set |
 | **Case-Preserving Maps** | ❌ | ❌ | ❌ | Limited | ✅ Retains original case |
 | **Universal Type Conversion** | ❌ | Limited | ❌ | Limited | ✅ 1000+ conversions |
+| **N-Dimensional Mapping** | ❌ | ⚠️ Table (2D only) | ❌ | ⚠️ Limited | ✅ MultiKeyMap (unlimited N-D) |
 | **Deep Object Comparison** | ❌ | Limited | ❌ | ❌ | ✅ Handles cycles |
 | **Runtime Configuration** | ❌ | ❌ | ❌ | ❌ | ✅ 70+ feature options |
 | **TTL Caching** | ❌ | ✅ | ❌ | ❌ | ✅ + LRU combo    |

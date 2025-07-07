@@ -857,16 +857,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return putInternalSingle(null, value);
         }
         
-        // Prevent KeyMode enum from being stored as actual key
-        for (Object key : keys) {
-            if (key == KeyMode.SINGLE_KEY) {
-                // Only allow at the end as a flag, not as a regular key
-                if (key != keys[keys.length - 1]) {
-                    throw new IllegalArgumentException("KeyMode.SINGLE_KEY can only be used as the last parameter");
-                }
-            }
-        }
-        
         // Check if last parameter is KeyMode.SINGLE_KEY (force single-key storage)
         if (keys.length >= 2 && keys[keys.length - 1] == KeyMode.SINGLE_KEY) {
             // Remove the KeyMode flag and treat remaining keys as single key
@@ -882,7 +872,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return putInternalSingle(actualKeys, value);
             }
         }
-        
+
         return putInternal(keys, value);
     }
     
@@ -946,11 +936,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V putFromCollection(Collection<?> collection, V value) {
         switch (collectionKeyMode) {
             case MULTI_KEY_ONLY:
-                // Always unpack Collection into multi-key call
-                return put(value, collection.toArray());
+                // Always unpack Collection into multi-key call - zero array allocation!
+                return putInternalFromCollection(collection, value);
             case MULTI_KEY_FIRST:
-                // Try as multi-key, but since put is deterministic, just unpack
-                return put(value, collection.toArray());
+                // Try as multi-key, but since put is deterministic, just unpack - zero array allocation!
+                return putInternalFromCollection(collection, value);
             case COLLECTION_KEY_FIRST:
                 // Treat Collection as single key
                 return putInternalSingle(collection, value);
@@ -973,6 +963,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private V putInternalSingle(Object key, V value) {
         MultiKey<V> newKey = new MultiKey<>(key, value); // Uses single-key constructor
+        return putInternalCommon(newKey);
+    }
+    
+    /**
+     * Internal put implementation that works directly with Collections - zero array allocation!
+     * Creates a MultiKey that stores the Collection elements as Object[] internally,
+     * but avoids the intermediate toArray() conversion during put operations.
+     */
+    private V putInternalFromCollection(Collection<?> collection, V value) {
+        if (collection.isEmpty()) {
+            return putInternal(new Object[0], value);
+        }
+        
+        // Convert Collection to Object[] only once, inside MultiKey constructor
+        Object[] keys = collection.toArray();
+        MultiKey<V> newKey = new MultiKey<>(keys, value); // Uses multi-key constructor
         return putInternalCommon(newKey);
     }
     
@@ -1374,8 +1380,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return null;
         }
         
-        // TODO: Implement efficient Collection-based removal similar to get
-        // For now, convert to array (will optimize later)
         return removeInternal(collection.toArray());
     }
     

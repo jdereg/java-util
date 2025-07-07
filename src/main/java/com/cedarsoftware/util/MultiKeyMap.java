@@ -656,9 +656,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Handle null key using NULL_SENTINEL
         Object lookupKey = (key == null) ? NULL_SENTINEL : key;
         int hash = computeSingleKeyHash(lookupKey);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             int bucketIndex = hash & (buckets.length - 1);
             
             @SuppressWarnings("unchecked")
@@ -695,6 +696,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
             
             return null;
+        } finally {
+            lock.unlock();
         }
     }
     
@@ -1416,15 +1419,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Get stripe lock based on key hash
         int hash = computeKeyHash(key);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             existing = get(key);
             if (existing == null) {
                 put(key, value);
                 return null;
             }
             return existing;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1449,9 +1455,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Get stripe lock based on key hash
         int hash = computeKeyHash(key);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             value = get(key);
             if (value == null) {
                 V newValue = mappingFunction.apply(key);
@@ -1461,6 +1468,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
             }
             return value; // may be null or value from second read
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1484,9 +1493,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Get stripe lock based on key hash
         int hash = computeKeyHash(key);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             oldValue = get(key);
             if (oldValue == null) {
                 return null;
@@ -1499,6 +1509,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 remove(key);
                 return null;
             }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1517,9 +1529,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Get stripe lock based on key hash
         int hash = computeKeyHash(key);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             boolean contains = containsKey(key);
             V oldValue = get(key);
             V newValue = remappingFunction.apply(key, oldValue);
@@ -1533,6 +1546,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
             put(key, newValue);
             return newValue;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1540,9 +1555,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public boolean remove(Object key, Object value) {
         // Get stripe lock based on key hash
         int hash = computeKeyHash(key);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             if (!containsKey(key)) {
                 return false;
             }
@@ -1552,6 +1568,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
             remove(key);
             return true;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1559,13 +1577,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V replace(Object key, V value) {
         // Get stripe lock based on key hash
         int hash = computeKeyHash(key);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             if (!containsKey(key)) {
                 return null;
             }
             return put(key, value);
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1573,9 +1594,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public boolean replace(Object key, V oldValue, V newValue) {
         // Get stripe lock based on key hash
         int hash = computeKeyHash(key);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             if (!containsKey(key)) {
                 return false;
             }
@@ -1585,6 +1607,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
             put(key, newValue);
             return true;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1605,9 +1629,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Get stripe lock based on key hash
         int hash = computeKeyHash(key);
-        Object stripeLock = getStripeLock(hash);
-        
-        synchronized (stripeLock) {
+        ReentrantLock lock = getStripeLock(hash);
+
+        lock.lock();
+        try {
             V oldValue = get(key);
             V newValue = (oldValue == null) ? value :
                          remappingFunction.apply(oldValue, value);
@@ -1617,6 +1642,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 put(key, newValue);
             }
             return newValue;
+        } finally {
+            lock.unlock();
         }
     }
 

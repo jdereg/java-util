@@ -144,7 +144,7 @@ public class UrlUtilitiesTest {
 
             assertTrue(bytes.length > 0, "File should not be empty");
             // You can add more assertions here, e.g., print content for verification
-            // System.out.println("Read content: " + new String(bytes, StandardCharsets.UTF_8));
+            // LOG.info("Read content: " + new String(bytes, StandardCharsets.UTF_8));
         }
     }
 

@@ -455,7 +455,7 @@ public class GraphComparator
             }
 
             // for debugging
-//            System.out.println("path = " + path);
+//            LOG.info("path = " + path);
 
             if (visited.contains(path))
             {   // handle cyclic graphs correctly.

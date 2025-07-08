@@ -1,5 +1,8 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.logging.Logger;
+
+import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -7,6 +10,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * Test to verify the CONVERSION_DB is being populated correctly
  */
 class ConversionDbTest {
+    private static final Logger LOG = Logger.getLogger(ConversionDbTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
     
     @Test
     void testConversionDbPopulation() {
@@ -17,25 +24,25 @@ class ConversionDbTest {
         try {
             // These should work - they're basic conversions
             String result1 = converter.convert(42, String.class);
-            System.out.println("Integer to String: " + result1);
+            LOG.info("Integer to String: " + result1);
             
             Integer result2 = converter.convert("123", Integer.class);
-            System.out.println("String to Integer: " + result2);
+            LOG.info("String to Integer: " + result2);
             
             Boolean result3 = converter.convert("true", Boolean.class);
-            System.out.println("String to Boolean: " + result3);
+            LOG.info("String to Boolean: " + result3);
             
         } catch (Exception e) {
-            System.out.println("Basic conversion failed: " + e.getMessage());
+            LOG.info("Basic conversion failed: " + e.getMessage());
             e.printStackTrace();
         }
         
         // Test that fails - this should help identify the issue
         try {
             int result = converter.convert(Integer.valueOf(42), int.class);
-            System.out.println("Integer to int: " + result);
+            LOG.info("Integer to int: " + result);
         } catch (Exception e) {
-            System.out.println("Integer to int failed: " + e.getMessage());
+            LOG.info("Integer to int failed: " + e.getMessage());
             e.printStackTrace();
         }
     }

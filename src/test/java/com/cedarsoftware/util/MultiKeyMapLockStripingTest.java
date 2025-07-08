@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,6 +17,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests concurrent operations, performance characteristics, and correctness.
  */
 class MultiKeyMapLockStripingTest {
+
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapLockStripingTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
 
     private MultiKeyMap<String> map;
     private static final int NUM_THREADS = 16;
@@ -28,8 +34,8 @@ class MultiKeyMapLockStripingTest {
     
     @Test
     void testBasicConcurrentPuts() throws InterruptedException {
-        System.out.println("=== Starting Basic Concurrent Puts Test ===");
-        System.out.println("Threads: " + NUM_THREADS + ", Operations per thread: " + OPERATIONS_PER_THREAD);
+        LOG.info("=== Starting Basic Concurrent Puts Test ===");
+        LOG.info("Threads: " + NUM_THREADS + ", Operations per thread: " + OPERATIONS_PER_THREAD);
         
         ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
         CountDownLatch latch = new CountDownLatch(NUM_THREADS);
@@ -62,10 +68,10 @@ class MultiKeyMapLockStripingTest {
         long endTime = System.nanoTime();
         long totalTime = endTime - startTime;
         
-        System.out.println("Test completed in " + (totalTime / 1_000_000) + "ms");
-        System.out.println("Operations per second: " + (NUM_THREADS * OPERATIONS_PER_THREAD * 1_000_000_000L / totalTime));
+        LOG.info("Test completed in " + (totalTime / 1_000_000) + "ms");
+        LOG.info("Operations per second: " + (NUM_THREADS * OPERATIONS_PER_THREAD * 1_000_000_000L / totalTime));
         
-//        map.printContentionStatistics();
+        map.printContentionStatistics();
         
         assertEquals(0, errors.get(), "No errors should occur during concurrent puts");
         assertEquals(NUM_THREADS * OPERATIONS_PER_THREAD, map.size(), "All entries should be present");
@@ -122,7 +128,7 @@ class MultiKeyMapLockStripingTest {
     
     @Test
     void testConcurrentMixedOperations() throws InterruptedException {
-        System.out.println("\n=== Starting Concurrent Mixed Operations Test ===");
+        LOG.info("=== Starting Concurrent Mixed Operations Test ===");
         
         // Pre-populate with some data
         for (int i = 0; i < 100; i++) {
@@ -146,25 +152,31 @@ class MultiKeyMapLockStripingTest {
                         String value = "value_" + threadId + "_" + i;
                         
                         int operation = random.nextInt(10);
-                        if (operation < 4) {
-                            // 40% puts
-                            map.put(key, value);
-                        } else if (operation < 7) {
-                            // 30% gets
-                            map.get(key);
-                        } else if (operation < 8) {
-                            // 10% removes
-                            map.remove(key);
-                        } else if (operation < 9) {
-                            // 10% putIfAbsent
-                            map.putIfAbsent(key, value);
-                        } else {
-                            // 10% computeIfAbsent
-                            final int finalThreadId = threadId;
-                            final int finalI = i;
-                            map.computeIfAbsent(key, k -> "computed_" + finalThreadId + "_" + finalI);
+                        try {
+                            if (operation < 4) {
+                                // 40% puts
+                                map.put(key, value);
+                            } else if (operation < 7) {
+                                // 30% gets
+                                map.get(key);
+                            } else if (operation < 8) {
+                                // 10% removes
+                                map.remove(key);
+                            } else if (operation < 9) {
+                                // 10% putIfAbsent
+                                map.putIfAbsent(key, value);
+                            } else {
+                                // 10% computeIfAbsent
+                                final int finalThreadId = threadId;
+                                final int finalI = i;
+                                map.computeIfAbsent(key, k -> "computed_" + finalThreadId + "_" + finalI);
+                            }
+                            totalOps.incrementAndGet();
+                        } catch (Exception ex) {
+                            LOG.info("Thread " + threadId + " operation " + operation + " failed: " + ex.getMessage());
+                            ex.printStackTrace();
+                            throw ex;
                         }
-                        totalOps.incrementAndGet();
                     }
                 } catch (Exception e) {
                     errors.incrementAndGet();
@@ -181,19 +193,20 @@ class MultiKeyMapLockStripingTest {
         long endTime = System.nanoTime();
         long totalTime = endTime - startTime;
         
-        System.out.println("Mixed operations test completed in " + (totalTime / 1_000_000) + "ms");
-        System.out.println("Operations per second: " + (totalOps.get() * 1_000_000_000L / totalTime));
+        LOG.info("Mixed operations test completed in " + (totalTime / 1_000_000) + "ms");
+        LOG.info("Operations per second: " + (totalOps.get() * 1_000_000_000L / totalTime));
+        LOG.info("Expected operations: " + (NUM_THREADS * OPERATIONS_PER_THREAD / 4) + ", Actual: " + totalOps.get());
         
-//        map.printContentionStatistics();
+        map.printContentionStatistics();
         
         assertEquals(0, errors.get(), "No errors should occur during mixed operations");
         assertTrue(totalOps.get() > 0, "Operations should have been performed");
-        System.out.println("Completed " + totalOps.get() + " concurrent operations successfully");
+        LOG.info("Completed " + totalOps.get() + " concurrent operations successfully");
     }
     
     @Test 
     void testConcurrentResizeOperations() throws InterruptedException {
-        System.out.println("\n=== Starting Concurrent Resize Operations Test ===");
+        LOG.info("=== Starting Concurrent Resize Operations Test ===");
         
         // Start with small capacity to force resizes
         map = new MultiKeyMap<>(8);
@@ -234,10 +247,10 @@ class MultiKeyMapLockStripingTest {
         long endTime = System.nanoTime();
         long totalTime = endTime - startTime;
         
-        System.out.println("Resize operations test completed in " + (totalTime / 1_000_000) + "ms");
-        System.out.println("Final map size: " + map.size());
+        LOG.info("Resize operations test completed in " + (totalTime / 1_000_000) + "ms");
+        LOG.info("Final map size: " + map.size());
         
-//        map.printContentionStatistics();
+        map.printContentionStatistics();
         
         assertEquals(0, errors.get(), "No errors should occur during concurrent resize operations");
         
@@ -484,9 +497,9 @@ class MultiKeyMapLockStripingTest {
         assertEquals(10000, map.size(), "All entries should be present");
         
         // With 32 stripes and 8 threads, we should see some performance benefit
-        System.out.println("Single-threaded time: " + (singleThreadTime / 1_000_000) + "ms");
-        System.out.println("Multi-threaded time:  " + (multiThreadTime / 1_000_000) + "ms");
-        System.out.println("Speedup ratio: " + ((double) singleThreadTime / multiThreadTime));
+        LOG.info("Single-threaded time: " + (singleThreadTime / 1_000_000) + "ms");
+        LOG.info("Multi-threaded time:  " + (multiThreadTime / 1_000_000) + "ms");
+        LOG.info("Speedup ratio: " + ((double) singleThreadTime / multiThreadTime));
         
         // The multi-threaded version should not be significantly slower
         // (allowing for overhead, it should be at most 3x slower)

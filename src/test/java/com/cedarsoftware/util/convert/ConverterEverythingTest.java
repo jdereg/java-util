@@ -74,6 +74,7 @@ import com.cedarsoftware.io.WriteOptions;
 import com.cedarsoftware.io.WriteOptionsBuilder;
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DeepEquals;
+import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.SystemUtilities;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -154,6 +155,7 @@ class ConverterEverythingTest {
     private static final Map<Map.Entry<Class<?>, Class<?>>, Boolean> STAT_DB = new ConcurrentHashMap<>(500, .8f);
 
     static {
+        LoggingConfig.initForTests();
         // List classes that should be checked for immutability
         immutable.add(Number.class);
         immutable.add(byte.class);
@@ -4750,7 +4752,7 @@ class ConverterEverythingTest {
             Throwable t = (Throwable) target;
             try {
                 Object x = JsonIo.toObjects(json, readOptions, targetClass);
-//                System.out.println("x = " + x);
+//                LOG.info("x = " + x);
                 fail("This test: " + shortNameSource + " ==> " + shortNameTarget + " should have thrown: " + target.getClass().getName());
             } catch (Throwable e) {
                 if (e instanceof JsonIoException) {
@@ -4770,10 +4772,10 @@ class ConverterEverythingTest {
                 e.printStackTrace();
                 throw new RuntimeException(e);
             }
-//            System.out.println("source = " + source);
-//            System.out.println("target = " + target);
-//            System.out.println("restored = " + restored);
-//            System.out.println("*****");
+//            LOG.info("source = " + source);
+//            LOG.info("target = " + target);
+//            LOG.info("restored = " + restored);
+//            LOG.info("*****");
             Map<String, Object> options = new HashMap<>();
             if (restored instanceof Pattern) {
                 assertEquals(restored.toString(), target.toString());
@@ -4801,7 +4803,7 @@ class ConverterEverythingTest {
             Map.Entry<Class<?>, Class<?>> entry = pair(sourceClass, targetClass);
             Boolean alreadyCompleted = STAT_DB.get(entry);
             if (Boolean.TRUE.equals(alreadyCompleted) && !sourceClass.equals(targetClass)) {
-//                System.err.println("Duplicate test pair: " + shortNameSource + " ==> " + shortNameTarget);
+//                LOG.info("Duplicate test pair: " + shortNameSource + " ==> " + shortNameTarget);
             }
         }
 
@@ -8303,17 +8305,20 @@ class ConverterEverythingTest {
                     continue;
                 }
                 missing++;
-                testPairNames.add("\n  " + Converter.getShortName(pair.getKey()) + " ==> " + Converter.getShortName(pair.getValue()));
+                testPairNames.add("  " + Converter.getShortName(pair.getKey()) + " ==> " + Converter.getShortName(pair.getValue()));
             }
         }
         
-        System.out.println("\n=== CONVERSION TEST COVERAGE ANALYSIS ===");
-        System.out.println("Total conversion pairs      = " + STAT_DB.size());
-        System.out.println("Conversion pairs tested     = " + (STAT_DB.size() - missing));
-        System.out.println("Conversion pairs not tested = " + missing);
+        LOG.info("=== CONVERSION TEST COVERAGE ANALYSIS ===");
+        LOG.info("Total conversion pairs      = " + STAT_DB.size());
+        LOG.info("Conversion pairs tested     = " + (STAT_DB.size() - missing));
+        LOG.info("Conversion pairs not tested = " + missing);
         if (missing > 0) {
-            System.out.println("Tests needed:" + String.join("", testPairNames));
+            LOG.info("Tests needed:");
+            for (String testPairName : testPairNames) {
+                LOG.info(testPairName);
+            }
         }
-        System.out.println("===========================================\n");
+        LOG.info("===========================================");
     }
 }

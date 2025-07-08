@@ -1,5 +1,9 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.logging.Logger;
+
+import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -7,7 +11,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Test String to various primitive conversions with addFactoryConversion
  */
 class StringPrimitiveTest {
-    
+    private static final Logger LOG = Logger.getLogger(StringPrimitiveTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+
     @Test
     void testStringToPrimitives() {
         Converter converter = new Converter(new DefaultConverterOptions());
@@ -38,6 +46,6 @@ class StringPrimitiveTest {
         Character charObj = converter.convert("Z", Character.class);
         assertEquals('Z', charObj.charValue());
         
-        System.out.println("✓ String to primitive/wrapper conversions work with addFactoryConversion");
+        LOG.info("✓ String to primitive/wrapper conversions work with addFactoryConversion");
     }
 }

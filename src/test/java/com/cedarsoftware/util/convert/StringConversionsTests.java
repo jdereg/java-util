@@ -122,7 +122,7 @@ class StringConversionsTests {
     @MethodSource("toCharParams")
     void toChar(String source, char value) {
         char actual = this.converter.convert(source, char.class);
-        //System.out.println(Integer.toHexString(actual) + " = " + Integer.toHexString(value));
+        //LOG.info(Integer.toHexString(actual) + " = " + Integer.toHexString(value));
         assertThat(actual).isEqualTo(value);
     }
 
@@ -130,7 +130,7 @@ class StringConversionsTests {
     @MethodSource("toCharParams")
     void toChar(String source, Character value) {
         Character actual = this.converter.convert(source, Character.class);
-        //System.out.println(Integer.toHexString(actual) + " = " + Integer.toHexString(value));
+        //LOG.info(Integer.toHexString(actual) + " = " + Integer.toHexString(value));
         assertThat(actual).isEqualTo(value);
     }
 

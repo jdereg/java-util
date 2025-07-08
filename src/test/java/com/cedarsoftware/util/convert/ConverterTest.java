@@ -33,9 +33,11 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.DeepEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,6 +95,11 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class ConverterTest
 {
+    private static final Logger LOG = Logger.getLogger(ConverterTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+    
     private static final LocalDateTime LDT_2023_TOKYO = LocalDateTime.of(2023, 6, 25, 0, 57, 29, 729000000);
     private static final LocalDateTime LDT_2023_PARIS = LocalDateTime.of(2023, 6, 24, 17, 57, 29, 729000000);
     private static final LocalDateTime LDT_2023_GMT = LocalDateTime.of(2023, 6, 24, 15, 57, 29, 729000000);
@@ -2767,17 +2774,17 @@ class ConverterTest
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Tokyo"));
         cal.clear();
         cal.setTimeInMillis(now);
-//        System.out.println("cal = " + cal.getTime());
+        LOG.info("cal = " + cal.getTime());
 
         ZonedDateTime zdt = cal.toInstant().atZone(cal.getTimeZone().toZoneId());
-//        System.out.println("zdt = " + zdt);
+        LOG.info("zdt = " + zdt);
         
         final Map map = new HashMap<>();
         map.put("calendar", zdt.toString());
-//        System.out.println("map = " + map);
+        LOG.info("map = " + map);
 
         Calendar newCal = this.converter.convert(map, Calendar.class);
-//        System.out.println("newCal = " + newCal.getTime());
+        LOG.info("newCal = " + newCal.getTime());
         assertEquals(cal.getTime(), newCal.getTime());
         assert DeepEquals.deepEquals(cal, newCal);
     }
@@ -3438,11 +3445,11 @@ class ConverterTest
                 .toLocalDate();
 
         // --- Debug prints (optional) ---
-//    System.out.println("date (sql)     = " + date);        // e.g. "2025-01-29"
-//    System.out.println("strDate        = " + strDate);     // e.g. "2025-01-29"
-//    System.out.println("x (util.Date)  = " + x);           // local time representation
-//    System.out.println("l1 (local)     = " + l1);          // "2025-01-29"
-//    System.out.println("l2 (local)     = " + l2);          // "2025-01-29"
+        LOG.info("date (sql)     = " + date);        // e.g. "2025-01-29"
+        LOG.info("strDate        = " + strDate);     // e.g. "2025-01-29"
+        LOG.info("x (util.Date)  = " + x);           // local time representation
+        LOG.info("l1 (local)     = " + l1);          // "2025-01-29"
+        LOG.info("l2 (local)     = " + l2);          // "2025-01-29"
 
         // Assert that the local dates match.
         assertEquals(l1, l2, "Local dates should match in system default interpretation");

@@ -1,5 +1,9 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.logging.Logger;
+
+import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -7,7 +11,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Test String to char conversion with addFactoryConversion
  */
 class StringCharTest {
-    
+    private static final Logger LOG = Logger.getLogger(StringCharTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+
     @Test
     void testStringToChar() {
         Converter converter = new Converter(new DefaultConverterOptions());
@@ -20,6 +28,6 @@ class StringCharTest {
         Character charObj = converter.convert("B", Character.class);
         assertEquals('B', charObj.charValue());
         
-        System.out.println("✓ String to char/Character conversions work with addFactoryConversion");
+        LOG.info("✓ String to char/Character conversions work with addFactoryConversion");
     }
 }

@@ -53,8 +53,8 @@ import java.util.function.BiFunction;
  * MyConcurrentNullSafeMap<String, String> map = new MyConcurrentNullSafeMap<>();
  * map.put(null, "nullKey");
  * map.put("key", null);
- * System.out.println(map.get(null));  // Outputs: nullKey
- * System.out.println(map.get("key")); // Outputs: null
+ * LOG.info(map.get(null));  // Outputs: nullKey
+ * LOG.info(map.get("key")); // Outputs: null
  * }</pre>
  *
  * <h2>Additional Notes</h2>

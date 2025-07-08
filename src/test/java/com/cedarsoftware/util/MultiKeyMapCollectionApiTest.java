@@ -4,12 +4,17 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Test the new Collection-based API and zero-heap optimizations in MultiKeyMap.
  */
 class MultiKeyMapCollectionApiTest {
-    
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapCollectionApiTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+
     @Test
     void testCollectionBasedGet() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
@@ -166,9 +171,9 @@ class MultiKeyMapCollectionApiTest {
         }
         long arrayTime = System.nanoTime() - start;
         
-        System.out.println("Collection access time: " + (collectionTime / 1_000_000.0) + " ms");
-        System.out.println("Array access time: " + (arrayTime / 1_000_000.0) + " ms");
-        System.out.println("Collection vs Array ratio: " + String.format("%.2f", (double) collectionTime / arrayTime));
+        LOG.info("Collection access time: " + (collectionTime / 1_000_000.0) + " ms");
+        LOG.info("Array access time: " + (arrayTime / 1_000_000.0) + " ms");
+        LOG.info("Collection vs Array ratio: " + String.format("%.2f", (double) collectionTime / arrayTime));
         
         // Both operations should complete successfully (performance ratio varies by environment)
         assertTrue(collectionTime > 0 && arrayTime > 0, 

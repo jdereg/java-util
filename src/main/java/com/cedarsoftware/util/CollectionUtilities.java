@@ -494,7 +494,7 @@ public class CollectionUtilities {
      *
      * synchronized (synchronizedList) {
      *     for (String item : synchronizedList) {
-     *         System.out.println(item);
+     *         LOG.info(item);
      *     }
      * }
      * }</pre>

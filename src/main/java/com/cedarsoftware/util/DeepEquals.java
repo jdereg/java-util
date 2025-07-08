@@ -1020,7 +1020,7 @@ public class DeepEquals {
      * <pre>{@code
      * Class<?> clazz = MyCustomClass.class;
      * boolean hasCustomHashCode = hasCustomHashCodeMethod(clazz);
-     * System.out.println("Has custom hashCode(): " + hasCustomHashCode);
+     * LOG.info("Has custom hashCode(): " + hasCustomHashCode);
      * }</pre>
      *
      * <p>

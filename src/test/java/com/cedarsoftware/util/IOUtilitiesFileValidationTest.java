@@ -12,6 +12,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,7 +21,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Verifies that the validateFilePath method properly detects and prevents various file system security attacks.
  */
 public class IOUtilitiesFileValidationTest {
-    
+    private static final Logger LOG = Logger.getLogger(IOUtilitiesFileValidationTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+
     private Method validateFilePathMethod;
     private String originalValidationDisabled;
     
@@ -300,7 +305,7 @@ public class IOUtilitiesFileValidationTest {
                 
             } catch (UnsupportedOperationException | IOException e) {
                 // Symlink creation not supported on this system, skip test
-                System.out.println("Symlink test skipped - not supported on this system");
+                LOG.info("Symlink test skipped - not supported on this system");
             } finally {
                 // Clean up
                 Files.deleteIfExists(symlinkFile);
@@ -309,7 +314,7 @@ public class IOUtilitiesFileValidationTest {
             }
         } catch (IOException e) {
             // Test environment doesn't support this test
-            System.out.println("Symlink test skipped due to IO error: " + e.getMessage());
+            LOG.info("Symlink test skipped due to IO error: " + e.getMessage());
         }
     }
     

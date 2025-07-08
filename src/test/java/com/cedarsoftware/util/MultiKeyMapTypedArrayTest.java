@@ -1,5 +1,7 @@
 package com.cedarsoftware.util;
 
+import java.util.logging.Logger;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -8,7 +10,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests zero-conversion access for String[], int[], Class<?>[], and other typed arrays.
  */
 class MultiKeyMapTypedArrayTest {
-    
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapTypedArrayTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+
     @Test
     void testStringArrayKeys() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
@@ -18,7 +24,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using String[] - zero conversion
         String[] stringKeys = {"key1", "key2", "key3"};
-        assertEquals("stringValue", map.get(stringKeys));
+        assertEquals("stringValue", map.get((Object) stringKeys));
         
         // Store using String[] directly
         String[] directKeys = {"direct1", "direct2"};
@@ -81,7 +87,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using Class<?>[] - zero conversion
         Class<?>[] classKeys = {String.class, Integer.class, Long.class};
-        assertEquals("classValue", map.get(classKeys));
+        assertEquals("classValue", map.get((Object) classKeys));
         
         // Store using Class<?>[] directly
         Class<?>[] directKeys = {Double.class, Boolean.class};
@@ -226,9 +232,9 @@ class MultiKeyMapTypedArrayTest {
         boolean[] boolKeys = {true};
         
         // Each typed array should find nothing (different key dimensions)
-        assertNull(map.get(stringKeys));
-        assertNull(map.get(intKeys));
-        assertNull(map.get(doubleKeys));
+        assertNull(map.get((Object) stringKeys));
+        assertNull(map.get((Object) intKeys));
+        assertNull(map.get((Object) doubleKeys));
         assertNull(map.get(boolKeys));
         
         // But Object[] equivalent should work
@@ -259,10 +265,10 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Empty arrays should return null
-        assertNull(map.get(new String[0]));
-        assertNull(map.get(new int[0]));
-        assertNull(map.get(new Object[0]));
-        assertNull(map.get(new Class<?>[0]));
+        assertNull(map.get((Object) new String[0]));
+        assertNull(map.get((Object) new int[0]));
+        assertNull(map.get((Object) new Object[0]));
+        assertNull(map.get((Object) new Class<?>[0]));
     }
     
     @Test
@@ -277,7 +283,7 @@ class MultiKeyMapTypedArrayTest {
         assertEquals("equalityTest", map.get(objectArray));
         
         Class<?>[] classArray = {String.class, Integer.class}; // Wrong length
-        assertNull(map.get(classArray));
+        assertNull(map.get((Object) classArray));
         
         // Should be retrievable via mixed Object array
         Object[] mixedArray = {String.class, Integer.class, 42L};
@@ -338,8 +344,8 @@ class MultiKeyMapTypedArrayTest {
         }
         long wrongSizeTime = System.nanoTime() - start;
         
-        System.out.println("Object[] access time: " + (objectTime / 1_000_000.0) + " ms");
-        System.out.println("Wrong-size array time: " + (wrongSizeTime / 1_000_000.0) + " ms");
+        LOG.info("Object[] access time: " + (objectTime / 1_000_000.0) + " ms");
+        LOG.info("Wrong-size array time: " + (wrongSizeTime / 1_000_000.0) + " ms");
         
         // Both should be reasonably fast - exact timing depends on JVM and caching
         assertTrue(objectTime > 0 && wrongSizeTime > 0, 
@@ -365,7 +371,7 @@ class MultiKeyMapTypedArrayTest {
         
         // 3. Typed array (String[])
         String[] stringArray = {"x", "y", "z"};
-        assertEquals("universalValue", map.get(stringArray));
+        assertEquals("universalValue", map.get((Object) stringArray));
         
         // All should access the same entry
         assertEquals(1, map.size());
@@ -374,7 +380,7 @@ class MultiKeyMapTypedArrayTest {
         assertTrue(map.containsKey("x", "y", "z"));
         assertTrue(map.containsKey(objectArray));
         assertTrue(map.containsKey(collection));
-        assertTrue(map.containsKey(stringArray));
+        assertTrue(map.containsKey((Object) stringArray));
     }
     
     @Test
@@ -397,8 +403,8 @@ class MultiKeyMapTypedArrayTest {
         map.put(largeStringArray, "largeStringValue");
         
         // Retrieve using same typed arrays
-        assertEquals("largeIntValue", map.get(largeIntArray));
-        assertEquals("largeStringValue", map.get(largeStringArray));
+        assertEquals("largeIntValue", map.get((Object) largeIntArray));
+        assertEquals("largeStringValue", map.get((Object) largeStringArray));
         
         // Retrieve using equivalent Object[]
         Object[] intAsObject = new Object[50];

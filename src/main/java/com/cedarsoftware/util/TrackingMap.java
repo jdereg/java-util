@@ -40,7 +40,7 @@ import java.util.function.Function;
  * trackingMap.expungeUnused();
  *
  * // Now, "cherry" has been removed as it was not accessed
- * System.out.println(trackingMap.keySet()); // Outputs: [apple, banana]
+ * LOG.info(trackingMap.keySet()); // Outputs: [apple, banana]
  * }</pre>
  *
  * <p>

@@ -70,15 +70,15 @@ import com.cedarsoftware.util.LoggingConfig;
  *
  * // Traverse with full node information
  * Traverser.traverse(root, classesToSkip, visit -> {
- *     System.out.println("Node: " + visit.getNode());
+ *     LOG.info("Node: " + visit.getNode());
  *     visit.getFields().forEach((field, value) -> {
- *         System.out.println("  Field: " + field.getName() +
+ *         LOG.info("  Field: " + field.getName() +
  *             " (type: " + field.getType().getSimpleName() + ") = " + value);
  *
  *         // Access field metadata if needed
  *         if (field.isAnnotationPresent(JsonProperty.class)) {
  *             JsonProperty ann = field.getAnnotation(JsonProperty.class);
- *             System.out.println("    JSON property: " + ann.value());
+ *             LOG.info("    JSON property: " + ann.value());
  *         }
  *     });
  * });
@@ -90,7 +90,7 @@ import com.cedarsoftware.util.LoggingConfig;
  * Traverser.Visitor visitor = new Traverser.Visitor() {
  *     @Override
  *     public void process(Object o) {
- *         System.out.println("Visited: " + o);
+ *         LOG.info("Visited: " + o);
  *     }
  * };
  *

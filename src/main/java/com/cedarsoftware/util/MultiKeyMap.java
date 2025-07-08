@@ -117,6 +117,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final Logger LOG = Logger.getLogger(MultiKeyMap.class.getName());
     static { LoggingConfig.init(); }
     
+    // Static flag to log stripe configuration only once per JVM
+    private static final java.util.concurrent.atomic.AtomicBoolean STRIPE_CONFIG_LOGGED = new java.util.concurrent.atomic.AtomicBoolean(false);
+    
+    // Contention monitoring fields
+    private final AtomicInteger totalLockAcquisitions = new AtomicInteger(0);
+    private final AtomicInteger contentionCount = new AtomicInteger(0);
+    private final AtomicInteger[] stripeLockContention = new AtomicInteger[STRIPE_COUNT];
+    private final AtomicInteger[] stripeLockAcquisitions = new AtomicInteger[STRIPE_COUNT];
+    private final AtomicInteger globalLockAcquisitions = new AtomicInteger(0);
+    private final AtomicInteger globalLockContentions = new AtomicInteger(0);
+    
+    // Prevent concurrent resize operations to avoid deadlock
+    private final java.util.concurrent.atomic.AtomicBoolean resizeInProgress = new java.util.concurrent.atomic.AtomicBoolean(false);
+    
     /**
      * Enum to control how keys are stored in put() operations.
      * Used as optional last parameter in varargs put() method.
@@ -154,7 +168,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private volatile Object[] buckets;  // Array of MultiKey<V>[] (or null), Collection, String[] (typed array)
-    private final Object writeLock = new Object();
     private final AtomicInteger atomicSize = new AtomicInteger(0);
     private volatile int size = 0;
     private volatile int maxChainLength = 0;
@@ -235,11 +248,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Initialize ReentrantLock stripe locks for enhanced write concurrency
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
+            stripeLockContention[i] = new AtomicInteger(0);
+            stripeLockAcquisitions[i] = new AtomicInteger(0);
         }
         
-        // Log stripe configuration on first instance creation
-        if (LOG.isLoggable(java.util.logging.Level.INFO)) {
-            LOG.info(String.format("MultiKeyMap initialized with %d stripe locks (auto-tuned for %d cores)", 
+        // Log stripe configuration only once per JVM to avoid log spam
+        if (STRIPE_CONFIG_LOGGED.compareAndSet(false, true) && LOG.isLoggable(java.util.logging.Level.INFO)) {
+            LOG.info(String.format("MultiKeyMap stripe configuration: %d locks for %d cores", 
                     STRIPE_COUNT, Runtime.getRuntime().availableProcessors()));
         }
     }
@@ -391,8 +406,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Used for resize, clear, and other operations that need exclusive access.
      */
     private void lockAllStripes() {
-        for (ReentrantLock lock : stripeLocks) {
+        int contendedStripes = 0;
+        for (int i = 0; i < stripeLocks.length; i++) {
+            ReentrantLock lock = stripeLocks[i];
+            boolean wasContended = lock.hasQueuedThreads();
+            if (wasContended) {
+                contendedStripes++;
+            }
             lock.lock();
+        }
+        
+        globalLockAcquisitions.incrementAndGet();
+        if (contendedStripes > 0) {
+            globalLockContentions.incrementAndGet();
         }
     }
     
@@ -657,9 +683,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Object lookupKey = (key == null) ? NULL_SENTINEL : key;
         int hash = computeSingleKeyHash(lookupKey);
         ReentrantLock lock = getStripeLock(hash);
+        int stripeIndex = hash & STRIPE_MASK;
 
+        // Check for contention before acquiring lock
+        boolean wasContended = lock.hasQueuedThreads();
+        
         lock.lock();
         try {
+            // Update contention statistics
+            totalLockAcquisitions.incrementAndGet();
+            stripeLockAcquisitions[stripeIndex].incrementAndGet();
+            
+            if (wasContended) {
+                contentionCount.incrementAndGet();
+                stripeLockContention[stripeIndex].incrementAndGet();
+            }
             int bucketIndex = hash & (buckets.length - 1);
             
             @SuppressWarnings("unchecked")
@@ -1034,11 +1072,24 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V putInternalCommon(MultiKey<V> newKey) {
         int hash = newKey.hash;
         ReentrantLock lock = getStripeLock(hash);
+        int stripeIndex = hash & STRIPE_MASK;
         boolean resizeNeeded = false;
         V oldValue = null;
 
+        // Check for contention before acquiring lock
+        boolean wasContended = lock.hasQueuedThreads();
+        
         lock.lock();
         try {
+            // Update contention statistics (simplified to avoid nanoTime overhead)
+            totalLockAcquisitions.incrementAndGet();
+            stripeLockAcquisitions[stripeIndex].incrementAndGet();
+            
+            if (wasContended) {
+                contentionCount.incrementAndGet();
+                stripeLockContention[stripeIndex].incrementAndGet();
+            }
+            
             oldValue = putInternalNoLock(newKey);
             resizeNeeded = size > buckets.length * loadFactor;
         } finally {
@@ -1046,7 +1097,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         if (resizeNeeded) {
-            resize();
+            // Use atomic compareAndSet to ensure only one thread performs resize
+            if (resizeInProgress.compareAndSet(false, true)) {
+                try {
+                    resize();
+                } finally {
+                    resizeInProgress.set(false);
+                }
+            }
+            // If another thread is already resizing, we can skip - the resize will help us too
         }
 
         return oldValue;
@@ -2048,6 +2107,74 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
+     * Prints detailed contention statistics for debugging performance issues.
+     * Shows overall contention rates, stripe-level distribution, and global lock usage.
+     */
+    public void printContentionStatistics() {
+        int totalAcquisitions = totalLockAcquisitions.get();
+        int totalContentions = contentionCount.get();
+        int globalAcquisitions = globalLockAcquisitions.get();
+        int globalContentions = globalLockContentions.get();
+        
+        LOG.info("=== MultiKeyMap Contention Statistics ===");
+        LOG.info("Total lock acquisitions: " + totalAcquisitions);
+        LOG.info("Total contentions: " + totalContentions);
+        
+        if (totalAcquisitions > 0) {
+            double contentionRate = (double) totalContentions / totalAcquisitions * 100;
+            LOG.info(String.format("Overall contention rate: %.2f%%", contentionRate));
+        }
+        
+        LOG.info("Global lock acquisitions: " + globalAcquisitions);
+        LOG.info("Global lock contentions: " + globalContentions);
+        
+        LOG.info("Stripe-level statistics:");
+        LOG.info("Stripe | Acquisitions | Contentions | Rate");
+        LOG.info("-------|-------------|-------------|------");
+        
+        for (int i = 0; i < STRIPE_COUNT; i++) {
+            int acquisitions = stripeLockAcquisitions[i].get();
+            int contentions = stripeLockContention[i].get();
+            double rate = acquisitions > 0 ? (double) contentions / acquisitions * 100 : 0.0;
+            
+            LOG.info(String.format("%6d | %11d | %11d | %5.2f%%", 
+                            i, acquisitions, contentions, rate));
+        }
+        
+        // Find most/least contended stripes
+        int maxContentionStripe = 0;
+        int minContentionStripe = 0;
+        int maxContentions = stripeLockContention[0].get();
+        int minContentions = stripeLockContention[0].get();
+        
+        for (int i = 1; i < STRIPE_COUNT; i++) {
+            int contentions = stripeLockContention[i].get();
+            if (contentions > maxContentions) {
+                maxContentions = contentions;
+                maxContentionStripe = i;
+            }
+            if (contentions < minContentions) {
+                minContentions = contentions;
+                minContentionStripe = i;
+            }
+        }
+        
+        LOG.info("Stripe distribution analysis:");
+        LOG.info(String.format("Most contended stripe: %d (%d contentions)", maxContentionStripe, maxContentions));
+        LOG.info(String.format("Least contended stripe: %d (%d contentions)", minContentionStripe, minContentions));
+        
+        // Check for unused stripes
+        int unusedStripes = 0;
+        for (int i = 0; i < STRIPE_COUNT; i++) {
+            if (stripeLockAcquisitions[i].get() == 0) {
+                unusedStripes++;
+            }
+        }
+        LOG.info(String.format("Unused stripes: %d out of %d", unusedStripes, STRIPE_COUNT));
+        LOG.info("================================================");
+    }
+    
+    /**
      * Computes optimized hash for key selection (used by stripe lock selection).
      */
     private int computeKeyHash(Object key) {
@@ -2070,9 +2197,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Resizes the hash table to double its current capacity and rehashes all entries.
      * Uses global locking to ensure thread safety during resize operations.
+     * Includes resize deduplication to prevent multiple concurrent resizes.
      */
     private void resize() {
         withAllStripeLocks(() -> {
+            // Check if another thread already resized while we were waiting for locks
+            double currentLoadFactor = (double) size / buckets.length;
+            if (currentLoadFactor <= loadFactor) {
+                return; // Another thread already resized
+            }
+            
             Object[] oldBuckets = buckets;
             Object[] newBuckets = new Object[oldBuckets.length * 2];
 

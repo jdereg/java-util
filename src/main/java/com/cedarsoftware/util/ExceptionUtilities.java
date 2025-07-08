@@ -55,7 +55,7 @@ public final class ExceptionUtilities {
      * <pre>{@code
      * // Example using safelyIgnoreException with a Callable that may throw an exception
      * String result = safelyIgnoreException(() -> potentiallyFailingOperation(), "defaultValue");
-     * System.out.println(result); // Outputs the result of the operation or "defaultValue" if an exception was thrown
+     * LOG.info(result); // Outputs the result of the operation or "defaultValue" if an exception was thrown
      * }</pre>
      *
      * <p>

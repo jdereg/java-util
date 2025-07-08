@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,6 +20,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * These tests are only run when performRelease=true to keep regular builds fast.
  */
 public class IOUtilitiesPathValidationPerformanceTest {
+    
+    private static final Logger LOG = Logger.getLogger(IOUtilitiesPathValidationPerformanceTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
     
     private List<File> tempFiles;
     private Method validateFilePathMethod;
@@ -71,8 +77,8 @@ public class IOUtilitiesPathValidationPerformanceTest {
             // Calculate operations per second
             double opsPerSecond = (testSize * 1000.0) / durationMs;
             
-            System.out.printf("Path validation performance: %d validations in %d ms (%.0f ops/sec)%n", 
-                             testSize, durationMs, opsPerSecond);
+            LOG.info(String.format("Path validation performance: %d validations in %d ms (%.0f ops/sec)", 
+                             testSize, durationMs, opsPerSecond));
             
             // Performance requirements:
             // - Must complete within 1 second for any test size
@@ -88,7 +94,7 @@ public class IOUtilitiesPathValidationPerformanceTest {
             
             // If any test takes too long, skip larger tests
             if (durationMs > 500) {
-                System.out.printf("Stopping performance tests early - %d validations took %d ms%n", testSize, durationMs);
+                LOG.info(String.format("Stopping performance tests early - %d validations took %d ms", testSize, durationMs));
                 break;
             }
         }
@@ -133,8 +139,8 @@ public class IOUtilitiesPathValidationPerformanceTest {
         int totalValidations = iterations * testFiles.size();
         double opsPerSecond = (totalValidations * 1000.0) / durationMs;
         
-        System.out.printf("Mixed path validation: %d validations in %d ms (%.0f ops/sec)%n", 
-                         totalValidations, durationMs, opsPerSecond);
+        LOG.info(String.format("Mixed path validation: %d validations in %d ms (%.0f ops/sec)", 
+                         totalValidations, durationMs, opsPerSecond));
         
         // Must complete within 1 second
         assertTrue(durationMs < 1000, 
@@ -173,8 +179,8 @@ public class IOUtilitiesPathValidationPerformanceTest {
         long overheadMs = validationMs - baselineMs;
         double overheadPercentage = (overheadMs * 100.0) / baselineMs;
         
-        System.out.printf("Validation overhead: baseline=%d ms, with_validation=%d ms, overhead=%d ms (%.1f%%)%n",
-                         baselineMs, validationMs, overheadMs, overheadPercentage);
+        LOG.info(String.format("Validation overhead: baseline=%d ms, with_validation=%d ms, overhead=%d ms (%.1f%%)",
+                         baselineMs, validationMs, overheadMs, overheadPercentage));
         
         // Both tests should complete quickly
         assertTrue(validationMs < 1000, "Validation test took too long: " + validationMs + " ms");
@@ -205,8 +211,8 @@ public class IOUtilitiesPathValidationPerformanceTest {
             long durationMs = (endTime - startTime) / 1_000_000;
             double opsPerSecond = (iterations * 1000.0) / durationMs;
             
-            System.out.printf("Disabled validation performance: %d validations in %d ms (%.0f ops/sec)%n", 
-                             iterations, durationMs, opsPerSecond);
+            LOG.info(String.format("Disabled validation performance: %d validations in %d ms (%.0f ops/sec)", 
+                             iterations, durationMs, opsPerSecond));
             
             // When disabled, should be extremely fast
             assertTrue(durationMs < 100, "Disabled validation should be very fast: " + durationMs + " ms");

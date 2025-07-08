@@ -542,7 +542,7 @@ public final class MathUtilities
      * <pre>{@code
      * List<Integer> list = new ArrayList<>(Arrays.asList(1, 2, 3));
      * do {
-     *     System.out.println(list);  // Prints each permutation
+     *     LOG.info(list);  // Prints each permutation
      * } while (nextPermutation(list));
      * // Output:
      * // [1, 2, 3]

@@ -66,6 +66,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class CompactMapTest
 {
     private static final Logger LOG = Logger.getLogger(CompactMapTest.class.getName());
+    static { LoggingConfig.initForTests(); }
+    
     @Test
     public void testSizeAndEmpty()
     {
@@ -3660,7 +3662,7 @@ public class CompactMapTest
 
         // Serialize and deserialize
         String json = JsonIo.toJson(map, null);
-//        System.out.println("JSON: " + json);
+        LOG.info("JSON: " + json);
         CompactMap<Object, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
 
         // Verify map size
@@ -3673,8 +3675,8 @@ public class CompactMapTest
         boolean foundUuidKeyArrayValue = false;
 
         for (Map.Entry<Object, Object> entry : restoredMap.entrySet()) {
-//            System.out.println("Key type: " + entry.getKey().getClass().getName() +
-//                    ", Value type: " + (entry.getValue() == null ? "null" : entry.getValue().getClass().getName()));
+            LOG.info("Key type: " + entry.getKey().getClass().getName() +
+                    ", Value type: " + (entry.getValue() == null ? "null" : entry.getValue().getClass().getName()));
 
             if (entry.getKey() instanceof String) {
                 String key = (String) entry.getKey();
@@ -3732,7 +3734,7 @@ public class CompactMapTest
 
         // Serialize and deserialize
         String json = JsonIo.toJson(map, null);
-        // System.out.println("Circular reference JSON: " + json);
+        LOG.info("Circular reference JSON: " + json);
         CompactMap<Object, Object> restoredMap = JsonIo.toObjects(json, null, CompactMap.class);
 
         // Get reference objects
@@ -3770,10 +3772,10 @@ public class CompactMapTest
 
         // Now the critical test: check reference equality
         // If reference tracking works perfectly, these should be the same instances
-        // System.out.println("personFromMarker == personAsKey: " + (personFromMarker == personAsKey));
-        // System.out.println("personFromMarker == valueForUuidKey: " + (personFromMarker == valueForUuidKey));
-        // System.out.println("uuidFromMarker == uuidAsKey: " + (uuidFromMarker == uuidAsKey));
-        // System.out.println("uuidFromMarker == valueForPersonKey: " + (uuidFromMarker == valueForPersonKey));
+        LOG.info("personFromMarker == personAsKey: " + (personFromMarker == personAsKey));
+        LOG.info("personFromMarker == valueForUuidKey: " + (personFromMarker == valueForUuidKey));
+        LOG.info("uuidFromMarker == uuidAsKey: " + (uuidFromMarker == uuidAsKey));
+        LOG.info("uuidFromMarker == valueForPersonKey: " + (uuidFromMarker == valueForPersonKey));
 
         // Check reference equality between string-referenced objects and key/value objects
         assertSame(personFromMarker, personAsKey, "Person from string key should be same as Person used as key");

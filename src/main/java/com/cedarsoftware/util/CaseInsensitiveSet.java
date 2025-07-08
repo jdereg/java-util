@@ -35,14 +35,14 @@ import java.util.function.Function;
  * CaseInsensitiveSet<String> set = new CaseInsensitiveSet<>();
  * set.add("Hello");
  * set.add("HELLO"); // No effect, as "Hello" already exists
- * System.out.println(set); // Outputs: [Hello]
+ * LOG.info(set); // Outputs: [Hello]
  *
  * // Mixed types in the set
  * CaseInsensitiveSet<Object> mixedSet = new CaseInsensitiveSet<>();
  * mixedSet.add("Apple");
  * mixedSet.add(123);
  * mixedSet.add("apple"); // No effect, as "Apple" already exists
- * System.out.println(mixedSet); // Outputs: [Apple, 123]
+ * LOG.info(mixedSet); // Outputs: [Apple, 123]
  * }</pre>
  *
  * <h2>Backing Map Selection</h2>

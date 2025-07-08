@@ -1609,27 +1609,27 @@ public final class Converter {
      *     // Example 1: Convert String to Integer
      *     String numberStr = "123";
      *     Integer number = converter.convert(numberStr, Integer.class);
-     *     System.out.println("Converted Integer: " + number); // Output: Converted Integer: 123
+     *     LOG.info("Converted Integer: " + number); // Output: Converted Integer: 123
      *
      *     // Example 2: Convert String to Date
      *     String dateStr = "2024-04-27";
      *     LocalDate date = converter.convert(dateStr, LocalDate.class);
-     *     System.out.println("Converted Date: " + date); // Output: Converted Date: 2024-04-27
+     *     LOG.info("Converted Date: " + date); // Output: Converted Date: 2024-04-27
      *
      *     // Example 3: Convert Enum to String
      *     Day day = Day.MONDAY;
      *     String dayStr = converter.convert(day, String.class);
-     *     System.out.println("Converted Day: " + dayStr); // Output: Converted Day: MONDAY
+     *     LOG.info("Converted Day: " + dayStr); // Output: Converted Day: MONDAY
      *
      *     // Example 4: Convert Array to List
      *     String[] stringArray = {"apple", "banana", "cherry"};
      *     List<String> stringList = converter.convert(stringArray, List.class);
-     *     System.out.println("Converted List: " + stringList); // Output: Converted List: [apple, banana, cherry]
+     *     LOG.info("Converted List: " + stringList); // Output: Converted List: [apple, banana, cherry]
      *
      *     // Example 5: Convert Map to UUID
      *     Map<String, Object> uuidMap = Map.of("mostSigBits", 123456789L, "leastSigBits", 987654321L);
      *     UUID uuid = converter.convert(uuidMap, UUID.class);
-     *     System.out.println("Converted UUID: " + uuid); // Output: Converted UUID: 00000000-075b-cd15-0000-0000003ade68
+     *     LOG.info("Converted UUID: " + uuid); // Output: Converted UUID: 00000000-075b-cd15-0000-0000003ade68
      *
      *     // Example 6: Convert Object[], String[], Collection, and primitive Arrays to EnumSet
      *     Object[] array = {Day.MONDAY, Day.WEDNESDAY, "FRIDAY", 4};
@@ -1649,7 +1649,7 @@ public final class Converter {
      *
      *     String customStr = "customValue";
      *     CustomType custom = converter.convert(customStr, CustomType.class);
-     *     System.out.println("Converted CustomType: " + custom); // Output: Converted CustomType: CustomType{value='customValue'}
+     *     LOG.info("Converted CustomType: " + custom); // Output: Converted CustomType: CustomType{value='customValue'}
      * }
      * </pre>
      *

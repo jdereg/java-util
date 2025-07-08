@@ -2655,13 +2655,13 @@ void testComputeIfAbsent() {
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void testCaseInsensitiveMapPerformanceComparison() {
-        System.out.println("Performance Test: CaseInsensitiveMap vs TreeMap with String.CASE_INSENSITIVE_ORDER");
-        System.out.println("================================================================");
+        LOG.info("Performance Test: CaseInsensitiveMap vs TreeMap with String.CASE_INSENSITIVE_ORDER");
+        LOG.info("================================================================");
         
         Random random = new Random(42); // Fixed seed for reproducible results
         
         // Test 1: CaseInsensitiveMap backed by HashMap
-        System.out.println("\nTest 1: CaseInsensitiveMap(HashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        LOG.info("\nTest 1: CaseInsensitiveMap(HashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
         testMapPerformance(new CaseInsensitiveMap<>(new HashMap<>()), 
                           new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
                           "CaseInsensitiveMap(HashMap)", 
@@ -2669,7 +2669,7 @@ void testComputeIfAbsent() {
                           random);
         
         // Test 2: CaseInsensitiveMap backed by LinkedHashMap  
-        System.out.println("\nTest 2: CaseInsensitiveMap(LinkedHashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        LOG.info("\nTest 2: CaseInsensitiveMap(LinkedHashMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
         testMapPerformance(new CaseInsensitiveMap<>(new LinkedHashMap<>()), 
                           new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
                           "CaseInsensitiveMap(LinkedHashMap)", 
@@ -2677,15 +2677,15 @@ void testComputeIfAbsent() {
                           random);
         
         // Test 3: CaseInsensitiveMap backed by TreeMap() vs TreeMap(String.CASE_INSENSITIVE_ORDER)
-        System.out.println("\nTest 3: CaseInsensitiveMap(TreeMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
+        LOG.info("\nTest 3: CaseInsensitiveMap(TreeMap) vs TreeMap(String.CASE_INSENSITIVE_ORDER)");
         testMapPerformance(new CaseInsensitiveMap<>(new TreeMap<>()), 
                           new TreeMap<>(String.CASE_INSENSITIVE_ORDER), 
                           "CaseInsensitiveMap(TreeMap)", 
                           "TreeMap(CASE_INSENSITIVE_ORDER)",
                           random);
         
-        System.out.println("\n================================================================");
-        System.out.println("Performance test completed");
+        LOG.info("\n================================================================");
+        LOG.info("Performance test completed");
     }
     
     private void testMapPerformance(Map<String, String> map1, Map<String, String> map2, 
@@ -2713,14 +2713,14 @@ void testComputeIfAbsent() {
         int map1Ops = countOps(map1, keys, values, 2000);
         int map2Ops = countOps(map2, keys, values, 2000);
         
-        System.out.printf("%-35s: %,d operations in %,d ms%n", map1Name, map1Ops, map1Time);
-        System.out.printf("%-35s: %,d operations in %,d ms%n", map2Name, map2Ops, map2Time);
+        LOG.info(String.format("%-35s: %,d operations in %,d ms%n", map1Name, map1Ops, map1Time));
+        LOG.info(String.format("%-35s: %,d operations in %,d ms%n", map2Name, map2Ops, map2Time));
         
         double opsSpeedup = (double) map1Ops / map2Ops;
-        System.out.printf("Operations speedup: %.2fx (%s performed %.2fx more operations)%n", 
+        LOG.info(String.format("Operations speedup: %.2fx (%s performed %.2fx more operations)%n", 
                          opsSpeedup, 
                          opsSpeedup > 1.0 ? map1Name : map2Name, 
-                         opsSpeedup > 1.0 ? opsSpeedup : 1.0 / opsSpeedup);
+                         opsSpeedup > 1.0 ? opsSpeedup : 1.0 / opsSpeedup));
     }
     
     private void warmupMaps(Map<String, String> map1, Map<String, String> map2, 

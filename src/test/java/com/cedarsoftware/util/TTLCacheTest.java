@@ -581,7 +581,7 @@ public class TTLCacheTest {
         assertEquals(0, count, "No entries should be iterated after TTL expiry");
     }
 
-    // Use this test to "See" the pattern, by adding a System.out.println(toString()) of the cache contents to the top
+    // Use this test to "See" the pattern, by adding a LOG.info(toString()) of the cache contents to the top
     // of the purgeExpiredEntries() method.
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test

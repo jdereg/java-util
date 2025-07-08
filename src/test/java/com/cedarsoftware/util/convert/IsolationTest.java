@@ -1,5 +1,8 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.logging.Logger;
+
+import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -12,6 +15,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * - No cross-contamination between contexts
  */
 class IsolationTest {
+    private static final Logger LOG = Logger.getLogger(IsolationTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
     
     static class AppType {
         final String value;
@@ -67,10 +74,10 @@ class IsolationTest {
         assertThrows(IllegalArgumentException.class, () -> 
                 instance2.convert("test", AppType.class));
         
-        System.out.println("✓ Complete isolation verified:");
-        System.out.println("  Static: " + stillStaticResult.value);
-        System.out.println("  Instance1: " + instance1Result.value);
-        System.out.println("  Instance2: No conversion (isolated)");
+        LOG.info("✓ Complete isolation verified:");
+        LOG.info("  Static: " + stillStaticResult.value);
+        LOG.info("  Instance1: " + instance1Result.value);
+        LOG.info("  Instance2: No conversion (isolated)");
     }
     
     @Test
@@ -91,6 +98,6 @@ class IsolationTest {
         assertEquals("42", instance1Result);
         assertEquals("42", instance2Result);
         
-        System.out.println("✓ Factory conversions work in all contexts");
+        LOG.info("✓ Factory conversions work in all contexts");
     }
 }

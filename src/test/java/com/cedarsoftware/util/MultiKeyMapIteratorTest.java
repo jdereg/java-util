@@ -10,11 +10,16 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.logging.Logger;
 
 /**
  * Test thread safety of MultiKeyMap iterator under concurrent modifications.
  */
 class MultiKeyMapIteratorTest {
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapIteratorTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
     
     private static final int INITIAL_ENTRIES = 100;
     private static final int CONCURRENT_OPERATIONS = 500;
@@ -22,7 +27,7 @@ class MultiKeyMapIteratorTest {
     
     @Test
     void testIteratorThreadSafetyUnderConcurrentModifications() throws InterruptedException {
-        System.out.println("=== Iterator Thread Safety Test ===");
+        LOG.info("=== Iterator Thread Safety Test ===");
         
         MultiKeyMap<String> map = new MultiKeyMap<>(16, 0.70f);
         
@@ -61,7 +66,7 @@ class MultiKeyMapIteratorTest {
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("Writer thread " + id + " failed: " + e.getMessage());
+                    LOG.info("Writer thread " + id + " failed: " + e.getMessage());
                     testFailed.set(true);
                 } finally {
                     doneLatch.countDown();
@@ -100,7 +105,7 @@ class MultiKeyMapIteratorTest {
                     Thread.sleep(1);
                 }
             } catch (Exception e) {
-                System.err.println("Iterator thread failed: " + e.getMessage());
+                LOG.info("Iterator thread failed: " + e.getMessage());
                 e.printStackTrace();
                 testFailed.set(true);
             } finally {
@@ -119,9 +124,9 @@ class MultiKeyMapIteratorTest {
             fail("Iterator thread safety test failed - see error messages above");
         }
         
-        System.out.println("Writer operations completed: " + writerOpsCompleted.get());
-        System.out.println("Total iterator entries processed: " + iteratorCount.get());
-        System.out.println("Final map size: " + map.size());
+        LOG.info("Writer operations completed: " + writerOpsCompleted.get());
+        LOG.info("Total iterator entries processed: " + iteratorCount.get());
+        LOG.info("Final map size: " + map.size());
         
         // Verify that we processed a reasonable number of entries
         assertTrue(iteratorCount.get() > 0, "Iterator should have processed some entries");
@@ -131,7 +136,7 @@ class MultiKeyMapIteratorTest {
     
     @Test
     void testIteratorConsistencyDuringResize() throws InterruptedException {
-        System.out.println("\n=== Iterator Consistency During Resize Test ===");
+        LOG.info("=== Iterator Consistency During Resize Test ===");
         
         // Start with small capacity to force resizing
         MultiKeyMap<String> map = new MultiKeyMap<>(4, 0.60f);
@@ -155,7 +160,7 @@ class MultiKeyMapIteratorTest {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Writer thread failed: " + e.getMessage());
+                LOG.info("Writer thread failed: " + e.getMessage());
                 testFailed.set(true);
             } finally {
                 doneLatch.countDown();
@@ -190,7 +195,7 @@ class MultiKeyMapIteratorTest {
                     Thread.sleep(2); // Small delay between iterations
                 }
             } catch (Exception e) {
-                System.err.println("Iterator thread failed: " + e.getMessage());
+                LOG.info("Iterator thread failed: " + e.getMessage());
                 e.printStackTrace();
                 testFailed.set(true);
             } finally {
@@ -208,8 +213,8 @@ class MultiKeyMapIteratorTest {
             fail("Iterator consistency test failed during resize");
         }
         
-        System.out.println("Iteration counts: " + iterationCounts);
-        System.out.println("Final map size: " + map.size());
+        LOG.info("Iteration counts: " + iterationCounts);
+        LOG.info("Final map size: " + map.size());
         
         // Verify we got some iterations and they show increasing counts as entries were added
         assertFalse(iterationCounts.isEmpty(), "Should have completed some iterations");
@@ -218,7 +223,7 @@ class MultiKeyMapIteratorTest {
     
     @Test 
     void testMultipleConcurrentIterators() throws InterruptedException {
-        System.out.println("\n=== Multiple Concurrent Iterators Test ===");
+        LOG.info("=== Multiple Concurrent Iterators Test ===");
         
         MultiKeyMap<String> map = new MultiKeyMap<>(32, 0.75f);
         
@@ -252,7 +257,7 @@ class MultiKeyMapIteratorTest {
                         Thread.sleep(1);
                     }
                 } catch (Exception e) {
-                    System.err.println("Iterator " + id + " failed: " + e.getMessage());
+                    LOG.info("Iterator " + id + " failed: " + e.getMessage());
                     testFailed.set(true);
                 } finally {
                     doneLatch.countDown();
@@ -271,7 +276,7 @@ class MultiKeyMapIteratorTest {
                     Thread.sleep(1);
                 }
             } catch (Exception e) {
-                System.err.println("Writer failed: " + e.getMessage());
+                LOG.info("Writer failed: " + e.getMessage());
                 testFailed.set(true);
             } finally {
                 doneLatch.countDown();
@@ -286,8 +291,8 @@ class MultiKeyMapIteratorTest {
             fail("Multiple concurrent iterators test failed");
         }
         
-        System.out.println("Total iterations completed: " + totalIterations.get());
-        System.out.println("Final map size: " + map.size());
+        LOG.info("Total iterations completed: " + totalIterations.get());
+        LOG.info("Final map size: " + map.size());
         
         assertTrue(totalIterations.get() > 0, "Should have completed iterations");
     }

@@ -1,5 +1,9 @@
 package com.cedarsoftware.util.convert;
 
+import java.util.logging.Logger;
+
+import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -7,7 +11,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Comprehensive test of primitive conversions with the new addFactoryConversion approach
  */
 class ComprehensivePrimitiveTest {
-    
+    private static final Logger LOG = Logger.getLogger(ComprehensivePrimitiveTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+
     @Test
     void testAllBasicPrimitiveConversions() {
         Converter converter = new Converter(new DefaultConverterOptions());
@@ -44,6 +52,6 @@ class ComprehensivePrimitiveTest {
         long fromLong = converter.convert(Long.valueOf(888L), long.class);
         assertEquals(888L, fromLong);
         
-        System.out.println("✓ All comprehensive primitive conversions work");
+        LOG.info("✓ All comprehensive primitive conversions work");
     }
 }

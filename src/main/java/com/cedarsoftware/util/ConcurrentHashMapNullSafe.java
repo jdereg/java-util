@@ -33,9 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Map<String, String> existingMap = Map.of("a", "b", "c", "d");
  * ConcurrentHashMapNullSafe<String, String> populatedMap = new ConcurrentHashMapNullSafe<>(existingMap);
  *
- * System.out.println(map.get(null));  // Outputs: nullKey
- * System.out.println(map.get("key")); // Outputs: null
- * System.out.println(populatedMap);  // Outputs: {a=b, c=d}
+ * LOG.info(map.get(null));  // Outputs: nullKey
+ * LOG.info(map.get("key")); // Outputs: null
+ * LOG.info(populatedMap);  // Outputs: {a=b, c=d}
  * }</pre>
  *
  * @param <K> the type of keys maintained by this map

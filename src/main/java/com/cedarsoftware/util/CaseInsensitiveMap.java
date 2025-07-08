@@ -54,8 +54,8 @@ import java.util.function.Function;
  * // Create a case-insensitive map with default LinkedHashMap backing
  * CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
  * map.put("Key", "Value");
- * System.out.println(map.get("key"));  // Outputs: Value
- * System.out.println(map.get("KEY"));  // Outputs: Value
+ * LOG.info(map.get("key"));  // Outputs: Value
+ * LOG.info(map.get("KEY"));  // Outputs: Value
  *
  * // Create a case-insensitive map from an existing map
  * Map<String, String> source = Map.of("Key1", "Value1", "Key2", "Value2");
@@ -64,7 +64,7 @@ import java.util.function.Function;
  * // Use with non-String keys
  * CaseInsensitiveMap<Integer, String> intKeyMap = new CaseInsensitiveMap<>();
  * intKeyMap.put(1, "One");
- * System.out.println(intKeyMap.get(1));  // Outputs: One
+ * LOG.info(intKeyMap.get(1));  // Outputs: One
  * }</pre>
  *
  * <h2>Backing Map Selection</h2>

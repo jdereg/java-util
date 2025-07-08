@@ -31,9 +31,50 @@ public final class LoggingConfig {
      * Initialize logging if not already configured.
      * The formatter pattern can be set via system property {@value #DATE_FORMAT_PROP}
      * or by calling {@link #init(String)}.
+     * 
+     * If running in test environment (detected by system property), uses clean test format.
      */
     public static synchronized void init() {
-        init(System.getProperty(DATE_FORMAT_PROP, DEFAULT_PATTERN));
+        // Check if we're running in test environment
+        String testProperty = System.getProperty("surefire.test.class.path");
+        boolean isTestEnvironment = testProperty != null || 
+                                   System.getProperty("maven.test.skip") != null ||
+                                   isCalledFromTestClass();
+        
+        if (isTestEnvironment) {
+            initForTests();
+        } else {
+            init(System.getProperty(DATE_FORMAT_PROP, DEFAULT_PATTERN));
+        }
+    }
+    
+    /**
+     * Check if the current call stack includes test classes.
+     */
+    private static boolean isCalledFromTestClass() {
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        for (StackTraceElement element : stack) {
+            String className = element.getClassName();
+            if (className.contains(".test.") || className.endsWith("Test")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Initialize logging with simple format for tests (no timestamps, no thread names).
+     * Use this in test environments to get clean output similar to Maven's format.
+     * This method will force the test formatter even if logging was already initialized.
+     */
+    public static synchronized void initForTests() {
+        Logger root = LogManager.getLogManager().getLogger("");
+        for (Handler h : root.getHandlers()) {
+            if (h instanceof ConsoleHandler) {
+                h.setFormatter(new SimpleTestFormatter());
+            }
+        }
+        initialized = true;
     }
 
     /**
@@ -62,6 +103,27 @@ public final class LoggingConfig {
     public static void useUniformFormatter(Handler handler) {
         if (handler != null) {
             handler.setFormatter(new UniformFormatter(System.getProperty(DATE_FORMAT_PROP, DEFAULT_PATTERN)));
+        }
+    }
+
+    /**
+     * Simple formatter for tests that produces clean output similar to Maven's format:
+     * {@code [LEVEL] message}
+     */
+    public static class SimpleTestFormatter extends Formatter {
+        @Override
+        public String format(LogRecord r) {
+            String level = r.getLevel().getName();
+            String msg = formatMessage(r);
+            StringBuilder sb = new StringBuilder();
+            sb.append('[').append(level).append("] ").append(msg);
+            if (r.getThrown() != null) {
+                StringWriter sw = new StringWriter();
+                r.getThrown().printStackTrace(new PrintWriter(sw));
+                sb.append(System.lineSeparator()).append(sw);
+            }
+            sb.append(System.lineSeparator());
+            return sb.toString();
         }
     }
 

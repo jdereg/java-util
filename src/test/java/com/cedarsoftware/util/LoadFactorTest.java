@@ -1,4 +1,6 @@
 package com.cedarsoftware.util;
+import java.util.logging.Logger;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -6,7 +8,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Test load factor functionality
  */
 class LoadFactorTest {
-    
+    private static final Logger LOG = Logger.getLogger(LoadFactorTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+
     @Test
     void testCustomLoadFactor() {
         // Test with aggressive 0.5f load factor - should resize more frequently
@@ -19,7 +25,7 @@ class LoadFactorTest {
         
         // Should have resized multiple times with 0.5f load factor
         assertTrue(map.size() == 20, "Should have 20 entries");
-        System.out.println("Final capacity after aggressive resizing: " + map.getLoadFactor());
+        LOG.info("Final capacity after aggressive resizing: " + map.getLoadFactor());
     }
     
     @Test

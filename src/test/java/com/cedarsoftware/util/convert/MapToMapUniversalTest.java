@@ -15,14 +15,17 @@ import java.util.Map;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 import com.cedarsoftware.util.CaseInsensitiveMap;
+import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.CompactMap;
 import com.cedarsoftware.util.CompactCIHashMap;
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentNavigableMapNullSafe;
 import com.cedarsoftware.util.DeepEquals;
 
+import com.cedarsoftware.util.LoggingConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +42,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 5. Edge cases and error conditions
  */
 class MapToMapUniversalTest {
+    private static final Logger LOG = Logger.getLogger(MapToMapUniversalTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
 
     private Converter converter;
     private Map<String, Object> sourceMap;
@@ -275,7 +282,7 @@ class MapToMapUniversalTest {
             assertMapConversion(result, jsonObjectClass, sourceMap);
         } catch (ClassNotFoundException e) {
             // JsonObject not available in this environment, skip test
-            System.out.println("JsonObject not available, skipping test");
+            LOG.info("JsonObject not available, skipping test");
         }
     }
 
@@ -294,7 +301,7 @@ class MapToMapUniversalTest {
             assertMapConversion(result, compactMapClass, sourceMap);
         } catch (ClassNotFoundException e) {
             // CompactMap not available, skip test
-            System.out.println("CompactMap not available, skipping test");
+            LOG.info("CompactMap not available, skipping test");
         }
     }
 

@@ -10,6 +10,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Random;
 import java.util.TimeZone;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -40,8 +41,12 @@ import static org.junit.jupiter.api.Assertions.fail;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class SimpleDateFormatTest
-{
+public class SimpleDateFormatTest  {
+    private static final Logger LOG = Logger.getLogger(SimpleDateFormatTest.class.getName());
+    static {
+        LoggingConfig.initForTests();
+    }
+
     @ParameterizedTest
     @MethodSource("testDates")
     void testSimpleDateFormat1(int year, int month, int day, int hour, int min, int sec, String expectedDateFormat) throws Exception
@@ -323,9 +328,9 @@ public class SimpleDateFormatTest
         }
 
         assertNotNull(passed[0]);
-//        System.out.println("r = " + r[0]);
-//        System.out.println("s = " + s[0]);
-//        System.out.println("t = " + t[0]);
+        LOG.info("r = " + r[0]);
+        LOG.info("s = " + s[0]);
+        LOG.info("t = " + t[0]);
     }
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
@@ -410,9 +415,9 @@ public class SimpleDateFormatTest
         }
 
         assertNull(passed[0]);
-//        System.out.println("r = " + r[0]);
-//        System.out.println("s = " + s[0]);
-//        System.out.println("t = " + t[0]);
+//        LOG.info("r = " + r[0]);
+//        LOG.info("s = " + s[0]);
+//        LOG.info("t = " + t[0]);
     }
 
     @Test

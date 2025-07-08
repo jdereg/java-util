@@ -1,53 +1,62 @@
 package com.cedarsoftware.util;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * High-performance N-dimensional key-value Map implementation using separate chaining.
- * 
- * <p>MultiKeyMap allows storing and retrieving values using keys composed of multiple dimensions.
- * Unlike traditional maps that use a single key, this map can handle keys with any number of 
- * components, making it ideal for complex lookup scenarios.</p>
- * 
+ *
+ * <p>MultiKeyMap allows storing and retrieving values using multiple keys. Unlike traditional maps that
+ * use a single key, this map can handle keys with any number of components, making it ideal for complex
+ * lookup scenarios.</p>
+ *
  * <h3>Key Features:</h3>
  * <ul>
- *   <li><b>N-Dimensional Keys:</b> Support for keys with any number of components (1, 2, 3, ... N)</li>
- *   <li><b>High Performance:</b> Zero-allocation polymorphic storage, optimized hash computation</li>
- *   <li><b>Thread-Safe:</b> Lock-free reads with auto-tuned stripe locking that scales with your server</li>
- *   <li><b>Map Interface Compatible:</b> Supports single-key operations via standard Map interface</li>
- *   <li><b>Flexible API:</b> Varargs methods for convenient multi-key operations</li>
- *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections and Arrays</li>
+ *   <li><b>N-Dimensional Keys:</b> Support for keys with any number of components (1, 2, 3, ... N).</li>
+ *   <li><b>High Performance:</b> Zero\-allocation polymorphic storage and optimized hash computation — no GC/heap used for "gets".</li>
+ *   <li><b>Thread\-Safe:</b> Lock\-free reads with auto\-tuned stripe locking that scales with your server, similar to ConcurrentHashMap.</li>
+ *   <li><b>Map Interface Compatible:</b> Supports single\-key operations via the standard Map interface (get()/put()
+ *       automatically unpack Collections/Arrays (typed or Object[]) into multi\-keys).</li>
+ *   <li><b>Flexible API:</b> Var-args methods for convenient multi\-key operations (get()/put() with many keys).</li>
+ *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections and Arrays — change the default automatic unpacking of
+ *       Collections/Arrays capability as needed.</li>
  * </ul>
  * 
  * <h3>Usage Examples:</h3>
  * <pre>{@code
  * // Create a multi-key map
  * MultiKeyMap<String> map = new MultiKeyMap<>(1024);
- * 
+ *
  * // Store values with different key dimensions using Map interface
  * map.put("single-key", "value1");                         // 1D key
  * map.put(new Object[]{"k1", "k2"}, "value2");             // 2D key via array
  * map.put(Arrays.asList("k1", "k2", "k3"), "value3");      // 3D key via Collection
- * 
+ *
  * // OR use convenient varargs methods (requires MultiKeyMap variable type)
  * MultiKeyMap<String> mkMap = new MultiKeyMap<>();
  * mkMap.put("value1", "single-key");                       // 1D key
- * mkMap.put("value2", "key1", "key2");                     // 2D key  
+ * mkMap.put("value2", "key1", "key2");                     // 2D key
  * mkMap.put("value3", "key1", "key2", "key3");             // 3D key
  * mkMap.put("value4", "k1", "k2", "k3", "k4");             // 4D key
  * // ... unlimited dimensions
@@ -58,25 +67,25 @@ import java.util.logging.Logger;
  * String val3 = mkMap.get("key1", "key2");
  * String val4 = mkMap.get("k1", "k2", "k3", "k4");
  * }</pre>
- * 
+ *
  * <h3>Collection and Array Handling:</h3>
- * <p>MultiKeyMap provides flexible handling of Collections and Arrays through the 
+ * <p>MultiKeyMap provides flexible handling of Collections and Arrays through the
  * {@link CollectionKeyMode} enum:</p>
  * <ul>
  *   <li><b>MULTI_KEY_ONLY:</b> Collections/Arrays are always unpacked into multi-key lookups</li>
  *   <li><b>MULTI_KEY_FIRST:</b> Try unpacking first, fallback to treating as single key</li>
  *   <li><b>COLLECTION_KEY_FIRST:</b> Try as single key first, fallback to unpacking</li>
  * </ul>
- * 
+ *
  * <pre>{@code
  * // Configure collection handling behavior
  * MultiKeyMap<String> map = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTION_KEY_FIRST);
- * 
+ *
  * String[] arrayKey = {"config", "database", "url"};
  * map.put(arrayKey, "jdbc:mysql://localhost:3306/db");     // Array treated as single key
  * String url = map.get(arrayKey);                          // Retrieved as single key
  * }</pre>
- * 
+ *
  * <h3>Performance Characteristics:</h3>
  * <ul>
  *   <li><b>Time Complexity:</b> O(1) average case for get/put/remove operations</li>
@@ -85,16 +94,16 @@ import java.util.logging.Logger;
  *   <li><b>Concurrency:</b> Lock-free reads with auto-tuned stripe locking that scales with your server</li>
  *   <li><b>Load Factor:</b> Configurable, defaults to 0.75 for optimal performance</li>
  * </ul>
- * 
+ *
  * <h3>Thread Safety:</h3>
- * <p>This implementation is fully thread-safe with enterprise-grade concurrency. Read operations 
- * (get, containsKey, etc.) are completely lock-free for maximum throughput. Write operations 
- * use auto-tuned stripe locking that scales with your server's cores, enabling multiple 
- * concurrent writers to operate simultaneously without contention. The stripe count auto-adapts 
- * to system cores (cores/2, minimum 8) for optimal performance across different hardware. 
- * Global operations (resize, clear) use coordinated locking to prevent deadlock while 
+ * <p>This implementation is fully thread-safe with enterprise-grade concurrency. Read operations
+ * (get, containsKey, etc.) are completely lock-free for maximum throughput. Write operations
+ * use auto-tuned stripe locking that scales with your server's cores, enabling multiple
+ * concurrent writers to operate simultaneously without contention. The stripe count auto-adapts
+ * to system cores (cores/2, minimum 8) for optimal performance across different hardware.
+ * Global operations (resize, clear) use coordinated locking to prevent deadlock while
  * maintaining data consistency.</p>
- * 
+ *
  * @param <V> the type of values stored in the map
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -118,7 +127,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     static { LoggingConfig.init(); }
     
     // Static flag to log stripe configuration only once per JVM
-    private static final java.util.concurrent.atomic.AtomicBoolean STRIPE_CONFIG_LOGGED = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
     
     // Contention monitoring fields
     private final AtomicInteger totalLockAcquisitions = new AtomicInteger(0);
@@ -129,7 +138,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final AtomicInteger globalLockContentions = new AtomicInteger(0);
     
     // Prevent concurrent resize operations to avoid deadlock
-    private final java.util.concurrent.atomic.AtomicBoolean resizeInProgress = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final AtomicBoolean resizeInProgress = new AtomicBoolean(false);
     
     /**
      * Enum to control how keys are stored in put() operations.
@@ -253,7 +262,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         // Log stripe configuration only once per JVM to avoid log spam
-        if (STRIPE_CONFIG_LOGGED.compareAndSet(false, true) && LOG.isLoggable(java.util.logging.Level.INFO)) {
+        if (STRIPE_CONFIG_LOGGED.compareAndSet(false, true) && LOG.isLoggable(Level.INFO)) {
             LOG.info(String.format("MultiKeyMap stripe configuration: %d locks for %d cores", 
                     STRIPE_COUNT, Runtime.getRuntime().availableProcessors()));
         }
@@ -339,8 +348,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int hash = 1;
         if (keys instanceof Object[]) {
             Object[] array = (Object[]) keys;
-            for (Object key : array) {
-                hash = hash * 31 + getKeyHash(key);
+            // Use index-based loop to avoid Iterator allocation overhead
+            for (int i = 0; i < array.length; i++) {
+                hash = hash * 31 + getKeyHash(array[i]);
             }
         } else if (keys instanceof Collection) {
             for (Object key : (Collection<?>) keys) {
@@ -358,8 +368,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private static int getKeyHash(Object key) {
         if (key == null) return 0;
-        return (key instanceof Class) ? 
-            System.identityHashCode(key) : key.hashCode();
+        
+        // Use identity hash for objects where identity is more important than equality.
+        // These types can have identical hashCode() values for different instances,
+        // but we want to distinguish them by object identity in the map.
+        if (key instanceof Class ||                              // Different classes with same name
+            key instanceof Executable ||                        // Method/Constructor from different classes
+            key instanceof Field ||                             // Same field name from different classes
+            key instanceof ClassLoader ||                       // Different classloader instances
+            key instanceof Reference ||                         // Reference identity vs referent
+            key instanceof Thread) {                            // Thread identity vs thread properties
+            return System.identityHashCode(key);
+        }
+        
+        return key.hashCode();
     }
     
     private static int finalizeHash(int hash) {
@@ -460,14 +482,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return getInternalDirect(null);
         }
         
-        Class<?> keyClass = key.getClass();
-        if (keyClass.isArray()) {
-            return getFromArray(key);
-        } else if (key instanceof Collection) {
-            return getFromCollection((Collection<?>) key);
+        // Fast path for most common single object keys (String, Class, primitives)
+        // This improves branch prediction for the 90%+ case
+        if (!(key instanceof Collection)) {
+            Class<?> keyClass = key.getClass();
+            if (keyClass.isArray()) {
+                return getFromArray(key);
+            } else {
+                // Normal object - most common path
+                return getInternalDirect(key);
+            }
         } else {
-            // Normal object
-            return getInternalDirect(key);
+            // Collection key - less common path
+            return getFromCollection((Collection<?>) key);
         }
     }
     
@@ -860,9 +887,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return false; // One null, one not null
         }
         
-        // For Classes, use identity comparison for performance
-        if (k1 instanceof Class && k2 instanceof Class) {
-            return false; // Already checked == above, so they're different Classes
+        // For identity-based types, use identity comparison for consistency with getKeyHash().
+        // These are the same types that use System.identityHashCode() in getKeyHash().
+        if ((k1 instanceof Class && k2 instanceof Class) ||
+            (k1 instanceof Executable && k2 instanceof Executable) ||
+            (k1 instanceof Field && k2 instanceof Field) ||
+            (k1 instanceof ClassLoader && k2 instanceof ClassLoader) ||
+            (k1 instanceof Reference && k2 instanceof Reference) ||
+            (k1 instanceof Thread && k2 instanceof Thread)) {
+            return false; // Already checked == above, so they're different identity-based objects
         }
         
         // For other objects, use equals
@@ -1236,7 +1269,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private class EntryIterable implements Iterable<MultiKeyEntry<V>> {
         @Override
-        public java.util.Iterator<MultiKeyEntry<V>> iterator() {
+        public Iterator<MultiKeyEntry<V>> iterator() {
             return new EntryIterator();
         }
     }
@@ -1245,7 +1278,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Iterator implementation for MultiKeyMap entries.
      * Thread-safe - captures a snapshot of the buckets array at creation time.
      */
-    private class EntryIterator implements java.util.Iterator<MultiKeyEntry<V>> {
+    private class EntryIterator implements Iterator<MultiKeyEntry<V>> {
         private final Object[] bucketSnapshot;  // Snapshot of buckets at iterator creation
         private int currentBucket = 0;
         private int currentChainIndex = 0;
@@ -1948,7 +1981,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 key = multiEntry.keys;
             }
             
-            entrySet.add(new SimpleEntry<>(key, multiEntry.value));
+            entrySet.add(new AbstractMap.SimpleEntry<>(key, multiEntry.value));
         }
         return entrySet;
     }
@@ -2281,47 +2314,5 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         return null;
-    }
-    
-    /**
-     * Simple implementation of Map.Entry for the entrySet() method.
-     */
-    private static class SimpleEntry<K, V> implements Map.Entry<K, V> {
-        private final K key;
-        private V value;
-        
-        public SimpleEntry(K key, V value) {
-            this.key = key;
-            this.value = value;
-        }
-        
-        @Override
-        public K getKey() {
-            return key;
-        }
-        
-        @Override
-        public V getValue() {
-            return value;
-        }
-        
-        @Override
-        public V setValue(V value) {
-            V oldValue = this.value;
-            this.value = value;
-            return oldValue;
-        }
-        
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof Map.Entry)) return false;
-            Map.Entry<?, ?> other = (Map.Entry<?, ?>) obj;
-            return Objects.equals(key, other.getKey()) && Objects.equals(value, other.getValue());
-        }
-        
-        @Override
-        public int hashCode() {
-            return Objects.hashCode(key) ^ Objects.hashCode(value);
-        }
     }
 }

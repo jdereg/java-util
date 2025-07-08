@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,7 +31,7 @@ class MultiKeyMapConcurrencyTest {
     // Test configuration - you can adjust these for your manual testing
     private static final int CAPACITY = 16;
     private static final int NUM_THREADS = 8;
-    private static final int OPERATIONS_PER_THREAD = 1000;
+    private static final int OPERATIONS_PER_THREAD = 10000;
     private static final int TEST_DURATION_SECONDS = 5;
     
     @Test
@@ -159,10 +160,12 @@ class MultiKeyMapConcurrencyTest {
         AtomicInteger writeOps = new AtomicInteger(0);
         AtomicInteger readOps = new AtomicInteger(0);
         
-        // Limited set of keys to force high contention
-        Class<?>[] sources = {String.class, Integer.class, Long.class};
-        Class<?>[] targets = {Double.class, Boolean.class, Byte.class};
-        long[] instanceIds = {0L, 1L, 2L};
+        // Limited set of keys to force high contention while ensuring better stripe distribution
+        // Note: Using diverse Class types and prime numbers for instanceIds to avoid hash clustering
+        // that can occur with consecutive values (0,1,2) and similar wrapper classes
+        Class<?>[] sources = {String.class, Integer.class, Long.class, Double.class, Boolean.class};
+        Class<?>[] targets = {Byte.class, Short.class, Float.class, Character.class, java.util.List.class};
+        long[] instanceIds = {7L, 23L, 47L, 89L, 157L};  // Prime numbers for better hash distribution
         
         LOG.info("Key combinations: " + (sources.length * targets.length * instanceIds.length) + 
                           " (designed to create contention)");
@@ -351,7 +354,7 @@ class MultiKeyMapConcurrencyTest {
         Class<?>[] classes = {
             String.class, Integer.class, Long.class, Double.class, Boolean.class,
             Byte.class, Short.class, Float.class, Character.class,
-            java.util.List.class, java.util.Set.class, java.util.Map.class
+            List.class, Set.class, Map.class
         };
         return classes[random.nextInt(classes.length)];
     }

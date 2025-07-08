@@ -1,16 +1,12 @@
 package com.cedarsoftware.util.convert;
 
+import java.awt.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.nio.ShortBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.DayOfWeek;
@@ -34,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Calendar;
-import java.awt.Color;
 import java.util.Collection;
 import java.util.Currency;
 import java.util.Date;
@@ -44,7 +39,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -61,9 +55,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
-import java.util.stream.DoubleStream;
-import java.util.stream.IntStream;
-import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import com.cedarsoftware.io.JsonIo;
@@ -795,8 +786,7 @@ class ConverterEverythingTest {
     }
 
     /**
-     * Surrogate Bridge Tests - Validates that the surrogate pair system works correctly
-     * 
+     * Surrogate Bridge Tests - Validates that the surrogate pair system works correctly.
      * These tests verify that conversions automatically work for surrogate classes
      * through the BFS expansion system without requiring explicit conversion methods.
      */
@@ -884,13 +874,13 @@ class ConverterEverythingTest {
                 {new AtomicInteger(42), new AtomicLong(42L), true},
                 {new AtomicInteger(-1), new AtomicLong(-1L), true},
                 {new AtomicInteger(0), new AtomicLong(0L), true},
-                {new AtomicInteger(Integer.MAX_VALUE), new AtomicLong((long)Integer.MAX_VALUE), true},
+                {new AtomicInteger(Integer.MAX_VALUE), new AtomicLong(Integer.MAX_VALUE), true},
         });
         TEST_DB.put(pair(AtomicLong.class, AtomicInteger.class), new Object[][]{
                 {new AtomicLong(42L), new AtomicInteger(42), true},
                 {new AtomicLong(-1L), new AtomicInteger(-1), true},
                 {new AtomicLong(0L), new AtomicInteger(0), true},
-                {new AtomicLong((long)Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE), true},
+                {new AtomicLong(Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE), true},
         });
         TEST_DB.put(pair(AtomicBoolean.class, AtomicLong.class), new Object[][]{
                 {new AtomicBoolean(true), new AtomicLong(1L), true},
@@ -2345,7 +2335,7 @@ class ConverterEverythingTest {
                 { mapOf(VALUE, "PT16S"), Duration.ofSeconds(16) },
 
                 // Edge cases (using the "seconds" key with a BigDecimal value)
-                { mapOf(DURATION, new BigDecimal(Long.toString(Long.MAX_VALUE) + ".999999999")), Duration.ofSeconds(Long.MAX_VALUE, 999999999) },
+                { mapOf(DURATION, new BigDecimal(Long.MAX_VALUE + ".999999999")), Duration.ofSeconds(Long.MAX_VALUE, 999999999) },
                 { mapOf(DURATION, new BigDecimal(Long.toString(Long.MIN_VALUE))), Duration.ofSeconds(Long.MIN_VALUE, 0) },
 
                 // Mixed formats:
@@ -4657,8 +4647,6 @@ class ConverterEverythingTest {
     /**
      * Run all conversion tests this way ==> Source to JSON, JSON to target (root class).  This will ensure that our
      * root class converts from what was passed to what was "asked for" by the rootType (Class) parameter.
-     *
-     * Need to wait for json-io 4.34.0 to enable.
      */
     @ParameterizedTest(name = "{0}[{2}] ==> {1}[{3}]")
     @MethodSource("generateTestEverythingParams")

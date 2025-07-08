@@ -2102,6 +2102,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int cores = Runtime.getRuntime().availableProcessors();
         int targetStripes = Math.max(8, cores / 2);  // Minimum 8, cores/2 otherwise
         
+        // Cap at 32 stripes to prevent excessive lock contention during global operations
+        // Beyond 32 stripes, the overhead of acquiring all locks outweighs parallelism benefits
+        targetStripes = Math.min(32, targetStripes);
+        
         // Round up to next power of 2 for efficient bit masking (hash & STRIPE_MASK)
         return Integer.highestOneBit(targetStripes - 1) << 1;
     }

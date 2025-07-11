@@ -39,6 +39,17 @@ import java.util.function.Function;
  * <p>When the backing map is a {@link MultiKeyMap}, this map also supports multi-key operations
  * with case-insensitive String key handling.</p>
  *
+ * <p><strong>ConcurrentMap Implementation:</strong> This class implements {@link ConcurrentMap} and provides
+ * all concurrent operations ({@code putIfAbsent}, {@code replace}, bulk operations, etc.) with case-insensitive
+ * semantics. <strong>Thread safety depends entirely on the backing map implementation:</strong></p>
+ * <ul>
+ *   <li><strong>Thread-Safe:</strong> When backed by concurrent maps ({@link ConcurrentHashMap}, 
+ *       {@link java.util.concurrent.ConcurrentSkipListMap}, etc.), all operations are thread-safe.</li>
+ *   <li><strong>Not Thread-Safe:</strong> When backed by non-concurrent maps ({@link LinkedHashMap}, 
+ *       {@link HashMap}, etc.), concurrent operations work correctly but without thread-safety guarantees.</li>
+ * </ul>
+ * <p>Choose your backing map implementation based on your concurrency requirements.</p>
+ *
  * <h2>Key Features</h2>
  * <ul>
  *   <li><b>Case-Insensitive String Keys:</b> {@link String} keys are internally stored as {@code CaseInsensitiveString}
@@ -46,6 +57,8 @@ import java.util.function.Function;
  *   <li><b>Preserves Original Case:</b> The original casing of String keys is maintained for retrieval and iteration.</li>
  *   <li><b>Compatible with All Map Operations:</b> Supports Java 8+ map methods such as {@code computeIfAbsent()},
  *       {@code computeIfPresent()}, {@code merge()}, and {@code forEach()}, with case-insensitive handling of String keys.</li>
+ *   <li><b>Concurrent Operations:</b> Implements {@link ConcurrentMap} interface with full support for concurrent
+ *       operations including {@code putIfAbsent()}, {@code replace()}, and bulk operations with parallelism control.</li>
  *   <li><b>Customizable Backing Map:</b> Allows developers to specify the backing map implementation or automatically
  *       chooses one based on the provided source map.</li>
  *   <li><b>Thread-Safe Case-Insensitive String Cache:</b> Efficiently reuses {@code CaseInsensitiveString} instances
@@ -54,11 +67,19 @@ import java.util.function.Function;
  *
  * <h2>Usage Examples</h2>
  * <pre>{@code
- * // Create a case-insensitive map with default LinkedHashMap backing
+ * // Create a case-insensitive map with default LinkedHashMap backing (not thread-safe)
  * CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
  * map.put("Key", "Value");
  * LOG.info(map.get("key"));  // Outputs: Value
  * LOG.info(map.get("KEY"));  // Outputs: Value
+ *
+ * // Create a thread-safe case-insensitive map with ConcurrentHashMap backing
+ * ConcurrentMap<String, String> concurrentMap = CaseInsensitiveMap.concurrent();
+ * concurrentMap.putIfAbsent("Key", "Value");
+ * LOG.info(concurrentMap.get("key"));  // Outputs: Value (thread-safe)
+ * 
+ * // Alternative: explicit constructor approach
+ * ConcurrentMap<String, String> explicitMap = new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMap<>());
  *
  * // Create a case-insensitive map from an existing map
  * Map<String, String> source = Map.of("Key1", "Value1", "Key2", "Value2");
@@ -88,10 +109,29 @@ import java.util.function.Function;
  *   <li>Performance is comparable to the backing map implementation used.</li>
  * </ul>
  *
+ * <h2>Thread Safety and ConcurrentMap Implementation</h2>
+ * <p>
+ * CaseInsensitiveMap implements {@link ConcurrentMap} and provides all concurrent operations
+ * ({@code putIfAbsent}, {@code replace}, {@code remove(key, value)}, bulk operations, etc.) with
+ * case-insensitive semantics. Thread safety is determined by the backing map implementation:
+ * </p>
+ * <ul>
+ *   <li><strong>Thread-Safe Backing Maps:</strong> When backed by concurrent implementations 
+ *       ({@link ConcurrentHashMap}, {@link java.util.concurrent.ConcurrentSkipListMap}, 
+ *       {@link ConcurrentNavigableMapNullSafe}, etc.), all operations are fully thread-safe.</li>
+ *   <li><strong>Non-Thread-Safe Backing Maps:</strong> When backed by non-concurrent implementations 
+ *       ({@link LinkedHashMap}, {@link HashMap}, {@link TreeMap}, etc.), concurrent operations work 
+ *       correctly but require external synchronization for thread safety.</li>
+ *   <li><strong>String Cache:</strong> The case-insensitive string cache is thread-safe and can be 
+ *       safely accessed from multiple threads regardless of the backing map.</li>
+ * </ul>
+ * <p>
+ * <strong>Recommendation:</strong> For multi-threaded applications, explicitly choose a concurrent
+ * backing map implementation to ensure thread safety.
+ * </p>
+ *
  * <h2>Additional Notes</h2>
  * <ul>
- *   <li>Thread safety depends on the thread safety of the chosen backing map. The default backing map
- *       ({@link LinkedHashMap}) is not thread-safe.</li>
  *   <li>String keys longer than 100 characters are not cached by default. This limit can be adjusted using
  *       {@link #setMaxCacheLengthString(int)}.</li>
  * </ul>
@@ -99,9 +139,11 @@ import java.util.function.Function;
  * @param <K> the type of keys maintained by this map (String keys are case-insensitive)
  * @param <V> the type of mapped values
  * @see Map
+ * @see ConcurrentMap
  * @see AbstractMap
  * @see LinkedHashMap
  * @see TreeMap
+ * @see ConcurrentHashMap
  * @see CaseInsensitiveString
  * @see MultiKeyMap
  * 
@@ -121,7 +163,7 @@ import java.util.function.Function;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
+public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
     private final Map<K, V> map;
     private static final AtomicReference<List<Entry<Class<?>, Function<Integer, ? extends Map<?, ?>>>>> mapRegistry;
 
@@ -235,6 +277,45 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
     }
 
     /**
+     * Creates a new thread-safe CaseInsensitiveMap backed by a ConcurrentHashMap that can handle null as a
+     * key or value.  This is equivalent to {@code new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMapNullSafe<>())}.
+     *
+     * @param <K> the type of keys maintained by this map
+     * @param <V> the type of mapped values
+     * @return a new thread-safe CaseInsensitiveMap
+     */
+    public static <K, V> CaseInsensitiveMap<K, V> concurrent() {
+        return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMapNullSafe<>());
+    }
+
+    /**
+     * Creates a new thread-safe CaseInsensitiveMap backed by a ConcurrentHashMap that can handle null as a key or value
+     * with the specified initial capacity. This is equivalent to
+     * {@code new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMapNullSafe<>(initialCapacity))}.
+     *
+     * @param <K> the type of keys maintained by this map
+     * @param <V> the type of mapped values
+     * @param initialCapacity the initial capacity of the backing ConcurrentHashMap
+     * @return a new thread-safe CaseInsensitiveMap
+     * @throws IllegalArgumentException if the initial capacity is negative
+     */
+    public static <K, V> CaseInsensitiveMap<K, V> concurrent(int initialCapacity) {
+        return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMapNullSafe<>(initialCapacity));
+    }
+
+    /**
+     * Creates a new thread-safe sorted CaseInsensitiveMap backed by a ConcurrentSkipListMap.
+     * This is equivalent to {@code new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentNavigableMapNullSafe<>())}.
+     *
+     * @param <K> the type of keys maintained by this map
+     * @param <V> the type of mapped values
+     * @return a new thread-safe sorted CaseInsensitiveMap
+     */
+    public static <K, V> CaseInsensitiveMap<K, V> concurrentSorted() {
+        return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentNavigableMapNullSafe<>());
+    }
+
+    /**
      * Determines the appropriate backing map based on the source map's type.
      *
      * @param source the source map to copy from
@@ -324,7 +405,47 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
      */
     public CaseInsensitiveMap(Map<K, V> source) {
         Objects.requireNonNull(source, "Source map cannot be null");
-        map = determineBackingMap(source);
+        
+        // Check for IdentityHashMap first - this must throw an exception
+        if (source instanceof IdentityHashMap) {
+            throw new IllegalArgumentException(
+                    "Cannot create a CaseInsensitiveMap from an IdentityHashMap. " +
+                            "IdentityHashMap compares keys by reference (==) which is incompatible.");
+        }
+        
+        Map<K, V> newMap = null;
+        
+        // Special handling for CaseInsensitiveMap source - use its wrapped map type
+        if (source instanceof CaseInsensitiveMap) {
+            @SuppressWarnings("unchecked")
+            CaseInsensitiveMap<K, V> ciSource = (CaseInsensitiveMap<K, V>) source;
+            Map<K, V> wrappedMap = ciSource.getWrappedMap();
+            try {
+                // Use OSGi-correct class loading approach
+                Class<?> targetClass = Class.forName(wrappedMap.getClass().getName(), false, ClassUtilities.getClassLoader());
+                @SuppressWarnings("unchecked")
+                Map<K, V> tempMap = (Map<K, V>) ClassUtilities.newInstance(targetClass, source.size());
+                // Use the two-argument constructor recursively
+                CaseInsensitiveMap<K, V> tempCiMap = new CaseInsensitiveMap<>(source, tempMap);
+                newMap = tempCiMap.map;
+            } catch (Exception e) {
+                newMap = determineBackingMap(source);
+            }
+        } else {
+            // For non-CaseInsensitiveMap sources, try to create the same type
+            try {
+                // Use OSGi-correct class loading approach
+                Class<?> targetClass = Class.forName(source.getClass().getName(), false, ClassUtilities.getClassLoader());
+                @SuppressWarnings("unchecked")
+                Map<K, V> tempMap = (Map<K, V>) ClassUtilities.newInstance(targetClass, source.size());
+                // Use the two-argument constructor recursively
+                CaseInsensitiveMap<K, V> tempCiMap = new CaseInsensitiveMap<>(source, tempMap);
+                newMap = tempCiMap.map;
+            } catch (Exception e) {
+                newMap = determineBackingMap(source);
+            }
+        }
+        map = newMap;
     }
 
     /**
@@ -477,15 +598,13 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
             return null;
         }
         
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        
         if (key != null && key.getClass().isArray()) {
             if (key instanceof Object[]) {
                 // Create new Object[] with wrapped String keys
                 Object[] objArray = (Object[]) key;
-                Object[] wrappedArray = new Object[objArray.length];
-                for (int i = 0; i < objArray.length; i++) {
+                int len = objArray.length;
+                Object[] wrappedArray = new Object[len];
+                for (int i = 0; i < len; i++) {
                     wrappedArray[i] = objArray[i] instanceof String ? 
                         CaseInsensitiveString.of((String) objArray[i]) : objArray[i];
                 }
@@ -493,8 +612,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> {
             } else if (key instanceof String[]) {
                 // Create new Object[] with wrapped String keys
                 String[] strArray = (String[]) key;
-                Object[] wrappedArray = new Object[strArray.length];
-                for (int i = 0; i < strArray.length; i++) {
+                int len = strArray.length;
+                Object[] wrappedArray = new Object[len];
+                for (int i = 0; i < len; i++) {
                     wrappedArray[i] = CaseInsensitiveString.of(strArray[i]);
                 }
                 return operation.apply(wrappedArray);

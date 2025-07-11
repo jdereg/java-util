@@ -661,9 +661,14 @@ We provide several pre-built classes for common use cases:
 
 A Map implementation that provides case-insensitive key comparison for String keys while preserving their original case. Non-String keys are handled normally.
 
+> **🔒 ConcurrentMap Implementation**
+>
+> CaseInsensitiveMap implements the `ConcurrentMap` interface, providing all concurrent operations (`putIfAbsent`, `replace`, `remove(key, value)`, bulk operations, etc.) with case-insensitive semantics. Thread safety depends entirely on the backing map implementation.
+
 ### Key Features
 - Case-insensitive String key comparison
 - Original String case preservation
+- **Implements ConcurrentMap interface** for maximum API compatibility
 - Full Map interface implementation including Java 8+ methods
 - Efficient caching of case-insensitive String representations
 - Support for various backing map implementations
@@ -700,10 +705,13 @@ Map<String, Object> treeMap = new TreeMap<>();
 CaseInsensitiveMap<String, Object> sorted = 
     new CaseInsensitiveMap<>(treeMap);
 
-// With ConcurrentHashMap for thread safety
-Map<String, Object> concurrentMap = new ConcurrentHashMap<>();
-CaseInsensitiveMap<String, Object> threadSafe = 
-    new CaseInsensitiveMap<>(concurrentMap);
+// Easy way: Use factory methods for concurrent maps
+ConcurrentMap<String, Object> threadSafe = CaseInsensitiveMap.concurrent();
+CaseInsensitiveMap<String, Object> sortedThreadSafe = CaseInsensitiveMap.concurrentSorted();
+
+// Explicit constructor approach also works
+ConcurrentMap<String, Object> explicitConcurrent = 
+    new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMap<>());
 ```
 
 **Java 8+ Operations:**
@@ -726,52 +734,57 @@ scores.forEach((key, value) ->
 - Memory Usage: Efficient caching of case-insensitive strings
 - String Key Cache: Internal String key cache (≤ 100 characters by default) with API to change it
 
-### Thread Safety and Concurrent Usage
+### Thread Safety and ConcurrentMap Interface
 
-> **✅ CaseInsensitiveMap is fully thread-safe with concurrent backing maps**
+> **✅ CaseInsensitiveMap implements ConcurrentMap and is fully thread-safe with concurrent backing maps**
 >
-> Unlike `CompactMap`, `CaseInsensitiveMap` delegates all operations to its backing map, making it fully thread-safe when using concurrent map implementations.
+> Unlike `CompactMap`, `CaseInsensitiveMap` delegates all operations to its backing map, making it fully thread-safe when using concurrent map implementations. The ConcurrentMap interface provides all concurrent operations with case-insensitive semantics.
 
 **Thread-safe usage examples:**
 ```java
-// ✅ Thread-safe with ConcurrentHashMap backing
-CaseInsensitiveMap<String, Object> concurrentMap = 
-    new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
+// ✅ Easy way: Use factory methods for thread-safe maps
+ConcurrentMap<String, Object> concurrentMap = CaseInsensitiveMap.concurrent();
+CaseInsensitiveMap<String, Object> sortedConcurrentMap = CaseInsensitiveMap.concurrentSorted();
 
-// ✅ Thread-safe with ConcurrentSkipListMap backing (sorted + concurrent)
-CaseInsensitiveMap<String, Object> sortedConcurrentMap = 
-    new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
+// ✅ Explicit constructor approach also works
+ConcurrentMap<String, Object> explicitConcurrent = 
+    new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMap<>());
 
 // ❌ Not thread-safe with default LinkedHashMap backing
 CaseInsensitiveMap<String, Object> notThreadSafe = new CaseInsensitiveMap<>();
 
-// ✅ All concurrent map operations work correctly
+// ✅ All ConcurrentMap operations work correctly with case-insensitive keys
 concurrentMap.putIfAbsent("key", "value");
-concurrentMap.computeIfAbsent("KEY", k -> "computed");  // Same key, case-insensitive
+concurrentMap.putIfAbsent("KEY", "ignored");  // No effect - same key
+concurrentMap.replace("Key", "value", "newValue");  // Case-insensitive replace
 ```
 
 **Why it works:**
 - Simple wrapper around backing map - no complex internal state
 - All operations delegate directly to the backing map, preserving concurrent semantics
 
-**Concurrent Interface Compatibility:**
-When using `ConcurrentMap` or `ConcurrentNavigableMap` backing implementations, `CaseInsensitiveMap` retains the full concurrent semantics of the underlying map:
+**ConcurrentMap Interface Implementation:**
+CaseInsensitiveMap implements `ConcurrentMap` interface directly, allowing it to be used anywhere a ConcurrentMap is expected. When using concurrent backing implementations, it retains the full concurrent semantics:
 
 ```java
-// ConcurrentMap semantics are preserved
-CaseInsensitiveMap<String, String> concurrentMap = 
-    new CaseInsensitiveMap<>(new ConcurrentHashMap<>());
+// Can be assigned to ConcurrentMap interface
+ConcurrentMap<String, String> concurrentMap = 
+    new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMap<>());
 
 // All ConcurrentMap methods work with case-insensitive keys
 concurrentMap.putIfAbsent("Key", "Value1");
 concurrentMap.putIfAbsent("KEY", "Value2");  // No effect - same key
 concurrentMap.replace("key", "Value1", "NewValue");  // Case-insensitive replace
 
-// ConcurrentNavigableMap semantics are preserved
-CaseInsensitiveMap<String, String> navMap = 
-    new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
+// Can be passed to methods expecting ConcurrentMap
+public void processMap(ConcurrentMap<String, String> map) {
+    map.putIfAbsent("status", "active");
+}
+processMap(concurrentMap);  // Works perfectly!
 
-// All ConcurrentNavigableMap methods work with case-insensitive keys
+// ConcurrentNavigableMap semantics are preserved when using appropriate backing
+CaseInsensitiveMap<String, String> navMap = 
+    new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentSkipListMap<>());
 navMap.putIfAbsent("apple", "fruit");
 navMap.putIfAbsent("APPLE", "ignored");  // No effect - same key
 ```
@@ -798,10 +811,30 @@ The case-insensitive behavior applies to all concurrent operations - `putIfAbsen
 - Cache limit configurable via setMaxCacheLengthString()
 
 ### Thread Safety Notes
-- Thread safety depends on backing map implementation
-- Default implementation (LinkedHashMap) is not thread-safe
-- Use ConcurrentHashMap or Collections.synchronizedMap() for thread safety
-- Cache operations are thread-safe
+> **🔑 Key Point: Thread safety depends entirely on the backing map implementation**
+>
+> CaseInsensitiveMap implements `ConcurrentMap` interface but thread safety is determined by the backing map you choose:
+
+- **✅ Thread-Safe:** When backed by `ConcurrentHashMap`, `ConcurrentSkipListMap`, or other concurrent implementations
+- **❌ Not Thread-Safe:** When backed by `LinkedHashMap` (default), `HashMap`, `TreeMap`, or other non-concurrent implementations  
+- **🔧 Alternative:** Use `Collections.synchronizedMap()` wrapper for thread safety with non-concurrent backing maps
+- **💡 Cache:** The case-insensitive string cache is always thread-safe regardless of backing map
+
+**Choosing the Right Backing Map:**
+```java
+// For thread safety (easy way)
+ConcurrentMap<String, Object> threadSafe = CaseInsensitiveMap.concurrent();
+
+// For sorted + thread safety (easy way)
+CaseInsensitiveMap<String, Object> sortedThreadSafe = CaseInsensitiveMap.concurrentSorted();
+
+// For single-threaded use (default)
+CaseInsensitiveMap<String, Object> singleThreaded = new CaseInsensitiveMap<>();
+
+// For explicit backing map control
+ConcurrentMap<String, Object> explicitBacking = 
+    new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMap<>());
+```
 
 ---
 ## LRUCache

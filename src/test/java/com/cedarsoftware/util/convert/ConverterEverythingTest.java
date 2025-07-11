@@ -39,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -64,6 +65,7 @@ import com.cedarsoftware.io.ReadOptionsBuilder;
 import com.cedarsoftware.io.WriteOptions;
 import com.cedarsoftware.io.WriteOptionsBuilder;
 import com.cedarsoftware.util.ClassUtilities;
+import com.cedarsoftware.util.CollectionUtilities;
 import com.cedarsoftware.util.DeepEquals;
 import com.cedarsoftware.util.LoggingConfig;
 import com.cedarsoftware.util.SystemUtilities;
@@ -144,6 +146,24 @@ class ConverterEverythingTest {
     };
     private static final Map<Map.Entry<Class<?>, Class<?>>, Object[][]> TEST_DB = new ConcurrentHashMap<>(500, .8f);
     private static final Map<Map.Entry<Class<?>, Class<?>>, Boolean> STAT_DB = new ConcurrentHashMap<>(500, .8f);
+
+    enum TestMode {
+        BASIC_CONVERSION,
+        REVERSE_CONVERSION, 
+        JSON_IO_ROUND_TRIP
+    }
+
+    static class ConversionTestException extends RuntimeException {
+        ConversionTestException(String message) {
+            super(message);
+        }
+        
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            // Skip stack trace generation for cleaner test output
+            return this;
+        }
+    }
 
     static {
         LoggingConfig.initForTests();
@@ -4833,8 +4853,8 @@ class ConverterEverythingTest {
             Class<?> sourceClass = entry.getKey().getKey();
             Class<?> targetClass = entry.getKey().getValue();
 
-            // Skip Atomic's to Map - assertEquals() does not know to call .get() on the value side of the Map.
-            if (isHardCase(sourceClass, targetClass)) {
+            // Skip tests that cannot be handled properly (e.g., Atomic's to Map)
+            if (shouldSkipTest(sourceClass, targetClass, TestMode.BASIC_CONVERSION)) {
                 continue;
             }
             String sourceName = Converter.getShortName(sourceClass);
@@ -4859,7 +4879,7 @@ class ConverterEverythingTest {
             Class<?> sourceClass = entry.getKey().getKey();
             Class<?> targetClass = entry.getKey().getValue();
             
-            if (isHardCase(sourceClass, targetClass)) {
+            if (shouldSkipTest(sourceClass, targetClass, TestMode.REVERSE_CONVERSION)) {
                 continue;
             }
 
@@ -4925,62 +4945,14 @@ class ConverterEverythingTest {
                 LOG.info("restored = " + restored);
                 LOG.info("target   = " + target);
                 LOG.info("diff     = [value mismatch] ▶ Date: " + restoredDate + " vs " + targetDate);
-                fail();
+                throw new ConversionTestException("Date conversion failed for " + shortNameSource + " ==> " + shortNameTarget);
             }
             updateStat(pair(sourceClass, targetClass), true);
             return;
         }
 
-        // Conversions that don't fail as anticipated
-        boolean skip1 = sourceClass.equals(Byte.class) && targetClass.equals(Year.class);
-        if (skip1) {
-            return;
-        }
-        boolean skip2 = sourceClass.equals(Map.class) && targetClass.equals(Map.class);
-        if (skip2) {
-            return;
-        }
-        boolean skip3 = sourceClass.equals(Map.class) && targetClass.equals(Enum.class);
-        if (skip3) {
-            return;
-        }
-        boolean skip4 = sourceClass.equals(Map.class) && targetClass.equals(Throwable.class);
-        if (skip4) {
-            return;
-        }
-        // Skip Color-to-other-types conversions that don't round-trip through JsonIO
-        boolean skip5 = sourceClass.equals(Color.class) && 
-                       (targetClass.equals(String.class) || targetClass.equals(Integer.class) || 
-                        targetClass.equals(Long.class) || targetClass.equals(int[].class) || 
-                        targetClass.equals(Map.class) || targetClass.equals(BigDecimal.class) || 
-                        targetClass.equals(BigInteger.class));
-        if (skip5) {
-            return;
-        }
-        // Skip BitSet conversions that don't round-trip through JsonIO (empty BitSet serialization issue)
-        boolean skip6 = sourceClass.equals(BitSet.class) || targetClass.equals(BitSet.class);
-        if (skip6) {
-            return;
-        }
-        // Skip AtomicArray conversions that don't round-trip through JsonIO (serialization issue)
-        boolean skip7 = sourceClass.equals(AtomicIntegerArray.class) || targetClass.equals(AtomicIntegerArray.class) ||
-                       sourceClass.equals(AtomicLongArray.class) || targetClass.equals(AtomicLongArray.class) ||
-                       sourceClass.equals(AtomicReferenceArray.class) || targetClass.equals(AtomicReferenceArray.class);
-        if (skip7) {
-            return;
-        }
-        // Skip LocalTime to integer conversions (explicitly marked as UNSUPPORTED with IllegalArgumentException)
-        boolean skip8 = sourceClass.equals(LocalTime.class) && 
-                       (targetClass.equals(int.class) || targetClass.equals(Integer.class) || 
-                        targetClass.equals(AtomicInteger.class));
-        if (skip8) {
-            return;
-        }
-        
-        // Skip StringBuffer/StringBuilder to CharSequence - JsonIo round-trip converts to String
-        boolean skip9 = (sourceClass.equals(StringBuffer.class) || sourceClass.equals(StringBuilder.class)) &&
-                       targetClass.equals(CharSequence.class);
-        if (skip9) {
+        // Check centralized skip logic for JsonIo round-trip testing
+        if (shouldSkipTest(sourceClass, targetClass, TestMode.JSON_IO_ROUND_TRIP)) {
             return;
         }
         WriteOptions writeOptions = new WriteOptionsBuilder().build();
@@ -4991,7 +4963,7 @@ class ConverterEverythingTest {
             try {
                 Object x = JsonIo.toObjects(json, readOptions, targetClass);
 //                LOG.info("x = " + x);
-                fail("This test: " + shortNameSource + " ==> " + shortNameTarget + " should have thrown: " + target.getClass().getName());
+                throw new ConversionTestException("This test: " + shortNameSource + " ==> " + shortNameTarget + " should have thrown: " + target.getClass().getName());
             } catch (Throwable e) {
                 if (e instanceof JsonIoException) {
                     e = e.getCause();
@@ -5027,8 +4999,9 @@ class ConverterEverythingTest {
                 LOG.severe("Actual value:    " + toDetailedString(restored));
                 LOG.severe("Value diff:      " + options.get("diff"));
                 LOG.severe("Test mode:       JsonIo round-trip serialization");
+                LOG.severe("Suggested fix:   " + suggestFixLocation(sourceClass, targetClass));
                 LOG.severe("===================================");
-                fail("JsonIo round-trip conversion failed for " + shortNameSource + " ==> " + shortNameTarget);
+                throw new ConversionTestException("JsonIo round-trip conversion failed for " + shortNameSource + " ==> " + shortNameTarget);
             }
             updateStat(pair(sourceClass, targetClass), true);
         }
@@ -5087,47 +5060,47 @@ class ConverterEverythingTest {
             Object actual = converter.convert(source, targetClass);
             try {
                 if (target instanceof CharSequence) {
-                    assertEquals(target.toString(), actual.toString());
+                    assertConversionEquals(target.toString(), actual.toString(), shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(Pattern.class)) {
                     if (target == null) {
                         assert actual == null;
                     } else {
-                        assertEquals(target.toString(), actual.toString());
+                        assertConversionEquals(target.toString(), actual.toString(), shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     }
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(byte[].class)) {
-                    assertArrayEquals((byte[]) target, (byte[]) actual);
+                    assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(char[].class)) {
-                    assertArrayEquals((char[]) target, (char[]) actual);
+                    assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(Character[].class)) {
-                    assertArrayEquals((Character[]) target, (Character[]) actual);
+                    assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(boolean[].class)) {
-                    assertArrayEquals((boolean[]) target, (boolean[]) actual);
+                    assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(int[].class)) {
-                    assertArrayEquals((int[]) target, (int[]) actual);
+                    assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(long[].class)) {
-                    assertArrayEquals((long[]) target, (long[]) actual);
+                    assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(Object[].class)) {
-                    assertArrayEquals((Object[]) target, (Object[]) actual);
+                    assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (targetClass.equals(String[].class)) {
-                    assertArrayEquals((String[]) target, (String[]) actual);
+                    assertArrayConversionEquals(target, actual, shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (target instanceof AtomicBoolean) {
-                    assertEquals(((AtomicBoolean) target).get(), ((AtomicBoolean) actual).get());
+                    assertConversionEquals(((AtomicBoolean) target).get(), ((AtomicBoolean) actual).get(), shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (target instanceof AtomicInteger) {
-                    assertEquals(((AtomicInteger) target).get(), ((AtomicInteger) actual).get());
+                    assertConversionEquals(((AtomicInteger) target).get(), ((AtomicInteger) actual).get(), shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (target instanceof AtomicLong) {
-                    assertEquals(((AtomicLong) target).get(), ((AtomicLong) actual).get());
+                    assertConversionEquals(((AtomicLong) target).get(), ((AtomicLong) actual).get(), shortNameSource, shortNameTarget, TestMode.BASIC_CONVERSION);
                     updateStat(pair(sourceClass, targetClass), true);
                 } else if (target instanceof AtomicIntegerArray) {
                     AtomicIntegerArray targetArray = (AtomicIntegerArray) target;
@@ -5269,6 +5242,166 @@ class ConverterEverythingTest {
     // so an Atomic inside a Map is a hard-case.
     private static boolean isHardCase(Class<?> sourceClass, Class<?> targetClass) {
         return targetClass.equals(Map.class) && (sourceClass.equals(AtomicBoolean.class) || sourceClass.equals(AtomicInteger.class) || sourceClass.equals(AtomicLong.class));
+    }
+
+    private static boolean shouldSkipTest(Class<?> sourceClass, Class<?> targetClass, TestMode testMode) {
+        // Basic conversion skips - apply to all test modes
+        if (isHardCase(sourceClass, targetClass)) {
+            return true;
+        }
+
+        // JsonIo-specific skips
+        if (testMode == TestMode.JSON_IO_ROUND_TRIP) {
+            // Conversions that don't fail as anticipated
+            if (sourceClass.equals(Byte.class) && targetClass.equals(Year.class)) {
+                return true;
+            }
+            if (sourceClass.equals(Map.class) && targetClass.equals(Map.class)) {
+                return true;
+            }
+            if (sourceClass.equals(Map.class) && targetClass.equals(Enum.class)) {
+                return true;
+            }
+            if (sourceClass.equals(Map.class) && targetClass.equals(Throwable.class)) {
+                return true;
+            }
+            // Skip Color-to-other-types conversions that don't round-trip through JsonIO
+            if (sourceClass.equals(Color.class) && 
+                (targetClass.equals(String.class) || targetClass.equals(Integer.class) || 
+                 targetClass.equals(Long.class) || targetClass.equals(int[].class) || 
+                 targetClass.equals(Map.class) || targetClass.equals(BigDecimal.class) || 
+                 targetClass.equals(BigInteger.class))) {
+                return true;
+            }
+            // Skip BitSet conversions that don't round-trip through JsonIO (empty BitSet serialization issue)
+            if (sourceClass.equals(BitSet.class) || targetClass.equals(BitSet.class)) {
+                return true;
+            }
+            // Skip AtomicArray conversions that don't round-trip through JsonIO (serialization issue)
+            if (sourceClass.equals(AtomicIntegerArray.class) || targetClass.equals(AtomicIntegerArray.class) ||
+                sourceClass.equals(AtomicLongArray.class) || targetClass.equals(AtomicLongArray.class) ||
+                sourceClass.equals(AtomicReferenceArray.class) || targetClass.equals(AtomicReferenceArray.class)) {
+                return true;
+            }
+            // Skip LocalTime to integer conversions (explicitly marked as UNSUPPORTED with IllegalArgumentException)
+            if (sourceClass.equals(LocalTime.class) && 
+                (targetClass.equals(int.class) || targetClass.equals(Integer.class) || 
+                 targetClass.equals(AtomicInteger.class))) {
+                return true;
+            }
+            // Skip StringBuffer/StringBuilder to CharSequence - JsonIo round-trip converts to String
+            if ((sourceClass.equals(StringBuffer.class) || sourceClass.equals(StringBuilder.class)) &&
+                targetClass.equals(CharSequence.class)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static String suggestFixLocation(Class<?> sourceClass, Class<?> targetClass) {
+        String sourceClassName = sourceClass.getSimpleName();
+        String targetClassName = targetClass.getSimpleName();
+        
+        // Common primitive target types - likely issue is in source conversion class
+        Set<String> commonTargets = CollectionUtilities.setOf("String", "Integer", "int", "Long", "long", "Double", "double", 
+                                          "Float", "float", "Boolean", "boolean", "Character", "char",
+                                          "Byte", "byte", "Short", "short", "BigDecimal", "BigInteger");
+        
+        if (commonTargets.contains(targetClassName)) {
+            return sourceClassName + "Conversions.java (source type conversion logic)";
+        }
+        
+        // Collection/Map targets - usually source conversion issue
+        Set<String> collectionTargets = CollectionUtilities.setOf("Map", "List", "Set", "Collection", "Array");
+        if (collectionTargets.contains(targetClassName) || targetClassName.endsWith("[]")) {
+            return sourceClassName + "Conversions.java (source type conversion logic)";
+        }
+        
+        // Time/Date related conversions - could be either side
+        Set<String> timeTypes = CollectionUtilities.setOf("Date", "Calendar", "LocalDate", "LocalTime", "LocalDateTime", 
+                                      "ZonedDateTime", "OffsetDateTime", "OffsetTime", "Instant", 
+                                      "Duration", "Period", "Year", "YearMonth", "MonthDay");
+        if (timeTypes.contains(sourceClassName) && timeTypes.contains(targetClassName)) {
+            return sourceClassName + "Conversions.java or " + targetClassName + "Conversions.java (time conversion logic)";
+        }
+        
+        // Atomic types - usually target conversion issue since atomics have specific handling
+        Set<String> atomicTypes = CollectionUtilities.setOf("AtomicBoolean", "AtomicInteger", "AtomicLong", "AtomicReference");
+        if (atomicTypes.contains(targetClassName)) {
+            return targetClassName + "Conversions.java (atomic type handling)";
+        }
+        
+        // Complex types as targets - likely target conversion issue
+        Set<String> complexTargets = CollectionUtilities.setOf("Color", "Dimension", "Point", "Rectangle", "Insets", 
+                                           "URI", "URL", "File", "Path", "Pattern", "UUID");
+        if (complexTargets.contains(targetClassName)) {
+            return targetClassName + "Conversions.java (complex type creation logic)";
+        }
+        
+        // Wrapper/primitive conversions - usually source issue
+        if (sourceClassName.equals("Void") || sourceClassName.equals("void")) {
+            return targetClassName + "Conversions.java (null handling for " + targetClassName + ")";
+        }
+        
+        // Default suggestion - start with source since that's where conversion usually begins
+        return sourceClassName + "Conversions.java (check source type conversion logic first)";
+    }
+
+    private static void assertConversionEquals(Object expected, Object actual, String shortNameSource, String shortNameTarget, TestMode testMode) {
+        if (!Objects.equals(expected, actual)) {
+            LOG.severe("");
+            LOG.severe("████████████████████████████████████████████████████████████████");
+            LOG.severe("██                  CONVERSION FAILURE                        ██");
+            LOG.severe("████████████████████████████████████████████████████████████████");
+            LOG.severe("Conversion pair: " + shortNameSource + " ==> " + shortNameTarget);
+            LOG.severe("Expected value:  " + toDetailedString(expected));
+            LOG.severe("Actual value:    " + toDetailedString(actual));
+            LOG.severe("Test mode:       " + testMode);
+            LOG.severe("Suggested fix:   " + suggestFixLocation(expected != null ? expected.getClass() : Void.class, 
+                                                                actual != null ? actual.getClass() : Void.class));
+            LOG.severe("████████████████████████████████████████████████████████████████");
+            LOG.severe("");
+            
+            throw new ConversionTestException("Conversion failed: " + shortNameSource + " ==> " + shortNameTarget + 
+                                            " (expected: " + expected + ", actual: " + actual + ")");
+        }
+    }
+
+    private static void assertArrayConversionEquals(Object expected, Object actual, String shortNameSource, String shortNameTarget, TestMode testMode) {
+        boolean arraysEqual;
+        if (expected instanceof byte[] && actual instanceof byte[]) {
+            arraysEqual = Arrays.equals((byte[]) expected, (byte[]) actual);
+        } else if (expected instanceof char[] && actual instanceof char[]) {
+            arraysEqual = Arrays.equals((char[]) expected, (char[]) actual);
+        } else if (expected instanceof int[] && actual instanceof int[]) {
+            arraysEqual = Arrays.equals((int[]) expected, (int[]) actual);
+        } else if (expected instanceof long[] && actual instanceof long[]) {
+            arraysEqual = Arrays.equals((long[]) expected, (long[]) actual);
+        } else if (expected instanceof boolean[] && actual instanceof boolean[]) {
+            arraysEqual = Arrays.equals((boolean[]) expected, (boolean[]) actual);
+        } else if (expected instanceof Object[] && actual instanceof Object[]) {
+            arraysEqual = Arrays.equals((Object[]) expected, (Object[]) actual);
+        } else {
+            arraysEqual = Objects.equals(expected, actual);
+        }
+        
+        if (!arraysEqual) {
+            LOG.severe("");
+            LOG.severe("████████████████████████████████████████████████████████████████");
+            LOG.severe("██                 ARRAY CONVERSION FAILURE                   ██");
+            LOG.severe("████████████████████████████████████████████████████████████████");
+            LOG.severe("Conversion pair: " + shortNameSource + " ==> " + shortNameTarget);
+            LOG.severe("Expected array:  " + toDetailedString(expected));
+            LOG.severe("Actual array:    " + toDetailedString(actual));
+            LOG.severe("Test mode:       " + testMode);
+            LOG.severe("Suggested fix:   " + suggestFixLocation(expected != null ? expected.getClass() : Void.class, 
+                                                                actual != null ? actual.getClass() : Void.class));
+            LOG.severe("████████████████████████████████████████████████████████████████");
+            LOG.severe("");
+            
+            throw new ConversionTestException("Array conversion failed: " + shortNameSource + " ==> " + shortNameTarget);
+        }
     }
 
     @BeforeAll
@@ -8651,7 +8784,7 @@ class ConverterEverythingTest {
             if (!value) {
                 Class<?> sourceClass = pair.getKey();
                 Class<?> targetClass = pair.getValue();
-                if (isHardCase(sourceClass, targetClass)) {
+                if (shouldSkipTest(sourceClass, targetClass, TestMode.BASIC_CONVERSION)) {
                     continue;
                 }
                 missing++;

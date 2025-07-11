@@ -208,6 +208,9 @@ public final class Converter {
     private static final ClassValueMap<Boolean> SELF_CONVERSION_CACHE = new ClassValueMap<>();
     private static final AtomicLong INSTANCE_ID_GENERATOR = new AtomicLong(1);
     
+    // Identity converter for marking non-standard types and handling identity conversions
+    private static final Convert<?> IDENTITY_CONVERTER = (source, converter) -> source;
+    
     private final ConverterOptions options;
     private final long instanceId;
 
@@ -306,6 +309,7 @@ public final class Converter {
         CONVERSION_DB.put(Converter::identity, AtomicLong.class, Number.class, 0L);
         CONVERSION_DB.put(Converter::identity, BigInteger.class, Number.class, 0L);
         CONVERSION_DB.put(Converter::identity, BigDecimal.class, Number.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toNumber, Duration.class, Number.class, 0L);
 
         // toByte
         CONVERSION_DB.put(NumberConversions::toByteZero, Void.class, byte.class, 0L);
@@ -339,10 +343,12 @@ public final class Converter {
         CONVERSION_DB.put(MapConversions::toShort, Map.class, Short.class, 0L);
         CONVERSION_DB.put(StringConversions::toShort, String.class, Short.class, 0L);
         CONVERSION_DB.put(YearConversions::toShort, Year.class, Short.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toShort, MonthDay.class, Short.class, 0L);
 
         // toInteger
         CONVERSION_DB.put(NumberConversions::toIntZero, Void.class, int.class, 0L);
         CONVERSION_DB.put(UniversalConversions::atomicIntegerToInt, AtomicInteger.class, int.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toInt, MonthDay.class, int.class, 0L);
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, Integer.class, 0L);
         CONVERSION_DB.put(NumberConversions::toInt, Byte.class, Integer.class, 0L);
         CONVERSION_DB.put(NumberConversions::toInt, Short.class, Integer.class, 0L);
@@ -364,10 +370,12 @@ public final class Converter {
         CONVERSION_DB.put(InsetsConversions::toInteger, Insets.class, Integer.class, 0L);
         CONVERSION_DB.put(OffsetTimeConversions::toInteger, OffsetTime.class, Integer.class, 0L);
         CONVERSION_DB.put(YearConversions::toInt, Year.class, Integer.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toInteger, MonthDay.class, Integer.class, 0L);
 
         // toLong
         CONVERSION_DB.put(NumberConversions::toLongZero, Void.class, long.class, 0L);
         CONVERSION_DB.put(UniversalConversions::atomicLongToLong, AtomicLong.class, long.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toLong, MonthDay.class, long.class, 0L);
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, Long.class, 0L);
         CONVERSION_DB.put(NumberConversions::toLong, Byte.class, Long.class, 0L);
         CONVERSION_DB.put(NumberConversions::toLong, Short.class, Long.class, 0L);
@@ -399,9 +407,11 @@ public final class Converter {
         CONVERSION_DB.put(RectangleConversions::toLong, Rectangle.class, Long.class, 0L);
         CONVERSION_DB.put(InsetsConversions::toLong, Insets.class, Long.class, 0L);
         CONVERSION_DB.put(YearConversions::toLong, Year.class, Long.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toLong, MonthDay.class, Long.class, 0L);
 
         // toFloat
         CONVERSION_DB.put(NumberConversions::toFloatZero, Void.class, float.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toFloat, MonthDay.class, float.class, 0L);
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, Float.class, 0L);
         CONVERSION_DB.put(NumberConversions::toFloat, Byte.class, Float.class, 0L);
         CONVERSION_DB.put(NumberConversions::toFloat, Short.class, Float.class, 0L);
@@ -415,9 +425,13 @@ public final class Converter {
         CONVERSION_DB.put(NumberConversions::toFloat, BigDecimal.class, Float.class, 0L);
         CONVERSION_DB.put(MapConversions::toFloat, Map.class, Float.class, 0L);
         CONVERSION_DB.put(StringConversions::toFloat, String.class, Float.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toFloat, MonthDay.class, Float.class, 0L);
+        CONVERSION_DB.put(YearConversions::toFloat, Year.class, Float.class, 0L);
 
         // toDouble
         CONVERSION_DB.put(NumberConversions::toDoubleZero, Void.class, double.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toDouble, MonthDay.class, double.class, 0L);
+        CONVERSION_DB.put(YearConversions::toDouble, Year.class, double.class, 0L);
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, Double.class, 0L);
         CONVERSION_DB.put(NumberConversions::toDouble, Byte.class, Double.class, 0L);
         CONVERSION_DB.put(NumberConversions::toDouble, Short.class, Double.class, 0L);
@@ -442,11 +456,16 @@ public final class Converter {
         CONVERSION_DB.put(NumberConversions::toDouble, BigDecimal.class, Double.class, 0L);
         CONVERSION_DB.put(MapConversions::toDouble, Map.class, Double.class, 0L);
         CONVERSION_DB.put(StringConversions::toDouble, String.class, Double.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toDouble, MonthDay.class, Double.class, 0L);
+        CONVERSION_DB.put(YearConversions::toDouble, Year.class, Double.class, 0L);
 
         // Boolean/boolean conversions supported
         CONVERSION_DB.put(VoidConversions::toBoolean, Void.class, boolean.class, 0L);
         CONVERSION_DB.put(UniversalConversions::atomicBooleanToBoolean, AtomicBoolean.class, boolean.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toBoolean, MonthDay.class, boolean.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toBoolean, Duration.class, boolean.class, 0L);
         CONVERSION_DB.put(AtomicBooleanConversions::toBoolean, AtomicBoolean.class, Boolean.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toBooleanWrapper, Duration.class, Boolean.class, 0L);
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, Boolean.class, 0L);
         CONVERSION_DB.put(NumberConversions::isIntTypeNotZero, Byte.class, Boolean.class, 0L);
         CONVERSION_DB.put(NumberConversions::isIntTypeNotZero, Short.class, Boolean.class, 0L);
@@ -465,6 +484,7 @@ public final class Converter {
         CONVERSION_DB.put(RectangleConversions::toBoolean, Rectangle.class, Boolean.class, 0L);
         CONVERSION_DB.put(InsetsConversions::toBoolean, Insets.class, Boolean.class, 0L);
         CONVERSION_DB.put(UUIDConversions::toBoolean, UUID.class, Boolean.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toBoolean, MonthDay.class, Boolean.class, 0L);
 
         // Character/char conversions supported
         CONVERSION_DB.put(VoidConversions::toCharacter, Void.class, char.class, 0L);
@@ -515,6 +535,7 @@ public final class Converter {
         CONVERSION_DB.put(MapConversions::toBigInteger, Map.class, BigInteger.class, 0L);
         CONVERSION_DB.put(StringConversions::toBigInteger, String.class, BigInteger.class, 0L);
         CONVERSION_DB.put(YearConversions::toBigInteger, Year.class, BigInteger.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toBigInteger, MonthDay.class, BigInteger.class, 0L);
 
         // BigDecimal conversions supported
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, BigDecimal.class, 0L);
@@ -548,9 +569,12 @@ public final class Converter {
         CONVERSION_DB.put(CalendarConversions::toBigDecimal, Calendar.class, BigDecimal.class, 0L);
         CONVERSION_DB.put(MapConversions::toBigDecimal, Map.class, BigDecimal.class, 0L);
         CONVERSION_DB.put(StringConversions::toBigDecimal, String.class, BigDecimal.class, 0L);
+        CONVERSION_DB.put(YearConversions::toBigDecimal, Year.class, BigDecimal.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toBigDecimal, MonthDay.class, BigDecimal.class, 0L);
 
         // AtomicBoolean conversions supported
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toAtomicBoolean, Duration.class, AtomicBoolean.class, 0L);
         CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Byte.class, AtomicBoolean.class, 0L);
         CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Short.class, AtomicBoolean.class, 0L);
         CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Integer.class, AtomicBoolean.class, 0L);
@@ -564,6 +588,8 @@ public final class Converter {
         CONVERSION_DB.put(AtomicBooleanConversions::toAtomicBoolean, AtomicBoolean.class, AtomicBoolean.class, 0L);
         CONVERSION_DB.put(MapConversions::toAtomicBoolean, Map.class, AtomicBoolean.class, 0L);
         CONVERSION_DB.put(StringConversions::toAtomicBoolean, String.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.put(YearConversions::toAtomicBoolean, Year.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toAtomicBoolean, MonthDay.class, AtomicBoolean.class, 0L);
 
         // AtomicInteger conversions supported
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, AtomicInteger.class, 0L);
@@ -581,6 +607,8 @@ public final class Converter {
         CONVERSION_DB.put(OffsetTimeConversions::toAtomicInteger, OffsetTime.class, AtomicInteger.class, 0L);
         CONVERSION_DB.put(MapConversions::toAtomicInteger, Map.class, AtomicInteger.class, 0L);
         CONVERSION_DB.put(StringConversions::toAtomicInteger, String.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.put(YearConversions::toAtomicInteger, Year.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toAtomicInteger, MonthDay.class, AtomicInteger.class, 0L);
 
         // AtomicLong conversions supported
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, AtomicLong.class, 0L);
@@ -605,9 +633,12 @@ public final class Converter {
         CONVERSION_DB.put(LocalDateTimeConversions::toAtomicLong, LocalDateTime.class, AtomicLong.class, 0L);
         CONVERSION_DB.put(ZonedDateTimeConversions::toAtomicLong, ZonedDateTime.class, AtomicLong.class, 0L);
         CONVERSION_DB.put(OffsetTimeConversions::toAtomicLong, OffsetTime.class, AtomicLong.class, 0L);
+        CONVERSION_DB.put(OffsetTimeConversions::toAtomicLong, OffsetTime.class, AtomicLong.class, 0L);
         CONVERSION_DB.put(OffsetDateTimeConversions::toAtomicLong, OffsetDateTime.class, AtomicLong.class, 0L);
         CONVERSION_DB.put(MapConversions::toAtomicLong, Map.class, AtomicLong.class, 0L);
         CONVERSION_DB.put(StringConversions::toAtomicLong, String.class, AtomicLong.class, 0L);
+        CONVERSION_DB.put(YearConversions::toAtomicLong, Year.class, AtomicLong.class, 0L);
+        CONVERSION_DB.put(MonthDayConversions::toAtomicLong, MonthDay.class, AtomicLong.class, 0L);
 
         // Date conversions supported
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, Date.class, 0L);
@@ -623,6 +654,7 @@ public final class Converter {
         CONVERSION_DB.put(LocalDateTimeConversions::toDate, LocalDateTime.class, Date.class, 0L);
         CONVERSION_DB.put(ZonedDateTimeConversions::toDate, ZonedDateTime.class, Date.class, 0L);
         CONVERSION_DB.put(OffsetDateTimeConversions::toDate, OffsetDateTime.class, Date.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toDate, Duration.class, Date.class, 0L);
         CONVERSION_DB.put(MapConversions::toDate, Map.class, Date.class, 0L);
         CONVERSION_DB.put(StringConversions::toDate, String.class, Date.class, 0L);
 
@@ -677,6 +709,7 @@ public final class Converter {
         CONVERSION_DB.put(LocalDateTimeConversions::toCalendar, LocalDateTime.class, Calendar.class, 0L);
         CONVERSION_DB.put(ZonedDateTimeConversions::toCalendar, ZonedDateTime.class, Calendar.class, 0L);
         CONVERSION_DB.put(OffsetDateTimeConversions::toCalendar, OffsetDateTime.class, Calendar.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toCalendar, Duration.class, Calendar.class, 0L);
         CONVERSION_DB.put(CalendarConversions::clone, Calendar.class, Calendar.class, 0L);
         CONVERSION_DB.put(MapConversions::toCalendar, Map.class, Calendar.class, 0L);
         CONVERSION_DB.put(StringConversions::toCalendar, String.class, Calendar.class, 0L);
@@ -696,6 +729,7 @@ public final class Converter {
         CONVERSION_DB.put(LocalDateTimeConversions::toLocalDate, LocalDateTime.class, LocalDate.class, 0L);
         CONVERSION_DB.put(ZonedDateTimeConversions::toLocalDate, ZonedDateTime.class, LocalDate.class, 0L);
         CONVERSION_DB.put(OffsetDateTimeConversions::toLocalDate, OffsetDateTime.class, LocalDate.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toLocalDate, Duration.class, LocalDate.class, 0L);
         CONVERSION_DB.put(MapConversions::toLocalDate, Map.class, LocalDate.class, 0L);
         CONVERSION_DB.put(StringConversions::toLocalDate, String.class, LocalDate.class, 0L);
 
@@ -714,6 +748,7 @@ public final class Converter {
         CONVERSION_DB.put(CalendarConversions::toLocalDateTime, Calendar.class, LocalDateTime.class, 0L);
         CONVERSION_DB.put(ZonedDateTimeConversions::toLocalDateTime, ZonedDateTime.class, LocalDateTime.class, 0L);
         CONVERSION_DB.put(OffsetDateTimeConversions::toLocalDateTime, OffsetDateTime.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toLocalDateTime, Duration.class, LocalDateTime.class, 0L);
         CONVERSION_DB.put(MapConversions::toLocalDateTime, Map.class, LocalDateTime.class, 0L);
         CONVERSION_DB.put(StringConversions::toLocalDateTime, String.class, LocalDateTime.class, 0L);
 
@@ -730,6 +765,7 @@ public final class Converter {
         CONVERSION_DB.put(Converter::identity, LocalTime.class, LocalTime.class, 0L);
         CONVERSION_DB.put(ZonedDateTimeConversions::toLocalTime, ZonedDateTime.class, LocalTime.class, 0L);
         CONVERSION_DB.put(OffsetDateTimeConversions::toLocalTime, OffsetDateTime.class, LocalTime.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toLocalTime, Duration.class, LocalTime.class, 0L);
         CONVERSION_DB.put(MapConversions::toLocalTime, Map.class, LocalTime.class, 0L);
         CONVERSION_DB.put(StringConversions::toLocalTime, String.class, LocalTime.class, 0L);
 
@@ -748,6 +784,7 @@ public final class Converter {
         CONVERSION_DB.put(Converter::identity, ZonedDateTime.class, ZonedDateTime.class, 0L);
         CONVERSION_DB.put(OffsetDateTimeConversions::toZonedDateTime, OffsetDateTime.class, ZonedDateTime.class, 0L);
         CONVERSION_DB.put(CalendarConversions::toZonedDateTime, Calendar.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toZonedDateTime, Duration.class, ZonedDateTime.class, 0L);
         CONVERSION_DB.put(MapConversions::toZonedDateTime, Map.class, ZonedDateTime.class, 0L);
         CONVERSION_DB.put(StringConversions::toZonedDateTime, String.class, ZonedDateTime.class, 0L);
 
@@ -767,6 +804,7 @@ public final class Converter {
         CONVERSION_DB.put(InstantConversions::toOffsetDateTime, Instant.class, OffsetDateTime.class, 0L);
         CONVERSION_DB.put(ZonedDateTimeConversions::toOffsetDateTime, ZonedDateTime.class, OffsetDateTime.class, 0L);
         CONVERSION_DB.put(LocalDateTimeConversions::toOffsetDateTime, LocalDateTime.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toOffsetDateTime, Duration.class, OffsetDateTime.class, 0L);
 
         // toOffsetTime
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, OffsetTime.class, 0L);
@@ -1009,6 +1047,7 @@ public final class Converter {
         CONVERSION_DB.put(LocalDateTimeConversions::toInstant, LocalDateTime.class, Instant.class, 0L);
         CONVERSION_DB.put(ZonedDateTimeConversions::toInstant, ZonedDateTime.class, Instant.class, 0L);
         CONVERSION_DB.put(OffsetDateTimeConversions::toInstant, OffsetDateTime.class, Instant.class, 0L);
+        CONVERSION_DB.put(DurationConversions::toInstant, Duration.class, Instant.class, 0L);
 
         CONVERSION_DB.put(StringConversions::toInstant, String.class, Instant.class, 0L);
         CONVERSION_DB.put(MapConversions::toInstant, Map.class, Instant.class, 0L);
@@ -1041,6 +1080,15 @@ public final class Converter {
         CONVERSION_DB.put(OffsetDateTimeConversions::toMonthDay, OffsetDateTime.class, MonthDay.class, 0L);
         CONVERSION_DB.put(StringConversions::toMonthDay, String.class, MonthDay.class, 0L);
         CONVERSION_DB.put(MapConversions::toMonthDay, Map.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, Short.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, Integer.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, Long.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, Float.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, Double.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, AtomicInteger.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, AtomicLong.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, BigInteger.class, MonthDay.class, 0L);
+        CONVERSION_DB.put(NumberConversions::toMonthDay, BigDecimal.class, MonthDay.class, 0L);
 
         // YearMonth conversions supported
         CONVERSION_DB.put(VoidConversions::toNull, Void.class, YearMonth.class, 0L);
@@ -1332,25 +1380,21 @@ public final class Converter {
                     new SurrogatePrimaryPair(URL.class, URI.class,
                             UrlConversions::toURI, null),
 
-                    // Year → Long (maximum reach for data pipelines)
-                    new SurrogatePrimaryPair(Year.class, Long.class,
-                            YearConversions::toLong, null),
-
-                    // YearMonth → String (maximum reach for temporal formatting)
-                    new SurrogatePrimaryPair(YearMonth.class, String.class,
-                            UniversalConversions::toString, null),
-
-                    // MonthDay → String (maximum reach for temporal formatting)
-                    new SurrogatePrimaryPair(MonthDay.class, String.class,
-                            UniversalConversions::toString, null),
-
-                    // Duration → Long (numeric reach for time calculations)
-                    new SurrogatePrimaryPair(Duration.class, Long.class,
-                            DurationConversions::toLong, null),
-
-                    // OffsetTime → String (maximum reach preserving offset info)
-                    new SurrogatePrimaryPair(OffsetTime.class, String.class,
-                            OffsetTimeConversions::toString, null),
+//                    // Year → Long (maximum reach for data pipelines)
+//                    new SurrogatePrimaryPair(Year.class, Long.class,
+//                            YearConversions::toLong, null),
+//
+//                    // YearMonth → String (maximum reach for temporal formatting)
+//                    new SurrogatePrimaryPair(YearMonth.class, String.class,
+//                            UniversalConversions::toString, null),
+//
+//                    // Duration → Long (numeric reach for time calculations)
+//                    new SurrogatePrimaryPair(Duration.class, Long.class,
+//                            DurationConversions::toLong, null),
+//
+//                    // OffsetTime → String (maximum reach preserving offset info)
+//                    new SurrogatePrimaryPair(OffsetTime.class, String.class,
+//                            OffsetTimeConversions::toString, null),
 
                     // Date & Time
                     new SurrogatePrimaryPair(Calendar.class, ZonedDateTime.class, 
@@ -1574,6 +1618,14 @@ public final class Converter {
         for (Map.Entry<ConversionPair, Convert<?>> entry : this.options.getConverterOverrides().entrySet()) {
             ConversionPair pair = entry.getKey();
             USER_DB.put(entry.getValue(), pair.getSource(), pair.getTarget(), pair.getInstanceId());
+            
+            // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
+            if (!isStandardType(pair.getSource())) {
+                addIdentityConversionIfNeeded(pair.getSource(), pair.getInstanceId());
+            }
+            if (!isStandardType(pair.getTarget())) {
+                addIdentityConversionIfNeeded(pair.getTarget(), pair.getInstanceId());
+            }
         }
     }
 
@@ -2263,6 +2315,11 @@ public final class Converter {
      * @see #isConversionSupportedFor(Class, Class)
      */
     public boolean isSimpleTypeConversionSupported(Class<?> source, Class<?> target) {
+        // If user has registered custom converter overrides for this conversion pair, it's not simple anymore
+        if (hasConverterOverrideFor(source, target)) {
+            return false;
+        }
+        
         // First, try to get the converter from the FULL_CONVERSION_CACHE.
         Convert<?> cached = getCachedConverter(source, target);
         if (cached != null) {
@@ -2306,13 +2363,64 @@ public final class Converter {
     /**
      * Overload of {@link #isSimpleTypeConversionSupported(Class, Class)} that checks
      * if the specified class is considered a simple type.
-     * Results are cached for fast subsequent lookups.
+     * Results are cached for fast subsequent lookups when no custom overrides exist.
+     * 
+     * <p>If custom converter overrides exist for the specified type, this method returns false,
+     * regardless of inheritance-based conversion support. This ensures that user-defined custom
+     * converters take precedence over automatic simple type conversions.</p>
      *
      * @param type the class to check
-     * @return {@code true} if a simple type conversion exists for the class
+     * @return {@code true} if a simple type conversion exists for the class and no custom overrides are registered
      */
     public boolean isSimpleTypeConversionSupported(Class<?> type) {
+        // If user has registered custom converter overrides targeting this type, it's not simple anymore
+        if (hasConverterOverrideFor(type)) {
+            return false;
+        }
+        
+        // Use cached result for types without custom overrides
         return SIMPLE_TYPE_CACHE.computeIfAbsent(type, t -> isSimpleTypeConversionSupported(t, t));
+    }
+
+    /**
+     * Checks if custom converter overrides exist for the specified source-target conversion pair.
+     * Uses efficient hash lookup in USER_DB instead of linear search.
+     *
+     * @param sourceType the source type to check for custom overrides
+     * @param targetType the target type to check for custom overrides  
+     * @return {@code true} if custom converter overrides exist for the conversion pair, {@code false} otherwise
+     */
+    private boolean hasConverterOverrideFor(Class<?> sourceType, Class<?> targetType) {
+        // Check if there are custom overrides for this conversion pair
+        if (options != null) {
+            Map<ConversionPair, Convert<?>> converterOverrides = options.getConverterOverrides();
+            if (converterOverrides != null && !converterOverrides.isEmpty()) {
+                // Get instance ID from first conversion pair (all pairs for this instance use same ID)
+                ConversionPair firstPair = converterOverrides.keySet().iterator().next();
+                long instanceId = firstPair.getInstanceId();
+                
+                // Direct hash lookup in USER_DB using this instance's ID
+                Convert<?> converter = USER_DB.get(sourceType, targetType, instanceId);
+                return converter != null && converter != UNSUPPORTED;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if custom converter overrides exist for the specified target type.
+     * Uses the brilliant optimization of checking for identity conversion (T -> T) which is 
+     * automatically added for all non-standard types involved in custom conversions.
+     * This provides O(1) performance instead of O(n) linear search.
+     * 
+     * @param targetType the target type to check for custom overrides
+     * @return {@code true} if custom converter overrides exist for the target type, {@code false} otherwise
+     */
+    private boolean hasConverterOverrideFor(Class<?> targetType) {
+        // Optimization: Just check for identity conversion (T -> T)
+        // Non-standard types involved in custom conversions automatically get identity conversions
+        // This turns an O(n) linear search into an O(1) hash lookup
+        return hasConverterOverrideFor(targetType, targetType);
     }
 
     /**
@@ -2527,6 +2635,14 @@ public final class Converter {
             }
         }
 
+        // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
+        if (!isStandardType(source)) {
+            addIdentityConversionIfNeeded(source, 0L);
+        }
+        if (!isStandardType(target)) {
+            addIdentityConversionIfNeeded(target, 0L);
+        }
+
         return previous;
     }
 
@@ -2581,6 +2697,14 @@ public final class Converter {
             }
         }
 
+        // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
+        if (!isStandardType(source)) {
+            addIdentityConversionIfNeeded(source, this.instanceId);
+        }
+        if (!isStandardType(target)) {
+            addIdentityConversionIfNeeded(target, this.instanceId);
+        }
+
         return previous;
     }
 
@@ -2605,6 +2729,59 @@ public final class Converter {
         return types;
     }
 
+    /**
+     * Determines if a class is a "standard" type that has built-in conversion support.
+     * Standard types include primitives, wrappers, common JDK types, and types with
+     * existing conversions in the factory conversion database.
+     * 
+     * @param clazz the class to check
+     * @return true if the class is a standard type, false if it's a custom/non-standard type
+     */
+    private static boolean isStandardType(Class<?> clazz) {
+        if (clazz == null) {
+            return true; // null is considered standard
+        }
+        
+        // Primitive types and their wrappers are standard
+        if (clazz.isPrimitive() || ClassUtilities.toPrimitiveClass(clazz) != clazz) {
+            return true;
+        }
+        
+        // Common JDK types that are typically standard
+        if (clazz.getName().startsWith("java.") || clazz.getName().startsWith("javax.")) {
+            return true;
+        }
+        
+        // Check if this type has any factory conversions (built-in support)
+        // Look for any entries in CONVERSION_DB where this type is source or target
+        for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : CONVERSION_DB.entries()) {
+            if (entry.keys.length >= 2) {
+                Object source = entry.keys[0];
+                Object target = entry.keys[1];
+                if (source instanceof Class && target instanceof Class) {
+                    if (source == clazz || target == clazz) {
+                        return true; // Found built-in conversion support
+                    }
+                }
+            }
+        }
+        
+        return false; // No built-in support found, consider it non-standard
+    }
+
+    /**
+     * Adds an identity conversion (T -> T) for a non-standard type to enable O(1) lookup
+     * in hasConverterOverrideFor. This serves as a marker that the type is involved in
+     * custom conversions while also providing useful identity conversion functionality.
+     * 
+     * @param type the type to add identity conversion for
+     * @param instanceId the instance ID to use for the conversion
+     */
+    private static void addIdentityConversionIfNeeded(Class<?> type, long instanceId) {
+        if (type != null && USER_DB.get(type, type, instanceId) == null) {
+            USER_DB.put(IDENTITY_CONVERTER, type, type, instanceId);
+        }
+    }
 
     /**
      * Performs an identity conversion, returning the source object as-is.

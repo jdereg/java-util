@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -129,17 +130,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @throws NullPointerException if the specified collection is {@code null}
      */
     public CaseInsensitiveSet(Collection<? extends E> collection) {
-        if (collection instanceof ConcurrentNavigableSetNullSafe) {
-            map = new CaseInsensitiveMap<>(new ConcurrentNavigableMapNullSafe<>());
-        } else if (collection instanceof ConcurrentSkipListSet) {
-            map = new CaseInsensitiveMap<>(new ConcurrentSkipListMap<>());
-        } else if (collection instanceof ConcurrentSet) {
-            map = new CaseInsensitiveMap<>(new ConcurrentHashMapNullSafe<>());
-        } else if (collection instanceof SortedSet) {
-            map = new CaseInsensitiveMap<>(new TreeMap<>());  // covers SortedSet or NavigableSet
-        } else {
-            map = new CaseInsensitiveMap<>(collection.size());
-        }
+        map = determineBackingMap(collection);
         addAll(collection);
     }
 
@@ -620,6 +611,35 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     public Map<E, Object> getBackingMap() {
         return map;
+    }
+
+    /**
+     * Determines the appropriate backing map based on the source collection's type.
+     * This method creates a CaseInsensitiveMap with the appropriate underlying map implementation
+     * to preserve the characteristics of the source collection.
+     *
+     * @param source the source collection to copy from
+     * @return a new CaseInsensitiveMap instance with appropriate backing map
+     */
+    private Map<E, Object> determineBackingMap(Collection<? extends E> source) {
+        if (source == null) {
+            return new CaseInsensitiveMap<>();
+        }
+        
+        // Create the appropriate backing map based on a source type
+        if (source instanceof ConcurrentNavigableSetNullSafe) {
+            return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentNavigableMapNullSafe<>());
+        } else if (source instanceof ConcurrentSkipListSet) {
+            return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentSkipListMap<>());
+        } else if (source instanceof ConcurrentSet) {
+            return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMapNullSafe<>());
+        } else if (source instanceof SortedSet) {
+            return new CaseInsensitiveMap<>(Collections.emptyMap(), new TreeMap<>());
+        } else {
+            // For all other collection types, use LinkedHashMap
+            int size = source.isEmpty() ? 16 : source.size();
+            return new CaseInsensitiveMap<>(size);
+        }
     }
 
     @Deprecated

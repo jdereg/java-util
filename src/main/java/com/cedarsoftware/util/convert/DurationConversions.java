@@ -6,9 +6,17 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.cedarsoftware.util.convert.MapConversions.DURATION;
@@ -107,5 +115,102 @@ final class DurationConversions {
         
         // Convert back to java.sql.Date
         return java.sql.Date.valueOf(localDate);
+    }
+    
+    static OffsetDateTime toOffsetDateTime(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        TimeZone timeZone = converter.getOptions().getTimeZone();
+        
+        // Use current time for timezone offset calculation (consistent with other conversions)
+        ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(timeZone.getOffset(System.currentTimeMillis()) / 1000);
+        
+        // Add duration to epoch to get the target instant
+        Instant epoch = Instant.EPOCH;
+        Instant timeAfterDuration = epoch.plus(duration);
+        
+        return timeAfterDuration.atOffset(zoneOffset);
+    }
+
+    static boolean toBoolean(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        return !duration.isZero();
+    }
+
+    static Boolean toBooleanWrapper(Object from, Converter converter) {
+        return toBoolean(from, converter);
+    }
+
+    static AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
+        return new AtomicBoolean(toBoolean(from, converter));
+    }
+
+    static Calendar toCalendar(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Add duration to epoch to get the target instant
+        Instant epoch = Instant.EPOCH;
+        Instant timeAfterDuration = epoch.plus(duration);
+        
+        Calendar calendar = Calendar.getInstance(converter.getOptions().getTimeZone());
+        calendar.setTimeInMillis(timeAfterDuration.toEpochMilli());
+        return calendar;
+    }
+
+    static LocalDate toLocalDate(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Add duration to epoch and convert to LocalDate in system timezone
+        Instant epoch = Instant.EPOCH;
+        Instant timeAfterDuration = epoch.plus(duration);
+        return timeAfterDuration.atZone(converter.getOptions().getZoneId()).toLocalDate();
+    }
+
+    static LocalTime toLocalTime(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Convert duration to time within a day (modulo 24 hours)
+        long totalSeconds = duration.getSeconds();
+        int nanos = duration.getNano();
+        
+        // Handle negative durations by getting the equivalent positive time within a day
+        long secondsInDay = 24 * 60 * 60; // 86400 seconds in a day
+        long adjustedSeconds = ((totalSeconds % secondsInDay) + secondsInDay) % secondsInDay;
+        
+        return LocalTime.ofSecondOfDay(adjustedSeconds).withNano(nanos);
+    }
+
+    static LocalDateTime toLocalDateTime(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Add duration to epoch and convert to LocalDateTime in system timezone
+        Instant epoch = Instant.EPOCH;
+        Instant timeAfterDuration = epoch.plus(duration);
+        return timeAfterDuration.atZone(converter.getOptions().getZoneId()).toLocalDateTime();
+    }
+
+
+    static Date toDate(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Add duration to epoch to get the target instant
+        Instant epoch = Instant.EPOCH;
+        Instant timeAfterDuration = epoch.plus(duration);
+        return Date.from(timeAfterDuration);
+    }
+
+    static Instant toInstant(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Add duration to epoch to get the target instant
+        Instant epoch = Instant.EPOCH;
+        return epoch.plus(duration);
+    }
+
+    static Number toNumber(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Return duration as milliseconds (Long is a Number)
+        return duration.toMillis();
+    }
+
+    static ZonedDateTime toZonedDateTime(Object from, Converter converter) {
+        Duration duration = (Duration) from;
+        // Add duration to epoch and convert to ZonedDateTime in system timezone
+        Instant epoch = Instant.EPOCH;
+        Instant timeAfterDuration = epoch.plus(duration);
+        return timeAfterDuration.atZone(converter.getOptions().getZoneId());
     }
 }

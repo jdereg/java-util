@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for enhanced file access validation and symlink attack prevention in IOUtilities.
  * Verifies that the validateFilePath method properly detects and prevents various file system security attacks.
  */
-public class IOUtilitiesFileValidationTest {
+class IOUtilitiesFileValidationTest {
     private static final Logger LOG = Logger.getLogger(IOUtilitiesFileValidationTest.class.getName());
     static {
         LoggingConfig.initForTests();
@@ -30,7 +30,7 @@ public class IOUtilitiesFileValidationTest {
     private String originalValidationDisabled;
     
     @BeforeEach
-    public void setUp() throws Exception {
+    void setUp() throws Exception {
         // Access the private validateFilePath method via reflection for testing
         validateFilePathMethod = IOUtilities.class.getDeclaredMethod("validateFilePath", File.class);
         validateFilePathMethod.setAccessible(true);
@@ -42,7 +42,7 @@ public class IOUtilitiesFileValidationTest {
     }
     
     @AfterEach
-    public void tearDown() {
+    void tearDown() {
         // Restore original validation setting
         if (originalValidationDisabled != null) {
             System.setProperty("io.path.validation.disabled", originalValidationDisabled);
@@ -52,7 +52,7 @@ public class IOUtilitiesFileValidationTest {
     }
     
     @Test
-    public void testBasicPathTraversalDetection() throws Exception {
+    void testBasicPathTraversalDetection() throws Exception {
         // Test various path traversal attempts
         String[] maliciousPaths = {
             "../etc/passwd",
@@ -70,15 +70,14 @@ public class IOUtilitiesFileValidationTest {
             });
             // Unwrap InvocationTargetException to get the actual SecurityException
             Throwable cause = exception.getCause();
-            assertTrue(cause instanceof SecurityException, 
-                      "Expected SecurityException but got: " + cause.getClass().getSimpleName());
+            assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName());
             assertTrue(cause.getMessage().contains("Path traversal attempt detected"), 
                       "Should detect path traversal in: " + path);
         }
     }
     
     @Test
-    public void testNullByteInjectionDetection() throws Exception {
+    void testNullByteInjectionDetection() throws Exception {
         // Test null byte injection attempts
         String[] nullBytePaths = {
             "/etc/passwd\0.txt",
@@ -93,15 +92,14 @@ public class IOUtilitiesFileValidationTest {
             });
             // Unwrap InvocationTargetException to get the actual SecurityException
             Throwable cause = exception.getCause();
-            assertTrue(cause instanceof SecurityException, 
-                      "Expected SecurityException but got: " + cause.getClass().getSimpleName());
+            assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName());
             assertTrue(cause.getMessage().contains("Null byte in file path"), 
                       "Should detect null byte injection in: " + path + ". Actual message: " + cause.getMessage());
         }
     }
     
     @Test
-    public void testSuspiciousCharacterDetection() throws Exception {
+    void testSuspiciousCharacterDetection() throws Exception {
         // Test command injection character detection
         String[] suspiciousPaths = {
             "/tmp/file|rm -rf /",
@@ -118,8 +116,7 @@ public class IOUtilitiesFileValidationTest {
             });
             // Unwrap InvocationTargetException to get the actual SecurityException
             Throwable cause = exception.getCause();
-            assertTrue(cause instanceof SecurityException, 
-                      "Expected SecurityException but got: " + cause.getClass().getSimpleName());
+            assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName());
             assertTrue(cause.getMessage().contains("Suspicious characters detected"), 
                       "Should detect suspicious characters in: " + path);
         }
@@ -127,7 +124,7 @@ public class IOUtilitiesFileValidationTest {
     
     @Test
     @EnabledOnOs(OS.LINUX)
-    public void testUnixSystemDirectoryProtection() throws Exception {
+    void testUnixSystemDirectoryProtection() throws Exception {
         // Test Unix/Linux system directory protection
         String[] systemPaths = {
             "/proc/self/mem",
@@ -145,8 +142,7 @@ public class IOUtilitiesFileValidationTest {
             });
             // Unwrap InvocationTargetException to get the actual SecurityException
             Throwable cause = exception.getCause();
-            assertTrue(cause instanceof SecurityException, 
-                      "Expected SecurityException but got: " + cause.getClass().getSimpleName());
+            assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName());
             assertTrue(cause.getMessage().contains("Access to system directory/file denied"), 
                       "Should block access to system path: " + path);
         }
@@ -154,7 +150,7 @@ public class IOUtilitiesFileValidationTest {
     
     @Test
     @EnabledOnOs(OS.WINDOWS)
-    public void testWindowsSystemDirectoryProtection() throws Exception {
+    void testWindowsSystemDirectoryProtection() throws Exception {
         // Test Windows system directory protection
         String[] systemPaths = {
             "C:\\windows\\system32\\config\\sam",
@@ -170,15 +166,14 @@ public class IOUtilitiesFileValidationTest {
             });
             // Unwrap InvocationTargetException to get the actual SecurityException
             Throwable cause = exception.getCause();
-            assertTrue(cause instanceof SecurityException, 
-                      "Expected SecurityException but got: " + cause.getClass().getSimpleName());
+            assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName());
             assertTrue(cause.getMessage().contains("Access to Windows system directory/file denied"), 
                       "Should block access to Windows system path: " + path);
         }
     }
     
     @Test
-    public void testSensitiveHiddenDirectoryProtection() throws Exception {
+    void testSensitiveHiddenDirectoryProtection() throws Exception {
         // Test protection of sensitive hidden directories
         String[] sensitivePaths = {
             "/home/user/.ssh/id_rsa",
@@ -194,15 +189,14 @@ public class IOUtilitiesFileValidationTest {
             });
             // Unwrap InvocationTargetException to get the actual SecurityException
             Throwable cause = exception.getCause();
-            assertTrue(cause instanceof SecurityException, 
-                      "Expected SecurityException but got: " + cause.getClass().getSimpleName());
+            assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName());
             assertTrue(cause.getMessage().contains("Access to sensitive hidden directory denied"), 
                       "Should block access to sensitive directory: " + path);
         }
     }
     
     @Test
-    public void testPathLengthValidation() throws Exception {
+    void testPathLengthValidation() throws Exception {
         // Test overly long path rejection
         StringBuilder longPath = new StringBuilder();
         for (int i = 0; i < 5000; i++) {
@@ -215,15 +209,14 @@ public class IOUtilitiesFileValidationTest {
         });
         // Unwrap InvocationTargetException to get the actual SecurityException
         Throwable cause = exception.getCause();
-        assertTrue(cause instanceof SecurityException, 
-                  "Expected SecurityException but got: " + cause.getClass().getSimpleName() + " - " + cause.getMessage());
+        assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName() + " - " + cause.getMessage());
         assertTrue(cause.getMessage().contains("File path too long") || 
                   cause.getMessage().contains("Unable to validate file path security"), 
                   "Should reject overly long paths. Actual message: " + cause.getMessage());
     }
     
     @Test
-    public void testInvalidCharactersInPathElements() throws Exception {
+    void testInvalidCharactersInPathElements() throws Exception {
         // Test path elements with control characters
         String[] invalidPaths = {
             "/tmp/file\tname",
@@ -238,15 +231,14 @@ public class IOUtilitiesFileValidationTest {
             });
             // Unwrap InvocationTargetException to get the actual SecurityException
             Throwable cause = exception.getCause();
-            assertTrue(cause instanceof SecurityException, 
-                      "Expected SecurityException but got: " + cause.getClass().getSimpleName());
+            assertInstanceOf(SecurityException.class, cause, "Expected SecurityException but got: " + cause.getClass().getSimpleName());
             assertTrue(cause.getMessage().contains("Invalid characters in path element"), 
                       "Should reject path with control characters: " + path);
         }
     }
     
     @Test
-    public void testLegitimatePathsAllowed() throws Exception {
+    void testLegitimatePathsAllowed() throws Exception {
         // Test that legitimate paths are allowed
         String[] legitimatePaths = {
             "/tmp/legitimate_file.txt",
@@ -266,7 +258,7 @@ public class IOUtilitiesFileValidationTest {
     }
     
     @Test
-    public void testValidationCanBeDisabled() throws Exception {
+    void testValidationCanBeDisabled() throws Exception {
         // Test that validation can be disabled via system property
         System.setProperty("io.path.validation.disabled", "true");
         
@@ -278,7 +270,7 @@ public class IOUtilitiesFileValidationTest {
     }
     
     @Test
-    public void testSymlinkDetectionInTempDirectory() throws Exception {
+    void testSymlinkDetectionInTempDirectory() throws Exception {
         // Only run this test if we can create symlinks (Unix-like systems)
         if (System.getProperty("os.name").toLowerCase().contains("windows")) {
             return; // Skip on Windows as symlink creation requires admin privileges
@@ -319,15 +311,14 @@ public class IOUtilitiesFileValidationTest {
     }
     
     @Test
-    public void testNullFileInput() throws Exception {
+    void testNullFileInput() throws Exception {
         // Test null file input
         Exception exception = assertThrows(Exception.class, () -> {
             validateFilePathMethod.invoke(null, (File) null);
         });
         // Unwrap InvocationTargetException to get the actual IllegalArgumentException
         Throwable cause = exception.getCause();
-        assertTrue(cause instanceof IllegalArgumentException, 
-                  "Expected IllegalArgumentException but got: " + cause.getClass().getSimpleName());
+        assertInstanceOf(IllegalArgumentException.class, cause, "Expected IllegalArgumentException but got: " + cause.getClass().getSimpleName());
         assertTrue(cause.getMessage().contains("File cannot be null"), 
                   "Should reject null file input");
     }

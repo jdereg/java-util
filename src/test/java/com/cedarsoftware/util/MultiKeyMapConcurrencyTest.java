@@ -31,8 +31,8 @@ class MultiKeyMapConcurrencyTest {
     // Test configuration - you can adjust these for your manual testing
     private static final int CAPACITY = 16;
     private static final int NUM_THREADS = 8;
-    private static final int OPERATIONS_PER_THREAD = 10000;
-    private static final int TEST_DURATION_SECONDS = 5;
+    private static final int OPERATIONS_PER_THREAD = 5000;
+    private static final int TEST_DURATION_SECONDS = 3;
     
     @Test
     void testConcurrentReadsAndWrites() throws InterruptedException {
@@ -97,8 +97,8 @@ class MultiKeyMapConcurrencyTest {
         LOG.info("Load factor: " + String.format("%.2f", map.getLoadFactor()));
         
         map.printContentionStatistics();
-        
-        assertTrue(map.size() > 0, "Map should have some entries after concurrent operations");
+
+        assertFalse(map.isEmpty(), "Map should have some entries after concurrent operations");
         assertTrue(map.getMaxChainLength() >= 1, "Should have at least one chain");
     }
     

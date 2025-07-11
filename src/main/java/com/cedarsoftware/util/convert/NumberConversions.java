@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.Year;
@@ -752,5 +753,41 @@ final class NumberConversions {
         BigDecimal bigDecimal = (BigDecimal) from;
         int value = bigDecimal.intValue();
         return new Insets(value, value, value, value);
+    }
+
+    /**
+     * Convert Number to MonthDay. Parses the number as MMDD format.
+     * For example, 1225 becomes MonthDay.of(12, 25).
+     * @param from Number to convert (int, Integer, short, etc.)
+     * @param converter Converter instance
+     * @return MonthDay instance
+     * @throws IllegalArgumentException if the number is not in valid MMDD format
+     */
+    static MonthDay toMonthDay(Object from, Converter converter) {
+        Number number = (Number) from;
+        int value = number.intValue();
+        
+        // Handle negative numbers
+        if (value < 0) {
+            throw new IllegalArgumentException("Cannot convert negative number to MonthDay: " + value);
+        }
+        
+        // Extract month and day from MMDD format
+        int month = value / 100;
+        int day = value % 100;
+        
+        // Validate month and day ranges
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("Invalid month in MMDD format: " + month + " (from " + value + ")");
+        }
+        if (day < 1 || day > 31) {
+            throw new IllegalArgumentException("Invalid day in MMDD format: " + day + " (from " + value + ")");
+        }
+        
+        try {
+            return MonthDay.of(month, day);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid MMDD format: " + value + " - " + e.getMessage(), e);
+        }
     }
 }

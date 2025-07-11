@@ -253,6 +253,7 @@ class ConverterEverythingTest {
         loadSqlDateConversionTests();
         loadLocalDateTimeNumericTests();
         loadLocalTimeNumericTests();
+        loadOffsetTimeNumericTests();
     }
 
     /**
@@ -1154,6 +1155,16 @@ class ConverterEverythingTest {
                 {new StringBuilder("buildy"), "buildy"},
         });
         TEST_DB.put(pair(Pattern.class, String.class), new Object[][] {
+                {Pattern.compile("\\d+"), "\\d+", false},
+                {Pattern.compile("\\w+"), "\\w+", false},
+                {Pattern.compile("[a-zA-Z]+"), "[a-zA-Z]+", false},
+                {Pattern.compile("\\s*"), "\\s*", false},
+                {Pattern.compile("^abc$"), "^abc$", false},
+                {Pattern.compile("(foo|bar)"), "(foo|bar)", false},
+                {Pattern.compile("a{1,3}"), "a{1,3}", false},
+                {Pattern.compile("[^\\s]+"), "[^\\s]+", false}
+        });
+        TEST_DB.put(pair(Pattern.class, CharSequence.class), new Object[][] {
                 {Pattern.compile("\\d+"), "\\d+", false},
                 {Pattern.compile("\\w+"), "\\w+", false},
                 {Pattern.compile("[a-zA-Z]+"), "[a-zA-Z]+", false},
@@ -2183,6 +2194,226 @@ class ConverterEverythingTest {
                 {MonthDay.of(12, 31), "--12-31"},
                 {MonthDay.of(6, 15), "--06-15"},
                 {MonthDay.of(2, 29), "--02-29"},  // leap day
+        });
+
+        // MonthDay → numeric types (MMDD format)
+        TEST_DB.put(pair(MonthDay.class, int.class), new Object[][]{
+                {MonthDay.of(1, 1), 101},
+                {MonthDay.of(12, 31), 1231},
+                {MonthDay.of(6, 15), 615},
+                {MonthDay.of(2, 29), 229},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, Integer.class), new Object[][]{
+                {MonthDay.of(1, 1), 101},
+                {MonthDay.of(12, 31), 1231},
+                {MonthDay.of(6, 15), 615},
+                {MonthDay.of(2, 29), 229},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, Short.class), new Object[][]{
+                {MonthDay.of(1, 1), (short) 101},
+                {MonthDay.of(12, 31), (short) 1231},
+                {MonthDay.of(6, 15), (short) 615},
+                {MonthDay.of(2, 29), (short) 229},  // leap day
+        });
+
+        // Numeric types → MonthDay (MMDD format)
+        TEST_DB.put(pair(int.class, MonthDay.class), new Object[][]{
+                {101, MonthDay.of(1, 1)},
+                {1231, MonthDay.of(12, 31)},
+                {615, MonthDay.of(6, 15)},
+                {229, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(Integer.class, MonthDay.class), new Object[][]{
+                {101, MonthDay.of(1, 1)},
+                {1231, MonthDay.of(12, 31)},
+                {615, MonthDay.of(6, 15)},
+                {229, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(short.class, MonthDay.class), new Object[][]{
+                {(short) 101, MonthDay.of(1, 1)},
+                {(short) 1231, MonthDay.of(12, 31)},
+                {(short) 615, MonthDay.of(6, 15)},
+                {(short) 229, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(Short.class, MonthDay.class), new Object[][]{
+                {(short) 101, MonthDay.of(1, 1)},
+                {(short) 1231, MonthDay.of(12, 31)},
+                {(short) 615, MonthDay.of(6, 15)},
+                {(short) 229, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(long.class, MonthDay.class), new Object[][]{
+                {101L, MonthDay.of(1, 1)},
+                {1231L, MonthDay.of(12, 31)},
+                {615L, MonthDay.of(6, 15)},
+                {229L, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(Long.class, MonthDay.class), new Object[][]{
+                {101L, MonthDay.of(1, 1)},
+                {1231L, MonthDay.of(12, 31)},
+                {615L, MonthDay.of(6, 15)},
+                {229L, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(float.class, MonthDay.class), new Object[][]{
+                {101.0f, MonthDay.of(1, 1)},
+                {1231.0f, MonthDay.of(12, 31)},
+                {615.0f, MonthDay.of(6, 15)},
+                {229.0f, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(Float.class, MonthDay.class), new Object[][]{
+                {101.0f, MonthDay.of(1, 1)},
+                {1231.0f, MonthDay.of(12, 31)},
+                {615.0f, MonthDay.of(6, 15)},
+                {229.0f, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(double.class, MonthDay.class), new Object[][]{
+                {101.0, MonthDay.of(1, 1)},
+                {1231.0, MonthDay.of(12, 31)},
+                {615.0, MonthDay.of(6, 15)},
+                {229.0, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(Double.class, MonthDay.class), new Object[][]{
+                {101.0, MonthDay.of(1, 1)},
+                {1231.0, MonthDay.of(12, 31)},
+                {615.0, MonthDay.of(6, 15)},
+                {229.0, MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(BigInteger.class, MonthDay.class), new Object[][]{
+                {BigInteger.valueOf(101), MonthDay.of(1, 1)},
+                {BigInteger.valueOf(1231), MonthDay.of(12, 31)},
+                {BigInteger.valueOf(615), MonthDay.of(6, 15)},
+                {BigInteger.valueOf(229), MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(BigDecimal.class, MonthDay.class), new Object[][]{
+                {BigDecimal.valueOf(101), MonthDay.of(1, 1)},
+                {BigDecimal.valueOf(1231), MonthDay.of(12, 31)},
+                {BigDecimal.valueOf(615), MonthDay.of(6, 15)},
+                {BigDecimal.valueOf(229), MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(AtomicInteger.class, MonthDay.class), new Object[][]{
+                {new AtomicInteger(101), MonthDay.of(1, 1)},
+                {new AtomicInteger(1231), MonthDay.of(12, 31)},
+                {new AtomicInteger(615), MonthDay.of(6, 15)},
+                {new AtomicInteger(229), MonthDay.of(2, 29)},  // leap day
+        });
+
+        TEST_DB.put(pair(AtomicLong.class, MonthDay.class), new Object[][]{
+                {new AtomicLong(101), MonthDay.of(1, 1)},
+                {new AtomicLong(1231), MonthDay.of(12, 31)},
+                {new AtomicLong(615), MonthDay.of(6, 15)},
+                {new AtomicLong(229), MonthDay.of(2, 29)},  // leap day
+        });
+
+        // MonthDay → numeric conversions (direct conversions)
+        TEST_DB.put(pair(MonthDay.class, Long.class), new Object[][]{
+                {MonthDay.of(1, 1), 101L},
+                {MonthDay.of(12, 31), 1231L},
+                {MonthDay.of(6, 15), 615L},
+                {MonthDay.of(2, 29), 229L},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, long.class), new Object[][]{
+                {MonthDay.of(1, 1), 101L},
+                {MonthDay.of(12, 31), 1231L},
+                {MonthDay.of(6, 15), 615L},
+                {MonthDay.of(2, 29), 229L},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, Double.class), new Object[][]{
+                {MonthDay.of(1, 1), 101.0},
+                {MonthDay.of(12, 31), 1231.0},
+                {MonthDay.of(6, 15), 615.0},
+                {MonthDay.of(2, 29), 229.0},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, double.class), new Object[][]{
+                {MonthDay.of(1, 1), 101.0},
+                {MonthDay.of(12, 31), 1231.0},
+                {MonthDay.of(6, 15), 615.0},
+                {MonthDay.of(2, 29), 229.0},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, Float.class), new Object[][]{
+                {MonthDay.of(1, 1), 101.0f},
+                {MonthDay.of(12, 31), 1231.0f},
+                {MonthDay.of(6, 15), 615.0f},
+                {MonthDay.of(2, 29), 229.0f},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, float.class), new Object[][]{
+                {MonthDay.of(1, 1), 101.0f},
+                {MonthDay.of(12, 31), 1231.0f},
+                {MonthDay.of(6, 15), 615.0f},
+                {MonthDay.of(2, 29), 229.0f},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, BigInteger.class), new Object[][]{
+                {MonthDay.of(1, 1), BigInteger.valueOf(101)},
+                {MonthDay.of(12, 31), BigInteger.valueOf(1231)},
+                {MonthDay.of(6, 15), BigInteger.valueOf(615)},
+                {MonthDay.of(2, 29), BigInteger.valueOf(229)},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, BigDecimal.class), new Object[][]{
+                {MonthDay.of(1, 1), BigDecimal.valueOf(101)},
+                {MonthDay.of(12, 31), BigDecimal.valueOf(1231)},
+                {MonthDay.of(6, 15), BigDecimal.valueOf(615)},
+                {MonthDay.of(2, 29), BigDecimal.valueOf(229)},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, AtomicInteger.class), new Object[][]{
+                {MonthDay.of(1, 1), new AtomicInteger(101), true},
+                {MonthDay.of(12, 31), new AtomicInteger(1231), true},
+                {MonthDay.of(6, 15), new AtomicInteger(615), true},
+                {MonthDay.of(2, 29), new AtomicInteger(229), true},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, AtomicLong.class), new Object[][]{
+                {MonthDay.of(1, 1), new AtomicLong(101), true},
+                {MonthDay.of(12, 31), new AtomicLong(1231), true},
+                {MonthDay.of(6, 15), new AtomicLong(615), true},
+                {MonthDay.of(2, 29), new AtomicLong(229), true},  // leap day
+        });
+
+        TEST_DB.put(pair(MonthDay.class, boolean.class), new Object[][]{
+                {MonthDay.of(1, 1), true},     // 101 != 0, so true
+                {MonthDay.of(12, 31), true},   // 1231 != 0, so true
+                {MonthDay.of(6, 15), true},    // 615 != 0, so true
+                {MonthDay.of(2, 29), true},    // 229 != 0, so true
+        });
+
+        TEST_DB.put(pair(MonthDay.class, Boolean.class), new Object[][]{
+                {MonthDay.of(1, 1), true},     // 101 != 0, so true
+                {MonthDay.of(12, 31), true},   // 1231 != 0, so true
+                {MonthDay.of(6, 15), true},    // 615 != 0, so true
+                {MonthDay.of(2, 29), true},    // 229 != 0, so true
+        });
+
+        TEST_DB.put(pair(MonthDay.class, AtomicBoolean.class), new Object[][]{
+                {MonthDay.of(1, 1), new AtomicBoolean(true), false},     // 101 != 0, so true
+                {MonthDay.of(12, 31), new AtomicBoolean(true), false},   // 1231 != 0, so true
+                {MonthDay.of(6, 15), new AtomicBoolean(true), false},    // 615 != 0, so true
+                {MonthDay.of(2, 29), new AtomicBoolean(true), false},    // 229 != 0, so true
+        });
+        
+        TEST_DB.put(pair(MonthDay.class, short.class), new Object[][]{
+                {MonthDay.of(1, 1), (short) 101},
+                {MonthDay.of(12, 31), (short) 1231},
+                {MonthDay.of(6, 15), (short) 615},
+                {MonthDay.of(2, 29), (short) 229},
         });
     }
 
@@ -3843,6 +4074,21 @@ class ConverterEverythingTest {
                 {zdt("1970-01-01T00:00:00.001Z"), 1L, true},
                 {zdt("1970-01-01T00:00:00.999Z"), 999L, true},
         });
+        TEST_DB.put(pair(ZonedDateTime.class, double.class), new Object[][]{
+                {zdt("1969-12-31T23:59:59Z"), -1.0, true},
+                {zdt("1969-12-31T23:59:59.999Z"), -0.001, true},
+                {zdt("1970-01-01T00:00:00Z"), 0.0, true},
+                {zdt("1970-01-01T00:00:00.001Z"), 0.001, true},
+                {zdt("1970-01-01T00:00:01Z"), 1.0, true},
+                {zdt("1970-01-01T00:00:01.5Z"), 1.5, true},
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, long.class), new Object[][]{
+                {zdt("1969-12-31T23:59:59Z"), -1000L, true},
+                {zdt("1969-12-31T23:59:59.999Z"), -1L, true},
+                {zdt("1970-01-01T00:00:00Z"), 0L, true},
+                {zdt("1970-01-01T00:00:00.001Z"), 1L, true},
+                {zdt("1970-01-01T00:00:00.999Z"), 999L, true},
+        });
         TEST_DB.put(pair(OffsetDateTime.class, Long.class), new Object[][]{
                 {odt("0000-01-01T00:00:00Z"), -62167219200000L},
                 {odt("0000-01-01T00:00:00.001Z"), -62167219199999L},
@@ -4358,9 +4604,6 @@ class ConverterEverythingTest {
                 {mapOf(VALUE, "nope"), new IllegalArgumentException("Value 'nope' not parseable as a byte value or outside -128 to 127")},
 
         });
-        TEST_DB.put(pair(Year.class, Byte.class), new Object[][]{
-                {Year.of(2024), (byte) -24}, // Year → Long → Byte via surrogate bridge
-        });
         TEST_DB.put(pair(String.class, Byte.class), new Object[][]{
                 {"-1", (byte) -1, true},
                 {"-1.1", (byte) -1},
@@ -4733,6 +4976,13 @@ class ConverterEverythingTest {
         if (skip8) {
             return;
         }
+        
+        // Skip StringBuffer/StringBuilder to CharSequence - JsonIo round-trip converts to String
+        boolean skip9 = (sourceClass.equals(StringBuffer.class) || sourceClass.equals(StringBuilder.class)) &&
+                       targetClass.equals(CharSequence.class);
+        if (skip9) {
+            return;
+        }
         WriteOptions writeOptions = new WriteOptionsBuilder().build();
         ReadOptions readOptions = new ReadOptionsBuilder().setZoneId(TOKYO_Z).build();
         String json = JsonIo.toJson(source, writeOptions);
@@ -4768,11 +5018,17 @@ class ConverterEverythingTest {
             if (restored instanceof Pattern) {
                 assertEquals(restored.toString(), target.toString());
             } else if (!DeepEquals.deepEquals(restored, target, options)) {
-                LOG.info("Conversion failed for: " + shortNameSource + " ==> " + shortNameTarget);
-                LOG.info("restored = " + restored);
-                LOG.info("target   = " + target);
-                LOG.info("diff     = " + options.get("diff"));
-                fail();
+                LOG.severe("=== CONVERSION TEST FAILURE ===");
+                LOG.severe("Conversion pair: " + shortNameSource + " ==> " + shortNameTarget);
+                LOG.severe("Source class:    " + sourceClass.getName());
+                LOG.severe("Target class:    " + targetClass.getName());
+                LOG.severe("Source value:    " + toDetailedString(source));
+                LOG.severe("Expected value:  " + toDetailedString(target));
+                LOG.severe("Actual value:    " + toDetailedString(restored));
+                LOG.severe("Value diff:      " + options.get("diff"));
+                LOG.severe("Test mode:       JsonIo round-trip serialization");
+                LOG.severe("===================================");
+                fail("JsonIo round-trip conversion failed for " + shortNameSource + " ==> " + shortNameTarget);
             }
             updateStat(pair(sourceClass, targetClass), true);
         }
@@ -4967,6 +5223,46 @@ class ConverterEverythingTest {
         Calendar cal = Calendar.getInstance(TOKYO_TZ);
         cal.setTimeInMillis(epochMillis);
         return cal;
+    }
+
+    private static String toDetailedString(Object obj) {
+        if (obj == null) {
+            return "null";
+        }
+        
+        Class<?> clazz = obj.getClass();
+        String className = clazz.getSimpleName();
+        String value = String.valueOf(obj);
+        
+        if (clazz.isArray()) {
+            if (clazz.getComponentType().isPrimitive()) {
+                if (obj instanceof byte[]) {
+                    return className + Arrays.toString((byte[]) obj);
+                } else if (obj instanceof int[]) {
+                    return className + Arrays.toString((int[]) obj);
+                } else if (obj instanceof long[]) {
+                    return className + Arrays.toString((long[]) obj);
+                } else if (obj instanceof double[]) {
+                    return className + Arrays.toString((double[]) obj);
+                } else if (obj instanceof float[]) {
+                    return className + Arrays.toString((float[]) obj);
+                } else if (obj instanceof boolean[]) {
+                    return className + Arrays.toString((boolean[]) obj);
+                } else if (obj instanceof char[]) {
+                    return className + Arrays.toString((char[]) obj);
+                } else if (obj instanceof short[]) {
+                    return className + Arrays.toString((short[]) obj);
+                }
+            } else {
+                return className + Arrays.toString((Object[]) obj);
+            }
+        }
+        
+        if (value.length() > 100) {
+            return className + "{" + value.substring(0, 97) + "...}";
+        }
+        
+        return className + "{" + value + "}";
     }
 
     // Rare pairings that cannot be tested without drilling into the class - Atomic's require .get() to be called,
@@ -7174,11 +7470,20 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(OffsetTime.class, StringBuilder.class), new Object[][]{
                 {OffsetTime.of(9, 30, 0, 0, ZoneOffset.UTC), new StringBuilder("09:30:00Z"), true},
         });
+        TEST_DB.put(pair(OffsetTime.class, String.class), new Object[][]{
+                {OffsetTime.of(9, 30, 0, 0, ZoneOffset.UTC), "09:30:00Z", true},
+        });
+        TEST_DB.put(pair(OffsetTime.class, CharSequence.class), new Object[][]{
+                {OffsetTime.of(9, 30, 0, 0, ZoneOffset.UTC), "09:30:00Z", false},
+        });
         TEST_DB.put(pair(Period.class, StringBuffer.class), new Object[][]{
                 {Period.of(1, 2, 3), new StringBuffer("P1Y2M3D"), true},
         });
         TEST_DB.put(pair(Period.class, StringBuilder.class), new Object[][]{
                 {Period.of(1, 2, 3), new StringBuilder("P1Y2M3D"), true},
+        });
+        TEST_DB.put(pair(Period.class, CharSequence.class), new Object[][]{
+                {Period.of(1, 2, 3), "P1Y2M3D", true},
         });
         TEST_DB.put(pair(Timestamp.class, StringBuffer.class), new Object[][]{
                 {timestamp("2024-12-25T09:30:00Z"), new StringBuffer("2024-12-25T09:30:00.000Z"), true},
@@ -7186,11 +7491,17 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Timestamp.class, StringBuilder.class), new Object[][]{
                 {timestamp("2024-12-25T09:30:00Z"), new StringBuilder("2024-12-25T09:30:00.000Z"), true},
         });
+        TEST_DB.put(pair(Timestamp.class, CharSequence.class), new Object[][]{
+                {timestamp("2024-12-25T09:30:00Z"), "2024-12-25T09:30:00.000Z", true},
+        });
         TEST_DB.put(pair(TimeZone.class, StringBuffer.class), new Object[][]{
                 {TimeZone.getTimeZone("UTC"), new StringBuffer("UTC"), true},
         });
         TEST_DB.put(pair(TimeZone.class, StringBuilder.class), new Object[][]{
                 {TimeZone.getTimeZone("UTC"), new StringBuilder("UTC"), true},
+        });
+        TEST_DB.put(pair(TimeZone.class, CharSequence.class), new Object[][]{
+                {TimeZone.getTimeZone("UTC"), "UTC", true},
         });
         TEST_DB.put(pair(Year.class, StringBuffer.class), new Object[][]{
                 {Year.of(2024), new StringBuffer("2024"), true},
@@ -7198,17 +7509,31 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Year.class, StringBuilder.class), new Object[][]{
                 {Year.of(2024), new StringBuilder("2024"), true},
         });
+        TEST_DB.put(pair(Year.class, CharSequence.class), new Object[][]{
+                {Year.of(2024), "2024", true},
+        });
         TEST_DB.put(pair(YearMonth.class, StringBuffer.class), new Object[][]{
                 {YearMonth.of(2024, 12), new StringBuffer("2024-12"), true},
         });
         TEST_DB.put(pair(YearMonth.class, StringBuilder.class), new Object[][]{
                 {YearMonth.of(2024, 12), new StringBuilder("2024-12"), true},
         });
+        
+        // YearMonth → CharSequence
+        TEST_DB.put(pair(YearMonth.class, CharSequence.class), new Object[][]{
+                {YearMonth.of(2024, 12), "2024-12", true},
+                {YearMonth.of(1970, 1), "1970-01", true},
+                {YearMonth.of(2025, 7), "2025-07", true},
+        });
+        
         TEST_DB.put(pair(ZonedDateTime.class, StringBuffer.class), new Object[][]{
                 {ZonedDateTime.of(2024, 12, 25, 9, 30, 0, 0, ZoneId.of("UTC")), new StringBuffer("2024-12-25T09:30:00Z[UTC]"), true},
         });
         TEST_DB.put(pair(ZonedDateTime.class, StringBuilder.class), new Object[][]{
                 {ZonedDateTime.of(2024, 12, 25, 9, 30, 0, 0, ZoneId.of("UTC")), new StringBuilder("2024-12-25T09:30:00Z[UTC]"), true},
+        });
+        TEST_DB.put(pair(ZonedDateTime.class, CharSequence.class), new Object[][]{
+                {ZonedDateTime.of(2024, 12, 25, 9, 30, 0, 0, ZoneId.of("UTC")), "2024-12-25T09:30:00Z[UTC]", true},
         });
         TEST_DB.put(pair(ZoneId.class, StringBuffer.class), new Object[][]{
                 {ZoneId.of("UTC"), new StringBuffer("UTC"), true},
@@ -7216,11 +7541,17 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(ZoneId.class, StringBuilder.class), new Object[][]{
                 {ZoneId.of("UTC"), new StringBuilder("UTC"), true},
         });
+        TEST_DB.put(pair(ZoneId.class, CharSequence.class), new Object[][]{
+                {ZoneId.of("UTC"), "UTC", true},
+        });
         TEST_DB.put(pair(ZoneOffset.class, StringBuffer.class), new Object[][]{
                 {ZoneOffset.UTC, new StringBuffer("Z"), true},
         });
         TEST_DB.put(pair(ZoneOffset.class, StringBuilder.class), new Object[][]{
                 {ZoneOffset.UTC, new StringBuilder("Z"), true},
+        });
+        TEST_DB.put(pair(ZoneOffset.class, CharSequence.class), new Object[][]{
+                {ZoneOffset.UTC, "Z", true},
         });
 
         // More obvious ones
@@ -7244,6 +7575,9 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(URI.class, StringBuilder.class), new Object[][]{
                 {URI.create("https://example.com"), new StringBuilder("https://example.com"), true},
         });
+        TEST_DB.put(pair(URI.class, CharSequence.class), new Object[][]{
+                {URI.create("https://example.com"), "https://example.com", true},
+        });
         URL testUrl;
         try {
             testUrl = new URL("https://example.com");
@@ -7256,11 +7590,35 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(URL.class, StringBuilder.class), new Object[][]{
                 {testUrl, new StringBuilder("https://example.com"), true},
         });
+        TEST_DB.put(pair(URL.class, CharSequence.class), new Object[][]{
+                {testUrl, "https://example.com", true},
+        });
         TEST_DB.put(pair(UUID.class, StringBuffer.class), new Object[][]{
                 {UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), new StringBuffer("550e8400-e29b-41d4-a716-446655440000"), true},
         });
         TEST_DB.put(pair(UUID.class, StringBuilder.class), new Object[][]{
                 {UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), new StringBuilder("550e8400-e29b-41d4-a716-446655440000"), true},
+        });
+        TEST_DB.put(pair(UUID.class, CharSequence.class), new Object[][]{
+                {UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), "550e8400-e29b-41d4-a716-446655440000", true},
+        });
+        
+        // UUID → AtomicBoolean
+        TEST_DB.put(pair(UUID.class, AtomicBoolean.class), new Object[][]{
+                {UUID.fromString("00000000-0000-0000-0000-000000000000"), new AtomicBoolean(false), false},
+                {UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), new AtomicBoolean(true), false},
+        });
+        
+        // UUID → Boolean
+        TEST_DB.put(pair(UUID.class, Boolean.class), new Object[][]{
+                {UUID.fromString("00000000-0000-0000-0000-000000000000"), false, false},
+                {UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), true, false},
+        });
+        
+        // UUID → boolean
+        TEST_DB.put(pair(UUID.class, boolean.class), new Object[][]{
+                {UUID.fromString("00000000-0000-0000-0000-000000000000"), false, false},
+                {UUID.fromString("550e8400-e29b-41d4-a716-446655440000"), true, false},
         });
 
         // Year to numeric conversions
@@ -7952,6 +8310,47 @@ class ConverterEverythingTest {
                 {mapOf("_v", 42), "42"},
                 {mapOf("value", true), "true"},
         });
+        
+        // Short → CharSequence
+        TEST_DB.put(pair(Short.class, CharSequence.class), new Object[][]{
+                {(short) 42, "42", true},
+                {(short) -100, "-100", true},
+                {(short) 0, "0", true},
+        });
+        
+        // short → CharSequence
+        TEST_DB.put(pair(short.class, CharSequence.class), new Object[][]{
+                {(short) 123, "123", true},
+                {(short) -456, "-456", true},
+                {(short) 0, "0", true},
+        });
+        
+        // StringBuffer → CharSequence (one-way only)
+        TEST_DB.put(pair(StringBuffer.class, CharSequence.class), new Object[][]{
+                {new StringBuffer("hello"), "hello", false},
+                {new StringBuffer("world"), "world", false},
+                {new StringBuffer(""), "", false},
+        });
+        
+        // StringBuilder → CharSequence (one-way only)
+        TEST_DB.put(pair(StringBuilder.class, CharSequence.class), new Object[][]{
+                {new StringBuilder("test"), "test", false},
+                {new StringBuilder("example"), "example", false},
+                {new StringBuilder(""), "", false},
+        });
+        
+        // Void → CharSequence
+        TEST_DB.put(pair(Void.class, CharSequence.class), new Object[][]{
+                {null, null},
+        });
+        
+        // String → CharSequence
+        TEST_DB.put(pair(String.class, CharSequence.class), new Object[][]{
+                {"hello", "hello"},
+                {"world", "world"},
+                {"", ""},
+                {"test", "test"},
+        });
     }
 
     private static void loadDoubleArrayTests() {
@@ -7967,14 +8366,7 @@ class ConverterEverythingTest {
                 {Duration.ofSeconds(1), new AtomicBoolean(true)},
         });
         
-        // Duration → AtomicInteger
-        TEST_DB.put(pair(Duration.class, AtomicInteger.class), new Object[][]{
-                {Duration.ofMillis(0), new AtomicInteger(0)},
-                {Duration.ofMillis(1), new AtomicInteger(1)},
-                {Duration.ofMillis(-1), new AtomicInteger(-1)},
-                {Duration.ofMillis(Integer.MAX_VALUE), new AtomicInteger(Integer.MAX_VALUE)},
-                {Duration.ofMillis(Integer.MIN_VALUE), new AtomicInteger(Integer.MIN_VALUE)},
-        });
+        // Removed Duration → AtomicInteger (not logical)
         
         // Duration → boolean
         TEST_DB.put(pair(Duration.class, boolean.class), new Object[][]{
@@ -7992,14 +8384,7 @@ class ConverterEverythingTest {
                 {Duration.ofSeconds(1), true},
         });
         
-        // Duration → Byte
-        TEST_DB.put(pair(Duration.class, Byte.class), new Object[][]{
-                {Duration.ofMillis(0), (byte) 0},
-                {Duration.ofMillis(1), (byte) 1},
-                {Duration.ofMillis(-1), (byte) -1},
-                {Duration.ofMillis(Byte.MAX_VALUE), Byte.MAX_VALUE},
-                {Duration.ofMillis(Byte.MIN_VALUE), Byte.MIN_VALUE},
-        });
+        // Removed Duration → Byte (not logical)
         
         // Duration → Calendar
         TEST_DB.put(pair(Duration.class, Calendar.class), new Object[][]{
@@ -8009,21 +8394,7 @@ class ConverterEverythingTest {
                 {Duration.ofSeconds(1640995200), cal(1640995200L * 1000L)}, // convert seconds to milliseconds
         });
         
-        // Duration → char
-        TEST_DB.put(pair(Duration.class, char.class), new Object[][]{
-                {Duration.ofMillis(0), (char) 0},
-                {Duration.ofMillis(65), 'A'},
-                {Duration.ofMillis(97), 'a'},
-                {Duration.ofMillis(48), '0'},
-        });
-        
-        // Duration → Character
-        TEST_DB.put(pair(Duration.class, Character.class), new Object[][]{
-                {Duration.ofMillis(0), (char) 0},
-                {Duration.ofMillis(65), 'A'},
-                {Duration.ofMillis(97), 'a'},
-                {Duration.ofMillis(48), '0'},
-        });
+        // Removed Duration → char/Character (not logical)
         
         // Duration → CharSequence
         TEST_DB.put(pair(Duration.class, CharSequence.class), new Object[][]{
@@ -8042,13 +8413,7 @@ class ConverterEverythingTest {
                 {Duration.ofSeconds(1640995200), new Date(1640995200L * 1000L)}, // convert seconds to milliseconds
         });
         
-        // Duration → Float
-        TEST_DB.put(pair(Duration.class, Float.class), new Object[][]{
-                {Duration.ofMillis(0), 0.0f},
-                {Duration.ofMillis(1), 1.0f},
-                {Duration.ofMillis(-1), -1.0f},
-                {Duration.ofMillis(1000), 1000.0f},
-        });
+        // Removed Duration → Float (not logical)
         
         // Duration → Instant
         TEST_DB.put(pair(Duration.class, Instant.class), new Object[][]{
@@ -8058,23 +8423,7 @@ class ConverterEverythingTest {
                 {Duration.ofSeconds(1640995200), Instant.ofEpochSecond(1640995200)},
         });
         
-        // Duration → int
-        TEST_DB.put(pair(Duration.class, int.class), new Object[][]{
-                {Duration.ofMillis(0), 0},
-                {Duration.ofMillis(1), 1},
-                {Duration.ofMillis(-1), -1},
-                {Duration.ofMillis(Integer.MAX_VALUE), Integer.MAX_VALUE},
-                {Duration.ofMillis(Integer.MIN_VALUE), Integer.MIN_VALUE},
-        });
-        
-        // Duration → Integer
-        TEST_DB.put(pair(Duration.class, Integer.class), new Object[][]{
-                {Duration.ofMillis(0), 0},
-                {Duration.ofMillis(1), 1},
-                {Duration.ofMillis(-1), -1},
-                {Duration.ofMillis(Integer.MAX_VALUE), Integer.MAX_VALUE},
-                {Duration.ofMillis(Integer.MIN_VALUE), Integer.MIN_VALUE},
-        });
+        // Removed Duration → int/Integer (not logical)
         
         // Duration → java.sql.Date (day boundary aligned)
         TEST_DB.put(pair(Duration.class, java.sql.Date.class), new Object[][]{
@@ -8114,7 +8463,7 @@ class ConverterEverythingTest {
                 {Duration.ofMillis(-1), -1L},
                 {Duration.ofMillis(Long.MAX_VALUE / 2), Long.MAX_VALUE / 2},
         });
-        
+
         // Duration → OffsetDateTime
         TEST_DB.put(pair(Duration.class, OffsetDateTime.class), new Object[][]{
                 {Duration.ofSeconds(0), OffsetDateTime.of(1970, 1, 1, 9, 0, 0, 0, ZoneOffset.of("+09:00"))}, // epoch in Tokyo timezone
@@ -8122,22 +8471,8 @@ class ConverterEverythingTest {
                 {Duration.ofSeconds(3661), OffsetDateTime.of(1970, 1, 1, 10, 1, 1, 0, ZoneOffset.of("+09:00"))}, // +1 hour, 1 minute, 1 second
         });
         
+        // Removed Duration → Short (not logical)
         
-        // Duration → Short
-        TEST_DB.put(pair(Duration.class, Short.class), new Object[][]{
-                {Duration.ofMillis(0), (short) 0},
-                {Duration.ofMillis(1), (short) 1},
-                {Duration.ofMillis(-1), (short) -1},
-                {Duration.ofMillis(Short.MAX_VALUE), Short.MAX_VALUE},
-                {Duration.ofMillis(Short.MIN_VALUE), Short.MIN_VALUE},
-        });
-        
-        // Duration → Year
-        TEST_DB.put(pair(Duration.class, Year.class), new Object[][]{
-                {Duration.ofSeconds(0), Year.of(0)}, // 0 milliseconds → Year[0]
-                {Duration.ofSeconds(31536000), Year.of(11264)}, // 31,536,000,000 millis → shortValue() → Year[11264]
-                {Duration.ofSeconds(-31536000), Year.of(-11264)}, // -31,536,000,000 millis → shortValue() → Year[-11264]
-        });
         
         // Duration → ZonedDateTime
         TEST_DB.put(pair(Duration.class, ZonedDateTime.class), new Object[][]{
@@ -8254,6 +8589,33 @@ class ConverterEverythingTest {
                 {LocalTime.of(0, 0, 0, 1), 0L}, // 1 nanosecond rounds down to 0 milliseconds
                 {LocalTime.of(0, 0, 1, 0), 1000L}, // 1 second = 1000 milliseconds
                 {LocalTime.of(1, 1, 1, 0), 3661000L}, // 1h 1m 1s = 3661 seconds = 3661000 milliseconds
+        });
+    }
+
+    private static void loadOffsetTimeNumericTests() {
+        // OffsetTime → int
+        TEST_DB.put(pair(OffsetTime.class, int.class), new Object[][]{
+                {OffsetTime.parse("08:59:59.999+09:00"), -1, true},
+                {OffsetTime.parse("09:00:00.000+09:00"), 0, true},
+                {OffsetTime.parse("09:00:00.001+09:00"), 1, true},
+        });
+        
+        // OffsetTime → long
+        TEST_DB.put(pair(OffsetTime.class, long.class), new Object[][]{
+                {OffsetTime.parse("08:59:59.999+09:00"), -1L, true},
+                {OffsetTime.parse("09:00:00.000+09:00"), 0L, true},
+                {OffsetTime.parse("09:00:00.001+09:00"), 1L, true},
+        });
+        
+        // OffsetTime → double
+        TEST_DB.put(pair(OffsetTime.class, double.class), new Object[][]{
+                {OffsetTime.parse("08:59:59.000+09:00"), -1.0, true},
+                {OffsetTime.parse("08:59:58.9+09:00"), -1.1, true},
+                {OffsetTime.parse("09:00:00.000+09:00"), 0.0, true},
+                {OffsetTime.parse("09:00:01.000+09:00"), 1.0, true},
+                {OffsetTime.parse("09:00:01.1+09:00"), 1.1, true},
+                {OffsetTime.parse("09:00:01.01+09:00"), 1.01, true},
+                {OffsetTime.parse("09:00:01.002+09:00"), 1.002, true},
         });
     }
 

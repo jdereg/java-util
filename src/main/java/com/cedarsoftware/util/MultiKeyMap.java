@@ -42,7 +42,7 @@ import java.util.logging.Logger;
  *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections and Arrays — change the default automatic unpacking of
  *       Collections/Arrays capability as needed.</li>
  * </ul>
- * 
+ *
  * <h3>Usage Examples:</h3>
  * <pre>{@code
  * // Create a multi-key map
@@ -122,13 +122,13 @@ import java.util.logging.Logger;
  *         limitations under the License.
  */
 public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
-    
+
     private static final Logger LOG = Logger.getLogger(MultiKeyMap.class.getName());
     static { LoggingConfig.init(); }
-    
+
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
-    
+
     // Contention monitoring fields
     private final AtomicInteger totalLockAcquisitions = new AtomicInteger(0);
     private final AtomicInteger contentionCount = new AtomicInteger(0);
@@ -136,10 +136,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final AtomicInteger[] stripeLockAcquisitions = new AtomicInteger[STRIPE_COUNT];
     private final AtomicInteger globalLockAcquisitions = new AtomicInteger(0);
     private final AtomicInteger globalLockContentions = new AtomicInteger(0);
-    
+
     // Prevent concurrent resize operations to avoid deadlock
     private final AtomicBoolean resizeInProgress = new AtomicBoolean(false);
-    
+
     /**
      * Enum to control how keys are stored in put() operations.
      * Used as optional last parameter in varargs put() method.
@@ -152,7 +152,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
          */
         SINGLE_KEY
     }
-    
+
     /**
      * Enum to control how Collections and Arrays are handled in get/remove/containsKey operations.
      */
@@ -162,20 +162,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
          * No fallback to treating them as single keys.
          */
         MULTI_KEY_ONLY,
-        
+
         /**
          * Try multi-key lookup first, then fallback to collection-as-key lookup if not found.
          * Prioritizes the traditional multi-key behavior.
          */
         MULTI_KEY_FIRST,
-        
+
         /**
          * Try collection-as-key lookup first, then fallback to multi-key lookup if not found.
          * Prioritizes treating Collections/Arrays as single keys.
          */
         COLLECTION_KEY_FIRST
     }
-    
+
     private volatile Object[] buckets;  // Array of MultiKey<V>[] (or null), Collection, String[] (typed array)
     private final AtomicInteger atomicSize = new AtomicInteger(0);
     private volatile int size = 0;
@@ -183,7 +183,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final float loadFactor;
     private final CollectionKeyMode collectionKeyMode;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f; // Same as HashMap default
-    
+
     // Lock striping for enhanced write concurrency - auto-tuned based on system cores
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
     private static final int STRIPE_MASK = STRIPE_COUNT - 1; // For fast modulo: hash & STRIPE_MASK
@@ -194,13 +194,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * This allows us to store and retrieve null keys safely.
      */
     private static final Object NULL_SENTINEL = new Object();
-    
+
     /**
      * Sentinel value to distinguish between "key not found" vs "key found with null value".
      * This allows efficient single-lookup double-try logic without containsKey() calls.
      */
     private static final Object NOT_FOUND_SENTINEL = new Object();
-    
+
     /**
      * Represents a key-value mapping that can store either single keys or N-dimensional keys.
      * Uses polymorphic storage: Object (single key) or Object[] (multi-key).
@@ -209,14 +209,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final Object keys;    // Object (single key) OR Object[] (multi-key) - no wrapper needed!
         final int hash;
         final V value;
-        
+
         // Constructor for single keys (including null → NULL_SENTINEL)
         MultiKey(Object singleKey, V value) {
             this.keys = (singleKey == null) ? NULL_SENTINEL : singleKey;
             this.hash = computeSingleKeyHash(this.keys);
             this.value = value;
         }
-        
+
         // Constructor for multi keys
         MultiKey(Object[] multiKeys, V value) {
             this.keys = multiKeys != null ? multiKeys.clone() : new Object[0]; // Defensive copy
@@ -224,20 +224,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.value = value;
         }
     }
-    
+
     /**
      * Creates a new MultiKeyMap with the specified capacity and load factor.
-     * 
+     *
      * @param capacity the initial capacity
      * @param loadFactor the load factor threshold for resizing
      */
     public MultiKeyMap(int capacity, float loadFactor) {
         this(capacity, loadFactor, CollectionKeyMode.MULTI_KEY_ONLY);
     }
-    
+
     /**
      * Creates a new MultiKeyMap with specified capacity, load factor, and collection key behavior.
-     * 
+     *
      * @param capacity the initial capacity
      * @param loadFactor the load factor threshold for resizing
      * @param collectionKeyMode how to handle Collections/Arrays in get/remove/containsKey operations
@@ -249,50 +249,50 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (capacity < 0) {
             throw new IllegalArgumentException("Capacity must be non-negative: " + capacity);
         }
-        
+
         this.buckets = new Object[capacity];
         this.loadFactor = loadFactor;
         this.collectionKeyMode = (collectionKeyMode != null) ? collectionKeyMode : CollectionKeyMode.MULTI_KEY_ONLY;
-        
+
         // Initialize ReentrantLock stripe locks for enhanced write concurrency
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
             stripeLockContention[i] = new AtomicInteger(0);
             stripeLockAcquisitions[i] = new AtomicInteger(0);
         }
-        
+
         // Log stripe configuration only once per JVM to avoid log spam
         if (STRIPE_CONFIG_LOGGED.compareAndSet(false, true) && LOG.isLoggable(Level.INFO)) {
-            LOG.info(String.format("MultiKeyMap stripe configuration: %d locks for %d cores", 
+            LOG.info(String.format("MultiKeyMap stripe configuration: %d locks for %d cores",
                     STRIPE_COUNT, Runtime.getRuntime().availableProcessors()));
         }
     }
-    
+
     /**
      * Creates a new MultiKeyMap with default capacity (16) and default load factor (0.75).
      */
     public MultiKeyMap() {
         this(16); // Default initial capacity
     }
-    
+
     /**
      * Creates a new MultiKeyMap with default capacity (16) and specified collection key behavior.
-     * 
+     *
      * @param collectionKeyMode how to handle Collections/Arrays in get/remove/containsKey operations
      */
     public MultiKeyMap(CollectionKeyMode collectionKeyMode) {
         this(16, DEFAULT_LOAD_FACTOR, collectionKeyMode);
     }
-    
+
     /**
      * Creates a new MultiKeyMap with the specified capacity and default load factor.
-     * 
+     *
      * @param capacity the initial capacity
      */
     public MultiKeyMap(int capacity) {
         this(capacity, DEFAULT_LOAD_FACTOR);
     }
-    
+
     /**
      * Computes optimized hash for N-dimensional key using appropriate hash codes.
      * Uses identity hash codes for Classes and standard hash codes for other objects.
@@ -300,7 +300,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static int computeHash(Object... keys) {
         return computeHashFromArray(keys);
     }
-    
+
     /**
      * Computes hash for single keys (including NULL_SENTINEL).
      * Uses same hashing approach as multi-key hash for consistency.
@@ -308,21 +308,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static int computeSingleKeyHash(Object key) {
         return computeHashFromSingle(key);
     }
-    
+
     private static int computeHashFromArray(Object[] keys) {
         if (keys == null || keys.length == 0) {
             return 0;
         }
         return computeHashInternal(keys, keys.length);
     }
-    
+
     private static int computeHashFromCollection(Collection<?> keys) {
         if (keys == null || keys.isEmpty()) {
             return 0;
         }
         return computeHashInternal(keys, keys.size());
     }
-    
+
     private static int computeHashFromTypedArray(Object typedArray) {
         if (typedArray == null) {
             return 0;
@@ -333,7 +333,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return computeHashInternal(typedArray, length);
     }
-    
+
     private static int computeHashFromSingle(Object key) {
         if (key == null || key == NULL_SENTINEL) {
             return 0;
@@ -341,16 +341,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int keyHash = getKeyHash(key);
         return finalizeHash(keyHash);
     }
-    
+
     private static int computeHashInternal(Object keys, int size) {
         if (size == 0) return 0;
-        
+
         int hash = 1;
         if (keys instanceof Object[]) {
             Object[] array = (Object[]) keys;
             // Use index-based loop to avoid Iterator allocation overhead
-            for (int i = 0; i < array.length; i++) {
-                hash = hash * 31 + getKeyHash(array[i]);
+            for (Object o : array) {
+                hash = hash * 31 + getKeyHash(o);
             }
         } else if (keys instanceof Collection) {
             for (Object key : (Collection<?>) keys) {
@@ -362,28 +362,28 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 hash = hash * 31 + getKeyHash(Array.get(keys, i));
             }
         }
-        
+
         return finalizeHash(hash);
     }
-    
+
     private static int getKeyHash(Object key) {
         if (key == null) return 0;
-        
+
         // Use identity hash for objects where identity is more important than equality.
         // These types can have identical hashCode() values for different instances,
         // but we want to distinguish them by object identity in the map.
         if (key instanceof Class ||                              // Different classes with same name
-            key instanceof Executable ||                        // Method/Constructor from different classes
-            key instanceof Field ||                             // Same field name from different classes
-            key instanceof ClassLoader ||                       // Different classloader instances
-            key instanceof Reference ||                         // Reference identity vs referent
-            key instanceof Thread) {                            // Thread identity vs thread properties
+                key instanceof Executable ||                        // Method/Constructor from different classes
+                key instanceof Field ||                             // Same field name from different classes
+                key instanceof ClassLoader ||                       // Different classloader instances
+                key instanceof Reference ||                         // Reference identity vs referent
+                key instanceof Thread) {                            // Thread identity vs thread properties
             return System.identityHashCode(key);
         }
-        
+
         return key.hashCode();
     }
-    
+
     private static int finalizeHash(int hash) {
         // MurmurHash3 finalization
         hash ^= (hash >>> 16);
@@ -393,7 +393,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         hash ^= (hash >>> 16);
         return hash;
     }
-    
+
     /**
      * Unified hash computation for any key object (for stripe lock selection).
      * Follows Codex's approach for consistency.
@@ -414,7 +414,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return computeHashFromSingle(key);
         }
     }
-    
+
     /**
      * Selects the appropriate stripe lock based on the hash code.
      * Uses fast bit masking for optimal performance.
@@ -422,28 +422,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private ReentrantLock getStripeLock(int hash) {
         return stripeLocks[hash & STRIPE_MASK];
     }
-    
+
     /**
      * Acquires all stripe locks in order to prevent deadlock during global operations.
      * Used for resize, clear, and other operations that need exclusive access.
      */
     private void lockAllStripes() {
         int contendedStripes = 0;
-        for (int i = 0; i < stripeLocks.length; i++) {
-            ReentrantLock lock = stripeLocks[i];
+        for (ReentrantLock lock : stripeLocks) {
             boolean wasContended = lock.hasQueuedThreads();
             if (wasContended) {
                 contendedStripes++;
             }
             lock.lock();
         }
-        
+
         globalLockAcquisitions.incrementAndGet();
         if (contendedStripes > 0) {
             globalLockContentions.incrementAndGet();
         }
     }
-    
+
     /**
      * Releases all stripe locks in reverse order to prevent deadlock.
      */
@@ -452,11 +451,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             stripeLocks[i].unlock();
         }
     }
-    
+
     /**
      * Gets the conversion function for the given N-dimensional key, or null if not found.
      * This method is lock-free for maximum read performance.
-     * 
+     *
      * @param keys the key components (can be varargs or Object[])
      * @return the value associated with the key, or null if not found
      */
@@ -468,11 +467,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return getInternal(keys);
     }
-    
+
     /**
      * Map interface compatible get method with zero-allocation direct storage.
      * Supports both single keys and N-dimensional keys via Object[] detection.
-     * 
+     *
      * @param key either a single key or an Object[] containing multiple keys
      * @return the value associated with the key, or null if not found
      */
@@ -481,7 +480,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (key == null) {
             return getInternalDirect(null);
         }
-        
+
         // Fast path for most common single object keys (String, Class, primitives)
         // This improves branch prediction for the 90%+ case
         if (!(key instanceof Collection)) {
@@ -497,7 +496,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return getFromCollection((Collection<?>) key);
         }
     }
-    
+
     /**
      * Handle Collection keys with mode-based logic.
      */
@@ -513,7 +512,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
         }
     }
-    
+
     /**
      * Handle Array keys - always expand into multi-key lookup.
      * Arrays are always unpacked regardless of CollectionKeyMode setting.
@@ -525,7 +524,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return getInternalFromTypedArray(array);
         }
     }
-    
+
     /**
      * Collection with MULTI_KEY_ONLY mode - only try multi-key lookup.
      */
@@ -533,7 +532,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Object rawResult = getInternalFromCollectionRaw(collection);
         return rawResult == NOT_FOUND_SENTINEL ? null : (V) rawResult;
     }
-    
+
     /**
      * Collection with MULTI_KEY_FIRST mode - try multi-key first, then collection-as-key.
      */
@@ -543,11 +542,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (rawResult != NOT_FOUND_SENTINEL) {
             return (V) rawResult;  // Found via multi-key (could be null value)
         }
-        
+
         // Multi-key not found, try collection-as-key with zero allocations!
         return getInternalDirect(collection);
     }
-    
+
     /**
      * Collection with COLLECTION_KEY_FIRST mode - try collection-as-key first, then multi-key.
      */
@@ -557,81 +556,78 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (result != null) {
             return result;  // Found via collection-as-key
         }
-        
+
         // Collection-as-key not found, try multi-key
         Object rawResult = getInternalFromCollectionRaw(collection);
         return rawResult == NOT_FOUND_SENTINEL ? null : (V) rawResult;
     }
-    
+
     /**
      * Gets the value for the given typed array-based multi-dimensional key.
      * This method provides zero-conversion access by working directly with typed arrays
      * like String[], int[], Class<?>[], etc. using reflection for element access.
-     * 
+     *
      * @param typedArray typed array containing the key components (String[], int[], etc.)
      * @return the value associated with the key, or null if not found
      */
     private V getInternalFromTypedArray(Object typedArray) {
         if (typedArray == null) {
-            return get((Object) null);
+            return get((Object) null);               // preserve old behavior
         }
-        
         int length = Array.getLength(typedArray);
         if (length == 0) {
             return null;
         }
-        
-        // Compute hash directly from typed array to avoid conversion
         int hash = computeHashFromTypedArray(typedArray);
-        
-        // Capture buckets reference to avoid race condition during resize
-        Object[] currentBuckets = buckets;
-        int bucketIndex = hash & (currentBuckets.length - 1);
-        
-        @SuppressWarnings("unchecked")
-        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
-        
-        if (chain == null) {
-            return null;
-        }
-        
-        // Scan the chain for exact match
-        for (MultiKey<V> entry : chain) {
-            if (entry.hash == hash && keysMatch(entry.keys, typedArray)) {
-                return entry.value;
-            }
-        }
-        
-        return null;
+        return getFromBucket(hash, typedArray);
     }
-    
+
     /**
-     * Internal get implementation that works with Object[] keys.
+     * Retrieves the value associated with the given sequence of key objects.
+     * <p>
+     * This method computes the hash code for the provided key array and then
+     * delegates to {@link #getFromBucket(int, Object)} to perform the actual
+     * bucket lookup and chain scan.
+     * </p>
+     *
+     * @param keys  an array of key objects used to identify the entry; may be null
+     *              (in which case a hash of 0 is computed and passed through)
+     * @return the value corresponding to the exact matching key sequence,
+     *         or {@code null} if no matching entry is found
      */
     private V getInternal(Object[] keys) {
         int hash = computeHash(keys);
-        
-        // Capture buckets reference to avoid race condition during resize
+        return getFromBucket(hash, keys);
+    }
+
+    /**
+     * Looks up a value in the hash‐bucket table by matching on a precomputed hash and a key array.
+     * <p>
+     * This method captures the current buckets array to avoid races during resize,
+     * locates the correct bucket via masking, then scans the chain for an entry whose
+     * stored hash equals the provided hash and whose key sequence matches the given keysParam.
+     * </p>
+     *
+     * @param hash       the precomputed hash code for the key(s)
+     * @param keysParam  either the original typed array or an Object[] of keys to compare against entry.keys
+     * @return the value of the matching MultiKey entry, or {@code null} if no match is found
+     */
+    @SuppressWarnings("unchecked")
+    private V getFromBucket(int hash, Object keysParam) {
         Object[] currentBuckets = buckets;
         int bucketIndex = hash & (currentBuckets.length - 1);
-        
-        @SuppressWarnings("unchecked")
         MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
-        
         if (chain == null) {
             return null;
         }
-        
-        // Scan the chain for exact match - direct array access for maximum speed
         for (MultiKey<V> entry : chain) {
-            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+            if (entry.hash == hash && keysMatch(entry.keys, keysParam)) {
                 return entry.value;
             }
         }
-        
         return null;
     }
-    
+
     /**
      * Internal get() implementation for Collections using sentinel return.
      */
@@ -639,30 +635,30 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (collection.isEmpty()) {
             return NOT_FOUND_SENTINEL;
         }
-        
+
         int hash = computeHashFromCollection(collection);
-        
+
         // Capture buckets reference to avoid race condition during resize
         Object[] currentBuckets = buckets;
         int bucketIndex = hash & (currentBuckets.length - 1);
-        
+
         @SuppressWarnings("unchecked")
         MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
-        
+
         if (chain == null) {
             return NOT_FOUND_SENTINEL;
         }
-        
+
         // Scan the chain for exact match
         for (MultiKey<V> entry : chain) {
             if (entry.hash == hash && keysMatch(entry.keys, collection)) {
                 return entry.value;  // Return actual value (could be null)
             }
         }
-        
+
         return NOT_FOUND_SENTINEL;
     }
-    
+
     /**
      * Direct single-key lookup with zero heap allocations.
      * Uses polymorphic storage - no wrapper needed!
@@ -671,28 +667,28 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Handle null key using NULL_SENTINEL
         Object lookupKey = (key == null) ? NULL_SENTINEL : key;
         int hash = computeSingleKeyHash(lookupKey);
-        
+
         // Capture buckets reference to avoid race condition during resize
         Object[] currentBuckets = buckets;
         int bucketIndex = hash & (currentBuckets.length - 1);
-        
+
         @SuppressWarnings("unchecked")
         MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
-        
+
         if (chain == null) {
             return null;
         }
-        
+
         // Scan the chain for exact match
         for (MultiKey<V> entry : chain) {
             if (entry.hash == hash && isSingleKeyMatch(entry.keys, lookupKey)) {
                 return entry.value;
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * Check if stored keys match the single lookup key.
      * Optimized for single-key lookups.
@@ -700,7 +696,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private boolean isSingleKeyMatch(Object storedKeys, Object singleKey) {
         return keysMatch(storedKeys, singleKey);
     }
-    
+
     /**
      * Direct single key removal - zero allocation for single key operations.
      * Similar to getInternalDirect but removes the entry.
@@ -714,26 +710,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Check for contention before acquiring lock
         boolean wasContended = lock.hasQueuedThreads();
-        
+
         lock.lock();
         try {
             // Update contention statistics
             totalLockAcquisitions.incrementAndGet();
             stripeLockAcquisitions[stripeIndex].incrementAndGet();
-            
+
             if (wasContended) {
                 contentionCount.incrementAndGet();
                 stripeLockContention[stripeIndex].incrementAndGet();
             }
             int bucketIndex = hash & (buckets.length - 1);
-            
+
             @SuppressWarnings("unchecked")
             MultiKey<V>[] chain = (MultiKey<V>[]) buckets[bucketIndex];
-            
+
             if (chain == null) {
                 return null;
             }
-            
+
             // Scan the chain for exact match and remove
             for (int i = 0; i < chain.length; i++) {
                 MultiKey<V> entry = chain[i];
@@ -752,20 +748,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         }
                         buckets[bucketIndex] = newChain;
                     }
-                    
+
                     int newSize = atomicSize.decrementAndGet();
                     size = newSize; // Update volatile field for backward compatibility
-                    
+
                     return entry.value;
                 }
             }
-            
+
             return null;
         } finally {
             lock.unlock();
         }
     }
-    
+
     /**
      * Direct single key containment check - zero allocation for single key operations.
      * Similar to getInternalDirect but only checks existence.
@@ -774,28 +770,28 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Handle null key using NULL_SENTINEL
         Object lookupKey = (key == null) ? NULL_SENTINEL : key;
         int hash = computeSingleKeyHash(lookupKey);
-        
+
         // Capture buckets reference to avoid race condition during resize
         Object[] currentBuckets = buckets;
         int bucketIndex = hash & (currentBuckets.length - 1);
-        
+
         @SuppressWarnings("unchecked")
         MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[bucketIndex];
-        
+
         if (chain == null) {
             return false;
         }
-        
+
         // Scan the chain for exact match
         for (MultiKey<V> entry : chain) {
             if (entry.hash == hash && isSingleKeyMatch(entry.keys, lookupKey)) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Check if stored keys match the lookup key (single or multi).
      * Handles all combinations: Object vs Object, Object[] vs Object[], but NOT Object vs Object[]
@@ -803,22 +799,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static boolean keysMatch(Object storedKeys, Object lookupKeys) {
         if (storedKeys == lookupKeys) return true;
         if (storedKeys == null || lookupKeys == null) return false;
-        
+
         boolean storedIsArray = storedKeys instanceof Object[];
-        boolean lookupIsArray = lookupKeys instanceof Object[] || 
-                               (lookupKeys instanceof Collection) ||
-                               (lookupKeys != null && lookupKeys.getClass().isArray());
-        
+        boolean lookupIsArray = lookupKeys instanceof Object[] ||
+                (lookupKeys instanceof Collection) ||
+                (lookupKeys != null && lookupKeys.getClass().isArray());
+
         // Type mismatch: single vs multi-key
         if (storedIsArray != lookupIsArray) return false;
-        
+
         if (storedIsArray) {
             return matchMultiKeys((Object[]) storedKeys, lookupKeys);
         } else {
             return Objects.equals(storedKeys, lookupKeys);
         }
     }
-    
+
     private static boolean matchMultiKeys(Object[] stored, Object lookup) {
         if (lookup instanceof Object[]) {
             return keysEqual(stored, (Object[]) lookup);
@@ -829,7 +825,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return false;
     }
-    
+
     /**
      * Optimized key equality check that handles Classes with identity comparison.
      */
@@ -839,21 +835,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (keys1.length != keys2.length) {
             return false;
         }
-        
+
         for (int i = 0; i < keys1.length; i++) {
             if (!keyEquals(keys1[i], keys2[i])) {
                 return false;
             }
         }
-        
+
         return true;
     }
-    
+
     private static boolean keysEqualCollection(Object[] stored, Collection<?> lookup) {
         if (stored.length != lookup.size()) {
             return false;
         }
-        
+
         int i = 0;
         for (Object lookupKey : lookup) {
             if (!keyEquals(stored[i], lookupKey)) {
@@ -863,13 +859,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return true;
     }
-    
+
     private static boolean keysEqualTypedArray(Object[] stored, Object typedArray) {
         int length = Array.getLength(typedArray);
         if (stored.length != length) {
             return false;
         }
-        
+
         for (int i = 0; i < length; i++) {
             if (!keyEquals(stored[i], Array.get(typedArray, i))) {
                 return false;
@@ -877,50 +873,50 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return true;
     }
-    
+
     private static boolean keyEquals(Object k1, Object k2) {
         if (k1 == k2) {
             return true; // Same reference (includes null == null)
         }
-        
+
         if (k1 == null || k2 == null) {
             return false; // One null, one not null
         }
-        
+
         // For identity-based types, use identity comparison for consistency with getKeyHash().
         // These are the same types that use System.identityHashCode() in getKeyHash().
         if ((k1 instanceof Class && k2 instanceof Class) ||
-            (k1 instanceof Executable && k2 instanceof Executable) ||
-            (k1 instanceof Field && k2 instanceof Field) ||
-            (k1 instanceof ClassLoader && k2 instanceof ClassLoader) ||
-            (k1 instanceof Reference && k2 instanceof Reference) ||
-            (k1 instanceof Thread && k2 instanceof Thread)) {
+                (k1 instanceof Executable && k2 instanceof Executable) ||
+                (k1 instanceof Field && k2 instanceof Field) ||
+                (k1 instanceof ClassLoader && k2 instanceof ClassLoader) ||
+                (k1 instanceof Reference && k2 instanceof Reference) ||
+                (k1 instanceof Thread && k2 instanceof Thread)) {
             return false; // Already checked == above, so they're different identity-based objects
         }
-        
+
         // For other objects, use equals
         return k1.equals(k2);
     }
-    
+
     /**
      * Premium var-args API - Store a value with unlimited multiple keys.
      * This is the recommended API for MultiKeyMap users as it provides the best
      * developer experience with unlimited keys and zero array allocations for
      * inline arguments.
-     * 
+     *
      * <p>Examples:</p>
      * <pre>{@code
      * MultiKeyMap<Employee> map = new MultiKeyMap<>();
-     * 
+     *
      * // Zero allocation - no arrays created
      * map.put(employee, "dept", "engineering", "senior");
      * map.put(person, "location", "building1", "floor2", "room101");
-     * 
+     *
      * // Works with existing arrays too
      * String[] keyArray = {"dept", "marketing", "director"};
      * map.put(manager, keyArray);  // Passes array directly to varargs
      * }</pre>
-     * 
+     *
      * @param value the value to store
      * @param keys the key components (unlimited number)
      * @return the previous value associated with the key, or null if there was no mapping
@@ -930,13 +926,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (keys == null || keys.length == 0) {
             return putInternalSingle(null, value);
         }
-        
+
         // Check if last parameter is KeyMode.SINGLE_KEY (force single-key storage)
         if (keys.length >= 2 && keys[keys.length - 1] == KeyMode.SINGLE_KEY) {
             // Remove the KeyMode flag and treat remaining keys as single key
             Object[] actualKeys = new Object[keys.length - 1];
             System.arraycopy(keys, 0, actualKeys, 0, keys.length - 1);
-            
+
             // Force single-key storage using new direct approach
             if (actualKeys.length == 1) {
                 // Single key - store directly
@@ -949,39 +945,39 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         return putInternal(keys, value);
     }
-    
+
     /**
      * Map interface compatible put method with auto-unpacking for arrays.
      * This provides a great experience for Map users by automatically detecting
      * and unpacking arrays into multi-key calls.
-     * 
+     *
      * <p><strong>Auto-unpacking behavior:</strong></p>
      * <ul>
      *   <li>If key is an array → automatically unpacked into multiple keys</li>
      *   <li>If key is a Collection → automatically unpacked into multiple keys</li>
      *   <li>Otherwise → treated as single key</li>
      * </ul>
-     * 
+     *
      * <p>Examples:</p>
      * <pre>{@code
      * Map<Object, Employee> map = new MultiKeyMap<>();
-     * 
+     *
      * // Auto-unpacking: array becomes multi-key
      * String[] keys = {"dept", "engineering", "senior"};
      * map.put(keys, employee);  // Stored as 3-key entry
-     * 
+     *
      * // Auto-unpacking: Collection becomes multi-key
      * List<String> keyList = Arrays.asList("dept", "sales", "junior");
      * map.put(keyList, employee);  // Stored as 3-key entry
-     * 
-     * // Single key: other objects stored normally  
+     *
+     * // Single key: other objects stored normally
      * map.put("manager", boss);  // Stored as single-key entry
-     * 
+     *
      * // Typed arrays also auto-unpack
      * int[] intKeys = {1, 2, 3};
      * map.put(intKeys, data);  // Stored as 3-key entry
      * }</pre>
-     * 
+     *
      * @param key single key, or array/Collection that will be auto-unpacked into multiple keys
      * @param value the value to store
      * @return the previous value associated with the key, or null if there was no mapping
@@ -992,7 +988,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Always unpack arrays into multi-key call
                 return put(value, (Object[]) key);
             } else {
-                // Always unpack typed arrays into multi-key call  
+                // Always unpack typed arrays into multi-key call
                 return putInternalFromTypedArray(key, value);
             }
         } else if (key instanceof Collection) {
@@ -1003,7 +999,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return putInternalSingle(key, value);
         }
     }
-    
+
     /**
      * Handle Collection keys in put operations based on CollectionKeyMode.
      */
@@ -1022,7 +1018,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
         }
     }
-    
+
     /**
      * Internal put implementation that works with Object[] keys.
      */
@@ -1030,7 +1026,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> newKey = new MultiKey<>(keys, value); // Uses multi-key constructor
         return putInternalCommon(newKey);
     }
-    
+
     /**
      * Internal put implementation for single keys using polymorphic storage.
      * No wrapper needed - stores the key directly!
@@ -1039,7 +1035,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> newKey = new MultiKey<>(key, value); // Uses single-key constructor
         return putInternalCommon(newKey);
     }
-    
+
     /**
      * Internal put implementation that works directly with Collections - zero array allocation!
      * Creates a MultiKey that stores the Collection elements as Object[] internally,
@@ -1049,13 +1045,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (collection.isEmpty()) {
             return putInternal(new Object[0], value);
         }
-        
+
         // Convert Collection to Object[] only once, inside MultiKey constructor
         Object[] keys = collection.toArray();
         MultiKey<V> newKey = new MultiKey<>(keys, value); // Uses multi-key constructor
         return putInternalCommon(newKey);
     }
-    
+
     /**
      * No-lock version of put operation for use within stripe locks.
      * Follows Codex's pattern for clean separation of concerns.
@@ -1097,7 +1093,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         return null;
     }
-    
+
     /**
      * Common put logic with Codex's two-phase approach.
      * Uses ReentrantLock and defers resize to avoid deadlock.
@@ -1111,18 +1107,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Check for contention before acquiring lock
         boolean wasContended = lock.hasQueuedThreads();
-        
+
         lock.lock();
         try {
             // Update contention statistics (simplified to avoid nanoTime overhead)
             totalLockAcquisitions.incrementAndGet();
             stripeLockAcquisitions[stripeIndex].incrementAndGet();
-            
+
             if (wasContended) {
                 contentionCount.incrementAndGet();
                 stripeLockContention[stripeIndex].incrementAndGet();
             }
-            
+
             oldValue = putInternalNoLock(newKey);
             resizeNeeded = size > buckets.length * loadFactor;
         } finally {
@@ -1143,8 +1139,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         return oldValue;
     }
-    
-    
+
+
     /**
      * Internal put implementation that works with typed arrays.
      * Converts typed array to Object[] and delegates to putInternal.
@@ -1152,14 +1148,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V putInternalFromTypedArray(Object typedArray, V value) {
         int length = Array.getLength(typedArray);
         Object[] keys = new Object[length];
-        
+
         for (int i = 0; i < length; i++) {
             keys[i] = Array.get(typedArray, i);
         }
-        
+
         return putInternal(keys, value);
     }
-    
+
     /**
      * Helper method to handle typed arrays (String[], int[], etc.) in remove operations.
      * Converts typed arrays to Object[] arrays using reflection to avoid ClassCastException.
@@ -1167,14 +1163,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V removeInternalFromTypedArray(Object typedArray) {
         int length = Array.getLength(typedArray);
         Object[] keys = new Object[length];
-        
+
         for (int i = 0; i < length; i++) {
             keys[i] = Array.get(typedArray, i);
         }
-        
+
         return removeInternal(keys);
     }
-    
+
     /**
      * Creates a new single-element chain array.
      */
@@ -1182,7 +1178,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private MultiKey<V>[] createChain(MultiKey<V> key) {
         return new MultiKey[]{key};
     }
-    
+
     /**
      * Grows an existing chain by one element.
      * Creates a new array with the new key appended.
@@ -1209,29 +1205,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return chain.length;
         }
     }
-    
+
     /**
      * Returns the current number of entries in the map.
      */
     public int size() {
         return atomicSize.get();
     }
-    
+
     /**
      * Returns the maximum chain length encountered so far.
      */
     public int getMaxChainLength() {
         return maxChainLength;
     }
-    
+
     /**
      * Returns the current load factor.
      */
     public double getLoadFactor() {
         return (double) size / buckets.length;
     }
-    
-    
+
+
     /**
      * Returns an iterator over all entries in the map.
      * The iterator captures a snapshot of the current state and is thread-safe for reads.
@@ -1240,7 +1236,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public Iterable<MultiKeyEntry<V>> entries() {
         return new EntryIterable();
     }
-    
+
     /**
      * Represents a single entry in the MultiKeyMap.
      * Provides access to both the N-dimensional key and its associated value.
@@ -1261,7 +1257,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
             this.value = value;
         }
-        
+
     }
 
     /**
@@ -1300,7 +1296,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (nextEntry == null) {
                 throw new NoSuchElementException();
             }
-            
+
             MultiKeyEntry<V> result = nextEntry;
             advance();
             return result;
@@ -1310,14 +1306,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             while (currentBucket < bucketSnapshot.length) {
                 @SuppressWarnings("unchecked")
                 MultiKey<V>[] chain = (MultiKey<V>[]) bucketSnapshot[currentBucket];
-                
+
                 if (chain != null && currentChainIndex < chain.length) {
                     MultiKey<V> key = chain[currentChainIndex];
                     nextEntry = new MultiKeyEntry<>(key.keys, key.value);
                     currentChainIndex++;
                     return;
                 }
-                
+
                 // Move to next bucket
                 currentBucket++;
                 currentChainIndex = 0;
@@ -1325,16 +1321,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             nextEntry = null;
         }
     }
-    
+
     // ===== ADDITIONAL MAP-LIKE APIS (without key complications) =====
-    
+
     /**
      * Returns true if this map contains no key-value mappings.
      */
     public boolean isEmpty() {
         return size == 0;
     }
-    
+
     /**
      * Returns true if this map maps one or more keys to the specified value.
      */
@@ -1346,10 +1342,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return false;
     }
-    
+
     /**
      * Removes the mapping for the specified N-dimensional key from this map if it is present.
-     * 
+     *
      * @param keys the key components (can be varargs)
      * @return the previous value associated with the key, or null if there was no mapping
      */
@@ -1361,39 +1357,39 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return removeInternal(keys);
     }
-    
+
     /**
      * Map interface compatible remove method with auto-unpacking for arrays and collections.
      * This provides a great experience for Map users by automatically detecting
      * and unpacking arrays/collections into multi-key calls.
-     * 
+     *
      * <p><strong>Auto-unpacking behavior:</strong></p>
      * <ul>
      *   <li>If key is an array → automatically unpacked into multiple keys</li>
      *   <li>If key is a Collection → automatically unpacked into multiple keys</li>
      *   <li>Otherwise → treated as single key</li>
      * </ul>
-     * 
+     *
      * <p>Examples:</p>
      * <pre>{@code
      * Map<Object, Employee> map = new MultiKeyMap<>();
-     * 
+     *
      * // Auto-unpacking: array becomes multi-key
      * String[] keys = {"dept", "engineering", "senior"};
      * Employee removed = map.remove(keys);  // Removes 3-key entry
-     * 
+     *
      * // Auto-unpacking: Collection becomes multi-key
      * List<String> keyList = Arrays.asList("dept", "sales", "junior");
      * Employee removed2 = map.remove(keyList);  // Removes 3-key entry
-     * 
-     * // Single key: other objects removed normally  
+     *
+     * // Single key: other objects removed normally
      * Employee manager = map.remove("manager");  // Removes single-key entry
-     * 
+     *
      * // Typed arrays also auto-unpack
      * int[] intKeys = {1, 2, 3};
      * Data removed3 = map.remove(intKeys);  // Removes 3-key entry
      * }</pre>
-     * 
+     *
      * @param key single key, or array/Collection that will be auto-unpacked into multiple keys
      * @return the previous value associated with the key, or null if there was no mapping
      */
@@ -1402,7 +1398,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (key == null) {
             return removeInternalDirect(null);
         }
-        
+
         Class<?> keyClass = key.getClass();
         if (keyClass.isArray()) {
             return removeFromArray(key);
@@ -1413,7 +1409,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return removeInternalSingleKeyDirect(key);
         }
     }
-    
+
     /**
      * Handle Collection keys with mode-based logic for remove operations.
      */
@@ -1429,7 +1425,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
         }
     }
-    
+
     /**
      * Handle Array keys - always expand arrays into multi-key remove operations.
      */
@@ -1442,13 +1438,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return removeInternalFromTypedArray(array);
         }
     }
-    
+
     // Collection remove mode implementations
     private V removeFromCollectionMultiKeyOnly(Collection<?> collection) {
         // Only try multi-key removal
         return removeInternalFromCollection(collection);
     }
-    
+
     private V removeFromCollectionMultiKeyFirst(Collection<?> collection) {
         // Try multi-key first, then collection-as-key
         V result = removeInternalFromCollection(collection);
@@ -1457,7 +1453,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return result;
     }
-    
+
     private V removeFromCollectionKeyFirst(Collection<?> collection) {
         // Try collection-as-key first, then multi-key
         V result = removeInternalDirect(collection);
@@ -1466,7 +1462,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return result;
     }
-    
+
     /**
      * Efficient Collection removal without array conversion.
      */
@@ -1474,10 +1470,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (collection.isEmpty()) {
             return null;
         }
-        
+
         return removeInternal(collection.toArray());
     }
-    
+
     /**
      * Direct single-key removal without heap allocation.
      */
@@ -1487,8 +1483,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     @Override
-    public void putAll(Map<? extends Object, ? extends V> m) {
-        for (Map.Entry<? extends Object, ? extends V> entry : m.entrySet()) {
+    public void putAll(Map<?, ? extends V> m) {
+        for (Map.Entry<?, ? extends V> entry : m.entrySet()) {
             put(entry.getKey(), entry.getValue());
         }
     }
@@ -1727,7 +1723,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         try {
             V oldValue = get(key);
             V newValue = (oldValue == null) ? value :
-                         remappingFunction.apply(oldValue, value);
+                    remappingFunction.apply(oldValue, value);
             if (newValue == null) {
                 remove(key);
             } else {
@@ -1745,7 +1741,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V removeInternal(Object[] keys) {
         int hash = computeHash(keys);
         ReentrantLock lock = getStripeLock(hash);
-        
+
         lock.lock();
         try {
             return removeInternalNoLock(keys);
@@ -1753,10 +1749,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
     }
-    
+
     /**
      * Returns true if this map contains a mapping for the specified N-dimensional key.
-     * 
+     *
      * @param keys the key components (can be varargs)
      * @return true if a mapping exists for the key
      */
@@ -1768,12 +1764,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return getInternal(keys) != null;
     }
-    
+
     /**
      * Map interface compatible containsKey method.
      * Supports both single keys and N-dimensional keys via Object[] detection.
      * Uses efficient decision tree pattern: Normal objects first, then Arrays, then Collections.
-     * 
+     *
      * @param key either a single key or an Object[] containing multiple keys
      * @return true if a mapping exists for the key
      */
@@ -1782,7 +1778,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (key == null) {
             return containsKeyInternalDirect(null);
         }
-        
+
         Class<?> keyClass = key.getClass();
         if (keyClass.isArray()) {
             return containsKeyFromArray(key);
@@ -1792,7 +1788,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return containsKeyInternalDirect(key);
         }
     }
-    
+
     /**
      * Internal containsKey implementation that works with Object[] keys.
      * Actually checks for key existence, not just non-null values.
@@ -1800,14 +1796,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private boolean containsKeyInternal(Object[] keys) {
         int hash = computeHash(keys);
         int bucketIndex = hash & (buckets.length - 1);
-        
+
         @SuppressWarnings("unchecked")
         MultiKey<V>[] chain = (MultiKey<V>[]) buckets[bucketIndex];
-        
+
         if (chain == null) {
             return false;
         }
-        
+
         for (MultiKey<V> existing : chain) {
             if (existing.hash == hash && keysMatch(existing.keys, keys)) {
                 return true;
@@ -1815,21 +1811,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return false;
     }
-    
+
     /**
      * Internal containsKey implementation for typed arrays.
      */
     private boolean containsKeyFromTypedArray(Object typedArray) {
         int length = Array.getLength(typedArray);
         Object[] keys = new Object[length];
-        
+
         for (int i = 0; i < length; i++) {
             keys[i] = Array.get(typedArray, i);
         }
-        
+
         return containsKeyInternal(keys);
     }
-    
+
     /**
      * Handles containsKey for array keys - always expand arrays into multi-key checks.
      */
@@ -1842,7 +1838,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return containsKeyFromTypedArray(key);
         }
     }
-    
+
     /**
      * Handles containsKey for Collection keys with mode-based logic.
      */
@@ -1850,7 +1846,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (collection.isEmpty()) {
             return false;
         }
-        
+
         if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_ONLY) {
             return containsKeyFromCollectionAsMultiKey(collection);
         } else if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_FIRST) {
@@ -1859,7 +1855,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return containsKeyFromCollectionCollectionFirst(collection);
         }
     }
-    
+
     /**
      * Multi-key only lookup for Collections.
      */
@@ -1867,14 +1863,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Compute hash directly from Collection to avoid array allocation
         int hash = computeHashFromCollection(collection);
         int bucketIndex = hash & (buckets.length - 1);
-        
+
         @SuppressWarnings("unchecked")
         MultiKey<V>[] chain = (MultiKey<V>[]) buckets[bucketIndex];
-        
+
         if (chain == null) {
             return false;
         }
-        
+
         // Scan the chain for exact match
         for (MultiKey<V> entry : chain) {
             if (entry.hash == hash && keysMatch(entry.keys, collection)) {
@@ -1883,7 +1879,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return false;
     }
-    
+
     /**
      * Try multi-key first, then single-key for Collections.
      */
@@ -1893,11 +1889,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (found) {
             return true;
         }
-        
+
         // Second try: single-key lookup (direct, zero allocation)
         return containsKeyInternalDirect(collection);
     }
-    
+
     /**
      * Try single-key first, then multi-key for Collections.
      */
@@ -1907,11 +1903,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (found) {
             return true;
         }
-        
+
         // Second try: multi-key lookup
         return containsKeyFromCollectionAsMultiKey(collection);
     }
-    
+
     /**
      * Removes all the mappings from this map.
      * The map will be empty after this call returns.
@@ -1925,7 +1921,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             maxChainLength = 0;
         });
     }
-    
+
     /**
      * Returns a Collection view of the values contained in this map.
      * The collection is backed by the map's current state snapshot.
@@ -1937,7 +1933,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return values;
     }
-    
+
     /**
      * Returns a Set view of the keys contained in this map.
      * For MultiKeyMap, keys can be single objects or Object[] arrays.
@@ -1960,7 +1956,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return keys;
     }
-    
+
     /**
      * Returns a Set view of the mappings contained in this map.
      * Each entry represents a key-value mapping where the key can be
@@ -1980,12 +1976,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Multi-key case - use the Object[] array as the key
                 key = multiEntry.keys;
             }
-            
+
             entrySet.add(new AbstractMap.SimpleEntry<>(key, multiEntry.value));
         }
         return entrySet;
     }
-    
+
     /**
      * Returns the hash code value for this map.
      * The hash code is computed based on all key-value pairs.
@@ -2004,14 +2000,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Multi-key case - use Arrays.hashCode for the Object[] array
                 key = Arrays.hashCode(entry.keys);
             }
-            
+
             int keyHash = (key == null) ? 0 : key.hashCode();
             int valueHash = (entry.value == null) ? 0 : entry.value.hashCode();
             hash += keyHash ^ valueHash;
         }
         return hash;
     }
-    
+
     /**
      * Compares the specified object with this map for equality.
      * Returns true if the given object is also a map and the two maps
@@ -2021,10 +2017,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof Map)) return false;
-        
+
         Map<?, ?> other = (Map<?, ?>) obj;
         if (size() != other.size()) return false;
-        
+
         try {
             for (MultiKeyEntry<V> entry : entries()) {
                 Object key;
@@ -2037,7 +2033,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     // Multi-key case - use the Object[] array as the key
                     key = entry.keys;
                 }
-                
+
                 V value = entry.value;
                 if (value == null) {
                     if (!(other.get(key) == null && other.containsKey(key))) {
@@ -2052,10 +2048,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } catch (ClassCastException | NullPointerException e) {
             return false;
         }
-        
+
         return true;
     }
-    
+
     /**
      * Returns a string representation of this map.
      * Shows the key-value mappings in the format {key1=value1, key2=value2}.
@@ -2066,17 +2062,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (isEmpty()) {
             return "{}";
         }
-        
+
         StringBuilder sb = new StringBuilder();
         sb.append('{');
         boolean first = true;
-        
+
         for (MultiKeyEntry<V> entry : entries()) {
             if (!first) {
                 sb.append(", ");
             }
             first = false;
-            
+
             // Format the key for Map interface compliance
             if (entry.keys.length == 1) {
                 // Single key case - unwrap from array and NULL_SENTINEL if needed
@@ -2087,14 +2083,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Multi-key case - show as array with self-reference detection
                 appendSafeMultiKey(sb, entry.keys);
             }
-            
+
             sb.append('=');
             appendSafeValue(sb, entry.value);
         }
-        
+
         return sb.append('}').toString();
     }
-    
+
     private void appendSafeKey(StringBuilder sb, Object key) {
         if (key == this) {
             sb.append("(this Map)");
@@ -2102,7 +2098,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             sb.append(key);
         }
     }
-    
+
     private void appendSafeMultiKey(StringBuilder sb, Object[] keys) {
         sb.append('[');
         for (int i = 0; i < keys.length; i++) {
@@ -2115,7 +2111,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         sb.append(']');
     }
-    
+
     private void appendSafeValue(StringBuilder sb, Object value) {
         if (value == this) {
             sb.append("(this Map)");
@@ -2123,26 +2119,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             sb.append(value);
         }
     }
-    
+
     /**
      * Calculates the optimal number of stripe locks based on system capabilities.
      * Uses cores/2 as a heuristic since not all threads will be writing to the map simultaneously.
      * Many threads are system threads (GC, JIT, I/O) that don't access application data structures.
-     * 
+     *
      * @return optimal stripe count (always a power of 2, minimum 8)
      */
     private static int calculateOptimalStripeCount() {
         int cores = Runtime.getRuntime().availableProcessors();
         int targetStripes = Math.max(8, cores / 2);  // Minimum 8, cores/2 otherwise
-        
+
         // Cap at 32 stripes to prevent excessive lock contention during global operations
         // Beyond 32 stripes, the overhead of acquiring all locks outweighs parallelism benefits
         targetStripes = Math.min(32, targetStripes);
-        
+
         // Round up to next power of 2 for efficient bit masking (hash & STRIPE_MASK)
         return Integer.highestOneBit(targetStripes - 1) << 1;
     }
-    
+
     /**
      * Prints detailed contention statistics for debugging performance issues.
      * Shows overall contention rates, stripe-level distribution, and global lock usage.
@@ -2152,38 +2148,38 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int totalContentions = contentionCount.get();
         int globalAcquisitions = globalLockAcquisitions.get();
         int globalContentions = globalLockContentions.get();
-        
+
         LOG.info("=== MultiKeyMap Contention Statistics ===");
         LOG.info("Total lock acquisitions: " + totalAcquisitions);
         LOG.info("Total contentions: " + totalContentions);
-        
+
         if (totalAcquisitions > 0) {
             double contentionRate = (double) totalContentions / totalAcquisitions * 100;
             LOG.info(String.format("Overall contention rate: %.2f%%", contentionRate));
         }
-        
+
         LOG.info("Global lock acquisitions: " + globalAcquisitions);
         LOG.info("Global lock contentions: " + globalContentions);
-        
+
         LOG.info("Stripe-level statistics:");
         LOG.info("Stripe | Acquisitions | Contentions | Rate");
         LOG.info("-------|-------------|-------------|------");
-        
+
         for (int i = 0; i < STRIPE_COUNT; i++) {
             int acquisitions = stripeLockAcquisitions[i].get();
             int contentions = stripeLockContention[i].get();
             double rate = acquisitions > 0 ? (double) contentions / acquisitions * 100 : 0.0;
-            
-            LOG.info(String.format("%6d | %11d | %11d | %5.2f%%", 
-                            i, acquisitions, contentions, rate));
+
+            LOG.info(String.format("%6d | %11d | %11d | %5.2f%%",
+                    i, acquisitions, contentions, rate));
         }
-        
+
         // Find most/least contended stripes
         int maxContentionStripe = 0;
         int minContentionStripe = 0;
         int maxContentions = stripeLockContention[0].get();
         int minContentions = stripeLockContention[0].get();
-        
+
         for (int i = 1; i < STRIPE_COUNT; i++) {
             int contentions = stripeLockContention[i].get();
             if (contentions > maxContentions) {
@@ -2195,11 +2191,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 minContentionStripe = i;
             }
         }
-        
+
         LOG.info("Stripe distribution analysis:");
         LOG.info(String.format("Most contended stripe: %d (%d contentions)", maxContentionStripe, maxContentions));
         LOG.info(String.format("Least contended stripe: %d (%d contentions)", minContentionStripe, minContentions));
-        
+
         // Check for unused stripes
         int unusedStripes = 0;
         for (int i = 0; i < STRIPE_COUNT; i++) {
@@ -2210,14 +2206,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         LOG.info(String.format("Unused stripes: %d out of %d", unusedStripes, STRIPE_COUNT));
         LOG.info("================================================");
     }
-    
+
     /**
      * Computes optimized hash for key selection (used by stripe lock selection).
      */
     private int computeKeyHash(Object key) {
         return computeHashForKey(key);
     }
-    
+
     /**
      * Executes a runnable with all stripe locks acquired to prevent deadlock during global operations.
      * Used for resize, clear, and other operations that need exclusive access.
@@ -2230,7 +2226,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             unlockAllStripes();
         }
     }
-    
+
     /**
      * Resizes the hash table to double its current capacity and rehashes all entries.
      * Uses global locking to ensure thread safety during resize operations.
@@ -2243,7 +2239,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (currentLoadFactor <= loadFactor) {
                 return; // Another thread already resized
             }
-            
+
             Object[] oldBuckets = buckets;
             Object[] newBuckets = new Object[oldBuckets.length * 2];
 
@@ -2271,7 +2267,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             maxChainLength = newMaxChainLength;
         });
     }
-    
+
     /**
      * No-lock version of remove operation for multi-keys.
      * Follows Codex's pattern for clean separation of concerns.
@@ -2279,14 +2275,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V removeInternalNoLock(Object[] keys) {
         int hash = computeHash(keys);
         int bucketIndex = hash & (buckets.length - 1);
-        
+
         @SuppressWarnings("unchecked")
         MultiKey<V>[] chain = (MultiKey<V>[]) buckets[bucketIndex];
-        
+
         if (chain == null) {
             return null;
         }
-        
+
         // Find and remove the entry
         for (int i = 0; i < chain.length; i++) {
             MultiKey<V> entry = chain[i];
@@ -2305,14 +2301,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     }
                     buckets[bucketIndex] = newChain;
                 }
-                
+
                 int newSize = atomicSize.decrementAndGet();
                 size = newSize; // Update volatile field for backward compatibility
-                
+
                 return entry.value;
             }
         }
-        
+
         return null;
     }
 }

@@ -1495,16 +1495,15 @@ This implementation is fully thread-safe for all operations and implements `Conc
 ## ConcurrentList
 [Source](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)
 
-A thread-safe List implementation that provides synchronized access to list operations using read-write locks. Can be used either as a standalone thread-safe list or as a wrapper to make existing lists thread-safe.
+Thread-safe list implementation backed by chunked atomic buckets. Appends and
+deque operations are constant time using atomic counters. Rare middle
+insertions and removals rebuild the structure under a write lock.
 
 ### Key Features
-- Full thread-safety with read-write lock implementation
-- Standalone or wrapper mode operation
-- Read-only snapshot iterators
-- Non-blocking concurrent reads
-- Exclusive write access
-- Safe collection views
-- Null element support (if backing list allows)
+- Constant-time stack and queue operations
+- Lock-free appends and removals at either end
+- Snapshot iterators for safe traversal
+- Supports `null` elements
 - Implements `Serializable` and `RandomAccess`
 
 ### Usage Examples

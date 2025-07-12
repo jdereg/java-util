@@ -1529,12 +1529,23 @@ graph TD
     GetOp --> Bucket1
 ```
 
-**Bucket Mapping Example:**
-- **Logical Index 0** → Bucket 0, Offset 0
-- **Logical Index 1023** → Bucket 0, Offset 1023  
-- **Logical Index 1024** → Bucket 1, Offset 0
-- **Logical Index -1** → Bucket -1, Offset 1023
-- **Logical Index -1024** → Bucket -1, Offset 0
+**Internal Architecture Example:**
+```java
+ConcurrentList<String> list = new ConcurrentList<>();
+list.add("B");        // Internal: head=0, tail=1
+list.add("C");        // Internal: head=0, tail=2  
+list.addFirst("A");   // Internal: head=-1, tail=2
+
+// Public API always uses 0-based indexing:
+list.get(0);  // Returns "A" (maps internally to position -1)
+list.get(1);  // Returns "B" (maps internally to position 0)  
+list.get(2);  // Returns "C" (maps internally to position 1)
+```
+
+**Bucket Mapping (Internal Implementation):**
+- **Public Index 0** → Internal Position (head + 0) → Appropriate Bucket
+- **Public Index 1** → Internal Position (head + 1) → Appropriate Bucket
+- **Negative indices not supported in public API** - only used internally for efficiency
 
 ### Performance Characteristics
 

@@ -584,11 +584,87 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     }
 
     @Override
+    public Iterator<E> descendingIterator() {
+        Object[] snapshot = toArray();
+        return new Iterator<E>() {
+            private int index = snapshot.length - 1;
+
+            @Override
+            public boolean hasNext() {
+                return index >= 0;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public E next() {
+                if (index < 0) {
+                    throw new NoSuchElementException();
+                }
+                return (E) snapshot[index--];
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("remove not supported");
+            }
+        };
+    }
+
+    @Override
     public void forEach(Consumer<? super E> action) {
         Objects.requireNonNull(action);
         for (E e : this) {
             action.accept(e);
         }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof List)) {
+            return false;
+        }
+        List<?> other = (List<?>) obj;
+        if (size() != other.size()) {
+            return false;
+        }
+        Iterator<E> it1 = iterator();
+        Iterator<?> it2 = other.iterator();
+        while (it1.hasNext() && it2.hasNext()) {
+            E e1 = it1.next();
+            Object e2 = it2.next();
+            if (!Objects.equals(e1, e2)) {
+                return false;
+            }
+        }
+        return !it1.hasNext() && !it2.hasNext();
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 1;
+        for (E e : this) {
+            hash = 31 * hash + (e == null ? 0 : e.hashCode());
+        }
+        return hash;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+        Iterator<E> it = iterator();
+        while (it.hasNext()) {
+            E e = it.next();
+            sb.append(e == this ? "(this Collection)" : e);
+            if (it.hasNext()) {
+                sb.append(',').append(' ');
+            }
+        }
+        sb.append(']');
+        return sb.toString();
     }
 
     private void rebuild(List<E> elements) {

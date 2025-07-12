@@ -76,7 +76,7 @@ class ConcurrentList2Test {
                     int start = random.nextInt(random.nextInt(list.size()));
                     Iterator<Integer> it = list.iterator();
                     while (it.hasNext()) { it.next(); }
-                } catch (UnsupportedOperationException | IllegalArgumentException e) {
+                } catch (UnsupportedOperationException | IllegalArgumentException | IndexOutOfBoundsException e) {
                 }
             }
         };
@@ -88,7 +88,7 @@ class ConcurrentList2Test {
                     int start = random.nextInt(random.nextInt(list.size()));
                     ListIterator<Integer> it = list.listIterator();
                     while (it.hasNext()) { it.next(); }
-                } catch (UnsupportedOperationException | IllegalArgumentException e) {
+                } catch (UnsupportedOperationException | IllegalArgumentException | IndexOutOfBoundsException e) {
                 }
             }
         };

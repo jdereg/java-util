@@ -1495,153 +1495,193 @@ This implementation is fully thread-safe for all operations and implements `Conc
 ## ConcurrentList
 [Source](/src/main/java/com/cedarsoftware/util/ConcurrentList.java)
 
-Thread-safe list implementation backed by chunked atomic buckets. Appends and
-deque operations are constant time using atomic counters. Rare middle
-insertions and removals rebuild the structure under a write lock.
+A revolutionary high-performance thread-safe implementation of `List`, `Deque`, and `RandomAccess` interfaces, designed for highly concurrent environments with exceptional performance characteristics. This implementation uses a bucket-based architecture with chunked `AtomicReferenceArray` storage and atomic head/tail counters, delivering lock-free performance for the most common operations.
 
-### Key Features
-- Constant-time stack and queue operations
-- Lock-free appends and removals at either end
-- Snapshot iterators for safe traversal
-- Supports `null` elements
-- Implements `Serializable` and `RandomAccess`
+### Architecture Overview
+The list is structured as a series of fixed-size buckets (1024 elements each), managed through a `ConcurrentHashMap`. Each bucket is an `AtomicReferenceArray` that never moves once allocated, ensuring stable memory layout and eliminating costly array copying operations.
 
-### Usage Examples
+### Performance Characteristics
 
-**Basic Usage:**
+| Operation | ArrayList + External Sync | CopyOnWriteArrayList | Vector | ConcurrentList |
+|-----------|----------------------------|----------------------|---------|----------------|
+| `get(index)` | 🔴 O(1) but serialized | 🟡 O(1) no locks | 🔴 O(1) but synchronized | 🟢 O(1) lock-free |
+| `set(index, val)` | 🔴 O(1) but serialized | 🔴 O(n) copy array | 🔴 O(1) but synchronized | 🟢 O(1) lock-free |
+| `add(element)` | 🔴 O(1)* but serialized | 🔴 O(n) copy array | 🔴 O(1)* but synchronized | 🟢 O(1) lock-free |
+| `addFirst(element)` | 🔴 O(n) + serialized | 🔴 O(n) copy array | 🔴 O(n) + synchronized | 🟢 O(1) lock-free |
+| `removeFirst()` | 🔴 O(n) + serialized | 🔴 O(n) copy array | 🔴 O(n) + synchronized | 🟢 O(1) lock-free |
+| `removeLast()` | 🔴 O(1) but serialized | 🔴 O(n) copy array | 🔴 O(1) but synchronized | 🟢 O(1) lock-free |
+| Concurrent reads | ❌ Serialized | 🟢 Fully parallel | ❌ Serialized | 🟢 Fully parallel |
+| Concurrent writes | ❌ Serialized | ❌ Serialized (copy) | ❌ Serialized | 🟢 Parallel head/tail ops |
+
+*O(1) amortized, may trigger O(n) array resize
+
+### Key Advantages
+- **Lock-free deque operations:** `addFirst`, `addLast`, `removeFirst`, `removeLast` use atomic CAS operations
+- **Lock-free random access:** `get()` and `set()` operations require no synchronization
+- **Optimal memory usage:** No wasted capacity from exponential growth strategies
+- **Stable memory layout:** Buckets never move, reducing GC pressure and improving cache locality
+- **Scalable concurrency:** Read operations scale linearly with CPU cores
+- **Minimal contention:** Only middle insertion/removal requires write locking
+
+### Basic Usage
 ```java
-// Create a new thread-safe list
-List<String> list = new ConcurrentList<>();
+// Create a high-performance concurrent list
+ConcurrentList<String> list = new ConcurrentList<>();
 list.add("item1");
 list.add("item2");
 
-// Create with initial capacity
-List<String> list = new ConcurrentList<>(1000);
+// Create with initial capacity hint (for API compatibility)
+ConcurrentList<String> list = new ConcurrentList<>(1000);
 
-// Wrap existing list
-List<String> existing = new ArrayList<>();
-List<String> concurrent = new ConcurrentList<>(existing);
+// Create from existing collection (copies elements)
+List<String> existing = Arrays.asList("a", "b", "c");
+ConcurrentList<String> concurrent = new ConcurrentList<>(existing);
 ```
 
-**Concurrent Operations:**
+### High-Performance Queue Operations
 ```java
-ConcurrentList<User> users = new ConcurrentList<>();
+ConcurrentList<Task> taskQueue = new ConcurrentList<>();
 
-// Safe concurrent access
-users.add(new User("Alice"));
-User first = users.get(0);
+// Producer threads - O(1) lock-free
+taskQueue.addLast(new Task("work1"));
+taskQueue.addLast(new Task("work2"));
 
-// Bulk operations
-List<User> newUsers = Arrays.asList(
-    new User("Bob"), 
-    new User("Charlie")
-);
-users.addAll(newUsers);
+// Consumer threads - O(1) lock-free  
+Task task1 = taskQueue.pollFirst(); // Returns null if empty
+Task task2 = taskQueue.removeFirst(); // Throws exception if empty
+
+// Check queue state - O(1) lock-free
+int size = taskQueue.size();
+boolean empty = taskQueue.isEmpty();
+Task peek = taskQueue.peekFirst(); // Look without removing
 ```
 
-**Thread-Safe Iteration:**
+### High-Performance Stack Operations
+```java
+ConcurrentList<String> stack = new ConcurrentList<>();
+
+// Stack operations - all O(1) lock-free
+stack.addFirst("item1");            // Push
+stack.addFirst("item2");            // Push
+stack.push("item3");                // Alternative push
+
+String top = stack.removeFirst();   // Pop
+String peek = stack.peekFirst();    // Peek without removing
+String alt = stack.pop();           // Alternative pop
+```
+
+### Lock-Free Random Access
+```java
+ConcurrentList<Integer> numbers = new ConcurrentList<>();
+numbers.addAll(Arrays.asList(1, 2, 3, 4, 5));
+
+// All O(1) lock-free operations
+int value = numbers.get(2);         // Read at index
+numbers.set(2, 99);                 // Write at index
+int size = numbers.size();          // Get current size
+
+// Safe concurrent access from multiple threads
+// No synchronization needed for reads!
+```
+
+### Deque Interface Support
+```java
+ConcurrentList<String> deque = new ConcurrentList<>();
+
+// Double-ended queue operations - all O(1) lock-free
+deque.addFirst("front");
+deque.addLast("back");
+deque.offerFirst("new-front");      // Same as addFirst
+deque.offerLast("new-back");        // Same as addLast
+
+String front = deque.pollFirst();   // Remove from front (null if empty)
+String back = deque.pollLast();     // Remove from back (null if empty)
+
+// Peek operations
+String peekFront = deque.peekFirst();
+String peekBack = deque.peekLast();
+```
+
+### Thread-Safe Iteration
 ```java
 ConcurrentList<String> list = new ConcurrentList<>();
-list.addAll(Arrays.asList("A", "B", "C"));
+list.addAll(Arrays.asList("A", "B", "C", "D"));
 
-// Safe iteration with snapshot view
+// Snapshot-based iteration - completely thread-safe
 for (String item : list) {
-    System.out.println(item);
+    System.out.println(item); // Safe even with concurrent modifications
 }
 
-// List iterator (read-only)
-ListIterator<String> iterator = list.listIterator();
-while (iterator.hasNext()) {
-    String item = iterator.next();
+// Descending iteration
+Iterator<String> descIter = list.descendingIterator();
+while (descIter.hasNext()) {
+    System.out.println(descIter.next());
+}
+
+// ListIterator support
+ListIterator<String> listIter = list.listIterator(2); // Start at index 2
+while (listIter.hasNext()) {
+    String item = listIter.next();
     // Process item
 }
 ```
 
-### Performance Characteristics
-- Read operations: Non-blocking
-- Write operations: Exclusive access
-- Iterator creation: O(n) copy
-- get(): O(1)
-- add(): O(1) amortized
-- remove(): O(n)
-- contains(): O(n)
-- size(): O(1)
+### Producer-Consumer Pattern
+```java
+ConcurrentList<WorkItem> workQueue = new ConcurrentList<>();
+
+// Producer thread
+Runnable producer = () -> {
+    for (int i = 0; i < 1000; i++) {
+        workQueue.addLast(new WorkItem(i)); // O(1) lock-free
+    }
+};
+
+// Consumer thread
+Runnable consumer = () -> {
+    while (true) {
+        WorkItem item = workQueue.pollFirst(); // O(1) lock-free
+        if (item == null) {
+            Thread.sleep(10); // Brief pause if queue empty
+            continue;
+        }
+        processWorkItem(item);
+    }
+};
+
+// Start multiple producers and consumers
+ExecutorService executor = Executors.newFixedThreadPool(8);
+for (int i = 0; i < 4; i++) {
+    executor.submit(producer);
+    executor.submit(consumer);
+}
+```
+
+### Use Cases - Excellent For
+- **Queue/stack patterns:** Producer-consumer scenarios, work-stealing algorithms
+- **Append-heavy workloads:** Log aggregation, event collection, streaming data
+- **High-concurrency read access:** Shared configuration, reference data, caching
+- **Random access patterns:** Index-based data structures, arrays replacement
+- **Deque operations:** Undo/redo systems, sliding window algorithms
+
+### Use Cases - Consider Alternatives For
+- **Frequent middle insertion/deletion:** If you need heavy middle operations with single-threaded access, consider ArrayList
+- **Memory-constrained environments:** The bucket architecture has some overhead per bucket
 
 ### Thread Safety Features
-- Read-write lock separation
-- Safe concurrent reads
-- Exclusive write access
-- Snapshot iterators
-- Thread-safe bulk operations
-- Atomic modifications
+- **Lock-free reads:** All get operations and iterations are completely lock-free
+- **Lock-free head/tail operations:** Deque operations use atomic CAS for maximum throughput  
+- **Minimal locking:** Only middle insertion/removal requires a write lock
+- **Consistent iteration:** Iterators provide a consistent snapshot view
+- **ABA-safe:** Atomic operations prevent ABA problems in concurrent scenarios
 
-### Use Cases
-- Shared data structures
-- Producer-consumer scenarios
-- Multi-threaded caching
-- Concurrent data collection
-- Thread-safe logging
-- Event handling
-- Resource management
-
-### Implementation Notes
-- Uses ReentrantReadWriteLock
-- Supports null elements
-- No duplicate creation in wrapper mode
-- Read-only iterator snapshots
-- Unsupported operations:
-    - subList(int, int)
-
-### Operation Examples
-```java
-// Thread-safe operations
-List<Integer> numbers = new ConcurrentList<>();
-
-// Modification operations
-numbers.add(1);                      // Single element add
-numbers.addAll(Arrays.asList(2, 3)); // Bulk add
-numbers.remove(1);                   // Remove by index
-numbers.removeAll(Arrays.asList(2)); // Bulk remove
-
-// Access operations
-int first = numbers.get(0);             // Get by index
-boolean contains = numbers.contains(1); // Check containment
-int size = numbers.size();              // Get size
-boolean empty = numbers.isEmpty();      // Check if empty
-
-// Bulk operations
-numbers.clear();                        // Remove all elements
-numbers.retainAll(Arrays.asList(1, 2)); // Keep only specified
-```
-
-### Collection Views
-```java
-// Safe iteration examples
-List<String> list = new ConcurrentList<>();
-
-// Array conversion
-Object[] array = list.toArray();
-String[] strArray = list.toArray(new String[0]);
-
-// Iterator usage
-Iterator<String> it = list.iterator();
-while (it.hasNext()) {
-    String item = it.next();
-    // Safe to process item
-}
-
-// List iterator
-ListIterator<String> listIt = list.listIterator();
-while (listIt.hasNext()) {
-    // Forward iteration
-}
-
-// Descending iterator
-Iterator<String> descIt = list.descendingIterator();
-while (descIt.hasNext()) {
-    // Reverse iteration
-}
-```
+### Implementation Details
+- **Bucket size:** 1024 elements per bucket for optimal cache line usage
+- **Storage:** `ConcurrentHashMap` of `AtomicReferenceArray` buckets
+- **Indexing:** Atomic head/tail counters with negative indexing support
+- **Memory management:** Lazy bucket allocation, automatic garbage collection of unused buckets
+- **Supported interfaces:** `List`, `Deque`, `RandomAccess`, `Serializable`
+- **Null support:** Fully supports null elements
 
 ---
 ## ArrayUtilities

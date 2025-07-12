@@ -1501,68 +1501,32 @@ A revolutionary high-performance thread-safe implementation of `List`, `Deque`, 
 The list is structured as a series of fixed-size buckets (1024 elements each), managed through a `ConcurrentHashMap`. Each bucket is an `AtomicReferenceArray` that never moves once allocated, ensuring stable memory layout and eliminating costly array copying operations.
 
 ```mermaid
-graph TB
-    subgraph "ConcurrentList Architecture"
-        Head[AtomicLong head = -2048]
-        Tail[AtomicLong tail = 2560]
-        Size[size = tail - head = 4608]
-        
-        subgraph "ConcurrentHashMap<Integer, AtomicReferenceArray>"
-            B_neg2[Bucket -2<br/>AtomicReferenceArray[1024]<br/>Indices: -2048 to -1025]
-            B_neg1[Bucket -1<br/>AtomicReferenceArray[1024]<br/>Indices: -1024 to -1]
-            B_0[Bucket 0<br/>AtomicReferenceArray[1024]<br/>Indices: 0 to 1023]
-            B_1[Bucket 1<br/>AtomicReferenceArray[1024]<br/>Indices: 1024 to 2047]
-            B_2[Bucket 2<br/>AtomicReferenceArray[1024]<br/>Indices: 2048 to 3071]
-        end
-        
-        subgraph "Lock-Free Operations"
-            AddFirst[addFirst: head.decrementAndGet<br/>O&#40;1&#41; CAS operation]
-            AddLast[addLast: tail.getAndIncrement<br/>O&#40;1&#41; CAS operation]
-            RemoveFirst[removeFirst: head.compareAndSet<br/>O&#40;1&#41; CAS operation]
-            RemoveLast[removeLast: tail.compareAndSet<br/>O&#40;1&#41; CAS operation]
-            Get[get&#40;index&#41;: bucket.get&#40;offset&#41;<br/>O&#40;1&#41; lock-free read]
-        end
-        
-        subgraph "Write-Locked Operations"
-            MiddleOps[Middle insert/remove<br/>Rebuilds structure<br/>O&#40;n&#41; with write lock]
-        end
-        
-        Head --> B_neg2
-        Head --> B_neg1
-        Head --> B_0
-        Tail --> B_1
-        Tail --> B_2
-        
-        AddFirst -.-> Head
-        AddLast -.-> Tail
-        RemoveFirst -.-> Head
-        RemoveLast -.-> Tail
-        Get -.-> B_0
-        Get -.-> B_1
-    end
-
-    subgraph "Key Features"
-        F1[🚀 Lock-free deque operations]
-        F2[📊 O&#40;1&#41; random access]
-        F3[🔧 Stable bucket memory layout]
-        F4[⚡ Atomic head/tail counters]
-        F5[🔒 Minimal write locking]
-    end
-
-    style Head fill:#e1f5fe
-    style Tail fill:#e1f5fe
-    style Size fill:#f3e5f5
-    style B_neg2 fill:#fff3e0
-    style B_neg1 fill:#fff3e0
-    style B_0 fill:#e8f5e8
-    style B_1 fill:#e8f5e8
-    style B_2 fill:#fff3e0
-    style AddFirst fill:#e8f5e8
-    style AddLast fill:#e8f5e8
-    style RemoveFirst fill:#e8f5e8
-    style RemoveLast fill:#e8f5e8
-    style Get fill:#e8f5e8
-    style MiddleOps fill:#ffebee
+graph TD
+    Head[AtomicLong head]
+    Tail[AtomicLong tail]
+    
+    BucketNeg1[Bucket -1]
+    Bucket0[Bucket 0]
+    Bucket1[Bucket 1] 
+    Bucket2[Bucket 2]
+    
+    AddFirst[addFirst]
+    AddLast[addLast]
+    RemoveFirst[removeFirst]
+    RemoveLast[removeLast]
+    GetOp[get index]
+    
+    Head --> BucketNeg1
+    Head --> Bucket0
+    Tail --> Bucket1
+    Tail --> Bucket2
+    
+    AddFirst --> Head
+    AddLast --> Tail
+    RemoveFirst --> Head
+    RemoveLast --> Tail
+    GetOp --> Bucket0
+    GetOp --> Bucket1
 ```
 
 **Bucket Mapping Example:**

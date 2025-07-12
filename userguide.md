@@ -2156,7 +2156,7 @@ This implementation provides a robust set of utilities for class manipulation an
 
 [View Source](/src/main/java/com/cedarsoftware/util/MultiKeyMap.java)
 
-The **definitive N-dimensional key-value Map implementation** for Java. MultiKeyMap is the technology leading solution for multi-dimensional lookups, outperforming all alternatives including Google Guava Table, Apache Commons MultiKeyMap, and DIY record+HashMap approaches.
+The **definitive N-dimensional key-value Map implementation** for Java. MultiKeyMap is the technology leading solution for multi-dimensional lookups, outperforming alternatives including Google Guava Table, Apache Commons MultiKeyMap, and DIY record+HashMap approaches.
 
 ### Why MultiKeyMap is Best-in-Class
 

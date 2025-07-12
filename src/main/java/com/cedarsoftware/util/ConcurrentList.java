@@ -62,11 +62,20 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     }
 
     private static int bucketIndex(long pos) {
-        return (int) Math.floorDiv(pos, BUCKET_SIZE);
+        // truncating division gives toward-zero; adjust when pos<0 with remainder
+        long div = pos / BUCKET_SIZE;
+        if ((pos ^ BUCKET_SIZE) < 0 && (pos % BUCKET_SIZE) != 0) {
+            div--;    // step one more bucket down for true floor
+        }
+        return (int) div;
     }
 
     private static int bucketOffset(long pos) {
-        return (int) Math.floorMod(pos, BUCKET_SIZE);
+        // Java’s % is remainder, not mathematical mod; fix negatives
+        int rem = (int) (pos % BUCKET_SIZE);
+        return rem < 0
+                ? rem + BUCKET_SIZE
+                : rem;
     }
 
     private AtomicReferenceArray<Object> ensureBucket(int index) {
@@ -221,9 +230,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         lock.writeLock().lock();
         try {
             boolean modified = false;
-            Iterator<?> it = c.iterator();
-            while (it.hasNext()) {
-                Object o = it.next();
+            for (Object o : c) {
                 while (remove(o)) {
                     modified = true;
                 }
@@ -581,6 +588,33 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     @Override
     public E pop() {
         return removeFirst();
+    }
+    
+    @Override
+    public Iterator<E> descendingIterator() {
+        Object[] snapshot = toArray();
+        return new Iterator<E>() {
+            private int index = snapshot.length - 1;
+
+            @Override
+            public boolean hasNext() {
+                return index >= 0;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public E next() {
+                if (index < 0) {
+                    throw new NoSuchElementException();
+                }
+                return (E) snapshot[index--];
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("remove not supported");
+            }
+        };
     }
 
     @Override

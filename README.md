@@ -420,44 +420,44 @@ System.setProperty("io.debug.detailed.paths", "true");
 
 ## Core Components
 
-| Component | Description |
-| --- | --- |
-| **Sets** | |
-| [CompactSet](userguide.md#compactset) | Memory-efficient Set that dynamically adapts its storage structure based on size. |
-| [CaseInsensitiveSet](userguide.md#caseinsensitiveset) | Set implementation with case-insensitive `String` handling. |
-| [ConcurrentSet](userguide.md#concurrentset) | Thread-safe Set supporting null elements. |
-| [ConcurrentNavigableSetNullSafe](userguide.md#concurrentnavigablesetnullsafe) | Thread-safe `NavigableSet` supporting null elements. |
-| [ClassValueSet](userguide.md#classvalueset) | High-performance Set optimized for fast `Class` membership testing using JVM-optimized `ClassValue`. |
-| **Maps** | |
-| [CompactMap](userguide.md#compactmap) | Memory-efficient Map that dynamically adapts its storage structure based on size. |
-| [CaseInsensitiveMap](userguide.md#caseinsensitivemap) | A `Map` wrapper that provides case-insensitive, case-retentive keys and inherits the features of the wrapped map (e.g., thread-safety from `ConcurrentMap` or multi-key support from `MultiKeyMap`). |
-| [LRUCache](userguide.md#lrucache) | Thread-safe Least Recently Used cache with configurable eviction strategies. |
-| [TTLCache](userguide.md#ttlcache) | Thread-safe Time-To-Live cache with optional size limits. |
-| [TrackingMap](userguide.md#trackingmap) | Map that monitors key access patterns for optimization. |
-| [ConcurrentHashMapNullSafe](userguide.md#concurrenthashmapnullsafe) | Thread-safe `HashMap` supporting null keys and values. |
-| [ConcurrentNavigableMapNullSafe](userguide.md#concurrentnavigablemapnullsafe) | Thread-safe `NavigableMap` supporting null keys and values. |
-| [ClassValueMap](userguide.md#classvaluemap) | High-performance Map optimized for fast `Class` key lookups using JVM-optimized `ClassValue`. |
-| [MultiKeyMap](userguide.md#multikeymap) | Concurrent map supporting multiple keys. |
-| **Lists** | |
-| [ConcurrentList](userguide.md#concurrentlist) | Thread-safe `List` implementation with flexible wrapping options. |
-| **Utilities** | |
-| [ArrayUtilities](userguide.md#arrayutilities) | Comprehensive array manipulation operations. |
-| [ByteUtilities](userguide.md#byteutilities) | Byte array and hexadecimal conversion utilities. |
-| [ClassUtilities](userguide.md#classutilities) | Class relationship and reflection helper methods. |
-| [Converter](userguide.md#converter) | Robust type conversion system. |
-| [DateUtilities](userguide.md#dateutilities) | Advanced date parsing and manipulation. |
-| [DeepEquals](userguide.md#deepequals) | Recursive object graph comparison. |
-| [EncryptionUtilities](userguide.md#encryptionutilities) | Simplified encryption and checksum operations. |
-| [Executor](userguide.md#executor) | Streamlined system command execution. |
-| [GraphComparator](userguide.md#graphcomparator) | Object graph difference detection and synchronization. |
-| [IOUtilities](userguide.md#ioutilities) | Enhanced I/O operations and streaming utilities. |
-| [MathUtilities](userguide.md#mathutilities) | Extended mathematical operations. |
-| [ReflectionUtils](userguide.md#reflectionutils) | Optimized reflection operations. |
-| [StringUtilities](userguide.md#stringutilities) | Extended `String` manipulation operations. |
-| [SystemUtilities](userguide.md#systemutilities) | System and environment interaction utilities. |
-| [Traverser](userguide.md#traverser) | Configurable object graph traversal. |
-| [TypeUtilities](userguide.md#typeutilities) | Advanced Java type introspection and generic resolution utilities. |
-| [UniqueIdGenerator](userguide.md#uniqueidgenerator) | Distributed-safe unique identifier generation. |
+| Component | Description                                                                                                                                                                                                                                                                      |
+| --- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Sets** |                                                                                                                                                                                                                                                                                  |
+| [CompactSet](userguide.md#compactset) | Memory-efficient Set that dynamically adapts its storage structure based on size.                                                                                                                                                                                                |
+| [CaseInsensitiveSet](userguide.md#caseinsensitiveset) | Set implementation with case-insensitive `String` handling.                                                                                                                                                                                                                      |
+| [ConcurrentSet](userguide.md#concurrentset) | Thread-safe Set supporting null elements.                                                                                                                                                                                                                                        |
+| [ConcurrentNavigableSetNullSafe](userguide.md#concurrentnavigablesetnullsafe) | Thread-safe `NavigableSet` supporting null elements.                                                                                                                                                                                                                             |
+| [ClassValueSet](userguide.md#classvalueset) | High-performance Set optimized for fast `Class` membership testing using JVM-optimized `ClassValue`.                                                                                                                                                                             |
+| **Maps** |                                                                                                                                                                                                                                                                                  |
+| [CompactMap](userguide.md#compactmap) | Memory-efficient Map that dynamically adapts its storage structure based on size.                                                                                                                                                                                                |
+| [CaseInsensitiveMap](userguide.md#caseinsensitivemap) | A `Map` wrapper that provides case-insensitive, case-retentive keys and inherits the features of the wrapped map (e.g., thread-safety from `ConcurrentMap` types, multi-key support from `MultiKeyMap`, sorted, thread-safe, allow nulls from `ConcurrentNavigableMapNullSafe`). |
+| [LRUCache](userguide.md#lrucache) | Thread-safe Least Recently Used cache with configurable eviction strategies.                                                                                                                                                                                                     |
+| [TTLCache](userguide.md#ttlcache) | Thread-safe Time-To-Live cache with optional size limits.                                                                                                                                                                                                                        |
+| [TrackingMap](userguide.md#trackingmap) | A `Map` wrapper that monitors key access patterns for optimization. Inherits features from wrapped `Map`, including thread-safety (`ConcurrentMap` types), Multiple-key support (`MultiKeyMap`), or sorted, thread-safey, with null support (`ConcurrentNavigableMapNullSafe`)   |
+| [ConcurrentHashMapNullSafe](userguide.md#concurrenthashmapnullsafe) | Thread-safe `HashMap` supporting null keys and values.                                                                                                                                                                                                                           |
+| [ConcurrentNavigableMapNullSafe](userguide.md#concurrentnavigablemapnullsafe) | Thread-safe `NavigableMap` supporting null keys and values.                                                                                                                                                                                                                      |
+| [ClassValueMap](userguide.md#classvaluemap) | High-performance Map optimized for fast `Class` key lookups using JVM-optimized `ClassValue`.                                                                                                                                                                                    |
+| [MultiKeyMap](userguide.md#multikeymap) | Concurrent map supporting multiple keys.                                                                                                                                                                                                                                         |
+| **Lists** |                                                                                                                                                                                                                                                                                  |
+| [ConcurrentList](userguide.md#concurrentlist) | Thread-safe `List` implementation with flexible wrapping options.                                                                                                                                                                                                                |
+| **Utilities** |                                                                                                                                                                                                                                                                                  |
+| [ArrayUtilities](userguide.md#arrayutilities) | Comprehensive array manipulation operations.                                                                                                                                                                                                                                     |
+| [ByteUtilities](userguide.md#byteutilities) | Byte array and hexadecimal conversion utilities.                                                                                                                                                                                                                                 |
+| [ClassUtilities](userguide.md#classutilities) | Class relationship and reflection helper methods.                                                                                                                                                                                                                                |
+| [Converter](userguide.md#converter) | Robust type conversion system.                                                                                                                                                                                                                                                   |
+| [DateUtilities](userguide.md#dateutilities) | Advanced date parsing and manipulation.                                                                                                                                                                                                                                          |
+| [DeepEquals](userguide.md#deepequals) | Recursive object graph comparison.                                                                                                                                                                                                                                               |
+| [EncryptionUtilities](userguide.md#encryptionutilities) | Simplified encryption and checksum operations.                                                                                                                                                                                                                                   |
+| [Executor](userguide.md#executor) | Streamlined system command execution.                                                                                                                                                                                                                                            |
+| [GraphComparator](userguide.md#graphcomparator) | Object graph difference detection and synchronization.                                                                                                                                                                                                                           |
+| [IOUtilities](userguide.md#ioutilities) | Enhanced I/O operations and streaming utilities.                                                                                                                                                                                                                                 |
+| [MathUtilities](userguide.md#mathutilities) | Extended mathematical operations.                                                                                                                                                                                                                                                |
+| [ReflectionUtils](userguide.md#reflectionutils) | Optimized reflection operations.                                                                                                                                                                                                                                                 |
+| [StringUtilities](userguide.md#stringutilities) | Extended `String` manipulation operations.                                                                                                                                                                                                                                       |
+| [SystemUtilities](userguide.md#systemutilities) | System and environment interaction utilities.                                                                                                                                                                                                                                    |
+| [Traverser](userguide.md#traverser) | Configurable object graph traversal.                                                                                                                                                                                                                                             |
+| [TypeUtilities](userguide.md#typeutilities) | Advanced Java type introspection and generic resolution utilities.                                                                                                                                                                                                               |
+| [UniqueIdGenerator](userguide.md#uniqueidgenerator) | Distributed-safe unique identifier generation.                                                                                                                                                                                                                                   |
 ## Integration and Module Support
 
 ### JPMS (Java Platform Module System)

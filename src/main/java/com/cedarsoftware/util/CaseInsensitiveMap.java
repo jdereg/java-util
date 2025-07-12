@@ -43,8 +43,8 @@ import java.util.function.Function;
  * all concurrent operations ({@code putIfAbsent}, {@code replace}, bulk operations, etc.) with case-insensitive
  * semantics. <strong>Thread safety depends entirely on the backing map implementation:</strong></p>
  * <ul>
- *   <li><strong>Thread-Safe:</strong> When backed by concurrent maps ({@link ConcurrentHashMap}, 
- *       {@link java.util.concurrent.ConcurrentSkipListMap}, etc.), all operations are thread-safe.</li>
+ *   <li><strong>Thread-Safe:</strong> When backed by concurrent maps ({@link ConcurrentHashMap}, {@link ConcurrentHashMapNullSafe},
+ *       {@link java.util.concurrent.ConcurrentSkipListMap}, {@link ConcurrentNavigableMapNullSafe}, etc.), all operations are thread-safe.</li>
  *   <li><strong>Not Thread-Safe:</strong> When backed by non-concurrent maps ({@link LinkedHashMap}, 
  *       {@link HashMap}, etc.), concurrent operations work correctly but without thread-safety guarantees.</li>
  * </ul>
@@ -413,11 +413,10 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                             "IdentityHashMap compares keys by reference (==) which is incompatible.");
         }
         
-        Map<K, V> newMap = null;
+        Map<K, V> newMap;
         
         // Special handling for CaseInsensitiveMap source - use its wrapped map type
         if (source instanceof CaseInsensitiveMap) {
-            @SuppressWarnings("unchecked")
             CaseInsensitiveMap<K, V> ciSource = (CaseInsensitiveMap<K, V>) source;
             Map<K, V> wrappedMap = ciSource.getWrappedMap();
             try {
@@ -534,8 +533,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                 if (key instanceof Object[]) {
                     // Create new Object[] with wrapped String keys, use varargs method
                     Object[] objArray = (Object[]) key;
-                    Object[] wrappedArray = new Object[objArray.length];
-                    for (int i = 0; i < objArray.length; i++) {
+                    final int len = objArray.length;
+                    Object[] wrappedArray = new Object[len];
+                    for (int i = 0; i < len; i++) {
                         wrappedArray[i] = objArray[i] instanceof String ? 
                             CaseInsensitiveString.of((String) objArray[i]) : objArray[i];
                     }
@@ -543,8 +543,9 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                 } else if (key instanceof String[]) {
                     // Create new Object[] with wrapped String keys, use varargs method
                     String[] strArray = (String[]) key;
-                    Object[] wrappedArray = new Object[strArray.length];
-                    for (int i = 0; i < strArray.length; i++) {
+                    final int len = strArray.length;
+                    Object[] wrappedArray = new Object[len];
+                    for (int i = 0; i < len; i++) {
                         wrappedArray[i] = CaseInsensitiveString.of(strArray[i]);
                     }
                     return multiKeyMap.put(value, wrappedArray);
@@ -874,8 +875,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             @SuppressWarnings("unchecked")
             public <T> T[] toArray(T[] a) {
                 int size = size();
-                T[] result = a.length >= size ? a :
-                        (T[]) Array.newInstance(a.getClass().getComponentType(), size);
+                T[] result = a.length >= size ? a : (T[]) Array.newInstance(a.getClass().getComponentType(), size);
 
                 int i = 0;
                 for (K key : map.keySet()) {
@@ -984,8 +984,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             @SuppressWarnings("unchecked")
             public <T> T[] toArray(T[] a) {
                 int size = size();
-                T[] result = a.length >= size ? a :
-                        (T[]) Array.newInstance(a.getClass().getComponentType(), size);
+                T[] result = a.length >= size ? a : (T[]) Array.newInstance(a.getClass().getComponentType(), size);
 
                 Iterator<Entry<K, V>> it = map.entrySet().iterator();
                 for (int i = 0; i < size; i++) {

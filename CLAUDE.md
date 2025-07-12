@@ -8,13 +8,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### MANDATORY FULL TEST SUITE VALIDATION
 
-**EVERY change, no matter how small, MUST be followed by running the complete test suite:**
+**EVERY change, no matter how small, MUST be followed by running the local related tests and making sure they pass. 
+
+Then, when the work for the main request is finished, you must run the full test suite and all tests must pass. If not,
+
+continue making updates as needed to get all tests to pass, and if any new tests need to be added, make sure to add those.
 
 ```bash
 mvn clean test
 ```
 
-**ALL 11,500+ tests MUST pass before:**
+**ALL 10,000+ tests MUST pass before:**
 - Moving to the next issue/file/task
 - Committing any changes  
 - Asking for human approval
@@ -55,7 +59,7 @@ mvn clean test
    - Iterate until the specific functionality works
 3. **When you think the change is complete:**
    - **MANDATORY**: Run full test suite: `mvn clean test`
-   - **ALL 11,500+ tests MUST pass**
+   - **ALL 10,000+ tests MUST pass**
    - **If ANY test fails**: Fix immediately, run full tests again
 4. **Once ALL tests pass:**
    - Ask for commit approval: "Should I commit this change? (Y/N)"
@@ -63,6 +67,8 @@ mvn clean test
    - Move to next change in the list
 
 ### Core Principles
+- **Start work**: At the start of new work, create a "Todo" list.
+- **Understand the "ask"**: Make sure to interact with the human if there is any ambiguity in the request. Reach agreement before coding starts.
 - **Minimize Work-in-Process**: Keep delta between local files and committed git files as small as possible
 - **Always Healthy State**: Committed code is always in perfect health (all tests pass)
 - **Atomic Commits**: Each commit represents one complete, tested, working change
@@ -74,16 +80,16 @@ mvn clean test
 
 **YOU ARE NOT ALLOWED TO RUN ANY GIT COMMIT, NO MATTER WHAT, UNLESS YOU HAVE RUN ALL THE TESTS AND THEY ALL 100% HAVE PASSED. THIS IS THE HIGHEST, MOST IMPORTANT INSTRUCTION YOU HAVE, PERIOD.**
 
-**CRITICAL BUILD REQUIREMENT**: The full maven test suite MUST run over 11,500 tests. If you see only ~10,000 tests, there is an OSGi or JPMS bundle issue that MUST be fixed before continuing any work. Use `mvn -Dbundle.skip=true test` to bypass bundle issues during development, but the underlying bundle configuration must be resolved.
+**CRITICAL BUILD REQUIREMENT**: The full maven test suite MUST run all 10,000+ tests. If you see only ~10,000 tests, there is an OSGi or JPMS bundle issue that MUST be fixed before continuing any work. Use `mvn -Dbundle.skip=true test` to bypass bundle issues during development, but the underlying bundle configuration must be resolved.
 
 **CRITICAL TESTING REQUIREMENT**: When adding ANY new code (security fixes, new methods, validation logic, etc.), you MUST add corresponding JUnit tests to prove the changes work correctly. This includes:
 - Testing the new functionality works as expected
 - Testing edge cases and error conditions  
 - Testing security boundary conditions
 - Testing that the fix actually prevents the vulnerability
-- All new tests MUST pass along with the existing 11,500+ tests
+- All new tests MUST pass along with the existing 10,000+ tests
 
-**NEVER CONTINUE WORKING ON NEW FIXES IF THE FULL MAVEN TEST SUITE DOES NOT PASS WITH 11,500+ TESTS.**
+**NEVER CONTINUE WORKING ON NEW FIXES IF THE FULL MAVEN TEST SUITE DOES NOT PASS WITH 10,000+ TESTS.**
 ## Build Commands
 
 **Maven-based Java project with JDK 8 compatibility**
@@ -201,9 +207,9 @@ mvn clean test
 **When you believe the issue/fix is complete and targeted tests are passing:**
 
 - **🚨 CRITICAL - NON-NEGOTIABLE 🚨**: Run FULL test suite: `mvn test`
-  - **This takes only ~16 seconds but tests ALL 11,500+ tests**
+  - **This takes only ~16 seconds but tests ALL 10,000+ tests**
   - **This is the quality gate that ensures project health**
-- **🚨 VERIFY ALL TESTS PASS 🚨**: Ensure 11,500+ tests pass (not ~10,000)
+- **🚨 VERIFY ALL TESTS PASS 🚨**: Ensure 10,000+ tests pass (not ~10,000)
 - **🚨 ZERO TOLERANCE FOR TEST FAILURES 🚨**: All tests must be 100% passing before proceeding
 - **If even ONE test fails**: Fix issues immediately, run full tests again
 - **NEVER move to Step 5, 6, 7, or 8 until ALL tests pass**
@@ -215,7 +221,7 @@ mvn clean test
 **THE PROCESS:**
 1. **Development Phase**: Use targeted tests (`mvn test -Dtest=SpecificTest`) for fast iteration
 2. **Completion Gate**: Run full test suite (`mvn test`) when you think you're done
-3. **Quality Verification**: ALL 11,500+ tests must pass before proceeding
+3. **Quality Verification**: ALL 10,000+ tests must pass before proceeding
 
 ### Step 5: Update Documentation (for this ONE change)
 - **changelog.md**: Add entry for this specific change under appropriate version
@@ -228,7 +234,7 @@ mvn clean test
 Present a commit approval request to the human with:
 - Summary of this ONE improvement made (specific security fix, performance enhancement, etc.)
 - List of files modified for this change
-- Test results confirmation (ALL 11,500+ tests passing)
+- Test results confirmation (ALL 10,000+ tests passing)
 - Documentation updates made for this change
 - Clear description of this change and its benefits
 - Ask: "Should I commit this change?"

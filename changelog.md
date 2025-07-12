@@ -19,6 +19,7 @@
 > * **API ENHANCEMENT**: Added `ClassUtilities.toPrimitiveClass()` method as complement to existing `toPrimitiveWrapperClass()`:
 >   * Converts wrapper classes to their corresponding primitive classes (e.g., `Integer.class` → `int.class`)
 > * `ConcurrentList` now uses chunked atomic buckets for lock-free deque operations
+> * `ConcurrentList.descendingIterator()` provides reverse iteration
 >   * Returns the same class if not a wrapper type, ensuring safe usage for any class
 >   * Leverages optimized `ClassValueMap` caching for high-performance lookups
 >   * Centralizes primitive/wrapper conversion logic in `ClassUtilities` for consistency across java-util

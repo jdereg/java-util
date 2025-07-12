@@ -1635,6 +1635,12 @@ ListIterator<String> listIt = list.listIterator();
 while (listIt.hasNext()) {
     // Forward iteration
 }
+
+// Descending iterator
+Iterator<String> descIt = list.descendingIterator();
+while (descIt.hasNext()) {
+    // Reverse iteration
+}
 ```
 
 ---

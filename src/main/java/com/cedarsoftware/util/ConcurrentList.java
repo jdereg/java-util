@@ -584,6 +584,33 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     }
 
     @Override
+    public Iterator<E> descendingIterator() {
+        Object[] snapshot = toArray();
+        return new Iterator<E>() {
+            private int index = snapshot.length - 1;
+
+            @Override
+            public boolean hasNext() {
+                return index >= 0;
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public E next() {
+                if (index < 0) {
+                    throw new NoSuchElementException();
+                }
+                return (E) snapshot[index--];
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("remove not supported");
+            }
+        };
+    }
+
+    @Override
     public void forEach(Consumer<? super E> action) {
         Objects.requireNonNull(action);
         for (E e : this) {

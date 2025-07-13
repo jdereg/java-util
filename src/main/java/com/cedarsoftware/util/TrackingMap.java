@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -153,26 +154,16 @@ public class TrackingMap<K, V> implements Map<K, V> {
             @SuppressWarnings("unchecked")
             MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
             
-            // Handle array/collection auto-expansion
-            if (key != null && key.getClass().isArray()) {
-                if (key instanceof Object[]) {
-                    // Use varargs method for Object arrays
-                    Object[] objArray = (Object[]) key;
-                    return multiKeyMap.put(value, objArray);
-                } else if (key instanceof String[]) {
-                    // Use varargs method for String arrays
-                    String[] strArray = (String[]) key;
-                    Object[] objArray = new Object[strArray.length];
-                    System.arraycopy(strArray, 0, objArray, 0, strArray.length);
-                    return multiKeyMap.put(value, objArray);
+            // Handle array/collection auto-expansion using MultiKeyMap's clean API
+            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
+                // Use MultiKeyMap's get1DKey to handle all expansion logic internally
+                Object processedKey = MultiKeyMap.get1DKey(key);
+                if (processedKey instanceof Object[]) {
+                    return multiKeyMap.putMultiKey(value, (Object[]) processedKey);
                 } else {
-                    // For other typed arrays (int[], double[], etc.), use Map interface method to get array unpacking
-                    return multiKeyMap.put(key, value);
+                    // Typed array (int[], String[], etc.) - use regular put
+                    return multiKeyMap.put(processedKey, value);
                 }
-            } else if (key instanceof Collection) {
-                // Always unpack collections into multi-key call
-                Collection<?> collection = (Collection<?>) key;
-                return putMultiKey(value, collection.toArray());
             }
         }
         return internalMap.put(key, value);
@@ -322,28 +313,49 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public void expungeUnused() {
         if (internalMap instanceof MultiKeyMap) {
-            // Special handling for MultiKeyMap
+            // Special handling for MultiKeyMap with hash-based tracking
             @SuppressWarnings("unchecked")
             MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
             
-            // Collect keys to remove first
+            // Collect keys to remove by checking different tracking strategies
             List<Object> keysToRemove = new ArrayList<>();
             for (Object mapKey : multiKeyMap.keySet()) {
                 if (mapKey instanceof Object[]) {
                     Object[] keyArray = (Object[]) mapKey;
-                    // Check if all components of this key were tracked
-                    boolean shouldRemove = false;
+                    
+                    // Check if this key was tracked using any strategy
+                    boolean wasTracked = false;
+                    
+                    // Strategy 1: Check if individual components were tracked (for getMultiKey calls)
+                    boolean allComponentsTracked = true;
                     for (Object component : keyArray) {
-                        if (component != null && !readKeys.contains(component)) {
-                            shouldRemove = true;
+                        if (!readKeys.contains(component)) {
+                            allComponentsTracked = false;
                             break;
                         }
                     }
-                    if (shouldRemove) {
+                    if (allComponentsTracked) {
+                        wasTracked = true;
+                    }
+                    
+                    // Strategy 2: Check if SHA-1 hash was tracked (for array/collection keys with sentinels)
+                    if (keyArray.length > 0 && keyArray[0] == MultiKeyMap.HAS_SENTINELS) {
+                        String keyHash = MultiKeyMap.computeSHA1Hash(keyArray);
+                        if (readKeys.contains(keyHash)) {
+                            wasTracked = true;
+                        }
+                    }
+                    
+                    if (!wasTracked) {
+                        keysToRemove.add(mapKey);
+                    }
+                } else if (mapKey != null && mapKey.getClass().isArray()) {
+                    // Typed arrays (int[], String[], etc.) - check if the array itself was tracked
+                    if (!readKeys.contains(mapKey)) {
                         keysToRemove.add(mapKey);
                     }
                 } else {
-                    // Single key - check if it was tracked
+                    // Single key - check if it was tracked directly
                     if (!readKeys.contains(mapKey)) {
                         keysToRemove.add(mapKey);
                     }
@@ -355,21 +367,20 @@ public class TrackingMap<K, V> implements Map<K, V> {
                 multiKeyMap.remove(keyToRemove);
             }
             
-            // Clean up readKeys to only contain components that are still in use
-            Set<Object> stillUsedComponents = new HashSet<>();
+            // Clean up readKeys to only contain hashes/keys that are still valid
+            Set<Object> stillValidTrackedKeys = new HashSet<>();
             for (Object mapKey : multiKeyMap.keySet()) {
                 if (mapKey instanceof Object[]) {
                     Object[] keyArray = (Object[]) mapKey;
-                    for (Object component : keyArray) {
-                        if (component != null) {
-                            stillUsedComponents.add(component);
-                        }
-                    }
+                    // Keep the hash for this still-existing key
+                    String keyHash = MultiKeyMap.computeSHA1Hash(keyArray);
+                    stillValidTrackedKeys.add(keyHash);
                 } else {
-                    stillUsedComponents.add(mapKey);
+                    // Keep the single key
+                    stillValidTrackedKeys.add(mapKey);
                 }
             }
-            readKeys.retainAll(stillUsedComponents);
+            readKeys.retainAll(stillValidTrackedKeys);
         } else {
             // Original logic for regular maps
             internalMap.keySet().retainAll(readKeys);
@@ -456,7 +467,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
         
-        return multiKeyMap.put(value, keys);
+        return multiKeyMap.putMultiKey(value, keys);
     }
 
     /**
@@ -475,15 +486,14 @@ public class TrackingMap<K, V> implements Map<K, V> {
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
         
-        V result = multiKeyMap.get(keys);
+        V result = multiKeyMap.getMultiKey(keys);
         
         // Only track if the key actually exists (result is not null)
         if (result != null) {
-            // Track individual components (for user visibility and expungeUnused)
+            // For direct multi-key calls, track individual components (original behavior)
+            // This maintains backward compatibility for TrackingMap users
             for (Object key : keys) {
-                if (key != null) {
-                    readKeys.add(key);
-                }
+                readKeys.add(key);
             }
         }
         
@@ -506,42 +516,13 @@ public class TrackingMap<K, V> implements Map<K, V> {
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
         
-        V result = multiKeyMap.remove(keys);
+        V result = multiKeyMap.removeMultiKey(keys);
         
-        // Only remove individual components if this was the only multi-key using them
-        // We need to check if any remaining keys in the map use these components
+        // For direct multi-key calls, remove individual components (original behavior)
         if (result != null) {
-            for (Object component : keys) {
-                if (component != null) {
-                    boolean componentStillUsed = false;
-                    // Check all remaining keys in the map to see if they use this component
-                    for (Object mapKey : multiKeyMap.keySet()) {
-                        if (mapKey instanceof Object[]) {
-                            Object[] keyArray = (Object[]) mapKey;
-                            for (Object keyComponent : keyArray) {
-                                if (Objects.equals(component, keyComponent)) {
-                                    componentStillUsed = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (componentStillUsed) break;
-                    }
-                    // Only remove the component if it's not used by any remaining keys
-                    if (!componentStillUsed) {
-                        readKeys.remove(component);
-                    }
-                }
+            for (Object key : keys) {
+                readKeys.remove(key);
             }
-            // Remove the composite key array that was tracking this multi-key
-            // Find and remove matching array
-            readKeys.removeIf(trackedKey -> {
-                if (trackedKey instanceof Object[]) {
-                    Object[] trackedArray = (Object[]) trackedKey;
-                    return Arrays.equals(trackedArray, keys);
-                }
-                return false;
-            });
         }
         
         return result;
@@ -563,15 +544,13 @@ public class TrackingMap<K, V> implements Map<K, V> {
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
         
-        boolean exists = multiKeyMap.containsKey(keys);
+        boolean exists = multiKeyMap.containsMultiKey(keys);
         
         // Only track if the key actually exists
         if (exists) {
-            // Track individual components (for user visibility and expungeUnused)
+            // For direct multi-key calls, track individual components (original behavior)
             for (Object key : keys) {
-                if (key != null) {
-                    readKeys.add(key);
-                }
+                readKeys.add(key);
             }
         }
         
@@ -579,6 +558,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
     }
 
     // ===== PRIVATE HELPER METHODS =====
+
 
     /**
      * Handles array and collection keys for MultiKeyMap operations.
@@ -595,25 +575,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
         
-        if (key != null && key.getClass().isArray()) {
-            if (key instanceof Object[]) {
-                // Pass Object array directly
-                return operation.apply(key);
-            } else if (key instanceof String[]) {
-                // Convert String[] to Object[] to maintain compatibility
-                String[] strArray = (String[]) key;
-                Object[] objArray = new Object[strArray.length];
-                System.arraycopy(strArray, 0, objArray, 0, strArray.length);
-                return operation.apply(objArray);
-            } else {
-                // For other typed arrays (int[], double[], etc.), pass through directly
-                // since they cannot contain complex keys that need processing
-                return operation.apply(key);
-            }
-        } else if (key instanceof Collection) {
-            Collection<?> collection = (Collection<?>) key;
-            // Convert collection to array and recursively handle
-            return handleArrayCollectionKey(collection.toArray(), operation);
+        if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
+            // Use MultiKeyMap's get1DKey to handle all expansion logic internally
+            Object processedKey = MultiKeyMap.get1DKey(key);
+            return operation.apply(processedKey);
         }
         
         return null; // Not an array or collection
@@ -621,51 +586,43 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     /**
      * Tracks key access for arrays and collections. When backed by MultiKeyMap, 
-     * tracks individual key components only if the composite key exists.
+     * tracks a SHA-1 hash of the complete expanded key sequence to avoid ambiguity.
      */
     private void trackKeyAccess(Object key) {
         if (internalMap instanceof MultiKeyMap) {
             @SuppressWarnings("unchecked")
             MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
             
-            if (key != null && key.getClass().isArray()) {
-                if (key instanceof Object[]) {
-                    Object[] objArray = (Object[]) key;
-                    // Only track components if the composite key exists
-                    if (multiKeyMap.containsKey(objArray)) {
-                        for (Object component : objArray) {
-                            if (component != null) {
-                                readKeys.add(component);
-                            }
-                        }
-                    }
-                } else if (key instanceof String[]) {
-                    String[] strArray = (String[]) key;
-                    Object[] objArray = new Object[strArray.length];
-                    System.arraycopy(strArray, 0, objArray, 0, strArray.length);
-                    // Only track components if the composite key exists
-                    if (multiKeyMap.containsKey(objArray)) {
-                        for (String component : strArray) {
-                            if (component != null) {
-                                readKeys.add(component);
-                            }
-                        }
-                    }
+            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
+                // Use MultiKeyMap's clean APIs for processing and hashing
+                Object processedKey = MultiKeyMap.get1DKey(key);
+                
+                // Determine how to check if the key exists based on processed key type
+                boolean keyExists;
+                if (processedKey instanceof Object[]) {
+                    keyExists = multiKeyMap.containsMultiKey((Object[]) processedKey);
                 } else {
-                    // For typed arrays, track the array itself only if it exists
-                    if (multiKeyMap.containsKey(key)) {
-                        readKeys.add(key);
-                    }
+                    keyExists = multiKeyMap.containsKey(processedKey);
                 }
-            } else if (key instanceof Collection) {
-                Collection<?> collection = (Collection<?>) key;
-                Object[] objArray = collection.toArray();
-                // Only track components if the composite key exists
-                if (multiKeyMap.containsKey(objArray)) {
-                    for (Object component : collection) {
-                        if (component != null) {
-                            readKeys.add(component);
+                
+                // Only track if the composite key exists
+                if (keyExists) {
+                    if (processedKey instanceof Object[]) {
+                        Object[] processedArray = (Object[]) processedKey;
+                        // Check if this has sentinels (multi-dimensional structure) - O(1) check!
+                        if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_SENTINELS) {
+                            // Multi-dimensional structure - use SHA-1 hash tracking to avoid ambiguity
+                            String keyHash = MultiKeyMap.computeSHA1Hash(processedKey);
+                            readKeys.add(keyHash);
+                        } else {
+                            // Simple 1D Object[] - track individual components (original behavior)
+                            for (Object component : processedArray) {
+                                readKeys.add(component);
+                            }
                         }
+                    } else {
+                        // Typed arrays (int[], String[], etc.) - track the processed key directly
+                        readKeys.add(processedKey);
                     }
                 }
             } else {
@@ -681,39 +638,31 @@ public class TrackingMap<K, V> implements Map<K, V> {
     }
 
     /**
-     * Tracks key removal for arrays and collections, cleaning up component tracking
-     * when they are no longer in use by any remaining keys.
+     * Tracks key removal for arrays and collections, cleaning up hash-based tracking
+     * of the complete expanded key sequence.
      */
     private void trackKeyRemoval(Object key) {
         if (internalMap instanceof MultiKeyMap) {
-            if (key != null && key.getClass().isArray()) {
-                if (key instanceof Object[]) {
-                    Object[] objArray = (Object[]) key;
-                    // Immediately untrack all components - consistent with regular TrackingMap behavior
-                    for (Object component : objArray) {
-                        if (component != null) {
-                            readKeys.remove(component);
-                        }
-                    }
-                } else if (key instanceof String[]) {
-                    String[] strArray = (String[]) key;
-                    // Immediately untrack all components - consistent with regular TrackingMap behavior
-                    for (String component : strArray) {
-                        if (component != null) {
+            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
+                // Use MultiKeyMap's clean APIs for processing and hashing
+                Object processedKey = MultiKeyMap.get1DKey(key);
+                
+                if (processedKey instanceof Object[]) {
+                    Object[] processedArray = (Object[]) processedKey;
+                    // Check if this has sentinels (multi-dimensional structure) - O(1) check!
+                    if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_SENTINELS) {
+                        // Multi-dimensional structure - remove SHA-1 hash
+                        String keyHash = MultiKeyMap.computeSHA1Hash(processedKey);
+                        readKeys.remove(keyHash);
+                    } else {
+                        // Simple 1D Object[] - remove individual components
+                        for (Object component : processedArray) {
                             readKeys.remove(component);
                         }
                     }
                 } else {
-                    // For typed arrays, remove the array itself
-                    readKeys.remove(key);
-                }
-            } else if (key instanceof Collection) {
-                Collection<?> collection = (Collection<?>) key;
-                // Immediately untrack all components - consistent with regular TrackingMap behavior
-                for (Object component : collection) {
-                    if (component != null) {
-                        readKeys.remove(component);
-                    }
+                    // Typed arrays (int[], String[], etc.) - remove the processed key directly
+                    readKeys.remove(processedKey);
                 }
             } else {
                 readKeys.remove(key);

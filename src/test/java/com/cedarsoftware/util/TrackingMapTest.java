@@ -460,4 +460,59 @@ public class TrackingMapTest
         catch (IllegalArgumentException ignored)
         { }
     }
+
+    @Test
+    public void testTrackingMapNDimensionalArraySupport() {
+        // Test TrackingMap with MultiKeyMap backing for n-dimensional array expansion
+        MultiKeyMap<String> multiKeyMap = new MultiKeyMap<>();
+        TrackingMap<Object, String> trackingMap = new TrackingMap<>(multiKeyMap);
+        
+        // Test that distinct array structures are tracked separately even when they
+        // would have had ambiguous individual components in the old system
+        Object[][] array1 = {{"unique1", "b"}, {"c", "d"}};  // → ["unique1", "b", "c", "d"]
+        Object[][] array2 = {{"a"}, {"unique2", "c", "d"}};  // → ["a", "unique2", "c", "d"]
+        
+        trackingMap.put(array1, "value1");
+        trackingMap.put(array2, "value2");
+        
+        // Access both arrays - they're different keys so both exist
+        String result1 = trackingMap.get(array1);
+        String result2 = trackingMap.get(array2);
+        assertEquals("value1", result1);
+        assertEquals("value2", result2);
+        
+        // Both should exist in the map (different expanded keys)
+        assertTrue(trackingMap.containsKey(array1));
+        assertTrue(trackingMap.containsKey(array2));
+        
+        // Verify that we have 2 distinct hash entries in keysUsed (no ambiguity!)
+        Set<Object> usedKeys = trackingMap.keysUsed();
+        assertEquals(2, usedKeys.size());
+        
+        // All tracked keys should be SHA-1 hashes
+        for (Object key : usedKeys) {
+            assertTrue(key instanceof String);
+            assertTrue(((String) key).startsWith("sha1:"));
+        }
+        
+        // Test removal - should only remove the specific array's hash
+        assertEquals("value1", trackingMap.remove(array1));
+        assertFalse(trackingMap.containsKey(array1));
+        assertTrue(trackingMap.containsKey(array2)); // Should still exist!
+        
+        // Should now have only 1 hash in keysUsed
+        assertEquals(1, trackingMap.keysUsed().size());
+        
+        // Test expungeUnused - should keep array2 since it was accessed
+        Object[][] array3 = {{"new", "key"}, {"not", "accessed"}};
+        trackingMap.put(array3, "value3"); // Add but don't access
+        assertEquals(2, trackingMap.size());
+        
+        trackingMap.expungeUnused();
+        
+        // Should remove array3 (not accessed) but keep array2
+        assertEquals(1, trackingMap.size());
+        assertTrue(trackingMap.containsKey(array2));
+        assertFalse(trackingMap.containsKey(array3));
+    }
 }

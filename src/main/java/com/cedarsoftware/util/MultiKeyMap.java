@@ -4,6 +4,7 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,9 +39,9 @@ import java.util.logging.Logger;
  *   <li><b>Thread\-Safe:</b> Lock\-free reads with auto\-tuned stripe locking that scales with your server, similar to ConcurrentHashMap.</li>
  *   <li><b>Map Interface Compatible:</b> Supports single\-key operations via the standard Map interface (get()/put()
  *       automatically unpack Collections/Arrays (typed or Object[]) into multi\-keys).</li>
- *   <li><b>Flexible API:</b> Var-args methods for convenient multi\-key operations (get()/put() with many keys).</li>
- *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections and Arrays — change the default automatic unpacking of
- *       Collections/Arrays capability as needed.</li>
+ *   <li><b>Flexible API:</b> Var-args methods for convenient multi\-key operations (getMultiKey()/putMultiKey() with many keys).</li>
+ *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections — change the default automatic unpacking capability as needed.</li>
+ *   <li><b>N-Dimensional Array Expansion:</b> Nested arrays of any depth are automatically flattened recursively into multi\-keys.</li>
  * </ul>
  *
  * <h3>Usage Examples:</h3>
@@ -55,35 +56,70 @@ import java.util.logging.Logger;
  *
  * // OR use convenient varargs methods (requires MultiKeyMap variable type)
  * MultiKeyMap<String> mkMap = new MultiKeyMap<>();
- * mkMap.put("value1", "single-key");                       // 1D key
- * mkMap.put("value2", "key1", "key2");                     // 2D key
- * mkMap.put("value3", "key1", "key2", "key3");             // 3D key
- * mkMap.put("value4", "k1", "k2", "k3", "k4");             // 4D key
+ * mkMap.putMultiKey("value1", "single-key");               // 1D key
+ * mkMap.putMultiKey("value2", "key1", "key2");             // 2D key
+ * mkMap.putMultiKey("value3", "key1", "key2", "key3");     // 3D key
+ * mkMap.putMultiKey("value4", "k1", "k2", "k3", "k4");     // 4D key
  * // ... unlimited dimensions
  *
  * // Retrieve values using matching signatures
  * String val1 = map.get("single-key");
  * String val2 = map.get(new Object[]{"k1", "k2"});
- * String val3 = mkMap.get("key1", "key2");
- * String val4 = mkMap.get("k1", "k2", "k3", "k4");
+ * String val3 = mkMap.getMultiKey("key1", "key2");
+ * String val4 = mkMap.getMultiKey("k1", "k2", "k3", "k4");
+ * }</pre>
+ *
+ * <h3>N-Dimensional Array Expansion:</h3>
+ * <p>MultiKeyMap automatically expands nested arrays of any depth into their constituent elements,
+ * providing powerful key flattening capabilities:</p>
+ * <pre>{@code
+ * MultiKeyMap<String> map = new MultiKeyMap<>();
+ *
+ * // 🔥 N-DIMENSIONAL ARRAY EXPANSION - The Ultimate Power Feature
+ * // Nested arrays are automatically flattened - no limits on depth!
+ * // {{"a", "b"}, {"c", "d"}} → ["a", "b", "c", "d"]
+ *
+ * // 2D array expansion
+ * String[][] array2D = {{"config", "database"}, {"url", "port"}};
+ * map.put(array2D, "jdbc:mysql://localhost:3306");
+ * // Stored as 4D key: "config", "database", "url", "port"
+ * String url = map.getMultiKey("config", "database", "url", "port");
+ *
+ * // 3D array expansion with mixed types
+ * Object[][][] array3D = {{{"user", 123}, {"admin"}}, {{"permissions", true}}};
+ * map.put(array3D, "user-config");
+ * // Stored as 5D key: "user", 123, "admin", "permissions", true
+ * String config = map.getMultiKey("user", 123, "admin", "permissions", true);
+ *
+ * // Jagged arrays (different sub-array lengths)
+ * String[][] jagged = {{"a"}, {"b", "c", "d"}, {"e", "f"}};
+ * map.put(jagged, "jagged-value");
+ * // Stored as 6D key: "a", "b", "c", "d", "e", "f"
+ * String value = map.getMultiKey("a", "b", "c", "d", "e", "f");
  * }</pre>
  *
  * <h3>Collection and Array Handling:</h3>
- * <p>MultiKeyMap provides flexible handling of Collections and Arrays through the
+ * <p>MultiKeyMap provides flexible handling of Collections through the
  * {@link CollectionKeyMode} enum:</p>
  * <ul>
- *   <li><b>MULTI_KEY_ONLY:</b> Collections/Arrays are always unpacked into multi-key lookups</li>
- *   <li><b>MULTI_KEY_FIRST:</b> Try unpacking first, fallback to treating as single key</li>
- *   <li><b>COLLECTION_KEY_FIRST:</b> Try as single key first, fallback to unpacking</li>
+ *   <li><b>COLLECTIONS_EXPANDED:</b> Collections are always unpacked into multi-key lookups (default)</li>
+ *   <li><b>COLLECTIONS_NOT_EXPANDED:</b> Collections tried as single key first, fallback to unpacking</li>
  * </ul>
+ * 
+ * <p><b>Arrays are ALWAYS expanded</b> regardless of CollectionKeyMode setting because they lack
+ * meaningful equals()/hashCode() implementations and cannot serve as useful Map keys.</p>
  *
  * <pre>{@code
- * // Configure collection handling behavior
- * MultiKeyMap<String> map = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTION_KEY_FIRST);
+ * // Configure collection handling behavior (affects Collections only, not Arrays)
+ * MultiKeyMap<String> map = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTIONS_NOT_EXPANDED);
  *
+ * List<String> collectionKey = Arrays.asList("config", "database", "url");
+ * map.put(collectionKey, "jdbc:mysql://localhost:3306/db");  // Collection tried as single key first
+ * String url = map.get(collectionKey);                        // Retrieved as single key
+ * 
  * String[] arrayKey = {"config", "database", "url"};
- * map.put(arrayKey, "jdbc:mysql://localhost:3306/db");     // Array treated as single key
- * String url = map.get(arrayKey);                          // Retrieved as single key
+ * map.put(arrayKey, "another-value");                         // Array ALWAYS expanded to 3D key
+ * String value = map.get("config", "database", "url");       // Retrieved as 3D key
  * }</pre>
  *
  * <h3>Performance Characteristics:</h3>
@@ -126,6 +162,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final Logger LOG = Logger.getLogger(MultiKeyMap.class.getName());
     static { LoggingConfig.init(); }
 
+    /**
+     * Sentinel object used to mark the beginning of a nested array level during
+     * n-dimensional array expansion. This preserves structural information to
+     * prevent hash collisions between different array layouts.
+     */
+    public static final Object LEVEL_DOWN = new Object();
+
+    /**
+     * Sentinel object used to mark the end of a nested array level during
+     * n-dimensional array expansion. This preserves structural information to
+     * prevent hash collisions between different array layouts.
+     */
+    public static final Object LEVEL_UP = new Object();
+    
+    /**
+     * Flag placed as the first element of Object[] returned by get1DKey() to indicate
+     * that the array contains LEVEL_DOWN/LEVEL_UP sentinels. This avoids the need
+     * to scan the array to detect sentinels.
+     */
+    public static final Object HAS_SENTINELS = new Object();
+
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
 
@@ -154,26 +211,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * Enum to control how Collections and Arrays are handled in get/remove/containsKey operations.
+     * Enum to control how Collections are handled in get/remove/containsKey operations.
+     * 
+     * <p><strong>IMPORTANT:</strong> Arrays are ALWAYS expanded regardless of this setting because
+     * they do not have meaningful equals()/hashCode() implementations and therefore cannot
+     * serve as useful keys in a Map's keySet().</p>
+     * 
+     * <p>This enum only affects Collection objects (List, Set, Queue, etc.) that may have
+     * custom equals()/hashCode() implementations.</p>
      */
     public enum CollectionKeyMode {
         /**
-         * Default behavior: Collections and Arrays are always unpacked into multi-key lookups.
-         * No fallback to treating them as single keys.
+         * Default behavior: Collections are always unpacked into multi-key lookups.
+         * Arrays are also always unpacked (regardless of this setting).
+         * No fallback to treating Collections as single keys.
          */
-        MULTI_KEY_ONLY,
+        COLLECTIONS_EXPANDED,
 
         /**
-         * Try multi-key lookup first, then fallback to collection-as-key lookup if not found.
-         * Prioritizes the traditional multi-key behavior.
+         * Try Collection-as-key lookup first, then fallback to unpacked lookup if not found.
+         * Allows Collections with custom equals/hashCode to be used as single keys.
+         * Arrays are still always unpacked (regardless of this setting).
          */
-        MULTI_KEY_FIRST,
-
-        /**
-         * Try collection-as-key lookup first, then fallback to multi-key lookup if not found.
-         * Prioritizes treating Collections/Arrays as single keys.
-         */
-        COLLECTION_KEY_FIRST
+        COLLECTIONS_NOT_EXPANDED
     }
 
     private volatile Object[] buckets;  // Array of MultiKey<V>[] (or null), Collection, String[] (typed array)
@@ -232,7 +292,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param loadFactor the load factor threshold for resizing
      */
     public MultiKeyMap(int capacity, float loadFactor) {
-        this(capacity, loadFactor, CollectionKeyMode.MULTI_KEY_ONLY);
+        this(capacity, loadFactor, CollectionKeyMode.COLLECTIONS_EXPANDED);
     }
 
     /**
@@ -252,7 +312,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         this.buckets = new Object[capacity];
         this.loadFactor = loadFactor;
-        this.collectionKeyMode = (collectionKeyMode != null) ? collectionKeyMode : CollectionKeyMode.MULTI_KEY_ONLY;
+        this.collectionKeyMode = (collectionKeyMode != null) ? collectionKeyMode : CollectionKeyMode.COLLECTIONS_EXPANDED;
 
         // Initialize ReentrantLock stripe locks for enhanced write concurrency
         for (int i = 0; i < STRIPE_COUNT; i++) {
@@ -459,7 +519,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param keys the key components (can be varargs or Object[])
      * @return the value associated with the key, or null if not found
      */
-    public V get(Object... keys) {
+    public V getMultiKey(Object... keys) {
         // Special case: when get(null) is called on varargs method, Java passes keys=null
         // Use direct single-key lookup for zero heap allocation
         if (keys == null) {
@@ -502,11 +562,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private V getFromCollection(Collection<?> collection) {
         switch (collectionKeyMode) {
-            case MULTI_KEY_ONLY:
+            case COLLECTIONS_EXPANDED:
                 return getFromCollectionMultiKeyOnly(collection);
-            case MULTI_KEY_FIRST:
-                return getFromCollectionMultiKeyFirst(collection);
-            case COLLECTION_KEY_FIRST:
+            case COLLECTIONS_NOT_EXPANDED:
                 return getFromCollectionKeyFirst(collection);
             default:
                 throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
@@ -526,7 +584,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * Collection with MULTI_KEY_ONLY mode - only try multi-key lookup.
+     * Collection with COLLECTIONS_EXPANDED mode - only try multi-key lookup.
      */
     private V getFromCollectionMultiKeyOnly(Collection<?> collection) {
         Object rawResult = getInternalFromCollectionRaw(collection);
@@ -534,7 +592,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * Collection with MULTI_KEY_FIRST mode - try multi-key first, then collection-as-key.
+     * Collection with COLLECTIONS_EXPANDED mode - only try multi-key lookup.
      */
     private V getFromCollectionMultiKeyFirst(Collection<?> collection) {
         // Try multi-key first
@@ -548,7 +606,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * Collection with COLLECTION_KEY_FIRST mode - try collection-as-key first, then multi-key.
+     * Collection with COLLECTIONS_NOT_EXPANDED mode - try collection-as-key first, then multi-key.
      */
     private V getFromCollectionKeyFirst(Collection<?> collection) {
         // Try collection-as-key first with zero allocations!
@@ -578,8 +636,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (length == 0) {
             return null;
         }
-        int hash = computeHashFromTypedArray(typedArray);
-        return getFromBucket(hash, typedArray);
+        Object[] expandedKeys = expandMultiDimensionalArray(typedArray);
+        return getInternal(expandedKeys);
     }
 
     /**
@@ -596,8 +654,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         or {@code null} if no matching entry is found
      */
     private V getInternal(Object[] keys) {
-        int hash = computeHash(keys);
-        return getFromBucket(hash, keys);
+        // Apply n-dimensional array expansion to the keys array
+        Object[] expandedKeys = expandArraysInKeySequence(keys);
+        int hash = computeHash(expandedKeys);
+        return getFromBucket(hash, expandedKeys);
     }
 
     /**
@@ -921,7 +981,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param keys the key components (unlimited number)
      * @return the previous value associated with the key, or null if there was no mapping
      */
-    public V put(V value, Object... keys) {
+    public V putMultiKey(V value, Object... keys) {
         // Handle null keys array (empty varargs call)
         if (keys == null || keys.length == 0) {
             return putInternalSingle(null, value);
@@ -986,7 +1046,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (key != null && key.getClass().isArray()) {
             if (key instanceof Object[]) {
                 // Always unpack arrays into multi-key call
-                return put(value, (Object[]) key);
+                return putMultiKey(value, (Object[]) key);
             } else {
                 // Always unpack typed arrays into multi-key call
                 return putInternalFromTypedArray(key, value);
@@ -1005,13 +1065,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private V putFromCollection(Collection<?> collection, V value) {
         switch (collectionKeyMode) {
-            case MULTI_KEY_ONLY:
+            case COLLECTIONS_EXPANDED:
                 // Always unpack Collection into multi-key call - zero array allocation!
                 return putInternalFromCollection(collection, value);
-            case MULTI_KEY_FIRST:
-                // Try as multi-key, but since put is deterministic, just unpack - zero array allocation!
-                return putInternalFromCollection(collection, value);
-            case COLLECTION_KEY_FIRST:
+            case COLLECTIONS_NOT_EXPANDED:
                 // Treat Collection as single key
                 return putInternalSingle(collection, value);
             default:
@@ -1023,7 +1080,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Internal put implementation that works with Object[] keys.
      */
     private V putInternal(Object[] keys, V value) {
-        MultiKey<V> newKey = new MultiKey<>(keys, value); // Uses multi-key constructor
+        // Apply n-dimensional array expansion to the keys array
+        Object[] expandedKeys = expandArraysInKeySequence(keys);
+        MultiKey<V> newKey = new MultiKey<>(expandedKeys, value); // Uses multi-key constructor
         return putInternalCommon(newKey);
     }
 
@@ -1142,33 +1201,270 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
 
     /**
-     * Internal put implementation that works with typed arrays.
-     * Converts typed array to Object[] and delegates to putInternal.
+     * Expands n-dimensional arrays recursively into a flat Object[] array.
+     * Uses iterative approach with a stack to avoid recursion limits.
+     * 
+     * <p>This utility method is available for use by other classes that need
+     * n-dimensional array expansion functionality, such as CaseInsensitiveMap.</p>
+     * 
+     * @param sourceArray The array to expand (may contain nested arrays)
+     * @return A flattened Object[] containing all elements from nested arrays
      */
-    private V putInternalFromTypedArray(Object typedArray, V value) {
-        int length = Array.getLength(typedArray);
-        Object[] keys = new Object[length];
-
-        for (int i = 0; i < length; i++) {
-            keys[i] = Array.get(typedArray, i);
+    public static Object[] expandMultiDimensionalArray(Object sourceArray) {
+        if (sourceArray == null || !sourceArray.getClass().isArray()) {
+            return new Object[]{sourceArray};
         }
 
-        return putInternal(keys, value);
+        // Optimization: Check if array is one-dimensional all the way through (no nested arrays)
+        // This avoids heap allocations by using universal array handling with Class.isArray()
+        int length = Array.getLength(sourceArray);
+        boolean isFlat = true;
+        for (int i = 0; i < length; i++) {
+            Object element = Array.get(sourceArray, i);
+            if (element != null && element.getClass().isArray()) {
+                isFlat = false;
+                break;
+            }
+        }
+        
+        if (isFlat) {
+            // Array is one-dimensional - handle efficiently based on type
+            if (sourceArray instanceof Object[]) {
+                // Object[] - return directly (zero heap allocations!)
+                return (Object[]) sourceArray;
+            } else {
+                // Typed array (String[], int[], etc.) - convert once (minimal heap allocation)
+                Object[] result = new Object[length];
+                for (int i = 0; i < length; i++) {
+                    result[i] = Array.get(sourceArray, i);
+                }
+                return result;
+            }
+        }
+
+        // Array contains nested arrays - use expansion algorithm with level sentinels
+        List<Object> result = new ArrayList<>();
+        result.add(HAS_SENTINELS); // Add flag as first element - this IS the stored key
+        expandWithSentinels(sourceArray, result, 0);
+        return result.toArray(new Object[0]);
+    }
+
+    /**
+     * Recursively expands nested arrays while adding LEVEL_DOWN and LEVEL_UP sentinels
+     * to preserve structural information and prevent hash collisions.
+     * 
+     * @param current the current array or element to process
+     * @param result the list to append expanded elements to
+     * @param level the current nesting level (0 = top level)
+     */
+    private static void expandWithSentinels(Object current, List<Object> result, int level) {
+        if (current == null) {
+            result.add(null);
+            return;
+        }
+        
+        if (!current.getClass().isArray()) {
+            result.add(current);
+            return;
+        }
+        
+        // Add LEVEL_DOWN sentinel for nested arrays (but not for top level)
+        if (level > 0) {
+            result.add(LEVEL_DOWN);
+        }
+        
+        int length = Array.getLength(current);
+        for (int i = 0; i < length; i++) {
+            Object element = Array.get(current, i);
+            expandWithSentinels(element, result, level + 1);
+        }
+        
+        // Add LEVEL_UP sentinel for nested arrays (but not for top level)
+        if (level > 0) {
+            result.add(LEVEL_UP);
+        }
+    }
+
+    /**
+     * Converts any array or collection into a 1D representation with sentinels for structure preservation.
+     * This method handles jagged n-dimensional arrays and polymorphic collections seamlessly.
+     * 
+     * <p>Key behaviors:</p>
+     * <ul>
+     *   <li>1D String[] → returns same array unchanged</li>
+     *   <li>1D int[] → returns same array unchanged</li>
+     *   <li>1D Object[] → returns same array unchanged (unless containing nested structures)</li>
+     *   <li>Multi-dimensional arrays → flattened Object[] with LEVEL_DOWN/LEVEL_UP sentinels</li>
+     *   <li>Collections → converted to array then processed</li>
+     *   <li>Collections containing arrays → fully expanded with sentinels</li>
+     * </ul>
+     * 
+     * @param arrayOrCollection the array, collection, or single object to process
+     * @return 1D representation (Object[] for multi-dimensional, original type for 1D arrays)
+     */
+    public static Object get1DKey(Object arrayOrCollection) {
+        if (arrayOrCollection == null) {
+            return new Object[]{null};
+        }
+        
+        // Handle Collections by converting to array first
+        if (arrayOrCollection instanceof Collection) {
+            Collection<?> collection = (Collection<?>) arrayOrCollection;
+            Object[] arrayFromCollection = collection.toArray();
+            // Recursively process the resulting array
+            return get1DKey(arrayFromCollection);
+        }
+        
+        // If not an array, return single-element array
+        if (!arrayOrCollection.getClass().isArray()) {
+            return new Object[]{arrayOrCollection};
+        }
+        
+        // Check if it's a 1D array of primitives or objects
+        Class<?> componentType = arrayOrCollection.getClass().getComponentType();
+        if (!componentType.isArray()) {
+            // 1D array - check if it contains nested structures for Object[] only
+            if (arrayOrCollection instanceof Object[]) {
+                Object[] objArray = (Object[]) arrayOrCollection;
+                // Check if any element is an array or collection (making it effectively multi-dimensional)
+                for (Object element : objArray) {
+                    if (element != null && (element.getClass().isArray() || element instanceof Collection)) {
+                        // Contains nested structures, need expansion with sentinels
+                        Object[] expanded = expandMultiDimensionalArray(arrayOrCollection);
+                        // expandMultiDimensionalArray already adds HAS_SENTINELS flag
+                        return expanded;
+                    }
+                }
+                // Pure 1D Object[] - return as-is
+                return objArray;
+            } else {
+                // All other 1D arrays (String[], int[], double[], etc.) - return as-is
+                return arrayOrCollection;
+            }
+        }
+        
+        // Multi-dimensional array - use full expansion with sentinels
+        return expandMultiDimensionalArray(arrayOrCollection);
+    }
+    
+    /**
+     * Computes SHA-1 hash from a 1D key (typically returned by get1DKey).
+     * Handles Object[], typed arrays, sentinels and object serialization appropriately.
+     * 
+     * @param key1D the 1D key to hash (can be Object[] or typed array like int[])
+     * @return SHA-1 hash string with "sha1:" prefix
+     */
+    public static String computeSHA1Hash(Object key1D) {
+        if (key1D == null) {
+            return "sha1:" + EncryptionUtilities.calculateSHA1Hash(new byte[0]);
+        }
+        
+        // Handle typed arrays by converting to Object[] for processing
+        Object[] keyArray;
+        if (key1D.getClass().isArray()) {
+            if (key1D instanceof Object[]) {
+                keyArray = (Object[]) key1D;
+            } else {
+                // Convert typed array to Object[]
+                int length = Array.getLength(key1D);
+                keyArray = new Object[length];
+                for (int i = 0; i < length; i++) {
+                    keyArray[i] = Array.get(key1D, i);
+                }
+            }
+        } else {
+            // Single object
+            keyArray = new Object[]{key1D};
+        }
+        
+        if (keyArray.length == 0) {
+            return "sha1:" + EncryptionUtilities.calculateSHA1Hash(new byte[0]);
+        }
+        
+        // Build a deterministic string representation of the key sequence
+        StringBuilder keySequence = new StringBuilder();
+        
+        for (int i = 0; i < keyArray.length; i++) {
+            if (i > 0) {
+                keySequence.append("|"); // Separator to avoid collisions
+            }
+            Object key = keyArray[i];
+            if (key == null) {
+                keySequence.append("NULL");
+            } else if (key == HAS_SENTINELS) {
+                keySequence.append("SENTINELS"); // Include flag - it makes structures unique!
+            } else if (key == LEVEL_DOWN) {
+                keySequence.append("DN"); // Include sentinels - they're what makes structures unique!
+            } else if (key == LEVEL_UP) {
+                keySequence.append("UP"); // Include sentinels - they're what makes structures unique!
+            } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
+                // Primitives and Numbers: use toString() - deterministic
+                keySequence.append(key.toString());
+            } else {
+                // Complex objects: smart handling
+                String str = key.toString();
+                if (str.contains("@") && str.matches(".*@[0-9a-fA-F]+$")) {
+                    // Looks like default Object.toString() format (ClassName@hashCode)
+                    // Use class name + hashCode instead
+                    keySequence.append(key.getClass().getName()).append(":").append(key.hashCode());
+                } else {
+                    // Custom toString() - trust it, but include class name for safety
+                    keySequence.append(key.getClass().getName()).append(":").append(str);
+                }
+            }
+        }
+        
+        // Use EncryptionUtilities for SHA-1 hashing
+        byte[] keyBytes = keySequence.toString().getBytes(StandardCharsets.UTF_8);
+        return "sha1:" + EncryptionUtilities.calculateSHA1Hash(keyBytes);
+    }
+
+    /**
+     * Expands arrays within a sequence of keys. Each element in the keys array
+     * that is itself an array gets expanded and all elements are flattened into 
+     * a single sequence.
+     * 
+     * @param keys Array of key components that may contain nested arrays
+     * @return Flattened array with all nested arrays expanded
+     */
+    private static Object[] expandArraysInKeySequence(Object[] keys) {
+        if (keys == null || keys.length == 0) {
+            return keys;
+        }
+        
+        List<Object> result = new ArrayList<>();
+        for (Object key : keys) {
+            if (key != null && key.getClass().isArray()) {
+                // Expand this nested array and add all its elements
+                Object[] expanded = expandMultiDimensionalArray(key);
+                for (Object element : expanded) {
+                    result.add(element);
+                }
+            } else {
+                // Add non-array elements directly
+                result.add(key);
+            }
+        }
+        
+        return result.toArray(new Object[0]);
+    }
+
+    /**
+     * Internal put implementation that works with typed arrays.
+     * Converts typed array to Object[] with n-dimensional expansion and delegates to putInternal.
+     */
+    private V putInternalFromTypedArray(Object typedArray, V value) {
+        Object[] expandedKeys = expandMultiDimensionalArray(typedArray);
+        return putInternal(expandedKeys, value);
     }
 
     /**
      * Helper method to handle typed arrays (String[], int[], etc.) in remove operations.
-     * Converts typed arrays to Object[] arrays using reflection to avoid ClassCastException.
+     * Converts typed arrays to Object[] with n-dimensional expansion and delegates to removeInternal.
      */
     private V removeInternalFromTypedArray(Object typedArray) {
-        int length = Array.getLength(typedArray);
-        Object[] keys = new Object[length];
-
-        for (int i = 0; i < length; i++) {
-            keys[i] = Array.get(typedArray, i);
-        }
-
-        return removeInternal(keys);
+        Object[] expandedKeys = expandMultiDimensionalArray(typedArray);
+        return removeInternal(expandedKeys);
     }
 
     /**
@@ -1349,7 +1645,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param keys the key components (can be varargs)
      * @return the previous value associated with the key, or null if there was no mapping
      */
-    public V remove(Object... keys) {
+    public V removeMultiKey(Object... keys) {
         // Special case: when remove(null) is called on varargs method, Java passes keys=null
         // We need to handle single null key directly
         if (keys == null) {
@@ -1415,11 +1711,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private V removeFromCollection(Collection<?> collection) {
         switch (collectionKeyMode) {
-            case MULTI_KEY_ONLY:
+            case COLLECTIONS_EXPANDED:
                 return removeFromCollectionMultiKeyOnly(collection);
-            case MULTI_KEY_FIRST:
-                return removeFromCollectionMultiKeyFirst(collection);
-            case COLLECTION_KEY_FIRST:
+            case COLLECTIONS_NOT_EXPANDED:
                 return removeFromCollectionKeyFirst(collection);
             default:
                 throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
@@ -1739,12 +2033,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Internal remove implementation that works with Object[] keys.
      */
     private V removeInternal(Object[] keys) {
-        int hash = computeHash(keys);
+        // Apply n-dimensional array expansion to the keys array
+        Object[] expandedKeys = expandArraysInKeySequence(keys);
+        int hash = computeHash(expandedKeys);
         ReentrantLock lock = getStripeLock(hash);
 
         lock.lock();
         try {
-            return removeInternalNoLock(keys);
+            return removeInternalNoLock(expandedKeys);
         } finally {
             lock.unlock();
         }
@@ -1756,7 +2052,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param keys the key components (can be varargs)
      * @return true if a mapping exists for the key
      */
-    public boolean containsKey(Object... keys) {
+    public boolean containsMultiKey(Object... keys) {
         // Special case: when containsKey(null) is called on varargs method, Java passes keys=null
         // We need to handle single null key directly
         if (keys == null) {
@@ -1794,7 +2090,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Actually checks for key existence, not just non-null values.
      */
     private boolean containsKeyInternal(Object[] keys) {
-        int hash = computeHash(keys);
+        // Apply n-dimensional array expansion to the keys array
+        Object[] expandedKeys = expandArraysInKeySequence(keys);
+        int hash = computeHash(expandedKeys);
         int bucketIndex = hash & (buckets.length - 1);
 
         @SuppressWarnings("unchecked")
@@ -1805,7 +2103,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         for (MultiKey<V> existing : chain) {
-            if (existing.hash == hash && keysMatch(existing.keys, keys)) {
+            if (existing.hash == hash && keysMatch(existing.keys, expandedKeys)) {
                 return true;
             }
         }
@@ -1816,14 +2114,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Internal containsKey implementation for typed arrays.
      */
     private boolean containsKeyFromTypedArray(Object typedArray) {
-        int length = Array.getLength(typedArray);
-        Object[] keys = new Object[length];
-
-        for (int i = 0; i < length; i++) {
-            keys[i] = Array.get(typedArray, i);
-        }
-
-        return containsKeyInternal(keys);
+        Object[] expandedKeys = expandMultiDimensionalArray(typedArray);
+        return containsKeyInternal(expandedKeys);
     }
 
     /**
@@ -1847,11 +2139,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return false;
         }
 
-        if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_ONLY) {
+        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_EXPANDED) {
             return containsKeyFromCollectionAsMultiKey(collection);
-        } else if (collectionKeyMode == CollectionKeyMode.MULTI_KEY_FIRST) {
-            return containsKeyFromCollectionMultiFirst(collection);
-        } else { // COLLECTION_KEY_FIRST
+        } else { // COLLECTIONS_NOT_EXPANDED
             return containsKeyFromCollectionCollectionFirst(collection);
         }
     }

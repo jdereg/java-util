@@ -1,5 +1,27 @@
 ### Revision History
 #### 3.7.0 (Unreleased)
+> * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:
+>   * **N-Dimensional Array Expansion**: Nested arrays of any depth are automatically flattened recursively into multi-keys with sentinel preservation
+>   * **Visual Notation**: `{{"a", "b"}, {"c", "d"}} → [SENTINELS, DN, "a", "b", UP, DN, "c", "d", UP]` - powerful structural preservation
+>   * **Iterative Processing**: Uses stack-based approach to avoid recursion limits with deeply nested arrays
+>   * **Universal Support**: Works with jagged arrays, mixed types, null elements, and empty sub-arrays
+>   * **API Consistency**: Full support across all MultiKeyMap APIs (put/get/containsKey/remove and putMultiKey/getMultiKey/removeMultiKey/containsMultiKey)
+>   * **Comprehensive Testing**: 13 test cases covering 2D/3D arrays, mixed types, jagged arrays, deep nesting, and edge cases
+> * **SECURITY ENHANCEMENT**: Enhanced `TrackingMap` with SHA-1 based key tracking to eliminate array component ambiguity:
+>   * **Ambiguity Resolution**: Different array structures `[[a,b],[c,d]]` vs `[a,b,c,d]` now track distinctly using SHA-1 hashes
+>   * **Structural Sentinels**: Added `LEVEL_DOWN`/`LEVEL_UP`/`HAS_SENTINELS` objects to preserve array nesting information
+>   * **Hash-Based Tracking**: Multi-dimensional arrays tracked via SHA-1 hash of expanded sentinel structure
+>   * **Performance Optimized**: O(1) sentinel detection using `HAS_SENTINELS` flag, shorter string representations for speed
+>   * **Clean APIs**: `MultiKeyMap.get1DKey()` and `computeSHA1Hash()` provide focused functionality for TrackingMap
+> * **API ENHANCEMENT**: Updated `MultiKeyMap` varargs method names for disambiguation:
+>   * **Renamed Methods**: `put()` → `putMultiKey()`, `get()` → `getMultiKey()`, `remove()` → `removeMultiKey()`, `containsKey()` → `containsMultiKey()`
+>   * **Backward Compatibility**: Standard Map interface methods (single key) remain unchanged
+>   * **Documentation Updated**: README.md, userguide.md, and Javadoc all reflect correct API usage
+> * **ENUM SIMPLIFICATION**: Streamlined `MultiKeyMap.CollectionKeyMode` from 3 to 2 values:
+>   * **Simplified Options**: `COLLECTIONS_EXPANDED` (default) and `COLLECTIONS_NOT_EXPANDED`
+>   * **Clear Behavior**: Arrays are ALWAYS expanded regardless of setting; enum only affects Collections
+>   * **Constructor Support**: Enhanced constructors to accept `CollectionKeyMode` parameter for configuration
+>   * **Documentation Clarity**: Updated all documentation to reflect simplified enum behavior
 #### 3.6.0
 > * **MAJOR FEATURE**: Added many additional types to `Converter`, expanding conversion capability (1,700+ total conversion pairs):
 >   * **Atomic Arrays**: Added full bidirectional conversion support for `AtomicIntegerArray`, `AtomicLongArray`, and `AtomicReferenceArray`

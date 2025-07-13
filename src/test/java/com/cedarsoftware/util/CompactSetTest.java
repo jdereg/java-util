@@ -398,7 +398,7 @@ class CompactSetTest
         {
             for (int i = lower; i < upper; i++)
             {
-                CompactSet<String> set = CompactSet.<String>builder().caseSensitive(true).compactSize(i).build();
+                CompactSet<String> set = new CompactLinkedSet<>();
 
                 long start = System.nanoTime();
                 // ===== Timed
@@ -412,7 +412,7 @@ class CompactSetTest
                     set.add("" + j);
                 }
 
-                Iterator iter = set.iterator();
+                Iterator<String> iter = set.iterator();
                 while (iter.hasNext())
                 {
                     iter.next();
@@ -436,7 +436,7 @@ class CompactSetTest
                 set2.contains("" + i);
             }
 
-            Iterator iter = set2.iterator();
+            Iterator<String> iter = set2.iterator();
             while (iter.hasNext())
             {
                 iter.next();

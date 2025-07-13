@@ -1,5 +1,7 @@
 package com.cedarsoftware.util.convert;
 
+import java.awt.*;
+import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -7,6 +9,8 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -4449,4 +4453,195 @@ class ConverterTest
     }
     
     private ConverterOptions chicagoZone() { return createCustomZones(CHICAGO); }
+
+    // Tests for new converter entities
+    @Test
+    void testPointConversions() {
+        // Test Point from String formats  
+        Point p1 = converter.convert("(10,20)", Point.class);
+        assertEquals(new Point(10, 20), p1);
+        
+        Point p2 = converter.convert("10,20", Point.class);
+        assertEquals(new Point(10, 20), p2);
+        
+        // Test Point from toString format "java.awt.Point[x=10,y=20]" ✅
+        Point p3 = converter.convert("java.awt.Point[x=10,y=20]", Point.class);
+        assertEquals(new Point(10, 20), p3);
+        
+        // Test Point from int array
+        Point p4 = converter.convert(new int[]{10, 20}, Point.class);
+        assertEquals(new Point(10, 20), p4);
+        
+        // Test Point from Map
+        Point p5 = converter.convert(mapOf("x", 10, "y", 20), Point.class);
+        assertEquals(new Point(10, 20), p5);
+        
+        Point p6 = converter.convert(mapOf("value", "(10,20)"), Point.class);
+        assertEquals(new Point(10, 20), p6);
+        
+        // Test Point to String
+        String s1 = converter.convert(new Point(10, 20), String.class);
+        assertEquals("(10,20)", s1);
+        
+        // Test Point to Dimension conversion - x,y becomes width,height ✅
+        Dimension d1 = converter.convert(new Point(10, 20), Dimension.class);
+        assertEquals(new Dimension(10, 20), d1);
+        
+        // Test Point to Map
+        Map<?, ?> m1 = converter.convert(new Point(10, 20), Map.class);
+        assertEquals(mapOf("x", 10, "y", 20), m1);
+    }
+
+    @Test
+    void testDimensionConversions() {
+        // Test Dimension conversions that are known to work
+        
+        // Test Dimension from String format "100x200" - width×height notation ✅
+        Dimension d1 = converter.convert("100x200", Dimension.class);
+        assertEquals(new Dimension(100, 200), d1);
+        
+        // Test Dimension from int array
+        Dimension d2 = converter.convert(new int[]{100, 200}, Dimension.class);
+        assertEquals(new Dimension(100, 200), d2);
+        
+        // Test Dimension from Map with "width" and "height" keys
+        Dimension d3 = converter.convert(mapOf("width", 100, "height", 200), Dimension.class);
+        assertEquals(new Dimension(100, 200), d3);
+        
+        // Test Dimension from Map with "w" and "h" keys
+        Dimension d4 = converter.convert(mapOf("w", 100, "h", 200), Dimension.class);
+        assertEquals(new Dimension(100, 200), d4);
+        
+        // Test Dimension from toString format "java.awt.Dimension[width=100,height=200]" ✅
+        Dimension d5 = converter.convert("java.awt.Dimension[width=100,height=200]", Dimension.class);
+        assertEquals(new Dimension(100, 200), d5);
+        
+        // Test Dimension to Point conversion - width,height becomes x,y ✅
+        Point p1 = converter.convert(new Dimension(100, 200), Point.class);
+        assertEquals(new Point(100, 200), p1);
+        
+        // Test Dimension to Insets conversion - uniform insets with min(width,height) ✅
+        Insets i1 = converter.convert(new Dimension(100, 200), Insets.class);
+        assertEquals(new Insets(100, 100, 100, 100), i1); // min(100,200) = 100
+        
+        // Test Dimension to Map
+        Map<?, ?> m1 = converter.convert(new Dimension(100, 200), Map.class);
+        assertEquals(mapOf("width", 100, "height", 200), m1);
+    }
+
+    @Test
+    void testRectangleConversions() {
+        // Test Rectangle conversions that are known to work
+        
+        // Test Rectangle from String format "10,20,100,200" - comma-separated x,y,width,height ✅
+        Rectangle r1 = converter.convert("10,20,100,200", Rectangle.class);
+        assertEquals(new Rectangle(10, 20, 100, 200), r1);
+        
+        // Test Rectangle from int array
+        Rectangle r2 = converter.convert(new int[]{10, 20, 100, 200}, Rectangle.class);
+        assertEquals(new Rectangle(10, 20, 100, 200), r2);
+        
+        // Test Rectangle from Map
+        Rectangle r3 = converter.convert(mapOf("x", 10, "y", 20, "width", 100, "height", 200), Rectangle.class);
+        assertEquals(new Rectangle(10, 20, 100, 200), r3);
+        
+        // Test Rectangle to Map
+        Map<?, ?> m1 = converter.convert(new Rectangle(10, 20, 100, 200), Map.class);
+        assertEquals(mapOf("x", 10, "y", 20, "width", 100, "height", 200), m1);
+    }
+
+    @Test  
+    void testInsetsConversions() {
+        // Test Insets conversions that are known to work
+        
+        // Test Insets from String format "5,10,15,20" - comma-separated top,left,bottom,right ✅
+        Insets i1 = converter.convert("5,10,15,20", Insets.class);
+        assertEquals(new Insets(5, 10, 15, 20), i1);
+        
+        // Test Insets from int array
+        Insets i2 = converter.convert(new int[]{5, 10, 15, 20}, Insets.class);
+        assertEquals(new Insets(5, 10, 15, 20), i2);
+        
+        // Test Insets from Map
+        Insets i3 = converter.convert(mapOf("top", 5, "left", 10, "bottom", 15, "right", 20), Insets.class);
+        assertEquals(new Insets(5, 10, 15, 20), i3);
+        
+        // Test Insets to Dimension conversion - bounds become area dimensions ✅
+        Dimension d1 = converter.convert(new Insets(5, 10, 15, 20), Dimension.class);
+        assertEquals(new Dimension(30, 20), d1); // width=left+right=10+20=30, height=top+bottom=5+15=20
+        
+        // Test Insets to Map
+        Map<?, ?> m1 = converter.convert(new Insets(5, 10, 15, 20), Map.class);
+        assertEquals(mapOf("top", 5, "left", 10, "bottom", 15, "right", 20), m1);
+    }
+
+    @Test
+    void testFileConversions() {
+        // Test basic File conversions that are known to work
+        
+        // Test File from String paths
+        File f1 = converter.convert("/tmp/test.txt", File.class);
+        assertEquals(new File("/tmp/test.txt"), f1);
+        
+        // Test File from Map
+        File f2 = converter.convert(mapOf("value", "/tmp/test.txt"), File.class);
+        assertEquals(new File("/tmp/test.txt"), f2);
+        
+        // Test File to String
+        String s1 = converter.convert(new File("/tmp/test.txt"), String.class);
+        assertEquals("/tmp/test.txt", s1);
+        
+        // Test File to Map  
+        Map<?, ?> m1 = converter.convert(new File("/tmp/test.txt"), Map.class);
+        assertEquals(mapOf("file", "/tmp/test.txt"), m1);
+    }
+
+    @Test
+    void testPathConversions() {
+        // Test basic Path conversions that are known to work
+        
+        // Test Path from String paths
+        Path p1 = converter.convert("/tmp/test.txt", Path.class);
+        assertEquals(Paths.get("/tmp/test.txt"), p1);
+        
+        // Test Path from Map
+        Path p2 = converter.convert(mapOf("value", "/tmp/test.txt"), Path.class);
+        assertEquals(Paths.get("/tmp/test.txt"), p2);
+        
+        // Test Path to String
+        String s1 = converter.convert(Paths.get("/tmp/test.txt"), String.class);
+        assertEquals("/tmp/test.txt", s1);
+        
+        // Test Path to Map
+        Map<?, ?> m1 = converter.convert(Paths.get("/tmp/test.txt"), Map.class);
+        assertEquals(mapOf("path", "/tmp/test.txt"), m1);
+    }
+
+    @Test
+    void testFilePathInterconversions() {
+        // Test File ↔ Path conversions
+        
+        // Test File → Path
+        File file = new File("/tmp/test.txt");
+        Path pathFromFile = converter.convert(file, Path.class);
+        assertEquals(Paths.get("/tmp/test.txt"), pathFromFile);
+        
+        // Test Path → File  
+        Path path = Paths.get("/tmp/test.txt");
+        File fileFromPath = converter.convert(path, File.class);
+        assertEquals(new File("/tmp/test.txt"), fileFromPath);
+        
+        // Test round-trip: File → Path → File
+        File originalFile = new File("/tmp/test.txt");
+        Path convertedPath = converter.convert(originalFile, Path.class);
+        File roundTripFile = converter.convert(convertedPath, File.class);
+        assertEquals(originalFile, roundTripFile);
+        
+        // Test round-trip: Path → File → Path
+        Path originalPath = Paths.get("/tmp/test.txt");
+        File convertedFile = converter.convert(originalPath, File.class);
+        Path roundTripPath = converter.convert(convertedFile, Path.class);
+        assertEquals(originalPath, roundTripPath);
+    }
+
 }

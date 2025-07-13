@@ -11,8 +11,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import com.cedarsoftware.util.convert.DefaultConverterOptions;
+import com.cedarsoftware.util.LoggingConfig;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *         limitations under the License.
  */
 class InsetsConversionsTest {
+
+    private static final Logger LOG = Logger.getLogger(InsetsConversionsTest.class.getName());
+    static {
+        LoggingConfig.init();
+    }
 
     private Converter converter;
 
@@ -136,6 +143,33 @@ class InsetsConversionsTest {
         assertThatThrownBy(() -> converter.convert("10,20,30", Insets.class))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unable to parse insets from string");
+    }
+
+    @Test
+    void testStringToInsets_nativeToStringFormat() {
+        Insets result = converter.convert("java.awt.Insets[top=5,left=10,bottom=15,right=20]", Insets.class);
+        assertThat(result.top).isEqualTo(5);
+        assertThat(result.left).isEqualTo(10);
+        assertThat(result.bottom).isEqualTo(15);
+        assertThat(result.right).isEqualTo(20);
+    }
+
+    @Test
+    void testStringToInsets_nativeToStringFormat_withWhitespace() {
+        Insets result = converter.convert("  java.awt.Insets[top=8,left=12,bottom=16,right=24]  ", Insets.class);
+        assertThat(result.top).isEqualTo(8);
+        assertThat(result.left).isEqualTo(12);
+        assertThat(result.bottom).isEqualTo(16);
+        assertThat(result.right).isEqualTo(24);
+    }
+
+    @Test
+    void testStringToInsets_nativeToStringFormat_negativeValues() {
+        Insets result = converter.convert("java.awt.Insets[top=-5,left=-10,bottom=15,right=20]", Insets.class);
+        assertThat(result.top).isEqualTo(-5);
+        assertThat(result.left).isEqualTo(-10);
+        assertThat(result.bottom).isEqualTo(15);
+        assertThat(result.right).isEqualTo(20);
     }
 
     // ========================================
@@ -365,6 +399,29 @@ class InsetsConversionsTest {
         assertThat(result).isEqualTo("(5,10,15,20)");
     }
 
+    @Test
+    void testInsetsToStringFormat_actualJavaFormat() {
+        // Test to see what the actual toString() format of java.awt.Insets looks like
+        Insets insets = new Insets(5, 10, 15, 20);
+        String actualToString = insets.toString();
+        
+        // Log the actual format for documentation
+        LOG.info("Actual Insets.toString() format: " + actualToString);
+        
+        // Test if the current converter can parse this format back to Insets
+        try {
+            Insets parsedBack = converter.convert(actualToString, Insets.class);
+            assertThat(parsedBack.top).isEqualTo(5);
+            assertThat(parsedBack.left).isEqualTo(10);
+            assertThat(parsedBack.bottom).isEqualTo(15);
+            assertThat(parsedBack.right).isEqualTo(20);
+            LOG.info("SUCCESS: Converter can parse the native toString() format!");
+        } catch (Exception e) {
+            LOG.warning("INFO: Converter cannot parse the native toString() format: " + e.getMessage());
+            // This is expected if the format is not supported yet
+        }
+    }
+
     // ========================================
     // Insets to Integer Tests (Sum)
     // ========================================
@@ -535,13 +592,16 @@ class InsetsConversionsTest {
     // ========================================
 
     @Test
-    void testInsetsPointRoundTrip() {
+    void testInsetsPointConversion() {
         Insets originalInsets = new Insets(15, 25, 0, 0);
         
-        // Insets -> Point -> Insets (round-trip preserves top/left since bottom/right were 0)
+        // Insets -> Point works (top becomes x, left becomes y)
         Point point = converter.convert(originalInsets, Point.class);
-        Insets backToInsets = converter.convert(point, Insets.class);
+        assertThat(point.x).isEqualTo(15);
+        assertThat(point.y).isEqualTo(25);
         
+        // Point -> Insets round-trip (preserves top/left since bottom/right were 0)
+        Insets backToInsets = converter.convert(point, Insets.class);
         assertThat(backToInsets.top).isEqualTo(originalInsets.top);
         assertThat(backToInsets.left).isEqualTo(originalInsets.left);
         assertThat(backToInsets.bottom).isEqualTo(0); // Point -> Insets always sets bottom to 0
@@ -562,6 +622,23 @@ class InsetsConversionsTest {
         assertThat(backToInsets.left).isEqualTo(expectedValue);
         assertThat(backToInsets.bottom).isEqualTo(expectedValue);
         assertThat(backToInsets.right).isEqualTo(expectedValue);
+    }
+
+    @Test
+    void testInsetsNativeToStringRoundTrip() {
+        Insets originalInsets = new Insets(5, 10, 15, 20);
+        
+        // Get the native toString() format
+        String nativeString = originalInsets.toString();
+        
+        // Convert back to Insets using the native format
+        Insets parsedInsets = converter.convert(nativeString, Insets.class);
+        
+        // Verify round-trip works perfectly
+        assertThat(parsedInsets.top).isEqualTo(originalInsets.top);
+        assertThat(parsedInsets.left).isEqualTo(originalInsets.left);
+        assertThat(parsedInsets.bottom).isEqualTo(originalInsets.bottom);
+        assertThat(parsedInsets.right).isEqualTo(originalInsets.right);
     }
 
     // ========================================

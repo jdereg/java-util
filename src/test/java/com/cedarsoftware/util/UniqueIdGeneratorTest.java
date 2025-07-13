@@ -8,9 +8,12 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+
+import com.cedarsoftware.util.LoggingConfig;
 
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate;
 import static com.cedarsoftware.util.UniqueIdGenerator.getDate19;
@@ -20,7 +23,6 @@ import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId;
 import static com.cedarsoftware.util.UniqueIdGenerator.getUniqueId19;
 import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
-import static java.lang.System.out;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,6 +45,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class UniqueIdGeneratorTest
 {
+    private static final Logger LOG = Logger.getLogger(UniqueIdGeneratorTest.class.getName());
+    static {
+        LoggingConfig.init();
+    }
+
     private static final int bucketSize = 200000;
 
     @Test
@@ -132,7 +139,7 @@ public class UniqueIdGeneratorTest
             UniqueIdGenerator.getUniqueId19();
             count++;
         }
-        out.println("count = " + count);
+        LOG.info("count = " + count);
     }
 
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
@@ -194,7 +201,7 @@ public class UniqueIdGeneratorTest
         await(finishedLatch);   // wait for all threads to finish
         
         long end = System.nanoTime();
-        out.println("(end - start) / 1000000.0 = " + (end - start) / 1000000.0);
+        LOG.info("(end - start) / 1000000.0 = " + (end - start) / 1000000.0);
 
         assertMonotonicallyIncreasing(bucket1.toArray(new Long[]{}));
         assertMonotonicallyIncreasing(bucket2.toArray(new Long[]{}));

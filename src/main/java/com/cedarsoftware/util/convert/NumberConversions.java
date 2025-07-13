@@ -454,6 +454,16 @@ final class NumberConversions {
     }
 
     /**
+     * Convert null/void to Year 0 (the "zero" point for Year).
+     * @param from null/void value
+     * @param converter Converter instance
+     * @return Year.of(0)
+     */
+    static Year nullToYear(Object from, Converter converter) {
+        return Year.of(0);
+    }
+
+    /**
      * Convert Number to java.awt.Color. Treats the number as a packed RGB or ARGB value.
      * @param from Number (Integer, Long, etc.) representing packed RGB value
      * @param converter Converter instance

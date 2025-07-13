@@ -629,9 +629,9 @@ final class StringConversions {
 
     static Year toYear(Object from, Converter converter) {
         String str = (String) from;
+        str = StringUtilities.trimToNull(str);
         try {
-            str = StringUtilities.trimToNull(str);
-            return Year.of(Integer.parseInt(str));
+            return Year.of(converter.convert(str, int.class));
         } catch (Exception e) {
             try {
                 ZonedDateTime zdt = toZonedDateTime(from, converter);
@@ -733,9 +733,9 @@ final class StringConversions {
             String[] components = values.split(",");
             if (components.length == 3) {
                 try {
-                    int r = Integer.parseInt(components[0].trim());
-                    int g = Integer.parseInt(components[1].trim());
-                    int b = Integer.parseInt(components[2].trim());
+                    int r = converter.convert(components[0].trim(), int.class);
+                    int g = converter.convert(components[1].trim(), int.class);
+                    int b = converter.convert(components[2].trim(), int.class);
                     return new Color(r, g, b);
                 } catch (NumberFormatException e) {
                     // Fall through to error
@@ -749,10 +749,10 @@ final class StringConversions {
             String[] components = values.split(",");
             if (components.length == 4) {
                 try {
-                    int r = Integer.parseInt(components[0].trim());
-                    int g = Integer.parseInt(components[1].trim());
-                    int b = Integer.parseInt(components[2].trim());
-                    int a = Integer.parseInt(components[3].trim());
+                    int r = converter.convert(components[0].trim(), int.class);
+                    int g = converter.convert(components[1].trim(), int.class);
+                    int b = converter.convert(components[2].trim(), int.class);
+                    int a = converter.convert(components[3].trim(), int.class);
                     return new Color(r, g, b, a);
                 } catch (NumberFormatException e) {
                     // Fall through to error
@@ -781,13 +781,41 @@ final class StringConversions {
             throw new IllegalArgumentException("Cannot convert empty/null string to Dimension");
         }
 
+        // Try "java.awt.Dimension[width=100,height=200]" format (toString format) - check this FIRST
+        if (str.startsWith("java.awt.Dimension[") && str.endsWith("]")) {
+            String content = str.substring(19, str.length() - 1); // Remove "java.awt.Dimension[" and "]"
+            String[] parts = content.split(",");
+            if (parts.length == 2) {
+                String widthPart = parts[0].trim();
+                String heightPart = parts[1].trim();
+                
+                // Extract width value: "width=100" -> "100"
+                if (widthPart.startsWith("width=")) {
+                    String widthValue = widthPart.substring(6).trim();
+                    int width = converter.convert(widthValue, int.class);
+                    
+                    // Extract height value: "height=200" -> "200"
+                    if (heightPart.startsWith("height=")) {
+                        String heightValue = heightPart.substring(7).trim();
+                        int height = converter.convert(heightValue, int.class);
+                        return new Dimension(width, height);
+                    }
+                }
+            }
+        }
+
+        // Remove parentheses if present: "(100,200)" -> "100,200"
+        if (str.startsWith("(") && str.endsWith(")")) {
+            str = str.substring(1, str.length() - 1).trim();
+        }
+
         // Try "800x600" format (most common)
         if (str.contains("x")) {
             String[] components = str.split("x");
             if (components.length == 2) {
                 try {
-                    int width = Integer.parseInt(components[0].trim());
-                    int height = Integer.parseInt(components[1].trim());
+                    int width = converter.convert(components[0].trim(), int.class);
+                    int height = converter.convert(components[1].trim(), int.class);
                     return new Dimension(width, height);
                 } catch (NumberFormatException e) {
                     // Fall through to try other formats
@@ -800,8 +828,8 @@ final class StringConversions {
             String[] components = str.split(",");
             if (components.length == 2) {
                 try {
-                    int width = Integer.parseInt(components[0].trim());
-                    int height = Integer.parseInt(components[1].trim());
+                    int width = converter.convert(components[0].trim(), int.class);
+                    int height = converter.convert(components[1].trim(), int.class);
                     return new Dimension(width, height);
                 } catch (NumberFormatException e) {
                     // Fall through to try other formats
@@ -814,8 +842,8 @@ final class StringConversions {
             String[] components = str.split("\\s+");
             if (components.length == 2) {
                 try {
-                    int width = Integer.parseInt(components[0].trim());
-                    int height = Integer.parseInt(components[1].trim());
+                    int width = converter.convert(components[0].trim(), int.class);
+                    int height = converter.convert(components[1].trim(), int.class);
                     return new Dimension(width, height);
                 } catch (NumberFormatException e) {
                     // Fall through to error
@@ -844,6 +872,29 @@ final class StringConversions {
             throw new IllegalArgumentException("Cannot convert empty/null string to Point");
         }
 
+        // Try "java.awt.Point[x=10,y=20]" format (toString format) - check this FIRST
+        if (str.startsWith("java.awt.Point[") && str.endsWith("]")) {
+            String content = str.substring(15, str.length() - 1); // Remove "java.awt.Point[" and "]"
+            String[] parts = content.split(",");
+            if (parts.length == 2) {
+                String xPart = parts[0].trim();
+                String yPart = parts[1].trim();
+                
+                // Extract x value: "x=10" -> "10"
+                if (xPart.startsWith("x=")) {
+                    String xValue = xPart.substring(2).trim();
+                    int x = converter.convert(xValue, int.class);
+                    
+                    // Extract y value: "y=20" -> "20"
+                    if (yPart.startsWith("y=")) {
+                        String yValue = yPart.substring(2).trim();
+                        int y = converter.convert(yValue, int.class);
+                        return new Point(x, y);
+                    }
+                }
+            }
+        }
+
         // Remove parentheses if present: "(100,200)" -> "100,200"
         if (str.startsWith("(") && str.endsWith(")")) {
             str = str.substring(1, str.length() - 1).trim();
@@ -853,13 +904,9 @@ final class StringConversions {
         if (str.contains(",")) {
             String[] components = str.split(",");
             if (components.length == 2) {
-                try {
-                    int x = Integer.parseInt(components[0].trim());
-                    int y = Integer.parseInt(components[1].trim());
-                    return new Point(x, y);
-                } catch (NumberFormatException e) {
-                    // Fall through to try other formats
-                }
+                int x = converter.convert(components[0].trim(), int.class);
+                int y = converter.convert(components[1].trim(), int.class);
+                return new Point(x, y);
             }
         }
         
@@ -867,13 +914,9 @@ final class StringConversions {
         if (str.contains(" ")) {
             String[] components = str.split("\\s+");
             if (components.length == 2) {
-                try {
-                    int x = Integer.parseInt(components[0].trim());
-                    int y = Integer.parseInt(components[1].trim());
-                    return new Point(x, y);
-                } catch (NumberFormatException e) {
-                    // Fall through to error
-                }
+                int x = converter.convert(components[0].trim(), int.class);
+                int y = converter.convert(components[1].trim(), int.class);
+                return new Point(x, y);
             }
         }
 
@@ -882,6 +925,7 @@ final class StringConversions {
 
     /**
      * Convert String to Rectangle. Supports formats like:
+     * - "java.awt.Rectangle[x=10,y=20,width=100,height=200]" (toString format)
      * - "(10,20,100,50)" (parentheses with commas)
      * - "10,20,100,50" (comma-separated)
      * - "10 20 100 50" (space-separated)
@@ -898,6 +942,47 @@ final class StringConversions {
             throw new IllegalArgumentException("Cannot convert empty/null string to Rectangle");
         }
 
+        // Try "java.awt.Rectangle[x=10,y=20,width=100,height=200]" format (toString format) - check this FIRST
+        if (str.startsWith("java.awt.Rectangle[") && str.endsWith("]")) {
+            String content = str.substring(19, str.length() - 1); // Remove "java.awt.Rectangle[" and "]"
+            String[] parts = content.split(",");
+            if (parts.length == 4) {
+                try {
+                    String xPart = parts[0].trim();
+                    String yPart = parts[1].trim();
+                    String widthPart = parts[2].trim();
+                    String heightPart = parts[3].trim();
+                    
+                    // Extract x value: "x=10" -> "10"
+                    if (xPart.startsWith("x=")) {
+                        String xValue = xPart.substring(2).trim();
+                        int x = converter.convert(xValue, int.class);
+                        
+                        // Extract y value: "y=20" -> "20"
+                        if (yPart.startsWith("y=")) {
+                            String yValue = yPart.substring(2).trim();
+                            int y = converter.convert(yValue, int.class);
+                            
+                            // Extract width value: "width=100" -> "100"
+                            if (widthPart.startsWith("width=")) {
+                                String widthValue = widthPart.substring(6).trim();
+                                int width = converter.convert(widthValue, int.class);
+                                
+                                // Extract height value: "height=200" -> "200"
+                                if (heightPart.startsWith("height=")) {
+                                    String heightValue = heightPart.substring(7).trim();
+                                    int height = converter.convert(heightValue, int.class);
+                                    return new Rectangle(x, y, width, height);
+                                }
+                            }
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    // Fall through to try other formats
+                }
+            }
+        }
+
         // Remove parentheses if present: "(10,20,100,50)" -> "10,20,100,50"
         if (str.startsWith("(") && str.endsWith(")")) {
             str = str.substring(1, str.length() - 1).trim();
@@ -908,10 +993,10 @@ final class StringConversions {
             String[] components = str.split(",");
             if (components.length == 4) {
                 try {
-                    int x = Integer.parseInt(components[0].trim());
-                    int y = Integer.parseInt(components[1].trim());
-                    int width = Integer.parseInt(components[2].trim());
-                    int height = Integer.parseInt(components[3].trim());
+                    int x = converter.convert(components[0].trim(), int.class);
+                    int y = converter.convert(components[1].trim(), int.class);
+                    int width = converter.convert(components[2].trim(), int.class);
+                    int height = converter.convert(components[3].trim(), int.class);
                     return new Rectangle(x, y, width, height);
                 } catch (NumberFormatException e) {
                     // Fall through to try other formats
@@ -924,10 +1009,10 @@ final class StringConversions {
             String[] components = str.split("\\s+");
             if (components.length == 4) {
                 try {
-                    int x = Integer.parseInt(components[0].trim());
-                    int y = Integer.parseInt(components[1].trim());
-                    int width = Integer.parseInt(components[2].trim());
-                    int height = Integer.parseInt(components[3].trim());
+                    int x = converter.convert(components[0].trim(), int.class);
+                    int y = converter.convert(components[1].trim(), int.class);
+                    int width = converter.convert(components[2].trim(), int.class);
+                    int height = converter.convert(components[3].trim(), int.class);
                     return new Rectangle(x, y, width, height);
                 } catch (NumberFormatException e) {
                     // Fall through to error
@@ -940,6 +1025,7 @@ final class StringConversions {
 
     /**
      * Convert String to Insets. Supports formats like:
+     * - "java.awt.Insets[top=5,left=10,bottom=15,right=20]" (toString format)
      * - "(5,10,5,10)" (parentheses with commas)
      * - "5,10,5,10" (comma-separated)
      * - "5 10 5 10" (space-separated)
@@ -956,6 +1042,47 @@ final class StringConversions {
             throw new IllegalArgumentException("Cannot convert empty/null string to Insets");
         }
 
+        // Try "java.awt.Insets[top=5,left=10,bottom=15,right=20]" format (toString format) - check this FIRST
+        if (str.startsWith("java.awt.Insets[") && str.endsWith("]")) {
+            String content = str.substring(16, str.length() - 1); // Remove "java.awt.Insets[" and "]"
+            String[] parts = content.split(",");
+            if (parts.length == 4) {
+                try {
+                    String topPart = parts[0].trim();
+                    String leftPart = parts[1].trim();
+                    String bottomPart = parts[2].trim();
+                    String rightPart = parts[3].trim();
+                    
+                    // Extract top value: "top=5" -> "5"
+                    if (topPart.startsWith("top=")) {
+                        String topValue = topPart.substring(4).trim();
+                        int top = converter.convert(topValue, int.class);
+                        
+                        // Extract left value: "left=10" -> "10"
+                        if (leftPart.startsWith("left=")) {
+                            String leftValue = leftPart.substring(5).trim();
+                            int left = converter.convert(leftValue, int.class);
+                            
+                            // Extract bottom value: "bottom=15" -> "15"
+                            if (bottomPart.startsWith("bottom=")) {
+                                String bottomValue = bottomPart.substring(7).trim();
+                                int bottom = converter.convert(bottomValue, int.class);
+                                
+                                // Extract right value: "right=20" -> "20"
+                                if (rightPart.startsWith("right=")) {
+                                    String rightValue = rightPart.substring(6).trim();
+                                    int right = converter.convert(rightValue, int.class);
+                                    return new Insets(top, left, bottom, right);
+                                }
+                            }
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Unable to parse insets from string: " + from, e);
+                }
+            }
+        }
+
         // Remove parentheses if present: "(5,10,5,10)" -> "5,10,5,10"
         if (str.startsWith("(") && str.endsWith(")")) {
             str = str.substring(1, str.length() - 1).trim();
@@ -966,13 +1093,13 @@ final class StringConversions {
             String[] components = str.split(",");
             if (components.length == 4) {
                 try {
-                    int top = Integer.parseInt(components[0].trim());
-                    int left = Integer.parseInt(components[1].trim());
-                    int bottom = Integer.parseInt(components[2].trim());
-                    int right = Integer.parseInt(components[3].trim());
+                    int top = converter.convert(components[0].trim(), int.class);
+                    int left = converter.convert(components[1].trim(), int.class);
+                    int bottom = converter.convert(components[2].trim(), int.class);
+                    int right = converter.convert(components[3].trim(), int.class);
                     return new Insets(top, left, bottom, right);
                 } catch (NumberFormatException e) {
-                    // Fall through to try other formats
+                    throw new IllegalArgumentException("Unable to parse insets from string: " + from, e);
                 }
             }
         }
@@ -982,13 +1109,13 @@ final class StringConversions {
             String[] components = str.split("\\s+");
             if (components.length == 4) {
                 try {
-                    int top = Integer.parseInt(components[0].trim());
-                    int left = Integer.parseInt(components[1].trim());
-                    int bottom = Integer.parseInt(components[2].trim());
-                    int right = Integer.parseInt(components[3].trim());
+                    int top = converter.convert(components[0].trim(), int.class);
+                    int left = converter.convert(components[1].trim(), int.class);
+                    int bottom = converter.convert(components[2].trim(), int.class);
+                    int right = converter.convert(components[3].trim(), int.class);
                     return new Insets(top, left, bottom, right);
                 } catch (NumberFormatException e) {
-                    // Fall through to error
+                    throw new IllegalArgumentException("Unable to parse insets from string: " + from, e);
                 }
             }
         }

@@ -7,6 +7,9 @@ import java.util.LinkedHashMap;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.logging.Logger;
+
+import com.cedarsoftware.util.LoggingConfig;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,6 +17,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests to verify that CaseInsensitiveMap copy constructor creates the same map type as the source.
  */
 class CaseInsensitiveMapConstructorTypeTest {
+
+    private static final Logger LOG = Logger.getLogger(CaseInsensitiveMapConstructorTypeTest.class.getName());
+    static {
+        LoggingConfig.init();
+    }
 
     @Test
     void testCopyConstructorWithHashMap() {
@@ -110,8 +118,8 @@ class CaseInsensitiveMapConstructorTypeTest {
         // Create CaseInsensitiveMap from source - should fall back to determineBackingMap
         CaseInsensitiveMap<String, Object> ciMap = new CaseInsensitiveMap<>(source);
         
-        // Debug: print the actual backing map type
-        System.out.println("Actual backing map type: " + ciMap.getWrappedMap().getClass().getName());
+        // Debug: log the actual backing map type
+        LOG.info("Actual backing map type: " + ciMap.getWrappedMap().getClass().getName());
         
         // Should fall back to HashMap (since CustomMap extends HashMap, it should match in the registry)
         assertTrue(ciMap.getWrappedMap() instanceof HashMap);

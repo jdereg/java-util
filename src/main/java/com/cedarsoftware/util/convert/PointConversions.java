@@ -150,7 +150,7 @@ final class PointConversions {
     }
 
     /**
-     * Convert Point to Insets (x becomes top, y becomes left, zero for bottom and right).
+     * Convert Point to Insets (x becomes top, y becomes left, bottom and right are 0).
      * @param from Point instance
      * @param converter Converter instance
      * @return Insets with top=x, left=y, bottom=0, right=0

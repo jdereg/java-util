@@ -241,7 +241,7 @@ Automatic expiration with optional size limits - supports null keys and values:
 
 ```java
 // Cache with 30-second TTL
-TTLCache<String, User> userCache = new TTLCache<>(Duration.ofSeconds(30));
+TTLCache<String, User> userCache = new TTLCache<>(TimeUnit.SECONDS.toMillis(30));
 
 // Add items - they auto-expire after TTL
 userCache.put("user123", loadUser("123"));
@@ -249,8 +249,8 @@ userCache.put(null, defaultUser);  // Null keys supported
 
 // Optional: Add LRU eviction with max size
 TTLCache<String, String> sessionCache = new TTLCache<>(
-    Duration.ofMinutes(15),  // 15-minute TTL
-    1000                     // Max 1000 items (LRU eviction)
+    TimeUnit.MINUTES.toMillis(15),  // 15-minute TTL
+    1000                            // Max 1000 items (LRU eviction)
 );
 
 // Use like any Map - items auto-expire
@@ -258,7 +258,7 @@ sessionCache.put("session-abc", "user-data");
 String userData = sessionCache.get("session-abc");  // null if expired
 
 // Perfect for caching expensive operations
-TTLCache<String, Result> resultCache = new TTLCache<>(Duration.ofMinutes(5));
+TTLCache<String, Result> resultCache = new TTLCache<>(TimeUnit.MINUTES.toMillis(5));
 public Result getExpensiveResult(String key) {
     return resultCache.computeIfAbsent(key, k -> performExpensiveOperation(k));
 }

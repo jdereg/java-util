@@ -1,6 +1,7 @@
 package com.cedarsoftware.util.convert;
 
 import java.awt.*;
+import java.io.File;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -8,6 +9,8 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Timestamp;
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -1749,7 +1752,7 @@ class ConverterEverythingTest {
      */
     private static void loadYearTests() {
         TEST_DB.put(pair(Void.class, Year.class), new Object[][]{
-                {null, null},
+                {null, Year.of(0)},
         });
         TEST_DB.put(pair(Year.class, Year.class), new Object[][]{
                 {Year.of(1970), Year.of(1970), true},
@@ -1849,7 +1852,7 @@ class ConverterEverythingTest {
                 {timestamp("2023-06-15T12:00:00.123456789Z"), Year.of(2023), false}  // 21:00:00.123456789 Tokyo
         });
         TEST_DB.put(pair(String.class, Year.class), new Object[][]{
-                {"", null},
+                {"", Year.of(0)},
                 {"2024-03-23T04:10", Year.of(2024)},
                 {"1970", Year.of(1970), true},
                 {"1999", Year.of(1999), true},
@@ -5518,6 +5521,7 @@ class ConverterEverythingTest {
         });
 
     }
+
 
     /**
      * Record

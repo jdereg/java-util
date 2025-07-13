@@ -1160,7 +1160,7 @@ public final class Converter {
         CONVERSION_DB.put(MapConversions::toByteBuffer, Map.class, ByteBuffer.class, 0L);
 
         // toYear
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Year.class, 0L);
+        CONVERSION_DB.put(NumberConversions::nullToYear, Void.class, Year.class, 0L);
         CONVERSION_DB.put(Converter::identity, Year.class, Year.class, 0L);
         CONVERSION_DB.put(NumberConversions::toYear, Short.class, Year.class, 0L);
         CONVERSION_DB.put(NumberConversions::toYear, Integer.class, Year.class, 0L);

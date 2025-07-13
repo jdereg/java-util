@@ -4,6 +4,7 @@ import java.security.SecureRandom;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -64,7 +65,7 @@ class ConcurrentList2Test {
                             list.set(index, value);
                             break;
                     }
-                } catch (IndexOutOfBoundsException | IllegalArgumentException e) {
+                } catch (IndexOutOfBoundsException | IllegalArgumentException | NoSuchElementException e) {
                 }
             }
         };

@@ -234,11 +234,22 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         lock.readLock().lock();
         try {
             int sz = size();
-            Object[] array = new Object[sz];
-            for (int i = 0; i < sz; i++) {
-                array[i] = get(i);
+            if (sz == 0) {
+                return new Object[0];
             }
-            return array;
+            
+            // Use best-effort approach: build what we can, never fail
+            List<Object> result = new ArrayList<>(sz);
+            for (int i = 0; i < sz; i++) {
+                try {
+                    Object element = get(i);
+                    result.add(element);
+                } catch (IndexOutOfBoundsException e) {
+                    // List shrunk during iteration - stop here and return what we have
+                    break;
+                }
+            }
+            return result.toArray();
         } finally {
             lock.readLock().unlock();
         }
@@ -250,15 +261,38 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         lock.readLock().lock();
         try {
             int sz = size();
-            if (a.length < sz) {
-                a = (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), sz);
+            if (sz == 0) {
+                if (a.length > 0) {
+                    a[0] = null;
+                }
+                return a;
             }
+            
+            // Use best-effort approach: build what we can, never fail
+            List<T> result = new ArrayList<>(sz);
             for (int i = 0; i < sz; i++) {
-                a[i] = (T) get(i);
+                try {
+                    T element = (T) get(i);
+                    result.add(element);
+                } catch (IndexOutOfBoundsException e) {
+                    // List shrunk during iteration - stop here and return what we have
+                    break;
+                }
             }
-            if (a.length > sz) {
-                a[sz] = null;
+            
+            int actualSize = result.size();
+            if (a.length < actualSize) {
+                a = (T[]) java.lang.reflect.Array.newInstance(a.getClass().getComponentType(), actualSize);
             }
+            
+            for (int i = 0; i < actualSize; i++) {
+                a[i] = result.get(i);
+            }
+            
+            if (a.length > actualSize) {
+                a[actualSize] = null;
+            }
+            
             return a;
         } finally {
             lock.readLock().unlock();

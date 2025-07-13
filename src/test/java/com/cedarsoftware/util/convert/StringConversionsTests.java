@@ -84,9 +84,9 @@ class StringConversionsTests {
 
     @ParameterizedTest
     @MethodSource("toYear_nullReturn")
-    void toYear_withNullableStrings_returnsNull(String source) {
+    void toYear_withNullableStrings_returnsYear0(String source) {
         Year year = this.converter.convert(source, Year.class);
-        assertNull(year);
+        assertEquals(Year.of(0), year);
     }
 
     private static Stream<Arguments> toYear_extremeParams() {
@@ -264,7 +264,6 @@ class StringConversionsTests {
 
     private static Stream<Arguments> classesThatReturnNull_whenTrimmedToEmpty() {
         return Stream.of(
-                Arguments.of(Year.class),
                 Arguments.of(Timestamp.class),
                 Arguments.of(java.sql.Date.class),
                 Arguments.of(Instant.class),

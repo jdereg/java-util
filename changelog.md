@@ -1,6 +1,7 @@
 ### Revision History
 #### 3.7.0 (Unreleased)
-> * **MAJOR FEATURE**: Added comprehensive array-like type bridge system to `Converter`, expanding conversion capability (1,800+ total conversion pairs):
+#### 3.6.0
+> * **MAJOR FEATURE**: Added many additional types to `Converter`, expanding conversion capability (1,700+ total conversion pairs):
 >   * **Atomic Arrays**: Added full bidirectional conversion support for `AtomicIntegerArray`, `AtomicLongArray`, and `AtomicReferenceArray`
 >   * **NIO Buffers**: Added complete bridge system for all NIO buffer types (`IntBuffer`, `LongBuffer`, `FloatBuffer`, `DoubleBuffer`, `ShortBuffer`) with existing `ByteBuffer` and `CharBuffer`
 >   * **BitSet Integration**: Added intelligent `BitSet` conversion support with bridges to `boolean[]` (bit values), `int[]` (set bit indices), and `byte[]` (raw representation)
@@ -8,21 +9,19 @@
 >   * **Universal Array Access**: Each array-like type now has access to the entire universal array conversion ecosystem - for example, `AtomicIntegerArray` → `int[]` → `Color` works seamlessly
 >   * **Performance Optimized**: All bridges use efficient extraction/creation patterns with minimal overhead
 >   * Removed redundant array surrogate pairs that were duplicating universal array system functionality
->   * **MutliKeyMap** - Yes, a MultiKeyMap that supports n-keys, creates no heap pressure for get() { no allocations (new) within get() execution path}, full thread-safety for all operations. 
+>   * **MutliKeyMap** - Yes, a MultiKeyMap that supports n-keys, creates no heap pressure for get() { no allocations (new) within get() execution path}, full thread-safety for all operations.
 > * **ARCHITECTURE IMPROVEMENT**: Enhanced `addConversion()` method with comprehensive primitive/wrapper support:
 >   * When adding a conversion involving primitive or wrapper types, the system now automatically creates ALL relevant combinations
 >   * Example: `addConversion(UUID.class, Boolean.class, converter)` now creates entries for both `(UUID, Boolean)` and `(UUID, boolean)`
 >   * Eliminates runtime double-lookup overhead in favor of storage-time enumeration for better performance
->   * Maintains consistency with CONVERSION_DB philosophy of explicit enumeration rather than special lookup logic
 >   * Ensures seamless primitive/wrapper interoperability in user-defined conversions
->   * **Code Simplification**: Refactored implementation to leverage existing `ClassUtilities` methods, reducing complexity by 47% while maintaining identical functionality
+>   * **Code Simplification**: Refactored implementation to leverage existing `ClassUtilities` methods, reducing complexity while maintaining identical functionality
 > * **API ENHANCEMENT**: Added `ClassUtilities.toPrimitiveClass()` method as complement to existing `toPrimitiveWrapperClass()`:
 >   * Converts wrapper classes to their corresponding primitive classes (e.g., `Integer.class` → `int.class`)
-> * `ConcurrentList` now uses chunked atomic buckets for lock-free deque operations
+> * `ConcurrentList` now uses chunked atomic buckets for lock-free deque operations. See userguide for architecture diagram and capabilities table
 >   * Returns the same class if not a wrapper type, ensuring safe usage for any class
 >   * Leverages optimized `ClassValueMap` caching for high-performance lookups
 >   * Centralizes primitive/wrapper conversion logic in `ClassUtilities` for consistency across java-util
-> * **BUG FIX**: Fixed race in `MultiKeyMap` resizing so `get()` never returns null while entries are rehashed.
 > * **BUG FIX**: Fixed time conversion precision inconsistencies in `Converter` for consistent long conversion behavior:
 >   * **Consistency Fix**: All time classes now consistently convert to/from `long` using **millisecond precision** (eliminates mixed millisecond/nanosecond behavior)
 >   * **Universal Rule**: `Duration` → long, `Instant` → long, `LocalTime` → long now all return milliseconds for predictable behavior
@@ -37,10 +36,7 @@
 > * Added `putIfAbsent` support to `MultiKeyMap` for atomic insert when key is missing or mapped to null
 > * Expanded `MultiKeyMap` to fully implement `ConcurrentMap`: added `computeIfPresent`, `compute`, `replace`, and `remove(key,value)`
 > * Fixed stripe locking in `MultiKeyMap` to consistently use `ReentrantLock`
-> * `ConcurrentList2Test` suppresses `IndexOutOfBoundsException` so passing tests do not print stack traces
-
-#### 3.6.0
-> * **Feature Enhancement**: Added comprehensive `java.awt.Color` conversion support to `Converter`:
+> * **Feature Enhancements**:
 >   * Supports conversion from String formats: hex colors (`#FF0000`, `FF0000`), named colors (`red`, `blue`, etc.), `rgb(r,g,b)`, and `rgba(r,g,b,a)` formats
 >   * Supports conversion from Map format using keys: `red`, `green`, `blue`, `alpha`, `rgb`, `color`, and `value`
 >   * Supports conversion from Map format using short keys: `r`, `g`, `b`, and `a` for compact representation
@@ -50,19 +46,6 @@
 >   * Values are converted through `converter.convert()` allowing String, AtomicInteger, Double, etc. as color component values
 >   * Added comprehensive test coverage with 38 test methods covering all conversion scenarios
 >   * Eliminates need for custom Color factories in json-io and other serialization libraries
-> * **BREAKING CHANGE**: Removed static `addConversion()` method from `com.cedarsoftware.util.Converter`:
->   * The static method `Converter.addConversion(Class, Class, Convert)` has been removed to prevent global state pollution
->   * **Workaround**: To add custom conversion functions, create a `Converter` instance and add conversions to that instance:
->     ```java
->     // OLD (no longer supported):
->     Converter.addConversion(String.class, CustomType.class, converter);
->     
->     // NEW (recommended approach):
->     ConverterOptions options = new ConverterOptions();
->     Converter converter = new Converter(options);
->     converter.addConversion(String.class, CustomType.class, converter);
->     ```
->   * This ensures that custom conversions are isolated to specific `Converter` instances rather than affecting the global static instance
 >   * The static `Converter.getInstance()` method remains available for accessing the default shared instance
 > * **Security Enhancement**: Fixed critical security vulnerabilities in `CompactMap` dynamic code generation:
 >   * Added strict input sanitization to prevent code injection attacks in class name generation

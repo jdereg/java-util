@@ -63,7 +63,6 @@ public class VoidConversionsTests {
                 Arguments.of(String.class),
                 Arguments.of(StringBuffer.class),
                 Arguments.of(StringBuilder.class),
-                Arguments.of(Year.class),
                 Arguments.of(AtomicLong.class),
                 Arguments.of(AtomicInteger.class),
                 Arguments.of(AtomicBoolean.class),

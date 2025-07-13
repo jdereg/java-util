@@ -4261,7 +4261,7 @@ public class CompactMapTest
             for (int i = lower; i < upper; i++)
             {
                 compactSize[0] = i;
-                CompactMap<String, Integer> map = CompactMap.<String, Integer>builder().compactSize(i).caseSensitive(true).noOrder().singleValueKey("key1").build();
+                CompactMap<String, Integer> map = new CompactCILinkedMap<>();
 
                 long start = System.nanoTime();
                 // ===== Timed

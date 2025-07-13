@@ -50,7 +50,7 @@
         <version.moditect-maven-plugin>1.2.2.Final</version.moditect-maven-plugin>
 
         <!-- release to Maven Central via Sonatype Nexus -->
-        <version.nexus-staging-maven-plugin>1.7.0</version.nexus-staging-maven-plugin>
+        <version.central-publishing-maven-plugin>0.8.0</version.central-publishing-maven-plugin>
 
     </properties>
 
@@ -269,7 +269,7 @@
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.8.0</version>
+                <version>${version.central-publishing-maven-plugin}</version>
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>

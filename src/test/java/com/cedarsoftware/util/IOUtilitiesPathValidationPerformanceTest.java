@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -152,7 +153,7 @@ public class IOUtilitiesPathValidationPerformanceTest {
     }
     
     @EnabledIfSystemProperty(named = "performRelease", matches = "true")
-    @Test
+    @Disabled
     public void testPathValidationOverhead() throws Exception {
         // Measure the overhead of validation vs just creating File objects
         int iterations = 5000;

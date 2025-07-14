@@ -20,17 +20,16 @@ class MultiKeyMapNDimensionalArrayTest {
         String[][] array2D = {{"a", "b"}, {"c", "d"}};
         map.put(array2D, "value2D");
         
-        // Should be stored as 4D key: "a", "b", "c", "d"
-        String result = map.getMultiKey("a", "b", "c", "d");
+        // 2D arrays are stored with sentinels, retrieve using original array
+        String result = map.get(array2D);
         assertEquals("value2D", result);
         
-        // Verify containsKey
-        assertTrue(map.containsMultiKey("a", "b", "c", "d"));
-        assertFalse(map.containsMultiKey("a", "b", "c"));
+        // Verify containsKey using original array
+        assertTrue(map.containsKey(array2D));
         
-        // Verify remove
-        assertEquals("value2D", map.removeMultiKey("a", "b", "c", "d"));
-        assertNull(map.getMultiKey("a", "b", "c", "d"));
+        // Verify remove using original array
+        assertEquals("value2D", map.remove(array2D));
+        assertNull(map.get(array2D));
     }
 
     @Test
@@ -59,12 +58,12 @@ class MultiKeyMapNDimensionalArrayTest {
         Object[][] mixed = {{"string", 42}, {true, 3.14}};
         map.put(mixed, "mixedValue");
         
-        // Should expand to: "string", 42, true, 3.14
-        String result = map.getMultiKey("string", 42, true, 3.14);
+        // 2D arrays are stored with sentinels, retrieve using original array
+        String result = map.get(mixed);
         assertEquals("mixedValue", result);
         
-        assertTrue(map.containsMultiKey("string", 42, true, 3.14));
-        assertEquals("mixedValue", map.removeMultiKey("string", 42, true, 3.14));
+        assertTrue(map.containsKey(mixed));
+        assertEquals("mixedValue", map.remove(mixed));
     }
 
     @Test
@@ -75,12 +74,12 @@ class MultiKeyMapNDimensionalArrayTest {
         String[][] arrayWithNulls = {{"a", null}, {"b", "c"}};
         map.put(arrayWithNulls, "nullValue");
         
-        // Should expand to: "a", null, "b", "c"
-        String result = map.getMultiKey("a", null, "b", "c");
+        // 2D arrays are stored with sentinels, retrieve using original array
+        String result = map.get(arrayWithNulls);
         assertEquals("nullValue", result);
         
-        assertTrue(map.containsMultiKey("a", null, "b", "c"));
-        assertEquals("nullValue", map.removeMultiKey("a", null, "b", "c"));
+        assertTrue(map.containsKey(arrayWithNulls));
+        assertEquals("nullValue", map.remove(arrayWithNulls));
     }
 
     @Test
@@ -91,12 +90,12 @@ class MultiKeyMapNDimensionalArrayTest {
         String[][] jagged = {{"a"}, {"b", "c", "d"}, {"e", "f"}};
         map.put(jagged, "jaggedValue");
         
-        // Should expand to: "a", "b", "c", "d", "e", "f"
-        String result = map.getMultiKey("a", "b", "c", "d", "e", "f");
+        // 2D arrays are stored with sentinels, retrieve using original array
+        String result = map.get(jagged);
         assertEquals("jaggedValue", result);
         
-        assertTrue(map.containsMultiKey("a", "b", "c", "d", "e", "f"));
-        assertEquals("jaggedValue", map.removeMultiKey("a", "b", "c", "d", "e", "f"));
+        assertTrue(map.containsKey(jagged));
+        assertEquals("jaggedValue", map.remove(jagged));
     }
 
     @Test
@@ -107,12 +106,12 @@ class MultiKeyMapNDimensionalArrayTest {
         String[][] withEmpty = {{"a", "b"}, {}, {"c"}};
         map.put(withEmpty, "emptyValue");
         
-        // Should expand to: "a", "b", "c" (empty arrays contribute no elements)
-        String result = map.getMultiKey("a", "b", "c");
+        // 2D arrays are stored with sentinels, retrieve using original array
+        String result = map.get(withEmpty);
         assertEquals("emptyValue", result);
         
-        assertTrue(map.containsMultiKey("a", "b", "c"));
-        assertEquals("emptyValue", map.removeMultiKey("a", "b", "c"));
+        assertTrue(map.containsKey(withEmpty));
+        assertEquals("emptyValue", map.remove(withEmpty));
     }
 
     @Test
@@ -139,12 +138,12 @@ class MultiKeyMapNDimensionalArrayTest {
         Integer[][] intArray = {{1, 2}, {3, 4, 5}};
         map.put(intArray, "intValue");
         
-        // Should expand to: 1, 2, 3, 4, 5
-        String result = map.getMultiKey(1, 2, 3, 4, 5);
+        // 2D arrays are stored with sentinels, retrieve using original array
+        String result = map.get(intArray);
         assertEquals("intValue", result);
         
-        assertTrue(map.containsMultiKey(1, 2, 3, 4, 5));
-        assertEquals("intValue", map.removeMultiKey(1, 2, 3, 4, 5));
+        assertTrue(map.containsKey(intArray));
+        assertEquals("intValue", map.remove(intArray));
     }
 
     @Test
@@ -157,8 +156,8 @@ class MultiKeyMapNDimensionalArrayTest {
         // Store via Map interface
         map.put(array, "mapValue");
         
-        // Retrieve via MultiKeyMap interface 
-        String result1 = map.getMultiKey("map", "interface", "test");
+        // 2D arrays are stored with sentinels, retrieve using original array
+        String result1 = map.get(array);
         assertEquals("mapValue", result1);
         
         // Store via MultiKeyMap interface (this adds new entry)
@@ -177,21 +176,20 @@ class MultiKeyMapNDimensionalArrayTest {
     void testArrayExpansionConsistency() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
-        // Test that different ways of representing the same nested structure 
-        // result in the same expanded key sequence
+        // Test that different 2D arrays with different structures create separate entries
+        // (they have different sentinel arrangements)
         String[][] array1 = {{"a", "b"}, {"c"}};
         String[][] array2 = {{"a"}, {"b", "c"}};
         
         map.put(array1, "value1");
         map.put(array2, "value2");
         
-        // Both arrays expand to the same key sequence ["a", "b", "c"]
-        // So value2 should overwrite value1
-        assertEquals("value2", map.getMultiKey("a", "b", "c"));
+        // Different 2D arrays have different structures and create separate entries
+        assertEquals("value1", map.get(array1));
+        assertEquals("value2", map.get(array2));
         
-        // Only one entry should exist
-        assertEquals(1, map.size());
-        assertEquals("value2", map.getMultiKey("a", "b", "c"));
+        // Two separate entries should exist due to different structures
+        assertEquals(2, map.size());
     }
 
     @Test
@@ -202,10 +200,10 @@ class MultiKeyMapNDimensionalArrayTest {
         String[][] singleElements = {{"only"}, {"one"}, {"each"}};
         map.put(singleElements, "singleValue");
         
-        // Should expand to: "only", "one", "each"
-        assertEquals("singleValue", map.getMultiKey("only", "one", "each"));
-        assertTrue(map.containsMultiKey("only", "one", "each"));
-        assertEquals("singleValue", map.removeMultiKey("only", "one", "each"));
+        // 2D arrays are stored with sentinels, retrieve using original array
+        assertEquals("singleValue", map.get(singleElements));
+        assertTrue(map.containsKey(singleElements));
+        assertEquals("singleValue", map.remove(singleElements));
     }
 
     @Test

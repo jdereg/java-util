@@ -1,5 +1,7 @@
 ### Revision History
 #### 3.8.0 (Unreleased)
+> * **TEST FIX**: Stabilized `ConcurrentListIteratorTest.testReadFailsGracefullyWhenConcurrentRemoveShrinksList` by
+>   using a latch to reliably detect the expected exception under heavy load
 
 #### 3.7.0
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:

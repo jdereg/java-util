@@ -349,6 +349,7 @@ class ConcurrentListIteratorTest {
         AtomicBoolean readerShouldStop = new AtomicBoolean(false);
         AtomicReference<Exception> expectedReadException = new AtomicReference<>();
         AtomicInteger lastSuccessfulRead = new AtomicInteger(-1);
+        CountDownLatch exceptionLatch = new CountDownLatch(1);
 
         // Thread A: Continuously reads from index 75
         Thread reader = new Thread(() -> {
@@ -360,6 +361,7 @@ class ConcurrentListIteratorTest {
                 } catch (IndexOutOfBoundsException e) {
                     expectedReadException.set(e);
                     readerShouldStop.set(true);
+                    exceptionLatch.countDown();
                     LOG.info("Reader received expected IndexOutOfBoundsException at list size: " + list.size());
                     break;
                 } catch (InterruptedException e) {
@@ -386,14 +388,18 @@ class ConcurrentListIteratorTest {
         remover.start();
 
         // Wait for the expected exception or timeout
-        reader.join(10000); // 10 second timeout
+        boolean threw = exceptionLatch.await(10, TimeUnit.SECONDS);
+        readerShouldStop.set(true);
+        reader.interrupt();
         remover.interrupt();
+        reader.join(1000);
         remover.join(1000);
 
         // Verify the expected behavior occurred
-        assertThat(expectedReadException.get())
+        assertThat(threw)
             .describedAs("Read from index 75 should eventually fail when list shrinks below 76 elements")
-            .isInstanceOf(IndexOutOfBoundsException.class);
+            .isTrue();
+        assertThat(expectedReadException.get()).isInstanceOf(IndexOutOfBoundsException.class);
 
         // Verify the list size is now <= 75 (making index 75 invalid)
         assertThat(list.size())

@@ -529,79 +529,42 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (!(key instanceof Collection)) {
             Class<?> keyClass = key.getClass();
             if (keyClass.isArray()) {
-                return getFromArray(key);
+                if (key instanceof Object[]) {
+                    // Always unpack arrays into multi-key call
+                    return getMultiKey((Object[]) key);
+                } else {
+                    // Always unpack typed arrays into multi-key call
+                    Object[] expandedKeys = expandMultiDimensionalArray(key);
+                    return getMultiKey(expandedKeys);
+                }
             } else {
                 // Normal object - most common path
                 return getInternalDirect(key);
             }
         } else {
             // Collection key - less common path
-            return getFromCollection((Collection<?>) key);
+            Collection<?> collection = (Collection<?>) key;
+            switch (collectionKeyMode) {
+                case COLLECTIONS_EXPANDED:
+                    // Always unpack Collection into multi-key call
+                    if (collection.isEmpty()) {
+                        return getMultiKey();
+                    }
+                    return getMultiKey(collection.toArray());
+                case COLLECTIONS_NOT_EXPANDED:
+                    // Treat Collection as single key
+                    return getInternalDirect(collection);
+                default:
+                    throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+            }
         }
     }
 
-    /**
-     * Handle Collection keys with mode-based logic.
-     */
-    private V getFromCollection(Collection<?> collection) {
-        switch (collectionKeyMode) {
-            case COLLECTIONS_EXPANDED:
-                return getFromCollectionMultiKeyOnly(collection);
-            case COLLECTIONS_NOT_EXPANDED:
-                return getFromCollectionAsKey(collection);
-            default:
-                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
-        }
-    }
-
-    /**
-     * Handle Array keys - always expand into multi-key lookup.
-     * Arrays are always unpacked regardless of CollectionKeyMode setting.
-     */
-    private V getFromArray(Object array) {
-        if (array instanceof Object[]) {
-            return getInternal((Object[]) array);
-        } else {
-            return getInternalFromTypedArray(array);
-        }
-    }
-
-    /**
-     * Collection with COLLECTIONS_EXPANDED mode - only try multi-key lookup.
-     */
-    private V getFromCollectionMultiKeyOnly(Collection<?> collection) {
-        Object rawResult = getInternalFromCollectionRaw(collection);
-        return rawResult == NOT_FOUND_SENTINEL ? null : (V) rawResult;
-    }
 
 
-    /**
-     * Collection with COLLECTIONS_NOT_EXPANDED mode - only try collection-as-key lookup.
-     */
-    private V getFromCollectionAsKey(Collection<?> collection) {
-        // Only try collection-as-key lookup (no fallback)
-        return getInternalDirect(collection);
-    }
 
-    /**
-     * Gets the value for the given typed array-based multi-dimensional key.
-     * This method provides zero-conversion access by working directly with typed arrays
-     * like String[], int[], Class<?>[], etc. using reflection for element access.
-     *
-     * @param typedArray typed array containing the key components (String[], int[], etc.)
-     * @return the value associated with the key, or null if not found
-     */
-    private V getInternalFromTypedArray(Object typedArray) {
-        if (typedArray == null) {
-            return get((Object) null);               // preserve old behavior
-        }
-        int length = Array.getLength(typedArray);
-        if (length == 0) {
-            return null;
-        }
-        Object[] expandedKeys = expandMultiDimensionalArray(typedArray);
-        return getInternal(expandedKeys);
-    }
+
+
 
     /**
      * Retrieves the value associated with the given sequence of key objects.
@@ -651,24 +614,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return null;
     }
 
-    /**
-     * Internal get() implementation for Collections using sentinel return.
-     */
-    private Object getInternalFromCollectionRaw(Collection<?> collection) {
-        if (collection.isEmpty()) {
-            V result = getInternal(new Object[0]);  // Use same path as put() for empty collections
-            return result == null ? NOT_FOUND_SENTINEL : result;
-        }
-
-        // Convert Collection to Object[] and apply array expansion to nested structures
-        // This ensures the same expansion logic as put() is used
-        Object[] keys = collection.toArray();
-        Object[] expandedKeys = expandArraysInKeySequence(keys);
-
-        // Use same internal lookup as arrays to ensure consistency
-        V result = getInternal(expandedKeys);
-        return result == null ? NOT_FOUND_SENTINEL : result;
-    }
 
     /**
      * Direct single-key lookup with zero heap allocations.
@@ -935,7 +880,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V putMultiKey(V value, Object... keys) {
         // Handle null keys array (empty varargs call)
         if (keys == null || keys.length == 0) {
-            return putInternalSingle(null, value);
+            MultiKey<V> newKey = new MultiKey<>(null, value); // Single-key constructor
+            return putInternalCommon(newKey);
         }
 
 
@@ -985,32 +931,33 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return putMultiKey(value, (Object[]) key);
             } else {
                 // Always unpack typed arrays into multi-key call
-                return putInternalFromTypedArray(key, value);
+                Object[] expandedKeys = expandMultiDimensionalArray(key);
+                return putMultiKey(value, expandedKeys);
             }
         } else if (key instanceof Collection) {
             // Handle Collection based on CollectionKeyMode
-            return putFromCollection((Collection<?>) key, value);
+            Collection<?> collection = (Collection<?>) key;
+            switch (collectionKeyMode) {
+                case COLLECTIONS_EXPANDED:
+                    // Always unpack Collection into multi-key call
+                    if (collection.isEmpty()) {
+                        return putMultiKey(value);
+                    }
+                    return putMultiKey(value, collection.toArray());
+                case COLLECTIONS_NOT_EXPANDED:
+                    // Treat Collection as single key - use single-key constructor
+                    MultiKey<V> newKey = new MultiKey<>(collection, value); // Single-key constructor
+                    return putInternalCommon(newKey);
+                default:
+                    throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+            }
         } else {
-            // Single key case
-            return putInternalSingle(key, value);
+            // Single key case - use single-key constructor for consistency with get()
+            MultiKey<V> newKey = new MultiKey<>(key, value); // Single-key constructor
+            return putInternalCommon(newKey);
         }
     }
 
-    /**
-     * Handle Collection keys in put operations based on CollectionKeyMode.
-     */
-    private V putFromCollection(Collection<?> collection, V value) {
-        switch (collectionKeyMode) {
-            case COLLECTIONS_EXPANDED:
-                // Always unpack Collection into multi-key call - zero array allocation!
-                return putInternalFromCollection(collection, value);
-            case COLLECTIONS_NOT_EXPANDED:
-                // Treat Collection as single key
-                return putInternalSingle(collection, value);
-            default:
-                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
-        }
-    }
 
     /**
      * Internal put implementation that works with Object[] keys.
@@ -1022,31 +969,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return putInternalCommon(newKey);
     }
 
-    /**
-     * Internal put implementation for single keys using polymorphic storage.
-     * No wrapper needed - stores the key directly!
-     */
-    private V putInternalSingle(Object key, V value) {
-        MultiKey<V> newKey = new MultiKey<>(key, value); // Uses single-key constructor
-        return putInternalCommon(newKey);
-    }
 
-    /**
-     * Internal put implementation that works directly with Collections.
-     * Expands nested arrays/collections within the collection to maintain consistency
-     * with array expansion behavior.
-     */
-    private V putInternalFromCollection(Collection<?> collection, V value) {
-        if (collection.isEmpty()) {
-            return putInternal(new Object[0], value);
-        }
-
-        // Convert Collection to Object[] and apply array expansion to nested structures
-        Object[] keys = collection.toArray();
-        Object[] expandedKeys = expandArraysInKeySequence(keys);
-        MultiKey<V> newKey = new MultiKey<>(expandedKeys, value); // Uses multi-key constructor
-        return putInternalCommon(newKey);
-    }
 
     /**
      * No-lock version of put operation for use within stripe locks.
@@ -1509,19 +1432,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Internal put implementation that works with typed arrays.
      * Converts typed array to Object[] with n-dimensional expansion and delegates to putInternal.
      */
-    private V putInternalFromTypedArray(Object typedArray, V value) {
-        Object[] expandedKeys = expandMultiDimensionalArray(typedArray);
-        return putInternal(expandedKeys, value);
-    }
 
     /**
      * Helper method to handle typed arrays (String[], int[], etc.) in remove operations.
      * Converts typed arrays to Object[] with n-dimensional expansion and delegates to removeInternal.
      */
-    private V removeInternalFromTypedArray(Object typedArray) {
-        Object[] expandedKeys = expandMultiDimensionalArray(typedArray);
-        return removeInternal(expandedKeys);
-    }
 
     /**
      * Creates a new single-element chain array.
@@ -1753,72 +1668,39 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         Class<?> keyClass = key.getClass();
         if (keyClass.isArray()) {
-            return removeFromArray(key);
+            if (key instanceof Object[]) {
+                // Always unpack arrays into multi-key call
+                return removeMultiKey((Object[]) key);
+            } else {
+                // Always unpack typed arrays into multi-key call
+                Object[] expandedKeys = expandMultiDimensionalArray(key);
+                return removeMultiKey(expandedKeys);
+            }
         } else if (key instanceof Collection) {
-            return removeFromCollection((Collection<?>) key);
+            // Handle Collection based on CollectionKeyMode
+            Collection<?> collection = (Collection<?>) key;
+            switch (collectionKeyMode) {
+                case COLLECTIONS_EXPANDED:
+                    // Always unpack Collection into multi-key call
+                    if (collection.isEmpty()) {
+                        return removeMultiKey();
+                    }
+                    return removeMultiKey(collection.toArray());
+                case COLLECTIONS_NOT_EXPANDED:
+                    // Treat Collection as single key
+                    return removeInternalDirect(collection);
+                default:
+                    throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+            }
         } else {
             // Normal object - most common case, optimized for zero heap allocation
-            return removeInternalSingleKeyDirect(key);
+            return removeInternalDirect(key);
         }
     }
 
-    /**
-     * Handle Collection keys with mode-based logic for remove operations.
-     */
-    private V removeFromCollection(Collection<?> collection) {
-        switch (collectionKeyMode) {
-            case COLLECTIONS_EXPANDED:
-                return removeFromCollectionMultiKeyOnly(collection);
-            case COLLECTIONS_NOT_EXPANDED:
-                return removeFromCollectionAsKey(collection);
-            default:
-                throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
-        }
-    }
-
-    /**
-     * Handle Array keys - always expand arrays into multi-key remove operations.
-     */
-    private V removeFromArray(Object array) {
-        if (array instanceof Object[]) {
-            // Always expand Object arrays into multi-key remove
-            return removeInternal((Object[]) array);
-        } else {
-            // Always expand typed arrays into multi-key remove
-            return removeInternalFromTypedArray(array);
-        }
-    }
-
-    // Collection remove mode implementations
-    private V removeFromCollectionMultiKeyOnly(Collection<?> collection) {
-        // Only try multi-key removal
-        return removeInternalFromCollection(collection);
-    }
 
 
-    private V removeFromCollectionAsKey(Collection<?> collection) {
-        // Only try collection-as-key lookup (no fallback)
-        return removeInternalDirect(collection);
-    }
 
-    /**
-     * Efficient Collection removal without array conversion.
-     */
-    private V removeInternalFromCollection(Collection<?> collection) {
-        if (collection.isEmpty()) {
-            return null;
-        }
-
-        return removeInternal(collection.toArray());
-    }
-
-    /**
-     * Direct single-key removal without heap allocation.
-     */
-    private V removeInternalSingleKeyDirect(Object key) {
-        // Direct single key removal - zero allocation
-        return removeInternalDirect(key);
-    }
 
     @Override
     public void putAll(Map<?, ? extends V> m) {
@@ -2121,9 +2003,30 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         Class<?> keyClass = key.getClass();
         if (keyClass.isArray()) {
-            return containsKeyFromArray(key);
+            if (key instanceof Object[]) {
+                // Always unpack arrays into multi-key call
+                return containsMultiKey((Object[]) key);
+            } else {
+                // Always unpack typed arrays into multi-key call
+                Object[] expandedKeys = expandMultiDimensionalArray(key);
+                return containsMultiKey(expandedKeys);
+            }
         } else if (key instanceof Collection) {
-            return containsKeyFromCollection((Collection<?>) key);
+            // Handle Collection based on CollectionKeyMode
+            Collection<?> collection = (Collection<?>) key;
+            if (collection.isEmpty()) {
+                return false;
+            }
+            switch (collectionKeyMode) {
+                case COLLECTIONS_EXPANDED:
+                    // Always unpack Collection into multi-key call
+                    return containsMultiKey(collection.toArray());
+                case COLLECTIONS_NOT_EXPANDED:
+                    // Treat Collection as single key
+                    return containsKeyInternalDirect(collection);
+                default:
+                    throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
+            }
         } else {
             return containsKeyInternalDirect(key);
         }
@@ -2157,64 +2060,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Internal containsKey implementation for typed arrays.
      */
-    private boolean containsKeyFromTypedArray(Object typedArray) {
-        Object[] expandedKeys = expandMultiDimensionalArray(typedArray);
-        return containsKeyInternal(expandedKeys);
-    }
-
-    /**
-     * Handles containsKey for array keys - always expand arrays into multi-key checks.
-     */
-    private boolean containsKeyFromArray(Object key) {
-        if (key instanceof Object[]) {
-            // Always expand Object arrays into multi-key check
-            return containsKeyInternal((Object[]) key);
-        } else {
-            // Always expand typed arrays into multi-key check
-            return containsKeyFromTypedArray(key);
-        }
-    }
-
-    /**
-     * Handles containsKey for Collection keys with mode-based logic.
-     */
-    private boolean containsKeyFromCollection(Collection<?> collection) {
-        if (collection.isEmpty()) {
-            return false;
-        }
-
-        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_EXPANDED) {
-            return containsKeyFromCollectionAsMultiKey(collection);
-        } else { // COLLECTIONS_NOT_EXPANDED
-            return containsKeyFromCollectionAsKey(collection);
-        }
-    }
-
-    /**
-     * Multi-key only lookup for Collections.
-     */
-    private boolean containsKeyFromCollectionAsMultiKey(Collection<?> collection) {
-        if (collection.isEmpty()) {
-            return containsKeyInternal(new Object[0]);  // Use same path as put() for empty collections
-        }
-
-        // Convert Collection to Object[] and apply array expansion to nested structures
-        // This ensures the same expansion logic as put() is used
-        Object[] keys = collection.toArray();
-        Object[] expandedKeys = expandArraysInKeySequence(keys);
-
-        // Use same internal lookup as arrays to ensure consistency
-        return containsKeyInternal(expandedKeys);
-    }
 
 
-    /**
-     * Collection-as-key only lookup for Collections.
-     */
-    private boolean containsKeyFromCollectionAsKey(Collection<?> collection) {
-        // Only try single-key lookup (no fallback)
-        return containsKeyInternalDirect(collection);
-    }
+
+
 
     /**
      * Removes all the mappings from this map.

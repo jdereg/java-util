@@ -169,24 +169,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * to scan the array to detect level information.
      */
     public static final Object HAS_LEVELS = new Object();
-    
-    /**
-     * @deprecated Use HAS_LEVELS instead. Kept for backward compatibility during transition.
-     */
-    @Deprecated
-    public static final Object HAS_SENTINELS = HAS_LEVELS;
-    
-    /**
-     * @deprecated Level numbers are now embedded directly. Kept for backward compatibility.
-     */
-    @Deprecated
-    public static final Object LEVEL_DOWN = new Object();
-    
-    /**
-     * @deprecated Level numbers are now embedded directly. Kept for backward compatibility.
-     */
-    @Deprecated
-    public static final Object LEVEL_UP = new Object();
 
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
@@ -201,21 +183,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     // Prevent concurrent resize operations to avoid deadlock
     private final AtomicBoolean resizeInProgress = new AtomicBoolean(false);
-
-
-    /**
-     * Enum to control how keys are stored in put() operations.
-     * Used as optional last parameter in varargs put() method.
-     */
-    public enum KeyMode {
-        /**
-         * Store the preceding keys as a single key without auto-unpacking.
-         * Use this when you want Collections or Arrays to be treated as single keys
-         * rather than being auto-unpacked into multiple key dimensions.
-         */
-        SINGLE_KEY
-    }
-
+    
     /**
      * Enum to control how Collections are handled in get/remove/containsKey operations.
      *
@@ -235,7 +203,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         COLLECTIONS_EXPANDED,
 
         /**
-         * Try Collection-as-key lookup first, then fallback to unpacked lookup if not found.
+         * Collections are used as single keys (not unpacked).
          * Allows Collections with custom equals/hashCode to be used as single keys.
          * Arrays are still always unpacked (regardless of this setting).
          */
@@ -580,7 +548,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             case COLLECTIONS_EXPANDED:
                 return getFromCollectionMultiKeyOnly(collection);
             case COLLECTIONS_NOT_EXPANDED:
-                return getFromCollectionKeyFirst(collection);
+                return getFromCollectionAsKey(collection);
             default:
                 throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
         }
@@ -606,33 +574,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return rawResult == NOT_FOUND_SENTINEL ? null : (V) rawResult;
     }
 
-    /**
-     * Collection with COLLECTIONS_EXPANDED mode - only try multi-key lookup.
-     */
-    private V getFromCollectionMultiKeyFirst(Collection<?> collection) {
-        // Try multi-key first
-        Object rawResult = getInternalFromCollectionRaw(collection);
-        if (rawResult != NOT_FOUND_SENTINEL) {
-            return (V) rawResult;  // Found via multi-key (could be null value)
-        }
 
-        // Multi-key not found, try collection-as-key with zero allocations!
+    /**
+     * Collection with COLLECTIONS_NOT_EXPANDED mode - only try collection-as-key lookup.
+     */
+    private V getFromCollectionAsKey(Collection<?> collection) {
+        // Only try collection-as-key lookup (no fallback)
         return getInternalDirect(collection);
-    }
-
-    /**
-     * Collection with COLLECTIONS_NOT_EXPANDED mode - try collection-as-key first, then multi-key.
-     */
-    private V getFromCollectionKeyFirst(Collection<?> collection) {
-        // Try collection-as-key first with zero allocations!
-        V result = getInternalDirect(collection);
-        if (result != null) {
-            return result;  // Found via collection-as-key
-        }
-
-        // Collection-as-key not found, try multi-key
-        Object rawResult = getInternalFromCollectionRaw(collection);
-        return rawResult == NOT_FOUND_SENTINEL ? null : (V) rawResult;
     }
 
     /**
@@ -990,21 +938,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return putInternalSingle(null, value);
         }
 
-        // Check if last parameter is KeyMode.SINGLE_KEY (force single-key storage)
-        if (keys.length >= 2 && keys[keys.length - 1] == KeyMode.SINGLE_KEY) {
-            // Remove the KeyMode flag and treat remaining keys as single key
-            Object[] actualKeys = new Object[keys.length - 1];
-            System.arraycopy(keys, 0, actualKeys, 0, keys.length - 1);
-
-            // Force single-key storage using new direct approach
-            if (actualKeys.length == 1) {
-                // Single key - store directly
-                return putInternalSingle(actualKeys[0], value);
-            } else {
-                // Multiple keys but user wants them as single composite key
-                return putInternalSingle(actualKeys, value);
-            }
-        }
 
         return putInternal(keys, value);
     }
@@ -1483,72 +1416,32 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Build a deterministic string representation of the key sequence
         StringBuilder keySequence = new StringBuilder();
         
-        // Check if this uses the new level format or old sentinel format
-        boolean usesNewLevelFormat = keyArray.length > 0 && keyArray[0] == HAS_LEVELS;
-        boolean usesOldSentinelFormat = keyArray.length > 0 && keyArray[0] == HAS_SENTINELS;
-        
-        if (usesNewLevelFormat) {
-            // New optimized format - level numbers are embedded directly (no parsing needed!)
-            for (int i = 0; i < keyArray.length; i++) {
-                if (i > 0) {
-                    keySequence.append("|"); // Separator to avoid collisions
-                }
-                Object key = keyArray[i];
-                if (key == null) {
-                    keySequence.append("NULL");
-                } else if (key == HAS_LEVELS) {
-                    keySequence.append("LEVELS"); // Include flag - it makes structures unique!
-                } else if (key instanceof Integer) {
-                    // Level numbers are embedded directly - just append them with prefix
-                    keySequence.append("L").append(key); // L0, L1, L2, etc. for clear structure
-                } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
-                    // Primitives and Numbers: use toString() - deterministic
-                    keySequence.append(key.toString());
-                } else {
-                    // Complex objects: smart handling
-                    String str = key.toString();
-                    if (str.contains("@") && str.matches(".*@[0-9a-fA-F]+$")) {
-                        // Looks like default Object.toString() format (ClassName@hashCode)
-                        // Use class name + hashCode for SHA-1 input
-                        keySequence.append(key.getClass().getName()).append(":").append(key.hashCode());
-                    } else {
-                        // Custom toString() - trust it, but include class name for safety
-                        keySequence.append(key.getClass().getName()).append(":").append(str);
-                    }
-                }
+        // Optimized format - level numbers are embedded directly (no parsing needed!)
+        for (int i = 0; i < keyArray.length; i++) {
+            if (i > 0) {
+                keySequence.append("|"); // Separator to avoid collisions
             }
-        } else {
-            // Legacy format with UP/DOWN sentinels - maintain backward compatibility
-            int depth = 0; // Track nesting depth for enhanced collision protection
-            for (int i = 0; i < keyArray.length; i++) {
-                if (i > 0) {
-                    keySequence.append("|"); // Separator to avoid collisions
-                }
-                Object key = keyArray[i];
-                if (key == null) {
-                    keySequence.append("NULL");
-                } else if (key == HAS_SENTINELS) {
-                    keySequence.append("SENTINELS"); // Include flag - it makes structures unique!
-                } else if (key == LEVEL_DOWN) {
-                    depth++; // Increase depth on DOWN
-                    keySequence.append(depth); // Level number provides structure and collision protection
-                } else if (key == LEVEL_UP) {
-                    keySequence.append(depth); // Level number provides structure and collision protection
-                    depth--; // Decrease depth on UP
-                } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
-                    // Primitives and Numbers: use toString() - deterministic
-                    keySequence.append(key.toString());
+            Object key = keyArray[i];
+            if (key == null) {
+                keySequence.append("NULL");
+            } else if (key == HAS_LEVELS) {
+                keySequence.append("LEVELS"); // Include flag - it makes structures unique!
+            } else if (key instanceof Integer) {
+                // Level numbers are embedded directly - just append them with prefix
+                keySequence.append("L").append(key); // L0, L1, L2, etc. for clear structure
+            } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
+                // Primitives and Numbers: use toString() - deterministic
+                keySequence.append(key.toString());
+            } else {
+                // Complex objects: smart handling
+                String str = key.toString();
+                if (str.contains("@") && str.matches(".*@[0-9a-fA-F]+$")) {
+                    // Looks like default Object.toString() format (ClassName@hashCode)
+                    // Use class name + hashCode for SHA-1 input
+                    keySequence.append(key.getClass().getName()).append(":").append(key.hashCode());
                 } else {
-                    // Complex objects: smart handling
-                    String str = key.toString();
-                    if (str.contains("@") && str.matches(".*@[0-9a-fA-F]+$")) {
-                        // Looks like default Object.toString() format (ClassName@hashCode)
-                        // Use class name + hashCode for SHA-1 input
-                        keySequence.append(key.getClass().getName()).append(":").append(key.hashCode());
-                    } else {
-                        // Custom toString() - trust it, but include class name for safety
-                        keySequence.append(key.getClass().getName()).append(":").append(str);
-                    }
+                    // Custom toString() - trust it, but include class name for safety
+                    keySequence.append(key.getClass().getName()).append(":").append(str);
                 }
             }
         }
@@ -1580,8 +1473,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Expand this nested array/collection
                 Object[] expanded = expandMultiDimensionalArray(key);
 
-                // Check if this container is flat (no levels/sentinels)
-                boolean isFlat = expanded.length == 0 || (expanded[0] != HAS_LEVELS && expanded[0] != HAS_SENTINELS);
+                // Check if this container is flat (no levels)
+                boolean isFlat = expanded.length == 0 || expanded[0] != HAS_LEVELS;
 
                 if (isFlat && keys.length > 1) {
                     // Add container boundary markers for flat containers in multi-container sequences
@@ -1877,7 +1770,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             case COLLECTIONS_EXPANDED:
                 return removeFromCollectionMultiKeyOnly(collection);
             case COLLECTIONS_NOT_EXPANDED:
-                return removeFromCollectionKeyFirst(collection);
+                return removeFromCollectionAsKey(collection);
             default:
                 throw new IllegalStateException("Unknown CollectionKeyMode: " + collectionKeyMode);
         }
@@ -1902,22 +1795,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return removeInternalFromCollection(collection);
     }
 
-    private V removeFromCollectionMultiKeyFirst(Collection<?> collection) {
-        // Try multi-key first, then collection-as-key
-        V result = removeInternalFromCollection(collection);
-        if (result == null) {
-            result = removeInternalDirect(collection);
-        }
-        return result;
-    }
 
-    private V removeFromCollectionKeyFirst(Collection<?> collection) {
-        // Try collection-as-key first, then multi-key
-        V result = removeInternalDirect(collection);
-        if (result == null) {
-            result = removeInternalFromCollection(collection);
-        }
-        return result;
+    private V removeFromCollectionAsKey(Collection<?> collection) {
+        // Only try collection-as-key lookup (no fallback)
+        return removeInternalDirect(collection);
     }
 
     /**
@@ -2305,7 +2186,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_EXPANDED) {
             return containsKeyFromCollectionAsMultiKey(collection);
         } else { // COLLECTIONS_NOT_EXPANDED
-            return containsKeyFromCollectionCollectionFirst(collection);
+            return containsKeyFromCollectionAsKey(collection);
         }
     }
 
@@ -2326,32 +2207,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return containsKeyInternal(expandedKeys);
     }
 
-    /**
-     * Try multi-key first, then single-key for Collections.
-     */
-    private boolean containsKeyFromCollectionMultiFirst(Collection<?> collection) {
-        // First try: multi-key lookup
-        boolean found = containsKeyFromCollectionAsMultiKey(collection);
-        if (found) {
-            return true;
-        }
 
-        // Second try: single-key lookup (direct, zero allocation)
+    /**
+     * Collection-as-key only lookup for Collections.
+     */
+    private boolean containsKeyFromCollectionAsKey(Collection<?> collection) {
+        // Only try single-key lookup (no fallback)
         return containsKeyInternalDirect(collection);
-    }
-
-    /**
-     * Try single-key first, then multi-key for Collections.
-     */
-    private boolean containsKeyFromCollectionCollectionFirst(Collection<?> collection) {
-        // First try: single-key lookup (direct, zero allocation)
-        boolean found = containsKeyInternalDirect(collection);
-        if (found) {
-            return true;
-        }
-
-        // Second try: multi-key lookup
-        return containsKeyFromCollectionAsMultiKey(collection);
     }
 
     /**

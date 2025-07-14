@@ -338,8 +338,8 @@ public class TrackingMap<K, V> implements Map<K, V> {
                         wasTracked = true;
                     }
                     
-                    // Strategy 2: Check if SHA-1 hash was tracked (for array/collection keys with sentinels)
-                    if (keyArray.length > 0 && keyArray[0] == MultiKeyMap.HAS_SENTINELS) {
+                    // Strategy 2: Check if SHA-1 hash was tracked (for array/collection keys with levels)
+                    if (keyArray.length > 0 && keyArray[0] == MultiKeyMap.HAS_LEVELS) {
                         String keyHash = MultiKeyMap.computeSHA1Hash(keyArray);
                         if (readKeys.contains(keyHash)) {
                             wasTracked = true;
@@ -609,8 +609,8 @@ public class TrackingMap<K, V> implements Map<K, V> {
                 if (keyExists) {
                     if (processedKey instanceof Object[]) {
                         Object[] processedArray = (Object[]) processedKey;
-                        // Check if this has sentinels (multi-dimensional structure) - O(1) check!
-                        if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_SENTINELS) {
+                        // Check if this has levels (multi-dimensional structure) - O(1) check!
+                        if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_LEVELS) {
                             // Multi-dimensional structure - use SHA-1 hash tracking to avoid ambiguity
                             String keyHash = MultiKeyMap.computeSHA1Hash(processedKey);
                             readKeys.add(keyHash);
@@ -649,8 +649,8 @@ public class TrackingMap<K, V> implements Map<K, V> {
                 
                 if (processedKey instanceof Object[]) {
                     Object[] processedArray = (Object[]) processedKey;
-                    // Check if this has sentinels (multi-dimensional structure) - O(1) check!
-                    if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_SENTINELS) {
+                    // Check if this has levels (multi-dimensional structure) - O(1) check!
+                    if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_LEVELS) {
                         // Multi-dimensional structure - remove SHA-1 hash
                         String keyHash = MultiKeyMap.computeSHA1Hash(processedKey);
                         readKeys.remove(keyHash);

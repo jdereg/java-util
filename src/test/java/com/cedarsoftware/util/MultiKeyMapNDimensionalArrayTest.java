@@ -248,17 +248,17 @@ class MultiKeyMapNDimensionalArrayTest {
         Object[] nestedArray = {subArray1, subArray2};
         Object[] expandedNested = MultiKeyMap.expandMultiDimensionalArray(nestedArray);
         
-        // Should return a different array reference (expanded with sentinels)
+        // Should return a different array reference (expanded with embedded levels)
         assertNotSame(nestedArray, expandedNested);
-        assertEquals(8, expandedNested.length); // HAS_SENTINELS + LEVEL_DOWN + x + y + LEVEL_UP + LEVEL_DOWN + z + LEVEL_UP
-        assertEquals(MultiKeyMap.HAS_SENTINELS, expandedNested[0]);
-        assertEquals(MultiKeyMap.LEVEL_DOWN, expandedNested[1]);
+        assertEquals(8, expandedNested.length); // HAS_LEVELS + 1 + x + y + 1 + 1 + z + 1
+        assertEquals(MultiKeyMap.HAS_LEVELS, expandedNested[0]);
+        assertEquals(1, expandedNested[1]); // Level 1 START
         assertEquals("x", expandedNested[2]);
         assertEquals("y", expandedNested[3]);
-        assertEquals(MultiKeyMap.LEVEL_UP, expandedNested[4]);
-        assertEquals(MultiKeyMap.LEVEL_DOWN, expandedNested[5]);
+        assertEquals(1, expandedNested[4]); // Level 1 END
+        assertEquals(1, expandedNested[5]); // Level 1 START
         assertEquals("z", expandedNested[6]);
-        assertEquals(MultiKeyMap.LEVEL_UP, expandedNested[7]);
+        assertEquals(1, expandedNested[7]); // Level 1 END
         
         // Test that both flat and nested arrays work correctly in MultiKeyMap
         map.put(flatArray, "flatValue");

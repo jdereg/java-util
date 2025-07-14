@@ -2319,66 +2319,53 @@ boolean exists = mkMap.containsMultiKey("key1", "key2", "key3");
 mkMap.removeMultiKey("key1", "key2", "key3", "key4");
 ```
 
-**Key Point 1:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful var-args methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
-
-**Key Point 2:** If you use *put()* on a MultiKeyMap, it will automatically unpack arrays and Collections into mulli-key. This is true for *get()*, *remove()*, and *containsKey()*.  
+**Key Point 1:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful 
+var-args methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
 
 ### Collection and Array Handling
 
 MultiKeyMap provides intelligent handling of Collections and Arrays through `CollectionKeyMode`:
+Whenever you use *put()* or *multiKeyPut()* on a MultiKeyMap, it will automatically unpack Arrays and Collections into mulli-keys.
+This is true regardless of sub-arrays, sub-Collections, jadgged (non-unitform dimensions) Arrays or Collections.
+The **MultiKey()* methods allow you place elements in comma deliminated list (var-arg), which is especially handy if you
+do not want to make a new Array or Collection just hold the values (no need to add heap/GC pressure).  If an Array or 
+Collection is passed into the var-args method, they too will be "deeply" expanded. Note: Cycles in the data will be automatically
+detected and not cause StackOverflow.
 
 ```java
+import com.cedarsoftware.util.MultiKeyMap;
+
 // Default behavior: Collections/Arrays auto-unpack into multi-key entries
 Map<Object, String> map = new MultiKeyMap<>();
 String[] keys = {"config", "database", "url"};
-map.put(keys, "jdbc:mysql://localhost:3306/db");            // Stored as 3D key
-String url = map.get(new String[]{"config", "database", "url"}); // Retrieved as 3D key
+map.
 
-// Configure collection handling behavior
-MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTION_KEY_FIRST);
-String[] configPath = {"database", "connection", "pool"};
-configMap.put(configPath, "connection-string");            // Array treated as single key
-String dbConfig = configMap.get(configPath);                // Retrieved as single key
+put(keys, "jdbc:mysql://localhost:3306/db");                         // Stored as 3D key
+
+String url = map.getMultiKey(new String[]{"config", "database", "url"}); // Retrieved as 3D key
+
+// Configure non-default Collection handling behavior
+MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED);
+Collection configPath = List.of("database", "connection", "pool");
+configMap.put(keys, "someValue");                           // the Collection "keys" goes into the "key" as a Collection instance (not unpacked)
+configMAp.putMultiKeys("someValue", keys);                  // the Collection "keys" goes into the "key" as a Collection instance (not unpacked)
+OBject[] moreKeys = new Object[] {1, 2, 3};
+configMap.put(moreKeys, "connection-string");               // Array always expanded (not equals/hashCode method on arrays)
+configMap.putKeyMap(moreKeys, "connection-string");         // Array always expanded (not equals/hashCode method on arrays)
 ```
 
-**Two Different APIs with Different Behaviors:**
-
-### Map Interface: `map.put(key, value)`
-
-**When key is a regular object (String, Integer, Employee, etc.):**
-- Works like a standard Map - direct key-value mapping
-
-**When key is a Collection/Array:**
-- **MULTI_KEY_ONLY** (default): Elements are unpacked and combined into a multi-dimensional key
+_MultiKeyMap_ constructor options:
+- **COLLECTIONS_EXPANDED**: Collections are expanded "all the way down" (default)
   ```java
-  map.put(Arrays.asList("a", 75.0, true), value);  // Stored as 3D key: ("a", 75.0, true)
+  map.put(Arrays.asList("a", 75.0, true), value);           // Stored as 3D key: ("a", 75.0, true) 
   String result = map.get(Arrays.asList("a", 75.0, true));  // Collection/array is unpacked into 3D key
-  ```
-
-- **MULTI_KEY_FIRST**: Try unpacking first, then try as single composite key
-  ```java
-  map.put(Arrays.asList("a", 75.0, true), value);  // Stored as 3D key: ("a", 75.0, true) 
-  String result = map.get(Arrays.asList("a", 75.0, true));  // Collection/array is unpacked into 3D key
-  // If not found, tries: map.get(theActualCollectionObject)
-  ```
-
-- **COLLECTION_KEY_FIRST**: Try as single composite key first, then try unpacking
-  ```java
+  
+- **COLLECTIONS_NOT_EXPANDED**: Collections are placed as single object in Map (not expanded) 
+```java
   map.put(myCol, value);  // Stored with myCol object as the key
   String result = map.get(myCol);  // Found by myCol as key (like a regular Map)
   // If not found, tries unpacking myCol elements into n-dimensional key and using that
   ```
-
-### MultiKeyMap Var-args API: `map.put(value, key1, key2, key3, ...)`
-
-**Always combines all arguments into a multi-dimensional key:**
-- `map.put(value, "a", 75.0, true)` → Stored as 3D key: ("a", 75.0, true)
-- `map.put(value, "x", myArray, myList)` → Array/Collection elements are unpacked and combined with "x"
-- CollectionKeyMode settings do **not** affect this API - collections/arrays are always unpacked
-
-**Retrieval with var-args:**
-- `map.get("a", 75.0, true)` → Looks up 3D key: ("a", 75.0, true) 
-- `map.get("x", arrayElements..., listElements...)` → All elements combined into one n-dimensional lookup key
 
 ### Performance Characteristics
 

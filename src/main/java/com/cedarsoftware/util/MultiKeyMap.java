@@ -164,25 +164,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     static { LoggingConfig.init(); }
 
     /**
-     * Sentinel object used to mark the beginning of a nested array level during
-     * n-dimensional array expansion. This preserves structural information to
-     * prevent hash collisions between different array layouts.
-     */
-    public static final Object LEVEL_DOWN = new Object();
-
-    /**
-     * Sentinel object used to mark the end of a nested array level during
-     * n-dimensional array expansion. This preserves structural information to
-     * prevent hash collisions between different array layouts.
-     */
-    public static final Object LEVEL_UP = new Object();
-
-    /**
      * Flag placed as the first element of Object[] returned by get1DKey() to indicate
-     * that the array contains LEVEL_DOWN/LEVEL_UP sentinels. This avoids the need
-     * to scan the array to detect sentinels.
+     * that the array contains embedded level numbers. This avoids the need
+     * to scan the array to detect level information.
      */
-    public static final Object HAS_SENTINELS = new Object();
+    public static final Object HAS_LEVELS = new Object();
+    
+    /**
+     * @deprecated Use HAS_LEVELS instead. Kept for backward compatibility during transition.
+     */
+    @Deprecated
+    public static final Object HAS_SENTINELS = HAS_LEVELS;
+    
+    /**
+     * @deprecated Level numbers are now embedded directly. Kept for backward compatibility.
+     */
+    @Deprecated
+    public static final Object LEVEL_DOWN = new Object();
+    
+    /**
+     * @deprecated Level numbers are now embedded directly. Kept for backward compatibility.
+     */
+    @Deprecated
+    public static final Object LEVEL_UP = new Object();
 
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
@@ -1257,16 +1261,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
 
-        // Array contains nested arrays/collections - use expansion algorithm with level sentinels
+        // Array contains nested arrays/collections - use expansion algorithm with embedded levels
         List<Object> result = new ArrayList<>();
-        result.add(HAS_SENTINELS); // Add flag as first element - this IS the stored key
+        result.add(HAS_LEVELS); // Add flag as first element - this IS the stored key
         IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
-        expandWithSentinels(sourceArrayOrCollection, result, 0, visited);
+        expandWithLevels(sourceArrayOrCollection, result, 0, visited);
         return result.toArray(new Object[0]);
     }
 
     /**
-     * Recursively expands nested arrays and collections while adding LEVEL_DOWN and LEVEL_UP sentinels
+     * Recursively expands nested arrays and collections while embedding level numbers directly
      * to preserve structural information and prevent hash collisions. Includes cycle detection to
      * prevent infinite loops.
      *
@@ -1275,7 +1279,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param level the current nesting level (0 = top level)
      * @param visited identity-based set to track visited containers for cycle detection
      */
-    private static void expandWithSentinels(Object current, List<Object> result, int level, IdentityHashMap<Object, Boolean> visited) {
+    private static void expandWithLevels(Object current, List<Object> result, int level, IdentityHashMap<Object, Boolean> visited) {
         if (current == null) {
             result.add(null);
             return;
@@ -1301,19 +1305,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Add to visited set
             visited.put(current, Boolean.TRUE);
 
-            // Add LEVEL_DOWN sentinel for nested collections (but not for top level)
+            // Add level number for nested collections (but not for top level)
             if (level > 0) {
-                result.add(LEVEL_DOWN);
+                result.add(level); // Embed level number directly - START marker
             }
 
             // Process collection elements
             for (Object element : collection) {
-                expandWithSentinels(element, result, level + 1, visited);
+                expandWithLevels(element, result, level + 1, visited);
             }
 
-            // Add LEVEL_UP sentinel for nested collections (but not for top level)
+            // Add level number for nested collections (but not for top level)
             if (level > 0) {
-                result.add(LEVEL_UP);
+                result.add(level); // Embed level number directly - END marker
             }
 
             // Remove from visited set (allows same collection in different branches)
@@ -1333,20 +1337,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Add to visited set
             visited.put(current, Boolean.TRUE);
 
-            // Add LEVEL_DOWN sentinel for nested arrays (but not for top level)
+            // Add level number for nested arrays (but not for top level)
             if (level > 0) {
-                result.add(LEVEL_DOWN);
+                result.add(level); // Embed level number directly - START marker
             }
 
             int length = Array.getLength(current);
             for (int i = 0; i < length; i++) {
                 Object element = Array.get(current, i);
-                expandWithSentinels(element, result, level + 1, visited);
+                expandWithLevels(element, result, level + 1, visited);
             }
 
-            // Add LEVEL_UP sentinel for nested arrays (but not for top level)
+            // Add level number for nested arrays (but not for top level)
             if (level > 0) {
-                result.add(LEVEL_UP);
+                result.add(level); // Embed level number directly - END marker
             }
 
             // Remove from visited set (allows same array in different branches)
@@ -1478,36 +1482,73 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Build a deterministic string representation of the key sequence
         StringBuilder keySequence = new StringBuilder();
-        int depth = 0; // Track nesting depth for enhanced collision protection
-
-        for (int i = 0; i < keyArray.length; i++) {
-            if (i > 0) {
-                keySequence.append("|"); // Separator to avoid collisions
-            }
-            Object key = keyArray[i];
-            if (key == null) {
-                keySequence.append("NULL");
-            } else if (key == HAS_SENTINELS) {
-                keySequence.append("SENTINELS"); // Include flag - it makes structures unique!
-            } else if (key == LEVEL_DOWN) {
-                depth++; // Increase depth on DOWN
-                keySequence.append(depth); // Level number provides structure and collision protection
-            } else if (key == LEVEL_UP) {
-                keySequence.append(depth); // Level number provides structure and collision protection
-                depth--; // Decrease depth on UP
-            } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
-                // Primitives and Numbers: use toString() - deterministic
-                keySequence.append(key.toString());
-            } else {
-                // Complex objects: smart handling
-                String str = key.toString();
-                if (str.contains("@") && str.matches(".*@[0-9a-fA-F]+$")) {
-                    // Looks like default Object.toString() format (ClassName@hashCode)
-                    // Use class name + hashCode for SHA-1 input
-                    keySequence.append(key.getClass().getName()).append(":").append(key.hashCode());
+        
+        // Check if this uses the new level format or old sentinel format
+        boolean usesNewLevelFormat = keyArray.length > 0 && keyArray[0] == HAS_LEVELS;
+        boolean usesOldSentinelFormat = keyArray.length > 0 && keyArray[0] == HAS_SENTINELS;
+        
+        if (usesNewLevelFormat) {
+            // New optimized format - level numbers are embedded directly (no parsing needed!)
+            for (int i = 0; i < keyArray.length; i++) {
+                if (i > 0) {
+                    keySequence.append("|"); // Separator to avoid collisions
+                }
+                Object key = keyArray[i];
+                if (key == null) {
+                    keySequence.append("NULL");
+                } else if (key == HAS_LEVELS) {
+                    keySequence.append("LEVELS"); // Include flag - it makes structures unique!
+                } else if (key instanceof Integer) {
+                    // Level numbers are embedded directly - just append them with prefix
+                    keySequence.append("L").append(key); // L0, L1, L2, etc. for clear structure
+                } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
+                    // Primitives and Numbers: use toString() - deterministic
+                    keySequence.append(key.toString());
                 } else {
-                    // Custom toString() - trust it, but include class name for safety
-                    keySequence.append(key.getClass().getName()).append(":").append(str);
+                    // Complex objects: smart handling
+                    String str = key.toString();
+                    if (str.contains("@") && str.matches(".*@[0-9a-fA-F]+$")) {
+                        // Looks like default Object.toString() format (ClassName@hashCode)
+                        // Use class name + hashCode for SHA-1 input
+                        keySequence.append(key.getClass().getName()).append(":").append(key.hashCode());
+                    } else {
+                        // Custom toString() - trust it, but include class name for safety
+                        keySequence.append(key.getClass().getName()).append(":").append(str);
+                    }
+                }
+            }
+        } else {
+            // Legacy format with UP/DOWN sentinels - maintain backward compatibility
+            int depth = 0; // Track nesting depth for enhanced collision protection
+            for (int i = 0; i < keyArray.length; i++) {
+                if (i > 0) {
+                    keySequence.append("|"); // Separator to avoid collisions
+                }
+                Object key = keyArray[i];
+                if (key == null) {
+                    keySequence.append("NULL");
+                } else if (key == HAS_SENTINELS) {
+                    keySequence.append("SENTINELS"); // Include flag - it makes structures unique!
+                } else if (key == LEVEL_DOWN) {
+                    depth++; // Increase depth on DOWN
+                    keySequence.append(depth); // Level number provides structure and collision protection
+                } else if (key == LEVEL_UP) {
+                    keySequence.append(depth); // Level number provides structure and collision protection
+                    depth--; // Decrease depth on UP
+                } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
+                    // Primitives and Numbers: use toString() - deterministic
+                    keySequence.append(key.toString());
+                } else {
+                    // Complex objects: smart handling
+                    String str = key.toString();
+                    if (str.contains("@") && str.matches(".*@[0-9a-fA-F]+$")) {
+                        // Looks like default Object.toString() format (ClassName@hashCode)
+                        // Use class name + hashCode for SHA-1 input
+                        keySequence.append(key.getClass().getName()).append(":").append(key.hashCode());
+                    } else {
+                        // Custom toString() - trust it, but include class name for safety
+                        keySequence.append(key.getClass().getName()).append(":").append(str);
+                    }
                 }
             }
         }
@@ -1539,18 +1580,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Expand this nested array/collection
                 Object[] expanded = expandMultiDimensionalArray(key);
 
-                // Check if this container is flat (no sentinels)
-                boolean isFlat = expanded.length == 0 || expanded[0] != HAS_SENTINELS;
+                // Check if this container is flat (no levels/sentinels)
+                boolean isFlat = expanded.length == 0 || (expanded[0] != HAS_LEVELS && expanded[0] != HAS_SENTINELS);
 
                 if (isFlat && keys.length > 1) {
-                    // Add container boundary sentinels for flat containers in multi-container sequences
+                    // Add container boundary markers for flat containers in multi-container sequences
                     // This preserves structural information that multiple containers existed
                     hasContainerBoundaries = true;
-                    result.add(LEVEL_DOWN);
+                    result.add(1); // Level 1 START marker
                     for (Object element : expanded) {
                         result.add(element);
                     }
-                    result.add(LEVEL_UP);
+                    result.add(1); // Level 1 END marker
                 } else {
                     // Container is either nested (already has sentinels) or single container - add as-is
                     for (Object element : expanded) {
@@ -1563,9 +1604,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
 
-        // If we added container boundary sentinels, prepend HAS_SENTINELS flag
+        // If we added container boundary sentinels, prepend HAS_LEVELS flag
         if (hasContainerBoundaries) {
-            result.add(0, HAS_SENTINELS);
+            result.add(0, HAS_LEVELS);
         }
 
         return result.toArray(new Object[0]);

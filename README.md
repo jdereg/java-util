@@ -31,7 +31,7 @@ This library has <b>no dependencies</b> on other libraries for runtime.
 The`.jar`file is `~600K` and works with `JDK 1.8` through `JDK 24`.
 The `.jar` file classes are version 52 `(JDK 1.8)`
 
-As of version 3.6.0 the library is built with the `-parameters`
+As of version 3.7.0 the library is built with the `-parameters`
 compiler flag. Parameter names are now retained for tasks such as
 constructor discovery (increased the jar size by about 10K.)
 
@@ -201,30 +201,91 @@ mapInterface.put(Arrays.asList("books", "fiction", "scifi"), "Sci-Fi Books");
 
 // MultiKeyMap varargs API - requires MultiKeyMap variable type
 MultiKeyMap<String> catalog = new MultiKeyMap<>();
-catalog.put("Electronics Department", "electronics");                    // 1D
-catalog.put("Science Fiction Books", "books", "fiction", "scifi");      // 3D  
-catalog.put("Laptop Computers", "electronics", "computers", "laptops"); // 3D
-catalog.put("Gaming Keyboards", "electronics", "computers", "keyboards", "gaming"); // 4D
+catalog.putMultiKey("Electronics Department", "electronics");                               // 1D
+catalog.putMultiKey("Science Fiction Books", "books", "fiction", "scifi");                  // 3D  
+catalog.putMultiKey("Gaming Keyboards", "electronics", "computers", "keyboards", "gaming"); // 4D
 
 // Flexible retrieval using matching dimensions
-String dept = catalog.get("electronics");                               // Electronics Department
-String category = catalog.get("books", "fiction", "scifi");            // Science Fiction Books
-String product = catalog.get("electronics", "computers", "laptops");   // Laptop Computers
+String dept = catalog.getMultiKey("electronics");                               // Electronics Department
+String category = catalog.getMultiKey("books", "fiction", "scifi");            // Science Fiction Books
+String product = catalog.getMultiKey("electronics", "computers", "laptops");   // Laptop Computers
 
 // ConcurrentHashMap-level thread safety with lock-free reads
-catalog.put("Updated Value", "electronics", "computers", "laptops");   // Enterprise-grade concurrency
-// Coming soon: 32-stripe lock striping for 32x write parallelism
+catalog.putMultiKey("Updated Value", "electronics", "computers", "laptops");   // Enterprise-grade concurrency
+// Auto-tuned stripe locking: 8-32 stripes based on system cores for optimal write parallelism
 
-// Advanced collection handling with CollectionKeyMode
-MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTION_KEY_FIRST);
-String[] configPath = {"database", "connection", "pool"};
-configMap.put(configPath, "jdbc:mysql://localhost:3306/app");           // Array as single key
+// Advanced collection handling with CollectionKeyMode (affects Collections only, not Arrays)
+MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTIONS_NOT_EXPANDED);
+List<String> configPath = Arrays.asList("database", "connection", "pool");
+configMap.put(configPath, "jdbc:mysql://localhost:3306/app");           // Collection tried as single key first
 String dbUrl = configMap.get(configPath);                               // Retrieved as single key
+
+// Arrays are ALWAYS expanded and elements are compared by equals(). This is a BIG feature for MultiKeyMap. 
+// This is because you can't override equals/hashCode on arrays, as they compare with == (identity).
+// Use another Map type if you want array to compare with identity. 
+String[] arrayPath = {"database", "connection", "pool"};
+configMap.put(arrayPath, "another-value");                                      // ALWAYS stored as 3D key
+String arrayValue = configMap.getMultiKey("database", "connection", "pool");    // Retrieved as 3D key
+
+// 🔥 N-DIMENSIONAL ARRAY EXPANSION - The Ultimate Power Feature
+// Arrays and Collections expand with structure preservation - no limits on depth!
+
+// ✅ EQUIVALENT (same flat structure, different containers):
+String[] flatArray = {"a", "b", "c"};                    // → ["a", "b", "c"]
+List<String> flatList = List.of("a", "b", "c");          // → ["a", "b", "c"]  
+Object[] flatObject = {"a", "b", "c"};                   // → ["a", "b", "c"]
+configMap.put(flatArray, "value");
+// ALL of these work - cross-container equivalence:
+String result1 = configMap.get(flatArray);               // ✅ Original String[]
+String result2 = configMap.get(flatList);                // ✅ Equivalent List  
+String result3 = configMap.get(flatObject);              // ✅ Equivalent Object[]
+String result4 = configMap.getMultiKey("a", "b", "c");   // ✅ Individual elements
+
+// ❌ NOT EQUIVALENT (different structures):
+String[][] nested2D = {{"a", "b"}, {"c", "d"}};         // → [🔒, ⬇, "a", "b", ⬆, ⬇, "c", "d", ⬆]
+String[] flat1D = {"a", "b", "c", "d"};                 // → ["a", "b", "c", "d"]
+// These create SEPARATE entries - different structures preserved!
+configMap.put(nested2D, "2D_value");                    // Stored with sentinels
+configMap.put(flat1D, "flat_value");                    // Stored without sentinels
 
 // Perfect for complex lookups: user permissions, configuration trees, caches
 MultiKeyMap<Permission> permissions = new MultiKeyMap<>();
-permissions.put(Permission.ADMIN, "user123", "project456", "resource789");
-Permission userPerm = permissions.get("user123", "project456", "resource789");
+permissions.putMultiKey(Permission.ADMIN, "user123", "project456", "resource789");
+Permission userPerm = permissions.getMultiKey("user123", "project456", "resource789");
+```
+
+**🔄 Cross-Container Equivalence (Ultimate Flexibility!):**
+
+MultiKeyMap treats **equivalent structures** as **identical keys**, regardless of container type:
+
+```java
+MultiKeyMap<String> map = new MultiKeyMap<>();
+
+// 🎯 ALL of these are equivalent (same flat structure):
+String[] stringArray = {"user", "profile", "settings"};
+Object[] objectArray = {"user", "profile", "settings"};  
+int[] intArray = {1, 2, 3};                              // Different elements, same structure
+List<String> stringList = List.of("user", "profile", "settings");
+List<Object> objectList = List.of("user", "profile", "settings");
+ArrayList<String> arrayList = new ArrayList<>(List.of("user", "profile", "settings"));
+Set<String> set = Set.of("user", "profile", "settings"); // Even Sets work!
+
+// Store with ANY container type:
+map.put(stringArray, "stored-value");
+
+// Retrieve with ANY equivalent container:
+map.get(stringArray);      // ✅ "stored-value"
+map.get(objectArray);      // ✅ "stored-value" 
+map.get(stringList);       // ✅ "stored-value"
+map.get(objectList);       // ✅ "stored-value"
+map.get(arrayList);        // ✅ "stored-value"
+// Only ONE entry exists in the map - they're all the same key!
+
+// 🎯 Nested structures are also equivalent across containers:
+List<List<String>> nestedList = List.of(List.of("a", "b"), List.of("c"));
+Object[] nestedArray = {new String[]{"a", "b"}, new String[]{"c"}};
+map.put(nestedList, "nested-value");
+map.get(nestedArray);      // ✅ "nested-value" - same nested structure!
 ```
 
 **Why MultiKeyMap is the industry-leading solution:**
@@ -291,7 +352,7 @@ java-util is engineered for performance-critical applications with optimizations
 | Feature | JDK Collections | Google Guava | Eclipse Collections | Apache Commons | **java-util**    |
 |---------|----------------|--------------|---------------------|----------------|------------------|
 | **Dependencies** | None | 3+ libraries | 2+ libraries | Multiple | None             |
-| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | ~500KB total     |
+| **Jar Size** | N/A | ~2.7MB | ~2.8MB | ~500KB each | ~600KB total     |
 | **JDK Compatibility** | 8+ | 11+ (latest) | 11+ | 8+ | 8+               |
 | **Null-Safe Concurrent** | ❌ | ❌ | ❌ | ❌ | ✅ ConcurrentMapNullSafe |
 | **Memory-Adaptive Collections** | ❌ | ❌ | ✅ | ❌ | ✅ CompactMap/Set |
@@ -476,7 +537,7 @@ The jar already ships with all necessary OSGi headers and a `module-info.class`.
 To add the bundle to an Eclipse feature or any OSGi runtime simply reference it:
 
 ```xml
-<plugin id="com.cedarsoftware.java-util" version="3.6.0"/>
+<plugin id="com.cedarsoftware.java-util" version="3.7.0"/>
 ```
 
 Both of these features ensure that our library can be seamlessly integrated into modular Java applications, providing robust dependency management and encapsulation.
@@ -487,7 +548,7 @@ To include in your project:
 
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:3.6.0'
+implementation 'com.cedarsoftware:java-util:3.7.0'
 ```
 
 ##### Maven
@@ -495,7 +556,7 @@ implementation 'com.cedarsoftware:java-util:3.6.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>3.6.0</version>
+  <version>3.7.0</version>
 </dependency>
 ```
 

@@ -338,8 +338,8 @@ public class TrackingMap<K, V> implements Map<K, V> {
                         wasTracked = true;
                     }
                     
-                    // Strategy 2: Check if SHA-1 hash was tracked (for array/collection keys with levels)
-                    if (keyArray.length > 0 && keyArray[0] == MultiKeyMap.HAS_LEVELS) {
+                    // Strategy 2: Check if SHA-1 hash was tracked (for array/collection keys with brackets)
+                    if (keyArray.length > 0 && MultiKeyMap.BRACKET_OPEN.equals(keyArray[0])) {
                         String keyHash = MultiKeyMap.computeSHA1Hash(keyArray);
                         if (readKeys.contains(keyHash)) {
                             wasTracked = true;
@@ -610,7 +610,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
                     if (processedKey instanceof Object[]) {
                         Object[] processedArray = (Object[]) processedKey;
                         // Check if this has levels (multi-dimensional structure) - O(1) check!
-                        if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_LEVELS) {
+                        if (processedArray.length > 0 && MultiKeyMap.BRACKET_OPEN.equals(processedArray[0])) {
                             // Multi-dimensional structure - use SHA-1 hash tracking to avoid ambiguity
                             String keyHash = MultiKeyMap.computeSHA1Hash(processedKey);
                             readKeys.add(keyHash);
@@ -650,7 +650,7 @@ public class TrackingMap<K, V> implements Map<K, V> {
                 if (processedKey instanceof Object[]) {
                     Object[] processedArray = (Object[]) processedKey;
                     // Check if this has levels (multi-dimensional structure) - O(1) check!
-                    if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_LEVELS) {
+                    if (processedArray.length > 0 && MultiKeyMap.BRACKET_OPEN.equals(processedArray[0])) {
                         // Multi-dimensional structure - remove SHA-1 hash
                         String keyHash = MultiKeyMap.computeSHA1Hash(processedKey);
                         readKeys.remove(keyHash);

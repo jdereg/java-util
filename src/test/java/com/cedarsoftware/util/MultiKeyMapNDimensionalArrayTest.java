@@ -248,17 +248,18 @@ class MultiKeyMapNDimensionalArrayTest {
         Object[] nestedArray = {subArray1, subArray2};
         Object[] expandedNested = MultiKeyMap.expandMultiDimensionalArray(nestedArray);
         
-        // Should return a different array reference (expanded with embedded levels)
+        // Should return a different array reference (expanded with bracket notation)
         assertNotSame(nestedArray, expandedNested);
-        assertEquals(8, expandedNested.length); // HAS_LEVELS + 1 + x + y + 1 + 1 + z + 1
-        assertEquals(MultiKeyMap.HAS_LEVELS, expandedNested[0]);
-        assertEquals(1, expandedNested[1]); // Level 1 START
+        assertEquals(9, expandedNested.length); // "[" + "[" + "x" + "y" + "]" + "[" + "z" + "]" + "]"
+        assertEquals(MultiKeyMap.BRACKET_OPEN, expandedNested[0]);  // Opening bracket for outer array
+        assertEquals(MultiKeyMap.BRACKET_OPEN, expandedNested[1]);  // Opening bracket for first sub-array
         assertEquals("x", expandedNested[2]);
         assertEquals("y", expandedNested[3]);
-        assertEquals(1, expandedNested[4]); // Level 1 END
-        assertEquals(1, expandedNested[5]); // Level 1 START
+        assertEquals(MultiKeyMap.BRACKET_CLOSE, expandedNested[4]); // Closing bracket for first sub-array
+        assertEquals(MultiKeyMap.BRACKET_OPEN, expandedNested[5]);  // Opening bracket for second sub-array
         assertEquals("z", expandedNested[6]);
-        assertEquals(1, expandedNested[7]); // Level 1 END
+        assertEquals(MultiKeyMap.BRACKET_CLOSE, expandedNested[7]); // Closing bracket for second sub-array
+        assertEquals(MultiKeyMap.BRACKET_CLOSE, expandedNested[8]); // Closing bracket for outer array
         
         // Test that both flat and nested arrays work correctly in MultiKeyMap
         map.put(flatArray, "flatValue");

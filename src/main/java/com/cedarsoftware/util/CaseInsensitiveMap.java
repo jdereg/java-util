@@ -689,7 +689,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        return multiKeyMap.get(convertKeys(keys));
+        return multiKeyMap.getMultiKey(convertKeys(keys));
     }
 
     /**
@@ -707,7 +707,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        return multiKeyMap.remove(convertKeys(keys));
+        return multiKeyMap.removeMultiKey(convertKeys(keys));
     }
 
     /**
@@ -725,7 +725,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        return multiKeyMap.containsKey(convertKeys(keys));
+        return multiKeyMap.containsMultiKey(convertKeys(keys));
     }
 
     /**

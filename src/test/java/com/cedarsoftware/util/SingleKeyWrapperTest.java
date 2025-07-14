@@ -37,27 +37,27 @@ class SingleKeyWrapperTest {
         map.put("single", "singleValue");
         
         // Add multi-key via varargs
-        map.put("tripleValue", "key1", "key2", "key3");
+        map.putMultiKey("tripleValue", "key1", "key2", "key3");
         
         // Add multi-key via Object[] array
         map.put(new Object[]{"array1", "array2"}, "arrayValue");
         
         // Verify all can be retrieved correctly
         assertEquals("singleValue", map.get("single"));
-        assertEquals("tripleValue", map.get("key1", "key2", "key3"));
-        assertEquals("arrayValue", map.get(new Object[]{"array1", "array2"}));
+        assertEquals("tripleValue", map.getMultiKey("key1", "key2", "key3"));
+        assertEquals("arrayValue", map.getMultiKey(new Object[]{"array1", "array2"}));
         
         assertEquals(3, map.size());
         
         // Verify containsKey works for all types
         assertTrue(map.containsKey("single"));
-        assertTrue(map.containsKey("key1", "key2", "key3"));
-        assertTrue(map.containsKey(new Object[]{"array1", "array2"}));
+        assertTrue(map.containsMultiKey("key1", "key2", "key3"));
+        assertTrue(map.containsMultiKey(new Object[]{"array1", "array2"}));
         
         // Verify remove works for all types
         assertEquals("singleValue", map.remove("single"));
-        assertEquals("tripleValue", map.remove("key1", "key2", "key3"));
-        assertEquals("arrayValue", map.remove(new Object[]{"array1", "array2"}));
+        assertEquals("tripleValue", map.removeMultiKey("key1", "key2", "key3"));
+        assertEquals("arrayValue", map.removeMultiKey(new Object[]{"array1", "array2"}));
         
         assertTrue(map.isEmpty());
     }
@@ -73,7 +73,7 @@ class SingleKeyWrapperTest {
         map.put(testKey, "mapValue");
         
         // Should NOT be retrievable via Object[] because coconut wrapper creates different key
-        assertNull(map.get(new Object[]{testKey}));
+        assertNull(map.getMultiKey(new Object[]{testKey}));
         
         // But should be retrievable via single key Map interface
         assertEquals("mapValue", map.get(testKey));
@@ -83,7 +83,7 @@ class SingleKeyWrapperTest {
         
         // Now we should have two separate entries
         assertEquals("mapValue", map.get(testKey));  // Single key (coconut wrapped)
-        assertEquals("arrayValue", map.get(new Object[]{testKey}));  // Array key (direct)
+        assertEquals("arrayValue", map.getMultiKey(new Object[]{testKey}));  // Array key (direct)
         
         assertEquals(2, map.size());
     }
@@ -99,13 +99,13 @@ class SingleKeyWrapperTest {
         
         // Test null in array
         map.put(new Object[]{null, "second"}, "arrayWithNull");
-        assertEquals("arrayWithNull", map.get(new Object[]{null, "second"}));
+        assertEquals("arrayWithNull", map.getMultiKey(new Object[]{null, "second"}));
         
         assertEquals(2, map.size());
         
         // Remove null entries
         assertEquals("nullValue", map.remove((Object) null));
-        assertEquals("arrayWithNull", map.remove(new Object[]{null, "second"}));
+        assertEquals("arrayWithNull", map.removeMultiKey(new Object[]{null, "second"}));
         
         assertTrue(map.isEmpty());
     }

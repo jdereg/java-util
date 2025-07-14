@@ -25,7 +25,7 @@ class MultiKeyMapToStringTest {
     @Test
     void testMultiKeyToString() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
-        map.put("value", "key1", "key2");
+        map.putMultiKey("value", "key1", "key2");
         assertTrue(map.toString().contains("[key1, key2]=value"));
     }
 
@@ -85,7 +85,7 @@ class MultiKeyMapToStringTest {
     @Test
     void testSelfReferenceInMultiKey() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
-        map.put("value", map, "key2", "key3");
+        map.putMultiKey("value", map, "key2", "key3");
         
         String result = map.toString();
         assertTrue(result.contains("[(this Map), key2, key3]=value"));
@@ -98,7 +98,7 @@ class MultiKeyMapToStringTest {
     void testMultipleEntriesToString() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         map.put("key1", "value1");
-        map.put("value2", "key2a", "key2b");
+        map.putMultiKey("value2", "key2a", "key2b");
         
         String result = map.toString();
         
@@ -117,7 +117,7 @@ class MultiKeyMapToStringTest {
         map.put("normal", "value");
         
         // Add self-reference as key in multi-key
-        map.put("selfInMulti", map, "otherKey");
+        map.putMultiKey("selfInMulti", map, "otherKey");
         
         // Add self-reference as value  
         Map<Object, Object> mapInterface = map;

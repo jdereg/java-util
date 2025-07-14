@@ -56,17 +56,17 @@ class MultiKeyMapConcurrencyTest {
                     Random random = new Random(id * 12345);
                     
                     for (int i = 0; i < OPERATIONS_PER_THREAD; i++) {
-                        Class<?> source = getRandomClass(random);
-                        Class<?> target = getRandomClass(random);
+                        Class<?> source = getMultiKeyRandomClass(random);
+                        Class<?> target = getMultiKeyRandomClass(random);
                         long instanceId = random.nextInt(10);
                         
                         if (random.nextBoolean()) {
                             // Write operation
                             String value = "thread" + id + "-op" + i;
-                            map.put(value, source, target, instanceId);
+                            map.putMultiKey(value, source, target, instanceId);
                         } else {
                             // Read operation
-                            String result = map.get(source, target, instanceId);
+                            String result = map.getMultiKey(source, target, instanceId);
                             // Result can be null or any valid string
                         }
                     }
@@ -123,7 +123,7 @@ class MultiKeyMapConcurrencyTest {
                     
                     for (int i = 0; i < OPERATIONS_PER_THREAD; i++) {
                         String value = "thread" + id + "-op" + i;
-                        map.put(value, source, target, instanceId);
+                        map.putMultiKey(value, source, target, instanceId);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -140,7 +140,7 @@ class MultiKeyMapConcurrencyTest {
         // Verify the map has exactly one entry for this key
         assertEquals(1, map.size(), "Should have exactly one entry for the shared key");
         
-        String finalValue = map.get(source, target, instanceId);
+        String finalValue = map.getMultiKey(source, target, instanceId);
         assertNotNull(finalValue, "Final value should not be null");
         assertTrue(finalValue.startsWith("thread"), "Final value should be from one of the threads");
         
@@ -186,10 +186,10 @@ class MultiKeyMapConcurrencyTest {
                         
                         if (random.nextFloat() < 0.7f) { // 70% writes, 30% reads
                             String value = "thread" + id + "-op" + i;
-                            map.put(value, source, target, instanceId);
+                            map.putMultiKey(value, source, target, instanceId);
                             writeOps.incrementAndGet();
                         } else {
-                            map.get(source, target, instanceId);
+                            map.getMultiKey(source, target, instanceId);
                             readOps.incrementAndGet();
                         }
                         
@@ -241,15 +241,15 @@ class MultiKeyMapConcurrencyTest {
                 
                 try {
                     while (!shouldStop.get()) {
-                        Class<?> source = getRandomClass(random);
-                        Class<?> target = getRandomClass(random);
+                        Class<?> source = getMultiKeyRandomClass(random);
+                        Class<?> target = getMultiKeyRandomClass(random);
                         long instanceId = random.nextInt(20);
                         
                         if (random.nextFloat() < 0.8f) { // 80% writes
                             String value = "thread" + id + "-op" + ops;
-                            map.put(value, source, target, instanceId);
+                            map.putMultiKey(value, source, target, instanceId);
                         } else { // 20% reads
-                            map.get(source, target, instanceId);
+                            map.getMultiKey(source, target, instanceId);
                         }
                         ops++;
                         
@@ -313,7 +313,7 @@ class MultiKeyMapConcurrencyTest {
                         long instanceId = (long) id * OPERATIONS_PER_THREAD + i; // Unique per thread
                         String value = "thread" + id + "-op" + i;
                         
-                        map.put(value, source, target, instanceId);
+                        map.putMultiKey(value, source, target, instanceId);
                         allExpectedKeys.add(makeKey(source, target, instanceId));
                     }
                 } catch (InterruptedException e) {
@@ -336,7 +336,7 @@ class MultiKeyMapConcurrencyTest {
             Class<?> target = Integer.class;
             long instanceId = Long.parseLong(parts[2]);
             
-            String value = map.get(source, target, instanceId);
+            String value = map.getMultiKey(source, target, instanceId);
             if (value != null) {
                 foundCount++;
             }
@@ -350,7 +350,7 @@ class MultiKeyMapConcurrencyTest {
         assertEquals(allExpectedKeys.size(), map.size(), "Map size should match expected keys");
     }
     
-    private Class<?> getRandomClass(Random random) {
+    private Class<?> getMultiKeyRandomClass(Random random) {
         Class<?>[] classes = {
             String.class, Integer.class, Long.class, Double.class, Boolean.class,
             Byte.class, Short.class, Float.class, Character.class,

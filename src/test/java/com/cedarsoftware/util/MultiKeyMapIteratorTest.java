@@ -33,7 +33,7 @@ class MultiKeyMapIteratorTest {
         
         // Pre-populate with some entries
         for (int i = 0; i < INITIAL_ENTRIES; i++) {
-            map.put("initial" + i, String.class, Integer.class, (long) i);
+            map.putMultiKey("initial" + i, String.class, Integer.class, (long) i);
         }
         
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -51,11 +51,11 @@ class MultiKeyMapIteratorTest {
                     
                     for (int i = 0; i < CONCURRENT_OPERATIONS; i++) {
                         // Add new entries
-                        map.put("writer" + id + "-" + i, String.class, Long.class, (long) (id * 1000 + i));
+                        map.putMultiKey("writer" + id + "-" + i, String.class, Long.class, (long) (id * 1000 + i));
                         
                         // Update existing entries occasionally
                         if (i % 10 == 0) {
-                            map.put("updated" + id + "-" + i, String.class, Integer.class, (long) (i % INITIAL_ENTRIES));
+                            map.putMultiKey("updated" + id + "-" + i, String.class, Integer.class, (long) (i % INITIAL_ENTRIES));
                         }
                         
                         writerOpsCompleted.incrementAndGet();
@@ -152,7 +152,7 @@ class MultiKeyMapIteratorTest {
                 startLatch.await();
                 
                 for (int i = 0; i < 200; i++) {
-                    map.put("resize-test-" + i, String.class, Integer.class, (long) i);
+                    map.putMultiKey("resize-test-" + i, String.class, Integer.class, (long) i);
                     
                     // Occasional pause to allow iterator to run
                     if (i % 20 == 0) {
@@ -229,7 +229,7 @@ class MultiKeyMapIteratorTest {
         
         // Pre-populate map
         for (int i = 0; i < 50; i++) {
-            map.put("value" + i, String.class, Integer.class, (long) i);
+            map.putMultiKey("value" + i, String.class, Integer.class, (long) i);
         }
         
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -272,7 +272,7 @@ class MultiKeyMapIteratorTest {
                 startLatch.await();
                 
                 for (int i = 50; i < 100; i++) {
-                    map.put("concurrent" + i, String.class, Long.class, (long) i);
+                    map.putMultiKey("concurrent" + i, String.class, Long.class, (long) i);
                     Thread.sleep(1);
                 }
             } catch (Exception e) {

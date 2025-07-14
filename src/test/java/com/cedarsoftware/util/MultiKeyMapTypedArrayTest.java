@@ -20,7 +20,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("stringValue", "key1", "key2", "key3");
+        map.putMultiKey("stringValue", "key1", "key2", "key3");
         
         // Retrieve using String[] - zero conversion
         String[] stringKeys = {"key1", "key2", "key3"};
@@ -32,10 +32,10 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {"direct1", "direct2"};
-        assertEquals("directValue", map.get(objectKeys));
+        assertEquals("directValue", map.getMultiKey(objectKeys));
         
         // Retrieve using equivalent varargs
-        assertEquals("directValue", map.get("direct1", "direct2"));
+        assertEquals("directValue", map.getMultiKey("direct1", "direct2"));
     }
     
     @Test
@@ -43,7 +43,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs (boxed integers)
-        map.put("intValue", 1, 2, 3);
+        map.putMultiKey("intValue", 1, 2, 3);
         
         // Retrieve using int[] - zero conversion via reflection
         int[] intKeys = {1, 2, 3};
@@ -55,7 +55,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {10, 20, 30};
-        assertEquals("directIntValue", map.get(objectKeys));
+        assertEquals("directIntValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -63,7 +63,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("longValue", 1L, 2L, 3L);
+        map.putMultiKey("longValue", 1L, 2L, 3L);
         
         // Retrieve using long[] - zero conversion
         long[] longKeys = {1L, 2L, 3L};
@@ -75,7 +75,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {100L, 200L};
-        assertEquals("directLongValue", map.get(objectKeys));
+        assertEquals("directLongValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -83,7 +83,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("classValue", String.class, Integer.class, Long.class);
+        map.putMultiKey("classValue", String.class, Integer.class, Long.class);
         
         // Retrieve using Class<?>[] - zero conversion
         Class<?>[] classKeys = {String.class, Integer.class, Long.class};
@@ -95,7 +95,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {Double.class, Boolean.class};
-        assertEquals("directClassValue", map.get(objectKeys));
+        assertEquals("directClassValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -103,7 +103,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("doubleValue", 1.5, 2.5, 3.5);
+        map.putMultiKey("doubleValue", 1.5, 2.5, 3.5);
         
         // Retrieve using double[] - zero conversion
         double[] doubleKeys = {1.5, 2.5, 3.5};
@@ -115,7 +115,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {10.1, 20.2};
-        assertEquals("directDoubleValue", map.get(objectKeys));
+        assertEquals("directDoubleValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -123,7 +123,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("booleanValue", true, false, true);
+        map.putMultiKey("booleanValue", true, false, true);
         
         // Retrieve using boolean[] - zero conversion
         boolean[] boolKeys = {true, false, true};
@@ -135,7 +135,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {false, false, true};
-        assertEquals("directBooleanValue", map.get(objectKeys));
+        assertEquals("directBooleanValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -143,7 +143,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("charValue", 'a', 'b', 'c');
+        map.putMultiKey("charValue", 'a', 'b', 'c');
         
         // Retrieve using char[] - zero conversion
         char[] charKeys = {'a', 'b', 'c'};
@@ -155,7 +155,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {'x', 'y', 'z'};
-        assertEquals("directCharValue", map.get(objectKeys));
+        assertEquals("directCharValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -163,7 +163,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("byteValue", (byte) 1, (byte) 2, (byte) 3);
+        map.putMultiKey("byteValue", (byte) 1, (byte) 2, (byte) 3);
         
         // Retrieve using byte[] - zero conversion
         byte[] byteKeys = {1, 2, 3};
@@ -175,7 +175,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {(byte) 10, (byte) 20, (byte) 30};
-        assertEquals("directByteValue", map.get(objectKeys));
+        assertEquals("directByteValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -183,7 +183,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("shortValue", (short) 1, (short) 2, (short) 3);
+        map.putMultiKey("shortValue", (short) 1, (short) 2, (short) 3);
         
         // Retrieve using short[] - zero conversion
         short[] shortKeys = {1, 2, 3};
@@ -195,7 +195,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {(short) 100, (short) 200};
-        assertEquals("directShortValue", map.get(objectKeys));
+        assertEquals("directShortValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -203,7 +203,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs
-        map.put("floatValue", 1.5f, 2.5f, 3.5f);
+        map.putMultiKey("floatValue", 1.5f, 2.5f, 3.5f);
         
         // Retrieve using float[] - zero conversion
         float[] floatKeys = {1.5f, 2.5f, 3.5f};
@@ -215,7 +215,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectKeys = {10.1f, 20.2f};
-        assertEquals("directFloatValue", map.get(objectKeys));
+        assertEquals("directFloatValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -223,7 +223,7 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs with mixed types
-        map.put("mixedValue", "text", 42, 3.14, true);
+        map.putMultiKey("mixedValue", "text", 42, 3.14, true);
         
         // Create typed arrays of different types
         String[] stringKeys = {"text"};
@@ -239,7 +239,7 @@ class MultiKeyMapTypedArrayTest {
         
         // But Object[] equivalent should work
         Object[] objectKeys = {"text", 42, 3.14, true};
-        assertEquals("mixedValue", map.get(objectKeys));
+        assertEquals("mixedValue", map.getMultiKey(objectKeys));
     }
     
     @Test
@@ -247,17 +247,17 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store using varargs with nulls
-        map.put("nullValue", "key1", null, "key3");
+        map.putMultiKey("nullValue", "key1", null, "key3");
         
         // String[] cannot contain null in a meaningful way for this test
         // but Object[] can
         Object[] objectKeys = {"key1", null, "key3"};
-        assertEquals("nullValue", map.get(objectKeys));
+        assertEquals("nullValue", map.getMultiKey(objectKeys));
         
         // Store using Object[] with nulls
         Object[] nullKeys = {null, "notNull", null};
         map.put(nullKeys, "mixedNullValue");
-        assertEquals("mixedNullValue", map.get(nullKeys));
+        assertEquals("mixedNullValue", map.getMultiKey(nullKeys));
     }
     
     @Test
@@ -276,18 +276,18 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store once using varargs
-        map.put("equalityTest", String.class, Integer.class, 42L);
+        map.putMultiKey("equalityTest", String.class, Integer.class, 42L);
         
         // Should be retrievable via different array types
         Object[] objectArray = {String.class, Integer.class, 42L};
-        assertEquals("equalityTest", map.get(objectArray));
+        assertEquals("equalityTest", map.getMultiKey(objectArray));
         
         Class<?>[] classArray = {String.class, Integer.class}; // Wrong length
         assertNull(map.get((Object) classArray));
         
         // Should be retrievable via mixed Object array
         Object[] mixedArray = {String.class, Integer.class, 42L};
-        assertEquals("equalityTest", map.get(mixedArray));
+        assertEquals("equalityTest", map.getMultiKey(mixedArray));
     }
     
     @Test
@@ -300,7 +300,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Retrieve using equivalent Object[]
         Object[] objectArray = {1, 2, 3, 4, 5};
-        assertEquals("intArrayValue", map.get(objectArray));
+        assertEquals("intArrayValue", map.getMultiKey(objectArray));
         
         // Retrieve using original int[]
         assertEquals("intArrayValue", map.get(intArray));
@@ -315,7 +315,7 @@ class MultiKeyMapTypedArrayTest {
         
         // Populate with test data using varargs
         for (int i = 0; i < 100; i++) {
-            map.put("value" + i, String.class, Integer.class, (long) i);
+            map.putMultiKey("value" + i, String.class, Integer.class, (long) i);
         }
         
         // Create typed arrays for comparison
@@ -325,13 +325,13 @@ class MultiKeyMapTypedArrayTest {
         
         // Warm up
         for (int i = 0; i < 1000; i++) {
-            map.get(objectArray);
+            map.getMultiKey(objectArray);
         }
         
         // Time typed array access (this would be 3-element search)
         long start = System.nanoTime();
         for (int i = 0; i < 10000; i++) {
-            String result = map.get(objectArray);
+            String result = map.getMultiKey(objectArray);
             assertNotNull(result);
         }
         long objectTime = System.nanoTime() - start;
@@ -357,13 +357,13 @@ class MultiKeyMapTypedArrayTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Store once using varargs
-        map.put("universalValue", "x", "y", "z");
+        map.putMultiKey("universalValue", "x", "y", "z");
         
         // Should be retrievable via all three APIs
         
         // 1. Object[] array
         Object[] objectArray = {"x", "y", "z"};
-        assertEquals("universalValue", map.get(objectArray));
+        assertEquals("universalValue", map.getMultiKey(objectArray));
         
         // 2. Collection
         java.util.List<Object> collection = java.util.Arrays.asList("x", "y", "z");
@@ -377,8 +377,8 @@ class MultiKeyMapTypedArrayTest {
         assertEquals(1, map.size());
         
         // Verify they all use the same hash computation
-        assertTrue(map.containsKey("x", "y", "z"));
-        assertTrue(map.containsKey(objectArray));
+        assertTrue(map.containsMultiKey("x", "y", "z"));
+        assertTrue(map.containsMultiKey(objectArray));
         assertTrue(map.containsKey(collection));
         assertTrue(map.containsKey((Object) stringArray));
     }
@@ -415,8 +415,8 @@ class MultiKeyMapTypedArrayTest {
             stringAsObject[i] = "element" + i;
         }
         
-        assertEquals("largeIntValue", map.get(intAsObject));
-        assertEquals("largeStringValue", map.get(stringAsObject));
+        assertEquals("largeIntValue", map.getMultiKey(intAsObject));
+        assertEquals("largeStringValue", map.getMultiKey(stringAsObject));
         
         assertEquals(2, map.size());
     }

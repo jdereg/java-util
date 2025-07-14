@@ -100,7 +100,7 @@ class MultiKeyMapLockStripingTest {
                     for (int i = 0; i < OPERATIONS_PER_THREAD / 10; i++) { // Fewer ops for multi-key
                         String value = "multiValue_" + threadId + "_" + i;
                         // 3D keys
-                        map.put(value, "dim1_" + threadId, "dim2_" + i, "dim3_" + (i % 5));
+                        map.putMultiKey(value, "dim1_" + threadId, "dim2_" + i, "dim3_" + (i % 5));
                     }
                 } catch (Exception e) {
                     errors.incrementAndGet();
@@ -120,7 +120,7 @@ class MultiKeyMapLockStripingTest {
         for (int t = 0; t < NUM_THREADS; t++) {
             for (int i = 0; i < OPERATIONS_PER_THREAD / 10; i++) {
                 String expectedValue = "multiValue_" + t + "_" + i;
-                String actualValue = map.get("dim1_" + t, "dim2_" + i, "dim3_" + (i % 5));
+                String actualValue = map.getMultiKey("dim1_" + t, "dim2_" + i, "dim3_" + (i % 5));
                 assertEquals(expectedValue, actualValue, "Multi-key value should match");
             }
         }

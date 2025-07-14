@@ -13,13 +13,13 @@ class MultiKeyMapNKeyTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Test putting with Object[] arrays
-        assertNull(map.put(new Object[]{String.class, Integer.class, 1L}, "converter1"));
-        assertNull(map.put(new Object[]{String.class, Long.class, 2L}, "converter2"));
+        assertNull(map.putMultiKey("converter1", new Object[]{String.class, Integer.class, 1L}));
+        assertNull(map.putMultiKey("converter2", new Object[]{String.class, Long.class, 2L}));
         
         // Test getting with varargs
-        assertEquals("converter1", map.get(String.class, Integer.class, 1L));
-        assertEquals("converter2", map.get(String.class, Long.class, 2L));
-        assertNull(map.get(String.class, Double.class, 3L));
+        assertEquals("converter1", map.getMultiKey(String.class, Integer.class, 1L));
+        assertEquals("converter2", map.getMultiKey(String.class, Long.class, 2L));
+        assertNull(map.getMultiKey(String.class, Double.class, 3L));
         
         assertEquals(2, map.size());
     }
@@ -35,15 +35,15 @@ class MultiKeyMapNKeyTest {
         
         // Test N-Key via Object[]
         Object[] nKey = {String.class, Integer.class, 42L};
-        assertNull(map.put(nKey, "nKeyValue"));
-        assertEquals("nKeyValue", map.get(nKey));
-        assertTrue(map.containsKey(nKey));
+        assertNull(map.putMultiKey("nKeyValue", nKey));
+        assertEquals("nKeyValue", map.getMultiKey(nKey));
+        assertTrue(map.containsMultiKey(nKey));
         
         assertEquals(2, map.size());
         
         // Test removal
         assertEquals("singleValue", map.remove("singleKey"));
-        assertEquals("nKeyValue", map.remove(nKey));
+        assertEquals("nKeyValue", map.removeMultiKey(nKey));
         assertTrue(map.isEmpty());
     }
     
@@ -52,18 +52,18 @@ class MultiKeyMapNKeyTest {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
         // Use legacy API
-        map.put("legacyValue", String.class, Integer.class, 1L);
-        assertEquals("legacyValue", map.get(String.class, Integer.class, 1L));
-        assertTrue(map.containsKey(String.class, Integer.class, 1L));
+        map.putMultiKey("legacyValue", String.class, Integer.class, 1L);
+        assertEquals("legacyValue", map.getMultiKey(String.class, Integer.class, 1L));
+        assertTrue(map.containsMultiKey(String.class, Integer.class, 1L));
         
         // Should also work with new APIs
-        assertEquals("legacyValue", map.get(new Object[]{String.class, Integer.class, 1L}));
-        assertTrue(map.containsKey(new Object[]{String.class, Integer.class, 1L}));
+        assertEquals("legacyValue", map.getMultiKey(new Object[]{String.class, Integer.class, 1L}));
+        assertTrue(map.containsMultiKey(new Object[]{String.class, Integer.class, 1L}));
         
         assertEquals(1, map.size());
         
         // Remove using new API
-        assertEquals("legacyValue", map.remove(String.class, Integer.class, 1L));
+        assertEquals("legacyValue", map.removeMultiKey(String.class, Integer.class, 1L));
         assertTrue(map.isEmpty());
     }
     
@@ -84,10 +84,10 @@ class MultiKeyMapNKeyTest {
         map.put(new Object[]{"year", "month", "day", "hour", "minute"}, "5D");
         
         // Verify all work correctly
-        assertEquals("2D", map.get("sessionId", "requestId"));
-        assertEquals("3D", map.get(String.class, Integer.class, 1L));
-        assertEquals("4D", map.get("country", "state", "city", "zipCode"));
-        assertEquals("5D", map.get("year", "month", "day", "hour", "minute"));
+        assertEquals("2D", map.getMultiKey("sessionId", "requestId"));
+        assertEquals("3D", map.getMultiKey(String.class, Integer.class, 1L));
+        assertEquals("4D", map.getMultiKey("country", "state", "city", "zipCode"));
+        assertEquals("5D", map.getMultiKey("year", "month", "day", "hour", "minute"));
         
         assertEquals(4, map.size());
     }
@@ -101,9 +101,9 @@ class MultiKeyMapNKeyTest {
         map.put(new Object[]{"key1", null, "key3"}, "nullMiddle");
         map.put(new Object[]{"key1", "key2", null}, "nullLast");
         
-        assertEquals("nullFirst", map.get(null, "key2", "key3"));
-        assertEquals("nullMiddle", map.get("key1", null, "key3"));
-        assertEquals("nullLast", map.get("key1", "key2", null));
+        assertEquals("nullFirst", map.getMultiKey(null, "key2", "key3"));
+        assertEquals("nullMiddle", map.getMultiKey("key1", null, "key3"));
+        assertEquals("nullLast", map.getMultiKey("key1", "key2", null));
         
         assertEquals(3, map.size());
     }
@@ -119,12 +119,12 @@ class MultiKeyMapNKeyTest {
         map.put(key1, "value1");
         
         // Should find the value using equivalent but different array
-        assertEquals("value1", map.get(key2));
-        assertTrue(map.containsKey(key2));
+        assertEquals("value1", map.getMultiKey(key2));
+        assertTrue(map.containsMultiKey(key2));
         
         // Should update the same entry
         assertEquals("value1", map.put(key2, "value2"));
-        assertEquals("value2", map.get(key1));
+        assertEquals("value2", map.getMultiKey(key1));
         assertEquals(1, map.size());
     }
 }

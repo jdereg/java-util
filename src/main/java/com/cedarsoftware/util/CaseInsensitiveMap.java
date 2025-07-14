@@ -539,7 +539,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                         wrappedArray[i] = objArray[i] instanceof String ? 
                             CaseInsensitiveString.of((String) objArray[i]) : objArray[i];
                     }
-                    return multiKeyMap.put(value, wrappedArray);
+                    return multiKeyMap.putMultiKey(value, wrappedArray);
                 } else if (key instanceof String[]) {
                     // Create new Object[] with wrapped String keys, use varargs method
                     String[] strArray = (String[]) key;
@@ -548,7 +548,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
                     for (int i = 0; i < len; i++) {
                         wrappedArray[i] = CaseInsensitiveString.of(strArray[i]);
                     }
-                    return multiKeyMap.put(value, wrappedArray);
+                    return multiKeyMap.putMultiKey(value, wrappedArray);
                 } else {
                     // For other typed arrays (int[], double[], etc.), pass through directly
                     // since they cannot contain Strings. Use Map interface method to get array unpacking.
@@ -664,7 +664,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         }
         @SuppressWarnings("unchecked")
         MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        return multiKeyMap.put(value, convertKeys(keys));
+        return multiKeyMap.putMultiKey(value, convertKeys(keys));
     }
 
     /**

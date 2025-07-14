@@ -53,10 +53,10 @@ class MultiKeyMapComputeIfAbsentTest {
         Object[] arrayKey = {"x", "y"};
         String v1 = map.computeIfAbsent(arrayKey, k -> "array");
         assertEquals("array", v1);
-        assertEquals("array", map.get("x", "y"));
+        assertEquals("array", map.getMultiKey("x", "y"));
 
         String v2 = map.computeIfAbsent(Arrays.asList("a", "b"), k -> "list");
         assertEquals("list", v2);
-        assertEquals("list", map.get("a", "b"));
+        assertEquals("list", map.getMultiKey("a", "b"));
     }
 }

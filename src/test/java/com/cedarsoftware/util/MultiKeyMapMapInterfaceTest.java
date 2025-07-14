@@ -58,11 +58,11 @@ class MultiKeyMapMapInterfaceTest {
     }
     
     @Test
-    void testPutAll() {
-        Map<Object, String> source = new HashMap<>();
+    void testPutMultiKeyAll() {
+        MultiKeyMap<String> source = new MultiKeyMap<>();
         source.put("key1", "value1");
         source.put("key2", "value2");
-        source.put(Arrays.asList("multi", "key"), "multiValue");
+        source.putMultiKey("multiValue", Arrays.asList("multi", "key"));
         
         Map<Object, String> multiKeyMap = new MultiKeyMap<>(16);
         multiKeyMap.putAll(source);
@@ -244,7 +244,7 @@ class MultiKeyMapMapInterfaceTest {
         Map<Object, String> map = multiMap; // Polymorphic reference
         
         // Test varargs put (MultiKeyMap specific)
-        multiMap.put("multiValue", "key1", "key2", "key3");
+        multiMap.putMultiKey("multiValue", "key1", "key2", "key3");
         
         // Should be accessible via Map interface with Object[] key
         Object[] keys = {"key1", "key2", "key3"};

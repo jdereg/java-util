@@ -299,950 +299,950 @@ public final class Converter {
      */
     private static void buildFactoryConversions() {
         // toNumber
-        CONVERSION_DB.put(Converter::identity, Byte.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Short.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Integer.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Long.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Float.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Double.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, AtomicInteger.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, AtomicLong.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, BigInteger.class, Number.class, 0L);
-        CONVERSION_DB.put(Converter::identity, BigDecimal.class, Number.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toNumber, Duration.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Byte.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Short.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Integer.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Long.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Float.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Double.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, AtomicInteger.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, AtomicLong.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, BigInteger.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, BigDecimal.class, Number.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toNumber, Duration.class, Number.class, 0L);
 
         // toByte
-        CONVERSION_DB.put(NumberConversions::toByteZero, Void.class, byte.class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Byte.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Byte.class, Byte.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toByte, Short.class, Byte.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toByte, Integer.class, Byte.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toByte, Long.class, Byte.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toByte, Float.class, Byte.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toByte, Double.class, Byte.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toByte, Boolean.class, Byte.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toByte, Character.class, Byte.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toByte, BigInteger.class, Byte.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toByte, BigDecimal.class, Byte.class, 0L);
-        CONVERSION_DB.put(MapConversions::toByte, Map.class, Byte.class, 0L);
-        CONVERSION_DB.put(StringConversions::toByte, String.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toByteZero, Void.class, byte.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Byte.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toByte, Short.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toByte, Integer.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toByte, Long.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toByte, Float.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toByte, Double.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toByte, Boolean.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toByte, Character.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toByte, BigInteger.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toByte, BigDecimal.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toByte, Map.class, Byte.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toByte, String.class, Byte.class, 0L);
 
         // toShort
-        CONVERSION_DB.put(NumberConversions::toShortZero, Void.class, short.class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Short.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toShort, Byte.class, Short.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Short.class, Short.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toShort, Integer.class, Short.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toShort, Long.class, Short.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toShort, Float.class, Short.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toShort, Double.class, Short.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toShort, Boolean.class, Short.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toShort, Character.class, Short.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toShort, BigInteger.class, Short.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toShort, BigDecimal.class, Short.class, 0L);
-        CONVERSION_DB.put(MapConversions::toShort, Map.class, Short.class, 0L);
-        CONVERSION_DB.put(StringConversions::toShort, String.class, Short.class, 0L);
-        CONVERSION_DB.put(YearConversions::toShort, Year.class, Short.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toShort, MonthDay.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toShortZero, Void.class, short.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toShort, Byte.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Short.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toShort, Integer.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toShort, Long.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toShort, Float.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toShort, Double.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toShort, Boolean.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toShort, Character.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toShort, BigInteger.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toShort, BigDecimal.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toShort, Map.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toShort, String.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toShort, Year.class, Short.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toShort, MonthDay.class, Short.class, 0L);
 
         // toInteger
-        CONVERSION_DB.put(NumberConversions::toIntZero, Void.class, int.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::atomicIntegerToInt, AtomicInteger.class, int.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toInt, MonthDay.class, int.class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Integer.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toInt, Byte.class, Integer.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toInt, Short.class, Integer.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Integer.class, Integer.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toInt, Long.class, Integer.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toInt, Float.class, Integer.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toInt, Double.class, Integer.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toInt, Boolean.class, Integer.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toInt, Character.class, Integer.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toInt, AtomicInteger.class, Integer.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toInt, BigInteger.class, Integer.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toInt, BigDecimal.class, Integer.class, 0L);
-        CONVERSION_DB.put(MapConversions::toInt, Map.class, Integer.class, 0L);
-        CONVERSION_DB.put(StringConversions::toInt, String.class, Integer.class, 0L);
-        CONVERSION_DB.put(ColorConversions::toInteger, Color.class, Integer.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toInteger, Dimension.class, Integer.class, 0L);
-        CONVERSION_DB.put(PointConversions::toInteger, Point.class, Integer.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toInteger, Rectangle.class, Integer.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toInteger, Insets.class, Integer.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toInteger, OffsetTime.class, Integer.class, 0L);
-        CONVERSION_DB.put(YearConversions::toInt, Year.class, Integer.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toInteger, MonthDay.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toIntZero, Void.class, int.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::atomicIntegerToInt, AtomicInteger.class, int.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toInt, MonthDay.class, int.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toInt, Byte.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toInt, Short.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Integer.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toInt, Long.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toInt, Float.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toInt, Double.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toInt, Boolean.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toInt, Character.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toInt, AtomicInteger.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toInt, BigInteger.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toInt, BigDecimal.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toInt, Map.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toInt, String.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(ColorConversions::toInteger, Color.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toInteger, Dimension.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toInteger, Point.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toInteger, Rectangle.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toInteger, Insets.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toInteger, OffsetTime.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toInt, Year.class, Integer.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toInteger, MonthDay.class, Integer.class, 0L);
 
         // toLong
-        CONVERSION_DB.put(NumberConversions::toLongZero, Void.class, long.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::atomicLongToLong, AtomicLong.class, long.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toLong, MonthDay.class, long.class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Long.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLong, Byte.class, Long.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLong, Short.class, Long.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLong, Integer.class, Long.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Long.class, Long.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLong, Float.class, Long.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLong, Double.class, Long.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toLong, Boolean.class, Long.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toLong, Character.class, Long.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLong, BigInteger.class, Long.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLong, BigDecimal.class, Long.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLong, AtomicLong.class, Long.class, 0L);
-        CONVERSION_DB.put(DateConversions::toLong, Date.class, Long.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toLong, java.sql.Date.class, Long.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toLong, Timestamp.class, Long.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toLong, Instant.class, Long.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toLong, Duration.class, Long.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toLong, LocalDate.class, Long.class, 0L);
-        CONVERSION_DB.put(LocalTimeConversions::toLong, LocalTime.class, Long.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toLong, LocalDateTime.class, Long.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toLong, OffsetTime.class, Long.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toLong, OffsetDateTime.class, Long.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toLong, ZonedDateTime.class, Long.class, 0L);
-        CONVERSION_DB.put(MapConversions::toLong, Map.class, Long.class, 0L);
-        CONVERSION_DB.put(StringConversions::toLong, String.class, Long.class, 0L);
-        CONVERSION_DB.put(ColorConversions::toLong, Color.class, Long.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toLong, Dimension.class, Long.class, 0L);
-        CONVERSION_DB.put(PointConversions::toLong, Point.class, Long.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toLong, Rectangle.class, Long.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toLong, Insets.class, Long.class, 0L);
-        CONVERSION_DB.put(YearConversions::toLong, Year.class, Long.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toLong, MonthDay.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLongZero, Void.class, long.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::atomicLongToLong, AtomicLong.class, long.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toLong, MonthDay.class, long.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLong, Byte.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLong, Short.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLong, Integer.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Long.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLong, Float.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLong, Double.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toLong, Boolean.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toLong, Character.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLong, BigInteger.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLong, BigDecimal.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLong, AtomicLong.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toLong, Date.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toLong, java.sql.Date.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toLong, Timestamp.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toLong, Instant.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toLong, Duration.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toLong, LocalDate.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalTimeConversions::toLong, LocalTime.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toLong, LocalDateTime.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toLong, OffsetTime.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toLong, OffsetDateTime.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toLong, ZonedDateTime.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toLong, Map.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toLong, String.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(ColorConversions::toLong, Color.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toLong, Dimension.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toLong, Point.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toLong, Rectangle.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toLong, Insets.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toLong, Year.class, Long.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toLong, MonthDay.class, Long.class, 0L);
 
         // toFloat
-        CONVERSION_DB.put(NumberConversions::toFloatZero, Void.class, float.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toFloat, MonthDay.class, float.class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Float.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toFloat, Byte.class, Float.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toFloat, Short.class, Float.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toFloat, Integer.class, Float.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toFloat, Long.class, Float.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Float.class, Float.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toFloat, Double.class, Float.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toFloat, Boolean.class, Float.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toFloat, Character.class, Float.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toFloat, BigInteger.class, Float.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toFloat, BigDecimal.class, Float.class, 0L);
-        CONVERSION_DB.put(MapConversions::toFloat, Map.class, Float.class, 0L);
-        CONVERSION_DB.put(StringConversions::toFloat, String.class, Float.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toFloat, MonthDay.class, Float.class, 0L);
-        CONVERSION_DB.put(YearConversions::toFloat, Year.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toFloatZero, Void.class, float.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toFloat, MonthDay.class, float.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toFloat, Byte.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toFloat, Short.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toFloat, Integer.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toFloat, Long.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Float.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toFloat, Double.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toFloat, Boolean.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toFloat, Character.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toFloat, BigInteger.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toFloat, BigDecimal.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toFloat, Map.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toFloat, String.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toFloat, MonthDay.class, Float.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toFloat, Year.class, Float.class, 0L);
 
         // toDouble
-        CONVERSION_DB.put(NumberConversions::toDoubleZero, Void.class, double.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toDouble, MonthDay.class, double.class, 0L);
-        CONVERSION_DB.put(YearConversions::toDouble, Year.class, double.class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Double.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDouble, Byte.class, Double.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDouble, Short.class, Double.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDouble, Integer.class, Double.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDouble, Long.class, Double.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDouble, Float.class, Double.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Double.class, Double.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toDouble, Boolean.class, Double.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toDouble, Character.class, Double.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toDouble, Duration.class, Double.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toDouble, Instant.class, Double.class, 0L);
-        CONVERSION_DB.put(LocalTimeConversions::toDouble, LocalTime.class, Double.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toDouble, LocalDate.class, Double.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toDouble, LocalDateTime.class, Double.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toDouble, ZonedDateTime.class, Double.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toDouble, OffsetTime.class, Double.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toDouble, OffsetDateTime.class, Double.class, 0L);
-        CONVERSION_DB.put(DateConversions::toDouble, Date.class, Double.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toDouble, java.sql.Date.class, Double.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toDouble, Timestamp.class, Double.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDouble, BigInteger.class, Double.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDouble, BigDecimal.class, Double.class, 0L);
-        CONVERSION_DB.put(MapConversions::toDouble, Map.class, Double.class, 0L);
-        CONVERSION_DB.put(StringConversions::toDouble, String.class, Double.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toDouble, MonthDay.class, Double.class, 0L);
-        CONVERSION_DB.put(YearConversions::toDouble, Year.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDoubleZero, Void.class, double.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toDouble, MonthDay.class, double.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toDouble, Year.class, double.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDouble, Byte.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDouble, Short.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDouble, Integer.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDouble, Long.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDouble, Float.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Double.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toDouble, Boolean.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toDouble, Character.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toDouble, Duration.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toDouble, Instant.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalTimeConversions::toDouble, LocalTime.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toDouble, LocalDate.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toDouble, LocalDateTime.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toDouble, ZonedDateTime.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toDouble, OffsetTime.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toDouble, OffsetDateTime.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toDouble, Date.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toDouble, java.sql.Date.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toDouble, Timestamp.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDouble, BigInteger.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDouble, BigDecimal.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toDouble, Map.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toDouble, String.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toDouble, MonthDay.class, Double.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toDouble, Year.class, Double.class, 0L);
 
         // Boolean/boolean conversions supported
-        CONVERSION_DB.put(VoidConversions::toBoolean, Void.class, boolean.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::atomicBooleanToBoolean, AtomicBoolean.class, boolean.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toBoolean, MonthDay.class, boolean.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toBoolean, Duration.class, boolean.class, 0L);
-        CONVERSION_DB.put(AtomicBooleanConversions::toBoolean, AtomicBoolean.class, Boolean.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toBooleanWrapper, Duration.class, Boolean.class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Boolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::isIntTypeNotZero, Byte.class, Boolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::isIntTypeNotZero, Short.class, Boolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::isIntTypeNotZero, Integer.class, Boolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::isIntTypeNotZero, Long.class, Boolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::isFloatTypeNotZero, Float.class, Boolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::isFloatTypeNotZero, Double.class, Boolean.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Boolean.class, Boolean.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toBoolean, Character.class, Boolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::isBigIntegerNotZero, BigInteger.class, Boolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::isBigDecimalNotZero, BigDecimal.class, Boolean.class, 0L);
-        CONVERSION_DB.put(MapConversions::toBoolean, Map.class, Boolean.class, 0L);
-        CONVERSION_DB.put(StringConversions::toBoolean, String.class, Boolean.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toBoolean, Dimension.class, Boolean.class, 0L);
-        CONVERSION_DB.put(PointConversions::toBoolean, Point.class, Boolean.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toBoolean, Rectangle.class, Boolean.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toBoolean, Insets.class, Boolean.class, 0L);
-        CONVERSION_DB.put(UUIDConversions::toBoolean, UUID.class, Boolean.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toBoolean, MonthDay.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toBoolean, Void.class, boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::atomicBooleanToBoolean, AtomicBoolean.class, boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toBoolean, MonthDay.class, boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toBoolean, Duration.class, boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(AtomicBooleanConversions::toBoolean, AtomicBoolean.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toBooleanWrapper, Duration.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::isIntTypeNotZero, Byte.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::isIntTypeNotZero, Short.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::isIntTypeNotZero, Integer.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::isIntTypeNotZero, Long.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::isFloatTypeNotZero, Float.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::isFloatTypeNotZero, Double.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Boolean.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toBoolean, Character.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::isBigIntegerNotZero, BigInteger.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::isBigDecimalNotZero, BigDecimal.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toBoolean, Map.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toBoolean, String.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toBoolean, Dimension.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toBoolean, Point.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toBoolean, Rectangle.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toBoolean, Insets.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(UUIDConversions::toBoolean, UUID.class, Boolean.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toBoolean, MonthDay.class, Boolean.class, 0L);
 
         // Character/char conversions supported
-        CONVERSION_DB.put(VoidConversions::toCharacter, Void.class, char.class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Character.class, 0L);
-        CONVERSION_DB.put(ByteConversions::toCharacter, Byte.class, Character.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toCharacter, Short.class, Character.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toCharacter, Integer.class, Character.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toCharacter, Long.class, Character.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toCharacter, Float.class, Character.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toCharacter, Double.class, Character.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toCharacter, Boolean.class, Character.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Character.class, Character.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toCharacter, BigInteger.class, Character.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toCharacter, BigDecimal.class, Character.class, 0L);
-        CONVERSION_DB.put(MapConversions::toCharacter, Map.class, Character.class, 0L);
-        CONVERSION_DB.put(StringConversions::toCharacter, String.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toCharacter, Void.class, char.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(ByteConversions::toCharacter, Byte.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toCharacter, Short.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toCharacter, Integer.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toCharacter, Long.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toCharacter, Float.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toCharacter, Double.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toCharacter, Boolean.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Character.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toCharacter, BigInteger.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toCharacter, BigDecimal.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toCharacter, Map.class, Character.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toCharacter, String.class, Character.class, 0L);
 
         // BigInteger versions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerTypeToBigInteger, Byte.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerTypeToBigInteger, Short.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerTypeToBigInteger, Integer.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerTypeToBigInteger, Long.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::floatingPointToBigInteger, Float.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::floatingPointToBigInteger, Double.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toBigInteger, Boolean.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toBigInteger, Character.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(Converter::identity, BigInteger.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toBigInteger, BigDecimal.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(DateConversions::toBigInteger, Date.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toBigInteger, java.sql.Date.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toBigInteger, Timestamp.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toBigInteger, Duration.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toBigInteger, Instant.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(LocalTimeConversions::toBigInteger, LocalTime.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toBigInteger, LocalDate.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toBigInteger, LocalDateTime.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toBigInteger, ZonedDateTime.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toBigInteger, OffsetTime.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toBigInteger, OffsetDateTime.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(UUIDConversions::toBigInteger, UUID.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(ColorConversions::toBigInteger, Color.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toBigInteger, Dimension.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(PointConversions::toBigInteger, Point.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toBigInteger, Rectangle.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toBigInteger, Insets.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(CalendarConversions::toBigInteger, Calendar.class, BigInteger.class, 0L);  // Restored - bridge has precision difference (millis vs. nanos)
-        CONVERSION_DB.put(MapConversions::toBigInteger, Map.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(StringConversions::toBigInteger, String.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(YearConversions::toBigInteger, Year.class, BigInteger.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toBigInteger, MonthDay.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerTypeToBigInteger, Byte.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerTypeToBigInteger, Short.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerTypeToBigInteger, Integer.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerTypeToBigInteger, Long.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::floatingPointToBigInteger, Float.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::floatingPointToBigInteger, Double.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toBigInteger, Boolean.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toBigInteger, Character.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, BigInteger.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toBigInteger, BigDecimal.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toBigInteger, Date.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toBigInteger, java.sql.Date.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toBigInteger, Timestamp.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toBigInteger, Duration.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toBigInteger, Instant.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalTimeConversions::toBigInteger, LocalTime.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toBigInteger, LocalDate.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toBigInteger, LocalDateTime.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toBigInteger, ZonedDateTime.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toBigInteger, OffsetTime.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toBigInteger, OffsetDateTime.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(UUIDConversions::toBigInteger, UUID.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(ColorConversions::toBigInteger, Color.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toBigInteger, Dimension.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toBigInteger, Point.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toBigInteger, Rectangle.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toBigInteger, Insets.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(CalendarConversions::toBigInteger, Calendar.class, BigInteger.class, 0L);  // Restored - bridge has precision difference (millis vs. nanos)
+        CONVERSION_DB.putMultiKey(MapConversions::toBigInteger, Map.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toBigInteger, String.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toBigInteger, Year.class, BigInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toBigInteger, MonthDay.class, BigInteger.class, 0L);
 
         // BigDecimal conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerTypeToBigDecimal, Byte.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerTypeToBigDecimal, Short.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerTypeToBigDecimal, Integer.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerTypeToBigDecimal, Long.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(NumberConversions::floatingPointToBigDecimal, Float.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(NumberConversions::floatingPointToBigDecimal, Double.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toBigDecimal, Boolean.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toBigDecimal, Character.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(Converter::identity, BigDecimal.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toBigDecimal, BigInteger.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(DateConversions::toBigDecimal, Date.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toBigDecimal, java.sql.Date.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toBigDecimal, Timestamp.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toBigDecimal, Instant.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toBigDecimal, Duration.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(LocalTimeConversions::toBigDecimal, LocalTime.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toBigDecimal, LocalDate.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toBigDecimal, LocalDateTime.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toBigDecimal, ZonedDateTime.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toBigDecimal, OffsetTime.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toBigDecimal, OffsetDateTime.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(UUIDConversions::toBigDecimal, UUID.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(ColorConversions::toBigDecimal, Color.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toBigDecimal, Dimension.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toBigDecimal, Insets.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(PointConversions::toBigDecimal, Point.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toBigDecimal, Rectangle.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(CalendarConversions::toBigDecimal, Calendar.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(MapConversions::toBigDecimal, Map.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(StringConversions::toBigDecimal, String.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(YearConversions::toBigDecimal, Year.class, BigDecimal.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toBigDecimal, MonthDay.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerTypeToBigDecimal, Byte.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerTypeToBigDecimal, Short.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerTypeToBigDecimal, Integer.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerTypeToBigDecimal, Long.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::floatingPointToBigDecimal, Float.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::floatingPointToBigDecimal, Double.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toBigDecimal, Boolean.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toBigDecimal, Character.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, BigDecimal.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toBigDecimal, BigInteger.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toBigDecimal, Date.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toBigDecimal, java.sql.Date.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toBigDecimal, Timestamp.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toBigDecimal, Instant.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toBigDecimal, Duration.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalTimeConversions::toBigDecimal, LocalTime.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toBigDecimal, LocalDate.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toBigDecimal, LocalDateTime.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toBigDecimal, ZonedDateTime.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toBigDecimal, OffsetTime.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toBigDecimal, OffsetDateTime.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(UUIDConversions::toBigDecimal, UUID.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(ColorConversions::toBigDecimal, Color.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toBigDecimal, Dimension.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toBigDecimal, Insets.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toBigDecimal, Point.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toBigDecimal, Rectangle.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(CalendarConversions::toBigDecimal, Calendar.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toBigDecimal, Map.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toBigDecimal, String.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toBigDecimal, Year.class, BigDecimal.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toBigDecimal, MonthDay.class, BigDecimal.class, 0L);
 
         // AtomicBoolean conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toAtomicBoolean, Duration.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Byte.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Short.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Integer.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Long.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Float.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicBoolean, Double.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toAtomicBoolean, Boolean.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toAtomicBoolean, Character.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicBoolean, BigInteger.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicBoolean, BigDecimal.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(AtomicBooleanConversions::toAtomicBoolean, AtomicBoolean.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(MapConversions::toAtomicBoolean, Map.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(StringConversions::toAtomicBoolean, String.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(YearConversions::toAtomicBoolean, Year.class, AtomicBoolean.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toAtomicBoolean, MonthDay.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toAtomicBoolean, Duration.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicBoolean, Byte.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicBoolean, Short.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicBoolean, Integer.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicBoolean, Long.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicBoolean, Float.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicBoolean, Double.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toAtomicBoolean, Boolean.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toAtomicBoolean, Character.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicBoolean, BigInteger.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicBoolean, BigDecimal.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(AtomicBooleanConversions::toAtomicBoolean, AtomicBoolean.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toAtomicBoolean, Map.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toAtomicBoolean, String.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toAtomicBoolean, Year.class, AtomicBoolean.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toAtomicBoolean, MonthDay.class, AtomicBoolean.class, 0L);
 
         // AtomicInteger conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicInteger, Byte.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicInteger, Short.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicInteger, Integer.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicInteger, Long.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicInteger, Float.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicInteger, Double.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toAtomicInteger, Boolean.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toAtomicInteger, Character.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicInteger, BigInteger.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicInteger, BigDecimal.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(AtomicIntegerConversions::toAtomicInteger, AtomicInteger.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toAtomicInteger, OffsetTime.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(MapConversions::toAtomicInteger, Map.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(StringConversions::toAtomicInteger, String.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(YearConversions::toAtomicInteger, Year.class, AtomicInteger.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toAtomicInteger, MonthDay.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicInteger, Byte.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicInteger, Short.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicInteger, Integer.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicInteger, Long.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicInteger, Float.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicInteger, Double.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toAtomicInteger, Boolean.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toAtomicInteger, Character.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicInteger, BigInteger.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicInteger, BigDecimal.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(AtomicIntegerConversions::toAtomicInteger, AtomicInteger.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toAtomicInteger, OffsetTime.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toAtomicInteger, Map.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toAtomicInteger, String.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toAtomicInteger, Year.class, AtomicInteger.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toAtomicInteger, MonthDay.class, AtomicInteger.class, 0L);
 
         // AtomicLong conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicLong, Byte.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicLong, Short.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicLong, Integer.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicLong, Long.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicLong, Float.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicLong, Double.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toAtomicLong, Boolean.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toAtomicLong, Character.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicLong, BigInteger.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toAtomicLong, BigDecimal.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(AtomicLongConversions::toAtomicLong, AtomicLong.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(DateConversions::toAtomicLong, Date.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toAtomicLong, java.sql.Date.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(DateConversions::toAtomicLong, Timestamp.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toAtomicLong, Instant.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toAtomicLong, Duration.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toAtomicLong, LocalDate.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(LocalTimeConversions::toAtomicLong, LocalTime.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toAtomicLong, LocalDateTime.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toAtomicLong, ZonedDateTime.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toAtomicLong, OffsetTime.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toAtomicLong, OffsetTime.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toAtomicLong, OffsetDateTime.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(MapConversions::toAtomicLong, Map.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(StringConversions::toAtomicLong, String.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(YearConversions::toAtomicLong, Year.class, AtomicLong.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toAtomicLong, MonthDay.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicLong, Byte.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicLong, Short.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicLong, Integer.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicLong, Long.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicLong, Float.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicLong, Double.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toAtomicLong, Boolean.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toAtomicLong, Character.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicLong, BigInteger.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toAtomicLong, BigDecimal.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(AtomicLongConversions::toAtomicLong, AtomicLong.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toAtomicLong, Date.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toAtomicLong, java.sql.Date.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toAtomicLong, Timestamp.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toAtomicLong, Instant.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toAtomicLong, Duration.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toAtomicLong, LocalDate.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalTimeConversions::toAtomicLong, LocalTime.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toAtomicLong, LocalDateTime.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toAtomicLong, ZonedDateTime.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toAtomicLong, OffsetTime.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toAtomicLong, OffsetTime.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toAtomicLong, OffsetDateTime.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toAtomicLong, Map.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toAtomicLong, String.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toAtomicLong, Year.class, AtomicLong.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toAtomicLong, MonthDay.class, AtomicLong.class, 0L);
 
         // Date conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Date.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDate, Long.class, Date.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toDate, Double.class, Date.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toDate, BigInteger.class, Date.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toDate, BigDecimal.class, Date.class, 0L);
-        CONVERSION_DB.put(DateConversions::toDate, Date.class, Date.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toDate, java.sql.Date.class, Date.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toDate, Timestamp.class, Date.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toDate, Instant.class, Date.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toDate, LocalDate.class, Date.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toDate, LocalDateTime.class, Date.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toDate, ZonedDateTime.class, Date.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toDate, OffsetDateTime.class, Date.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toDate, Duration.class, Date.class, 0L);
-        CONVERSION_DB.put(MapConversions::toDate, Map.class, Date.class, 0L);
-        CONVERSION_DB.put(StringConversions::toDate, String.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDate, Long.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toDate, Double.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toDate, BigInteger.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toDate, BigDecimal.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toDate, Date.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toDate, java.sql.Date.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toDate, Timestamp.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toDate, Instant.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toDate, LocalDate.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toDate, LocalDateTime.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toDate, ZonedDateTime.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toDate, OffsetDateTime.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toDate, Duration.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toDate, Map.class, Date.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toDate, String.class, Date.class, 0L);
 
         // java.sql.Date conversion supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toSqlDate, Long.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toSqlDate, Double.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toSqlDate, BigInteger.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toSqlDate, BigDecimal.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toSqlDate, java.sql.Date.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(DateConversions::toSqlDate, Date.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toSqlDate, Timestamp.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toSqlDate, Duration.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toSqlDate, Instant.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toSqlDate, LocalDate.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toSqlDate, LocalDateTime.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toSqlDate, ZonedDateTime.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toSqlDate, OffsetDateTime.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(MapConversions::toSqlDate, Map.class, java.sql.Date.class, 0L);
-        CONVERSION_DB.put(StringConversions::toSqlDate, String.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toSqlDate, Long.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toSqlDate, Double.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toSqlDate, BigInteger.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toSqlDate, BigDecimal.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toSqlDate, java.sql.Date.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toSqlDate, Date.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toSqlDate, Timestamp.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toSqlDate, Duration.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toSqlDate, Instant.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toSqlDate, LocalDate.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toSqlDate, LocalDateTime.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toSqlDate, ZonedDateTime.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toSqlDate, OffsetDateTime.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toSqlDate, Map.class, java.sql.Date.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toSqlDate, String.class, java.sql.Date.class, 0L);
 
         // Timestamp conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toTimestamp, Long.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toTimestamp, Double.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toTimestamp, BigInteger.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toTimestamp, BigDecimal.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(DateConversions::toTimestamp, Timestamp.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toTimestamp, java.sql.Date.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(DateConversions::toTimestamp, Date.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toTimestamp, Duration.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toTimestamp, Instant.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toTimestamp, LocalDate.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toTimestamp, LocalDateTime.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toTimestamp, ZonedDateTime.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toTimestamp, OffsetDateTime.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(MapConversions::toTimestamp, Map.class, Timestamp.class, 0L);
-        CONVERSION_DB.put(StringConversions::toTimestamp, String.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toTimestamp, Long.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toTimestamp, Double.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toTimestamp, BigInteger.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toTimestamp, BigDecimal.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toTimestamp, Timestamp.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toTimestamp, java.sql.Date.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toTimestamp, Date.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toTimestamp, Duration.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toTimestamp, Instant.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toTimestamp, LocalDate.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toTimestamp, LocalDateTime.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toTimestamp, ZonedDateTime.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toTimestamp, OffsetDateTime.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toTimestamp, Map.class, Timestamp.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toTimestamp, String.class, Timestamp.class, 0L);
 
         // Calendar conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Calendar.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toCalendar, Long.class, Calendar.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toCalendar, Double.class, Calendar.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toCalendar, BigInteger.class, Calendar.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toCalendar, BigDecimal.class, Calendar.class, 0L);
-        CONVERSION_DB.put(DateConversions::toCalendar, Date.class, Calendar.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toCalendar, java.sql.Date.class, Calendar.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toCalendar, Timestamp.class, Calendar.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toCalendar, Instant.class, Calendar.class, 0L);
-        CONVERSION_DB.put(LocalTimeConversions::toCalendar, LocalTime.class, Calendar.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toCalendar, LocalDate.class, Calendar.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toCalendar, LocalDateTime.class, Calendar.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toCalendar, ZonedDateTime.class, Calendar.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toCalendar, OffsetDateTime.class, Calendar.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toCalendar, Duration.class, Calendar.class, 0L);
-        CONVERSION_DB.put(CalendarConversions::clone, Calendar.class, Calendar.class, 0L);
-        CONVERSION_DB.put(MapConversions::toCalendar, Map.class, Calendar.class, 0L);
-        CONVERSION_DB.put(StringConversions::toCalendar, String.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toCalendar, Long.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toCalendar, Double.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toCalendar, BigInteger.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toCalendar, BigDecimal.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toCalendar, Date.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toCalendar, java.sql.Date.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toCalendar, Timestamp.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toCalendar, Instant.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalTimeConversions::toCalendar, LocalTime.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toCalendar, LocalDate.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toCalendar, LocalDateTime.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toCalendar, ZonedDateTime.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toCalendar, OffsetDateTime.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toCalendar, Duration.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(CalendarConversions::clone, Calendar.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toCalendar, Map.class, Calendar.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toCalendar, String.class, Calendar.class, 0L);
 
         // LocalDate conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLocalDate, Long.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toLocalDate, Double.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toLocalDate, BigInteger.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toLocalDate, BigDecimal.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toLocalDate, java.sql.Date.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(DateConversions::toLocalDate, Timestamp.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(DateConversions::toLocalDate, Date.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toLocalDate, Instant.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(CalendarConversions::toLocalDate, Calendar.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(Converter::identity, LocalDate.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toLocalDate, LocalDateTime.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toLocalDate, ZonedDateTime.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toLocalDate, OffsetDateTime.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toLocalDate, Duration.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(MapConversions::toLocalDate, Map.class, LocalDate.class, 0L);
-        CONVERSION_DB.put(StringConversions::toLocalDate, String.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLocalDate, Long.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toLocalDate, Double.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toLocalDate, BigInteger.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toLocalDate, BigDecimal.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toLocalDate, java.sql.Date.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toLocalDate, Timestamp.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toLocalDate, Date.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toLocalDate, Instant.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(CalendarConversions::toLocalDate, Calendar.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, LocalDate.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toLocalDate, LocalDateTime.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toLocalDate, ZonedDateTime.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toLocalDate, OffsetDateTime.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toLocalDate, Duration.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toLocalDate, Map.class, LocalDate.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toLocalDate, String.class, LocalDate.class, 0L);
 
         // LocalDateTime conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toLocalDateTime, Long.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toLocalDateTime, Double.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toLocalDateTime, BigInteger.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toLocalDateTime, BigDecimal.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toLocalDateTime, java.sql.Date.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toLocalDateTime, Timestamp.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(DateConversions::toLocalDateTime, Date.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toLocalDateTime, Instant.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toLocalDateTime, LocalDateTime.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toLocalDateTime, LocalDate.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(CalendarConversions::toLocalDateTime, Calendar.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toLocalDateTime, ZonedDateTime.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toLocalDateTime, OffsetDateTime.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toLocalDateTime, Duration.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(MapConversions::toLocalDateTime, Map.class, LocalDateTime.class, 0L);
-        CONVERSION_DB.put(StringConversions::toLocalDateTime, String.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toLocalDateTime, Long.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toLocalDateTime, Double.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toLocalDateTime, BigInteger.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toLocalDateTime, BigDecimal.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toLocalDateTime, java.sql.Date.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toLocalDateTime, Timestamp.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toLocalDateTime, Date.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toLocalDateTime, Instant.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toLocalDateTime, LocalDateTime.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toLocalDateTime, LocalDate.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(CalendarConversions::toLocalDateTime, Calendar.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toLocalDateTime, ZonedDateTime.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toLocalDateTime, OffsetDateTime.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toLocalDateTime, Duration.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toLocalDateTime, Map.class, LocalDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toLocalDateTime, String.class, LocalDateTime.class, 0L);
 
         // LocalTime conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(NumberConversions::longNanosToLocalTime, Long.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toLocalTime, Double.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toLocalTime, BigInteger.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toLocalTime, BigDecimal.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(DateConversions::toLocalTime, Timestamp.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(DateConversions::toLocalTime, Date.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toLocalTime, Instant.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toLocalTime, LocalDateTime.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(Converter::identity, LocalTime.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toLocalTime, ZonedDateTime.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toLocalTime, OffsetDateTime.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toLocalTime, Duration.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(MapConversions::toLocalTime, Map.class, LocalTime.class, 0L);
-        CONVERSION_DB.put(StringConversions::toLocalTime, String.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::longNanosToLocalTime, Long.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toLocalTime, Double.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toLocalTime, BigInteger.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toLocalTime, BigDecimal.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toLocalTime, Timestamp.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toLocalTime, Date.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toLocalTime, Instant.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toLocalTime, LocalDateTime.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, LocalTime.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toLocalTime, ZonedDateTime.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toLocalTime, OffsetDateTime.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toLocalTime, Duration.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toLocalTime, Map.class, LocalTime.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toLocalTime, String.class, LocalTime.class, 0L);
 
         // ZonedDateTime conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toZonedDateTime, Long.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toZonedDateTime, Double.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toZonedDateTime, BigInteger.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toZonedDateTime, BigDecimal.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toZonedDateTime, java.sql.Date.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(DateConversions::toZonedDateTime, Timestamp.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(DateConversions::toZonedDateTime, Date.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toZonedDateTime, Instant.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toZonedDateTime, LocalDate.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toZonedDateTime, LocalDateTime.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(Converter::identity, ZonedDateTime.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toZonedDateTime, OffsetDateTime.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(CalendarConversions::toZonedDateTime, Calendar.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toZonedDateTime, Duration.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(MapConversions::toZonedDateTime, Map.class, ZonedDateTime.class, 0L);
-        CONVERSION_DB.put(StringConversions::toZonedDateTime, String.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toZonedDateTime, Long.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toZonedDateTime, Double.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toZonedDateTime, BigInteger.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toZonedDateTime, BigDecimal.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toZonedDateTime, java.sql.Date.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toZonedDateTime, Timestamp.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toZonedDateTime, Date.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toZonedDateTime, Instant.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toZonedDateTime, LocalDate.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toZonedDateTime, LocalDateTime.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, ZonedDateTime.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toZonedDateTime, OffsetDateTime.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(CalendarConversions::toZonedDateTime, Calendar.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toZonedDateTime, Duration.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toZonedDateTime, Map.class, ZonedDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toZonedDateTime, String.class, ZonedDateTime.class, 0L);
 
         // toOffsetDateTime
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(Converter::identity, OffsetDateTime.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(MapConversions::toOffsetDateTime, Map.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(StringConversions::toOffsetDateTime, String.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toOffsetDateTime, Long.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toOffsetDateTime, Double.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toOffsetDateTime, BigInteger.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toOffsetDateTime, BigDecimal.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toOffsetDateTime, java.sql.Date.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(DateConversions::toOffsetDateTime, Date.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toOffsetDateTime, Timestamp.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toOffsetDateTime, LocalDate.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toOffsetDateTime, Instant.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toOffsetDateTime, ZonedDateTime.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toOffsetDateTime, LocalDateTime.class, OffsetDateTime.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toOffsetDateTime, Duration.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, OffsetDateTime.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toOffsetDateTime, Map.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toOffsetDateTime, String.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toOffsetDateTime, Long.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toOffsetDateTime, Double.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toOffsetDateTime, BigInteger.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toOffsetDateTime, BigDecimal.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toOffsetDateTime, java.sql.Date.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toOffsetDateTime, Date.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toOffsetDateTime, Timestamp.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toOffsetDateTime, LocalDate.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toOffsetDateTime, Instant.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toOffsetDateTime, ZonedDateTime.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toOffsetDateTime, LocalDateTime.class, OffsetDateTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toOffsetDateTime, Duration.class, OffsetDateTime.class, 0L);
 
         // toOffsetTime
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toOffsetTime, Integer.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toOffsetTime, Long.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toOffsetTime, Double.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toOffsetTime, BigInteger.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toOffsetTime, BigDecimal.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(Converter::identity, OffsetTime.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toOffsetTime, OffsetDateTime.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(MapConversions::toOffsetTime, Map.class, OffsetTime.class, 0L);
-        CONVERSION_DB.put(StringConversions::toOffsetTime, String.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toOffsetTime, Integer.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toOffsetTime, Long.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toOffsetTime, Double.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toOffsetTime, BigInteger.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toOffsetTime, BigDecimal.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, OffsetTime.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toOffsetTime, OffsetDateTime.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toOffsetTime, Map.class, OffsetTime.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toOffsetTime, String.class, OffsetTime.class, 0L);
 
         // UUID conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, UUID.class, 0L);
-        CONVERSION_DB.put(Converter::identity, UUID.class, UUID.class, 0L);
-        CONVERSION_DB.put(StringConversions::toUUID, String.class, UUID.class, 0L);
-        CONVERSION_DB.put(BooleanConversions::toUUID, Boolean.class, UUID.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toUUID, BigInteger.class, UUID.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toUUID, BigDecimal.class, UUID.class, 0L);
-        CONVERSION_DB.put(MapConversions::toUUID, Map.class, UUID.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, UUID.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, UUID.class, UUID.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toUUID, String.class, UUID.class, 0L);
+        CONVERSION_DB.putMultiKey(BooleanConversions::toUUID, Boolean.class, UUID.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toUUID, BigInteger.class, UUID.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toUUID, BigDecimal.class, UUID.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toUUID, Map.class, UUID.class, 0L);
 
         // Class conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Class.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Class.class, Class.class, 0L);
-        CONVERSION_DB.put(MapConversions::toClass, Map.class, Class.class, 0L);
-        CONVERSION_DB.put(StringConversions::toClass, String.class, Class.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Class.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Class.class, Class.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toClass, Map.class, Class.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toClass, String.class, Class.class, 0L);
 
         // Color conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Color.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Color.class, Color.class, 0L);
-        CONVERSION_DB.put(StringConversions::toColor, String.class, Color.class, 0L);
-        CONVERSION_DB.put(MapConversions::toColor, Map.class, Color.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toColor, Integer.class, Color.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toColor, Long.class, Color.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::toColor, int[].class, Color.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Color.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Color.class, Color.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toColor, String.class, Color.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toColor, Map.class, Color.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toColor, Integer.class, Color.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toColor, Long.class, Color.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::toColor, int[].class, Color.class, 0L);
 
         // Dimension conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Dimension.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Dimension.class, Dimension.class, 0L);
-        CONVERSION_DB.put(StringConversions::toDimension, String.class, Dimension.class, 0L);
-        CONVERSION_DB.put(MapConversions::toDimension, Map.class, Dimension.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDimension, Integer.class, Dimension.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDimension, Long.class, Dimension.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toDimension, BigInteger.class, Dimension.class, 0L);
-        CONVERSION_DB.put(NumberConversions::bigDecimalToDimension, BigDecimal.class, Dimension.class, 0L);
-        CONVERSION_DB.put(NumberConversions::booleanToDimension, Boolean.class, Dimension.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::toDimension, int[].class, Dimension.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toDimension, Rectangle.class, Dimension.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toDimension, Insets.class, Dimension.class, 0L);
-        CONVERSION_DB.put(PointConversions::toDimension, Point.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Dimension.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toDimension, String.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toDimension, Map.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDimension, Integer.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDimension, Long.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toDimension, BigInteger.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::bigDecimalToDimension, BigDecimal.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::booleanToDimension, Boolean.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::toDimension, int[].class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toDimension, Rectangle.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toDimension, Insets.class, Dimension.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toDimension, Point.class, Dimension.class, 0L);
 
         // Point conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Point.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Point.class, Point.class, 0L);
-        CONVERSION_DB.put(StringConversions::toPoint, String.class, Point.class, 0L);
-        CONVERSION_DB.put(MapConversions::toPoint, Map.class, Point.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toPoint, Integer.class, Point.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toPoint, Long.class, Point.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toPoint, BigInteger.class, Point.class, 0L);
-        CONVERSION_DB.put(NumberConversions::bigDecimalToPoint, BigDecimal.class, Point.class, 0L);
-        CONVERSION_DB.put(NumberConversions::booleanToPoint, Boolean.class, Point.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::toPoint, int[].class, Point.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toPoint, Dimension.class, Point.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toPoint, Rectangle.class, Point.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toPoint, Insets.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Point.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toPoint, String.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toPoint, Map.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toPoint, Integer.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toPoint, Long.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toPoint, BigInteger.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::bigDecimalToPoint, BigDecimal.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::booleanToPoint, Boolean.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::toPoint, int[].class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toPoint, Dimension.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toPoint, Rectangle.class, Point.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toPoint, Insets.class, Point.class, 0L);
 
         // Rectangle conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Rectangle.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(StringConversions::toRectangle, String.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(MapConversions::toRectangle, Map.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerToRectangle, Integer.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(NumberConversions::longToRectangle, Long.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(NumberConversions::bigIntegerToRectangle, BigInteger.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(NumberConversions::bigDecimalToRectangle, BigDecimal.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(NumberConversions::booleanToRectangle, Boolean.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::toRectangle, int[].class, Rectangle.class, 0L);
-        CONVERSION_DB.put(PointConversions::toRectangle, Point.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toRectangle, Dimension.class, Rectangle.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toRectangle, Insets.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Rectangle.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toRectangle, String.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toRectangle, Map.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerToRectangle, Integer.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::longToRectangle, Long.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::bigIntegerToRectangle, BigInteger.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::bigDecimalToRectangle, BigDecimal.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::booleanToRectangle, Boolean.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::toRectangle, int[].class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toRectangle, Point.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toRectangle, Dimension.class, Rectangle.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toRectangle, Insets.class, Rectangle.class, 0L);
 
         // Insets conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Insets.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Insets.class, Insets.class, 0L);
-        CONVERSION_DB.put(StringConversions::toInsets, String.class, Insets.class, 0L);
-        CONVERSION_DB.put(MapConversions::toInsets, Map.class, Insets.class, 0L);
-        CONVERSION_DB.put(NumberConversions::integerToInsets, Integer.class, Insets.class, 0L);
-        CONVERSION_DB.put(NumberConversions::longToInsets, Long.class, Insets.class, 0L);
-        CONVERSION_DB.put(NumberConversions::bigIntegerToInsets, BigInteger.class, Insets.class, 0L);
-        CONVERSION_DB.put(NumberConversions::bigDecimalToInsets, BigDecimal.class, Insets.class, 0L);
-        CONVERSION_DB.put(NumberConversions::booleanToInsets, Boolean.class, Insets.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::toInsets, int[].class, Insets.class, 0L);
-        CONVERSION_DB.put(PointConversions::toInsets, Point.class, Insets.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toInsets, Dimension.class, Insets.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toInsets, Rectangle.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Insets.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toInsets, String.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toInsets, Map.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::integerToInsets, Integer.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::longToInsets, Long.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::bigIntegerToInsets, BigInteger.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::bigDecimalToInsets, BigDecimal.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::booleanToInsets, Boolean.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::toInsets, int[].class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toInsets, Point.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toInsets, Dimension.class, Insets.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toInsets, Rectangle.class, Insets.class, 0L);
 
         // toFile
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, File.class, 0L);
-        CONVERSION_DB.put(Converter::identity, File.class, File.class, 0L);
-        CONVERSION_DB.put(StringConversions::toFile, String.class, File.class, 0L);
-        CONVERSION_DB.put(MapConversions::toFile, Map.class, File.class, 0L);
-        CONVERSION_DB.put(UriConversions::toFile, URI.class, File.class, 0L);
-        CONVERSION_DB.put(PathConversions::toFile, Path.class, File.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::charArrayToFile, char[].class, File.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::byteArrayToFile, byte[].class, File.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, File.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, File.class, File.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toFile, String.class, File.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toFile, Map.class, File.class, 0L);
+        CONVERSION_DB.putMultiKey(UriConversions::toFile, URI.class, File.class, 0L);
+        CONVERSION_DB.putMultiKey(PathConversions::toFile, Path.class, File.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::charArrayToFile, char[].class, File.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::byteArrayToFile, byte[].class, File.class, 0L);
 
         // toPath
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Path.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Path.class, Path.class, 0L);
-        CONVERSION_DB.put(StringConversions::toPath, String.class, Path.class, 0L);
-        CONVERSION_DB.put(MapConversions::toPath, Map.class, Path.class, 0L);
-        CONVERSION_DB.put(UriConversions::toPath, URI.class, Path.class, 0L);
-        CONVERSION_DB.put(FileConversions::toPath, File.class, Path.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::charArrayToPath, char[].class, Path.class, 0L);
-        CONVERSION_DB.put(ArrayConversions::byteArrayToPath, byte[].class, Path.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Path.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Path.class, Path.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toPath, String.class, Path.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toPath, Map.class, Path.class, 0L);
+        CONVERSION_DB.putMultiKey(UriConversions::toPath, URI.class, Path.class, 0L);
+        CONVERSION_DB.putMultiKey(FileConversions::toPath, File.class, Path.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::charArrayToPath, char[].class, Path.class, 0L);
+        CONVERSION_DB.putMultiKey(ArrayConversions::byteArrayToPath, byte[].class, Path.class, 0L);
 
         // Locale conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Locale.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Locale.class, Locale.class, 0L);
-        CONVERSION_DB.put(StringConversions::toLocale, String.class, Locale.class, 0L);
-        CONVERSION_DB.put(MapConversions::toLocale, Map.class, Locale.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Locale.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Locale.class, Locale.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toLocale, String.class, Locale.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toLocale, Map.class, Locale.class, 0L);
 
         // String conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, String.class, 0L);
-        CONVERSION_DB.put(StringConversions::toString, Byte.class, String.class, 0L);
-        CONVERSION_DB.put(StringConversions::toString, Short.class, String.class, 0L);
-        CONVERSION_DB.put(StringConversions::toString, Integer.class, String.class, 0L);
-        CONVERSION_DB.put(StringConversions::toString, Long.class, String.class, 0L);
-        CONVERSION_DB.put(NumberConversions::floatToString, Float.class, String.class, 0L);
-        CONVERSION_DB.put(NumberConversions::doubleToString, Double.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, Boolean.class, String.class, 0L);
-        CONVERSION_DB.put(CharacterConversions::toString, Character.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, BigInteger.class, String.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toString, BigDecimal.class, String.class, 0L);
-        CONVERSION_DB.put(ByteArrayConversions::toString, byte[].class, String.class, 0L);
-        CONVERSION_DB.put(CharArrayConversions::toString, char[].class, String.class, 0L);
-        CONVERSION_DB.put(CharacterArrayConversions::toString, Character[].class, String.class, 0L);
-        CONVERSION_DB.put(ByteBufferConversions::toString, ByteBuffer.class, String.class, 0L);
-        CONVERSION_DB.put(CharBufferConversions::toString, CharBuffer.class, String.class, 0L);
-        CONVERSION_DB.put(ClassConversions::toString, Class.class, String.class, 0L);
-        CONVERSION_DB.put(DateConversions::toString, Date.class, String.class, 0L);
-        CONVERSION_DB.put(CalendarConversions::toString, Calendar.class, String.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toString, java.sql.Date.class, String.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toString, Timestamp.class, String.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toString, LocalDate.class, String.class, 0L);
-        CONVERSION_DB.put(LocalTimeConversions::toString, LocalTime.class, String.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toString, LocalDateTime.class, String.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toString, ZonedDateTime.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, UUID.class, String.class, 0L);
-        CONVERSION_DB.put(ColorConversions::toString, Color.class, String.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toString, Dimension.class, String.class, 0L);
-        CONVERSION_DB.put(PointConversions::toString, Point.class, String.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toString, Rectangle.class, String.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toString, Insets.class, String.class, 0L);
-        CONVERSION_DB.put(MapConversions::toString, Map.class, String.class, 0L);
-        CONVERSION_DB.put(StringConversions::enumToString, Enum.class, String.class, 0L);
-        CONVERSION_DB.put(Converter::identity, String.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, Duration.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, Instant.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, MonthDay.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, YearMonth.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, Period.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, ZoneId.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, ZoneOffset.class, String.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toString, OffsetTime.class, String.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toString, OffsetDateTime.class, String.class, 0L);
-        CONVERSION_DB.put(YearConversions::toString, Year.class, String.class, 0L);
-        CONVERSION_DB.put(LocaleConversions::toString, Locale.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, URI.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, URL.class, String.class, 0L);
-        CONVERSION_DB.put(FileConversions::toString, File.class, String.class, 0L);
-        CONVERSION_DB.put(PathConversions::toString, Path.class, String.class, 0L);
-        CONVERSION_DB.put(TimeZoneConversions::toString, TimeZone.class, String.class, 0L);
-        CONVERSION_DB.put(PatternConversions::toString, Pattern.class, String.class, 0L);
-        CONVERSION_DB.put(CurrencyConversions::toString, Currency.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, StringBuilder.class, String.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toString, StringBuffer.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toString, Byte.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toString, Short.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toString, Integer.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toString, Long.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::floatToString, Float.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::doubleToString, Double.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, Boolean.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterConversions::toString, Character.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, BigInteger.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toString, BigDecimal.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(ByteArrayConversions::toString, byte[].class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(CharArrayConversions::toString, char[].class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(CharacterArrayConversions::toString, Character[].class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(ByteBufferConversions::toString, ByteBuffer.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(CharBufferConversions::toString, CharBuffer.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(ClassConversions::toString, Class.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toString, Date.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(CalendarConversions::toString, Calendar.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toString, java.sql.Date.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toString, Timestamp.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toString, LocalDate.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalTimeConversions::toString, LocalTime.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toString, LocalDateTime.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toString, ZonedDateTime.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, UUID.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(ColorConversions::toString, Color.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toString, Dimension.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toString, Point.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toString, Rectangle.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toString, Insets.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toString, Map.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::enumToString, Enum.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, String.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, Duration.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, Instant.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, MonthDay.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, YearMonth.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, Period.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, ZoneId.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, ZoneOffset.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toString, OffsetTime.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toString, OffsetDateTime.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toString, Year.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(LocaleConversions::toString, Locale.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, URI.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, URL.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(FileConversions::toString, File.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(PathConversions::toString, Path.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(TimeZoneConversions::toString, TimeZone.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(PatternConversions::toString, Pattern.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(CurrencyConversions::toString, Currency.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, StringBuilder.class, String.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toString, StringBuffer.class, String.class, 0L);
 
         // Currency conversions
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Currency.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Currency.class, Currency.class, 0L);
-        CONVERSION_DB.put(StringConversions::toCurrency, String.class, Currency.class, 0L);
-        CONVERSION_DB.put(MapConversions::toCurrency, Map.class, Currency.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Currency.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Currency.class, Currency.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toCurrency, String.class, Currency.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toCurrency, Map.class, Currency.class, 0L);
 
         // Pattern conversions
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Pattern.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Pattern.class, Pattern.class, 0L);
-        CONVERSION_DB.put(StringConversions::toPattern, String.class, Pattern.class, 0L);
-        CONVERSION_DB.put(MapConversions::toPattern, Map.class, Pattern.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Pattern.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Pattern.class, Pattern.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toPattern, String.class, Pattern.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toPattern, Map.class, Pattern.class, 0L);
 
         // URL conversions
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, URL.class, 0L);
-        CONVERSION_DB.put(Converter::identity, URL.class, URL.class, 0L);
-        CONVERSION_DB.put(UriConversions::toURL, URI.class, URL.class, 0L);
-        CONVERSION_DB.put(StringConversions::toURL, String.class, URL.class, 0L);
-        CONVERSION_DB.put(MapConversions::toURL, Map.class, URL.class, 0L);
-        CONVERSION_DB.put(FileConversions::toURL, File.class, URL.class, 0L);
-        CONVERSION_DB.put(PathConversions::toURL, Path.class, URL.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, URL.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, URL.class, URL.class, 0L);
+        CONVERSION_DB.putMultiKey(UriConversions::toURL, URI.class, URL.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toURL, String.class, URL.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toURL, Map.class, URL.class, 0L);
+        CONVERSION_DB.putMultiKey(FileConversions::toURL, File.class, URL.class, 0L);
+        CONVERSION_DB.putMultiKey(PathConversions::toURL, Path.class, URL.class, 0L);
 
         // URI Conversions
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, URI.class, 0L);
-        CONVERSION_DB.put(Converter::identity, URI.class, URI.class, 0L);
-        CONVERSION_DB.put(UrlConversions::toURI, URL.class, URI.class, 0L);
-        CONVERSION_DB.put(StringConversions::toURI, String.class, URI.class, 0L);
-        CONVERSION_DB.put(MapConversions::toURI, Map.class, URI.class, 0L);
-        CONVERSION_DB.put(FileConversions::toURI, File.class, URI.class, 0L);
-        CONVERSION_DB.put(PathConversions::toURI, Path.class, URI.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, URI.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, URI.class, URI.class, 0L);
+        CONVERSION_DB.putMultiKey(UrlConversions::toURI, URL.class, URI.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toURI, String.class, URI.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toURI, Map.class, URI.class, 0L);
+        CONVERSION_DB.putMultiKey(FileConversions::toURI, File.class, URI.class, 0L);
+        CONVERSION_DB.putMultiKey(PathConversions::toURI, Path.class, URI.class, 0L);
 
         // TimeZone Conversions
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, TimeZone.class, 0L);
-        CONVERSION_DB.put(Converter::identity, TimeZone.class, TimeZone.class, 0L);
-        CONVERSION_DB.put(StringConversions::toTimeZone, String.class, TimeZone.class, 0L);
-        CONVERSION_DB.put(MapConversions::toTimeZone, Map.class, TimeZone.class, 0L);
-        CONVERSION_DB.put(ZoneIdConversions::toTimeZone, ZoneId.class, TimeZone.class, 0L);
-        CONVERSION_DB.put(ZoneOffsetConversions::toTimeZone, ZoneOffset.class, TimeZone.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, TimeZone.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, TimeZone.class, TimeZone.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toTimeZone, String.class, TimeZone.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toTimeZone, Map.class, TimeZone.class, 0L);
+        CONVERSION_DB.putMultiKey(ZoneIdConversions::toTimeZone, ZoneId.class, TimeZone.class, 0L);
+        CONVERSION_DB.putMultiKey(ZoneOffsetConversions::toTimeZone, ZoneOffset.class, TimeZone.class, 0L);
 
         // Duration conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Duration.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Duration.class, Duration.class, 0L);
-        CONVERSION_DB.put(NumberConversions::longNanosToDuration, Long.class, Duration.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toDuration, Double.class, Duration.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toDuration, BigInteger.class, Duration.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toDuration, BigDecimal.class, Duration.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toDuration, Timestamp.class, Duration.class, 0L);
-        CONVERSION_DB.put(StringConversions::toDuration, String.class, Duration.class, 0L);
-        CONVERSION_DB.put(MapConversions::toDuration, Map.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Duration.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::longNanosToDuration, Long.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toDuration, Double.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toDuration, BigInteger.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toDuration, BigDecimal.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toDuration, Timestamp.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toDuration, String.class, Duration.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toDuration, Map.class, Duration.class, 0L);
 
         // Instant conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Instant.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Instant.class, Instant.class, 0L);
-        CONVERSION_DB.put(NumberConversions::longNanosToInstant, Long.class, Instant.class, 0L);
-        CONVERSION_DB.put(DoubleConversions::toInstant, Double.class, Instant.class, 0L);
-        CONVERSION_DB.put(BigIntegerConversions::toInstant, BigInteger.class, Instant.class, 0L);
-        CONVERSION_DB.put(BigDecimalConversions::toInstant, BigDecimal.class, Instant.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toInstant, java.sql.Date.class, Instant.class, 0L);
-        CONVERSION_DB.put(DateConversions::toInstant, Timestamp.class, Instant.class, 0L);
-        CONVERSION_DB.put(DateConversions::toInstant, Date.class, Instant.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toInstant, LocalDate.class, Instant.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toInstant, LocalDateTime.class, Instant.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toInstant, ZonedDateTime.class, Instant.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toInstant, OffsetDateTime.class, Instant.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toInstant, Duration.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Instant.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::longNanosToInstant, Long.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(DoubleConversions::toInstant, Double.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(BigIntegerConversions::toInstant, BigInteger.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(BigDecimalConversions::toInstant, BigDecimal.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toInstant, java.sql.Date.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toInstant, Timestamp.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toInstant, Date.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toInstant, LocalDate.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toInstant, LocalDateTime.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toInstant, ZonedDateTime.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toInstant, OffsetDateTime.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toInstant, Duration.class, Instant.class, 0L);
 
-        CONVERSION_DB.put(StringConversions::toInstant, String.class, Instant.class, 0L);
-        CONVERSION_DB.put(MapConversions::toInstant, Map.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toInstant, String.class, Instant.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toInstant, Map.class, Instant.class, 0L);
 
         // ZoneId conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, ZoneId.class, 0L);
-        CONVERSION_DB.put(Converter::identity, ZoneId.class, ZoneId.class, 0L);
-        CONVERSION_DB.put(StringConversions::toZoneId, String.class, ZoneId.class, 0L);
-        CONVERSION_DB.put(MapConversions::toZoneId, Map.class, ZoneId.class, 0L);
-        CONVERSION_DB.put(TimeZoneConversions::toZoneId, TimeZone.class, ZoneId.class, 0L);
-        CONVERSION_DB.put(ZoneOffsetConversions::toZoneId, ZoneOffset.class, ZoneId.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, ZoneId.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, ZoneId.class, ZoneId.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toZoneId, String.class, ZoneId.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toZoneId, Map.class, ZoneId.class, 0L);
+        CONVERSION_DB.putMultiKey(TimeZoneConversions::toZoneId, TimeZone.class, ZoneId.class, 0L);
+        CONVERSION_DB.putMultiKey(ZoneOffsetConversions::toZoneId, ZoneOffset.class, ZoneId.class, 0L);
 
         // ZoneOffset conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, ZoneOffset.class, 0L);
-        CONVERSION_DB.put(Converter::identity, ZoneOffset.class, ZoneOffset.class, 0L);
-        CONVERSION_DB.put(StringConversions::toZoneOffset, String.class, ZoneOffset.class, 0L);
-        CONVERSION_DB.put(MapConversions::toZoneOffset, Map.class, ZoneOffset.class, 0L);
-        CONVERSION_DB.put(ZoneIdConversions::toZoneOffset, ZoneId.class, ZoneOffset.class, 0L);
-        CONVERSION_DB.put(TimeZoneConversions::toZoneOffset, TimeZone.class, ZoneOffset.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, ZoneOffset.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, ZoneOffset.class, ZoneOffset.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toZoneOffset, String.class, ZoneOffset.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toZoneOffset, Map.class, ZoneOffset.class, 0L);
+        CONVERSION_DB.putMultiKey(ZoneIdConversions::toZoneOffset, ZoneId.class, ZoneOffset.class, 0L);
+        CONVERSION_DB.putMultiKey(TimeZoneConversions::toZoneOffset, TimeZone.class, ZoneOffset.class, 0L);
 
         // MonthDay conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(Converter::identity, MonthDay.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toMonthDay, java.sql.Date.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(DateConversions::toMonthDay, Date.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toMonthDay, Timestamp.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toMonthDay, LocalDate.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toMonthDay, LocalDateTime.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toMonthDay, ZonedDateTime.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toMonthDay, OffsetDateTime.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(StringConversions::toMonthDay, String.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(MapConversions::toMonthDay, Map.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, Short.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, Integer.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, Long.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, Float.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, Double.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, AtomicInteger.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, AtomicLong.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, BigInteger.class, MonthDay.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toMonthDay, BigDecimal.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, MonthDay.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toMonthDay, java.sql.Date.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toMonthDay, Date.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toMonthDay, Timestamp.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toMonthDay, LocalDate.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toMonthDay, LocalDateTime.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toMonthDay, ZonedDateTime.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toMonthDay, OffsetDateTime.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toMonthDay, String.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toMonthDay, Map.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, Short.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, Integer.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, Long.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, Float.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, Double.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, AtomicInteger.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, AtomicLong.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, BigInteger.class, MonthDay.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toMonthDay, BigDecimal.class, MonthDay.class, 0L);
 
         // YearMonth conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(Converter::identity, YearMonth.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toYearMonth, java.sql.Date.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(DateConversions::toYearMonth, Date.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toYearMonth, Timestamp.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toYearMonth, LocalDate.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toYearMonth, LocalDateTime.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toYearMonth, ZonedDateTime.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toYearMonth, OffsetDateTime.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(StringConversions::toYearMonth, String.class, YearMonth.class, 0L);
-        CONVERSION_DB.put(MapConversions::toYearMonth, Map.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, YearMonth.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toYearMonth, java.sql.Date.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toYearMonth, Date.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toYearMonth, Timestamp.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toYearMonth, LocalDate.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toYearMonth, LocalDateTime.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toYearMonth, ZonedDateTime.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toYearMonth, OffsetDateTime.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toYearMonth, String.class, YearMonth.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toYearMonth, Map.class, YearMonth.class, 0L);
 
         // Period conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Period.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Period.class, Period.class, 0L);
-        CONVERSION_DB.put(StringConversions::toPeriod, String.class, Period.class, 0L);
-        CONVERSION_DB.put(MapConversions::toPeriod, Map.class, Period.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Period.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Period.class, Period.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toPeriod, String.class, Period.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toPeriod, Map.class, Period.class, 0L);
 
         // toStringBuffer
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, StringBuffer.class, 0L);
-        CONVERSION_DB.put(StringConversions::toStringBuffer, String.class, StringBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, StringBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toStringBuffer, String.class, StringBuffer.class, 0L);
 
         // toStringBuilder - Bridge through String
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, StringBuilder.class, 0L);
-        CONVERSION_DB.put(StringConversions::toStringBuilder, String.class, StringBuilder.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, StringBuilder.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toStringBuilder, String.class, StringBuilder.class, 0L);
 
         // toByteArray
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, byte[].class, 0L);
-        CONVERSION_DB.put(StringConversions::toByteArray, String.class, byte[].class, 0L);
-        CONVERSION_DB.put(ByteBufferConversions::toByteArray, ByteBuffer.class, byte[].class, 0L);
-        CONVERSION_DB.put(CharBufferConversions::toByteArray, CharBuffer.class, byte[].class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, char[].class, byte[].class, 0L); // advertising convertion, implemented generically in ArrayConversions.
-        CONVERSION_DB.put(Converter::identity, byte[].class, byte[].class, 0L);
-        CONVERSION_DB.put(FileConversions::toByteArray, File.class, byte[].class, 0L);
-        CONVERSION_DB.put(PathConversions::toByteArray, Path.class, byte[].class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, byte[].class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toByteArray, String.class, byte[].class, 0L);
+        CONVERSION_DB.putMultiKey(ByteBufferConversions::toByteArray, ByteBuffer.class, byte[].class, 0L);
+        CONVERSION_DB.putMultiKey(CharBufferConversions::toByteArray, CharBuffer.class, byte[].class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, char[].class, byte[].class, 0L); // advertising convertion, implemented generically in ArrayConversions.
+        CONVERSION_DB.putMultiKey(Converter::identity, byte[].class, byte[].class, 0L);
+        CONVERSION_DB.putMultiKey(FileConversions::toByteArray, File.class, byte[].class, 0L);
+        CONVERSION_DB.putMultiKey(PathConversions::toByteArray, Path.class, byte[].class, 0L);
 
         // toCharArray
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, char[].class, 0L);
-        CONVERSION_DB.put(StringConversions::toCharArray, String.class, char[].class, 0L);
-        CONVERSION_DB.put(ByteBufferConversions::toCharArray, ByteBuffer.class, char[].class, 0L);
-        CONVERSION_DB.put(CharBufferConversions::toCharArray, CharBuffer.class, char[].class, 0L);
-        CONVERSION_DB.put(CharArrayConversions::toCharArray, char[].class, char[].class, 0L);
-        CONVERSION_DB.put(VoidConversions::toNull, byte[].class, char[].class, 0L);   // Used for advertising capability, implemented generically in ArrayConversions.
-        CONVERSION_DB.put(FileConversions::toCharArray, File.class, char[].class, 0L);
-        CONVERSION_DB.put(PathConversions::toCharArray, Path.class, char[].class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, char[].class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toCharArray, String.class, char[].class, 0L);
+        CONVERSION_DB.putMultiKey(ByteBufferConversions::toCharArray, ByteBuffer.class, char[].class, 0L);
+        CONVERSION_DB.putMultiKey(CharBufferConversions::toCharArray, CharBuffer.class, char[].class, 0L);
+        CONVERSION_DB.putMultiKey(CharArrayConversions::toCharArray, char[].class, char[].class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, byte[].class, char[].class, 0L);   // Used for advertising capability, implemented generically in ArrayConversions.
+        CONVERSION_DB.putMultiKey(FileConversions::toCharArray, File.class, char[].class, 0L);
+        CONVERSION_DB.putMultiKey(PathConversions::toCharArray, Path.class, char[].class, 0L);
 
         // toCharacterArray
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Character[].class, 0L);
-        CONVERSION_DB.put(StringConversions::toCharacterArray, String.class, Character[].class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Character[].class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toCharacterArray, String.class, Character[].class, 0L);
 
         // toCharBuffer
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, CharBuffer.class, 0L);
-        CONVERSION_DB.put(StringConversions::toCharBuffer, String.class, CharBuffer.class, 0L);
-        CONVERSION_DB.put(ByteBufferConversions::toCharBuffer, ByteBuffer.class, CharBuffer.class, 0L);
-        CONVERSION_DB.put(CharBufferConversions::toCharBuffer, CharBuffer.class, CharBuffer.class, 0L);
-        CONVERSION_DB.put(CharArrayConversions::toCharBuffer, char[].class, CharBuffer.class, 0L);
-        CONVERSION_DB.put(ByteArrayConversions::toCharBuffer, byte[].class, CharBuffer.class, 0L);
-        CONVERSION_DB.put(MapConversions::toCharBuffer, Map.class, CharBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, CharBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toCharBuffer, String.class, CharBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(ByteBufferConversions::toCharBuffer, ByteBuffer.class, CharBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(CharBufferConversions::toCharBuffer, CharBuffer.class, CharBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(CharArrayConversions::toCharBuffer, char[].class, CharBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(ByteArrayConversions::toCharBuffer, byte[].class, CharBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toCharBuffer, Map.class, CharBuffer.class, 0L);
 
         // toByteBuffer
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, ByteBuffer.class, 0L);
-        CONVERSION_DB.put(StringConversions::toByteBuffer, String.class, ByteBuffer.class, 0L);
-        CONVERSION_DB.put(ByteBufferConversions::toByteBuffer, ByteBuffer.class, ByteBuffer.class, 0L);
-        CONVERSION_DB.put(CharBufferConversions::toByteBuffer, CharBuffer.class, ByteBuffer.class, 0L);
-        CONVERSION_DB.put(CharArrayConversions::toByteBuffer, char[].class, ByteBuffer.class, 0L);
-        CONVERSION_DB.put(ByteArrayConversions::toByteBuffer, byte[].class, ByteBuffer.class, 0L);
-        CONVERSION_DB.put(MapConversions::toByteBuffer, Map.class, ByteBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, ByteBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toByteBuffer, String.class, ByteBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(ByteBufferConversions::toByteBuffer, ByteBuffer.class, ByteBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(CharBufferConversions::toByteBuffer, CharBuffer.class, ByteBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(CharArrayConversions::toByteBuffer, char[].class, ByteBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(ByteArrayConversions::toByteBuffer, byte[].class, ByteBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toByteBuffer, Map.class, ByteBuffer.class, 0L);
 
         // toYear
-        CONVERSION_DB.put(NumberConversions::nullToYear, Void.class, Year.class, 0L);
-        CONVERSION_DB.put(Converter::identity, Year.class, Year.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toYear, Short.class, Year.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toYear, Integer.class, Year.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toYear, Long.class, Year.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toYear, Float.class, Year.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toYear, Double.class, Year.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toYear, BigInteger.class, Year.class, 0L);
-        CONVERSION_DB.put(NumberConversions::toYear, BigDecimal.class, Year.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toYear, java.sql.Date.class, Year.class, 0L);
-        CONVERSION_DB.put(DateConversions::toYear, Date.class, Year.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toYear, Timestamp.class, Year.class, 0L);
-        CONVERSION_DB.put(LocalDateConversions::toYear, LocalDate.class, Year.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toYear, LocalDateTime.class, Year.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toYear, ZonedDateTime.class, Year.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toYear, OffsetDateTime.class, Year.class, 0L);
-        CONVERSION_DB.put(StringConversions::toYear, String.class, Year.class, 0L);
-        CONVERSION_DB.put(MapConversions::toYear, Map.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::nullToYear, Void.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(Converter::identity, Year.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toYear, Short.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toYear, Integer.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toYear, Long.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toYear, Float.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toYear, Double.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toYear, BigInteger.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(NumberConversions::toYear, BigDecimal.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toYear, java.sql.Date.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toYear, Date.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toYear, Timestamp.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toYear, LocalDate.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toYear, LocalDateTime.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toYear, ZonedDateTime.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toYear, OffsetDateTime.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toYear, String.class, Year.class, 0L);
+        CONVERSION_DB.putMultiKey(MapConversions::toYear, Map.class, Year.class, 0L);
 
         // Throwable conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Throwable.class, 0L);
-        CONVERSION_DB.put((ConvertWithTarget<Throwable>) MapConversions::toThrowable, Map.class, Throwable.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Throwable.class, 0L);
+        CONVERSION_DB.putMultiKey((ConvertWithTarget<Throwable>) MapConversions::toThrowable, Map.class, Throwable.class, 0L);
 
         // Map conversions supported
-        CONVERSION_DB.put(VoidConversions::toNull, Void.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Byte.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Short.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Integer.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Long.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Float.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Double.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Boolean.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Character.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, BigInteger.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, BigDecimal.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, AtomicBoolean.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, AtomicInteger.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, AtomicLong.class, Map.class, 0L);
-        CONVERSION_DB.put(DateConversions::toMap, Date.class, Map.class, 0L);
-        CONVERSION_DB.put(SqlDateConversions::toMap, java.sql.Date.class, Map.class, 0L);
-        CONVERSION_DB.put(TimestampConversions::toMap, Timestamp.class, Map.class, 0L);
-        CONVERSION_DB.put(CalendarConversions::toMap, Calendar.class, Map.class, 0L);  // Restored - bridge produces different map key (zonedDateTime vs. calendar)
-        CONVERSION_DB.put(LocalDateConversions::toMap, LocalDate.class, Map.class, 0L);
-        CONVERSION_DB.put(LocalDateTimeConversions::toMap, LocalDateTime.class, Map.class, 0L);
-        CONVERSION_DB.put(ZonedDateTimeConversions::toMap, ZonedDateTime.class, Map.class, 0L);
-        CONVERSION_DB.put(DurationConversions::toMap, Duration.class, Map.class, 0L);
-        CONVERSION_DB.put(InstantConversions::toMap, Instant.class, Map.class, 0L);
-        CONVERSION_DB.put(LocalTimeConversions::toMap, LocalTime.class, Map.class, 0L);
-        CONVERSION_DB.put(MonthDayConversions::toMap, MonthDay.class, Map.class, 0L);
-        CONVERSION_DB.put(YearMonthConversions::toMap, YearMonth.class, Map.class, 0L);
-        CONVERSION_DB.put(PeriodConversions::toMap, Period.class, Map.class, 0L);
-        CONVERSION_DB.put(TimeZoneConversions::toMap, TimeZone.class, Map.class, 0L);
-        CONVERSION_DB.put(ZoneIdConversions::toMap, ZoneId.class, Map.class, 0L);
-        CONVERSION_DB.put(ZoneOffsetConversions::toMap, ZoneOffset.class, Map.class, 0L);
-        CONVERSION_DB.put(UniversalConversions::toMap, Class.class, Map.class, 0L);
-        CONVERSION_DB.put(UUIDConversions::toMap, UUID.class, Map.class, 0L);
-        CONVERSION_DB.put(ColorConversions::toMap, Color.class, Map.class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toMap, Dimension.class, Map.class, 0L);
-        CONVERSION_DB.put(PointConversions::toMap, Point.class, Map.class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toMap, Rectangle.class, Map.class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toMap, Insets.class, Map.class, 0L);
-        CONVERSION_DB.put(StringConversions::toMap, String.class, Map.class, 0L);
-        CONVERSION_DB.put(EnumConversions::toMap, Enum.class, Map.class, 0L);
-        CONVERSION_DB.put(OffsetDateTimeConversions::toMap, OffsetDateTime.class, Map.class, 0L);
-        CONVERSION_DB.put(OffsetTimeConversions::toMap, OffsetTime.class, Map.class, 0L);
-        CONVERSION_DB.put(YearConversions::toMap, Year.class, Map.class, 0L);
-        CONVERSION_DB.put(LocaleConversions::toMap, Locale.class, Map.class, 0L);
-        CONVERSION_DB.put(UriConversions::toMap, URI.class, Map.class, 0L);
-        CONVERSION_DB.put(UrlConversions::toMap, URL.class, Map.class, 0L);
-        CONVERSION_DB.put(ThrowableConversions::toMap, Throwable.class, Map.class, 0L);
-        CONVERSION_DB.put(PatternConversions::toMap, Pattern.class, Map.class, 0L);
-        CONVERSION_DB.put(CurrencyConversions::toMap, Currency.class, Map.class, 0L);
-        CONVERSION_DB.put(ByteBufferConversions::toMap, ByteBuffer.class, Map.class, 0L);
-        CONVERSION_DB.put(CharBufferConversions::toMap, CharBuffer.class, Map.class, 0L);
-        CONVERSION_DB.put(FileConversions::toMap, File.class, Map.class, 0L);
-        CONVERSION_DB.put(PathConversions::toMap, Path.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(VoidConversions::toNull, Void.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Byte.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Short.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Integer.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Long.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Float.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Double.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Boolean.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Character.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, BigInteger.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, BigDecimal.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, AtomicBoolean.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, AtomicInteger.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, AtomicLong.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(DateConversions::toMap, Date.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(SqlDateConversions::toMap, java.sql.Date.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(TimestampConversions::toMap, Timestamp.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(CalendarConversions::toMap, Calendar.class, Map.class, 0L);  // Restored - bridge produces different map key (zonedDateTime vs. calendar)
+        CONVERSION_DB.putMultiKey(LocalDateConversions::toMap, LocalDate.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalDateTimeConversions::toMap, LocalDateTime.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(ZonedDateTimeConversions::toMap, ZonedDateTime.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(DurationConversions::toMap, Duration.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(InstantConversions::toMap, Instant.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(LocalTimeConversions::toMap, LocalTime.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(MonthDayConversions::toMap, MonthDay.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(YearMonthConversions::toMap, YearMonth.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(PeriodConversions::toMap, Period.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(TimeZoneConversions::toMap, TimeZone.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(ZoneIdConversions::toMap, ZoneId.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(ZoneOffsetConversions::toMap, ZoneOffset.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::toMap, Class.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UUIDConversions::toMap, UUID.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(ColorConversions::toMap, Color.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toMap, Dimension.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toMap, Point.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toMap, Rectangle.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toMap, Insets.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(StringConversions::toMap, String.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(EnumConversions::toMap, Enum.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetDateTimeConversions::toMap, OffsetDateTime.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(OffsetTimeConversions::toMap, OffsetTime.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(YearConversions::toMap, Year.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(LocaleConversions::toMap, Locale.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UriConversions::toMap, URI.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(UrlConversions::toMap, URL.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(ThrowableConversions::toMap, Throwable.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(PatternConversions::toMap, Pattern.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(CurrencyConversions::toMap, Currency.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(ByteBufferConversions::toMap, ByteBuffer.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(CharBufferConversions::toMap, CharBuffer.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(FileConversions::toMap, File.class, Map.class, 0L);
+        CONVERSION_DB.putMultiKey(PathConversions::toMap, Path.class, Map.class, 0L);
 
         // toIntArray
-        CONVERSION_DB.put(ColorConversions::toIntArray, Color.class, int[].class, 0L);
-        CONVERSION_DB.put(DimensionConversions::toIntArray, Dimension.class, int[].class, 0L);
-        CONVERSION_DB.put(PointConversions::toIntArray, Point.class, int[].class, 0L);
-        CONVERSION_DB.put(RectangleConversions::toIntArray, Rectangle.class, int[].class, 0L);
-        CONVERSION_DB.put(InsetsConversions::toIntArray, Insets.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(ColorConversions::toIntArray, Color.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(DimensionConversions::toIntArray, Dimension.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(PointConversions::toIntArray, Point.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(RectangleConversions::toIntArray, Rectangle.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(InsetsConversions::toIntArray, Insets.class, int[].class, 0L);
 
         // Array-like type bridges for universal array system access
         // ========================================
@@ -1250,81 +1250,81 @@ public final class Converter {
         // ========================================
 
         // AtomicIntegerArray ↔ int[] bridges
-        CONVERSION_DB.put(UniversalConversions::atomicIntegerArrayToIntArray, AtomicIntegerArray.class, int[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::intArrayToAtomicIntegerArray, int[].class, AtomicIntegerArray.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::atomicIntegerArrayToIntArray, AtomicIntegerArray.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::intArrayToAtomicIntegerArray, int[].class, AtomicIntegerArray.class, 0L);
 
         // AtomicLongArray ↔ long[] bridges  
-        CONVERSION_DB.put(UniversalConversions::atomicLongArrayToLongArray, AtomicLongArray.class, long[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::longArrayToAtomicLongArray, long[].class, AtomicLongArray.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::atomicLongArrayToLongArray, AtomicLongArray.class, long[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::longArrayToAtomicLongArray, long[].class, AtomicLongArray.class, 0L);
 
         // AtomicReferenceArray ↔ Object[] bridges
-        CONVERSION_DB.put(UniversalConversions::atomicReferenceArrayToObjectArray, AtomicReferenceArray.class, Object[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::objectArrayToAtomicReferenceArray, Object[].class, AtomicReferenceArray.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::atomicReferenceArrayToObjectArray, AtomicReferenceArray.class, Object[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::objectArrayToAtomicReferenceArray, Object[].class, AtomicReferenceArray.class, 0L);
 
         // AtomicReferenceArray ↔ String[] bridges
-        CONVERSION_DB.put(UniversalConversions::atomicReferenceArrayToStringArray, AtomicReferenceArray.class, String[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::stringArrayToAtomicReferenceArray, String[].class, AtomicReferenceArray.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::atomicReferenceArrayToStringArray, AtomicReferenceArray.class, String[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::stringArrayToAtomicReferenceArray, String[].class, AtomicReferenceArray.class, 0L);
 
         // ========================================
         // NIO Buffer Bridges
         // ========================================
 
         // IntBuffer ↔ int[] bridges
-        CONVERSION_DB.put(UniversalConversions::intBufferToIntArray, IntBuffer.class, int[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::intArrayToIntBuffer, int[].class, IntBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::intBufferToIntArray, IntBuffer.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::intArrayToIntBuffer, int[].class, IntBuffer.class, 0L);
 
         // LongBuffer ↔ long[] bridges
-        CONVERSION_DB.put(UniversalConversions::longBufferToLongArray, LongBuffer.class, long[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::longArrayToLongBuffer, long[].class, LongBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::longBufferToLongArray, LongBuffer.class, long[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::longArrayToLongBuffer, long[].class, LongBuffer.class, 0L);
 
         // FloatBuffer ↔ float[] bridges
-        CONVERSION_DB.put(UniversalConversions::floatBufferToFloatArray, FloatBuffer.class, float[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::floatArrayToFloatBuffer, float[].class, FloatBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::floatBufferToFloatArray, FloatBuffer.class, float[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::floatArrayToFloatBuffer, float[].class, FloatBuffer.class, 0L);
 
         // DoubleBuffer ↔ double[] bridges
-        CONVERSION_DB.put(UniversalConversions::doubleBufferToDoubleArray, DoubleBuffer.class, double[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::doubleArrayToDoubleBuffer, double[].class, DoubleBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::doubleBufferToDoubleArray, DoubleBuffer.class, double[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::doubleArrayToDoubleBuffer, double[].class, DoubleBuffer.class, 0L);
 
         // ShortBuffer ↔ short[] bridges
-        CONVERSION_DB.put(UniversalConversions::shortBufferToShortArray, ShortBuffer.class, short[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::shortArrayToShortBuffer, short[].class, ShortBuffer.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::shortBufferToShortArray, ShortBuffer.class, short[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::shortArrayToShortBuffer, short[].class, ShortBuffer.class, 0L);
 
         // ========================================
         // BitSet Bridges
         // ========================================
 
         // BitSet ↔ boolean[] bridges
-        CONVERSION_DB.put(UniversalConversions::bitSetToBooleanArray, BitSet.class, boolean[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::booleanArrayToBitSet, boolean[].class, BitSet.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::bitSetToBooleanArray, BitSet.class, boolean[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::booleanArrayToBitSet, boolean[].class, BitSet.class, 0L);
 
         // BitSet ↔ int[] bridges (set bit indices)
-        CONVERSION_DB.put(UniversalConversions::bitSetToIntArray, BitSet.class, int[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::intArrayToBitSet, int[].class, BitSet.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::bitSetToIntArray, BitSet.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::intArrayToBitSet, int[].class, BitSet.class, 0L);
 
         // BitSet ↔ byte[] bridges
-        CONVERSION_DB.put(UniversalConversions::bitSetToByteArray, BitSet.class, byte[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::byteArrayToBitSet, byte[].class, BitSet.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::bitSetToByteArray, BitSet.class, byte[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::byteArrayToBitSet, byte[].class, BitSet.class, 0L);
 
         // ========================================
         // Stream Bridges
         // ========================================
 
         // IntStream ↔ int[] bridges
-        CONVERSION_DB.put(UniversalConversions::intStreamToIntArray, IntStream.class, int[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::intArrayToIntStream, int[].class, IntStream.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::intStreamToIntArray, IntStream.class, int[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::intArrayToIntStream, int[].class, IntStream.class, 0L);
 
         // LongStream ↔ long[] bridges
-        CONVERSION_DB.put(UniversalConversions::longStreamToLongArray, LongStream.class, long[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::longArrayToLongStream, long[].class, LongStream.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::longStreamToLongArray, LongStream.class, long[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::longArrayToLongStream, long[].class, LongStream.class, 0L);
 
         // DoubleStream ↔ double[] bridges
-        CONVERSION_DB.put(UniversalConversions::doubleStreamToDoubleArray, DoubleStream.class, double[].class, 0L);
-        CONVERSION_DB.put(UniversalConversions::doubleArrayToDoubleStream, double[].class, DoubleStream.class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::doubleStreamToDoubleArray, DoubleStream.class, double[].class, 0L);
+        CONVERSION_DB.putMultiKey(UniversalConversions::doubleArrayToDoubleStream, double[].class, DoubleStream.class, 0L);
 
         // Register Record.class -> Map.class conversion if Records are supported
         try {
             Class<?> recordClass = Class.forName("java.lang.Record");
-            CONVERSION_DB.put(MapConversions::recordToMap, recordClass, Map.class, 0L);
+            CONVERSION_DB.putMultiKey(MapConversions::recordToMap, recordClass, Map.class, 0L);
         } catch (ClassNotFoundException e) {
             // Records not available in this JVM (JDK < 14)
         }
@@ -1530,13 +1530,13 @@ public final class Converter {
                     Class<?> targetClass = (Class<?>) entry.keys[1];
                     if (sourceClass.equals(primaryClass)) {
                         // Only add if not already defined and not converting to itself
-                        if (CONVERSION_DB.get(surrogateClass, targetClass, 0L) == null && !targetClass.equals(surrogateClass)) {
+                        if (CONVERSION_DB.getMultiKey(surrogateClass, targetClass, 0L) == null && !targetClass.equals(surrogateClass)) {
                             // Create composite conversion: Surrogate → primary → target
                             Object instanceIdObj = entry.keys[2];
                             long instanceId = (instanceIdObj instanceof Integer) ? ((Integer) instanceIdObj).longValue() : (Long) instanceIdObj;
-                            Convert<?> originalConversion = CONVERSION_DB.get(sourceClass, targetClass, instanceId);
+                            Convert<?> originalConversion = CONVERSION_DB.getMultiKey(sourceClass, targetClass, instanceId);
                             Convert<?> bridgeConversion = createSurrogateToPrimaryBridgeConversion(config, originalConversion);
-                            CONVERSION_DB.put(bridgeConversion, surrogateClass, targetClass, 0L);
+                            CONVERSION_DB.putMultiKey(bridgeConversion, surrogateClass, targetClass, 0L);
                         }
                     }
                 }
@@ -1552,13 +1552,13 @@ public final class Converter {
                     Class<?> targetClass = (Class<?>) entry.keys[1];
                     if (targetClass.equals(primaryClass)) {
                         // Only add if not already defined and not converting from itself
-                        if (CONVERSION_DB.get(sourceClass, surrogateClass, 0L) == null && !sourceClass.equals(surrogateClass)) {
+                        if (CONVERSION_DB.getMultiKey(sourceClass, surrogateClass, 0L) == null && !sourceClass.equals(surrogateClass)) {
                             // Create composite conversion: Source → primary → surrogate
                             Object instanceIdObj = entry.keys[2];
                             long instanceId = (instanceIdObj instanceof Integer) ? ((Integer) instanceIdObj).longValue() : (Long) instanceIdObj;
-                            Convert<?> originalConversion = CONVERSION_DB.get(sourceClass, targetClass, instanceId);
+                            Convert<?> originalConversion = CONVERSION_DB.getMultiKey(sourceClass, targetClass, instanceId);
                             Convert<?> bridgeConversion = createPrimaryToSurrogateBridgeConversion(config, originalConversion);
-                            CONVERSION_DB.put(bridgeConversion, sourceClass, surrogateClass, 0L);
+                            CONVERSION_DB.putMultiKey(bridgeConversion, sourceClass, surrogateClass, 0L);
                         }
                     }
                 }
@@ -1617,7 +1617,7 @@ public final class Converter {
         this.instanceId = INSTANCE_ID_GENERATOR.getAndIncrement();
         for (Map.Entry<ConversionPair, Convert<?>> entry : this.options.getConverterOverrides().entrySet()) {
             ConversionPair pair = entry.getKey();
-            USER_DB.put(entry.getValue(), pair.getSource(), pair.getTarget(), pair.getInstanceId());
+            USER_DB.putMultiKey(entry.getValue(), pair.getSource(), pair.getTarget(), pair.getInstanceId());
             
             // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
             if (!isStandardType(pair.getSource())) {
@@ -1796,17 +1796,17 @@ public final class Converter {
         }
 
         // Check user-added conversions in this context (either instanceId 0L for static, or specific instanceId for instance)
-        Convert<?> conversionMethod = USER_DB.get(sourceType, toType, this.instanceId);
+        Convert<?> conversionMethod = USER_DB.getMultiKey(sourceType, toType, this.instanceId);
         if (isValidConversion(conversionMethod)) {
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
         }
 
         // Then check the factory conversion database.
-        conversionMethod = CONVERSION_DB.get(sourceType, toType, 0L);
+        conversionMethod = CONVERSION_DB.getMultiKey(sourceType, toType, 0L);
         if (isValidConversion(conversionMethod)) {
             // Cache built-in conversions with instance ID 0 to keep them shared across instances
-            FULL_CONVERSION_CACHE.put(conversionMethod, sourceType, toType, 0L);
+            FULL_CONVERSION_CACHE.putMultiKey(conversionMethod, sourceType, toType, 0L);
             // Also cache with current instance ID for faster future lookup
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
@@ -1847,17 +1847,17 @@ public final class Converter {
 
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
         // First check instance-specific cache
-        Convert<?> converter = FULL_CONVERSION_CACHE.get(source, target, this.instanceId);
+        Convert<?> converter = FULL_CONVERSION_CACHE.getMultiKey(source, target, this.instanceId);
         if (converter != null) {
             return converter;
         }
 
         // Fall back to shared conversions (instance ID 0)
-        return FULL_CONVERSION_CACHE.get(source, target, 0L);
+        return FULL_CONVERSION_CACHE.getMultiKey(source, target, 0L);
     }
 
     private void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        FULL_CONVERSION_CACHE.put(converter, source, target, this.instanceId);
+        FULL_CONVERSION_CACHE.putMultiKey(converter, source, target, this.instanceId);
     }
 
     // Cache JsonObject class to avoid repeated reflection lookups
@@ -2063,11 +2063,11 @@ public final class Converter {
 
         // Iterate over sorted pairs and check the converter databases.
         for (ConversionPairWithLevel pairWithLevel : pairs) {
-            Convert<?> tempConverter = USER_DB.get(pairWithLevel.source, pairWithLevel.target, pairWithLevel.instanceId);
+            Convert<?> tempConverter = USER_DB.getMultiKey(pairWithLevel.source, pairWithLevel.target, pairWithLevel.instanceId);
             if (tempConverter != null) {
                 return tempConverter;
             }
-            tempConverter = CONVERSION_DB.get(pairWithLevel.source, pairWithLevel.target, 0L);
+            tempConverter = CONVERSION_DB.getMultiKey(pairWithLevel.source, pairWithLevel.target, 0L);
             if (tempConverter != null) {
                 return tempConverter;
             }
@@ -2400,7 +2400,7 @@ public final class Converter {
                 long instanceId = firstPair.getInstanceId();
                 
                 // Direct hash lookup in USER_DB using this instance's ID
-                Convert<?> converter = USER_DB.get(sourceType, targetType, instanceId);
+                Convert<?> converter = USER_DB.getMultiKey(sourceType, targetType, instanceId);
                 return converter != null && converter != UNSUPPORTED;
             }
         }
@@ -2508,11 +2508,11 @@ public final class Converter {
     private static Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> method = USER_DB.get(source, target, 0L);
+        Convert<?> method = USER_DB.getMultiKey(source, target, 0L);
         if (isValidConversion(method)) {
             return method;
         }
-        method = CONVERSION_DB.get(source, target, 0L);
+        method = CONVERSION_DB.getMultiKey(source, target, 0L);
         if (isValidConversion(method)) {
             return method;
         }
@@ -2625,13 +2625,13 @@ public final class Converter {
         // Store the wrapper version first to capture return value
         Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
         Class<?> wrapperTarget = ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> previous = USER_DB.get(wrapperSource, wrapperTarget, 0L);
-        USER_DB.put(conversionMethod, wrapperSource, wrapperTarget, 0L);
+        Convert<?> previous = USER_DB.getMultiKey(wrapperSource, wrapperTarget, 0L);
+        USER_DB.putMultiKey(conversionMethod, wrapperSource, wrapperTarget, 0L);
 
         // Add all type combinations to USER_DB
         for (Class<?> srcType : sourceTypes) {
             for (Class<?> tgtType : targetTypes) {
-                USER_DB.put(conversionMethod, srcType, tgtType, 0L);
+                USER_DB.putMultiKey(conversionMethod, srcType, tgtType, 0L);
             }
         }
 
@@ -2687,13 +2687,13 @@ public final class Converter {
         // Store the wrapper version first to capture return value
         Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
         Class<?> wrapperTarget = ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> previous = USER_DB.get(wrapperSource, wrapperTarget, this.instanceId);
-        USER_DB.put(conversionMethod, wrapperSource, wrapperTarget, this.instanceId);
+        Convert<?> previous = USER_DB.getMultiKey(wrapperSource, wrapperTarget, this.instanceId);
+        USER_DB.putMultiKey(conversionMethod, wrapperSource, wrapperTarget, this.instanceId);
 
         // Add all type combinations to USER_DB with this instance ID
         for (Class<?> srcType : sourceTypes) {
             for (Class<?> tgtType : targetTypes) {
-                USER_DB.put(conversionMethod, srcType, tgtType, this.instanceId);
+                USER_DB.putMultiKey(conversionMethod, srcType, tgtType, this.instanceId);
             }
         }
 
@@ -2778,8 +2778,8 @@ public final class Converter {
      * @param instanceId the instance ID to use for the conversion
      */
     private static void addIdentityConversionIfNeeded(Class<?> type, long instanceId) {
-        if (type != null && USER_DB.get(type, type, instanceId) == null) {
-            USER_DB.put(IDENTITY_CONVERTER, type, type, instanceId);
+        if (type != null && USER_DB.getMultiKey(type, type, instanceId) == null) {
+            USER_DB.putMultiKey(IDENTITY_CONVERTER, type, type, instanceId);
         }
     }
 
@@ -2833,7 +2833,7 @@ public final class Converter {
         // Remove the collected keys
         for (Object[] keys : keysToRemove) {
             if (keys.length >= 3) {
-                FULL_CONVERSION_CACHE.remove(keys[0], keys[1], keys[2]);
+                FULL_CONVERSION_CACHE.removeMultiKey(keys[0], keys[1], keys[2]);
             }
         }
 

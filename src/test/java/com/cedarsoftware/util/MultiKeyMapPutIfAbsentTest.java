@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MultiKeyMapPutIfAbsentTest {
 
     @Test
-    void testPutOnAbsentKey() {
+    void testPutMultiKeyOnAbsentKey() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
 
         assertNull(map.putIfAbsent("a", "value"));
@@ -43,9 +43,9 @@ class MultiKeyMapPutIfAbsentTest {
 
         Object[] arrayKey = {"x", "y"};
         assertNull(map.putIfAbsent(arrayKey, "array"));
-        assertEquals("array", map.get("x", "y"));
+        assertEquals("array", map.getMultiKey("x", "y"));
 
         assertNull(map.putIfAbsent(Arrays.asList("a", "b"), "list"));
-        assertEquals("list", map.get("a", "b"));
+        assertEquals("list", map.getMultiKey("a", "b"));
     }
 }

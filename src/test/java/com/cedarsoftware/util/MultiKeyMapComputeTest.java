@@ -40,9 +40,9 @@ class MultiKeyMapComputeTest {
     void testComputeWithArrayKeys() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         Object[] key = {"k1", "k2"};
-        map.put("v1", key);
+        map.putMultiKey("v1", key);
         map.compute(key, (k, v) -> v + "2");
-        assertEquals("v12", map.get("k1", "k2"));
+        assertEquals("v12", map.getMultiKey("k1", "k2"));
     }
 
     @Test

@@ -25,7 +25,7 @@ class MultiKeyMapConcurrentGetTest {
             try {
                 startLatch.await();
                 for (int i = 0; i < total; i++) {
-                    map.put("val" + i, String.class, Integer.class, (long) i);
+                    map.putMultiKey("val" + i, String.class, Integer.class, (long) i);
                     written.set(i);
                     if (i % 20 == 0) {
                         Thread.sleep(1);
@@ -45,7 +45,7 @@ class MultiKeyMapConcurrentGetTest {
                 while (!writerDone.get()) {
                     int upTo = written.get();
                     for (int i = 0; i <= upTo; i++) {
-                        String v = map.get(String.class, Integer.class, (long) i);
+                        String v = map.getMultiKey(String.class, Integer.class, (long) i);
                         if (v == null) {
                             failed.set(true);
                             return;
@@ -67,7 +67,7 @@ class MultiKeyMapConcurrentGetTest {
 
         assertFalse(failed.get(), "get() returned null for an existing key");
         for (int i = 0; i < total; i++) {
-            assertEquals("val" + i, map.get(String.class, Integer.class, (long) i));
+            assertEquals("val" + i, map.getMultiKey(String.class, Integer.class, (long) i));
         }
     }
 }

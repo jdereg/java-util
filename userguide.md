@@ -2302,24 +2302,26 @@ String replaced = map.replace("single-key", "new-value");
 MultiKeyMap<String> mkMap = new MultiKeyMap<>();
 
 // Elegant var-args methods - no array creation needed
-mkMap.put("value1", "single-key");                         // 1D key
-mkMap.put("value2", "key1", "key2");                       // 2D key
-mkMap.put("value3", "key1", "key2", "key3");               // 3D key
-mkMap.put("value4", "k1", "k2", "k3", "k4");               // 4D key
+mkMap.putMultiKey("value1", "single-key");                         // 1D key
+mkMap.putMultiKey("value2", "key1", "key2");                       // 2D key
+mkMap.putMultiKey("value3", "key1", "key2", "key3");               // 3D key
+mkMap.putMultiKey("value4", "k1", "k2", "k3", "k4");               // 4D key
 // ... unlimited dimensions
 
 // Matching retrieval signatures
 String val1 = mkMap.get("single-key");
-String val2 = mkMap.get("key1", "key2");
-String val3 = mkMap.get("key1", "key2", "key3");
-String val4 = mkMap.get("k1", "k2", "k3", "k4");
+String val2 = mkMap.getMultiKey("key1", "key2");
+String val3 = mkMap.getMultiKey("key1", "key2", "key3");
+String val4 = mkMap.getMultiKey("k1", "k2", "k3", "k4");
 
 // Multi-dimensional operations
-boolean exists = mkMap.containsKeys("key1", "key2", "key3");
-mkMap.remove("key1", "key2", "key3", "key4");
+boolean exists = mkMap.containsMultiKey("key1", "key2", "key3");
+mkMap.removeMultiKey("key1", "key2", "key3", "key4");
 ```
 
-**Key Point:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful var-args methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
+**Key Point 1:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful var-args methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
+
+**Key Point 2:** If you use *put()* on a MultiKeyMap, it will automatically unpack arrays and Collections into mulli-key. This is true for *get()*, *remove()*, and *containsKey()*.  
 
 ### Collection and Array Handling
 

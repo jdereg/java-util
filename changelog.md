@@ -1,7 +1,5 @@
 ### Revision History
-#### 3.8.0 (Unreleased)
-
-#### 3.7.0
+#### 3.7.0 (Unreleased)
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:
 >   * **N-Dimensional Array Expansion**: Nested arrays of any depth are automatically flattened recursively into multi-keys with sentinel preservation
 >   * **Visual Notation**: `{{"a", "b"}, {"c", "d"}} → [SENTINELS, DN, "a", "b", UP, DN, "c", "d", UP]` - powerful structural preservation
@@ -31,6 +29,8 @@
 >   * **No Functional Changes**: This was a test-only fix; ConcurrentList behavior remains unchanged and correct
 > * **PROCESS IMPROVEMENT**: Enhanced deployment pipeline with updated Maven Sonatype publishing process
 > * **PERFORMANCE**: Optimized test execution by disabling compilation for faster test cycles during development
+> * **TEST FIX**: Stabilized `ConcurrentListIteratorTest.testReadFailsGracefullyWhenConcurrentRemoveShrinksList`
+>   * Used a latch to reliably detect the expected exception under heavy load
 #### 3.6.0
 > * **MAJOR FEATURE**: Added many additional types to `Converter`, expanding conversion capability (1,700+ total conversion pairs):
 >   * **Atomic Arrays**: Added full bidirectional conversion support for `AtomicIntegerArray`, `AtomicLongArray`, and `AtomicReferenceArray`

@@ -242,11 +242,11 @@ String result3 = configMap.get(flatObject);              // ✅ Equivalent Objec
 String result4 = configMap.getMultiKey("a", "b", "c");   // ✅ Individual elements
 
 // ❌ NOT EQUIVALENT (different structures):
-String[][] nested2D = {{"a", "b"}, {"c", "d"}};         // → [🔒, ⬇, "a", "b", ⬆, ⬇, "c", "d", ⬆]
+String[][] nested2D = {{"a", "b"}, {"c", "d"}};         // → [["a", "b"],["c", "d"]]
 String[] flat1D = {"a", "b", "c", "d"};                 // → ["a", "b", "c", "d"]
 // These create SEPARATE entries - different structures preserved!
-configMap.put(nested2D, "2D_value");                    // Stored with sentinels
-configMap.put(flat1D, "flat_value");                    // Stored without sentinels
+configMap.put(nested2D, "2D_value");                    // Stored retaining structural info
+configMap.put(flat1D, "flat_value");                    // Stored retaining structural info
 
 // Perfect for complex lookups: user permissions, configuration trees, caches
 MultiKeyMap<Permission> permissions = new MultiKeyMap<>();

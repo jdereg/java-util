@@ -65,12 +65,12 @@ public class MultiKeyMapTest {
         map.put(new String[]{"a"}, "[alpha]");
 
         assert map.size() == 1;
-        assertEquals("[alpha]", map.get("a"));      // last put
+        assertEquals("[alpha]", map.get("A"));      // last put - different case
 
-        assert map.containsKey("a");
-        assert map.containsKey(new String[]{"a"});
+        assert map.containsKey("A");
+        assert map.containsKey(new String[]{"A"});
 
-        map.remove("a");
+        map.remove("A");
         assert map.isEmpty();
     }
 
@@ -82,15 +82,15 @@ public class MultiKeyMapTest {
         map.put(new String[]{"a"}, "[alpha]");
 
         assert map.size() == 2;
-        assertEquals("alpha", map.get("a"));                    // last put
-        assertEquals("[alpha]", map.get(new String[]{"a"}));      // last put
+        assertEquals("alpha", map.get("A"));                    // different case
+        assertEquals("[alpha]", map.get(new String[]{"A"}));      // different case
 
-        assert map.containsKey("a");
-        assert map.containsKey(new String[]{"a"});
+        assert map.containsKey("A");
+        assert map.containsKey(new String[]{"A"});
 
-        map.remove("a");
+        map.remove("A");
         assert map.size() == 1;
-        map.remove(new String[]{"a"});
+        map.remove(new String[]{"A"});
         assert map.isEmpty();
     }
 
@@ -102,12 +102,12 @@ public class MultiKeyMapTest {
         map.put(CollectionUtilities.listOf("a"), "[alpha]");
 
         assert map.size() == 1;
-        assertEquals("[alpha]", map.get("a"));      // last put
+        assertEquals("[alpha]", map.get("A"));      // last put - different case
 
-        assert map.containsKey("a");
-        assert map.containsKey(CollectionUtilities.listOf("a"));
+        assert map.containsKey("A");
+        assert map.containsKey(CollectionUtilities.listOf("A"));
 
-        map.remove("a");
+        map.remove("A");
         assert map.isEmpty();
     }
 
@@ -119,15 +119,15 @@ public class MultiKeyMapTest {
         map.put(CollectionUtilities.listOf("a"), "[alpha]");
 
         assert map.size() == 2;
-        assertEquals("alpha", map.get("a"));                    // string key value
-        assertEquals("[alpha]", map.get(CollectionUtilities.listOf("a")));      // collection key value
+        assertEquals("alpha", map.get("A"));                    // string key value - different case
+        assertEquals("[alpha]", map.get(CollectionUtilities.listOf("A")));      // collection key value - different case
 
-        assert map.containsKey("a");
-        assert map.containsKey(CollectionUtilities.listOf("a"));
+        assert map.containsKey("A");
+        assert map.containsKey(CollectionUtilities.listOf("A"));
 
-        map.remove("a");
+        map.remove("A");
         assert map.size() == 1;
-        map.remove(CollectionUtilities.listOf("a"));
+        map.remove(CollectionUtilities.listOf("A"));
         assert map.isEmpty();
     }
 
@@ -228,24 +228,24 @@ public class MultiKeyMapTest {
         map.put(CollectionUtilities.listOf("a", "b", "c"), "collection: [alpha, beta, gamma]");
 
         assert map.size() == 4;  // Individual keys and array/collection keys are different when flattened
-        assertEquals("alpha", map.get("a"));
-        assertEquals("beta", map.get("b"));
-        assertEquals("gamma", map.get("c"));
-        assertEquals("collection: [alpha, beta, gamma]", map.get(new String[]{"a", "b", "c"}));      // last put for flattened key
+        assertEquals("alpha", map.get("A"));                    // different case
+        assertEquals("beta", map.get("B"));                     // different case
+        assertEquals("gamma", map.get("C"));                    // different case
+        assertEquals("collection: [alpha, beta, gamma]", map.get(new String[]{"A", "B", "C"}));      // different case
 
-        assert map.containsKey("a");
-        assert map.containsKey("b");
-        assert map.containsKey("c");
-        assert map.containsKey(new String[]{"a", "b", "c"});
-        assert map.containsKey(CollectionUtilities.listOf("a", "b", "c"));
+        assert map.containsKey("A");
+        assert map.containsKey("B");
+        assert map.containsKey("C");
+        assert map.containsKey(new String[]{"A", "B", "C"});
+        assert map.containsKey(CollectionUtilities.listOf("A", "B", "C"));
 
-        map.remove("a");
+        map.remove("A");
         assert map.size() == 3;
-        map.remove("b");
+        map.remove("B");
         assert map.size() == 2;
-        map.remove("c");
+        map.remove("C");
         assert map.size() == 1;
-        map.remove(new String[]{"a", "b", "c"});
+        map.remove(new String[]{"A", "B", "C"});
         assert map.isEmpty();
     }
 
@@ -260,25 +260,25 @@ public class MultiKeyMapTest {
         map.put(CollectionUtilities.listOf("a", "b", "c"), "collection: [alpha, beta, gamma]");
 
         assert map.size() == 4;  // All keys are different when not flattened: "a", "b", "c", array, collection
-        assertEquals("alpha", map.get("a"));
-        assertEquals("beta", map.get("b"));
-        assertEquals("gamma", map.get("c"));
-        assertEquals(null, map.get(new String[]{"a", "b", "c"}));  // Array key was overwritten by collection
-        assertEquals("collection: [alpha, beta, gamma]", map.get(CollectionUtilities.listOf("a", "b", "c")));
+        assertEquals("alpha", map.get("A"));                    // different case
+        assertEquals("beta", map.get("B"));                     // different case
+        assertEquals("gamma", map.get("C"));                    // different case
+        assertEquals(null, map.get(new String[]{"A", "B", "C"}));  // Array key was overwritten by collection
+        assertEquals("collection: [alpha, beta, gamma]", map.get(CollectionUtilities.listOf("A", "B", "C")));
 
-        assert map.containsKey("a");
-        assert map.containsKey("b");
-        assert map.containsKey("c");
-        assert map.containsKey(new String[]{"a", "b", "c"});
-        assert map.containsKey(CollectionUtilities.listOf("a", "b", "c"));
+        assert map.containsKey("A");
+        assert map.containsKey("B");
+        assert map.containsKey("C");
+        assert map.containsKey(new String[]{"A", "B", "C"});
+        assert map.containsKey(CollectionUtilities.listOf("A", "B", "C"));
 
-        map.remove("a");
+        map.remove("A");
         assert map.size() == 3;
-        map.remove("b");
+        map.remove("B");
         assert map.size() == 2;
-        map.remove("c");
+        map.remove("C");
         assert map.size() == 1;
-        map.remove(new String[]{"a", "b", "c"});
+        map.remove(new String[]{"A", "B", "C"});
         assert map.isEmpty();
     }
 
@@ -293,24 +293,24 @@ public class MultiKeyMapTest {
         map.put(new String[]{"a", "b", "c"}, "array: [alpha, beta, gamma]");
 
         assert map.size() == 4;  // Individual keys and collection/array keys are different when flattened
-        assertEquals("alpha", map.get("a"));
-        assertEquals("beta", map.get("b"));
-        assertEquals("gamma", map.get("c"));
-        assertEquals("array: [alpha, beta, gamma]", map.get(CollectionUtilities.listOf("a", "b", "c")));      // last put for flattened key
+        assertEquals("alpha", map.get("A"));                    // different case
+        assertEquals("beta", map.get("B"));                     // different case
+        assertEquals("gamma", map.get("C"));                    // different case
+        assertEquals("array: [alpha, beta, gamma]", map.get(CollectionUtilities.listOf("A", "B", "C")));      // different case
 
-        assert map.containsKey("a");
-        assert map.containsKey("b");
-        assert map.containsKey("c");
-        assert map.containsKey(CollectionUtilities.listOf("a", "b", "c"));
-        assert map.containsKey(new String[]{"a", "b", "c"});
+        assert map.containsKey("A");
+        assert map.containsKey("B");
+        assert map.containsKey("C");
+        assert map.containsKey(CollectionUtilities.listOf("A", "B", "C"));
+        assert map.containsKey(new String[]{"A", "B", "C"});
 
-        map.remove("a");
+        map.remove("A");
         assert map.size() == 3;
-        map.remove("b");
+        map.remove("B");
         assert map.size() == 2;
-        map.remove("c");
+        map.remove("C");
         assert map.size() == 1;
-        map.remove(CollectionUtilities.listOf("a", "b", "c"));
+        map.remove(CollectionUtilities.listOf("A", "B", "C"));
         assert map.isEmpty();
     }
 
@@ -325,25 +325,25 @@ public class MultiKeyMapTest {
         map.put(new String[]{"a", "b", "c"}, "array: [alpha, beta, gamma]");
 
         assert map.size() == 4;  // Keys when not flattened: "a", "b", "c", and collection/array (treated as same)
-        assertEquals("alpha", map.get("a"));
-        assertEquals("beta", map.get("b"));
-        assertEquals("gamma", map.get("c"));
-        assertEquals("array: [alpha, beta, gamma]", map.get(CollectionUtilities.listOf("a", "b", "c")));  // Array put last overwrites collection
-        assertEquals("array: [alpha, beta, gamma]", map.get(new String[]{"a", "b", "c"}));
+        assertEquals("alpha", map.get("A"));                    // different case
+        assertEquals("beta", map.get("B"));                     // different case
+        assertEquals("gamma", map.get("C"));                    // different case
+        assertEquals("array: [alpha, beta, gamma]", map.get(CollectionUtilities.listOf("A", "B", "C")));  // different case
+        assertEquals("array: [alpha, beta, gamma]", map.get(new String[]{"A", "B", "C"}));
 
-        assert map.containsKey("a");
-        assert map.containsKey("b");
-        assert map.containsKey("c");
-        assert map.containsKey(CollectionUtilities.listOf("a", "b", "c"));
-        assert map.containsKey(new String[]{"a", "b", "c"});
+        assert map.containsKey("A");
+        assert map.containsKey("B");
+        assert map.containsKey("C");
+        assert map.containsKey(CollectionUtilities.listOf("A", "B", "C"));
+        assert map.containsKey(new String[]{"A", "B", "C"});
 
-        map.remove("a");
+        map.remove("A");
         assert map.size() == 3;
-        map.remove("b");
+        map.remove("B");
         assert map.size() == 2;
-        map.remove("c");
+        map.remove("C");
         assert map.size() == 1;
-        map.remove(CollectionUtilities.listOf("a", "b", "c"));
+        map.remove(CollectionUtilities.listOf("A", "B", "C"));
         assert map.isEmpty();
     }
 }

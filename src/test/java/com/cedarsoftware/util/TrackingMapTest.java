@@ -462,57 +462,73 @@ public class TrackingMapTest
     }
 
     @Test
-    public void testTrackingMapNDimensionalArraySupport() {
-        // Test TrackingMap with MultiKeyMap backing for n-dimensional array expansion
-        MultiKeyMap<String> multiKeyMap = new MultiKeyMap<>();
-        TrackingMap<Object, String> trackingMap = new TrackingMap<>(multiKeyMap);
+    public void testNullKeyHandling()
+    {
+        TrackingMap<String, String> tracking = new TrackingMap<>(new HashMap<>());
         
-        // Test that distinct array structures are tracked separately even when they
-        // would have had ambiguous individual components in the old system
-        Object[][] array1 = {{"unique1", "b"}, {"c", "d"}};  // → ["unique1", "b", "c", "d"]
-        Object[][] array2 = {{"a"}, {"unique2", "c", "d"}};  // → ["a", "unique2", "c", "d"]
+        // Test putting null key with non-null value
+        tracking.put(null, "null key value");
+        assertEquals("null key value", tracking.get(null));
+        assertTrue(tracking.containsKey(null));
+        assertEquals(1, tracking.size());
         
-        trackingMap.put(array1, "value1");
-        trackingMap.put(array2, "value2");
+        // Test that null key is tracked
+        Set<Object> usedKeys = tracking.keysUsed();
+        assertTrue(usedKeys.contains(null));
         
-        // Access both arrays - they're different keys so both exist
-        String result1 = trackingMap.get(array1);
-        String result2 = trackingMap.get(array2);
-        assertEquals("value1", result1);
-        assertEquals("value2", result2);
+        // Test removing null key
+        assertEquals("null key value", tracking.remove(null));
+        assertFalse(tracking.containsKey(null));
+        assertEquals(0, tracking.size());
+        assertTrue(tracking.isEmpty());
+    }
+
+    @Test
+    public void testNullValueHandling()
+    {
+        TrackingMap<String, String> tracking = new TrackingMap<>(new HashMap<>());
         
-        // Both should exist in the map (different expanded keys)
-        assertTrue(trackingMap.containsKey(array1));
-        assertTrue(trackingMap.containsKey(array2));
+        // Test putting non-null key with null value
+        tracking.put("key", null);
+        assertEquals(null, tracking.get("key"));
+        assertTrue(tracking.containsKey("key"));
+        assertEquals(1, tracking.size());
         
-        // Verify that we have 2 distinct hash entries in keysUsed (no ambiguity!)
-        Set<Object> usedKeys = trackingMap.keysUsed();
-        assertEquals(2, usedKeys.size());
+        // Test that key is tracked even with null value
+        Set<Object> usedKeys = tracking.keysUsed();
+        assertTrue(usedKeys.contains("key"));
         
-        // All tracked keys should be SHA-1 hashes
-        for (Object key : usedKeys) {
-            assertTrue(key instanceof String);
-            assertTrue(((String) key).startsWith("sha1:"));
-        }
+        // Test removing key with null value
+        assertEquals(null, tracking.remove("key"));
+        assertFalse(tracking.containsKey("key"));
+        assertEquals(0, tracking.size());
+        assertTrue(tracking.isEmpty());
+    }
+
+    @Test
+    public void testNullKeyAndNullValue()
+    {
+        TrackingMap<String, String> tracking = new TrackingMap<>(new HashMap<>());
         
-        // Test removal - should only remove the specific array's hash
-        assertEquals("value1", trackingMap.remove(array1));
-        assertFalse(trackingMap.containsKey(array1));
-        assertTrue(trackingMap.containsKey(array2)); // Should still exist!
+        // Test putting null key with null value
+        tracking.put(null, null);
+        assertEquals(null, tracking.get(null));
+        assertTrue(tracking.containsKey(null));
+        assertEquals(1, tracking.size());
         
-        // Should now have only 1 hash in keysUsed
-        assertEquals(1, trackingMap.keysUsed().size());
+        // Test that null key is tracked even with null value
+        Set<Object> usedKeys = tracking.keysUsed();
+        assertTrue(usedKeys.contains(null));
         
-        // Test expungeUnused - should keep array2 since it was accessed
-        Object[][] array3 = {{"new", "key"}, {"not", "accessed"}};
-        trackingMap.put(array3, "value3"); // Add but don't access
-        assertEquals(2, trackingMap.size());
+        // Test expungeUnused with null key/value
+        tracking.expungeUnused();
+        assertEquals(1, tracking.size()); // Should remain since it was accessed
+        assertTrue(tracking.containsKey(null));
         
-        trackingMap.expungeUnused();
-        
-        // Should remove array3 (not accessed) but keep array2
-        assertEquals(1, trackingMap.size());
-        assertTrue(trackingMap.containsKey(array2));
-        assertFalse(trackingMap.containsKey(array3));
+        // Test removing null key with null value
+        assertEquals(null, tracking.remove(null));
+        assertFalse(tracking.containsKey(null));
+        assertEquals(0, tracking.size());
+        assertTrue(tracking.isEmpty());
     }
 }

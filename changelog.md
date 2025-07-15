@@ -1,5 +1,6 @@
 ### Revision History
-#### 3.7.0 (Unreleased)
+#### 3.8.0 (Unreleased)
+#### 3.7.0
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:
 >   * **N-Dimensional Array Expansion**: Nested arrays of any depth are automatically flattened recursively into multi-keys with sentinel preservation
 >   * **Visual Notation**: `{{"a", "b"}, {"c", "d"}} → [SENTINELS, DN, "a", "b", UP, DN, "c", "d", UP]` - powerful structural preservation

@@ -18,7 +18,7 @@ import java.util.TimeZone;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import com.cedarsoftware.util.LoggingConfig;
+
 import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.HashSet;
@@ -113,66 +113,69 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @see System
  * @see ManagementFactory
  */
-public final class SystemUtilities
-{
+public final class SystemUtilities {
     public static final String OS_NAME = System.getProperty("os.name").toLowerCase();
     public static final String JAVA_VERSION = System.getProperty("java.version");
     public static final String USER_HOME = System.getProperty("user.home");
     public static final String TEMP_DIR = System.getProperty("java.io.tmpdir");
+    public static final int JDK_MAJOR_VERSION = determineJdkMajorVersion();
     private static final Logger LOG = Logger.getLogger(SystemUtilities.class.getName());
-    static { LoggingConfig.init(); }
-    
+
+    static {
+        LoggingConfig.init();
+    }
+
     // Default sensitive variable patterns (moved to system properties in static initializer)
-    private static final String DEFAULT_SENSITIVE_VARIABLE_PATTERNS = 
-        "PASSWORD,PASSWD,PASS,SECRET,KEY,TOKEN,CREDENTIAL,AUTH,APIKEY,API_KEY,PRIVATE,CERT,CERTIFICATE,DATABASE_URL,DB_URL,CONNECTION_STRING,DSN,AWS_SECRET,AZURE_CLIENT_SECRET,GCP_SERVICE_ACCOUNT";
-    
+    private static final String DEFAULT_SENSITIVE_VARIABLE_PATTERNS =
+            "PASSWORD,PASSWD,PASS,SECRET,KEY,TOKEN,CREDENTIAL,AUTH,APIKEY,API_KEY,PRIVATE,CERT,CERTIFICATE,DATABASE_URL,DB_URL,CONNECTION_STRING,DSN,AWS_SECRET,AZURE_CLIENT_SECRET,GCP_SERVICE_ACCOUNT";
+
     // Default resource limits
     private static final int DEFAULT_MAX_SHUTDOWN_HOOKS = 100;
     private static final int DEFAULT_MAX_TEMP_PREFIX_LENGTH = 100;
-    
+
     // Security: Resource limits for system operations
     private static final AtomicInteger SHUTDOWN_HOOK_COUNT = new AtomicInteger(0);
-    
+
     static {
         // Initialize system properties with defaults if not already set (backward compatibility)
         initializeSystemPropertyDefaults();
     }
-    
+
     private static void initializeSystemPropertyDefaults() {
         // Set sensitive variable patterns if not explicitly configured
         if (System.getProperty("systemutilities.sensitive.variable.patterns") == null) {
             System.setProperty("systemutilities.sensitive.variable.patterns", DEFAULT_SENSITIVE_VARIABLE_PATTERNS);
         }
-        
+
         // Set max shutdown hooks if not explicitly configured
         if (System.getProperty("systemutilities.max.shutdown.hooks") == null) {
             System.setProperty("systemutilities.max.shutdown.hooks", String.valueOf(DEFAULT_MAX_SHUTDOWN_HOOKS));
         }
-        
+
         // Set max temp prefix length if not explicitly configured
         if (System.getProperty("systemutilities.max.temp.prefix.length") == null) {
             System.setProperty("systemutilities.max.temp.prefix.length", String.valueOf(DEFAULT_MAX_TEMP_PREFIX_LENGTH));
         }
     }
-    
+
     // Security configuration methods
-    
+
     private static boolean isSecurityEnabled() {
         return Boolean.parseBoolean(System.getProperty("systemutilities.security.enabled", "false"));
     }
-    
+
     private static boolean isEnvironmentVariableValidationEnabled() {
         return Boolean.parseBoolean(System.getProperty("systemutilities.environment.variable.validation.enabled", "false"));
     }
-    
+
     private static boolean isFileSystemValidationEnabled() {
         return Boolean.parseBoolean(System.getProperty("systemutilities.file.system.validation.enabled", "false"));
     }
-    
+
     private static boolean isResourceLimitsEnabled() {
         return Boolean.parseBoolean(System.getProperty("systemutilities.resource.limits.enabled", "false"));
     }
-    
+
     private static int getMaxShutdownHooks() {
         String maxHooksProp = System.getProperty("systemutilities.max.shutdown.hooks");
         if (maxHooksProp != null) {
@@ -184,7 +187,7 @@ public final class SystemUtilities
         }
         return isSecurityEnabled() ? DEFAULT_MAX_SHUTDOWN_HOOKS : Integer.MAX_VALUE;
     }
-    
+
     private static int getMaxTempPrefixLength() {
         String maxLengthProp = System.getProperty("systemutilities.max.temp.prefix.length");
         if (maxLengthProp != null) {
@@ -196,7 +199,7 @@ public final class SystemUtilities
         }
         return isSecurityEnabled() ? DEFAULT_MAX_TEMP_PREFIX_LENGTH : Integer.MAX_VALUE;
     }
-    
+
     private static Set<String> getSensitiveVariablePatterns() {
         String patterns = System.getProperty("systemutilities.sensitive.variable.patterns", DEFAULT_SENSITIVE_VARIABLE_PATTERNS);
         return new HashSet<>(Arrays.asList(patterns.split(",")));
@@ -208,21 +211,20 @@ public final class SystemUtilities
     /**
      * Fetch value from environment variable and if not set, then fetch from
      * System properties. If neither available, return null.
-     * 
-     * <p><strong>Security Note:</strong> This method filters out potentially sensitive 
+     *
+     * <p><strong>Security Note:</strong> This method filters out potentially sensitive
      * variables such as passwords, tokens, and credentials to prevent information disclosure.
      * Use {@link #getExternalVariableUnsafe(String)} if you need access to sensitive variables
      * and have verified the security requirements.</p>
-     * 
+     *
      * @param var String key of variable to return
      * @return variable value or null if not found or filtered for security
      */
-    public static String getExternalVariable(String var)
-    {
+    public static String getExternalVariable(String var) {
         if (StringUtilities.isEmpty(var)) {
             return null;
         }
-        
+
         // Security: Check if this is a sensitive variable that should be filtered
         if (isSecurityEnabled() && isEnvironmentVariableValidationEnabled() && isSensitiveVariable(var)) {
             LOG.log(Level.FINE, "Access to sensitive variable blocked: " + sanitizeVariableName(var));
@@ -235,20 +237,19 @@ public final class SystemUtilities
         }
         return StringUtilities.isEmpty(value) ? null : value;
     }
-    
+
     /**
      * Fetch value from environment variable and if not set, then fetch from
      * System properties, without security filtering.
-     * 
+     *
      * <p><strong>Security Warning:</strong> This method bypasses security filtering
      * and may return sensitive information such as passwords or tokens. Use with extreme
      * caution and ensure proper access controls are in place.</p>
-     * 
+     *
      * @param var String key of variable to return
      * @return variable value or null if not found
      */
-    public static String getExternalVariableUnsafe(String var)
-    {
+    public static String getExternalVariableUnsafe(String var) {
         if (StringUtilities.isEmpty(var)) {
             return null;
         }
@@ -259,10 +260,10 @@ public final class SystemUtilities
         }
         return StringUtilities.isEmpty(value) ? null : value;
     }
-    
+
     /**
      * Checks if a variable name matches patterns for sensitive information.
-     * 
+     *
      * @param varName the variable name to check
      * @return true if the variable name suggests sensitive content
      */
@@ -270,15 +271,15 @@ public final class SystemUtilities
         if (varName == null) {
             return false;
         }
-        
+
         String upperVar = varName.toUpperCase();
         Set<String> sensitivePatterns = getSensitiveVariablePatterns();
         return sensitivePatterns.stream().anyMatch(pattern -> upperVar.contains(pattern.trim().toUpperCase()));
     }
-    
+
     /**
      * Sanitizes variable names for safe logging.
-     * 
+     *
      * @param varName the variable name to sanitize
      * @return sanitized variable name safe for logging
      */
@@ -286,11 +287,11 @@ public final class SystemUtilities
         if (varName == null) {
             return "[null]";
         }
-        
+
         if (varName.length() <= 3) {
             return "[var:" + varName.length() + "-chars]";
         }
-        
+
         return varName.substring(0, 2) + StringUtilities.repeat("*", varName.length() - 4) + varName.substring(varName.length() - 2);
     }
 
@@ -316,6 +317,7 @@ public final class SystemUtilities
 
     /**
      * Get system load average over last minute
+     *
      * @return load average or -1.0 if not available
      */
     public static double getSystemLoadAverage() {
@@ -326,35 +328,66 @@ public final class SystemUtilities
      * Check if running on specific Java version or higher
      */
     public static boolean isJavaVersionAtLeast(int major, int minor) {
+        if (JDK_MAJOR_VERSION > major) {
+            return true;
+        }
+        if (JDK_MAJOR_VERSION < major) {
+            return false;
+        }
+
+        // At this point, we know JDK_MAJOR_VERSION == major, so we only need to check the minor version.
+        // parseJavaVersionNumbers() is still needed here for the minor part.
         int[] version = parseJavaVersionNumbers();
-        int majorVersion = version[0];
-        int minorVersion = version[1];
-        return majorVersion > major || (majorVersion == major && minorVersion >= minor);
+        return version[1] >= minor;
     }
 
     /**
-     * @return current JDK major version
+     * @return current JDK major version. Returns -1 if it cannot obtain the Java major version
      */
     public static int currentJdkMajorVersion() {
+        return JDK_MAJOR_VERSION;
+    }
+
+    /**
+     * @return current JDK major version. Returns -1 if it cannot obtain the Java major version
+     */
+    private static int determineJdkMajorVersion() {
         try {
             // Security: Check SecurityManager permissions for reflection
             checkReflectionPermission();
-            
+
             Method versionMethod = ReflectionUtils.getMethod(Runtime.class, "version");
             Object v = versionMethod.invoke(Runtime.getRuntime());
             Method major = ReflectionUtils.getMethod(v.getClass(), "major");
             return (Integer) major.invoke(v);
-        } catch (Exception ignored) {
-            String spec = System.getProperty("java.specification.version");
-            return spec.startsWith("1.") ? Integer.parseInt(spec.substring(2)) : Integer.parseInt(spec);
+        } catch (Exception ignore) {
+            try {
+                String version = System.getProperty("java.version");
+                if (version.startsWith("1.")) {
+                    return Integer.parseInt(version.substring(2, 3));
+                }
+                int dot = version.indexOf('.');
+                if (dot != -1) {
+                    return Integer.parseInt(version.substring(0, dot));
+                }
+                return Integer.parseInt(version);
+            } catch (Exception ignored) {
+                try {
+                    String spec = System.getProperty("java.specification.version");
+                    return spec.startsWith("1.") ? Integer.parseInt(spec.substring(2)) : Integer.parseInt(spec);
+                } catch (NumberFormatException e) {
+                    return -1;
+                }
+            }
         }
     }
+
 
     private static int[] parseJavaVersionNumbers() {
         try {
             // Security: Check SecurityManager permissions for reflection
             checkReflectionPermission();
-            
+
             Method versionMethod = ReflectionUtils.getMethod(Runtime.class, "version");
             Object v = versionMethod.invoke(Runtime.getRuntime());
             Method majorMethod = ReflectionUtils.getMethod(v.getClass(), "major");
@@ -369,10 +402,10 @@ public final class SystemUtilities
             return new int[]{major, minor};
         }
     }
-    
+
     /**
      * Checks security manager permissions for reflection operations.
-     * 
+     *
      * @throws SecurityException if reflection is not permitted
      */
     private static void checkReflectionPermission() {
@@ -384,6 +417,7 @@ public final class SystemUtilities
 
     /**
      * Get process ID of current JVM
+     *
      * @return process ID for the current Java process
      */
     public static long getCurrentProcessId() {
@@ -401,14 +435,14 @@ public final class SystemUtilities
 
     /**
      * Create temporary directory that will be deleted on JVM exit.
-     * 
-     * <p><strong>Security Note:</strong> The prefix parameter is validated to prevent 
+     *
+     * <p><strong>Security Note:</strong> The prefix parameter is validated to prevent
      * path traversal attacks and ensure safe directory creation.</p>
      *
      * @param prefix the prefix for the temporary directory name
      * @return the created temporary directory
      * @throws IllegalArgumentException if the prefix contains invalid characters
-     * @throws IOException if the directory cannot be created (thrown as unchecked)
+     * @throws IOException              if the directory cannot be created (thrown as unchecked)
      */
     public static File createTempDirectory(String prefix) {
         // Security: Validate prefix to prevent path traversal and injection
@@ -420,7 +454,7 @@ public final class SystemUtilities
                 throw new IllegalArgumentException("Temporary directory prefix cannot be null");
             }
         }
-        
+
         try {
             File tempDir = Files.createTempDirectory(prefix).toFile();
             tempDir.deleteOnExit();
@@ -430,10 +464,10 @@ public final class SystemUtilities
             return null; // unreachable
         }
     }
-    
+
     /**
      * Validates the prefix for temporary directory creation.
-     * 
+     *
      * @param prefix the prefix to validate
      * @throws IllegalArgumentException if the prefix is invalid
      */
@@ -441,26 +475,26 @@ public final class SystemUtilities
         if (prefix == null) {
             throw new IllegalArgumentException("Temporary directory prefix cannot be null");
         }
-        
+
         if (prefix.isEmpty()) {
             throw new IllegalArgumentException("Temporary directory prefix cannot be empty");
         }
-        
+
         // Check for path traversal attempts
         if (prefix.contains("..") || prefix.contains("/") || prefix.contains("\\")) {
             throw new IllegalArgumentException("Temporary directory prefix contains invalid path characters: " + prefix);
         }
-        
+
         // Check for null bytes and control characters
         if (prefix.contains("\0")) {
             throw new IllegalArgumentException("Temporary directory prefix contains null byte");
         }
-        
+
         // Check for other dangerous characters
         if (prefix.matches(".*[<>:\"|?*].*")) {
             throw new IllegalArgumentException("Temporary directory prefix contains invalid characters: " + prefix);
         }
-        
+
         // Limit length to prevent excessive resource usage
         int maxLength = getMaxTempPrefixLength();
         if (prefix.length() > maxLength) {
@@ -489,12 +523,12 @@ public final class SystemUtilities
 
     /**
      * Get all environment variables with optional filtering and security protection.
-     * 
+     *
      * <p><strong>Security Note:</strong> This method automatically filters out sensitive
      * variables such as passwords, tokens, and credentials to prevent information disclosure.
      * Use {@link #getEnvironmentVariablesUnsafe(Predicate)} if you need access to sensitive
      * variables and have verified the security requirements.</p>
-     * 
+     *
      * @param filter optional predicate to further filter variables (applied after security filtering)
      * @return map of non-sensitive environment variables
      */
@@ -509,14 +543,14 @@ public final class SystemUtilities
                         LinkedHashMap::new
                 ));
     }
-    
+
     /**
      * Get all environment variables with optional filtering, without security protection.
-     * 
+     *
      * <p><strong>Security Warning:</strong> This method bypasses security filtering
      * and may return sensitive information such as passwords or tokens. Use with extreme
      * caution and ensure proper access controls are in place.</p>
-     * 
+     *
      * @param filter optional predicate to filter variables
      * @return map of all environment variables matching the filter
      */
@@ -564,20 +598,20 @@ public final class SystemUtilities
 
     /**
      * Add shutdown hook with safe execution and resource limits.
-     * 
-     * <p><strong>Security Note:</strong> This method enforces a limit on the number of 
-     * shutdown hooks to prevent resource exhaustion attacks. The current default limit is 
+     *
+     * <p><strong>Security Note:</strong> This method enforces a limit on the number of
+     * shutdown hooks to prevent resource exhaustion attacks. The current default limit is
      * 100 hooks, configurable via system property.</p>
-     * 
+     *
      * @param hook the runnable to execute during shutdown
-     * @throws IllegalStateException if the maximum number of shutdown hooks is exceeded
+     * @throws IllegalStateException    if the maximum number of shutdown hooks is exceeded
      * @throws IllegalArgumentException if hook is null
      */
     public static void addShutdownHook(Runnable hook) {
         if (hook == null) {
             throw new IllegalArgumentException("Shutdown hook cannot be null");
         }
-        
+
         // Security: Enforce limit on shutdown hooks to prevent resource exhaustion
         int maxHooks = getMaxShutdownHooks();
         int currentCount = SHUTDOWN_HOOK_COUNT.incrementAndGet();
@@ -585,7 +619,7 @@ public final class SystemUtilities
             SHUTDOWN_HOOK_COUNT.decrementAndGet();
             throw new IllegalStateException("Maximum number of shutdown hooks exceeded: " + maxHooks);
         }
-        
+
         try {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
@@ -602,17 +636,17 @@ public final class SystemUtilities
             throw e;
         }
     }
-    
+
     /**
      * Get the current number of registered shutdown hooks.
-     * 
+     *
      * @return the number of shutdown hooks currently registered
      */
     public static int getShutdownHookCount() {
         return SHUTDOWN_HOOK_COUNT.get();
     }
 
-    // Support classes
+// Support classes
 
     /**
      * Simple container class describing the JVM memory usage at a given point

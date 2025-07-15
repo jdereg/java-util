@@ -674,6 +674,7 @@ A Map implementation that provides case-insensitive key comparison for String ke
 - Support for various backing map implementations
 - Compatible with all standard Map operations
 - **Fully thread-safe when using concurrent backing maps**
+- Works with `MultiKeyMap` - which allows multiple keys (Keys are Collections or Arrays - sub-array and sub-collections not supported)
 
 ### Usage Examples
 

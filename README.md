@@ -230,7 +230,7 @@ String arrayValue = configMap.getMultiKey("database", "connection", "pool");    
 // 🔥 N-DIMENSIONAL ARRAY EXPANSION - The Ultimate Power Feature
 // Arrays and Collections expand with structure preservation - no limits on depth!
 
-// ✅ EQUIVALENT (same flat structure, different containers):
+// ✅ EQUIVALENT (same flat structure, different containers - flattenDimensions = true):
 String[] flatArray = {"a", "b", "c"};                    // → ["a", "b", "c"]
 List<String> flatList = List.of("a", "b", "c");          // → ["a", "b", "c"]  
 Object[] flatObject = {"a", "b", "c"};                   // → ["a", "b", "c"]
@@ -241,7 +241,7 @@ String result2 = configMap.get(flatList);                // ✅ Equivalent List
 String result3 = configMap.get(flatObject);              // ✅ Equivalent Object[]
 String result4 = configMap.getMultiKey("a", "b", "c");   // ✅ Individual elements
 
-// ❌ NOT EQUIVALENT (different structures):
+// ❌ NOT EQUIVALENT (different structures - flattenDimensions = false):
 String[][] nested2D = {{"a", "b"}, {"c", "d"}};         // → [["a", "b"],["c", "d"]]
 String[] flat1D = {"a", "b", "c", "d"};                 // → ["a", "b", "c", "d"]
 // These create SEPARATE entries - different structures preserved!
@@ -494,7 +494,7 @@ System.setProperty("io.debug.detailed.paths", "true");
 | [CaseInsensitiveMap](userguide.md#caseinsensitivemap) | A `Map` wrapper that provides case-insensitive, case-retentive keys and inherits the features of the wrapped map (e.g., thread-safety from `ConcurrentMap` types, multi-key support from `MultiKeyMap`, sorted, thread-safe, allow nulls from `ConcurrentNavigableMapNullSafe`). |
 | [LRUCache](userguide.md#lrucache) | Thread-safe Least Recently Used cache with configurable eviction strategies.                                                                                                                                                                                                     |
 | [TTLCache](userguide.md#ttlcache) | Thread-safe Time-To-Live cache with optional size limits.                                                                                                                                                                                                                        |
-| [TrackingMap](userguide.md#trackingmap) | A `Map` wrapper that tracks key access. Inherits features from wrapped `Map`, including thread-safety (`ConcurrentMap` types), Multiple-key support (`MultiKeyMap`), or sorted, thread-safey, with null support (`ConcurrentNavigableMapNullSafe`)                               |
+| [TrackingMap](userguide.md#trackingmap) | A `Map` wrapper that tracks key access. Inherits features from wrapped `Map`, including thread-safety (`ConcurrentMap` types), sorted, thread-safe, with null support (`ConcurrentNavigableMapNullSafe`)                               |
 | [ConcurrentHashMapNullSafe](userguide.md#concurrenthashmapnullsafe) | Thread-safe `HashMap` supporting null keys and values.                                                                                                                                                                                                                           |
 | [ConcurrentNavigableMapNullSafe](userguide.md#concurrentnavigablemapnullsafe) | Thread-safe `NavigableMap` supporting null keys and values.                                                                                                                                                                                                                      |
 | [ClassValueMap](userguide.md#classvaluemap) | High-performance Map optimized for fast `Class` key lookups using JVM-optimized `ClassValue`.                                                                                                                                                                                    |

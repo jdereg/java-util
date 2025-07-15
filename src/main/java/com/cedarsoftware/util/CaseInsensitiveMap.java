@@ -37,7 +37,7 @@ import java.util.function.Function;
  * the original case of the keys. Non-String keys are treated as they would be in a regular {@link Map}.
  * 
  * <p>When the backing map is a {@link MultiKeyMap}, this map also supports multi-key operations
- * with case-insensitive String key handling.</p>
+ * with case-insensitive String key handling. Works with 1D keys (no collections or arrays in keys)</p>
  *
  * <p><strong>ConcurrentMap Implementation:</strong> This class implements {@link ConcurrentMap} and provides
  * all concurrent operations ({@code putIfAbsent}, {@code replace}, bulk operations, etc.) with case-insensitive

@@ -2835,6 +2835,171 @@ void testComputeIfAbsent() {
         };
     }
 
+    // ===== MULTI-KEY TESTS =====
+
+    @Test
+    public void testMultiKeyOperationsWithMultiKeyMapBacking() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+//         // Test putMultiKey with case-insensitive String keys
+//         assertNull(map.putMultiKey("Value1", "DEPT", "Engineering"));
+//         assertNull(map.putMultiKey("Value2", "dept", "Marketing", "West"));
+//         assertNull(map.putMultiKey("Value3", 123, "project", "Alpha"));
+        
+        // Test getMultiKey with case-insensitive String keys
+        assertEquals("Value1", map.getMultiKey("dept", "ENGINEERING"));
+        assertEquals("Value1", map.getMultiKey("DEPT", "engineering"));
+        assertEquals("Value2", map.getMultiKey("DEPT", "marketing", "west"));
+        assertEquals("Value2", map.getMultiKey("dept", "MARKETING", "WEST"));
+        assertEquals("Value3", map.getMultiKey(123, "PROJECT", "alpha"));
+        
+        // Test containsMultiKey with case-insensitive String keys
+        assertTrue(map.containsMultiKey("dept", "ENGINEERING"));
+        assertTrue(map.containsMultiKey("DEPT", "engineering"));
+        assertTrue(map.containsMultiKey("DEPT", "marketing", "west"));
+        assertTrue(map.containsMultiKey(123, "PROJECT", "alpha"));
+        assertFalse(map.containsMultiKey("dept", "Sales"));
+        assertFalse(map.containsMultiKey("invalid", "key"));
+        
+        // Test removeMultiKey with case-insensitive String keys
+        assertEquals("Value1", map.removeMultiKey("DEPT", "engineering"));
+        assertNull(map.getMultiKey("dept", "Engineering"));
+        assertFalse(map.containsMultiKey("dept", "Engineering"));
+        
+        // Test overwriting existing multi-key
+//         assertEquals("Value2", map.putMultiKey("NewValue", "dept", "MARKETING", "west"));
+        assertEquals("NewValue", map.getMultiKey("DEPT", "marketing", "WEST"));
+    }
+
+    @Test
+    public void testMultiKeyOperationsWithHashMapBacking() {
+        // Create CaseInsensitiveMap with HashMap backing (should throw exceptions)
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new HashMap<>());
+        
+        // Test that multi-key operations throw IllegalStateException
+//         assertThrows(IllegalStateException.class, () -> map.putMultiKey("value", "key1", "key2"));
+        assertThrows(IllegalStateException.class, () -> map.getMultiKey("key1", "key2"));
+        assertThrows(IllegalStateException.class, () -> map.removeMultiKey("key1", "key2"));
+        assertThrows(IllegalStateException.class, () -> map.containsMultiKey("key1", "key2"));
+        
+        // Test that regular operations still work
+        map.put("normalKey", "normalValue");
+        assertEquals("normalValue", map.get("NORMALKEY"));
+        assertTrue(map.containsKey("normalkey"));
+    }
+
+    @Test
+    public void testMultiKeyOperationsWithDefaultConstructor() {
+        // Default constructor uses LinkedHashMap, should throw exceptions
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>();
+        
+        // Test that multi-key operations throw IllegalStateException
+//         assertThrows(IllegalStateException.class, () -> map.putMultiKey("value", "key1", "key2"));
+        assertThrows(IllegalStateException.class, () -> map.getMultiKey("key1", "key2"));
+        assertThrows(IllegalStateException.class, () -> map.removeMultiKey("key1", "key2"));
+        assertThrows(IllegalStateException.class, () -> map.containsMultiKey("key1", "key2"));
+        
+        // Test that regular operations still work
+        map.put("normalKey", "normalValue");
+        assertEquals("normalValue", map.get("NORMALKEY"));
+        assertTrue(map.containsKey("normalkey"));
+    }
+
+    @Test
+    public void testMultiKeyWithNullAndEmptyKeys() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+        // Test with null keys
+//         assertNull(map.putMultiKey("NullValue", "key", null, "test"));
+        assertEquals("NullValue", map.getMultiKey("KEY", null, "TEST"));
+        assertTrue(map.containsMultiKey("key", null, "test"));
+        
+        // Test with empty string keys
+//         assertNull(map.putMultiKey("EmptyValue", "", "test"));
+        assertEquals("EmptyValue", map.getMultiKey("", "TEST"));
+        assertTrue(map.containsMultiKey("", "test"));
+        
+        // Test removal
+        assertEquals("NullValue", map.removeMultiKey("KEY", null, "test"));
+        assertFalse(map.containsMultiKey("key", null, "test"));
+    }
+
+    @Test
+    public void testMultiKeyWithMixedTypes() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+        // Test with mixed key types (String, Integer, Boolean, etc.)
+//         assertNull(map.putMultiKey("MixedValue", "StringKey", 42, true, 3.14));
+        assertEquals("MixedValue", map.getMultiKey("STRINGKEY", 42, true, 3.14));
+        assertEquals("MixedValue", map.getMultiKey("stringkey", 42, true, 3.14));
+        assertTrue(map.containsMultiKey("StringKey", 42, true, 3.14));
+        assertTrue(map.containsMultiKey("STRINGKEY", 42, true, 3.14));
+        
+        // Only String keys should be case-insensitive
+        assertFalse(map.containsMultiKey("StringKey", 43, true, 3.14)); // Different integer
+        assertFalse(map.containsMultiKey("StringKey", 42, false, 3.14)); // Different boolean
+        
+        assertEquals("MixedValue", map.removeMultiKey("stringkey", 42, true, 3.14));
+        assertFalse(map.containsMultiKey("StringKey", 42, true, 3.14));
+    }
+
+    @Test
+    public void testMultiKeySingleKey() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+        // Test with single key in multi-key operations
+//         assertNull(map.putMultiKey("SingleKeyValue", "OnlyKey"));
+        assertEquals("SingleKeyValue", map.getMultiKey("ONLYKEY"));
+        assertEquals("SingleKeyValue", map.getMultiKey("onlykey"));
+        assertTrue(map.containsMultiKey("OnlyKey"));
+        assertTrue(map.containsMultiKey("ONLYKEY"));
+        assertEquals("SingleKeyValue", map.removeMultiKey("onlykey"));
+        assertFalse(map.containsMultiKey("OnlyKey"));
+    }
+
+    @Test  
+    public void testMultiKeyRegularOperationsStillWork() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+        // Add some multi-key entries
+//         map.putMultiKey("MultiValue1", "dept", "Engineering");
+//         map.putMultiKey("MultiValue2", "dept", "Marketing");
+        
+        // Add some regular entries
+        map.put("RegularKey1", "RegularValue1");
+        map.put("regularkey2", "RegularValue2");
+        
+        // Test that regular operations work with case-insensitivity
+        assertEquals("RegularValue1", map.get("REGULARKEY1"));
+        assertEquals("RegularValue2", map.get("REGULARKEY2"));
+        assertTrue(map.containsKey("regularkey1"));
+        assertTrue(map.containsKey("REGULARKEY2"));
+        
+        // Test size includes both regular and multi-key entries
+        assertTrue(map.size() >= 4); // At least 4 entries
+        
+        // Test that we can iterate over all entries (both regular and multi-key)
+        assertFalse(map.isEmpty());
+        assertTrue(map.keySet().size() >= 4);
+        assertTrue(map.values().size() >= 4);
+        assertTrue(map.entrySet().size() >= 4);
+    }
+
     @Test
     public void testAutoExpansionWithArrayKeys() {
         // Create CaseInsensitiveMap with MultiKeyMap backing
@@ -2902,9 +3067,9 @@ void testComputeIfAbsent() {
 
     @Test
     public void testAutoExpansionCaseInsensitiveStringHandling() {
-        // Create CaseInsensitiveMap with MultiKeyMap backing (flattenDimensions=true for auto-expansion)
+        // Create CaseInsensitiveMap with MultiKeyMap backing
         @SuppressWarnings("unchecked")
-        Map backing = new MultiKeyMap<String>(true);
+        Map backing = new MultiKeyMap<String>();
         CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
         
         // Test that String elements in arrays/collections are handled case-insensitively
@@ -2953,5 +3118,272 @@ void testComputeIfAbsent() {
         // Test removal
         assertEquals("IntValue", map.remove(intKeys));
         assertFalse(map.containsKey(intKeys));
+    }
+
+    @Test
+    public void testMultiKeyAPIsWithStringArraysCaseInsensitive() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+//         // Test putMultiKey with String[] containing mixed case
+        String[] keys1 = {"DEPT", "Engineering"};
+//         assertNull(map.putMultiKey("Value1", (Object[])keys1));
+        
+        // Test getMultiKey with different case String[]
+        String[] keys2 = {"dept", "ENGINEERING"};
+        assertEquals("Value1", map.getMultiKey((Object[])keys2));
+        
+        String[] keys3 = {"Dept", "engineering"};
+        assertEquals("Value1", map.getMultiKey((Object[])keys3));
+        
+        // Test containsMultiKey with different case String[]
+        assertTrue(map.containsMultiKey((Object[])keys2));
+        assertTrue(map.containsMultiKey((Object[])keys3));
+        
+        String[] keys4 = {"DEPT", "engineering"};
+        assertTrue(map.containsMultiKey((Object[])keys4));
+        
+        // Test with non-existent keys
+        String[] nonExistent = {"dept", "Sales"};
+        assertFalse(map.containsMultiKey((Object[])nonExistent));
+        assertNull(map.getMultiKey((Object[])nonExistent));
+        
+        // Test removeMultiKey with different case String[]
+        String[] removeKeys = {"dept", "ENGINEERING"};
+        assertEquals("Value1", map.removeMultiKey((Object[])removeKeys));
+        assertFalse(map.containsMultiKey((Object[])keys1));
+        assertNull(map.getMultiKey((Object[])keys1));
+    }
+
+    @Test
+    public void testMultiKeyAPIsWithObjectArraysCaseInsensitive() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+//         // Test putMultiKey with Object[] containing mixed case Strings and other objects
+        Object[] keys1 = {"DEPT", "Engineering", 123};
+//         assertNull(map.putMultiKey("Value1", keys1));
+        
+        // Test getMultiKey with different case Object[]
+        Object[] keys2 = {"dept", "ENGINEERING", 123};
+        assertEquals("Value1", map.getMultiKey(keys2));
+        
+        Object[] keys3 = {"Dept", "engineering", 123};
+        assertEquals("Value1", map.getMultiKey(keys3));
+        
+        // Test containsMultiKey with different case Object[]
+        assertTrue(map.containsMultiKey(keys2));
+        assertTrue(map.containsMultiKey(keys3));
+        
+        Object[] keys4 = {"DEPT", "engineering", 123};
+        assertTrue(map.containsMultiKey(keys4));
+        
+        // Test with non-String objects - should match exactly
+        Object[] keysWithNonString = {"dept", "Engineering", 456}; // Different number
+        assertFalse(map.containsMultiKey(keysWithNonString));
+        assertNull(map.getMultiKey(keysWithNonString));
+        
+        // Test removeMultiKey with different case Object[]
+        Object[] removeKeys = {"dept", "ENGINEERING", 123};
+        assertEquals("Value1", map.removeMultiKey(removeKeys));
+        assertFalse(map.containsMultiKey(keys1));
+        assertNull(map.getMultiKey(keys1));
+    }
+
+    @Test
+    public void testMultiKeyAPIsWithMixedStringAndObjectArrays() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+        // Store with String[] 
+        String[] stringKeys = {"PROJECT", "Alpha"};
+//         assertNull(map.putMultiKey("StringArrayValue", (Object[])stringKeys));
+        
+        // Retrieve with Object[] containing same Strings (different case)
+        Object[] objectKeys = {"project", "ALPHA"};
+        assertEquals("StringArrayValue", map.getMultiKey(objectKeys));
+        
+        // Store with Object[]
+        Object[] mixedKeys = {"CATEGORY", "Beta", 42};
+//         assertNull(map.putMultiKey("ObjectArrayValue", mixedKeys));
+        
+        // Retrieve with String[] for the String portion (should not work since we have 3 keys)
+        String[] partialKeys = {"category", "BETA"};
+        assertNull(map.getMultiKey((Object[])partialKeys)); // Different number of keys
+        
+        // Retrieve with Object[] (different case)
+        Object[] retrieveKeys = {"category", "BETA", 42};
+        assertEquals("ObjectArrayValue", map.getMultiKey(retrieveKeys));
+    }
+
+    @Test
+    public void testMultiKeyAPIsWithVarargsCaseInsensitive() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+//         // Test putMultiKey with varargs containing mixed case Strings
+//         assertNull(map.putMultiKey("VarargsValue", "DEPT", "Engineering", "West"));
+        
+        // Test getMultiKey with different case varargs
+        assertEquals("VarargsValue", map.getMultiKey("dept", "ENGINEERING", "west"));
+        assertEquals("VarargsValue", map.getMultiKey("Dept", "engineering", "WEST"));
+        
+        // Test containsMultiKey with different case varargs
+        assertTrue(map.containsMultiKey("dept", "ENGINEERING", "west"));
+        assertTrue(map.containsMultiKey("DEPT", "engineering", "WEST"));
+        
+        // Test with non-existent varargs
+        assertFalse(map.containsMultiKey("dept", "Sales", "west"));
+        assertNull(map.getMultiKey("dept", "Sales", "west"));
+        
+        // Test removeMultiKey with different case varargs
+        assertEquals("VarargsValue", map.removeMultiKey("DEPT", "engineering", "west"));
+        assertFalse(map.containsMultiKey("dept", "Engineering", "West"));
+        assertNull(map.getMultiKey("dept", "Engineering", "West"));
+    }
+
+    @Test
+    public void testMultiKeyAPIsWithLinkedHashSetCaseInsensitive() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+//         // Test putMultiKey with LinkedHashSet containing mixed case Strings
+        LinkedHashSet<String> keys1 = new LinkedHashSet<>(Arrays.asList("DEPT", "Engineering"));
+//         assertNull(map.putMultiKey("LinkedHashSetValue", keys1.toArray()));
+        
+        // Test getMultiKey with different case LinkedHashSet
+        LinkedHashSet<String> keys2 = new LinkedHashSet<>(Arrays.asList("dept", "ENGINEERING"));
+        assertEquals("LinkedHashSetValue", map.getMultiKey(keys2.toArray()));
+        
+        LinkedHashSet<String> keys3 = new LinkedHashSet<>(Arrays.asList("Dept", "engineering"));
+        assertEquals("LinkedHashSetValue", map.getMultiKey(keys3.toArray()));
+        
+        // Test containsMultiKey with different case LinkedHashSet
+        assertTrue(map.containsMultiKey(keys2.toArray()));
+        assertTrue(map.containsMultiKey(keys3.toArray()));
+        
+        // Test with non-existent keys
+        LinkedHashSet<String> nonExistent = new LinkedHashSet<>(Arrays.asList("dept", "Sales"));
+        assertFalse(map.containsMultiKey(nonExistent.toArray()));
+        assertNull(map.getMultiKey(nonExistent.toArray()));
+        
+        // Test removeMultiKey with different case LinkedHashSet
+        LinkedHashSet<String> removeKeys = new LinkedHashSet<>(Arrays.asList("dept", "ENGINEERING"));
+        assertEquals("LinkedHashSetValue", map.removeMultiKey(removeKeys.toArray()));
+        assertFalse(map.containsMultiKey(keys1.toArray()));
+        assertNull(map.getMultiKey(keys1.toArray()));
+    }
+
+    @Test
+    public void testMultiKeyAPIsWithArrayListCaseInsensitive() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+//         // Test putMultiKey with ArrayList containing mixed case Strings
+        ArrayList<String> keys1 = new ArrayList<>(Arrays.asList("PROJECT", "Alpha", "Version"));
+//         assertNull(map.putMultiKey("ArrayListValue", keys1.toArray()));
+        
+        // Test getMultiKey with different case ArrayList
+        ArrayList<String> keys2 = new ArrayList<>(Arrays.asList("project", "ALPHA", "version"));
+        assertEquals("ArrayListValue", map.getMultiKey(keys2.toArray()));
+        
+        ArrayList<String> keys3 = new ArrayList<>(Arrays.asList("Project", "alpha", "VERSION"));
+        assertEquals("ArrayListValue", map.getMultiKey(keys3.toArray()));
+        
+        // Test containsMultiKey with different case ArrayList
+        assertTrue(map.containsMultiKey(keys2.toArray()));
+        assertTrue(map.containsMultiKey(keys3.toArray()));
+        
+        // Test with mixed objects in ArrayList
+        ArrayList<Object> mixedKeys = new ArrayList<>(Arrays.asList("project", "ALPHA", 123));
+//         assertNull(map.putMultiKey("MixedArrayListValue", mixedKeys.toArray()));
+        
+        ArrayList<Object> mixedKeys2 = new ArrayList<>(Arrays.asList("PROJECT", "alpha", 123));
+        assertEquals("MixedArrayListValue", map.getMultiKey(mixedKeys2.toArray()));
+        
+        // Test removeMultiKey with different case ArrayList
+        ArrayList<String> removeKeys = new ArrayList<>(Arrays.asList("PROJECT", "alpha", "version"));
+        assertEquals("ArrayListValue", map.removeMultiKey(removeKeys.toArray()));
+        assertFalse(map.containsMultiKey(keys1.toArray()));
+        assertNull(map.getMultiKey(keys1.toArray()));
+    }
+
+    @Test
+    public void testMultiKeyAPIsWithHashSetCaseInsensitive() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+        // Note: HashSet doesn't preserve order, so we need to be careful about key ordering
+        // For consistent results, we'll use a LinkedHashSet but cast to HashSet for the test
+        HashSet<String> keys1 = new LinkedHashSet<>(Arrays.asList("CATEGORY", "Beta"));
+//         assertNull(map.putMultiKey("HashSetValue", keys1.toArray()));
+        
+        // Test getMultiKey with different case HashSet (preserving order)
+        HashSet<String> keys2 = new LinkedHashSet<>(Arrays.asList("category", "BETA"));
+        assertEquals("HashSetValue", map.getMultiKey(keys2.toArray()));
+        
+        // Test containsMultiKey with different case HashSet
+        assertTrue(map.containsMultiKey(keys2.toArray()));
+        
+        // Test with non-existent keys
+        HashSet<String> nonExistent = new LinkedHashSet<>(Arrays.asList("category", "Gamma"));
+        assertFalse(map.containsMultiKey(nonExistent.toArray()));
+        assertNull(map.getMultiKey(nonExistent.toArray()));
+        
+        // Test removeMultiKey with different case HashSet
+        HashSet<String> removeKeys = new LinkedHashSet<>(Arrays.asList("CATEGORY", "beta"));
+        assertEquals("HashSetValue", map.removeMultiKey(removeKeys.toArray()));
+        assertFalse(map.containsMultiKey(keys1.toArray()));
+        assertNull(map.getMultiKey(keys1.toArray()));
+    }
+
+    @Test
+    public void testMultiKeyAPIsWithTreeSetCaseInsensitive() {
+        // Create CaseInsensitiveMap with MultiKeyMap backing
+        @SuppressWarnings("unchecked")
+        Map backing = new MultiKeyMap<String>();
+        CaseInsensitiveMap<String, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
+        
+        // TreeSet sorts case-sensitively by default, so "BETA" comes before "alpha"
+        // Store with one ordering
+        TreeSet<String> keys1 = new TreeSet<>(Arrays.asList("Alpha", "Beta")); // Sorted as ["Alpha", "Beta"]
+//         assertNull(map.putMultiKey("TreeSetValue", keys1.toArray()));
+        
+        // Retrieve with same case-sensitive ordering (just different case)
+        TreeSet<String> keys2 = new TreeSet<>(Arrays.asList("alpha", "beta")); // Sorted as ["alpha", "beta"]
+        assertEquals("TreeSetValue", map.getMultiKey(keys2.toArray()));
+        
+        // Test containsMultiKey with same ordering
+        assertTrue(map.containsMultiKey(keys2.toArray()));
+        
+        // Test with all uppercase (same ordering)
+        TreeSet<String> keys3 = new TreeSet<>(Arrays.asList("ALPHA", "BETA")); // Sorted as ["ALPHA", "BETA"]
+        assertEquals("TreeSetValue", map.getMultiKey(keys3.toArray()));
+        assertTrue(map.containsMultiKey(keys3.toArray()));
+        
+        // Test with non-existent keys (same ordering pattern)
+        TreeSet<String> nonExistent = new TreeSet<>(Arrays.asList("Alpha", "Charlie")); // Sorted as ["Alpha", "Charlie"]
+        assertFalse(map.containsMultiKey(nonExistent.toArray()));
+        assertNull(map.getMultiKey(nonExistent.toArray()));
+        
+        // Test removeMultiKey with consistent ordering
+        TreeSet<String> removeKeys = new TreeSet<>(Arrays.asList("ALPHA", "BETA")); // Sorted as ["ALPHA", "BETA"]
+        assertEquals("TreeSetValue", map.removeMultiKey(removeKeys.toArray()));
+        assertFalse(map.containsMultiKey(keys1.toArray()));
+        assertNull(map.getMultiKey(keys1.toArray()));
     }
 }

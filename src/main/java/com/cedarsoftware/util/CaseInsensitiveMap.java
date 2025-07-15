@@ -478,109 +478,52 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
     /**
      * {@inheritDoc}
      * <p>String keys are handled case-insensitively.</p>
-     * <p>When backing map is MultiKeyMap, Collections and Arrays are automatically expanded to multi-key operations.</p>
+     * <p>When backing map is MultiKeyMap, this method supports 1D Collections and Arrays with case-insensitive String handling.</p>
      */
     @Override
     public V get(Object key) {
-        // Try array/collection handling first if MultiKeyMap
-        V result = handleArrayCollectionKey(key, processedKey -> {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-            return multiKeyMap.get(processedKey);
-        });
-        
-        if (result != null || (map instanceof MultiKeyMap && (key != null && key.getClass().isArray() || key instanceof Collection))) {
-            return result;
+        if (map instanceof MultiKeyMap) {
+            return map.get(convertKeyForMultiKeyMap(key));
         }
-        
         return map.get(convertKey(key));
     }
 
     /**
      * {@inheritDoc}
      * <p>String keys are handled case-insensitively.</p>
-     * <p>When backing map is MultiKeyMap, Collections and Arrays are automatically expanded to multi-key operations.</p>
+     * <p>When backing map is MultiKeyMap, this method supports 1D Collections and Arrays with case-insensitive String handling.</p>
      */
     @Override
     public boolean containsKey(Object key) {
-        // Try array/collection handling first if MultiKeyMap
-        Boolean result = handleArrayCollectionKey(key, processedKey -> {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-            return multiKeyMap.containsKey(processedKey);
-        });
-        
-        if (result != null) {
-            return result;
+        if (map instanceof MultiKeyMap) {
+            return map.containsKey(convertKeyForMultiKeyMap(key));
         }
-        
         return map.containsKey(convertKey(key));
     }
 
     /**
      * {@inheritDoc}
      * <p>String keys are stored case-insensitively.</p>
-     * <p>When backing map is MultiKeyMap, Collections and Arrays are automatically expanded to multi-key operations.</p>
+     * <p>When backing map is MultiKeyMap, this method supports 1D Collections and Arrays with case-insensitive String handling.</p>
      */
     @Override
     public V put(K key, V value) {
         if (map instanceof MultiKeyMap) {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-            
-            // Handle array/collection auto-expansion with case-insensitive conversion
-            if (key != null && key.getClass().isArray()) {
-                if (key instanceof Object[]) {
-                    // Create new Object[] with wrapped String keys, use varargs method
-                    Object[] objArray = (Object[]) key;
-                    final int len = objArray.length;
-                    Object[] wrappedArray = new Object[len];
-                    for (int i = 0; i < len; i++) {
-                        wrappedArray[i] = objArray[i] instanceof String ? 
-                            CaseInsensitiveString.of((String) objArray[i]) : objArray[i];
-                    }
-                    return multiKeyMap.putMultiKey(value, wrappedArray);
-                } else if (key instanceof String[]) {
-                    // Create new Object[] with wrapped String keys, use varargs method
-                    String[] strArray = (String[]) key;
-                    final int len = strArray.length;
-                    Object[] wrappedArray = new Object[len];
-                    for (int i = 0; i < len; i++) {
-                        wrappedArray[i] = CaseInsensitiveString.of(strArray[i]);
-                    }
-                    return multiKeyMap.putMultiKey(value, wrappedArray);
-                } else {
-                    // For other typed arrays (int[], double[], etc.), pass through directly
-                    // since they cannot contain Strings. Use Map interface method to get array unpacking.
-                    return multiKeyMap.put(key, value);
-                }
-            } else if (key instanceof Collection) {
-                // Always unpack collections into multi-key call with case-insensitive conversion
-                Collection<?> collection = (Collection<?>) key;
-                return putMultiKey(value, collection.toArray());
-            }
+            return map.put((K) convertKeyForMultiKeyMap(key), value);
         }
-        return map.put(convertKey(key), value);
+        return map.put((K) convertKey(key), value);
     }
     
     /**
      * {@inheritDoc}
      * <p>String keys are handled case-insensitively.</p>
-     * <p>When backing map is MultiKeyMap, Collections and Arrays are automatically expanded to multi-key operations.</p>
+     * <p>When backing map is MultiKeyMap, this method supports 1D Collections and Arrays with case-insensitive String handling.</p>
      */
     @Override
     public V remove(Object key) {
-        // Try array/collection handling first if MultiKeyMap
-        V result = handleArrayCollectionKey(key, processedKey -> {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-            return multiKeyMap.remove(processedKey);
-        });
-        
-        if (result != null || (map instanceof MultiKeyMap && (key != null && key.getClass().isArray() || key instanceof Collection))) {
-            return result;
+        if (map instanceof MultiKeyMap) {
+            return map.remove(convertKeyForMultiKeyMap(key));
         }
-        
         return map.remove(convertKey(key));
     }
 
@@ -594,44 +537,6 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * @param operation a function that takes the processed key and returns the result
      * @return the result of the operation, or null if not a MultiKeyMap or not an array/collection
      */
-    private <T> T handleArrayCollectionKey(Object key, java.util.function.Function<Object, T> operation) {
-        if (!(map instanceof MultiKeyMap)) {
-            return null;
-        }
-        
-        if (key != null && key.getClass().isArray()) {
-            if (key instanceof Object[]) {
-                // Create new Object[] with wrapped String keys
-                Object[] objArray = (Object[]) key;
-                int len = objArray.length;
-                Object[] wrappedArray = new Object[len];
-                for (int i = 0; i < len; i++) {
-                    wrappedArray[i] = objArray[i] instanceof String ? 
-                        CaseInsensitiveString.of((String) objArray[i]) : objArray[i];
-                }
-                return operation.apply(wrappedArray);
-            } else if (key instanceof String[]) {
-                // Create new Object[] with wrapped String keys
-                String[] strArray = (String[]) key;
-                int len = strArray.length;
-                Object[] wrappedArray = new Object[len];
-                for (int i = 0; i < len; i++) {
-                    wrappedArray[i] = CaseInsensitiveString.of(strArray[i]);
-                }
-                return operation.apply(wrappedArray);
-            } else {
-                // For other typed arrays (int[], double[], etc.), pass through directly
-                // since they cannot contain Strings. Use Map interface method to get array unpacking.
-                return operation.apply(key);
-            }
-        } else if (key instanceof Collection) {
-            Collection<?> collection = (Collection<?>) key;
-            // Convert collection to array and recursively handle
-            return handleArrayCollectionKey(collection.toArray(), operation);
-        }
-        
-        return null; // Not an array or collection
-    }
 
     // ===== MULTI-KEY APIs =====
 
@@ -658,75 +563,6 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      * @return the previous value associated with the key, or null if there was no mapping
      * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
      */
-    public V putMultiKey(V value, Object... keys) {
-        if (!(map instanceof MultiKeyMap)) {
-            throw new IllegalStateException("Multi-key operations require the backing map to be a MultiKeyMap instance");
-        }
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        return multiKeyMap.putMultiKey(value, convertKeys(keys));
-    }
-
-    /**
-     * Retrieves the value associated with the specified multi-dimensional key.
-     * String keys are matched case-insensitively.
-     * This method is only supported when the backing map is a MultiKeyMap.
-     *
-     * <p>Examples:</p>
-     * <pre>{@code
-     * // Assumes previous puts: map.putMultiKey("Value1", "Dept", "Engineering");
-     * String val = map.getMultiKey("DEPT", "engineering");  // Returns "Value1" (case-insensitive)
-     * String val2 = map.getMultiKey("dept", "ENGINEERING"); // Returns "Value1" (case-insensitive)
-     * }</pre>
-     *
-     * @param keys the key components (String keys are matched case-insensitively)
-     * @return the value associated with the key, or null if not found
-     * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
-     */
-    public V getMultiKey(Object... keys) {
-        if (!(map instanceof MultiKeyMap)) {
-            throw new IllegalStateException("Multi-key operations require the backing map to be a MultiKeyMap instance");
-        }
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        return multiKeyMap.getMultiKey(convertKeys(keys));
-    }
-
-    /**
-     * Removes the mapping for the specified multi-dimensional key.
-     * String keys are matched case-insensitively.
-     * This method is only supported when the backing map is a MultiKeyMap.
-     *
-     * @param keys the key components (String keys are matched case-insensitively)
-     * @return the previous value associated with the key, or null if there was no mapping
-     * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
-     */
-    public V removeMultiKey(Object... keys) {
-        if (!(map instanceof MultiKeyMap)) {
-            throw new IllegalStateException("Multi-key operations require the backing map to be a MultiKeyMap instance");
-        }
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        return multiKeyMap.removeMultiKey(convertKeys(keys));
-    }
-
-    /**
-     * Returns true if this map contains a mapping for the specified multi-dimensional key.
-     * String keys are matched case-insensitively.
-     * This method is only supported when the backing map is a MultiKeyMap.
-     *
-     * @param keys the key components (String keys are matched case-insensitively)
-     * @return true if a mapping exists for the key
-     * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
-     */
-    public boolean containsMultiKey(Object... keys) {
-        if (!(map instanceof MultiKeyMap)) {
-            throw new IllegalStateException("Multi-key operations require the backing map to be a MultiKeyMap instance");
-        }
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) map;
-        return multiKeyMap.containsMultiKey(convertKeys(keys));
-    }
 
     /**
      * {@inheritDoc}
@@ -1815,6 +1651,91 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
             }
         }
         return convertedKeys;
+    }
+
+    /**
+     * Converts a key for MultiKeyMap operations by handling 1D arrays and collections.
+     * For arrays/collections, converts to Object[] with String elements wrapped in CaseInsensitiveString.
+     * For other keys, returns the original key after standard conversion.
+     *
+     * @param key the key to convert 
+     * @return Object[] for 1D arrays/collections, or the original key for others
+     */
+    private Object convertKeyForMultiKeyMap(Object key) {
+        if (key == null) {
+            return null;
+        }
+        
+        // Check if the backing map is MultiKeyMap and get its flattenDimensions setting
+        boolean shouldFlatten = false;
+        if (map instanceof MultiKeyMap) {
+            shouldFlatten = ((MultiKeyMap<Object>) map).getFlattenDimensions();
+        }
+        
+        // When flattenDimensions=false, still need to convert String elements to CaseInsensitiveString
+        // for case-insensitive comparison, but preserve the array/collection structure
+        if (!shouldFlatten && (key.getClass().isArray() || key instanceof Collection)) {
+            return convertElementsRecursively(key);
+        }
+        
+        // Handle 1D arrays - convert to Object[] with case-insensitive strings
+        if (key.getClass().isArray()) {
+            int length = Array.getLength(key);
+            Object[] result = new Object[length];
+            for (int i = 0; i < length; i++) {
+                Object element = Array.get(key, i);
+                result[i] = convertKey(element);
+            }
+            return result;
+        }
+        
+        // Handle Collections - convert to Object[] with case-insensitive strings
+        if (key instanceof Collection) {
+            Collection<?> collection = (Collection<?>) key;
+            Object[] result = new Object[collection.size()];
+            int i = 0;
+            for (Object element : collection) {
+                result[i++] = convertKey(element);
+            }
+            return result;
+        }
+        
+        // For non-arrays/collections, use standard conversion
+        return convertKey(key);
+    }
+    
+    /**
+     * Recursively converts String elements in arrays/collections to CaseInsensitiveString
+     * while preserving the original structure
+     */
+    private Object convertElementsRecursively(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        
+        // Handle arrays by creating Object[] with converted elements
+        if (obj.getClass().isArray()) {
+            int length = Array.getLength(obj);
+            Object[] result = new Object[length];
+            for (int i = 0; i < length; i++) {
+                Object element = Array.get(obj, i);
+                result[i] = convertElementsRecursively(element);
+            }
+            return result;
+        }
+        
+        // Handle collections by creating a new collection with converted elements
+        if (obj instanceof Collection) {
+            Collection<?> collection = (Collection<?>) obj;
+            Collection<Object> result = new ArrayList<>(collection.size());
+            for (Object element : collection) {
+                result.add(convertElementsRecursively(element));
+            }
+            return result;
+        }
+        
+        // For non-arrays/collections, use standard conversion
+        return convertKey(obj);
     }
 
 

@@ -5,6 +5,7 @@ import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MultiKeyMapTest {
     @Test
@@ -344,6 +345,66 @@ public class MultiKeyMapTest {
         map.remove("C");
         assert map.size() == 1;
         map.remove(CollectionUtilities.listOf("A", "B", "C"));
+        assert map.isEmpty();
+    }
+
+    @Test
+    void testMultiKeyMapEdgeCases() {
+        MultiKeyMap<String> map = new MultiKeyMap<>(false);  // Use false to avoid flattening confusion
+
+        // Test null key
+        map.put(null, "null value");
+        assertEquals("null value", map.get(null));
+        assertTrue(map.containsKey(null));
+        
+        // Test empty string key
+        map.put("", "empty string value");
+        assertEquals("empty string value", map.get(""));
+        assertTrue(map.containsKey(""));
+        
+        // Test that null and empty string are different keys in same map
+        assert map.size() == 2;
+        
+        // Test empty array
+        map.put(new String[0], "empty array value");
+        assertEquals("empty array value", map.get(new String[0]));
+        assertTrue(map.containsKey(new String[0]));
+        
+        // Test empty collection
+        map.put(CollectionUtilities.listOf(), "empty collection value");
+        assertEquals("empty collection value", map.get(CollectionUtilities.listOf()));
+        assertTrue(map.containsKey(CollectionUtilities.listOf()));
+        
+        // Test array with null element
+        map.put(new String[]{null}, "array with null");
+        assertEquals("array with null", map.get(new String[]{null}));
+        assertTrue(map.containsKey(new String[]{null}));
+        
+        // Test array with empty string element
+        map.put(new String[]{""}, "array with empty string");
+        assertEquals("array with empty string", map.get(new String[]{""}));
+        assertTrue(map.containsKey(new String[]{""}));
+        
+        // Test collection with null element
+        map.put(CollectionUtilities.listOf((String) null), "collection with null");
+        assertEquals("collection with null", map.get(CollectionUtilities.listOf((String) null)));
+        assertTrue(map.containsKey(CollectionUtilities.listOf((String) null)));
+        
+        // Test collection with empty string element
+        map.put(CollectionUtilities.listOf(""), "collection with empty string");
+        assertEquals("collection with empty string", map.get(CollectionUtilities.listOf("")));
+        assertTrue(map.containsKey(CollectionUtilities.listOf("")));
+        
+        // All keys are separate when not flattened
+        assert map.size() == 5;  // Some keys are equivalent: empty array/collection, array/collection with null, array/collection with empty string
+        
+        // Test removal of edge cases
+        assertEquals("null value", map.remove(null));
+        assertEquals("empty string value", map.remove(""));
+        assertEquals("empty collection value", map.remove(new String[0]));  // empty array/collection are same
+        assertEquals("collection with null", map.remove(new String[]{null}));  // array/collection with null are same
+        assertEquals("collection with empty string", map.remove(new String[]{""}));  // array/collection with empty string are same
+        
         assert map.isEmpty();
     }
 }

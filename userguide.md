@@ -2333,19 +2333,19 @@ MultiKeyMap provides revolutionary control over how dimensions are handled throu
 
 ```java
 // Structure-preserving mode (default behavior)
-MultiKeyMap<String> structuralMap = new MultiKeyMap<>();  // flattenDimensions = false
+MultiKeyMap<String> structuralMap = new MultiKeyMap<>();   // flattenDimensions = false
 
 // Structural depth matters, container type doesn't - "berries not branches"
-structuralMap.put("a", "single-element");                    // Single element (0D)
+structuralMap.put("a", "single-element");                   // Single element (0D)
 structuralMap.put(new String[]{"a"}, "container-1D");       // 1D container
 structuralMap.put(new String[][]{{"a"}}, "array-2D");       // 2D array
-structuralMap.put(List.of("a"), "container-1D-updated");   // 1D container - overwrites array!
+structuralMap.put(List.of("a"), "container-1D-updated");    // 1D container - overwrites array!
 
 // Cross-container equivalence: Arrays ↔ Collections at same structural depth
 String val1 = structuralMap.get("a");                       // "single-element"
 String val2 = structuralMap.get(new String[]{"a"});         // "container-1D-updated"
 String val3 = structuralMap.get(new String[][]{{"a"}});     // "array-2D"  
-String val4 = structuralMap.get(List.of("a"));             // "container-1D-updated" (same as array!)
+String val4 = structuralMap.get(List.of("a"));              // "container-1D-updated" (same as array!)
 
 System.out.println(structuralMap.size());                   // 3 - Array/Collection equivalence!
 ```
@@ -2361,13 +2361,13 @@ MultiKeyMap<String> flattenMap = new MultiKeyMap<>(true);   // flattenDimensions
 flattenMap.put("a", "first-value");                         // Single element
 flattenMap.put(new String[]{"a"}, "second-value");          // 1D array - overwrites!
 flattenMap.put(new String[][]{{"a"}}, "third-value");       // 2D array - overwrites!
-flattenMap.put(List.of("a"), "fourth-value");              // 1D collection - overwrites!
+flattenMap.put(List.of("a"), "fourth-value");               // 1D collection - overwrites!
 
 // All lookups return the same value (last one stored):
 String val1 = flattenMap.get("a");                          // "fourth-value"
 String val2 = flattenMap.get(new String[]{"a"});            // "fourth-value"
 String val3 = flattenMap.get(new String[][]{{"a"}});        // "fourth-value"
-String val4 = flattenMap.get(List.of("a"));                // "fourth-value"
+String val4 = flattenMap.get(List.of("a"));                 // "fourth-value"
 
 System.out.println(flattenMap.size());                      // 1 - all same key!
 ```

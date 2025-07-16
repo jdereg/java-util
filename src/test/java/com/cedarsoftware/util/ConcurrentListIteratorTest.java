@@ -408,8 +408,8 @@ class ConcurrentListIteratorTest {
 
         // Verify the expected behavior occurred
         assertThat(threw)
-                .describedAs("Read from index 75 should eventually fail when list shrinks below 76 elements")
-                .isTrue();
+            .describedAs("Read from index 75 should eventually fail when list shrinks below 76 elements")
+            .isTrue();
         assertThat(expectedReadException.get()).isInstanceOf(IndexOutOfBoundsException.class);
 
         // Verify the list size is now <= 75 (making index 75 invalid)

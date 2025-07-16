@@ -674,6 +674,7 @@ A Map implementation that provides case-insensitive key comparison for String ke
 - Support for various backing map implementations
 - Compatible with all standard Map operations
 - **Fully thread-safe when using concurrent backing maps**
+- Works with `MultiKeyMap` - which allows multiple keys (Keys are Collections or Arrays - sub-array and sub-collections not supported)
 
 ### Usage Examples
 
@@ -2263,6 +2264,7 @@ The **definitive N-dimensional key-value Map implementation** for Java. MultiKey
 - **Any key types** (String, Integer, custom objects, mixed types)
 - **Thread-safe ConcurrentMap** interface with full null support
 - **Type-safe façade ready** - wrap with strongly-typed interface for compile-time safety
+- **Revolutionary dimension handling** - choose between structure preservation or dimension flattening
 
 **Superior Architecture:**
 - **Foundational engine design** - provides untyped flexible core + user-defined type-safe façade
@@ -2302,81 +2304,185 @@ String replaced = map.replace("single-key", "new-value");
 MultiKeyMap<String> mkMap = new MultiKeyMap<>();
 
 // Elegant var-args methods - no array creation needed
-mkMap.put("value1", "single-key");                         // 1D key
-mkMap.put("value2", "key1", "key2");                       // 2D key
-mkMap.put("value3", "key1", "key2", "key3");               // 3D key
-mkMap.put("value4", "k1", "k2", "k3", "k4");               // 4D key
+mkMap.putMultiKey("value1", "single-key");                         // 1D key
+mkMap.putMultiKey("value2", "key1", "key2");                       // 2D key
+mkMap.putMultiKey("value3", "key1", "key2", "key3");               // 3D key
+mkMap.putMultiKey("value4", "k1", "k2", "k3", "k4");               // 4D key
 // ... unlimited dimensions
 
 // Matching retrieval signatures
 String val1 = mkMap.get("single-key");
-String val2 = mkMap.get("key1", "key2");
-String val3 = mkMap.get("key1", "key2", "key3");
-String val4 = mkMap.get("k1", "k2", "k3", "k4");
+String val2 = mkMap.getMultiKey("key1", "key2");
+String val3 = mkMap.getMultiKey("key1", "key2", "key3");
+String val4 = mkMap.getMultiKey("k1", "k2", "k3", "k4");
 
 // Multi-dimensional operations
-boolean exists = mkMap.containsKeys("key1", "key2", "key3");
-mkMap.remove("key1", "key2", "key3", "key4");
+boolean exists = mkMap.containsMultiKey("key1", "key2", "key3");
+mkMap.removeMultiKey("key1", "key2", "key3", "key4");
 ```
 
-**Key Point:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful var-args methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
+**Key Point 1:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful 
+var-args methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
+
+### Dimensional Behavior Control
+
+MultiKeyMap provides revolutionary control over how dimensions are handled through the `flattenDimensions` parameter:
+
+#### Structure-Preserving Mode (Default)
+**`flattenDimensions = false` - Different structural depths remain distinct:**
+
+```java
+// Structure-preserving mode (default behavior)
+MultiKeyMap<String> structuralMap = new MultiKeyMap<>();   // flattenDimensions = false
+
+// Structural depth matters, container type doesn't - "berries not branches"
+structuralMap.put("a", "single-element");                   // Single element (0D)
+structuralMap.put(new String[]{"a"}, "container-1D");       // 1D container
+structuralMap.put(new String[][]{{"a"}}, "array-2D");       // 2D array
+structuralMap.put(List.of("a"), "container-1D-updated");    // 1D container - overwrites array!
+
+// Cross-container equivalence: Arrays ↔ Collections at same structural depth
+String val1 = structuralMap.get("a");                       // "single-element"
+String val2 = structuralMap.get(new String[]{"a"});         // "container-1D-updated"
+String val3 = structuralMap.get(new String[][]{{"a"}});     // "array-2D"  
+String val4 = structuralMap.get(List.of("a"));              // "container-1D-updated" (same as array!)
+
+System.out.println(structuralMap.size());                   // 3 - Array/Collection equivalence!
+```
+
+#### Dimension-Flattening Mode
+**`flattenDimensions = true` - All dimensions collapse to equivalent flat representations:**
+
+```java
+// Dimension-flattening mode
+MultiKeyMap<String> flattenMap = new MultiKeyMap<>(true);   // flattenDimensions = true
+
+// These create the SAME key - dimensions flattened
+flattenMap.put("a", "first-value");                         // Single element
+flattenMap.put(new String[]{"a"}, "second-value");          // 1D array - overwrites!
+flattenMap.put(new String[][]{{"a"}}, "third-value");       // 2D array - overwrites!
+flattenMap.put(List.of("a"), "fourth-value");               // 1D collection - overwrites!
+
+// All lookups return the same value (last one stored):
+String val1 = flattenMap.get("a");                          // "fourth-value"
+String val2 = flattenMap.get(new String[]{"a"});            // "fourth-value"
+String val3 = flattenMap.get(new String[][]{{"a"}});        // "fourth-value"
+String val4 = flattenMap.get(List.of("a"));                 // "fourth-value"
+
+System.out.println(flattenMap.size());                      // 1 - all same key!
+```
+
+#### When to Use Each Mode
+
+**Structure-Preserving Mode (`flattenDimensions = false`):**
+- **Configuration hierarchies** where structure matters
+- **Nested data models** with meaningful depth levels
+- **Backward compatibility** with existing MultiKeyMap usage
+- **Debug-friendly** output showing structural boundaries
+
+**Dimension-Flattening Mode (`flattenDimensions = true`):**
+- **Cross-format compatibility** where arrays/collections should be interchangeable
+- **Simplified lookups** regardless of how data was originally structured
+- **Legacy system integration** where dimension consistency is needed
+- **Performance-critical** scenarios with predictable flat key patterns
 
 ### Collection and Array Handling
 
-MultiKeyMap provides intelligent handling of Collections and Arrays through `CollectionKeyMode`:
+MultiKeyMap provides intelligent handling of Collections and Arrays through `CollectionKeyMode`, working seamlessly with both dimensional modes:
+
+#### Array and Collection Expansion
 
 ```java
 // Default behavior: Collections/Arrays auto-unpack into multi-key entries
-Map<Object, String> map = new MultiKeyMap<>();
+MultiKeyMap<String> map = new MultiKeyMap<>();
 String[] keys = {"config", "database", "url"};
-map.put(keys, "jdbc:mysql://localhost:3306/db");            // Stored as 3D key
-String url = map.get(new String[]{"config", "database", "url"}); // Retrieved as 3D key
+map.put(keys, "jdbc:mysql://localhost:3306/db");                         // Stored as 3D key
 
-// Configure collection handling behavior
-MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTION_KEY_FIRST);
-String[] configPath = {"database", "connection", "pool"};
-configMap.put(configPath, "connection-string");            // Array treated as single key
-String dbConfig = configMap.get(configPath);                // Retrieved as single key
+// Cross-container compatibility - all equivalent lookups:
+String url1 = map.get(new String[]{"config", "database", "url"});        // Array lookup
+String url2 = map.get(Arrays.asList("config", "database", "url"));      // Collection lookup
+String url3 = map.getMultiKey("config", "database", "url");             // Var-args lookup
+
+// Configure non-default Collection handling behavior
+MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, 
+    MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED);
+Collection configPath = List.of("database", "connection", "pool");
+configMap.put(configPath, "someValue");              // Collection as single key (not expanded)
+Object[] moreKeys = new Object[]{1, 2, 3};
+configMap.put(moreKeys, "connection-string");        // Array always expanded
 ```
 
-**Two Different APIs with Different Behaviors:**
+#### Dimensional Behavior with Collections
 
-### Map Interface: `map.put(key, value)`
+**Structure-Preserving Mode:**
+```java
+MultiKeyMap<String> structuralMap = new MultiKeyMap<>(false);  // Structure-preserving
 
-**When key is a regular object (String, Integer, Employee, etc.):**
-- Works like a standard Map - direct key-value mapping
+// Different structural depths create different keys
+structuralMap.put(new String[]{"a", "b"}, "flat-array");           // 2D flat array
+structuralMap.put(new String[][]{{"a"}, {"b"}}, "nested-array");   // 2D nested array
+structuralMap.put(List.of("a", "b"), "flat-collection");          // 2D flat collection
 
-**When key is a Collection/Array:**
-- **MULTI_KEY_ONLY** (default): Elements are unpacked and combined into a multi-dimensional key
-  ```java
-  map.put(Arrays.asList("a", 75.0, true), value);  // Stored as 3D key: ("a", 75.0, true)
-  String result = map.get(Arrays.asList("a", 75.0, true));  // Collection/array is unpacked into 3D key
-  ```
+// All are distinct keys (different structural signatures)
+String val1 = structuralMap.get(new String[]{"a", "b"});           // "flat-array"
+String val2 = structuralMap.get(new String[][]{{"a"}, {"b"}});     // "nested-array"
+String val3 = structuralMap.get(List.of("a", "b"));              // "flat-collection"
+```
 
-- **MULTI_KEY_FIRST**: Try unpacking first, then try as single composite key
-  ```java
-  map.put(Arrays.asList("a", 75.0, true), value);  // Stored as 3D key: ("a", 75.0, true) 
-  String result = map.get(Arrays.asList("a", 75.0, true));  // Collection/array is unpacked into 3D key
-  // If not found, tries: map.get(theActualCollectionObject)
-  ```
+**Dimension-Flattening Mode:**
+```java
+MultiKeyMap<String> flattenMap = new MultiKeyMap<>(true);  // Dimension-flattening
 
-- **COLLECTION_KEY_FIRST**: Try as single composite key first, then try unpacking
-  ```java
-  map.put(myCol, value);  // Stored with myCol object as the key
-  String result = map.get(myCol);  // Found by myCol as key (like a regular Map)
-  // If not found, tries unpacking myCol elements into n-dimensional key and using that
-  ```
+// All dimensions collapse to same flat sequence
+flattenMap.put(new String[]{"a", "b"}, "first-value");            // Flat array
+flattenMap.put(new String[][]{{"a"}, {"b"}}, "second-value");      // Nested array - overwrites!
+flattenMap.put(List.of("a", "b"), "third-value");               // Collection - overwrites!
 
-### MultiKeyMap Var-args API: `map.put(value, key1, key2, key3, ...)`
+// All lookups return the same value (dimensions flattened)
+String val1 = flattenMap.get(new String[]{"a", "b"});            // "third-value"
+String val2 = flattenMap.get(new String[][]{{"a"}, {"b"}});      // "third-value"
+String val3 = flattenMap.get(List.of("a", "b"));               // "third-value"
+String val4 = flattenMap.getMultiKey("a", "b");                 // "third-value"
+```
 
-**Always combines all arguments into a multi-dimensional key:**
-- `map.put(value, "a", 75.0, true)` → Stored as 3D key: ("a", 75.0, true)
-- `map.put(value, "x", myArray, myList)` → Array/Collection elements are unpacked and combined with "x"
-- CollectionKeyMode settings do **not** affect this API - collections/arrays are always unpacked
+#### Collection Expansion Modes
 
-**Retrieval with var-args:**
-- `map.get("a", 75.0, true)` → Looks up 3D key: ("a", 75.0, true) 
-- `map.get("x", arrayElements..., listElements...)` → All elements combined into one n-dimensional lookup key
+**COLLECTIONS_EXPANDED (default):**
+```java
+MultiKeyMap<String> map = new MultiKeyMap<>();
+map.put(Arrays.asList("a", 75.0, true), "value");              // Stored as 3D key: ("a", 75.0, true) 
+String result = map.get(Arrays.asList("a", 75.0, true));       // Collection unpacked into 3D key
+```
+
+**COLLECTIONS_NOT_EXPANDED:**
+```java
+MultiKeyMap<String> map = new MultiKeyMap<>(1024, 
+    MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED);
+List<String> myCol = List.of("a", "b", "c");
+map.put(myCol, "value");                                        // Stored with myCol as single key
+String result = map.get(myCol);                                 // Found by myCol as key (like regular Map)
+```
+
+#### Advanced Collection Features
+
+**Cycle Detection:**
+```java
+// Cycles in nested structures are automatically detected
+List<Object> circular = new ArrayList<>();
+circular.add("element");
+circular.add(circular);  // Creates cycle
+
+MultiKeyMap<String> map = new MultiKeyMap<>();
+map.put(circular, "value");  // No StackOverflow - cycles handled safely
+```
+
+**Jagged Arrays:**
+```java
+// Non-uniform dimensions are handled correctly
+Object[][] jagged = {{"a", "b"}, {"c", "d", "e"}, {"f"}};
+MultiKeyMap<String> map = new MultiKeyMap<>();
+map.put(jagged, "jagged-value");  // Expands to flat sequence preserving structure
+```
 
 ### Performance Characteristics
 
@@ -2504,35 +2610,58 @@ Permission perm = userPerms.getPermission("user123", "project456", "admin");
 
 **Configuration Management:**
 ```java
-MultiKeyMap<String> config = new MultiKeyMap<>();
-config.put("localhost:8080", "env", "development", "database", "url");
-config.put("prod-db:5432", "env", "production", "database", "url");
-config.put("debug", "env", "development", "logging", "level");
+// Structure-preserving for hierarchical config
+MultiKeyMap<String> config = new MultiKeyMap<>(false);  // Preserve structure
+config.putMultiKey("localhost:8080", "env", "development", "database", "url");
+config.putMultiKey("prod-db:5432", "env", "production", "database", "url");
+config.putMultiKey("debug", "env", "development", "logging", "level");
 
-String dbUrl = config.get("env", "production", "database", "url");
+String dbUrl = config.getMultiKey("env", "production", "database", "url");
+
+// Dimension-flattening for flexible config access
+MultiKeyMap<String> flexConfig = new MultiKeyMap<>(true);  // Flatten dimensions
+flexConfig.put(new String[]{"cache", "size"}, "100MB");               // Array format
+flexConfig.put(List.of("cache", "size"), "200MB");                   // Collection format - overwrites!
+String cacheSize = flexConfig.getMultiKey("cache", "size");           // "200MB" - any format works
 ```
 
 **Multi-Dimensional Caching:**
 ```java
 MultiKeyMap<Result> cache = new MultiKeyMap<>();
-cache.put(result1, userId, "api", "v1", "users");           // 4D cache key
-cache.put(result2, userId, "api", "v1", "orders");          // 4D cache key
+cache.putMultiKey(result1, userId, "api", "v1", "users");           // 4D cache key
+cache.putMultiKey(result2, userId, "api", "v1", "orders");          // 4D cache key
 
-Result cached = cache.get(userId, "api", "v1", "users");     // Fast lookup
+Result cached = cache.getMultiKey(userId, "api", "v1", "users");     // Fast lookup
+
+// Flexible dimension access with flattening
+MultiKeyMap<Result> flexCache = new MultiKeyMap<>(true);  // Dimension-flattening
+flexCache.put(new Object[]{userId, "api", "v1", "users"}, result1);  // Array format
+Result same = flexCache.getMultiKey(userId, "api", "v1", "users");    // Var-args format - same key!
 ```
 
 **Coordinate Systems:**
 ```java
 MultiKeyMap<String> grid = new MultiKeyMap<>();
-grid.put("treasure", x, y, z, timeLayer);                   // 4D coordinates
-String item = grid.get(100, 200, 50, "medieval");           // Spatial lookup
+grid.putMultiKey("treasure", x, y, z, timeLayer);                   // 4D coordinates
+String item = grid.getMultiKey(100, 200, 50, "medieval");           // Spatial lookup
+
+// Flexible coordinate access
+MultiKeyMap<String> flexGrid = new MultiKeyMap<>(true);  // Dimension-flattening
+flexGrid.put(new int[]{100, 200, 50}, "treasure");                  // Array coordinates
+String treasure = flexGrid.getMultiKey(100, 200, 50);               // Var-args lookup - same key!
 ```
 
 **Hierarchical Data:**
 ```java
-MultiKeyMap<Department> org = new MultiKeyMap<>();
-org.put(engineering, "company", "engineering", "backend");   // 3-level hierarchy
-Department dept = org.get("company", "engineering", "backend");
+// Structure-preserving for meaningful hierarchy
+MultiKeyMap<Department> org = new MultiKeyMap<>(false);  // Preserve structure
+org.putMultiKey(engineering, "company", "engineering", "backend");   // 3-level hierarchy
+Department dept = org.getMultiKey("company", "engineering", "backend");
+
+// Dimension-flattening for flexible org access
+MultiKeyMap<Department> flexOrg = new MultiKeyMap<>(true);  // Flatten dimensions
+flexOrg.put(new String[]{"company", "engineering", "backend"}, engineering);  // Array format
+Department same = flexOrg.getMultiKey("company", "engineering", "backend");   // Var-args - same key!
 ```
 
 ### Migration Guide
@@ -2568,27 +2697,44 @@ record Key(String dept, String role, String level) {}
 Map<Key, Employee> map = new HashMap<>();
 map.put(new Key("engineering", "dev", "senior"), employee);  // Allocation
 
-// After: Zero allocation
-MultiKeyMap<Employee> map = new MultiKeyMap<>();
-map.put(employee, "engineering", "dev", "senior");          // No allocation
+// After: Zero allocation with structure preservation
+MultiKeyMap<Employee> structuralMap = new MultiKeyMap<>(false);  // Structure-preserving
+structuralMap.putMultiKey(employee, "engineering", "dev", "senior");          // No allocation
+
+// After: Zero allocation with dimension flattening
+MultiKeyMap<Employee> flattenMap = new MultiKeyMap<>(true);  // Dimension-flattening
+flattenMap.put(new String[]{"engineering", "dev", "senior"}, employee);       // Array format
+Employee same = flattenMap.getMultiKey("engineering", "dev", "senior");       // Var-args - same key!
 ```
 
 ### Advanced Features
 
 **Lazy Loading:**
 ```java
-MultiKeyMap<String> cache = new MultiKeyMap<>();
+// Structure-preserving lazy loading
+MultiKeyMap<String> cache = new MultiKeyMap<>(false);  // Structure-preserving
 
 // Atomic lazy loading with computeIfAbsent
 String value = cache.computeIfAbsent(
     new Object[]{"region", userId, "preferences"},
     k -> loadUserPreferences((Object[]) k)
 );
+
+// Dimension-flattening lazy loading
+MultiKeyMap<String> flattenCache = new MultiKeyMap<>(true);  // Dimension-flattening
+
+// Multiple formats access same lazy-loaded value
+String value1 = flattenCache.computeIfAbsent(
+    new Object[]{"region", userId, "preferences"},     // Array format
+    k -> loadUserPreferences((Object[]) k)
+);
+String value2 = flattenCache.get(List.of("region", userId, "preferences"));  // Collection format - same value!
 ```
 
 **Atomic Operations:**
 ```java
-MultiKeyMap<String> config = new MultiKeyMap<>();
+// Structure-preserving atomic operations
+MultiKeyMap<String> config = new MultiKeyMap<>(false);  // Structure-preserving
 
 // Atomic insertions
 String previous = config.putIfAbsent(new Object[]{"env", "prod"}, "prodConfig");
@@ -2598,14 +2744,27 @@ String updated = config.compute(
     new Object[]{"cache", "size"},
     (k, v) -> v == null ? "default" : v + "-updated"
 );
+
+// Dimension-flattening atomic operations
+MultiKeyMap<String> flattenConfig = new MultiKeyMap<>(true);  // Dimension-flattening
+
+// All these formats affect the same atomic value
+String prev1 = flattenConfig.putIfAbsent(new Object[]{"env", "prod"}, "config1");        // Array format
+String prev2 = flattenConfig.putIfAbsent(List.of("env", "prod"), "config2");            // Collection format - same key!
+String current = flattenConfig.get("env", "prod");                                      // Var-args format - same key!
 ```
 
 **Custom Collection Handling:**
 ```java
 // Fine-tune collection behavior for specific use cases
-MultiKeyMap<String> pathMap = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTION_KEY_FIRST);
+MultiKeyMap<String> pathMap = new MultiKeyMap<>(1024, 0.75f, 
+    CollectionKeyMode.COLLECTIONS_NOT_EXPANDED, false);
 List<String> pathElements = Arrays.asList("usr", "local", "bin");
 pathMap.put(pathElements, "/usr/local/bin");               // List as single key
+
+// Dimension-flattening with custom collection behavior
+MultiKeyMap<String> flattenCustom = new MultiKeyMap<>(1024, 0.75f, 
+    CollectionKeyMode.COLLECTIONS_EXPANDED, true);          // Expand collections + flatten dimensions
 ```
 
 MultiKeyMap represents the evolution of multi-dimensional data structures in Java, providing unmatched performance, flexibility, and developer experience. Its foundational engine design enables both raw performance and type-safe façades, making it the definitive solution for N-dimensional key-value mapping.

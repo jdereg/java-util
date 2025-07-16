@@ -1,12 +1,8 @@
 package com.cedarsoftware.util;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
@@ -24,9 +20,6 @@ import java.util.function.Function;
  * A wrapper around a {@link Map} that tracks which keys have been accessed via {@code get} or {@code containsKey} methods.
  * This is useful for scenarios where it's necessary to monitor usage patterns of keys in a map,
  * such as identifying unused entries or optimizing memory usage by expunging rarely accessed keys.
- * 
- * <p>When the backing map is a {@link MultiKeyMap}, this map also supports multi-key operations
- * and automatic array/collection expansion with proper access tracking.</p>
  *
  * <p>
  * <b>Usage Example:</b>
@@ -117,24 +110,11 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     /**
      * Retrieves the value associated with the specified key and marks the key as accessed.
-     * <p>When backing map is MultiKeyMap, Collections and Arrays are automatically expanded to multi-key operations.</p>
      *
      * @param key the key whose associated value is to be returned
      * @return the value associated with the specified key, or {@code null} if no mapping exists
      */
     public V get(Object key) {
-        // Try array/collection handling first if MultiKeyMap
-        V result = handleArrayCollectionKey(key, processedKey -> {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-            return multiKeyMap.get(processedKey);
-        });
-        
-        if (result != null || (internalMap instanceof MultiKeyMap && (key != null && key.getClass().isArray() || key instanceof Collection))) {
-            trackKeyAccess(key);
-            return result;
-        }
-        
         V value = internalMap.get(key);
         readKeys.add(key);
         return value;
@@ -142,7 +122,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
 
     /**
      * Associates the specified value with the specified key in this map.
-     * <p>When backing map is MultiKeyMap, Collections and Arrays are automatically expanded to multi-key operations.</p>
      *
      * @param key   key with which the specified value is to be associated
      * @param value value to be associated with the specified key
@@ -150,46 +129,17 @@ public class TrackingMap<K, V> implements Map<K, V> {
      */
     public V put(K key, V value)
     {
-        if (internalMap instanceof MultiKeyMap) {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-            
-            // Handle array/collection auto-expansion using MultiKeyMap's clean API
-            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-                // Use MultiKeyMap's get1DKey to handle all expansion logic internally
-                Object processedKey = MultiKeyMap.get1DKey(key);
-                if (processedKey instanceof Object[]) {
-                    return multiKeyMap.putMultiKey(value, (Object[]) processedKey);
-                } else {
-                    // Typed array (int[], String[], etc.) - use regular put
-                    return multiKeyMap.put(processedKey, value);
-                }
-            }
-        }
         return internalMap.put(key, value);
     }
 
     /**
      * Returns {@code true} if this map contains a mapping for the specified key.
      * Marks the key as accessed.
-     * <p>When backing map is MultiKeyMap, Collections and Arrays are automatically expanded to multi-key operations.</p>
      *
      * @param key key whose presence in this map is to be tested
      * @return {@code true} if this map contains a mapping for the specified key
      */
     public boolean containsKey(Object key) {
-        // Try array/collection handling first if MultiKeyMap
-        Boolean result = handleArrayCollectionKey(key, processedKey -> {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-            return multiKeyMap.containsKey(processedKey);
-        });
-        
-        if (result != null) {
-            trackKeyAccess(key);
-            return result;
-        }
-        
         boolean containsKey = internalMap.containsKey(key);
         readKeys.add(key);
         return containsKey;
@@ -208,24 +158,11 @@ public class TrackingMap<K, V> implements Map<K, V> {
     /**
      * Removes the mapping for a key from this map if it is present.
      * Also removes the key from the set of accessed keys.
-     * <p>When backing map is MultiKeyMap, Collections and Arrays are automatically expanded to multi-key operations.</p>
      *
      * @param key key whose mapping is to be removed from the map
      * @return the previous value associated with {@code key}, or {@code null} if there was no mapping
      */
     public V remove(Object key) {
-        // Try array/collection handling first if MultiKeyMap
-        V result = handleArrayCollectionKey(key, processedKey -> {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-            return multiKeyMap.remove(processedKey);
-        });
-        
-        if (result != null || (internalMap instanceof MultiKeyMap && (key != null && key.getClass().isArray() || key instanceof Collection))) {
-            trackKeyRemoval(key);
-            return result;
-        }
-        
         readKeys.remove(key);
         return internalMap.remove(key);
     }
@@ -312,82 +249,10 @@ public class TrackingMap<K, V> implements Map<K, V> {
      * Remove the entries from the Map that have not been accessed by .get() or .containsKey().
      */
     public void expungeUnused() {
-        if (internalMap instanceof MultiKeyMap) {
-            // Special handling for MultiKeyMap with hash-based tracking
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-            
-            // Collect keys to remove by checking different tracking strategies
-            List<Object> keysToRemove = new ArrayList<>();
-            for (Object mapKey : multiKeyMap.keySet()) {
-                if (mapKey instanceof Object[]) {
-                    Object[] keyArray = (Object[]) mapKey;
-                    
-                    // Check if this key was tracked using any strategy
-                    boolean wasTracked = false;
-                    
-                    // Strategy 1: Check if individual components were tracked (for getMultiKey calls)
-                    boolean allComponentsTracked = true;
-                    for (Object component : keyArray) {
-                        if (!readKeys.contains(component)) {
-                            allComponentsTracked = false;
-                            break;
-                        }
-                    }
-                    if (allComponentsTracked) {
-                        wasTracked = true;
-                    }
-                    
-                    // Strategy 2: Check if SHA-1 hash was tracked (for array/collection keys with sentinels)
-                    if (keyArray.length > 0 && keyArray[0] == MultiKeyMap.HAS_SENTINELS) {
-                        String keyHash = MultiKeyMap.computeSHA1Hash(keyArray);
-                        if (readKeys.contains(keyHash)) {
-                            wasTracked = true;
-                        }
-                    }
-                    
-                    if (!wasTracked) {
-                        keysToRemove.add(mapKey);
-                    }
-                } else if (mapKey != null && mapKey.getClass().isArray()) {
-                    // Typed arrays (int[], String[], etc.) - check if the array itself was tracked
-                    if (!readKeys.contains(mapKey)) {
-                        keysToRemove.add(mapKey);
-                    }
-                } else {
-                    // Single key - check if it was tracked directly
-                    if (!readKeys.contains(mapKey)) {
-                        keysToRemove.add(mapKey);
-                    }
-                }
-            }
-            
-            // Remove the collected keys
-            for (Object keyToRemove : keysToRemove) {
-                multiKeyMap.remove(keyToRemove);
-            }
-            
-            // Clean up readKeys to only contain hashes/keys that are still valid
-            Set<Object> stillValidTrackedKeys = new HashSet<>();
-            for (Object mapKey : multiKeyMap.keySet()) {
-                if (mapKey instanceof Object[]) {
-                    Object[] keyArray = (Object[]) mapKey;
-                    // Keep the hash for this still-existing key
-                    String keyHash = MultiKeyMap.computeSHA1Hash(keyArray);
-                    stillValidTrackedKeys.add(keyHash);
-                } else {
-                    // Keep the single key
-                    stillValidTrackedKeys.add(mapKey);
-                }
-            }
-            readKeys.retainAll(stillValidTrackedKeys);
-        } else {
-            // Original logic for regular maps
-            internalMap.keySet().retainAll(readKeys);
-            // remove tracked keys that no longer exist in the map to avoid
-            // unbounded growth when many misses occur
-            readKeys.retainAll(internalMap.keySet());
-        }
+        internalMap.keySet().retainAll(readKeys);
+        // remove tracked keys that no longer exist in the map to avoid
+        // unbounded growth when many misses occur
+        readKeys.retainAll(internalMap.keySet());
     }
 
     /**
@@ -447,230 +312,6 @@ public class TrackingMap<K, V> implements Map<K, V> {
     @Deprecated
     public void setWrappedMap(Map<K, V> map) {
         replaceContents(map);
-    }
-
-    // ===== MULTI-KEY APIs =====
-
-    /**
-     * Stores a value with multiple keys. This method is only supported when the backing map is a MultiKeyMap.
-     * Note: putMultiKey does not mark keys as accessed - use getMultiKey or containsMultiKey to access.
-     *
-     * @param value the value to store
-     * @param keys the key components (unlimited number)
-     * @return the previous value associated with the key, or null if there was no mapping
-     * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
-     */
-    public V putMultiKey(V value, Object... keys) {
-        if (!(internalMap instanceof MultiKeyMap)) {
-            throw new IllegalStateException("Multi-key operations require the backing map to be a MultiKeyMap instance");
-        }
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-        
-        return multiKeyMap.putMultiKey(value, keys);
-    }
-
-    /**
-     * Retrieves the value associated with the specified multi-dimensional key.
-     * This method is only supported when the backing map is a MultiKeyMap.
-     * Marks all key components as accessed only if the key exists.
-     *
-     * @param keys the key components
-     * @return the value associated with the key, or null if not found
-     * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
-     */
-    public V getMultiKey(Object... keys) {
-        if (!(internalMap instanceof MultiKeyMap)) {
-            throw new IllegalStateException("Multi-key operations require the backing map to be a MultiKeyMap instance");
-        }
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-        
-        V result = multiKeyMap.getMultiKey(keys);
-        
-        // Only track if the key actually exists (result is not null)
-        if (result != null) {
-            // For direct multi-key calls, track individual components (original behavior)
-            // This maintains backward compatibility for TrackingMap users
-            for (Object key : keys) {
-                readKeys.add(key);
-            }
-        }
-        
-        return result;
-    }
-
-    /**
-     * Removes the mapping for the specified multi-dimensional key.
-     * This method is only supported when the backing map is a MultiKeyMap.
-     * Removes key components from tracked keys only if no other multi-keys use them.
-     *
-     * @param keys the key components
-     * @return the previous value associated with the key, or null if there was no mapping
-     * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
-     */
-    public V removeMultiKey(Object... keys) {
-        if (!(internalMap instanceof MultiKeyMap)) {
-            throw new IllegalStateException("Multi-key operations require the backing map to be a MultiKeyMap instance");
-        }
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-        
-        V result = multiKeyMap.removeMultiKey(keys);
-        
-        // For direct multi-key calls, remove individual components (original behavior)
-        if (result != null) {
-            for (Object key : keys) {
-                readKeys.remove(key);
-            }
-        }
-        
-        return result;
-    }
-
-    /**
-     * Returns true if this map contains a mapping for the specified multi-dimensional key.
-     * This method is only supported when the backing map is a MultiKeyMap.
-     * Marks all key components as accessed only if the key exists.
-     *
-     * @param keys the key components
-     * @return true if a mapping exists for the key
-     * @throws IllegalStateException if the backing map is not a MultiKeyMap instance
-     */
-    public boolean containsMultiKey(Object... keys) {
-        if (!(internalMap instanceof MultiKeyMap)) {
-            throw new IllegalStateException("Multi-key operations require the backing map to be a MultiKeyMap instance");
-        }
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-        
-        boolean exists = multiKeyMap.containsMultiKey(keys);
-        
-        // Only track if the key actually exists
-        if (exists) {
-            // For direct multi-key calls, track individual components (original behavior)
-            for (Object key : keys) {
-                readKeys.add(key);
-            }
-        }
-        
-        return exists;
-    }
-
-    // ===== PRIVATE HELPER METHODS =====
-
-
-    /**
-     * Handles array and collection keys for MultiKeyMap operations.
-     * 
-     * @param key the key to process (can be array, collection, or single object)
-     * @param operation a function that takes the processed key and returns the result
-     * @return the result of the operation, or null if not a MultiKeyMap or not an array/collection
-     */
-    private <T> T handleArrayCollectionKey(Object key, Function<Object, T> operation) {
-        if (!(internalMap instanceof MultiKeyMap)) {
-            return null;
-        }
-        
-        @SuppressWarnings("unchecked")
-        MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-        
-        if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-            // Use MultiKeyMap's get1DKey to handle all expansion logic internally
-            Object processedKey = MultiKeyMap.get1DKey(key);
-            return operation.apply(processedKey);
-        }
-        
-        return null; // Not an array or collection
-    }
-
-    /**
-     * Tracks key access for arrays and collections. When backed by MultiKeyMap, 
-     * tracks a SHA-1 hash of the complete expanded key sequence to avoid ambiguity.
-     */
-    private void trackKeyAccess(Object key) {
-        if (internalMap instanceof MultiKeyMap) {
-            @SuppressWarnings("unchecked")
-            MultiKeyMap<V> multiKeyMap = (MultiKeyMap<V>) internalMap;
-            
-            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-                // Use MultiKeyMap's clean APIs for processing and hashing
-                Object processedKey = MultiKeyMap.get1DKey(key);
-                
-                // Determine how to check if the key exists based on processed key type
-                boolean keyExists;
-                if (processedKey instanceof Object[]) {
-                    keyExists = multiKeyMap.containsMultiKey((Object[]) processedKey);
-                } else {
-                    keyExists = multiKeyMap.containsKey(processedKey);
-                }
-                
-                // Only track if the composite key exists
-                if (keyExists) {
-                    if (processedKey instanceof Object[]) {
-                        Object[] processedArray = (Object[]) processedKey;
-                        // Check if this has sentinels (multi-dimensional structure) - O(1) check!
-                        if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_SENTINELS) {
-                            // Multi-dimensional structure - use SHA-1 hash tracking to avoid ambiguity
-                            String keyHash = MultiKeyMap.computeSHA1Hash(processedKey);
-                            readKeys.add(keyHash);
-                        } else {
-                            // Simple 1D Object[] - track individual components (original behavior)
-                            for (Object component : processedArray) {
-                                readKeys.add(component);
-                            }
-                        }
-                    } else {
-                        // Typed arrays (int[], String[], etc.) - track the processed key directly
-                        readKeys.add(processedKey);
-                    }
-                }
-            } else {
-                // For single keys, track only if they exist
-                if (multiKeyMap.containsKey(key)) {
-                    readKeys.add(key);
-                }
-            }
-        } else {
-            // For regular maps, always track the key as-is (original behavior)
-            readKeys.add(key);
-        }
-    }
-
-    /**
-     * Tracks key removal for arrays and collections, cleaning up hash-based tracking
-     * of the complete expanded key sequence.
-     */
-    private void trackKeyRemoval(Object key) {
-        if (internalMap instanceof MultiKeyMap) {
-            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-                // Use MultiKeyMap's clean APIs for processing and hashing
-                Object processedKey = MultiKeyMap.get1DKey(key);
-                
-                if (processedKey instanceof Object[]) {
-                    Object[] processedArray = (Object[]) processedKey;
-                    // Check if this has sentinels (multi-dimensional structure) - O(1) check!
-                    if (processedArray.length > 0 && processedArray[0] == MultiKeyMap.HAS_SENTINELS) {
-                        // Multi-dimensional structure - remove SHA-1 hash
-                        String keyHash = MultiKeyMap.computeSHA1Hash(processedKey);
-                        readKeys.remove(keyHash);
-                    } else {
-                        // Simple 1D Object[] - remove individual components
-                        for (Object component : processedArray) {
-                            readKeys.remove(component);
-                        }
-                    }
-                } else {
-                    // Typed arrays (int[], String[], etc.) - remove the processed key directly
-                    readKeys.remove(processedKey);
-                }
-            } else {
-                readKeys.remove(key);
-            }
-        } else {
-            // For regular maps, remove the key as-is
-            readKeys.remove(key);
-        }
     }
 
     // ===== ConcurrentMap methods (available when backing map supports them) =====

@@ -2,17 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 CRITICAL RULE - READ FIRST 🚨
+## 🚨 CRITICAL RULES - READ FIRST 🚨
 
-**BEFORE doing ANYTHING else, understand this NON-NEGOTIABLE requirement:**
+**BEFORE doing ANYTHING else, understand these NON-NEGOTIABLE requirements:**
 
 ### MANDATORY FULL TEST SUITE VALIDATION
 
-**EVERY change, no matter how small, MUST be followed by running the local related tests and making sure they pass. 
-
-Then, when the work for the main request is finished, you must run the full test suite and all tests must pass. If not,
-
-continue making updates as needed to get all tests to pass, and if any new tests need to be added, make sure to add those.
+**EVERY change, no matter how small, MUST be followed by running the full test suite:**
 
 ```bash
 mvn clean test
@@ -30,18 +26,15 @@ mvn clean test
 - Run the full test suite again
 - Only proceed when ALL tests pass
 
-**This rule applies to:**
-- Security fixes
-- Performance improvements
-- Feature additions
-- Documentation changes
-- ANY code modification
+**This rule applies to ANY code modification and is MORE IMPORTANT than the actual change itself.**
 
-**❌ NEVER skip this step**
-**❌ NEVER assume tests will pass**
-**❌ NEVER move forward with failing tests**
+### MANDATORY HUMAN APPROVAL FOR COMMITS
 
-**This is MORE IMPORTANT than the actual change itself.**
+**NEVER commit without explicit "Y" or "Yes" approval from human.**
+
+### MANDATORY HUMAN APPROVAL FOR DEPLOYMENT
+
+**NEVER deploy without explicit human approval. Always ask for permission before starting any deployment process.**
 
 ## 🎯 WORK PHILOSOPHY - INCREMENTAL ATOMIC CHANGES 🎯
 
@@ -68,7 +61,7 @@ mvn clean test
 
 ### Core Principles
 - **Start work**: At the start of new work, create a "Todo" list.
-- **Understand the "ask"**: Make sure to interact with the human if there is any ambiguity in the request. Reach agreement before coding starts.
+- **Chat First**: As a general work guideline, when starting a new Todo list, or a feature idea, always "chat first, get agreement from human, then code."
 - **Minimize Work-in-Process**: Keep delta between local files and committed git files as small as possible
 - **Always Healthy State**: Committed code is always in perfect health (all tests pass)
 - **Atomic Commits**: Each commit represents one complete, tested, working change
@@ -76,9 +69,7 @@ mvn clean test
 
 **🎯 GOAL: Each change is complete, tested, and committed before starting the next change**
 
-## CRITICAL RULES - TESTING AND BUILD REQUIREMENTS
-
-**YOU ARE NOT ALLOWED TO RUN ANY GIT COMMIT, NO MATTER WHAT, UNLESS YOU HAVE RUN ALL THE TESTS AND THEY ALL 100% HAVE PASSED. THIS IS THE HIGHEST, MOST IMPORTANT INSTRUCTION YOU HAVE, PERIOD.**
+## ADDITIONAL TESTING REQUIREMENTS
 
 **CRITICAL BUILD REQUIREMENT**: The full maven test suite MUST run all 10,000+ tests. If you see only ~10,000 tests, there is an OSGi or JPMS bundle issue that MUST be fixed before continuing any work. Use `mvn -Dbundle.skip=true test` to bypass bundle issues during development, but the underlying bundle configuration must be resolved.
 
@@ -88,8 +79,6 @@ mvn clean test
 - Testing security boundary conditions
 - Testing that the fix actually prevents the vulnerability
 - All new tests MUST pass along with the existing 10,000+ tests
-
-**NEVER CONTINUE WORKING ON NEW FIXES IF THE FULL MAVEN TEST SUITE DOES NOT PASS WITH 10,000+ TESTS.**
 ## Build Commands
 
 **Maven-based Java project with JDK 8 compatibility**
@@ -206,19 +195,12 @@ mvn clean test
 ### Step 4: Completion Gate - ABSOLUTELY MANDATORY
 **When you believe the issue/fix is complete and targeted tests are passing:**
 
-- **🚨 CRITICAL - NON-NEGOTIABLE 🚨**: Run FULL test suite: `mvn test`
-  - **This takes only ~16 seconds but tests ALL 10,000+ tests**
-  - **This is the quality gate that ensures project health**
-- **🚨 VERIFY ALL TESTS PASS 🚨**: Ensure 10,000+ tests pass (not ~10,000)
-- **🚨 ZERO TOLERANCE FOR TEST FAILURES 🚨**: All tests must be 100% passing before proceeding
-- **If even ONE test fails**: Fix issues immediately, run full tests again
-- **NEVER move to Step 5, 6, 7, or 8 until ALL tests pass**
-- **NEVER start new work until ALL tests pass**
+- **Run FULL test suite**: `mvn test` (ALL 10,000+ tests must pass)
+- **If any test fails**: Fix issues immediately, run full tests again
+- **NEVER proceed until ALL tests pass**
 - Mark improvement todos as "completed" only when ALL tests pass
 
-**⚠️ WARNING: Skipping full test validation is a CRITICAL PROCESS VIOLATION ⚠️**
-
-**THE PROCESS:**
+**Development Process:**
 1. **Development Phase**: Use targeted tests (`mvn test -Dtest=SpecificTest`) for fast iteration
 2. **Completion Gate**: Run full test suite (`mvn test`) when you think you're done
 3. **Quality Verification**: ALL 10,000+ tests must pass before proceeding
@@ -238,12 +220,6 @@ Present a commit approval request to the human with:
 - Documentation updates made for this change
 - Clear description of this change and its benefits
 - Ask: "Should I commit this change?"
-
-**CRITICAL COMMIT RULES:**
-- **ONLY commit if human responds exactly "Y" or "Yes"**
-- **If human does NOT write "Y" or "Yes", do NOT commit**
-- **If human does not respond "Y" or "Yes", pay close attention to next instruction**
-- **NEVER commit without explicit "Y" or "Yes" approval**
 
 ### Step 7: Atomic Commit (Only After Human Approval)
 - **Immediately commit this ONE change** after receiving "Y" approval

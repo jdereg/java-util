@@ -35,7 +35,9 @@ import java.util.function.Function;
 /**
  * A Map implementation that provides case-insensitive key comparison for {@link String} keys, while preserving
  * the original case of the keys. Non-String keys are treated as they would be in a regular {@link Map}.
- * 
+ *
+ * <p>This Map is conditionally thread-safe based on if the backing map implementation is a thread-safe.</p>
+ *
  * <p>When the backing map is a {@link MultiKeyMap}, this map also supports multi-key operations
  * with case-insensitive String key handling. Works with 1D keys (no collections or arrays in keys)</p>
  *
@@ -44,8 +46,9 @@ import java.util.function.Function;
  * semantics. <strong>Thread safety depends entirely on the backing map implementation:</strong></p>
  * <ul>
  *   <li><strong>Thread-Safe:</strong> When backed by concurrent maps ({@link ConcurrentHashMap}, {@link ConcurrentHashMapNullSafe},
- *       {@link java.util.concurrent.ConcurrentSkipListMap}, {@link ConcurrentNavigableMapNullSafe}, etc.), all operations are thread-safe.</li>
- *   <li><strong>Not Thread-Safe:</strong> When backed by non-concurrent maps ({@link LinkedHashMap}, 
+ *       {@link java.util.concurrent.ConcurrentSkipListMap}, {@link ConcurrentNavigableMapNullSafe}, {@link MultiKeyMap}, etc.),
+ *       all operations are thread-safe.</li>
+ *   <li><strong>Not Thread-Safe:</strong> When backed by non-concurrent maps ({@link LinkedHashMap},
  *       {@link HashMap}, etc.), concurrent operations work correctly but without thread-safety guarantees.</li>
  * </ul>
  * <p>Choose your backing map implementation based on your concurrency requirements.</p>
@@ -77,7 +80,7 @@ import java.util.function.Function;
  * ConcurrentMap<String, String> concurrentMap = CaseInsensitiveMap.concurrent();
  * concurrentMap.putIfAbsent("Key", "Value");
  * LOG.info(concurrentMap.get("key"));  // Outputs: Value (thread-safe)
- * 
+ *
  * // Alternative: explicit constructor approach
  * ConcurrentMap<String, String> explicitMap = new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMap<>());
  *
@@ -116,13 +119,13 @@ import java.util.function.Function;
  * case-insensitive semantics. Thread safety is determined by the backing map implementation:
  * </p>
  * <ul>
- *   <li><strong>Thread-Safe Backing Maps:</strong> When backed by concurrent implementations 
- *       ({@link ConcurrentHashMap}, {@link java.util.concurrent.ConcurrentSkipListMap}, 
+ *   <li><strong>Thread-Safe Backing Maps:</strong> When backed by concurrent implementations
+ *       ({@link ConcurrentHashMap}, {@link java.util.concurrent.ConcurrentSkipListMap},
  *       {@link ConcurrentNavigableMapNullSafe}, etc.), all operations are fully thread-safe.</li>
- *   <li><strong>Non-Thread-Safe Backing Maps:</strong> When backed by non-concurrent implementations 
- *       ({@link LinkedHashMap}, {@link HashMap}, {@link TreeMap}, etc.), concurrent operations work 
+ *   <li><strong>Non-Thread-Safe Backing Maps:</strong> When backed by non-concurrent implementations
+ *       ({@link LinkedHashMap}, {@link HashMap}, {@link TreeMap}, etc.), concurrent operations work
  *       correctly but require external synchronization for thread safety.</li>
- *   <li><strong>String Cache:</strong> The case-insensitive string cache is thread-safe and can be 
+ *   <li><strong>String Cache:</strong> The case-insensitive string cache is thread-safe and can be
  *       safely accessed from multiple threads regardless of the backing map.</li>
  * </ul>
  * <p>
@@ -146,7 +149,7 @@ import java.util.function.Function;
  * @see ConcurrentHashMap
  * @see CaseInsensitiveString
  * @see MultiKeyMap
- * 
+ *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
  *         Copyright (c) Cedar Software LLC

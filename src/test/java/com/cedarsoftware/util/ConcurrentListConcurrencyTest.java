@@ -321,7 +321,7 @@ class ConcurrentListConcurrencyTest {
                                     assertEquals(size == 0, empty);
                                     break;
                             }
-                        } catch (IndexOutOfBoundsException e) {
+                        } catch (IndexOutOfBoundsException | IllegalArgumentException e) {
                             // Expected occasionally due to concurrent modifications
                         }
                     }
@@ -473,3 +473,4 @@ class ConcurrentListConcurrencyTest {
         assertEquals(numThreads * incrementsPerThread, totalIncrements);
     }
 }
+

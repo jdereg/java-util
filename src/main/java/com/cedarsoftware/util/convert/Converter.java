@@ -201,7 +201,7 @@ public final class Converter {
     public static final String PRECISION_NANOS = "nanos";
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
     private static final MultiKeyMap<Convert<?>> CONVERSION_DB = new MultiKeyMap<>(4096, 0.8f);
-    private static final MultiKeyMap<Convert<?>> USER_DB = new MultiKeyMap<>(128, 0.8f);
+    private final MultiKeyMap<Convert<?>> USER_DB = new MultiKeyMap<>(16, 0.8f);
     private static final MultiKeyMap<Convert<?>> FULL_CONVERSION_CACHE = new MultiKeyMap<>(1024, 0.75f);
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SIMPLE_TYPE_CACHE = new ClassValueMap<>();
@@ -1615,17 +1615,14 @@ public final class Converter {
     public Converter(ConverterOptions options) {
         this.options = options;
         this.instanceId = INSTANCE_ID_GENERATOR.getAndIncrement();
+        
         for (Map.Entry<ConversionPair, Convert<?>> entry : this.options.getConverterOverrides().entrySet()) {
             ConversionPair pair = entry.getKey();
             USER_DB.putMultiKey(entry.getValue(), pair.getSource(), pair.getTarget(), pair.getInstanceId());
             
             // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
-            if (!isStandardType(pair.getSource())) {
-                addIdentityConversionIfNeeded(pair.getSource(), pair.getInstanceId());
-            }
-            if (!isStandardType(pair.getTarget())) {
-                addIdentityConversionIfNeeded(pair.getTarget(), pair.getInstanceId());
-            }
+            addIdentityConversionIfNeeded(pair.getSource(), pair.getInstanceId());
+            addIdentityConversionIfNeeded(pair.getTarget(), pair.getInstanceId());
         }
     }
 
@@ -1976,7 +1973,7 @@ public final class Converter {
      * @param toType     The target type to convert to
      * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
-    private static Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType, long instanceId) {
+    private Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType, long instanceId) {
         // Build the complete set of source types (including sourceType itself) with levels.
         Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
         sourceTypes.add(new ClassLevel(sourceType, 0));
@@ -2505,7 +2502,7 @@ public final class Converter {
      * @param target Class of target type.
      * @return Convert instance
      */
-    private static Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
+    private Convert<?> getConversionFromDBs(Class<?> source, Class<?> target) {
         source = ClassUtilities.toPrimitiveWrapperClass(source);
         target = ClassUtilities.toPrimitiveWrapperClass(target);
         Convert<?> method = USER_DB.getMultiKey(source, target, 0L);
@@ -2526,12 +2523,11 @@ public final class Converter {
      * that the source can be converted to.
      * </p>
      *
-     * @return A {@code Map<Class<?>, Set<Class<?>>>} representing all supported conversions.
+     * @return A {@code Map<Class<?>, Set<Class<?>>>} representing all supported (built-in) conversions.
      */
     public static Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
         Map<Class<?>, Set<Class<?>>> toFrom = new TreeMap<>(Comparator.comparing(Class::getName));
         addSupportedConversion(CONVERSION_DB, toFrom);
-        addSupportedConversion(USER_DB, toFrom);
         return toFrom;
     }
 
@@ -2542,12 +2538,11 @@ public final class Converter {
      * that the source can be converted to.
      * </p>
      *
-     * @return A {@code Map<String, Set<String>>} representing all supported conversions by class names.
+     * @return A {@code Map<String, Set<String>>} representing all supported (built-int) conversions by class names.
      */
     public static Map<String, Set<String>> getSupportedConversions() {
         Map<String, Set<String>> toFrom = new TreeMap<>(String::compareTo);
         addSupportedConversionName(CONVERSION_DB, toFrom);
-        addSupportedConversionName(USER_DB, toFrom);
         return toFrom;
     }
 
@@ -2588,78 +2583,20 @@ public final class Converter {
     }
 
     /**
-     * Adds a new conversion function for converting from one type to another. If a conversion already exists
-     * for the specified source and target types, the existing conversion will be overwritten.
-     *
-     * <p>When {@code convert(source, target)} is called, the conversion function is located by matching the class
-     * of the source instance and the target class. If an exact match is found, that conversion function is used.
-     * If no exact match is found, the method attempts to find the most appropriate conversion by traversing
-     * the class hierarchy of the source and target types (including interfaces), excluding common marker
-     * interfaces such as {@link java.io.Serializable}, {@link java.lang.Comparable}, and {@link java.lang.Cloneable}.
-     * The nearest match based on class inheritance and interface implementation is used.
-     *
-     * <p>This method allows you to explicitly define custom conversions between types. It also supports the automatic
-     * handling of primitive types by converting them to their corresponding wrapper types (e.g., {@code int} to {@code Integer}).
-     *
-     * <p><strong>Note:</strong> This method utilizes the {@link ClassUtilities#toPrimitiveWrapperClass(Class)} utility
-     * to ensure that primitive types are mapped to their respective wrapper classes before attempting to locate
-     * or store the conversion.
-     *
-     * @param source           The source class (type) to convert from.
-     * @param target           The target class (type) to convert to.
      * @param conversionMethod A method that converts an instance of the source type to an instance of the target type.
      * @return The previous conversion method associated with the source and target types, or {@code null} if no conversion existed.
+     * @deprecated Use {@link #addConversion(Convert, Class, Class)} instead. This method will be removed in a future version as it is less safe and does not handle all type variations correctly.
      */
-    public static Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
-        // Collect all type variations (primitive and wrapper) for both source and target
-        Set<Class<?>> sourceTypes = getTypeVariations(source);
-        Set<Class<?>> targetTypes = getTypeVariations(target);
-
-        // Clear caches for all combinations
-        for (Class<?> srcType : sourceTypes) {
-            for (Class<?> tgtType : targetTypes) {
-                clearCachesForType(srcType, tgtType);
-            }
-        }
-
-        // Store the wrapper version first to capture return value
-        Class<?> wrapperSource = ClassUtilities.toPrimitiveWrapperClass(source);
-        Class<?> wrapperTarget = ClassUtilities.toPrimitiveWrapperClass(target);
-        Convert<?> previous = USER_DB.getMultiKey(wrapperSource, wrapperTarget, 0L);
-        USER_DB.putMultiKey(conversionMethod, wrapperSource, wrapperTarget, 0L);
-
-        // Add all type combinations to USER_DB
-        for (Class<?> srcType : sourceTypes) {
-            for (Class<?> tgtType : targetTypes) {
-                USER_DB.putMultiKey(conversionMethod, srcType, tgtType, 0L);
-            }
-        }
-
-        // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
-        if (!isStandardType(source)) {
-            addIdentityConversionIfNeeded(source, 0L);
-        }
-        if (!isStandardType(target)) {
-            addIdentityConversionIfNeeded(target, 0L);
-        }
-
-        return previous;
+    @Deprecated
+    public Convert<?> addConversion(Class<?> source, Class<?> target, Convert<?> conversionMethod) {
+        return addConversion(conversionMethod, source, target);
     }
 
     /**
      * Adds a new conversion function for converting from one type to another for this specific Converter instance.
-     * Unlike the static {@link #addConversion(Class, Class, Convert)} method, this instance method stores the 
-     * conversion only for this converter instance, avoiding global pollution of the conversion database.
-     *
-     * <p>This is the recommended approach for adding custom conversions as it prevents interference between
-     * different applications, libraries, or test cases that might be using java-util simultaneously.
-     * Each Converter instance maintains its own set of custom conversions in addition to accessing
-     * the shared factory conversions and any static user conversions.</p>
-     *
      * <p>When {@code convert(source, target)} is called on this instance, the conversion function is located by:
      * <ol>
      *   <li>Checking instance-specific conversions first (added via this method)</li>
-     *   <li>Checking static user conversions (added via static {@link #addConversion} method)</li>
      *   <li>Checking factory conversions (built-in conversions)</li>
      *   <li>Attempting inheritance-based conversion lookup</li>
      * </ol></p>
@@ -2698,13 +2635,8 @@ public final class Converter {
         }
 
         // Add identity conversions for non-standard types to enable O(1) hasConverterOverrideFor lookup
-        if (!isStandardType(source)) {
-            addIdentityConversionIfNeeded(source, this.instanceId);
-        }
-        if (!isStandardType(target)) {
-            addIdentityConversionIfNeeded(target, this.instanceId);
-        }
-
+        addIdentityConversionIfNeeded(source, this.instanceId);
+        addIdentityConversionIfNeeded(target, this.instanceId);
         return previous;
     }
 
@@ -2730,46 +2662,6 @@ public final class Converter {
     }
 
     /**
-     * Determines if a class is a "standard" type that has built-in conversion support.
-     * Standard types include primitives, wrappers, common JDK types, and types with
-     * existing conversions in the factory conversion database.
-     * 
-     * @param clazz the class to check
-     * @return true if the class is a standard type, false if it's a custom/non-standard type
-     */
-    private static boolean isStandardType(Class<?> clazz) {
-        if (clazz == null) {
-            return true; // null is considered standard
-        }
-        
-        // Primitive types and their wrappers are standard
-        if (clazz.isPrimitive() || ClassUtilities.toPrimitiveClass(clazz) != clazz) {
-            return true;
-        }
-        
-        // Common JDK types that are typically standard
-        if (clazz.getName().startsWith("java.") || clazz.getName().startsWith("javax.")) {
-            return true;
-        }
-        
-        // Check if this type has any factory conversions (built-in support)
-        // Look for any entries in CONVERSION_DB where this type is source or target
-        for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : CONVERSION_DB.entries()) {
-            if (entry.keys.length >= 2) {
-                Object source = entry.keys[0];
-                Object target = entry.keys[1];
-                if (source instanceof Class && target instanceof Class) {
-                    if (source == clazz || target == clazz) {
-                        return true; // Found built-in conversion support
-                    }
-                }
-            }
-        }
-        
-        return false; // No built-in support found, consider it non-standard
-    }
-
-    /**
      * Adds an identity conversion (T -> T) for a non-standard type to enable O(1) lookup
      * in hasConverterOverrideFor. This serves as a marker that the type is involved in
      * custom conversions while also providing useful identity conversion functionality.
@@ -2777,7 +2669,7 @@ public final class Converter {
      * @param type the type to add identity conversion for
      * @param instanceId the instance ID to use for the conversion
      */
-    private static void addIdentityConversionIfNeeded(Class<?> type, long instanceId) {
+    private void addIdentityConversionIfNeeded(Class<?> type, long instanceId) {
         if (type != null && USER_DB.getMultiKey(type, type, instanceId) == null) {
             USER_DB.putMultiKey(IDENTITY_CONVERTER, type, type, instanceId);
         }

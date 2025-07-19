@@ -1505,23 +1505,23 @@ The list is structured as a series of fixed-size buckets (1024 elements each), m
 graph TD
     Head[AtomicLong head]
     Tail[AtomicLong tail]
-    
+
     BucketNeg1[Bucket -1]
     Bucket0[Bucket 0]
-    Bucket1[Bucket 1] 
+    Bucket1[Bucket 1]
     Bucket2[Bucket 2]
-    
+
     AddFirst[addFirst]
     AddLast[addLast]
     RemoveFirst[removeFirst]
     RemoveLast[removeLast]
     GetOp[get index]
-    
+
     Head --> BucketNeg1
     Head --> Bucket0
     Tail --> Bucket1
     Tail --> Bucket2
-    
+
     AddFirst --> Head
     AddLast --> Tail
     RemoveFirst --> Head
@@ -1534,12 +1534,12 @@ graph TD
 ```java
 ConcurrentList<String> list = new ConcurrentList<>();
 list.add("B");        // Internal: head=0, tail=1
-list.add("C");        // Internal: head=0, tail=2  
+list.add("C");        // Internal: head=0, tail=2
 list.addFirst("A");   // Internal: head=-1, tail=2
 
 // Public API always uses 0-based indexing:
 list.get(0);  // Returns "A" (maps internally to position -1)
-list.get(1);  // Returns "B" (maps internally to position 0)  
+list.get(1);  // Returns "B" (maps internally to position 0)
 list.get(2);  // Returns "C" (maps internally to position 1)
 ```
 
@@ -1594,7 +1594,7 @@ ConcurrentList<Task> taskQueue = new ConcurrentList<>();
 taskQueue.addLast(new Task("work1"));
 taskQueue.addLast(new Task("work2"));
 
-// Consumer threads - O(1) lock-free  
+// Consumer threads - O(1) lock-free
 Task task1 = taskQueue.pollFirst(); // Returns null if empty
 Task task2 = taskQueue.removeFirst(); // Throws exception if empty
 
@@ -1718,7 +1718,7 @@ for (int i = 0; i < 4; i++) {
 
 ### Thread Safety Features
 - **Lock-free reads:** All get operations and iterations are completely lock-free
-- **Lock-free head/tail operations:** Deque operations use atomic CAS for maximum throughput  
+- **Lock-free head/tail operations:** Deque operations use atomic CAS for maximum throughput
 - **Minimal locking:** Only middle insertion/removal requires a write lock
 - **Consistent iteration:** Iterators provide a consistent snapshot view
 - **ABA-safe:** Atomic operations prevent ABA problems in concurrent scenarios
@@ -1852,7 +1852,7 @@ if (array == null || array.length == 0) {  // Avoid
 ```
 
 ### Limitations
-- No deep copy support (see [json-io](http://github.com/jdereg/json-io)) 
+- No deep copy support (see [json-io](http://github.com/jdereg/json-io))
 - No multi-dimensional array specific operations (see [Converter](userguide.md#converter))
 
 ---
@@ -2039,30 +2039,30 @@ See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a d
 public static void setSuperTypesCache(Map<Class<?>, Set<Class<?>>> cache)
 public static void setClassDistanceCache(Map<Map.Entry<Class<?>, Class<?>>, Integer> cache)
 
-// Class locating    
+// Class locating
 public static Class<?> forName(String name, ClassLoader classLoader)
 public static void addPermanentClassAlias(Class<?> clazz, String alias)
 public static void removePermanentClassAlias(String alias)
-    
-// Class instantiation    
+
+// Class instantiation
 public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues)
 public static void setUseUnsafe(boolean state)
-    
-// Class information      
+
+// Class information
 public static boolean isClassFinal(Class<?> c)
 public static boolean areAllConstructorsPrivate(Class<?> c)
 public static Class<?> getClassIfEnum(Class<?> c)
 
-// Primitive wrappers    
+// Primitive wrappers
 public static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass)
 public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y)
 public static boolean isPrimitive(Class<?> c) // true for primitive and primitive wrapper
-    
-// ClassLoader (OSGi and JPMS friendly)    
+
+// ClassLoader (OSGi and JPMS friendly)
 public static ClassLoader getClassLoader()
 public static ClassLoader getClassLoader(final Class<?> anchorClass)
 
-// Class relationships    
+// Class relationships
 public static int computeInheritanceDistance(Class<?> source, Class<?> destination)
 public static boolean haveCommonAncestor(Class<?> a, Class<?> b)
 public static Set<Class<?>> getAllSupertypes(Class<?> clazz)
@@ -2296,7 +2296,7 @@ String computed = map.computeIfAbsent("new-key", k -> "computed-value");
 String replaced = map.replace("single-key", "new-value");
 ```
 
-#### MultiKeyMap Var-args APIs  
+#### MultiKeyMap Var-args APIs
 **For elegant multi-dimensional operations (requires MultiKeyMap variable type):**
 
 ```java
@@ -2321,7 +2321,7 @@ boolean exists = mkMap.containsMultiKey("key1", "key2", "key3");
 mkMap.removeMultiKey("key1", "key2", "key3", "key4");
 ```
 
-**Key Point 1:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful 
+**Key Point 1:** You must declare your variable as `MultiKeyMap<V>` (not `Map<Object, V>`) to access the powerful
 var-args methods. This design choice provides the best of both worlds - Map compatibility AND elegant multi-dimensional APIs.
 
 ### Dimensional Behavior Control
@@ -2344,7 +2344,7 @@ structuralMap.put(List.of("a"), "container-1D-updated");    // 1D container - ov
 // Cross-container equivalence: Arrays ↔ Collections at same structural depth
 String val1 = structuralMap.get("a");                       // "single-element"
 String val2 = structuralMap.get(new String[]{"a"});         // "container-1D-updated"
-String val3 = structuralMap.get(new String[][]{{"a"}});     // "array-2D"  
+String val3 = structuralMap.get(new String[][]{{"a"}});     // "array-2D"
 String val4 = structuralMap.get(List.of("a"));              // "container-1D-updated" (same as array!)
 
 System.out.println(structuralMap.size());                   // 3 - Array/Collection equivalence!
@@ -2404,7 +2404,7 @@ String url2 = map.get(Arrays.asList("config", "database", "url"));      // Colle
 String url3 = map.getMultiKey("config", "database", "url");             // Var-args lookup
 
 // Configure non-default Collection handling behavior
-MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, 
+MultiKeyMap<String> configMap = new MultiKeyMap<>(1024,
     MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED);
 Collection configPath = List.of("database", "connection", "pool");
 configMap.put(configPath, "someValue");              // Collection as single key (not expanded)
@@ -2450,13 +2450,13 @@ String val4 = flattenMap.getMultiKey("a", "b");                 // "third-value"
 **COLLECTIONS_EXPANDED (default):**
 ```java
 MultiKeyMap<String> map = new MultiKeyMap<>();
-map.put(Arrays.asList("a", 75.0, true), "value");              // Stored as 3D key: ("a", 75.0, true) 
+map.put(Arrays.asList("a", 75.0, true), "value");              // Stored as 3D key: ("a", 75.0, true)
 String result = map.get(Arrays.asList("a", 75.0, true));       // Collection unpacked into 3D key
 ```
 
 **COLLECTIONS_NOT_EXPANDED:**
 ```java
-MultiKeyMap<String> map = new MultiKeyMap<>(1024, 
+MultiKeyMap<String> map = new MultiKeyMap<>(1024,
     MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED);
 List<String> myCol = List.of("a", "b", "c");
 map.put(myCol, "value");                                        // Stored with myCol as single key
@@ -2548,7 +2548,7 @@ String previous = cache.putIfAbsent(
 );
 
 String updated = cache.compute(
-    new Object[]{"counter", userId}, 
+    new Object[]{"counter", userId},
     (k, v) -> v == null ? "1" : String.valueOf(Integer.parseInt(v) + 1)  // Atomic update
 );
 
@@ -2567,7 +2567,7 @@ String nullValue = cache.get("null-key");                   // Returns null safe
 MultiKeyMap's concurrency implementation provides the same reliability guarantees as `ConcurrentHashMap`:
 - **Battle-tested patterns**: Uses proven Java concurrency primitives
 - **Memory safety**: No race conditions or visibility issues
-- **Deadlock-free**: Simple locking hierarchy prevents deadlocks  
+- **Deadlock-free**: Simple locking hierarchy prevents deadlocks
 - **High availability**: Lock-free reads never block, ensuring system responsiveness
 - **Scalable architecture**: Auto-tuned stripe locking scales with your hardware
 
@@ -2586,15 +2586,15 @@ For compile-time type safety, create a strongly-typed wrapper:
 // Type-safe façade for user permissions
 public class UserPermissionMap {
     private final MultiKeyMap<Permission> permissions = new MultiKeyMap<>();
-    
+
     public void setPermission(String userId, String projectId, String resource, Permission perm) {
         permissions.put(perm, userId, projectId, resource);
     }
-    
+
     public Permission getPermission(String userId, String projectId, String resource) {
         return permissions.get(userId, projectId, resource);
     }
-    
+
     public boolean hasPermission(String userId, String projectId, String resource) {
         return permissions.containsKey(userId, projectId, resource);
     }
@@ -2757,13 +2757,13 @@ String current = flattenConfig.get("env", "prod");                              
 **Custom Collection Handling:**
 ```java
 // Fine-tune collection behavior for specific use cases
-MultiKeyMap<String> pathMap = new MultiKeyMap<>(1024, 0.75f, 
+MultiKeyMap<String> pathMap = new MultiKeyMap<>(1024, 0.75f,
     CollectionKeyMode.COLLECTIONS_NOT_EXPANDED, false);
 List<String> pathElements = Arrays.asList("usr", "local", "bin");
 pathMap.put(pathElements, "/usr/local/bin");               // List as single key
 
 // Dimension-flattening with custom collection behavior
-MultiKeyMap<String> flattenCustom = new MultiKeyMap<>(1024, 0.75f, 
+MultiKeyMap<String> flattenCustom = new MultiKeyMap<>(1024, 0.75f,
     CollectionKeyMode.COLLECTIONS_EXPANDED, true);          // Expand collections + flatten dimensions
 ```
 
@@ -2799,7 +2799,7 @@ int y = Converter.convert(45.0, int.class);
 String dateStr = Converter.convert(date, String.class);
 
 // Instance based conversion (using com.cedarsoftware.util.convert.Converter)
-com.cedarsoftware.util.convert.Converter converter = 
+com.cedarsoftware.util.convert.Converter converter =
     new com.cedarsoftware.util.convert.Converter(new DefaultConverterOptions());
 String str = converter.convert(42, String.class);
 ```
@@ -2812,7 +2812,7 @@ The instance API allows you to create a `com.cedarsoftware.util.convert.Converte
 
 Key isolation benefits:
 - Static conversions (added via `Converter.addConversion()`) only affect static conversion calls
-- Instance conversions (added via `converter.addConversion()`) only affect that specific instance  
+- Instance conversions (added via `converter.addConversion()`) only affect that specific instance
 - Factory conversions (built-in conversions) are available to both static and instance contexts
 - No cross-contamination between different applications or conversion contexts
 
@@ -2838,12 +2838,12 @@ EnumSet<Day> days = (EnumSet<Day>)(Object)converter.convert(enumArray, Day.class
 **Custom Conversions:**
 ```java
 // Instance-specific custom converter (recommended)
-com.cedarsoftware.util.convert.Converter converter = 
+com.cedarsoftware.util.convert.Converter converter =
     new com.cedarsoftware.util.convert.Converter(new DefaultConverterOptions());
-converter.addConversion((from, conv) -> new CustomType(from), 
+converter.addConversion((from, conv) -> new CustomType(from),
     String.class, CustomType.class);
 
-// Static custom converter (affects global context)  
+// Static custom converter (affects global context)
 Converter.addConversion(String.class, CustomType.class,
     (from, conv) -> new CustomType(from));
 
@@ -2890,7 +2890,7 @@ Date date = new Date();
 double dateSeconds = converter.convert(date, double.class);   // 1640995200.123 (ms precision)
 ```
 
-#### Long Conversions  
+#### Long Conversions
 **All time structures ↔ `long` = milliseconds**
 ```java
 // Universal rule: ALL time classes → long = milliseconds
@@ -2924,7 +2924,7 @@ BigInteger dateMillis = converter.convert(date, BigInteger.class);        // epo
 Calendar cal = Calendar.getInstance();
 BigInteger calMillis = converter.convert(cal, BigInteger.class);          // epoch milliseconds
 
-// New time classes (nanosecond precision core) → BigInteger = nanoseconds  
+// New time classes (nanosecond precision core) → BigInteger = nanoseconds
 Instant instant = Instant.now();
 BigInteger instantNanos = converter.convert(instant, BigInteger.class);   // epoch nanoseconds
 
@@ -3368,8 +3368,8 @@ if (!DeepEquals.deepEquals(obj1, obj2, options)) {
 - If the root is not a container (Collection, Map, Array, or Object), no shorthand description is displayed
 
 **"diff" output examples:**
-```groovy  
-// Map with a different value associated to a key (Map size = 1 noted as 0..0)  
+```groovy
+// Map with a different value associated to a key (Map size = 1 noted as 0..0)
 [map value mismatch] ▶ LinkedHashMap(0..0) ▶ 《"key" ⇨ "value1"》
   Expected: "value1"
   Found: "value2"
@@ -3379,21 +3379,21 @@ if (!DeepEquals.deepEquals(obj1, obj2, options)) {
   Expected: "value1"
   Found: "value2"
 
-// Object (Container) with a field strings (a List size 3 noted as 0..2) with a different value at index 0  
+// Object (Container) with a field strings (a List size 3 noted as 0..2) with a different value at index 0
 [collection element mismatch] ▶ Container {strings: List(0..2), numbers: List(0..2), people: List(0..1), objects: List(0..2)} ▶ .strings(0)
   Expected: "a"
   Found: "x"
 
-// Map with a key that is an ArrayList (with an Array List in it) mapped to an int[].  The last element, int[2] was different.  
+// Map with a key that is an ArrayList (with an Array List in it) mapped to an int[].  The last element, int[2] was different.
 [array element mismatch] ▶ HashMap(0..0) ▶ 《ArrayList<ArrayList>(4){(1, 2, 3), null, (), ...} ⇨ int[0..2]》[2]
   Expected: 7
   Found: 44
 
-// Simple object difference  
+// Simple object difference
 [field value mismatch] ▶ Person {name: "Jim Bob", age: 27} ▶ .age
   Expected: 27
   Found: 34
-  
+
 // Array with a component type mismatch (Object[] holding a int[] in source, target had long[] at element 0)
 [array component type mismatch] ▶ Object[0..1] ▶ [0]
   Expected type: int[]
@@ -3403,18 +3403,18 @@ if (!DeepEquals.deepEquals(obj1, obj2, options)) {
 [array element mismatch] ▶ Person {id: 173679590720000287, first: "John", last: "Smith", favoritePet: {..}, pets: Pet[0..1]} ▶ .pets[0].nickNames[0]
   Expected: "Edward"
   Found: "Eddie"
-  
+
 // Example of deeply nested object graph with a difference
 [array length mismatch] ▶ University {name: "Test University", departmentsByCode: Map(0..1), location: {..}} ▶ .departmentsByCode 《"CS" ⇨ Department {code: "CS", name: "Computer Science", programs: List(0..2), departmentHead: {..}, facultyMembers: null}》.programs(0).requiredCourses
   Expected length: 2
-  Found length: 3    
+  Found length: 3
 ```
 
 **Custom Configuration:**
 ```java
 // Ignore custom equals() for specific classes
 Map<String, Object> options = new HashMap<>();
-options.put(DeepEquals.IGNORE_CUSTOM_EQUALS, 
+options.put(DeepEquals.IGNORE_CUSTOM_EQUALS,
     Set.of(MyClass.class, OtherClass.class));
 
 // Allow string-to-number comparisons
@@ -3606,23 +3606,23 @@ public static void transfer(URLConnection c, byte[] bytes)
 public static byte[] inputStreamToBytes(InputStream in)
 public static byte[] inputStreamToBytes(InputStream in, int maxSize)
 public static InputStream getInputStream(URLConnection c)
-    
-// Stream close    
+
+// Stream close
 public static void close(XMLStreamReader reader)
 public static void close(XMLStreamWriter writer)
 public static void close(Closeable c)
-    
-// Stream flush    
+
+// Stream flush
 public static void flush(Flushable f)
 public static void flush(XMLStreamWriter writer)
-    
-// Compression     
+
+// Compression
 public static void compressBytes(ByteArrayOutputStream original, ByteArrayOutputStream compressed)
 public static void compressBytes(FastByteArrayOutputStream original, FastByteArrayOutputStream compressed)
 public static byte[] compressBytes(byte[] bytes)
 public static byte[] compressBytes(byte[] bytes, int offset, int len)
 public static byte[] uncompressBytes(byte[] bytes)
-public static byte[] uncompressBytes(byte[] bytes, int offset, int len) 
+public static byte[] uncompressBytes(byte[] bytes, int offset, int len)
 ```
 
 ### Usage Examples
@@ -3874,6 +3874,215 @@ IOUtilities.transfer(source, dest, new TransferCallback() {
 - Progress monitoring capability
 
 This implementation provides a robust set of I/O utilities with emphasis on resource safety, performance, and ease of use.
+
+---
+## IntervalSet
+
+[View Source](/src/main/java/com/cedarsoftware/util/IntervalSet.java)
+
+A thread-safe collection of non-overlapping closed intervals `[start, end]` for any `Comparable` type. IntervalSet efficiently manages collections of intervals with O(log n) performance using `ConcurrentSkipListMap` for lookups, insertions, and range queries.
+
+### Key Features
+
+- **High Performance**: O(log n) operations using ConcurrentSkipListMap
+- **Thread-Safe**: Lock-free reads with minimal locking for writes only
+- **Flexible Storage Modes**: 
+  - Auto-merge mode (default): Overlapping intervals automatically merged
+  - Discrete mode: Intervals stored separately for audit trails
+- **Intelligent Interval Management**: Automatic splitting during removal operations
+- **Rich Query API**: Comprehensive navigation and filtering methods
+- **Type-Safe Boundaries**: Supports precise boundary calculations for 20+ built-in types
+- **Weakly Consistent Iteration**: Default `.iterator()` sees live changes during iteration; `snapshot().iterator()` provides a fixed point-in-time view. Both are thread-safe.
+
+### Auto-Merge vs. Discrete Modes
+
+**Auto-Merge Mode (default: `autoMerge = true`)**
+
+Overlapping intervals are automatically merged into larger, non-overlapping intervals:
+
+```java
+IntervalSet<Integer> set = new IntervalSet<>();  // autoMerge = true by default
+set.add(1, 5);
+set.add(3, 8);    // Merges with [1,5] to create [1,8]
+set.add(10, 15);  // Separate interval since no overlap
+// Result: [1,8], [10,15]
+```
+
+**Discrete Mode (`autoMerge = false`)**
+
+Intervals are stored separately even if they overlap, useful for audit trails:
+
+```java
+IntervalSet<Integer> audit = new IntervalSet<>(false);  // discrete mode
+audit.add(1, 5);     // First verification
+audit.add(3, 8);     // Second verification (overlaps but kept separate)
+audit.add(10, 15);   // Third verification
+// Result: [1,5], [3,8], [10,15] - all intervals preserved
+```
+
+### Usage Examples
+
+**Basic Operations**
+
+```java
+// Time range management
+IntervalSet<ZonedDateTime> schedule = new IntervalSet<>();
+schedule.add(meeting1Start, meeting1End);
+schedule.add(meeting2Start, meeting2End);
+
+if (schedule.contains(proposedMeetingTime)) {
+    System.out.println("Time conflict detected");
+}
+```
+
+**Numeric Range Tracking**
+
+```java
+IntervalSet<Long> processedIds = new IntervalSet<>();
+processedIds.add(1000L, 1999L);    // First batch
+processedIds.add(2000L, 2999L);    // Second batch - automatically merges to [1000, 2999]
+
+// Calculate total work using Duration computation
+Duration totalWork = processedIds.totalDuration((start, end) ->
+    Duration.ofMillis(end - start + 1));
+```
+
+**Navigation and Queries**
+
+```java
+IntervalSet<Integer> ranges = new IntervalSet<>();
+ranges.add(10, 20);
+ranges.add(30, 40);
+ranges.add(50, 60);
+
+// Find interval containing a value
+IntervalSet.Interval<Integer> containing = ranges.intervalContaining(15);
+// Returns: [10, 20]
+
+// Navigate between intervals
+IntervalSet.Interval<Integer> next = ranges.nextInterval(25);
+// Returns: [30, 40]
+
+IntervalSet.Interval<Integer> previous = ranges.previousInterval(35);  
+// Returns: [30, 40] (interval with start <= 35)
+
+// Range queries
+List<IntervalSet.Interval<Integer>> subset = ranges.getIntervalsInRange(15, 45);
+// Returns: [10, 20], [30, 40]
+```
+
+**Audit Trail with Discrete Mode**
+
+```java
+IntervalSet<LocalDate> auditLog = new IntervalSet<>(false);  // Keep all entries
+auditLog.add(verification1Start, verification1End);
+auditLog.add(verification2Start, verification2End);  // Overlaps preserved
+
+// Query APIs still work across all intervals
+boolean dateVerified = auditLog.contains(targetDate);
+```
+
+### Primary Client APIs
+
+**Basic Operations**
+- `add(T, T)` - Add an interval [start, end]
+- `remove(T, T)` - Remove an interval, splitting existing ones as needed
+- `removeExact(T, T)` - Remove only exact interval matches
+- `removeRange(T, T)` - Remove a range, trimming overlapping intervals
+- `contains(T)` - Test if a value falls within any interval
+- `clear()` - Remove all intervals
+
+**Query and Navigation**
+- `intervalContaining(T)` - Find the interval containing a specific value
+- `nextInterval(T)` - Find the next interval at or after a value
+- `higherInterval(T)` - Find the next interval strictly after a value  
+- `previousInterval(T)` - Find the previous interval at or before a value
+- `lowerInterval(T)` - Find the previous interval strictly before a value
+- `first()` / `last()` - Get the first/last intervals
+
+**Bulk Operations and Iteration**
+- `asList()` / `snapshot()` - Get all intervals as an immutable list
+- `iterator()` - Iterate intervals in ascending order
+- `descendingIterator()` - Iterate intervals in descending order
+- `getIntervalsInRange(T, T)` - Get intervals within a key range
+- `getIntervalsBefore(T)` - Get intervals before a key
+- `getIntervalsFrom(T)` - Get intervals from a key onward
+- `removeIntervalsInKeyRange(T, T)` - Bulk removal by key range
+
+### Supported Types
+
+IntervalSet provides intelligent boundary calculation for interval splitting/merging operations across a wide range of types:
+
+- **Numeric**: Byte, Short, Integer, Long, Float, Double, BigInteger, BigDecimal, AtomicInteger, AtomicLong
+- **Character**: Character (Unicode-aware)
+- **Temporal**: Date, java.sql.Date, Time, Timestamp, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime, OffsetDateTime, OffsetTime, Duration
+- **Custom**: Any type implementing Comparable (with manual boundary handling if needed)
+
+### Performance Characteristics
+
+- **Add**: O(log n) - May require merging adjacent intervals in auto-merge mode
+- **Remove**: O(log n) - May require splitting intervals
+- **Contains**: O(log n) - Single floor lookup
+- **Navigation**: O(log n) - Leverages NavigableMap operations
+- **Iteration**: O(n) - Direct map iteration, no additional overhead
+
+### Thread Safety Features
+
+IntervalSet is fully thread-safe with an optimized locking strategy:
+
+- **Lock-free reads**: All query operations (contains, navigation, iteration) require no locking
+- **Minimal write locking**: Only mutation operations acquire the internal ReentrantLock
+- **Weakly consistent iteration**: Default `.iterator()` sees live changes during iteration; `snapshot().iterator()` provides a fixed point-in-time view. Both are thread-safe.
+
+### Use Cases
+
+**Excellent For:**
+- Meeting and resource scheduling systems
+- Time range conflict detection  
+- Numeric range tracking and validation
+- Data processing batch management
+- Audit trail systems (discrete mode)
+- Memory-efficient interval storage
+- High-throughput concurrent read scenarios
+
+**Consider Alternatives For:**
+- Simple boolean flags (use BitSet)
+- Single intervals (use custom Interval class)
+- Very small datasets (overhead may not be justified)
+
+### Implementation Notes
+
+- Built on `ConcurrentSkipListMap` for optimal concurrent performance
+- Uses `ReentrantLock` only for write operations to minimize contention
+- Automatic boundary calculation supports precise splitting for temporal and numeric types
+- Memory-efficient storage with minimal object creation
+- Consistent iteration behavior under concurrent modification
+
+### Best Practices
+
+```java
+// Prefer auto-merge mode for most use cases
+IntervalSet<ZonedDateTime> schedule = new IntervalSet<>();
+
+// Use discrete mode for audit trails and historical tracking  
+IntervalSet<LocalDate> auditLog = new IntervalSet<>(false);
+
+// Leverage rich query API for complex operations
+boolean hasConflict = schedule.contains(proposedTime);
+IntervalSet.Interval<ZonedDateTime> nextMeeting = schedule.higherInterval(currentTime);
+
+// Use bulk operations for efficiency
+List<IntervalSet.Interval<ZonedDateTime>> todaysMeetings = 
+    schedule.getIntervalsInRange(startOfDay, endOfDay);
+
+// Take advantage of thread safety for concurrent reads
+// No synchronization needed for query operations
+CompletableFuture.supplyAsync(() -> schedule.contains(time1))
+    .thenCombine(
+        CompletableFuture.supplyAsync(() -> schedule.contains(time2)),
+        (result1, result2) -> result1 || result2
+    );
+```
 
 ---
 ## EncryptionUtilities
@@ -4185,7 +4394,7 @@ executor.enabled=true
 
 **Security Features:**
 - **Complete Disable:** When disabled, all command execution methods throw SecurityException
-- **Backward Compatibility:** Enabled by default to preserve existing functionality  
+- **Backward Compatibility:** Enabled by default to preserve existing functionality
 - **Simple Control:** Single property controls all execution methods
 
 **Usage Examples:**
@@ -4308,7 +4517,7 @@ traverser.max.array.length=0
 
 **Security Features:**
 - **Stack Depth Limiting:** Prevents stack overflow from deeply nested object graphs
-- **Object Count Limiting:** Prevents memory exhaustion from large object graphs  
+- **Object Count Limiting:** Prevents memory exhaustion from large object graphs
 - **Collection Size Limiting:** Limits processing of oversized collections and maps
 - **Array Length Limiting:** Limits processing of oversized object arrays (primitive arrays are not limited)
 
@@ -4365,12 +4574,12 @@ Traverser.traverse(root, visit -> {
     Object node = visit.getNode();
     Class<?> nodeClass = visit.getNodeClass();
     Map<Field, Object> fields = visit.getFields();
-    
+
     // Examine field details
     for (Map.Entry<Field, Object> entry : fields.entrySet()) {
         Field field = entry.getKey();
         Object value = entry.getValue();
-        
+
         // Field metadata available
         System.out.println("Field: " + field.getName());
         System.out.println("Type: " + field.getType());
@@ -4516,11 +4725,11 @@ switch (delta.getCmd()) {
 // Robust ID fetcher
 GraphComparator.ID idFetcher = obj -> {
     if (obj == null) throw new IllegalArgumentException("Null object");
-    
+
     if (obj instanceof Identifiable) {
         return ((Identifiable)obj).getId();
     }
-    
+
     throw new IllegalArgumentException(
         "Not an ID object: " + obj.getClass().getName());
 };
@@ -4533,7 +4742,7 @@ List<DeltaError> errors = GraphComparator.applyDelta(
 
 if (!errors.isEmpty()) {
     for (DeltaError error : errors) {
-        log.error("Delta error: {} for {}", 
+        log.error("Delta error: {} for {}",
             error.getError(), error.getCmd());
     }
 }
@@ -4594,23 +4803,23 @@ double maxD = MathUtilities.maximum(1.0, 2.0, 3.0);  // Returns 3.0
 ```java
 // BigInteger operations
 BigInteger minBi = MathUtilities.minimum(
-    BigInteger.ONE, 
+    BigInteger.ONE,
     BigInteger.TEN
 );
 
 BigInteger maxBi = MathUtilities.maximum(
-    BigInteger.ONE, 
+    BigInteger.ONE,
     BigInteger.TEN
 );
 
 // BigDecimal operations
 BigDecimal minBd = MathUtilities.minimum(
-    BigDecimal.ONE, 
+    BigDecimal.ONE,
     BigDecimal.TEN
 );
 
 BigDecimal maxBd = MathUtilities.maximum(
-    BigDecimal.ONE, 
+    BigDecimal.ONE,
     BigDecimal.TEN
 );
 ```
@@ -4782,7 +4991,7 @@ public static void setFieldCache(Map<Object, Field> cache)
 public static void setClassAnnotationCache(Map<Object, Annotation> cache)
 public static void setMethodAnnotationCache(Map<Object, Annotation> cache)
 public static void setConstructorCache(Map<Object, Constructor<?>> cache)
-    
+
 // Annotations
 public static <T extends Annotation> T getClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass)
 public static <T extends Annotation> T getMethodAnnotation(final Method method, final Class<T> annoClass)
@@ -4791,7 +5000,7 @@ public static <T extends Annotation> T getMethodAnnotation(final Method method, 
 public static String getClassName(Object o)
 public static String getClassNameFromByteCode(byte[] byteCode) throws IOException
 
-// Fields    
+// Fields
 public static Field getField(Class<?> c, String fieldName)
 public static List<Field> getDeclaredFields(final Class<?> c, final Predicate<Field> fieldFilter)
 public static List<Field> getDeclaredFields(final Class<?> c)
@@ -4799,17 +5008,17 @@ public static List<Field> getAllDeclaredFields(final Class<?> c, final Predicate
 public static List<Field> getAllDeclaredFields(final Class<?> c)
 public static Map<String, Field> getAllDeclaredFieldsMap(Class<?> c, Predicate<Field> fieldFilter)
 public static Map<String, Field> getAllDeclaredFieldsMap(Class<?> c)
-    
-// Methods     
+
+// Methods
 public static Method getMethod(Class<?> c, String methodName, Class<?>... types)
 public static Method getMethod(Object instance, String methodName, int argCount)
 public static Method getNonOverloadedMethod(Class<?> clazz, String methodName)
 
-// Constructors    
+// Constructors
 public static Constructor<?> getConstructor(Class<?> clazz, Class<?>... parameterTypes)
 public static Constructor<?>[] getAllConstructors(Class<?> clazz)
-    
-// Execution    
+
+// Execution
 public static Object call(Object instance, Method method, Object... args)
 public static Object call(Object instance, String methodName, Object... args)
 ```
@@ -4855,15 +5064,15 @@ Map<String, Field> fieldMap = ReflectionUtils.getAllDeclaredFieldsMap(MyClass.cl
 ```java
 // Get method by name and parameter types
 Method method = ReflectionUtils.getMethod(
-    MyClass.class, 
-    "methodName", 
-    String.class, 
+    MyClass.class,
+    "methodName",
+    String.class,
     int.class
 );
 
 // Get non-overloaded method
 Method simple = ReflectionUtils.getNonOverloadedMethod(
-    MyClass.class, 
+    MyClass.class,
     "uniqueMethod"
 );
 
@@ -4878,13 +5087,13 @@ Object result2 = ReflectionUtils.call(instance, "methodName", arg1, arg2);
 ```java
 // Get class annotation
 MyAnnotation anno = ReflectionUtils.getClassAnnotation(
-    MyClass.class, 
+    MyClass.class,
     MyAnnotation.class
 );
 
 // Get method annotation
 MyAnnotation methodAnno = ReflectionUtils.getMethodAnnotation(
-    method, 
+    method,
     MyAnnotation.class
 );
 ```
@@ -4895,8 +5104,8 @@ MyAnnotation methodAnno = ReflectionUtils.getMethodAnnotation(
 ```java
 // Get constructor
 Constructor<?> ctor = ReflectionUtils.getConstructor(
-    MyClass.class, 
-    String.class, 
+    MyClass.class,
+    String.class,
     int.class
 );
 ```
@@ -4937,7 +5146,7 @@ Map<String, Field> fieldMap = ReflectionUtils.getAllDeclaredFieldsMap(clazz);
 ```java
 // Cache method lookups at class level
 private static final Method method = ReflectionUtils.getMethod(
-    MyClass.class, 
+    MyClass.class,
     "process"
 );
 
@@ -4995,20 +5204,20 @@ public static boolean equalsIgnoreCase(CharSequence cs1, CharSequence cs2)
 public static boolean equalsIgnoreCase(String s1, String s2)
 public static boolean equalsWithTrim(String s1, String s2)
 public static boolean equalsIgnoreCaseWithTrim(String s1, String s2)
-    
-// Content    
+
+// Content
 public static boolean isEmpty(CharSequence cs)
 public static boolean isEmpty(String s)
 public static boolean isWhitespace(CharSequence cs)
 public static boolean hasContent(String s)
-    
-// Length    
+
+// Length
 public static int length(CharSequence cs)
 public static int length(String s)
 public static int trimLength(String s)
 public static int lastIndexOf(String path, char ch)
-    
-// ASCII Hex     
+
+// ASCII Hex
 public static byte[] decode(String s)
 public static String encode(byte[] bytes)
 
@@ -5017,25 +5226,25 @@ public static String encode(byte[] bytes)
 // Occurrence
 public static int count(String s, char c)
 public static int count(CharSequence content, CharSequence token)
-    
-// Regex    
+
+// Regex
 public static String wildcardToRegexString(String wildcard)
-    
-// Comparison    
+
+// Comparison
 public static int levenshteinDistance(CharSequence s, CharSequence t)
 public static int damerauLevenshteinDistance(CharSequence source, CharSequence target)
-    
-// Data generation    
+
+// Data generation
 public static String getRandomString(Random random, int minLen, int maxLen)
 public static String getRandomChar(Random random, boolean upper)
 
-// Encoding    
+// Encoding
 public static byte[] getBytes(String s, String encoding)
 public static byte[] getUTF8Bytes(String s)
 public static String createString(byte[] bytes, String encoding)
 public static String createUTF8String(byte[] bytes)
-    
-// Trimming     
+
+// Trimming
 public static String trim(String str)
 public static String trimToEmpty(String value)
 public static String trimToNull(String value)
@@ -5493,7 +5702,7 @@ Traverser.traverse(root, visit -> {
         String name = field.getName();
         Class<?> type = field.getType();
         int modifiers = field.getModifiers();
-        
+
         // Annotations
         if (field.isAnnotationPresent(JsonProperty.class)) {
             JsonProperty ann = field.getAnnotation(JsonProperty.class);
@@ -5792,7 +6001,7 @@ Instant instant = UniqueIdGenerator.getInstant19(id);
 
 ### ID Format Comparison
 
-**Standard Format (getUniqueId)**   
+**Standard Format (getUniqueId)**
 ```
 Characteristics:
 - Format: timestampMs(13-14 digits).sequence(3 digits).serverId(2 digits)
@@ -6351,7 +6560,7 @@ Method systemMethod = ReflectionUtils.getMethod(System.class, "getProperty", Str
 
 **Class Pattern Matching:**
 - **Exact matches:** `java.lang.Runtime` blocks only the Runtime class
-- **Package prefixes:** `java.security.` blocks all classes in java.security package  
+- **Package prefixes:** `java.security.` blocks all classes in java.security package
 - **Multiple patterns:** Comma-separated list of patterns
 
 **Field Pattern Matching:**
@@ -6701,7 +6910,7 @@ classutilities.enhanced.security.enabled=false
 # Class loading depth tracking (0 = disabled)
 classutilities.max.class.load.depth=100
 
-# Constructor argument limits (0 = disabled)  
+# Constructor argument limits (0 = disabled)
 classutilities.max.constructor.args=50
 
 # Reflection operation limits (0 = disabled)
@@ -6851,7 +7060,7 @@ System.setProperty("classutilities.max.resource.name.length", "500");
 
 **Attack Vectors Addressed:**
 - **Class loading attacks:** Prevents loading and instantiation of dangerous classes
-- **Path traversal:** Blocks unauthorized resource access via malicious paths  
+- **Path traversal:** Blocks unauthorized resource access via malicious paths
 - **Resource exhaustion:** Limits constructor arguments and class loading depth
 - **Reflection bypasses:** Enforces security even in reflection-based operations
 
@@ -6870,7 +7079,7 @@ byteutilities.security.enabled=false
 # Hex string length limit for decode operations (0 = disabled)
 byteutilities.max.hex.string.length=1000000
 
-# Byte array size limit for encode operations (0 = disabled)  
+# Byte array size limit for encode operations (0 = disabled)
 byteutilities.max.array.size=10000000
 ```
 
@@ -7013,11 +7222,11 @@ exec.exec("ls -l"); // Now works
 // Only enable when command execution is actually needed
 if (commandExecutionRequired) {
     System.setProperty("executor.enabled", "true");
-    
+
     // Use Executor for trusted operations only
     Executor exec = new Executor();
     ExecutionResult result = exec.execute(trustedCommand);
-    
+
     // Consider disabling after use in high-security environments
     System.setProperty("executor.enabled", "false");
 }
@@ -7043,7 +7252,7 @@ All java-util security features follow consistent patterns:
 # Master switch pattern
 [classname].security.enabled=false
 
-# Individual limit patterns  
+# Individual limit patterns
 [classname].max.[feature].[type]=[limit]
 ```
 
@@ -7054,7 +7263,7 @@ All java-util security features follow consistent patterns:
 systemutilities.security.enabled=false
 systemutilities.max.command.length=1000
 
-# String utilities  
+# String utilities
 stringutilities.security.enabled=false
 stringutilities.max.string.length=1000000
 

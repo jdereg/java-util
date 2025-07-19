@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p></p>
  * ALGORITHM OVERVIEW:
  * 1. Global State: IntervalSet<ZonedDateTime> verifiedTimeRanges tracks successfully verified time bands
- * 2. Backwards Verification: Start from latest source timestamp, step backwards by band size
+ * 2. Backwards Verification: Start from the latest source timestamp, step backwards by band size
  * 3. Whole-Band Approach: Band passes = mark entire band verified, band fails = retry entire band
  * 4. Efficiency: Only verify unverified time gaps (IntervalSet prevents re-verification)
- * 5. Progressive Narrowing: Use large bands (30min) initially, narrow to small bands (10sec) around failures
+ * 5. Progressive Narrowing: Use large bands (30 min) initially, narrow to small bands (10 sec) around failures
  * <p></p>
  * PRODUCTION STRATEGY:
  * - Stage 1: 30-minute bands across entire dataset → identifies problem zones
@@ -59,8 +59,8 @@ class IntervalSetExampleTest {
     
     @BeforeEach
     void setUp() {
-        sourceDatabase = new TreeMap<>();  // Chronological order like real database
-        targetDatabase = new TreeMap<>();  // Chronological order like real database
+        sourceDatabase = new TreeMap<>();  // Chronological order like the real database
+        targetDatabase = new TreeMap<>();  // Chronological order like the real database
         verifiedTimeRanges = new IntervalSet<>();  // autoMerge=true by default
         // Base time for consistent test data - start at midnight UTC
         baseTime = ZonedDateTime.parse("2024-01-01T00:00:00Z");
@@ -227,7 +227,7 @@ class IntervalSetExampleTest {
         
         LOG.info(String.format("📊 Setup: 100 records (0-99 seconds), record %d corrupted\n", failRecord));
         
-        // Backwards verification: Start from latest timestamp, walk backwards 10 seconds at a time
+        // Backwards verification: Start from the latest timestamp, walk backwards 10 seconds at a time
         Duration chunkSize = Duration.ofSeconds(10);
         ZonedDateTime latestTime = second(99); // Latest record timestamp
         ZonedDateTime earliestTime = second(0); // Earliest record timestamp

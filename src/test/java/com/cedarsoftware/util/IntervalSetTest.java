@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -1807,29 +1808,278 @@ class IntervalSetTest {
         assertEquals(next, intervals.get(0).getStart());
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Timestamp and OffsetTime specific tests
+    // ──────────────────────────────────────────────────────────────────────────
+
     @Test
-    void testRemoveTriggersPreviousValueDuration() {
-        Duration start = Duration.ofSeconds(0);
-        Duration end = Duration.ofSeconds(10);
-        Duration removeStart = Duration.ofSeconds(5);
-        IntervalSet<Duration> set = new IntervalSet<>();
+    void testTimestampIntervalOperations() {
+        IntervalSet<Timestamp> set = new IntervalSet<>();
+        long now = System.currentTimeMillis();
+
+        Timestamp start = new Timestamp(now);
+        start.setNanos(100000000); // 100 million nanos
+
+        Timestamp end = new Timestamp(now + 2000);
+        end.setNanos(200000000); // 200 million nanos
+
+        // Test basic interval operations
+        set.add(start, end);
+        assertEquals(1, set.size());
+        assertTrue(set.contains(start));
+        assertTrue(set.contains(end));
+
+        // Test contains with timestamp in between
+        Timestamp middle = new Timestamp(now + 1000);
+        middle.setNanos(150000000);
+        assertTrue(set.contains(middle));
+
+        // Test boundaries
+        Timestamp beforeStart = new Timestamp(start.getTime());
+        beforeStart.setNanos(start.getNanos() - 1);
+        assertFalse(set.contains(beforeStart));
+
+        Timestamp afterEnd = new Timestamp(end.getTime());
+        afterEnd.setNanos(end.getNanos() + 1);
+        assertFalse(set.contains(afterEnd));
+    }
+
+    @Test
+    void testTimestampNanoHandling() {
+        IntervalSet<Timestamp> set = new IntervalSet<>();
+        long baseTime = System.currentTimeMillis();
+
+        Timestamp t1 = new Timestamp(baseTime);
+        t1.setNanos(100000000); // 100 million nanos
+
+        Timestamp t2 = new Timestamp(baseTime + 2);
+        t2.setNanos(200000000); // 200 million nanos on 2ms later
+
+        set.add(t1, t2);
+
+        // Test nano precision boundaries
+        assertTrue(set.contains(t1));
+        assertTrue(set.contains(t2));
+
+        // Test interval splitting with nano precision
+        Timestamp removeStart = new Timestamp(baseTime + 1);
+        removeStart.setNanos(150000000); // 150 million nanos
+
+        set.remove(removeStart, t2);
+
+        List<IntervalSet.Interval<Timestamp>> intervals = set.snapshot();
+        assertEquals(1, intervals.size());
+        assertEquals(t1, intervals.get(0).getStart());
+
+        // Should end at removeStart - 1 nano
+        Timestamp expectedEnd = new Timestamp(removeStart.getTime());
+        expectedEnd.setNanos(removeStart.getNanos() - 1);
+        assertEquals(expectedEnd, intervals.get(0).getEnd());
+    }
+
+    @Test
+    void testOffsetTimeIntervalOperations() {
+        IntervalSet<OffsetTime> set = new IntervalSet<>();
+
+        OffsetTime start = OffsetTime.of(10, 0, 0, 0, java.time.ZoneOffset.UTC);
+        OffsetTime end = start.plusHours(2);
+
+        // Test basic interval operations
+        set.add(start, end);
+        assertEquals(1, set.size());
+        assertTrue(set.contains(start));
+        assertTrue(set.contains(end));
+
+        // Test contains with time in between
+        OffsetTime middle = start.plusHours(1);
+        assertTrue(set.contains(middle));
+
+        // Test boundaries
+        OffsetTime beforeStart = start.minusNanos(1);
+        assertFalse(set.contains(beforeStart));
+
+        OffsetTime afterEnd = end.plusNanos(1);
+        assertFalse(set.contains(afterEnd));
+    }
+
+    @Test
+    void testOffsetTimeNanoPrecision() {
+        IntervalSet<OffsetTime> set = new IntervalSet<>();
+
+        OffsetTime start = OffsetTime.of(14, 30, 45, 123456789, java.time.ZoneOffset.of("+05:00"));
+        OffsetTime end = start.plusMinutes(30);
+
+        set.add(start, end);
+
+        // Test nano precision boundaries
+        assertTrue(set.contains(start));
+        assertTrue(set.contains(end));
+
+        // Test one nano before start
+        OffsetTime justBefore = start.minusNanos(1);
+        assertFalse(set.contains(justBefore));
+
+        // Test one nano after end
+        OffsetTime justAfter = end.plusNanos(1);
+        assertFalse(set.contains(justAfter));
+    }
+
+    @Test
+    void testOffsetTimeRemoveOperations() {
+        IntervalSet<OffsetTime> set = new IntervalSet<>();
+
+        OffsetTime start = OffsetTime.of(9, 0, 0, 0, java.time.ZoneOffset.of("-03:00"));
+        OffsetTime end = start.plusHours(3);
+        OffsetTime removeStart = start.plusMinutes(90); // 1.5 hours
+
         set.add(start, end);
         set.remove(removeStart, end);
-        Duration prev = removeStart.minusNanos(1);
-        List<IntervalSet.Interval<Duration>> intervals = set.snapshot();
-        assertEquals(prev, intervals.get(0).getEnd());
+
+        List<IntervalSet.Interval<OffsetTime>> intervals = set.snapshot();
+        assertEquals(1, intervals.size());
+        assertEquals(start, intervals.get(0).getStart());
+
+        // Should end at removeStart - 1 nano
+        OffsetTime expectedEnd = removeStart.minusNanos(1);
+        assertEquals(expectedEnd, intervals.get(0).getEnd());
+    }
+
+    @Test
+    void testTimestampWithDifferentTimeZones() {
+        IntervalSet<Timestamp> set = new IntervalSet<>();
+
+        // Timestamps are timezone-agnostic, but let's test with different base times
+        Timestamp utcTime = Timestamp.valueOf("2024-01-01 12:00:00.123456789");
+        Timestamp laterTime = Timestamp.valueOf("2024-01-01 14:00:00.987654321");
+
+        set.add(utcTime, laterTime);
+
+        // Test interval contains timestamp between the bounds
+        Timestamp middleTime = Timestamp.valueOf("2024-01-01 13:00:00.555555555");
+        assertTrue(set.contains(middleTime));
+
+        // Test exact boundaries
+        assertTrue(set.contains(utcTime));
+        assertTrue(set.contains(laterTime));
+    }
+
+    @Test
+    void testOffsetTimeWithDifferentOffsets() {
+        IntervalSet<OffsetTime> set = new IntervalSet<>();
+
+        // Note: OffsetTime comparison is based on the actual time instant, accounting for offset
+        OffsetTime time1 = OffsetTime.of(12, 0, 0, 0, java.time.ZoneOffset.of("+02:00"));
+        OffsetTime time2 = OffsetTime.of(14, 0, 0, 0, java.time.ZoneOffset.of("+02:00"));
+
+        set.add(time1, time2);
+
+        // Test with time having same offset
+        OffsetTime middleTime = OffsetTime.of(13, 0, 0, 0, java.time.ZoneOffset.of("+02:00"));
+        assertTrue(set.contains(middleTime));
+
+        // Test boundaries
+        assertTrue(set.contains(time1));
+        assertTrue(set.contains(time2));
+    }
+
+    @Test
+    void testTimestampMergeIntervals() {
+        IntervalSet<Timestamp> set = new IntervalSet<>();
+        long baseTime = System.currentTimeMillis();
+
+        Timestamp t1 = new Timestamp(baseTime);
+        t1.setNanos(0);
+        Timestamp t2 = new Timestamp(baseTime + 1000);
+        t2.setNanos(0);
+
+        Timestamp t3 = new Timestamp(baseTime + 500);
+        t3.setNanos(0);
+        Timestamp t4 = new Timestamp(baseTime + 1500);
+        t4.setNanos(0);
+
+        // Add overlapping intervals
+        set.add(t1, t2);
+        set.add(t3, t4);
+
+        // Should merge into one interval
+        assertEquals(1, set.size());
+
+        List<IntervalSet.Interval<Timestamp>> intervals = set.snapshot();
+        assertEquals(t1, intervals.get(0).getStart());
+        assertEquals(t4, intervals.get(0).getEnd());
+    }
+
+    @Test
+    void testOffsetTimeMergeIntervals() {
+        IntervalSet<OffsetTime> set = new IntervalSet<>();
+
+        OffsetTime start1 = OffsetTime.of(10, 0, 0, 0, java.time.ZoneOffset.UTC);
+        OffsetTime end1 = start1.plusHours(1);
+
+        OffsetTime start2 = start1.plusMinutes(30);
+        OffsetTime end2 = start1.plusMinutes(90);
+
+        // Add overlapping intervals
+        set.add(start1, end1);
+        set.add(start2, end2);
+
+        // Should merge into one interval
+        assertEquals(1, set.size());
+
+        List<IntervalSet.Interval<OffsetTime>> intervals = set.snapshot();
+        assertEquals(start1, intervals.get(0).getStart());
+        assertEquals(end2, intervals.get(0).getEnd());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Tests for nextValue method coverage (OffsetTime and Duration)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void testRemoveTriggersNextValueOffsetTime() {
+        OffsetTime start = OffsetTime.of(10, 0, 0, 0, java.time.ZoneOffset.UTC);
+        OffsetTime end = start.plusHours(2);
+        OffsetTime removeEnd = start.plusMinutes(30);
+        IntervalSet<OffsetTime> set = new IntervalSet<>();
+        set.add(start, end);
+        set.remove(start, removeEnd);
+        
+        OffsetTime expectedStart = removeEnd.plusNanos(1); // nextValue adds 1 nano
+        List<IntervalSet.Interval<OffsetTime>> intervals = set.snapshot();
+        assertEquals(1, intervals.size());
+        assertEquals(expectedStart, intervals.get(0).getStart());
+        assertEquals(end, intervals.get(0).getEnd());
     }
 
     @Test
     void testRemoveTriggersNextValueDuration() {
-        Duration start = Duration.ofSeconds(0);
-        Duration end = Duration.ofSeconds(10);
-        Duration removeEnd = Duration.ofSeconds(5);
+        Duration start = Duration.ofSeconds(10);
+        Duration end = start.plusSeconds(20);
+        Duration removeEnd = start.plusSeconds(5);
         IntervalSet<Duration> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        Duration next = removeEnd.plusNanos(1);
+        
+        Duration expectedStart = removeEnd.plusNanos(1); // nextValue adds 1 nano
         List<IntervalSet.Interval<Duration>> intervals = set.snapshot();
-        assertEquals(next, intervals.get(0).getStart());
+        assertEquals(1, intervals.size());
+        assertEquals(expectedStart, intervals.get(0).getStart());
+        assertEquals(end, intervals.get(0).getEnd());
+    }
+
+    @Test
+    void testRemoveTriggersPreviousValueDuration() {
+        Duration start = Duration.ofSeconds(10);
+        Duration end = start.plusSeconds(20);
+        Duration removeStart = start.plusSeconds(5);
+        IntervalSet<Duration> set = new IntervalSet<>();
+        set.add(start, end);
+        set.remove(removeStart, end);
+        
+        Duration expectedEnd = removeStart.minusNanos(1); // previousValue subtracts 1 nano
+        List<IntervalSet.Interval<Duration>> intervals = set.snapshot();
+        assertEquals(1, intervals.size());
+        assertEquals(start, intervals.get(0).getStart());
+        assertEquals(expectedEnd, intervals.get(0).getEnd());
     }
 }

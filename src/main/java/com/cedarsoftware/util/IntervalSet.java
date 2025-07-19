@@ -18,20 +18,166 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Thread-safe set of non-overlapping closed intervals <b>[start, end]</b> (both start and end inclusive).
+ * Thread-safe set of closed intervals <b>[start, end]</b> (both boundaries inclusive) for any Comparable type.
+ *
+ * <h2>Core Capabilities</h2>
  * <p>
- * •  O(log n) lookup (floor / ceiling in {@link ConcurrentSkipListMap}).
- * •  Intervals are merged on insert and split-safe on removal.
- * •  All reads are lock-free; the single {@link ReentrantLock} only guards the
- * small critical section where the underlying map is mutated or merged.
+ * IntervalSet efficiently manages collections of intervals with the following key features:
+ * </p>
+ * <ul>
+ *   <li><b>O(log n) performance</b> - Uses {@link ConcurrentSkipListMap} for efficient lookups, insertions, and range queries</li>
+ *   <li><b>Thread-safe</b> - Lock-free reads with minimal locking for writes only</li>
+ *   <li><b>Flexible merging behavior</b> - Configurable auto-merge vs. discrete storage modes</li>
+ *   <li><b>Intelligent interval splitting</b> - Automatically splits intervals during removal operations</li>
+ *   <li><b>Rich query API</b> - Comprehensive set of methods for finding, filtering, and navigating intervals</li>
+ *   <li><b>Type-safe boundaries</b> - Supports precise boundary calculations for 20+ built-in types</li>
+ * </ul>
  *
+ * <h2>Auto-Merge vs. Discrete Modes</h2>
+ * <p>
+ * The behavior of interval storage is controlled by the <b>autoMerge</b> flag set during construction:
+ * </p>
+ *
+ * <h3>Auto-Merge Mode (default: {@code autoMerge = true})</h3>
+ * <p>
+ * Overlapping intervals are automatically merged into larger, non-overlapping intervals:
+ * </p>
  * <pre>{@code
- *      IntervalSet<ZonedDateTime> dates = new IntervalSet<>();
- *      dates.add(ZDT.of(...), ZDT.of(...));
+ *   IntervalSet<Integer> set = new IntervalSet<>();  // autoMerge = true by default
+ *   set.add(1, 5);
+ *   set.add(3, 8);    // Merges with [1,5] to create [1,8]
+ *   set.add(10, 15);  // Separate interval since no overlap
+ *   // Result: [1,8], [10,15]
+ * }</pre>
  *
- *      IntervalSet<Long> longs = new IntervalSet<>();
- *      longs.add(100L, 200L);
- *  }</pre>
+ * <h3>Discrete Mode ({@code autoMerge = false})</h3>
+ * <p>
+ * Intervals are stored separately even if they overlap, useful for audit trails, tracking individual
+ * operations, or maintaining historical records:
+ * </p>
+ * <pre>{@code
+ *   IntervalSet<Integer> audit = new IntervalSet<>(false);  // discrete mode
+ *   audit.add(1, 5);     // First verification
+ *   audit.add(3, 8);     // Second verification (overlaps but kept separate)
+ *   audit.add(10, 15);   // Third verification
+ *   // Result: [1,5], [3,8], [10,15] - all intervals preserved for audit purposes
+ * }</pre>
+ *
+ * <p>
+ * <b>Important:</b> Regardless of storage mode, all query APIs ({@link #contains}, {@link #intervalContaining},
+ * navigation methods) work identically - they provide a unified logical view across all stored intervals.
+ * Only the internal storage representation differs.
+ * </p>
+ *
+ * <h2>Primary Client APIs</h2>
+ *
+ * <h3>Basic Operations</h3>
+ * <ul>
+ *   <li>{@link #add(T, T)} - Add an interval [start, end]</li>
+ *   <li>{@link #remove(T, T)} - Remove an interval, splitting existing ones as needed</li>
+ *   <li>{@link #removeExact(T, T)} - Remove only exact interval matches</li>
+ *   <li>{@link #removeRange(T, T)} - Remove a range, trimming overlapping intervals</li>
+ *   <li>{@link #contains(T)} - Test if a value falls within any interval</li>
+ *   <li>{@link #clear()} - Remove all intervals</li>
+ * </ul>
+ *
+ * <h3>Query and Navigation</h3>
+ * <ul>
+ *   <li>{@link #intervalContaining(T)} - Find the interval containing a specific value</li>
+ *   <li>{@link #nextInterval(T)} - Find the next interval at or after a value</li>
+ *   <li>{@link #higherInterval(T)} - Find the next interval strictly after a value</li>
+ *   <li>{@link #previousInterval(T)} - Find the previous interval at or before a value</li>
+ *   <li>{@link #lowerInterval(T)} - Find the previous interval strictly before a value</li>
+ *   <li>{@link #first()} / {@link #last()} - Get the first/last intervals</li>
+ * </ul>
+ *
+ * <h3>Bulk Operations and Iteration</h3>
+ * <ul>
+ *   <li>{@link #asList()} / {@link #snapshot()} - Get all intervals as an immutable list</li>
+ *   <li>{@link #iterator()} - Iterate intervals in ascending order</li>
+ *   <li>{@link #descendingIterator()} - Iterate intervals in descending order</li>
+ *   <li>{@link #getIntervalsInRange(T, T)} - Get intervals within a key range</li>
+ *   <li>{@link #getIntervalsBefore(T)} - Get intervals before a key</li>
+ *   <li>{@link #getIntervalsFrom(T)} - Get intervals from a key onward</li>
+ *   <li>{@link #removeIntervalsInKeyRange(T, T)} - Bulk removal by key range</li>
+ * </ul>
+ *
+ * <h3>Introspection and Utilities</h3>
+ * <ul>
+ *   <li>{@link #size()} / {@link #isEmpty()} - Get count and emptiness state</li>
+ *   <li>{@link #keySet()} / {@link #descendingKeySet()} - Access start keys as NavigableSet</li>
+ *   <li>{@link #totalDuration(java.util.function.BiFunction)} - Compute total duration across intervals</li>
+ * </ul>
+ *
+ * <h2>Supported Types</h2>
+ * <p>
+ * IntervalSet provides intelligent boundary calculation for interval splitting/merging operations
+ * across a wide range of types:
+ * </p>
+ * <ul>
+ *   <li><b>Numeric:</b> Byte, Short, Integer, Long, Float, Double, BigInteger, BigDecimal, AtomicInteger, AtomicLong</li>
+ *   <li><b>Character:</b> Character (Unicode-aware)</li>
+ *   <li><b>Temporal:</b> Date, java.sql.Date, Time, Timestamp, Instant, LocalDate, LocalTime, LocalDateTime,
+ *       ZonedDateTime, OffsetDateTime, OffsetTime, Duration</li>
+ *   <li><b>Custom:</b> Any type implementing Comparable (with manual boundary handling if needed)</li>
+ * </ul>
+ *
+ * <h2>Thread Safety</h2>
+ * <p>
+ * IntervalSet is fully thread-safe with an optimized locking strategy:
+ * </p>
+ * <ul>
+ *   <li><b>Lock-free reads:</b> All query operations (contains, navigation, iteration) require no locking</li>
+ *   <li><b>Minimal write locking:</b> Only mutation operations acquire the internal ReentrantLock</li>
+ *   <li><b>Weakly consistent iteration:</b> Iterators don't throw ConcurrentModificationException</li>
+ * </ul>
+ *
+ * <h2>Common Use Cases</h2>
+ *
+ * <h3>Time Range Management</h3>
+ * <pre>{@code
+ *   IntervalSet<ZonedDateTime> schedule = new IntervalSet<>();
+ *   schedule.add(meeting1Start, meeting1End);
+ *   schedule.add(meeting2Start, meeting2End);
+ *
+ *   if (schedule.contains(proposedMeetingTime)) {
+ *       System.out.println("Time conflict detected");
+ *   }
+ * }</pre>
+ *
+ * <h3>Numeric Range Tracking</h3>
+ * <pre>{@code
+ *   IntervalSet<Long> processedIds = new IntervalSet<>();
+ *   processedIds.add(1000L, 1999L);    // First batch
+ *   processedIds.add(2000L, 2999L);    // Second batch - automatically merges to [1000, 2999]
+ *
+ *   Duration totalWork = processedIds.totalDuration((start, end) ->
+ *       Duration.ofMillis(end - start + 1));
+ * }</pre>
+ *
+ * <h3>Audit Trail with Discrete Mode</h3>
+ * <pre>{@code
+ *   IntervalSet<LocalDate> auditLog = new IntervalSet<>(false);  // Keep all entries
+ *   auditLog.add(verification1Start, verification1End);
+ *   auditLog.add(verification2Start, verification2End);  // Overlaps preserved for audit
+ *
+ *   // Query APIs still work across all intervals
+ *   boolean dateVerified = auditLog.contains(targetDate);
+ * }</pre>
+ *
+ * <h2>Performance Characteristics</h2>
+ * <ul>
+ *   <li><b>Add:</b> O(log n) - May require merging adjacent intervals in auto-merge mode</li>
+ *   <li><b>Remove:</b> O(log n) - May require splitting intervals</li>
+ *   <li><b>Contains:</b> O(log n) - Single floor lookup</li>
+ *   <li><b>Navigation:</b> O(log n) - Leverages NavigableMap operations</li>
+ *   <li><b>Iteration:</b> O(n) - Direct map iteration, no additional overhead</li>
+ * </ul>
+ *
+ * @param <T> the type of interval boundaries, must implement {@link Comparable}
+ * @see ConcurrentSkipListMap
+ * @see NavigableMap
+ * @since 3.7.0
  */
 public class IntervalSet<T extends Comparable<? super T>> implements Iterable<IntervalSet.Interval<T>> {
     /**
@@ -698,10 +844,10 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     /**
      * Returns an iterator over all stored intervals in ascending order by start key.
      * <p>
-     * This iterator is weakly consistent and lock-free, meaning it reflects the state
-     * of the IntervalSet at the time of creation but may not reflect concurrent modifications.
-     * The iterator does not throw {@link java.util.ConcurrentModificationException} and
-     * does not require external synchronization for reading.
+     * This iterator is weakly consistent and lock-free, meaning it reflects live
+     * changes to the IntervalSet as they occur during iteration. The iterator does not throw
+     * {@link java.util.ConcurrentModificationException} and does not require external
+     * synchronization for reading.
      * </p>
      * <p>
      * For strongly consistent iteration that captures a snapshot at call time,
@@ -712,10 +858,20 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     @Override
     public Iterator<Interval<T>> iterator() {
-        return intervals.entrySet()
-                .stream()
-                .map(e -> new Interval<>(e.getKey(), e.getValue()))
-                .iterator();        // zero-copy, weakly consistent
+        return new Iterator<Interval<T>>() {
+            private final Iterator<Map.Entry<T, T>> entryIterator = intervals.entrySet().iterator();
+
+            @Override
+            public boolean hasNext() {
+                return entryIterator.hasNext();
+            }
+
+            @Override
+            public Interval<T> next() {
+                Map.Entry<T, T> entry = entryIterator.next();
+                return new Interval<>(entry.getKey(), entry.getValue());
+            }
+        };
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -805,12 +961,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             }
         }
 
-        // Handle Character
-        if (value instanceof Character) {
-            char c = (Character) value;
-            return (T) Character.valueOf((char) (c - 1));
-        }
-
         // Handle Date and its subclasses
         if (value instanceof Date) {
             if (value instanceof Timestamp) {
@@ -825,9 +975,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             } else if (value instanceof java.sql.Date) {
                 java.sql.Date date = (java.sql.Date) value;
                 return (T) new java.sql.Date(date.getTime() - 86400000L); // minus 1 day in milliseconds
-            } else if (value instanceof java.sql.Time) {
-                java.sql.Time time = (java.sql.Time) value;
-                return (T) new java.sql.Time(time.getTime() - 1);
             } else {
                 Date date = (Date) value;
                 return (T) new Date(date.getTime() - 1);
@@ -851,6 +998,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             } else if (value instanceof OffsetTime) {
                 return (T) ((OffsetTime) value).minusNanos(1);
             }
+        }
+
+        // Handle Character
+        if (value instanceof Character) {
+            char c = (Character) value;
+            return (T) Character.valueOf((char) (c - 1));
         }
 
         // Handle Duration
@@ -928,12 +1081,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             }
         }
 
-        // Handle Character
-        if (value instanceof Character) {
-            char c = (Character) value;
-            return (T) Character.valueOf((char) (c + 1));
-        }
-
         // Handle Date and its subclasses
         if (value instanceof Date) {
             if (value instanceof Timestamp) {
@@ -948,9 +1095,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             } else if (value instanceof java.sql.Date) {
                 java.sql.Date date = (java.sql.Date) value;
                 return (T) new java.sql.Date(date.getTime() + 86400000L); // plus 1 day in milliseconds
-            } else if (value instanceof java.sql.Time) {
-                java.sql.Time time = (java.sql.Time) value;
-                return (T) new java.sql.Time(time.getTime() + 1);
             } else {
                 Date date = (Date) value;
                 return (T) new Date(date.getTime() + 1);
@@ -979,6 +1123,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         // Handle Duration
         if (value instanceof Duration) {
             return (T) ((Duration) value).plusNanos(1);
+        }
+
+        // Handle Character
+        if (value instanceof Character) {
+            char c = (Character) value;
+            return (T) Character.valueOf((char) (c + 1));
         }
 
         throw new UnsupportedOperationException("Cannot compute next value for type " + value.getClass());

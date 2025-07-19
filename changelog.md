@@ -2,6 +2,8 @@
 #### 3.8.0 (Unreleased)
 > * **TEST FIX**: Stabilized `ConcurrentListIteratorTest.testReadFailsGracefullyWhenConcurrentRemoveShrinksList` by
 >   using a latch to reliably detect the expected exception under heavy load
+> * **BUG FIX**: Prevented null elements from appearing in iterator snapshots
+>   of `ConcurrentList` under extreme concurrency
 #### 3.7.0
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:
 >   * **N-Dimensional Array Expansion**: Nested arrays of any depth are automatically flattened recursively into multi-keys with sentinel preservation

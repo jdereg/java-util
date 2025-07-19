@@ -243,7 +243,12 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             for (int i = 0; i < sz; i++) {
                 try {
                     Object element = get(i);
-                    result.add(element);
+                    if (element != null) {
+                        result.add(element);
+                    } else {
+                        // Element vanished due to concurrent removal
+                        break;
+                    }
                 } catch (IndexOutOfBoundsException e) {
                     // List shrunk during iteration - stop here and return what we have
                     break;
@@ -273,7 +278,12 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             for (int i = 0; i < sz; i++) {
                 try {
                     T element = (T) get(i);
-                    result.add(element);
+                    if (element != null) {
+                        result.add(element);
+                    } else {
+                        // Element vanished due to concurrent removal
+                        break;
+                    }
                 } catch (IndexOutOfBoundsException e) {
                     // List shrunk during iteration - stop here and return what we have
                     break;

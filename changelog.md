@@ -1,7 +1,7 @@
 ### Revision History
 #### 3.8.0 (Unreleased)
-> * **MAJOR FEATURE**: Added `IntervalSet` - thread-safe collection of non-overlapping closed intervals:
-    >   * **High Performance**: O(log n) operations using `ConcurrentSkipListMap` for all queries, insertions, and range operations
+> * **MAJOR FEATURE**: Added `IntervalSet` - thread-safe set of closed intervals. Optimized (collapsed) by default, or all intervals retained if `autoMerge=false` (audit mode):
+>   * **High Performance**: O(log n) operations using `ConcurrentSkipListMap` for all queries, insertions, and range operations
 >   * **Dual Storage Modes**: Auto-merge mode (default) merges overlapping intervals; discrete mode preserves all intervals for audit trails
 >   * **Rich Query API**: Navigation methods (`nextInterval`, `previousInterval`, `higherInterval`, `lowerInterval`), containment checking, and range queries
 >   * **Intelligent Boundaries**: Automatic boundary calculations for 20+ types (numeric, temporal, character) enabling precise interval splitting

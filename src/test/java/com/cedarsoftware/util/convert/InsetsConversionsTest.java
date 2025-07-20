@@ -330,13 +330,11 @@ class InsetsConversionsTest {
     // ========================================
 
     @Test
-    void testPointToInsets() {
+    void testPointToInsetsBlocked() {
         Point point = new Point(25, 35);
-        Insets result = converter.convert(point, Insets.class);
-        assertThat(result.top).isEqualTo(25); // x becomes top
-        assertThat(result.left).isEqualTo(35); // y becomes left
-        assertThat(result.bottom).isEqualTo(0); // bottom is 0
-        assertThat(result.right).isEqualTo(0); // right is 0
+        assertThatThrownBy(() -> converter.convert(point, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Point");
     }
 
     @Test
@@ -351,13 +349,11 @@ class InsetsConversionsTest {
     }
 
     @Test
-    void testRectangleToInsets() {
+    void testRectangleToInsetsBlocked() {
         Rectangle rectangle = new Rectangle(5, 10, 100, 200);
-        Insets result = converter.convert(rectangle, Insets.class);
-        assertThat(result.top).isEqualTo(10); // y
-        assertThat(result.left).isEqualTo(5); // x
-        assertThat(result.bottom).isEqualTo(210); // y + height = 10 + 200
-        assertThat(result.right).isEqualTo(105); // x + width = 5 + 100
+        assertThatThrownBy(() -> converter.convert(rectangle, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Rectangle");
     }
 
     // ========================================

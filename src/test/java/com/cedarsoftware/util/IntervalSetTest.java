@@ -227,20 +227,23 @@ class IntervalSetTest {
         set.add(1, 10);
         // removal range fully inside existing interval triggers split
         set.removeRange(3, 7);
-        // Expect two intervals: [1,3] and [7,10]
+        // Expect two intervals: [1,2] and [8,10] (correct boundary behavior)
         assertEquals(2, set.size());
         List<IntervalSet.Interval<Integer>> list = set.snapshot();
         assertEquals(1, list.get(0).getStart());
-        assertEquals(3, list.get(0).getEnd());
-        assertEquals(7, list.get(1).getStart());
+        assertEquals(2, list.get(0).getEnd());
+        assertEquals(8, list.get(1).getStart());
         assertEquals(10, list.get(1).getEnd());
         // Check membership accordingly
+        assertTrue(set.contains(1));
         assertTrue(set.contains(2));
-        assertTrue(set.contains(3));
+        assertFalse(set.contains(3));
         assertFalse(set.contains(4));
         assertFalse(set.contains(5));
         assertFalse(set.contains(6));
-        assertTrue(set.contains(7));
+        assertFalse(set.contains(7));
+        assertTrue(set.contains(8));
+        assertTrue(set.contains(9));
         assertTrue(set.contains(10));
     }
 
@@ -251,19 +254,23 @@ class IntervalSetTest {
         set.add(5, 10);
         // removal range overlaps both intervals, triggers loop-based right shard
         set.removeRange(2, 6);
-        // Expect two intervals: [1,2] and [6,10]
+        // Expect two intervals: [1,1] and [7,10] (correct boundary behavior)
         List<IntervalSet.Interval<Integer>> list = set.snapshot();
         assertEquals(2, list.size());
         assertEquals(1, list.get(0).getStart());
-        assertEquals(2, list.get(0).getEnd());
-        assertEquals(6, list.get(1).getStart());
+        assertEquals(1, list.get(0).getEnd());
+        assertEquals(7, list.get(1).getStart());
         assertEquals(10, list.get(1).getEnd());
         // membership checks
         assertTrue(set.contains(1));
-        assertTrue(set.contains(2));
+        assertFalse(set.contains(2));
         assertFalse(set.contains(3));
+        assertFalse(set.contains(4));
         assertFalse(set.contains(5));
-        assertTrue(set.contains(6));
+        assertFalse(set.contains(6));
+        assertTrue(set.contains(7));
+        assertTrue(set.contains(8));
+        assertTrue(set.contains(9));
         assertTrue(set.contains(10));
     }
 
@@ -981,8 +988,7 @@ class IntervalSetTest {
         set.add(10, 30); // one merged interval
         
         // Remove middle part, should split
-        boolean changed = set.remove(15, 20);
-        assertTrue(changed);
+        set.remove(15, 20);
         assertEquals(2, set.size());
         
         List<IntervalSet.Interval<Integer>> intervals = set.asList();
@@ -998,8 +1004,7 @@ class IntervalSetTest {
         set.add(30, 40);
         
         // Remove overlapping with first two intervals
-        boolean changed = set.remove(17, 18);
-        assertTrue(changed);
+        set.remove(17, 18);
         assertEquals(1, set.size()); // first two removed entirely
         
         List<IntervalSet.Interval<Integer>> intervals = set.asList();
@@ -1017,8 +1022,8 @@ class IntervalSetTest {
         assertEquals(2, set.size());
         
         List<IntervalSet.Interval<Integer>> intervals = set.asList();
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 20)));
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(30, 50)));
+        assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 19)));
+        assertTrue(intervals.contains(new IntervalSet.Interval<>(31, 50)));
     }
 
     @Test
@@ -1668,14 +1673,15 @@ class IntervalSetTest {
         Timestamp end = new Timestamp(now + 2000); // Extended to 2 seconds
         end.setNanos(0);
         Timestamp removeEnd = new Timestamp(now + 500);
-        removeEnd.setNanos(0);
+        removeEnd.setNanos(500000000); // Set to 500ms worth of nanos so nextValue adds to this
         IntervalSet<Timestamp> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        Timestamp next = new Timestamp(removeEnd.getTime());
-        next.setNanos(removeEnd.getNanos() + 1);
+        Timestamp expected = new Timestamp(removeEnd.getTime());
+        expected.setNanos(removeEnd.getNanos() + 1); // Should be 500000001
         List<IntervalSet.Interval<Timestamp>> intervals = set.snapshot();
-        assertEquals(next, intervals.get(0).getStart());
+        Timestamp actualStart = intervals.get(0).getStart();
+        assertEquals(expected, actualStart);
     }
 
     @Test

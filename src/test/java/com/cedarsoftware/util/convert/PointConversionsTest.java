@@ -303,12 +303,11 @@ class PointConversionsTest {
     // ========================================
 
     @Test
-    void testPointToDimension() {
+    void testPointToDimensionBlocked() {
         Point point = new Point(640, 480);
-        Dimension result = converter.convert(point, Dimension.class);
-        
-        assertThat(result.width).isEqualTo(640);
-        assertThat(result.height).isEqualTo(480);
+        assertThatThrownBy(() -> converter.convert(point, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Point");
     }
 
     // ========================================
@@ -328,15 +327,13 @@ class PointConversionsTest {
     // ========================================
 
     @Test
-    void testPointDimensionRoundTrip() {
+    void testPointDimensionRoundTripBlocked() {
         Point originalPoint = new Point(800, 600);
         
-        // Point -> Dimension -> Point
-        Dimension dimension = converter.convert(originalPoint, Dimension.class);
-        Point backToPoint = converter.convert(dimension, Point.class);
-        
-        assertThat(backToPoint.x).isEqualTo(originalPoint.x);
-        assertThat(backToPoint.y).isEqualTo(originalPoint.y);
+        // Point -> Dimension should be blocked
+        assertThatThrownBy(() -> converter.convert(originalPoint, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Point");
     }
 
     @Test

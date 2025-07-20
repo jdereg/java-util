@@ -343,43 +343,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         removeRange(start, end);
     }
 
-    /**
-     * Remove with interval splitting (original behavior for merged intervals).
-     */
-    private boolean removeWithSplitting(T start, T end) {
-        boolean changed = false;
-        List<Map.Entry<T, T>> toAdd = new ArrayList<>();
-        // Iterate over all intervals that may overlap
-        for (Iterator<Map.Entry<T, T>> it = intervals.entrySet().iterator(); it.hasNext(); ) {
-            Map.Entry<T, T> entry = it.next();
-            T s = entry.getKey();
-            T v = entry.getValue();
-            if (v.compareTo(start) < 0 || s.compareTo(end) > 0) {
-                continue; // no overlap
-            }
-            // overlapping interval
-            changed = true;
-            it.remove();
-            // left part
-            if (s.compareTo(start) < 0) {
-                T leftEnd = previousValue(start);
-                if (s.compareTo(leftEnd) <= 0) {
-                    toAdd.add(new AbstractMap.SimpleEntry<>(s, leftEnd));
-                }
-            }
-            // right part
-            if (v.compareTo(end) > 0) {
-                T rightStart = nextValue(end);
-                if (rightStart.compareTo(v) <= 0) {
-                    toAdd.add(new AbstractMap.SimpleEntry<>(rightStart, v));
-                }
-            }
-        }
-        for (Map.Entry<T, T> ne : toAdd) {
-            intervals.put(ne.getKey(), ne.getValue());
-        }
-        return changed;
-    }
 
     /**
      * Remove discrete intervals that overlap with the removal range.

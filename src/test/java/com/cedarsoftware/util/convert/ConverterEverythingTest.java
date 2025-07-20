@@ -5457,6 +5457,24 @@ class ConverterEverythingTest {
             {new int[]{0, 0, 255}, new Color(0, 0, 255), false},         // Blue RGB array (one-way)
             {new int[]{255, 0, 0, 128}, new Color(255, 0, 0, 128), false}, // Red RGBA array (one-way)
         });
+        
+        // int[] to geometric type conversions
+        TEST_DB.put(pair(int[].class, Dimension.class), new Object[][]{
+            {new int[]{800, 600}, new Dimension(800, 600)}, // int array to Dimension [width, height]
+            {new int[]{1920, 1080}, new Dimension(1920, 1080)}, // HD dimensions
+        });
+        TEST_DB.put(pair(int[].class, Insets.class), new Object[][]{
+            {new int[]{10, 20, 30, 40}, new Insets(10, 20, 30, 40)}, // int array to Insets [top, left, bottom, right]
+            {new int[]{5, 15, 25, 35}, new Insets(5, 15, 25, 35)}, // int array to Insets
+        });
+        TEST_DB.put(pair(int[].class, Point.class), new Object[][]{
+            {new int[]{100, 200}, new Point(100, 200)}, // int array to Point [x, y]
+            {new int[]{50, 75}, new Point(50, 75)}, // int array to Point
+        });
+        TEST_DB.put(pair(int[].class, Rectangle.class), new Object[][]{
+            {new int[]{10, 20, 100, 200}, new Rectangle(10, 20, 100, 200)}, // int array to Rectangle [x, y, width, height]
+            {new int[]{50, 75, 300, 400}, new Rectangle(50, 75, 300, 400)}, // int array to Rectangle
+        });
 
         TEST_DB.put(pair(Map.class, Color.class), new Object[][]{
             {mapOf("red", 255, "green", 0, "blue", 0), new Color(255, 0, 0), false},         // RGB map (one-way)
@@ -5490,8 +5508,12 @@ class ConverterEverythingTest {
             {new Color(255, 0, 0), new Color(255, 0, 0)}, // Red color identity
             {new Color(0, 255, 0), new Color(0, 255, 0)}, // Green color identity
         });
-        // Note: Color to int[] conversion pair exists in CONVERSION_DB but is not tested here
-        // due to array comparison issues in test framework
+        TEST_DB.put(pair(Color.class, int[].class), new Object[][]{
+            {new Color(255, 0, 0), new int[]{255, 0, 0}}, // Red color to RGB array
+            {new Color(0, 255, 0), new int[]{0, 255, 0}}, // Green color to RGB array
+            {new Color(0, 0, 255), new int[]{0, 0, 255}}, // Blue color to RGB array
+            {new Color(255, 128, 64, 192), new int[]{255, 128, 64, 192}}, // RGBA color to RGBA array
+        });
         TEST_DB.put(pair(Color.class, long.class), new Object[][]{
             {new Color(255, 0, 0), -65536L}, // Red color to ARGB long
             {new Color(0, 0, 255), -16776961L}, // Blue color to ARGB long
@@ -5635,6 +5657,16 @@ class ConverterEverythingTest {
             {mapOf("x", 0, "y", 0), new Point(0, 0)}, // Map to origin point
         });
         
+        // Point conversions to arrays only (legitimate conversions)
+        TEST_DB.put(pair(Point.class, int[].class), new Object[][]{
+            {new Point(100, 200), new int[]{100, 200}}, // Point to int array [x, y]
+            {new Point(50, 75), new int[]{50, 75}}, // Point to int array [x, y]
+        });
+        
+        TEST_DB.put(pair(Insets.class, int[].class), new Object[][]{
+            {new Insets(10, 20, 30, 40), new int[]{10, 20, 30, 40}}, // Standard insets to int array
+            {new Insets(5, 10, 15, 20), new int[]{5, 10, 15, 20}}, // Different insets to int array
+        });
         TEST_DB.put(pair(Insets.class, Map.class), new Object[][]{
             {new Insets(10, 20, 30, 40), mapOf("top", 10, "left", 20, "bottom", 30, "right", 40)}, // Insets to Map
             {new Insets(5, 10, 15, 20), mapOf("top", 5, "left", 10, "bottom", 15, "right", 20)}, // Insets to Map
@@ -5657,6 +5689,12 @@ class ConverterEverythingTest {
             {mapOf("x", 0, "y", 0, "width", 0, "height", 0), new Rectangle(0, 0, 0, 0)}, // Map to empty rectangle
         });
         
+        // Rectangle conversions to arrays only (legitimate conversions)
+        TEST_DB.put(pair(Rectangle.class, int[].class), new Object[][]{
+            {new Rectangle(10, 20, 100, 200), new int[]{10, 20, 100, 200}}, // Rectangle to int array [x, y, width, height]
+            {new Rectangle(50, 75, 300, 400), new int[]{50, 75, 300, 400}}, // Rectangle to int array [x, y, width, height]
+        });
+        
         TEST_DB.put(pair(Dimension.class, Map.class), new Object[][]{
             {new Dimension(800, 600), mapOf("width", 800, "height", 600)}, // Dimension to Map
             {new Dimension(1920, 1080), mapOf("width", 1920, "height", 1080)}, // Dimension to Map
@@ -5667,6 +5705,42 @@ class ConverterEverythingTest {
             {mapOf("width", 1920, "height", 1080), new Dimension(1920, 1080)}, // Map to Dimension
             {mapOf("width", 0, "height", 0), new Dimension(0, 0)}, // Map to zero dimension
         });
+        
+        // File I/O conversions (corrected based on actual converter behavior)
+        TEST_DB.put(pair(File.class, byte[].class), new Object[][]{
+            {new File("/dev/null"), "/dev/null".getBytes()}, // File path to byte array
+        });
+        TEST_DB.put(pair(File.class, char[].class), new Object[][]{
+            {new File("/dev/null"), "/dev/null".toCharArray()}, // File path to char array
+        });
+        TEST_DB.put(pair(File.class, Map.class), new Object[][]{
+            {new File("/tmp/test.txt"), mapOf("file", "/tmp/test.txt")}, // File to Map (uses "file" key)
+        });
+        TEST_DB.put(pair(Map.class, File.class), new Object[][]{
+            {mapOf("file", "/tmp/test.txt"), new File("/tmp/test.txt")}, // Map to File (expects "file" key)
+        });
+        
+        // Path I/O conversions (corrected based on actual converter behavior)
+        TEST_DB.put(pair(Map.class, Path.class), new Object[][]{
+            {mapOf("path", "/tmp/test.txt"), Paths.get("/tmp/test.txt")}, // Map to Path
+        });
+        TEST_DB.put(pair(Path.class, byte[].class), new Object[][]{
+            {Paths.get("/dev/null"), "/dev/null".getBytes()}, // Path to byte array (path string)
+        });
+        TEST_DB.put(pair(Path.class, char[].class), new Object[][]{
+            {Paths.get("/dev/null"), "/dev/null".toCharArray()}, // Path to char array (path string)
+        });
+        TEST_DB.put(pair(Path.class, Map.class), new Object[][]{
+            {Paths.get("/tmp/test.txt"), mapOf("path", "/tmp/test.txt")}, // Path to Map
+        });
+        
+        // long to Instant conversion
+        TEST_DB.put(pair(long.class, Instant.class), new Object[][]{
+            {1000L, Instant.ofEpochMilli(1000L)}, // long to Instant (epoch milliseconds)
+            {0L, Instant.ofEpochMilli(0L)}, // Unix epoch
+        });
+        
+        // Record to Map conversion - requires JDK 14+ (not available in JDK 8)
 
         // File/Path Identity and Cross conversions (skip JsonIo due to serialization issues)
         TEST_DB.put(pair(File.class, File.class), new Object[][]{
@@ -5743,8 +5817,10 @@ class ConverterEverythingTest {
         // Dimension to numeric primitives
 
         // Dimension to collections
-        // Note: Dimension to int[] conversion pair exists in CONVERSION_DB but is not tested here
-        // due to array comparison issues in test framework
+        TEST_DB.put(pair(Dimension.class, int[].class), new Object[][]{
+            {new Dimension(800, 600), new int[]{800, 600}}, // Standard dimension to int array
+            {new Dimension(1920, 1080), new int[]{1920, 1080}}, // HD dimension to int array
+        });
         TEST_DB.put(pair(Dimension.class, Map.class), new Object[][]{
             {new Dimension(800, 600), mapOf("width", 800, "height", 600)}, // Standard width/height map
         });

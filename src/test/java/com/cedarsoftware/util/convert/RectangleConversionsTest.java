@@ -276,13 +276,11 @@ class RectangleConversionsTest {
     // ========================================
 
     @Test
-    void testPointToRectangle() {
+    void testPointToRectangleBlocked() {
         Point point = new Point(50, 75);
-        Rectangle result = converter.convert(point, Rectangle.class);
-        assertThat(result.x).isEqualTo(50);
-        assertThat(result.y).isEqualTo(75);
-        assertThat(result.width).isEqualTo(0);
-        assertThat(result.height).isEqualTo(0);
+        assertThatThrownBy(() -> converter.convert(point, Rectangle.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Point");
     }
 
     @Test
@@ -409,30 +407,22 @@ class RectangleConversionsTest {
     // ========================================
 
     @Test
-    void testRectanglePointRoundTrip() {
+    void testRectanglePointRoundTripBlocked() {
         Rectangle originalRectangle = new Rectangle(30, 40, 0, 0);
         
-        // Rectangle -> Point -> Rectangle
-        Point point = converter.convert(originalRectangle, Point.class);
-        Rectangle backToRectangle = converter.convert(point, Rectangle.class);
-        
-        assertThat(backToRectangle.x).isEqualTo(originalRectangle.x);
-        assertThat(backToRectangle.y).isEqualTo(originalRectangle.y);
-        assertThat(backToRectangle.width).isEqualTo(0);
-        assertThat(backToRectangle.height).isEqualTo(0);
+        // Rectangle -> Point should be blocked
+        assertThatThrownBy(() -> converter.convert(originalRectangle, Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Rectangle");
     }
 
     @Test
-    void testRectangleDimensionRoundTrip() {
+    void testRectangleDimensionRoundTripBlocked() {
         Rectangle originalRectangle = new Rectangle(0, 0, 120, 80);
         
-        // Rectangle -> Dimension -> Rectangle  
-        Dimension dimension = converter.convert(originalRectangle, Dimension.class);
-        Rectangle backToRectangle = converter.convert(dimension, Rectangle.class);
-        
-        assertThat(backToRectangle.x).isEqualTo(0);
-        assertThat(backToRectangle.y).isEqualTo(0);
-        assertThat(backToRectangle.width).isEqualTo(originalRectangle.width);
-        assertThat(backToRectangle.height).isEqualTo(originalRectangle.height);
+        // Rectangle -> Dimension should be blocked
+        assertThatThrownBy(() -> converter.convert(originalRectangle, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Rectangle");
     }
 }

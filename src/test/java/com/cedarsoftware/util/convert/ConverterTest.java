@@ -4483,9 +4483,6 @@ class ConverterTest
         String s1 = converter.convert(new Point(10, 20), String.class);
         assertEquals("(10,20)", s1);
         
-        // Test Point to Dimension conversion - x,y becomes width,height ✅
-        Dimension d1 = converter.convert(new Point(10, 20), Dimension.class);
-        assertEquals(new Dimension(10, 20), d1);
         
         // Test Point to Map
         Map<?, ?> m1 = converter.convert(new Point(10, 20), Map.class);

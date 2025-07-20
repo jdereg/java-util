@@ -233,7 +233,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private volatile Object[] buckets;  // Array of MultiKey<V>[] (or null), Collection, String[] (typed array)
     private final AtomicInteger atomicSize = new AtomicInteger(0);
-    private volatile int size = 0;
     private volatile int maxChainLength = 0;
     private final float loadFactor;
     private final CollectionKeyMode collectionKeyMode;
@@ -1347,7 +1346,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (chain == null) {
             chain = createChain(newKey);
             buckets[bucketIndex] = chain;
-            size = atomicSize.incrementAndGet(); // Update volatile field for backward compatibility
+            atomicSize.incrementAndGet();
 
             if (1 > maxChainLength) {
                 maxChainLength = 1;
@@ -1369,7 +1368,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         chain = growChain(chain, newKey);
         buckets[bucketIndex] = chain;
-        size = atomicSize.incrementAndGet(); // Update volatile field for backward compatibility
+        atomicSize.incrementAndGet();
 
         if (chain.length > maxChainLength) {
             maxChainLength = chain.length;
@@ -1404,7 +1403,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
 
             oldValue = putInternalNoLock(newKey);
-            resizeNeeded = size > buckets.length * loadFactor;
+            resizeNeeded = atomicSize.get() > buckets.length * loadFactor;
         } finally {
             lock.unlock();
         }
@@ -1929,7 +1928,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Returns the current load factor.
      */
     public double getLoadFactor() {
-        return (double) size / buckets.length;
+        return (double) atomicSize.get() / buckets.length;
     }
 
     /**
@@ -2032,7 +2031,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Returns true if this map contains no key-value mappings.
      */
     public boolean isEmpty() {
-        return size == 0;
+        return atomicSize.get() == 0;
     }
 
     /**
@@ -2642,7 +2641,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         withAllStripeLocks(() -> {
             Arrays.fill(buckets, null);
             atomicSize.set(0);
-            size = 0; // Update volatile field for backward compatibility
             maxChainLength = 0;
         });
     }
@@ -2968,7 +2966,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private void resize() {
         withAllStripeLocks(() -> {
             // Check if another thread already resized while we were waiting for locks
-            double currentLoadFactor = (double) size / buckets.length;
+            double currentLoadFactor = (double) atomicSize.get() / buckets.length;
             if (currentLoadFactor <= loadFactor) {
                 return; // Another thread already resized
             }
@@ -2996,7 +2994,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
             buckets = newBuckets;
             atomicSize.set(newSize);
-            size = newSize; // Update volatile field for backward compatibility
             maxChainLength = newMaxChainLength;
         });
     }
@@ -3039,8 +3036,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     buckets[bucketIndex] = newChain;
                 }
 
-                int newSize = atomicSize.decrementAndGet();
-                size = newSize; // Update volatile field for backward compatibility
+                atomicSize.decrementAndGet();
 
                 return entry.value;
             }

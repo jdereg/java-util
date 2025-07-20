@@ -35,13 +35,13 @@ import java.util.logging.Logger;
  * <h3>Key Features:</h3>
  * <ul>
  *   <li><b>N-Dimensional Keys:</b> Support for keys with any number of components (1, 2, 3, ... N).</li>
- *   <li><b>High Performance:</b> Zero\-allocation polymorphic storage and optimized hash computation — no GC/heap used for "gets".</li>
- *   <li><b>Thread\-Safe:</b> Lock\-free reads with auto\-tuned stripe locking that scales with your server, similar to ConcurrentHashMap.</li>
- *   <li><b>Map Interface Compatible:</b> Supports single\-key operations via the standard Map interface (get()/put()
- *       automatically unpack Collections/Arrays (typed or Object[]) into multi\-keys).</li>
- *   <li><b>Flexible API:</b> Var-args methods for convenient multi\-key operations (getMultiKey()/putMultiKey() with many keys).</li>
+ *   <li><b>High Performance:</b> Zero-allocation polymorphic storage and optimized hash computation — no GC/heap used for "gets".</li>
+ *   <li><b>Thread-Safe:</b> Lock-free reads with auto-tuned stripe locking that scales with your server, similar to ConcurrentHashMap.</li>
+ *   <li><b>Map Interface Compatible:</b> Supports single-key operations via the standard Map interface (get()/put()
+ *       automatically unpack Collections/Arrays (typed or Object[]) into multi-keys).</li>
+ *   <li><b>Flexible API:</b> Var-args methods for convenient multi-key operations (getMultiKey()/putMultiKey() with many keys).</li>
  *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections — change the default automatic unpacking capability as needed.</li>
- *   <li><b>N-Dimensional Array Expansion:</b> Nested arrays of any depth are automatically flattened recursively into multi\-keys.</li>
+ *   <li><b>N-Dimensional Array Expansion:</b> Nested arrays of any depth are automatically flattened recursively into multi-keys.</li>
  * </ul>
  *
  * <h3>Usage Examples:</h3>
@@ -169,8 +169,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Bracket markers used in MultiKeyMap expansion to represent structural boundaries.
      * These string literals are used instead of sentinel objects for cleaner, human-readable output.
      *
-     * <p>When MultiKeyMap expands an n-dimensional array or collection, it uses literal "[" and "]"
-     * strings to mark structural boundaries. This approach:</p>
+     * <p>When MultiKeyMap expands an n-dimensional array or collection, it uses literals for
+     * open and close to mark structural boundaries. This approach:</p>
      * <ul>
      *   <li>Makes debug output human-readable</li>
      *   <li>Unifies arrays and collections (both use same brackets)</li>
@@ -184,6 +184,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * → ["[", "[", "a", "b", "]", "[", "c", "d", "]", "]"]
      *
      * When flattenDimensions=true:
+     * Note: It doesn't actually use "[" and "]" but instead a sentinel value that means the same thing (but won't
+     * collide with common value like "[" or "]".
      * → ["a", "b", "c", "d"]  // Brackets skipped
      * </pre>
      */

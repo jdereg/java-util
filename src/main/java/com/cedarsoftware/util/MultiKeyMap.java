@@ -1,10 +1,9 @@
 package com.cedarsoftware.util;
 
 import java.lang.ref.Reference;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -464,9 +463,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         int hash = 1;
         if (keys instanceof Object[]) {
-            Object[] array = (Object[]) keys;
             // Use index-based loop to avoid Iterator allocation overhead
-            for (Object o : array) {
+            for (Object o : (Object[])keys) {
                 hash = hash * 31 + computeElementHash(o);
             }
         } else if (keys instanceof Collection) {
@@ -491,9 +489,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Use identity hash for objects where identity is more important than equality.
         // These types can have identical hashCode() values for different instances,
         // but we want to distinguish them by object identity in the map.
-        if (key instanceof Class ||                              // Different classes with same name
-                key instanceof Executable ||                        // Method/Constructor from different classes
-                key instanceof Field ||                             // Same field name from different classes
+        if (key instanceof Class ||                                 // Different classes with same name
+                key instanceof AccessibleObject ||                  // Method/Constructor from different classes
                 key instanceof ClassLoader ||                       // Different classloader instances
                 key instanceof Reference ||                         // Reference identity vs referent
                 key instanceof Thread) {                            // Thread identity vs thread properties
@@ -1187,8 +1184,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // For identity-based types, use identity comparison for consistency with getKeyHash().
         // These are the same types that use System.identityHashCode() in getKeyHash().
         if ((k1 instanceof Class && k2 instanceof Class) ||
-                (k1 instanceof Executable && k2 instanceof Executable) ||
-                (k1 instanceof Field && k2 instanceof Field) ||
+                (k1 instanceof Executable && k2 instanceof AccessibleObject) ||
                 (k1 instanceof ClassLoader && k2 instanceof ClassLoader) ||
                 (k1 instanceof Reference && k2 instanceof Reference) ||
                 (k1 instanceof Thread && k2 instanceof Thread)) {
@@ -1330,7 +1326,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         return putInternalCommon(newKey);
     }
-
 
     /**
      * No-lock version of put operation for use within stripe locks.
@@ -1644,207 +1639,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Simple element - just add it
         result.add(current);
-    }
-
-    /**
-     * Converts any array or collection into a 1D representation with sentinels for structure preservation.
-     * This method handles jagged n-dimensional arrays and polymorphic collections seamlessly.
-     *
-     * <p>Key behaviors:</p>
-     * <ul>
-     *   <li>1D String[] → returns same array unchanged</li>
-     *   <li>1D int[] → returns same array unchanged</li>
-     *   <li>1D Object[] → returns same array unchanged (unless containing nested structures)</li>
-     *   <li>Multi-dimensional arrays → flattened Object[] with LEVEL_DOWN/LEVEL_UP sentinels</li>
-     *   <li>Collections → converted to array then processed</li>
-     *   <li>Collections containing arrays → fully expanded with sentinels</li>
-     * </ul>
-     *
-     * @param arrayOrCollection the array, collection, or single object to process
-     * @return 1D representation (Object[] for multi-dimensional, original type for 1D arrays)
-     */
-    public static Object get1DKey(Object arrayOrCollection) {
-        return get1DKey(arrayOrCollection, CollectionKeyMode.COLLECTIONS_EXPANDED);
-    }
-
-    /**
-     * Converts any array or collection into a 1D representation with sentinels for structure preservation.
-     * This method handles jagged n-dimensional arrays and polymorphic collections seamlessly.
-     *
-     * @param arrayOrCollection the array, collection, or single object to process
-     * @param collectionKeyMode how to handle Collections (EXPANDED or NOT_EXPANDED)
-     * @return 1D representation (Object[] for multi-dimensional, original type for 1D arrays, or original Collection if not expanded)
-     */
-    public static Object get1DKey(Object arrayOrCollection, CollectionKeyMode collectionKeyMode) {
-        if (arrayOrCollection == null) {
-            return new Object[]{null};
-        }
-
-        // Handle Collections based on CollectionKeyMode
-        if (arrayOrCollection instanceof Collection) {
-            Collection<?> collection = (Collection<?>) arrayOrCollection;
-
-            if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-                // Return collection as-is (single key)
-                return collection;
-            } else {
-                // COLLECTIONS_EXPANDED - convert to array and process
-                if (collection.isEmpty()) {
-                    return new Object[0];
-                }
-                Object[] arrayFromCollection = collection.toArray();
-                // Recursively process the resulting array (continue with expansion logic)
-                return get1DKey(arrayFromCollection, collectionKeyMode);
-            }
-        }
-
-        // If not an array, return single-element array
-        if (!arrayOrCollection.getClass().isArray()) {
-            return new Object[]{arrayOrCollection};
-        }
-
-        // Check if it's a 1D array of primitives or objects
-        Class<?> componentType = arrayOrCollection.getClass().getComponentType();
-        if (!componentType.isArray()) {
-            // 1D array - check if it contains nested structures for Object[] only
-            if (arrayOrCollection instanceof Object[]) {
-                Object[] objArray = (Object[]) arrayOrCollection;
-                // Check if any element is an array or collection (making it effectively multi-dimensional)
-                for (Object element : objArray) {
-                    if (element != null && (element.getClass().isArray() || element instanceof Collection)) {
-                        // Contains nested structures, need expansion with brackets
-                        Object[] expanded = expandMultiDimensionalArray(arrayOrCollection);
-                        return expanded;
-                    }
-                }
-                // Pure 1D Object[] - return as-is
-                return objArray;
-            } else {
-                // All other 1D arrays (String[], int[], double[], etc.) - return as-is
-                return arrayOrCollection;
-            }
-        }
-
-        // Multi-dimensional array - use full expansion with sentinels
-        return expandMultiDimensionalArray(arrayOrCollection);
-    }
-
-    /**
-     * Computes SHA-1 hash from a 1D key (typically returned by get1DKey).
-     * Handles Object[], typed arrays, sentinels and object serialization appropriately.
-     *
-     * @param key1D the 1D key to hash (can be Object[] or typed array like int[])
-     * @return SHA-1 hash string with "sha1:" prefix
-     */
-    public static String computeSHA1Hash(Object key1D) {
-        if (key1D == null) {
-            return "sha1:" + EncryptionUtilities.calculateSHA1Hash(new byte[0]);
-        }
-
-        // Handle typed arrays by converting to Object[] for processing
-        Object[] keyArray;
-        if (key1D.getClass().isArray()) {
-            if (key1D instanceof Object[]) {
-                keyArray = (Object[]) key1D;
-            } else {
-                // Convert typed array to Object[]
-                final int len = Array.getLength(key1D);
-                keyArray = new Object[len];
-
-                for (int i = 0; i < len; i++) {
-                    keyArray[i] = Array.get(key1D, i);
-                }
-            }
-        } else {
-            // Single object
-            keyArray = new Object[]{key1D};
-        }
-
-        if (keyArray.length == 0) {
-            return "sha1:" + EncryptionUtilities.calculateSHA1Hash(new byte[0]);
-        }
-
-        // Build a deterministic string representation of the key sequence
-        StringBuilder keySequence = new StringBuilder();
-
-        // Optimized format - level numbers are embedded directly (no parsing needed!)
-        final int len = keyArray.length;
-
-        for (int i = 0; i < len; i++) {
-            if (i > 0) {
-                keySequence.append("|"); // Separator to avoid collisions
-            }
-            Object key = keyArray[i];
-            if (key == null) {
-                keySequence.append("NULL");
-            } else if (BRACKET_OPEN.equals(key)) {
-                keySequence.append(BRACKET_OPEN); // Include opening bracket
-            } else if (BRACKET_CLOSE.equals(key)) {
-                keySequence.append(BRACKET_CLOSE); // Include closing bracket
-            } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
-                // Primitives and Numbers: use toString() - deterministic
-                keySequence.append(key);
-            } else {
-                // Complex objects: smart handling
-                String str = key.toString();
-                if (str.contains("@") && str.matches(".*@[0-9a-fA-F]+$")) {
-                    // Looks like default Object.toString() format (ClassName@hashCode)
-                    // Use class name + hashCode for SHA-1 input
-                    keySequence.append(key.getClass().getName()).append(":").append(key.hashCode());
-                } else {
-                    // Custom toString() - trust it, but include class name for safety
-                    keySequence.append(key.getClass().getName()).append(":").append(str);
-                }
-            }
-        }
-
-        // Use EncryptionUtilities for SHA-1 hashing
-        byte[] keyBytes = keySequence.toString().getBytes(StandardCharsets.UTF_8);
-        return "sha1:" + EncryptionUtilities.calculateSHA1Hash(keyBytes);
-    }
-    
-    /**
-     * Expands arrays within a sequence of keys. Each element in the keys array
-     * that is itself an array gets expanded and all elements are flattened into
-     * a single sequence.
-     *
-     * @param keys Array of key components that may contain nested arrays
-     * @return Flattened array with all nested arrays expanded
-     */
-    private static Object[] expandArraysInKeySequence(Object[] keys) {
-        if (keys == null || keys.length == 0) {
-            return keys;
-        }
-
-        List<Object> result = new ArrayList<>();
-
-        for (Object key : keys) {
-            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-                // Expand this nested array/collection
-                Object[] expanded = expandMultiDimensionalArray(key);
-
-                // Check if this container is flat (no brackets) 
-                boolean isFlat = expanded.length == 0 || !BRACKET_OPEN.equals(expanded[0]);
-
-                if (isFlat && keys.length > 1) {
-                    // Add container boundary markers for flat containers in multi-container sequences
-                    // This preserves structural information that multiple containers existed
-                    result.add(1); // Level 1 START marker
-                    result.addAll(Arrays.asList(expanded));
-                    result.add(1); // Level 1 END marker
-                } else {
-                    // Container is either nested (already has sentinels) or single container - add as-is
-                    result.addAll(Arrays.asList(expanded));
-                }
-            } else {
-                // Add non-array/non-collection elements directly
-                result.add(key);
-            }
-        }
-
-        // If we added container boundary markers, no leading sentinel needed with bracket system
-
-        return result.toArray(new Object[0]);
     }
 
     /**

@@ -106,14 +106,14 @@ final class DimensionConversions {
     }
 
     /**
-     * Convert Dimension to BigDecimal (area).
+     * Unsupported conversion from Dimension to BigDecimal.
      * @param from Dimension instance
      * @param converter Converter instance
-     * @return BigDecimal representation of area
+     * @return Never returns - throws exception
+     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
      */
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        Dimension dimension = (Dimension) from;
-        return BigDecimal.valueOf((long) dimension.width * dimension.height);
+        throw new IllegalArgumentException("Unsupported conversion from Dimension to BigDecimal - no meaningful conversion exists.");
     }
 
     /**
@@ -147,6 +147,18 @@ final class DimensionConversions {
     static java.util.concurrent.atomic.AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
         return new java.util.concurrent.atomic.AtomicBoolean(toBoolean(from, converter));
     }
+
+    /**
+     * Unsupported conversion from Dimension to AtomicLong.
+     * @param from Dimension instance
+     * @param converter Converter instance
+     * @return Never returns - throws exception
+     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
+     */
+    static java.util.concurrent.atomic.AtomicLong toAtomicLong(Object from, Converter converter) {
+        throw new IllegalArgumentException("Unsupported conversion from Dimension to AtomicLong - no meaningful conversion exists.");
+    }
+
 
     /**
      * Convert Dimension to Rectangle (size becomes dimensions, position is 0,0).

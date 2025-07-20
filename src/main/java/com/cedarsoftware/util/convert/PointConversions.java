@@ -106,14 +106,14 @@ final class PointConversions {
     }
 
     /**
-     * Convert Point to BigDecimal (x value).
+     * Unsupported conversion from Point to BigDecimal.
      * @param from Point instance
      * @param converter Converter instance
-     * @return BigDecimal representation of x coordinate
+     * @return Never returns - throws exception
+     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
      */
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        Point point = (Point) from;
-        return BigDecimal.valueOf(point.x);
+        throw new IllegalArgumentException("Unsupported conversion from Point to BigDecimal - no meaningful conversion exists.");
     }
 
     /**
@@ -169,4 +169,5 @@ final class PointConversions {
         Point point = (Point) from;
         return new Insets(point.x, point.y, 0, 0);
     }
+
 }

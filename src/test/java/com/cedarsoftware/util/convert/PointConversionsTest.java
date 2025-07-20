@@ -198,12 +198,6 @@ class PointConversionsTest {
             .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
-    @Test
-    void testBigDecimalToPoint() {
-        Point result = converter.convert(BigDecimal.valueOf(850), Point.class);
-        assertThat(result.x).isEqualTo(850);
-        assertThat(result.y).isEqualTo(850);
-    }
 
     @Test
     void testAtomicIntegerToPointBlocked() {

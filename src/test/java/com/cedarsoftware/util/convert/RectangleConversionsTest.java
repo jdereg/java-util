@@ -228,14 +228,6 @@ class RectangleConversionsTest {
             .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
-    @Test
-    void testBigDecimalToRectangle() {
-        Rectangle result = converter.convert(BigDecimal.valueOf(144), Rectangle.class);
-        assertThat(result.x).isEqualTo(0);
-        assertThat(result.y).isEqualTo(0);
-        assertThat(result.width).isEqualTo(12); // sqrt(144) = 12
-        assertThat(result.height).isEqualTo(12);
-    }
 
     @Test
     void testAtomicIntegerToRectangleBlocked() {

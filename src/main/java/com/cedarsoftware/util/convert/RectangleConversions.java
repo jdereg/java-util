@@ -108,14 +108,14 @@ final class RectangleConversions {
     }
 
     /**
-     * Convert Rectangle to BigDecimal (area: width * height).
+     * Unsupported conversion from Rectangle to BigDecimal.
      * @param from Rectangle instance
      * @param converter Converter instance
-     * @return BigDecimal representation of area
+     * @return Never returns - throws exception
+     * @throws IllegalArgumentException Always thrown to indicate unsupported conversion
      */
     static BigDecimal toBigDecimal(Object from, Converter converter) {
-        Rectangle rectangle = (Rectangle) from;
-        return BigDecimal.valueOf((long) rectangle.width * rectangle.height);
+        throw new IllegalArgumentException("Unsupported conversion from Rectangle to BigDecimal - no meaningful conversion exists.");
     }
 
     /**
@@ -173,4 +173,5 @@ final class RectangleConversions {
                          rectangle.y + rectangle.height, 
                          rectangle.x + rectangle.width);
     }
+
 }

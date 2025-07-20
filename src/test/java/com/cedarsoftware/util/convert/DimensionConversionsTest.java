@@ -199,12 +199,6 @@ class DimensionConversionsTest {
             .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
-    @Test
-    void testBigDecimalToDimension() {
-        Dimension result = converter.convert(BigDecimal.valueOf(400), Dimension.class);
-        assertThat(result.width).isEqualTo(400);
-        assertThat(result.height).isEqualTo(400);
-    }
 
     @Test
     void testAtomicIntegerToDimensionBlocked() {

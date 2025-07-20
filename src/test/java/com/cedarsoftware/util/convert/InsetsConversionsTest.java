@@ -282,14 +282,6 @@ class InsetsConversionsTest {
             .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
-    @Test
-    void testBigDecimalToInsets() {
-        Insets result = converter.convert(BigDecimal.valueOf(8), Insets.class);
-        assertThat(result.top).isEqualTo(8);
-        assertThat(result.left).isEqualTo(8);
-        assertThat(result.bottom).isEqualTo(8);
-        assertThat(result.right).isEqualTo(8);
-    }
 
     @Test
     void testAtomicIntegerToInsetsBlocked() {

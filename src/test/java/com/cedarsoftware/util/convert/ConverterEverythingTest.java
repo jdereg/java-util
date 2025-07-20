@@ -271,6 +271,8 @@ class ConverterEverythingTest {
         loadPatternTests();
         loadColorTests();
         loadDimensionTests();
+        loadFileTests();
+        loadPathTests();
         loadAtomicArrayTests();
         loadBitSetTests();
         loadBufferTests();
@@ -3094,18 +3096,6 @@ class ConverterEverythingTest {
         });
         
         // BigDecimal to AWT classes
-        TEST_DB.put(pair(BigDecimal.class, Dimension.class), new Object[][]{
-                {BigDecimal.ZERO, new Dimension(0, 0)},
-                {BigDecimal.ONE, new Dimension(1, 1)},
-                {new BigDecimal("5"), new Dimension(5, 5)},
-                {new BigDecimal("10.7"), new Dimension(10, 10)}, // truncated to int
-        });
-        TEST_DB.put(pair(BigDecimal.class, Point.class), new Object[][]{
-                {BigDecimal.ZERO, new Point(0, 0)},
-                {BigDecimal.ONE, new Point(1, 1)},
-                {new BigDecimal("7"), new Point(7, 7)},
-                {new BigDecimal("12.3"), new Point(12, 12)}, // truncated to int
-        });
     }
 
     /**
@@ -5278,6 +5268,11 @@ class ConverterEverythingTest {
             }
         }
 
+        // Basic conversion skips - these conversions don't have direct registrations
+        if (testMode == TestMode.BASIC_CONVERSION) {
+            // No skips currently needed - unsupported conversions are registered with explicit error messages
+        }
+
         return false;
     }
 
@@ -5510,12 +5505,87 @@ class ConverterEverythingTest {
             {new Color(0, 0, 255), new StringBuilder("#0000FF")}, // Blue color to hex StringBuilder
         });
 
+        // Color to numeric types (bridge conversions)
+        TEST_DB.put(pair(Color.class, AtomicInteger.class), new Object[][]{
+            {new Color(255, 128, 64), new AtomicInteger(-32704)}, // RGB packed value
+            {new Color(0, 0, 0), new AtomicInteger(-16777216)}, // Black
+            {new Color(255, 255, 255), new AtomicInteger(-1)}, // White
+        });
+
+        TEST_DB.put(pair(Color.class, AtomicLong.class), new Object[][]{
+            {new Color(255, 128, 64), new AtomicLong(-32704L)}, // RGB packed value as long
+            {new Color(0, 0, 0), new AtomicLong(-16777216L)}, // Black
+            {new Color(255, 255, 255), new AtomicLong(-1L)}, // White
+        });
+
+        TEST_DB.put(pair(Color.class, BigDecimal.class), new Object[][]{
+            {new Color(255, 128, 64), new BigDecimal("-32704")}, // RGB packed value as BigDecimal
+            {new Color(0, 0, 0), new BigDecimal("-16777216")}, // Black
+            {new Color(255, 255, 255), new BigDecimal("-1")}, // White
+        });
+
+        TEST_DB.put(pair(Color.class, int.class), new Object[][]{
+            {new Color(255, 128, 64), -32704}, // RGB packed value
+            {new Color(0, 0, 0), -16777216}, // Black 
+            {new Color(255, 255, 255), -1}, // White
+        });
+
+        TEST_DB.put(pair(Color.class, Integer.class), new Object[][]{
+            {new Color(255, 128, 64), -32704}, // RGB packed value
+            {new Color(0, 0, 0), -16777216}, // Black
+            {new Color(255, 255, 255), -1}, // White  
+        });
+
+        TEST_DB.put(pair(Color.class, Long.class), new Object[][]{
+            {new Color(255, 128, 64), -32704L}, // RGB packed value as long
+            {new Color(0, 0, 0), -16777216L}, // Black
+            {new Color(255, 255, 255), -1L}, // White
+        });
+
     }
 
     /**
      * Dimension
      */
     private static void loadDimensionTests() {
+        TEST_DB.put(pair(Void.class, Dimension.class), new Object[][]{
+            {null, null}
+        });
+        TEST_DB.put(pair(Void.class, Rectangle.class), new Object[][]{
+            {null, null}
+        });
+        TEST_DB.put(pair(Void.class, Point.class), new Object[][]{
+            {null, null}
+        });
+        TEST_DB.put(pair(Void.class, Insets.class), new Object[][]{
+            {null, null}
+        });
+        
+        // String to geometric types
+        TEST_DB.put(pair(String.class, Dimension.class), new Object[][]{
+            {"800x600", new Dimension(800, 600)}, // Standard widthxheight format
+            {"1920x1080", new Dimension(1920, 1080)}, // Standard widthxheight format
+            {"0x0", new Dimension(0, 0)}, // Zero dimension
+        });
+
+        TEST_DB.put(pair(String.class, Rectangle.class), new Object[][]{
+            {"(0,0,100,50)", new Rectangle(0, 0, 100, 50)}, // (x,y,width,height) format
+            {"(10,20,200,150)", new Rectangle(10, 20, 200, 150)}, // (x,y,width,height) format
+            {"(0,0,0,0)", new Rectangle(0, 0, 0, 0)}, // Empty rectangle
+        });
+
+        TEST_DB.put(pair(String.class, Point.class), new Object[][]{
+            {"(100,200)", new Point(100, 200)}, // (x,y) format
+            {"(0,0)", new Point(0, 0)}, // Origin point
+            {"(50,75)", new Point(50, 75)}, // Regular point
+        });
+
+        TEST_DB.put(pair(String.class, Insets.class), new Object[][]{
+            {"(10,20,30,40)", new Insets(10, 20, 30, 40)}, // (top,left,bottom,right) format
+            {"(0,0,0,0)", new Insets(0, 0, 0, 0)}, // Zero insets
+            {"(5,5,5,5)", new Insets(5, 5, 5, 5)}, // Equal insets
+        });
+        
         // Dimension to basic types
         TEST_DB.put(pair(Dimension.class, AtomicBoolean.class), new Object[][]{
             {new Dimension(0, 0), new AtomicBoolean(false)}, // Zero area = false
@@ -5690,7 +5760,211 @@ class ConverterEverythingTest {
         TEST_DB.put(pair(Dimension.class, StringBuilder.class), new Object[][]{
             {new Dimension(1920, 1080), new StringBuilder("1920x1080")}, // Standard format in StringBuilder
         });
+
+        // Geometric to AtomicBoolean - zero/empty = false, non-zero = true
+        TEST_DB.put(pair(Rectangle.class, AtomicBoolean.class), new Object[][]{
+            {new Rectangle(0, 0, 0, 0), new AtomicBoolean(false)}, // Empty rectangle = false
+            {new Rectangle(10, 20, 100, 200), new AtomicBoolean(true)}, // Non-empty rectangle = true
+            {new Rectangle(50, 75, 300, 400), new AtomicBoolean(true)}, // Non-empty rectangle = true
+        });
+
+        TEST_DB.put(pair(Insets.class, AtomicBoolean.class), new Object[][]{
+            {new Insets(0, 0, 0, 0), new AtomicBoolean(false)}, // Zero insets = false
+            {new Insets(10, 20, 30, 40), new AtomicBoolean(true)}, // Non-zero insets = true
+            {new Insets(5, 10, 15, 20), new AtomicBoolean(true)}, // Non-zero insets = true
+        });
+
+        TEST_DB.put(pair(Point.class, AtomicBoolean.class), new Object[][]{
+            {new Point(0, 0), new AtomicBoolean(false)}, // Origin point = false
+            {new Point(100, 200), new AtomicBoolean(true)}, // Non-origin point = true
+            {new Point(50, 75), new AtomicBoolean(true)}, // Non-origin point = true
+        });
+
+        // Geometric to Boolean (wrapper type) - zero/empty = false, non-zero = true  
+        TEST_DB.put(pair(Rectangle.class, Boolean.class), new Object[][]{
+            {new Rectangle(0, 0, 0, 0), Boolean.FALSE}, // Empty rectangle = false
+            {new Rectangle(10, 20, 100, 200), Boolean.TRUE}, // Non-empty rectangle = true
+            {new Rectangle(50, 75, 300, 400), Boolean.TRUE}, // Non-empty rectangle = true
+        });
+
+        TEST_DB.put(pair(Insets.class, Boolean.class), new Object[][]{
+            {new Insets(0, 0, 0, 0), Boolean.FALSE}, // Zero insets = false
+            {new Insets(10, 20, 30, 40), Boolean.TRUE}, // Non-zero insets = true
+            {new Insets(5, 10, 15, 20), Boolean.TRUE}, // Non-zero insets = true
+        });
+
+        TEST_DB.put(pair(Point.class, Boolean.class), new Object[][]{
+            {new Point(0, 0), Boolean.FALSE}, // Origin point = false
+            {new Point(100, 200), Boolean.TRUE}, // Non-origin point = true
+            {new Point(50, 75), Boolean.TRUE}, // Non-origin point = true
+        });
+
+        // Missing geometric → boolean conversions
+        TEST_DB.put(pair(Dimension.class, boolean.class), new Object[][]{
+            {new Dimension(0, 0), false}, // Zero dimension = false
+            {new Dimension(1, 1), true}, // Non-zero dimension = true
+            {new Dimension(10, 0), true}, // Non-zero dimension = true
+        });
+
+        TEST_DB.put(pair(Point.class, boolean.class), new Object[][]{
+            {new Point(0, 0), false}, // Origin point = false
+            {new Point(100, 200), true}, // Non-origin point = true
+            {new Point(50, 75), true}, // Non-origin point = true
+        });
+
+        TEST_DB.put(pair(Rectangle.class, boolean.class), new Object[][]{
+            {new Rectangle(0, 0, 0, 0), false}, // Empty rectangle = false
+            {new Rectangle(10, 20, 100, 200), true}, // Non-empty rectangle = true
+            {new Rectangle(50, 75, 300, 400), true}, // Non-empty rectangle = true
+        });
+
+        TEST_DB.put(pair(Insets.class, boolean.class), new Object[][]{
+            {new Insets(0, 0, 0, 0), false}, // Zero insets = false
+            {new Insets(10, 20, 30, 40), true}, // Non-zero insets = true
+            {new Insets(5, 10, 15, 20), true}, // Non-zero insets = true
+        });
+
+        // Missing geometric → string conversions
+        TEST_DB.put(pair(Point.class, String.class), new Object[][]{
+            {new Point(100, 200), "(100,200)"}, // Standard (x,y) format
+            {new Point(0, 0), "(0,0)"}, // Origin point
+            {new Point(50, 75), "(50,75)"}, // Regular point
+        });
+
+        TEST_DB.put(pair(Point.class, CharSequence.class), new Object[][]{
+            {new Point(100, 200), "(100,200)"}, // Standard (x,y) format
+            {new Point(0, 0), "(0,0)"}, // Origin point
+        });
+
+        TEST_DB.put(pair(Point.class, StringBuilder.class), new Object[][]{
+            {new Point(100, 200), new StringBuilder("(100,200)")}, // Standard (x,y) format
+            {new Point(0, 0), new StringBuilder("(0,0)")}, // Origin point
+        });
+
+        TEST_DB.put(pair(Point.class, StringBuffer.class), new Object[][]{
+            {new Point(100, 200), new StringBuffer("(100,200)")}, // Standard (x,y) format
+            {new Point(0, 0), new StringBuffer("(0,0)")}, // Origin point
+        });
+
+        TEST_DB.put(pair(Rectangle.class, String.class), new Object[][]{
+            {new Rectangle(10, 20, 100, 200), "(10,20,100,200)"}, // Standard (x,y,width,height) format
+            {new Rectangle(0, 0, 0, 0), "(0,0,0,0)"}, // Empty rectangle
+            {new Rectangle(50, 75, 300, 400), "(50,75,300,400)"}, // Regular rectangle
+        });
+
+        TEST_DB.put(pair(Rectangle.class, CharSequence.class), new Object[][]{
+            {new Rectangle(10, 20, 100, 200), "(10,20,100,200)"}, // Standard (x,y,width,height) format
+            {new Rectangle(0, 0, 0, 0), "(0,0,0,0)"}, // Empty rectangle
+        });
+
+        TEST_DB.put(pair(Rectangle.class, StringBuilder.class), new Object[][]{
+            {new Rectangle(10, 20, 100, 200), new StringBuilder("(10,20,100,200)")}, // Standard (x,y,width,height) format
+            {new Rectangle(0, 0, 0, 0), new StringBuilder("(0,0,0,0)")}, // Empty rectangle
+        });
+
+        TEST_DB.put(pair(Rectangle.class, StringBuffer.class), new Object[][]{
+            {new Rectangle(10, 20, 100, 200), new StringBuffer("(10,20,100,200)")}, // Standard (x,y,width,height) format
+            {new Rectangle(0, 0, 0, 0), new StringBuffer("(0,0,0,0)")}, // Empty rectangle
+        });
+
+        TEST_DB.put(pair(Insets.class, String.class), new Object[][]{
+            {new Insets(10, 20, 30, 40), "(10,20,30,40)"}, // Standard (top,left,bottom,right) format
+            {new Insets(0, 0, 0, 0), "(0,0,0,0)"}, // Zero insets
+            {new Insets(5, 5, 5, 5), "(5,5,5,5)"}, // Equal insets
+        });
+
+        TEST_DB.put(pair(Insets.class, CharSequence.class), new Object[][]{
+            {new Insets(10, 20, 30, 40), "(10,20,30,40)"}, // Standard (top,left,bottom,right) format
+            {new Insets(0, 0, 0, 0), "(0,0,0,0)"}, // Zero insets
+        });
+
+        TEST_DB.put(pair(Insets.class, StringBuilder.class), new Object[][]{
+            {new Insets(10, 20, 30, 40), new StringBuilder("(10,20,30,40)")}, // Standard (top,left,bottom,right) format
+            {new Insets(0, 0, 0, 0), new StringBuilder("(0,0,0,0)")}, // Zero insets
+        });
+
+        TEST_DB.put(pair(Insets.class, StringBuffer.class), new Object[][]{
+            {new Insets(10, 20, 30, 40), new StringBuffer("(10,20,30,40)")}, // Standard (top,left,bottom,right) format
+            {new Insets(0, 0, 0, 0), new StringBuffer("(0,0,0,0)")}, // Zero insets
+        });
     }
+
+    /**
+     * File
+     */
+    private static void loadFileTests() {
+        TEST_DB.put(pair(Void.class, File.class), new Object[][]{
+            {null, null}
+        });
+
+        // String to File
+        TEST_DB.put(pair(String.class, File.class), new Object[][]{
+            {"/path/to/file.txt", new File("/path/to/file.txt")}, // Absolute path
+            {"relative/path.txt", new File("relative/path.txt")}, // Relative path
+            {"/", new File("/")}, // Root directory
+        });
+
+        // File to string representations - these should work via File.toString() or File.getPath()
+        TEST_DB.put(pair(File.class, String.class), new Object[][]{
+            {new File("/path/to/file.txt"), "/path/to/file.txt"}, // Basic file path
+            {new File("relative/path.txt"), "relative/path.txt"}, // Relative path
+            {new File("/"), "/"}, // Root directory
+        });
+
+        TEST_DB.put(pair(File.class, CharSequence.class), new Object[][]{
+            {new File("/path/to/file.txt"), "/path/to/file.txt"}, // Basic file path
+            {new File("relative/path.txt"), "relative/path.txt"}, // Relative path
+        });
+
+        TEST_DB.put(pair(File.class, StringBuilder.class), new Object[][]{
+            {new File("/path/to/file.txt"), new StringBuilder("/path/to/file.txt")}, // Basic file path
+            {new File("relative/path.txt"), new StringBuilder("relative/path.txt")}, // Relative path
+        });
+
+        TEST_DB.put(pair(File.class, StringBuffer.class), new Object[][]{
+            {new File("/path/to/file.txt"), new StringBuffer("/path/to/file.txt")}, // Basic file path
+            {new File("relative/path.txt"), new StringBuffer("relative/path.txt")}, // Relative path
+        });
+    }
+
+    /**
+     * Path
+     */
+    private static void loadPathTests() {
+        TEST_DB.put(pair(Void.class, Path.class), new Object[][]{
+            {null, null}
+        });
+
+        // String to Path
+        TEST_DB.put(pair(String.class, Path.class), new Object[][]{
+            {"/path/to/file.txt", Paths.get("/path/to/file.txt")}, // Absolute path
+            {"relative/path.txt", Paths.get("relative/path.txt")}, // Relative path
+            {"/", Paths.get("/")}, // Root directory
+        });
+
+        // Path to string representations - these should work via Path.toString()
+        TEST_DB.put(pair(Path.class, String.class), new Object[][]{
+            {Paths.get("/path/to/file.txt"), "/path/to/file.txt"}, // Basic path
+            {Paths.get("relative/path.txt"), "relative/path.txt"}, // Relative path
+            {Paths.get("/"), "/"}, // Root directory
+        });
+
+        TEST_DB.put(pair(Path.class, CharSequence.class), new Object[][]{
+            {Paths.get("/path/to/file.txt"), "/path/to/file.txt"}, // Basic path
+            {Paths.get("relative/path.txt"), "relative/path.txt"}, // Relative path
+        });
+
+        TEST_DB.put(pair(Path.class, StringBuilder.class), new Object[][]{
+            {Paths.get("/path/to/file.txt"), new StringBuilder("/path/to/file.txt")}, // Basic path
+            {Paths.get("relative/path.txt"), new StringBuilder("relative/path.txt")}, // Relative path
+        });
+
+        TEST_DB.put(pair(Path.class, StringBuffer.class), new Object[][]{
+            {Paths.get("/path/to/file.txt"), new StringBuffer("/path/to/file.txt")}, // Basic path
+            {Paths.get("relative/path.txt"), new StringBuffer("relative/path.txt")}, // Relative path
+        });
+    }
+
 
 
     /**

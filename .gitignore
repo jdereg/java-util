@@ -12,3 +12,8 @@ CVS/
 
 # Compiled class files
 *.class
+
+# Claude-specific documentation files
+CLAUDE.md
+CODE_REVIEW.md
+CONVERTER_ROADMAP.md

@@ -15,6 +15,9 @@
 > * **BUG FIX**: Corrected `IntervalSet` range removal for discrete types,
 >   enforced unique start keys in discrete mode, and removed unsupported
 >   `AtomicInteger` and `AtomicLong` from documentation.
+> * **REFACTOR**: Simplified `MultiKeyMap` by removing the redundant
+>   volatile `size` field and relying on the existing `AtomicInteger` for
+>   size tracking.
 #### 3.7.0
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:
 >   * **N-Dimensional Array Expansion**: Nested arrays of any depth are automatically flattened recursively into multi-keys with sentinel preservation

@@ -4013,7 +4013,7 @@ boolean dateVerified = auditLog.contains(targetDate);
 
 IntervalSet provides intelligent boundary calculation for interval splitting/merging operations across a wide range of types:
 
-- **Numeric**: Byte, Short, Integer, Long, Float, Double, BigInteger, BigDecimal, AtomicInteger, AtomicLong
+- **Numeric**: Byte, Short, Integer, Long, Float, Double, BigInteger, BigDecimal
 - **Character**: Character (Unicode-aware)
 - **Temporal**: Date, java.sql.Date, Time, Timestamp, Instant, LocalDate, LocalTime, LocalDateTime, ZonedDateTime, OffsetDateTime, OffsetTime, Duration
 - **Custom**: Any type implementing Comparable (with manual boundary handling if needed)

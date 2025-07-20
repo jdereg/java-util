@@ -13,8 +13,6 @@ import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -115,7 +113,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * across a wide range of types:
  * </p>
  * <ul>
- *   <li><b>Numeric:</b> Byte, Short, Integer, Long, Float, Double, BigInteger, BigDecimal, AtomicInteger, AtomicLong</li>
+ *   <li><b>Numeric:</b> Byte, Short, Integer, Long, Float, Double, BigInteger, BigDecimal</li>
  *   <li><b>Character:</b> Character (Unicode-aware)</li>
  *   <li><b>Temporal:</b> Date, java.sql.Date, Time, Timestamp, Instant, LocalDate, LocalTime, LocalDateTime,
  *       ZonedDateTime, OffsetDateTime, OffsetTime, Duration</li>
@@ -314,6 +312,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * Add interval without merging (discrete storage).
      */
     private void addDiscrete(T start, T end) {
+        if (intervals.containsKey(start)) {
+            throw new IllegalArgumentException("Duplicate start key not allowed in discrete mode");
+        }
         intervals.put(start, end);
     }
 
@@ -324,25 +325,14 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * If autoMerge is true, overlapping intervals are split where needed.
      * If autoMerge is false, overlapping discrete intervals are removed entirely.
      * </p>
-     * 
-     * @return true if any stored interval was modified or removed
      */
-    public boolean remove(T start, T end) {
+    public void remove(T start, T end) {
         Objects.requireNonNull(start, "start");
         Objects.requireNonNull(end, "end");
         if (end.compareTo(start) < 0) {
             throw new IllegalArgumentException("end < start");
         }
-        lock.lock();
-        try {
-            if (autoMerge) {
-                return removeWithSplitting(start, end);
-            } else {
-                return removeDiscrete(start, end);
-            }
-        } finally {
-            lock.unlock();
-        }
+        removeRange(start, end);
     }
 
     /**
@@ -478,37 +468,43 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * Remove range with interval splitting (original behavior for merged intervals).
      */
     private void removeRangeWithSplitting(T start, T end) {
-        // 1) check a possible predecessor that begins before start
         Map.Entry<T, T> lower = intervals.lowerEntry(start);
-        if (lower != null && lower.getValue().compareTo(start) > 0) {
-            // overlap with [start,end]
-            intervals.remove(lower.getKey());
-            if (lower.getKey().compareTo(start) < 0) {
-                // keep the left shard
-                intervals.put(lower.getKey(), start);
+        if (lower != null && lower.getValue().compareTo(start) >= 0) {
+            T lowerKey = lower.getKey();
+            T lowerValue = lower.getValue();
+            intervals.remove(lowerKey);
+
+            if (lowerKey.compareTo(start) < 0) {
+                T leftEnd = previousValue(start);
+                if (lowerKey.compareTo(leftEnd) <= 0) {
+                    intervals.put(lowerKey, leftEnd);
+                }
             }
-            if (lower.getValue().compareTo(end) > 0) {
-                // keep the right shard
-                intervals.put(end, lower.getValue());
-                return;                 // we swallowed the whole range
+
+            if (lowerValue.compareTo(end) > 0) {
+                T rightStart = nextValue(end);
+                if (rightStart.compareTo(lowerValue) <= 0) {
+                    intervals.put(rightStart, lowerValue);
+                }
+                return;
             }
         }
 
-        // 2) zap / trim all intervals whose key < end
-        for (Iterator<Map.Entry<T, T>> it = intervals.tailMap(start, true)
-                .entrySet()
-                .iterator();
+        for (Iterator<Map.Entry<T, T>> it = intervals.tailMap(start, true).entrySet().iterator();
              it.hasNext(); ) {
             Map.Entry<T, T> e = it.next();
-            if (e.getKey().compareTo(end) >= 0) {      // past our range
+            if (e.getKey().compareTo(end) >= 0) {
                 break;
             }
-            it.remove();                               // overlaps for sure
+            T entryValue = e.getValue();
+            it.remove();
 
-            // right-hand shard?
-            if (e.getValue().compareTo(end) > 0) {
-                intervals.put(end, e.getValue());
-                break;                                 // nothing further overlaps
+            if (entryValue.compareTo(end) > 0) {
+                T rightStart = nextValue(end);
+                if (rightStart.compareTo(entryValue) <= 0) {
+                    intervals.put(rightStart, entryValue);
+                }
+                break;
             }
         }
     }
@@ -912,8 +908,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *   <li>{@link Double} - returns previous representable double value</li>
      *   <li>{@link BigInteger} - returns value - 1</li>
      *   <li>{@link BigDecimal} - returns value minus smallest unit at current scale</li>
-     *   <li>{@link AtomicInteger} - returns value - 1</li>
-     *   <li>{@link AtomicLong} - returns value - 1L</li>
      *   <li>{@link Character} - returns previous Unicode character</li>
      *   <li>{@link Date} - returns value minus 1 millisecond</li>
      *   <li>{@link java.sql.Date} - returns value minus 1 day</li>
@@ -1032,8 +1026,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *   <li>{@link Double} - returns next representable double value</li>
      *   <li>{@link BigInteger} - returns value + 1</li>
      *   <li>{@link BigDecimal} - returns value plus smallest unit at current scale</li>
-     *   <li>{@link AtomicInteger} - returns value + 1</li>
-     *   <li>{@link AtomicLong} - returns value + 1L</li>
      *   <li>{@link Character} - returns next Unicode character</li>
      *   <li>{@link Date} - returns value plus 1 millisecond</li>
      *   <li>{@link java.sql.Date} - returns value plus 1 day</li>

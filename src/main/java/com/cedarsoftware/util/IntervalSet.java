@@ -343,26 +343,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         removeRange(start, end);
     }
 
-
-    /**
-     * Remove discrete intervals that overlap with the removal range.
-     * For discrete mode, we remove entire intervals that overlap rather than splitting.
-     */
-    private boolean removeDiscrete(T start, T end) {
-        boolean changed = false;
-        for (Iterator<Map.Entry<T, T>> it = intervals.entrySet().iterator(); it.hasNext(); ) {
-            Map.Entry<T, T> entry = it.next();
-            T s = entry.getKey();
-            T v = entry.getValue();
-            // Check if intervals overlap: interval [s,v] overlaps with removal [start,end]
-            if (!(v.compareTo(start) < 0 || s.compareTo(end) > 0)) {
-                it.remove();
-                changed = true;
-            }
-        }
-        return changed;
-    }
-
     /**
      * Remove an exact interval [start, end] that matches a stored interval exactly.
      * <p>

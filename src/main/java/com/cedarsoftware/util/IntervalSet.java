@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
-import java.util.AbstractMap;
+import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -19,9 +20,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Thread-safe set of closed intervals <b>[start, end]</b> (both boundaries inclusive) for any Comparable type.
@@ -183,7 +187,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * @param <T> the type of interval boundaries, must implement {@link Comparable}
  * @see ConcurrentSkipListMap
  * @see NavigableMap
- * @since 3.7.0
  */
 public class IntervalSet<T extends Comparable<? super T>> implements Iterable<IntervalSet.Interval<T>> {
     /**
@@ -232,8 +235,10 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     // State
     // ──────────────────────────────────────────────────────────────────────────
     private final ConcurrentSkipListMap<T, T> intervals = new ConcurrentSkipListMap<>();
-    private final ReentrantLock lock = new ReentrantLock();   // guards writes only
+    private final transient ReentrantLock lock = new ReentrantLock();   // guards writes only
     private final boolean autoMerge;                          // whether to merge overlapping intervals
+    private final Function<T, T> previousFunction;
+    private final Function<T, T> nextFunction;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Constructors
@@ -244,7 +249,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * Overlapping intervals will be automatically merged when added.
      */
     public IntervalSet() {
-        this.autoMerge = true;
+        this(true, null, null);
     }
 
     /**
@@ -255,7 +260,39 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *                  still work across all intervals
      */
     public IntervalSet(boolean autoMerge) {
+        this(autoMerge, null, null);
+    }
+
+    /**
+     * Creates a new IntervalSet with configurable merge behavior and custom boundary functions.
+     * <p>
+     * For custom types not supported by built-in previous/next logic, provide functions to compute
+     * the previous and next values. If null, falls back to built-in support. Users must provide these
+     * for non-built-in types to enable proper interval splitting during removals.
+     * </p>
+     *
+     * @param autoMerge if true, overlapping intervals are merged automatically;
+     *                  if false, intervals are stored discretely but queries
+     *                  still work across all intervals
+     * @param previousFunction custom function to compute previous value, or null for built-in
+     * @param nextFunction custom function to compute next value, or null for built-in
+     */
+    public IntervalSet(boolean autoMerge, Function<T, T> previousFunction, Function<T, T> nextFunction) {
         this.autoMerge = autoMerge;
+        this.previousFunction = previousFunction;
+        this.nextFunction = nextFunction;
+    }
+
+    /**
+     * Copy constructor: creates a deep copy of the given IntervalSet, including mode, intervals, and custom functions.
+     *
+     * @param other the IntervalSet to copy
+     */
+    public IntervalSet(IntervalSet<T> other) {
+        this.autoMerge = other.autoMerge;
+        this.previousFunction = other.previousFunction;
+        this.nextFunction = other.nextFunction;
+        this.intervals.putAll(other.intervals);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -290,7 +327,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     }
 
     /**
-     * Add interval with merging logic (original behavior).
+     * Add an interval with merging logic (original behavior).
      */
     private void addWithMerge(T start, T end) {
         T newStart = start;
@@ -486,8 +523,23 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public boolean contains(T value) {
         Objects.requireNonNull(value);
-        Map.Entry<T, T> e = intervals.floorEntry(value);
-        return e != null && e.getValue().compareTo(value) >= 0;
+        if (autoMerge) {
+            Map.Entry<T, T> e = intervals.floorEntry(value);
+            return e != null && e.getValue().compareTo(value) >= 0;
+        } else {
+            return discreteContains(value);
+        }
+    }
+
+    private boolean discreteContains(T value) {
+        Map.Entry<T, T> entry = intervals.floorEntry(value);
+        while (entry != null) {
+            if (entry.getValue().compareTo(value) >= 0) {
+                return true;
+            }
+            entry = intervals.lowerEntry(entry.getKey());
+        }
+        return false;
     }
 
     /**
@@ -495,6 +547,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * <p>Intervals are closed and inclusive on both ends ([start, end]), so a value v is contained
      * in an interval {@code if start <= v <= end }. This method performs a lock-free read
      * via {@link ConcurrentSkipListMap#floorEntry(Object)} and does not mutate the underlying set.</p>
+     * <p>In discrete mode, if multiple intervals contain the value, returns the one with the largest start key.</p>
      *
      * @param value the non-null value to locate within stored intervals
      * @return an {@link Interval} whose start and end bracket <code>value</code>, or {@code null} if none
@@ -502,8 +555,23 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public Interval<T> intervalContaining(T value) {
         Objects.requireNonNull(value);
-        Map.Entry<T, T> e = intervals.floorEntry(value);
-        return (e != null && e.getValue().compareTo(value) >= 0) ? new Interval<>(e.getKey(), e.getValue()) : null;
+        if (autoMerge) {
+            Map.Entry<T, T> e = intervals.floorEntry(value);
+            return (e != null && e.getValue().compareTo(value) >= 0) ? new Interval<>(e.getKey(), e.getValue()) : null;
+        } else {
+            return discreteIntervalContaining(value);
+        }
+    }
+
+    private Interval<T> discreteIntervalContaining(T value) {
+        Map.Entry<T, T> entry = intervals.floorEntry(value);
+        while (entry != null) {
+            if (entry.getValue().compareTo(value) >= 0) {
+                return new Interval<>(entry.getKey(), entry.getValue());
+            }
+            entry = intervals.lowerEntry(entry.getKey());
+        }
+        return null;
     }
 
     /**
@@ -555,14 +623,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public Interval<T> nextInterval(T value) {
         Objects.requireNonNull(value);
-        
-        // First check if the value falls within an existing interval
-        Map.Entry<T, T> containing = intervals.floorEntry(value);
-        if (containing != null && containing.getValue().compareTo(value) >= 0) {
-            // Value is contained within this interval
-            return new Interval<>(containing.getKey(), containing.getValue());
+
+        Interval<T> containing = intervalContaining(value);
+        if (containing != null) {
+            return containing;
         }
-        
+
         // Value is not contained, find the next interval that starts at or after the value
         Map.Entry<T, T> entry = intervals.ceilingEntry(value);
         return entry != null ? new Interval<>(entry.getKey(), entry.getValue()) : null;
@@ -712,7 +778,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *
      * @return a navigable set of start keys
      */
-    public java.util.NavigableSet<T> keySet() {
+    public NavigableSet<T> keySet() {
         return intervals.navigableKeySet();
     }
 
@@ -724,7 +790,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *
      * @return a navigable set of start keys in descending order
      */
-    public java.util.NavigableSet<T> descendingKeySet() {
+    public NavigableSet<T> descendingKeySet() {
         return intervals.descendingKeySet();
     }
 
@@ -749,7 +815,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
 
         lock.lock();
         try {
-            java.util.NavigableMap<T, T> subMap = intervals.subMap(fromKey, true, toKey, true);
+            NavigableMap<T, T> subMap = intervals.subMap(fromKey, true, toKey, true);
             int count = subMap.size();
             subMap.clear();
             return count;
@@ -787,6 +853,40 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     }
 
     /**
+     * Compute the total covered duration across all stored intervals using a default mapping.
+     * <p>
+     * This overload uses a default BiFunction based on the type of T:
+     * - If T is Temporal (and supports SECONDS unit, e.g., Instant, LocalDateTime, etc.), uses Duration.between(start, end).
+     * - If T is Number, computes (end.longValue() - start.longValue() + 1) and maps to Duration.ofNanos(diff) (arbitrary unit).
+     * - Otherwise, throws UnsupportedOperationException.
+     * </p>
+     * <p>
+     * For Temporal types like LocalDate that do not support SECONDS, this will throw DateTimeException.
+     * For custom or unsupported types, use the BiFunction overload.
+     * For numeric types, the unit (nanos) is arbitrary; use custom BiFunction for specific units.
+     * </p>
+     *
+     * @return the sum of all interval durations
+     * @throws UnsupportedOperationException if no default mapping for type T
+     * @throws DateTimeException if Temporal type does not support Duration.between
+     * @throws ArithmeticException if numeric computation overflows long
+     */
+    public Duration totalDuration() {
+        return totalDuration(this::defaultToDuration);
+    }
+
+    private Duration defaultToDuration(T start, T end) {
+        if (start instanceof Temporal && end instanceof Temporal) {
+            return Duration.between((Temporal) start, (Temporal) end);
+        } else if (start instanceof Number && end instanceof Number) {
+            long diff = ((Number) end).longValue() - ((Number) start).longValue() + 1;
+            return Duration.ofNanos(diff);
+        } else {
+            throw new UnsupportedOperationException("No default duration mapping for type " + start.getClass());
+        }
+    }
+
+    /**
      * Compute the total covered duration across all stored intervals.
      * <p>
      * The caller provides a <code>toDuration</code> function that maps each interval's
@@ -798,7 +898,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @param toDuration a function that converts an interval [start, end] to a Duration
      * @return the sum of all interval durations
      */
-    public Duration totalDuration(java.util.function.BiFunction<T, T, Duration> toDuration) {
+    public Duration totalDuration(BiFunction<T, T, Duration> toDuration) {
         // Capture a consistent snapshot of intervals
         List<Interval<T>> snapshot = asList();
         Duration d = Duration.ZERO;
@@ -842,6 +942,141 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Set Operations
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns a new IntervalSet that is the union of this set and the other.
+     * <p>
+     * The result has the same autoMerge mode as this set. In discrete mode, if start keys duplicate,
+     * addition may throw IllegalArgumentException.
+     * </p>
+     *
+     * @param other the other IntervalSet
+     * @return a new IntervalSet containing all intervals from both
+     */
+    public IntervalSet<T> union(IntervalSet<T> other) {
+        IntervalSet<T> result = new IntervalSet<>(this);
+        for (Interval<T> i : other) {
+            result.add(i.getStart(), i.getEnd());
+        }
+        return result;
+    }
+
+    /**
+     * Returns a new IntervalSet that is the intersection of this set and the other.
+     * <p>
+     * The result has the same autoMerge mode as this set. Computes overlapping parts of intervals.
+     * </p>
+     *
+     * @param other the other IntervalSet
+     * @return a new IntervalSet containing intersecting intervals
+     */
+    public IntervalSet<T> intersection(IntervalSet<T> other) {
+        IntervalSet<T> result = new IntervalSet<>(autoMerge);
+        List<Interval<T>> list1 = asList();
+        List<Interval<T>> list2 = other.asList();
+        int i = 0, j = 0;
+        while (i < list1.size() && j < list2.size()) {
+            Interval<T> a = list1.get(i);
+            Interval<T> b = list2.get(j);
+            if (a.getEnd().compareTo(b.getStart()) < 0) {
+                i++;
+                continue;
+            }
+            if (b.getEnd().compareTo(a.getStart()) < 0) {
+                j++;
+                continue;
+            }
+            T maxStart = greaterOf(a.getStart(), b.getStart());
+            T minEnd = a.getEnd().compareTo(b.getEnd()) <= 0 ? a.getEnd() : b.getEnd();
+            if (maxStart.compareTo(minEnd) <= 0) {
+                result.add(maxStart, minEnd);
+            }
+            if (a.getEnd().compareTo(b.getEnd()) <= 0) {
+                i++;
+            } else {
+                j++;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Returns a new IntervalSet that is the difference of this set minus the other.
+     * <p>
+     * Equivalent to removing all intervals from other from this set.
+     * The result has the same autoMerge mode as this set.
+     * </p>
+     *
+     * @param other the other IntervalSet to subtract
+     * @return a new IntervalSet with intervals from other removed
+     */
+    public IntervalSet<T> difference(IntervalSet<T> other) {
+        IntervalSet<T> result = new IntervalSet<>(this);
+        for (Interval<T> interval : other.asList()) {
+            result.removeRange(interval.getStart(), interval.getEnd());
+        }
+        return result;
+    }
+
+    /**
+     * Returns true if this set intersects (overlaps) with the other set.
+     *
+     * @param other the other IntervalSet
+     * @return true if there is any overlap between intervals in this and other
+     */
+    public boolean intersects(IntervalSet<T> other) {
+        List<Interval<T>> list1 = asList();
+        List<Interval<T>> list2 = other.asList();
+        int i = 0, j = 0;
+        while (i < list1.size() && j < list2.size()) {
+            Interval<T> a = list1.get(i);
+            Interval<T> b = list2.get(j);
+            if (a.getEnd().compareTo(b.getStart()) < 0) {
+                i++;
+                continue;
+            }
+            if (b.getEnd().compareTo(a.getStart()) < 0) {
+                j++;
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Equality, HashCode, toString
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        IntervalSet<?> that = (IntervalSet<?>) o;
+        return asList().equals(that.asList());
+    }
+
+    @Override
+    public int hashCode() {
+        return asList().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        for (Interval<T> i : this) {
+            if (!first) sb.append(", ");
+            sb.append("[").append(i.getStart()).append("-").append(i.getEnd()).append("]");
+            first = false;
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Utilities
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -864,44 +1099,20 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     /**
      * Computes the previous adjacent value for splitting intervals.
      * <p>
-     * This method is used internally when removing intervals to create proper
-     * boundaries for split intervals. It computes the largest value that is
-     * strictly less than the given value for supported types.
-     * </p>
-     * <p>
-     * Supported types:
-     * <ul>
-     *   <li>{@link Byte} - returns value - 1</li>
-     *   <li>{@link Short} - returns value - 1</li>
-     *   <li>{@link Integer} - returns value - 1</li>
-     *   <li>{@link Long} - returns value - 1L</li>
-     *   <li>{@link Float} - returns previous representable float value</li>
-     *   <li>{@link Double} - returns previous representable double value</li>
-     *   <li>{@link BigInteger} - returns value - 1</li>
-     *   <li>{@link BigDecimal} - returns value minus smallest unit at current scale</li>
-     *   <li>{@link Character} - returns previous Unicode character</li>
-     *   <li>{@link Date} - returns value minus 1 millisecond</li>
-     *   <li>{@link java.sql.Date} - returns value minus 1 day</li>
-     *   <li>{@link Timestamp} - returns value minus 1 nanosecond</li>
-     *   <li>{@link Instant} - returns value minus 1 nanosecond</li>
-     *   <li>{@link LocalDate} - returns value minus 1 day</li>
-     *   <li>{@link LocalTime} - returns value minus 1 nanosecond</li>
-     *   <li>{@link LocalDateTime} - returns value minus 1 nanosecond</li>
-     *   <li>{@link ZonedDateTime} - returns value minus 1 nanosecond</li>
-     *   <li>{@link OffsetDateTime} - returns value minus 1 nanosecond</li>
-     *   <li>{@link OffsetTime} - returns value minus 1 nanosecond</li>
-     *   <li>{@link Duration} - returns value minus 1 nanosecond</li>
-     * </ul>
+     * If a custom previousFunction is provided, uses it. Otherwise, falls back to built-in logic.
      * </p>
      *
      * @param value the value for which to compute the previous value
      * @return the previous adjacent value
-     * @throws UnsupportedOperationException if the value type is not supported
+     * @throws UnsupportedOperationException if no custom function and type not supported by built-in
      * @throws ArithmeticException if the operation would cause numeric underflow
      */
     @SuppressWarnings("unchecked")
     private T previousValue(T value) {
-        // Handle Number types
+        if (previousFunction != null) {
+            return previousFunction.apply(value);
+        }
+        // Built-in logic
         if (value instanceof Number) {
             if (value instanceof Integer) {
                 int i = (Integer) value;
@@ -1001,44 +1212,20 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     /**
      * Computes the next adjacent value for splitting intervals.
      * <p>
-     * This method is used internally when removing intervals to create proper
-     * boundaries for split intervals. It computes the smallest value that is
-     * strictly greater than the given value for supported types.
-     * </p>
-     * <p>
-     * Supported types:
-     * <ul>
-     *   <li>{@link Byte} - returns value + 1</li>
-     *   <li>{@link Short} - returns value + 1</li>
-     *   <li>{@link Integer} - returns value + 1</li>
-     *   <li>{@link Long} - returns value + 1L</li>
-     *   <li>{@link Float} - returns next representable float value</li>
-     *   <li>{@link Double} - returns next representable double value</li>
-     *   <li>{@link BigInteger} - returns value + 1</li>
-     *   <li>{@link BigDecimal} - returns value plus smallest unit at current scale</li>
-     *   <li>{@link Character} - returns next Unicode character</li>
-     *   <li>{@link Date} - returns value plus 1 millisecond</li>
-     *   <li>{@link java.sql.Date} - returns value plus 1 day</li>
-     *   <li>{@link Timestamp} - returns value plus 1 nanosecond</li>
-     *   <li>{@link Instant} - returns value plus 1 nanosecond</li>
-     *   <li>{@link LocalDate} - returns value plus 1 day</li>
-     *   <li>{@link LocalTime} - returns value plus 1 nanosecond</li>
-     *   <li>{@link LocalDateTime} - returns value plus 1 nanosecond</li>
-     *   <li>{@link ZonedDateTime} - returns value plus 1 nanosecond</li>
-     *   <li>{@link OffsetDateTime} - returns value plus 1 nanosecond</li>
-     *   <li>{@link OffsetTime} - returns value plus 1 nanosecond</li>
-     *   <li>{@link Duration} - returns value plus 1 nanosecond</li>
-     * </ul>
+     * If a custom nextFunction is provided, uses it. Otherwise, falls back to built-in logic.
      * </p>
      *
      * @param value the value for which to compute the next value
      * @return the next adjacent value
-     * @throws UnsupportedOperationException if the value type is not supported
+     * @throws UnsupportedOperationException if no custom function and type not supported by built-in
      * @throws ArithmeticException if the operation would cause numeric overflow
      */
     @SuppressWarnings("unchecked")
     private T nextValue(T value) {
-        // Handle Number types
+        if (nextFunction != null) {
+            return nextFunction.apply(value);
+        }
+        // Built-in logic
         if (value instanceof Number) {
             if (value instanceof Integer) {
                 int i = (Integer) value;

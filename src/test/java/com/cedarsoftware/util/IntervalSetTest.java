@@ -15,11 +15,13 @@ import java.time.OffsetTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -1631,6 +1633,237 @@ class IntervalSetTest {
         assertEquals((short)-501, intervals.get(0).getEnd());
         assertEquals((short)20001, intervals.get(1).getStart());
         assertEquals((short)30000, intervals.get(1).getEnd());
+    }
+
+    @Test
+    void testCopyConstructor() {
+        IntervalSet<Integer> original = new IntervalSet<>();
+        original.add(1, 5);
+        original.add(10, 15);
+        
+        IntervalSet<Integer> copy = new IntervalSet<>(original);
+        
+        assertEquals(original.asList(), copy.asList());
+        
+        // Verify independence - changes to copy don't affect original
+        copy.add(20, 25);
+        assertEquals(2, original.size());
+        assertEquals(3, copy.size());
+    }
+
+    @Test
+    void testCustomPreviousNextFunctions() {
+        // Custom functions for String that work by character manipulation
+        Function<String, String> prevFunc = s -> {
+            if (s.isEmpty()) throw new IllegalArgumentException("Empty string");
+            char c = s.charAt(s.length() - 1);
+            if (c == 'a') throw new ArithmeticException("Cannot go before 'a'");
+            return s.substring(0, s.length() - 1) + (char)(c - 1);
+        };
+        
+        Function<String, String> nextFunc = s -> {
+            if (s.isEmpty()) throw new IllegalArgumentException("Empty string");
+            char c = s.charAt(s.length() - 1);
+            if (c == 'z') throw new ArithmeticException("Cannot go after 'z'");
+            return s.substring(0, s.length() - 1) + (char)(c + 1);
+        };
+        
+        IntervalSet<String> set = new IntervalSet<>(true, prevFunc, nextFunc);
+        set.add("cat", "dog");
+        
+        // Remove middle portion to trigger splitting
+        set.remove("cow", "cow");
+        
+        List<IntervalSet.Interval<String>> intervals = set.asList();
+        assertEquals(2, intervals.size());
+        assertEquals("cat", intervals.get(0).getStart());
+        assertEquals("cov", intervals.get(0).getEnd()); // previousValue("cow") = "cov"
+        assertEquals("cox", intervals.get(1).getStart()); // nextValue("cow") = "cox"
+        assertEquals("dog", intervals.get(1).getEnd());
+    }
+
+    @Test
+    void testDefaultTotalDurationTemporal() {
+        IntervalSet<Instant> set = new IntervalSet<>();
+        Instant start1 = Instant.parse("2023-01-01T00:00:00Z");
+        Instant end1 = Instant.parse("2023-01-01T01:00:00Z");
+        Instant start2 = Instant.parse("2023-01-01T02:00:00Z");
+        Instant end2 = Instant.parse("2023-01-01T03:30:00Z");
+        
+        set.add(start1, end1);
+        set.add(start2, end2);
+        
+        Duration total = set.totalDuration();
+        assertEquals(Duration.ofMinutes(150), total); // 60 + 90 minutes
+    }
+
+    @Test
+    void testDefaultTotalDurationNumeric() {
+        IntervalSet<Integer> set = new IntervalSet<>();
+        set.add(1, 5);   // duration: 5 nanos
+        set.add(10, 12); // duration: 3 nanos
+        
+        Duration total = set.totalDuration();
+        assertEquals(Duration.ofNanos(8), total); // 5 + 3 nanos
+    }
+
+    @Test
+    void testDefaultTotalDurationUnsupportedType() {
+        IntervalSet<String> set = new IntervalSet<>();
+        set.add("a", "z");
+        
+        assertThrows(UnsupportedOperationException.class, () -> {
+            set.totalDuration();
+        });
+    }
+
+    @Test
+    void testDiscreteContains() {
+        IntervalSet<Integer> set = new IntervalSet<>(false); // discrete mode
+        set.add(1, 5);
+        set.add(3, 7); // overlaps but stored separately
+        
+        assertTrue(set.contains(1));
+        assertTrue(set.contains(3));
+        assertTrue(set.contains(5));
+        assertTrue(set.contains(7));
+        assertFalse(set.contains(0));
+        assertFalse(set.contains(8));
+    }
+
+    @Test
+    void testDiscreteIntervalContaining() {
+        IntervalSet<Integer> set = new IntervalSet<>(false); // discrete mode
+        set.add(1, 5);
+        set.add(3, 7); // overlaps but stored separately
+        
+        // Should return the interval with the largest start key that contains the value
+        IntervalSet.Interval<Integer> interval = set.intervalContaining(4);
+        assertNotNull(interval);
+        assertEquals(3, interval.getStart()); // interval [3,7] has larger start than [1,5]
+        assertEquals(7, interval.getEnd());
+    }
+
+    @Test
+    void testUnion() {
+        IntervalSet<Integer> set1 = new IntervalSet<>();
+        set1.add(1, 5);
+        set1.add(10, 15);
+        
+        IntervalSet<Integer> set2 = new IntervalSet<>();
+        set2.add(3, 7);
+        set2.add(20, 25);
+        
+        IntervalSet<Integer> union = set1.union(set2);
+        
+        List<IntervalSet.Interval<Integer>> intervals = union.asList();
+        assertEquals(3, intervals.size());
+        assertEquals(1, intervals.get(0).getStart());
+        assertEquals(7, intervals.get(0).getEnd()); // [1,5] merged with [3,7]
+        assertEquals(10, intervals.get(1).getStart());
+        assertEquals(15, intervals.get(1).getEnd());
+        assertEquals(20, intervals.get(2).getStart());
+        assertEquals(25, intervals.get(2).getEnd());
+    }
+
+    @Test
+    void testIntersection() {
+        IntervalSet<Integer> set1 = new IntervalSet<>();
+        set1.add(1, 10);
+        set1.add(20, 30);
+        
+        IntervalSet<Integer> set2 = new IntervalSet<>();
+        set2.add(5, 15);
+        set2.add(25, 35);
+        
+        IntervalSet<Integer> intersection = set1.intersection(set2);
+        
+        List<IntervalSet.Interval<Integer>> intervals = intersection.asList();
+        assertEquals(2, intervals.size());
+        assertEquals(5, intervals.get(0).getStart());
+        assertEquals(10, intervals.get(0).getEnd()); // overlap of [1,10] and [5,15]
+        assertEquals(25, intervals.get(1).getStart());
+        assertEquals(30, intervals.get(1).getEnd()); // overlap of [20,30] and [25,35]
+    }
+
+    @Test
+    void testDifference() {
+        IntervalSet<Integer> set1 = new IntervalSet<>();
+        set1.add(1, 10);
+        set1.add(20, 30);
+        
+        IntervalSet<Integer> set2 = new IntervalSet<>();
+        set2.add(5, 15);
+        
+        IntervalSet<Integer> difference = set1.difference(set2);
+        
+        List<IntervalSet.Interval<Integer>> intervals = difference.asList();
+        assertEquals(2, intervals.size());
+        assertEquals(1, intervals.get(0).getStart());
+        assertEquals(4, intervals.get(0).getEnd()); // [1,10] minus [5,15] = [1,4]
+        assertEquals(20, intervals.get(1).getStart());
+        assertEquals(30, intervals.get(1).getEnd()); // [20,30] unaffected
+    }
+
+    @Test
+    void testIntersects() {
+        IntervalSet<Integer> set1 = new IntervalSet<>();
+        set1.add(1, 5);
+        set1.add(10, 15);
+        
+        IntervalSet<Integer> set2 = new IntervalSet<>();
+        set2.add(3, 7);
+        assertTrue(set1.intersects(set2)); // [1,5] overlaps with [3,7]
+        
+        IntervalSet<Integer> set3 = new IntervalSet<>();
+        set3.add(20, 25);
+        assertFalse(set1.intersects(set3)); // no overlap
+    }
+
+    @Test
+    void testEquals() {
+        IntervalSet<Integer> set1 = new IntervalSet<>();
+        set1.add(1, 5);
+        set1.add(10, 15);
+        
+        IntervalSet<Integer> set2 = new IntervalSet<>();
+        set2.add(1, 5);
+        set2.add(10, 15);
+        
+        IntervalSet<Integer> set3 = new IntervalSet<>();
+        set3.add(1, 6);
+        set3.add(10, 15);
+        
+        assertEquals(set1, set2);
+        assertNotEquals(set1, set3);
+        assertNotEquals(set1, null);
+        assertNotEquals(set1, "not an IntervalSet");
+    }
+
+    @Test
+    void testHashCode() {
+        IntervalSet<Integer> set1 = new IntervalSet<>();
+        set1.add(1, 5);
+        set1.add(10, 15);
+        
+        IntervalSet<Integer> set2 = new IntervalSet<>();
+        set2.add(1, 5);
+        set2.add(10, 15);
+        
+        assertEquals(set1.hashCode(), set2.hashCode());
+    }
+
+    @Test
+    void testToString() {
+        IntervalSet<Integer> set = new IntervalSet<>();
+        set.add(1, 5);
+        set.add(10, 15);
+        
+        String str = set.toString();
+        assertTrue(str.contains("[1-5]"));
+        assertTrue(str.contains("[10-15]"));
+        assertTrue(str.startsWith("{"));
+        assertTrue(str.endsWith("}"));
     }
 
     @Test

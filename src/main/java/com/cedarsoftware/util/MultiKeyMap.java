@@ -456,6 +456,36 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return finalizeHash(keyHash);
     }
 
+    /**
+     * Generic hash computation for any key type. Handles single objects,
+     * Object[] arrays, typed arrays, and Collections. This consolidates the
+     * logic previously split between {@code computeHashInternal(Object, int)}
+     * and {@code computeHashForKey(Object)}.
+     */
+    private static int computeHashInternal(Object keys) {
+        if (keys == null) {
+            return 0;
+        }
+
+        if (keys instanceof Object[]) {
+            return computeHashInternal(keys, ((Object[]) keys).length);
+        }
+
+        if (keys instanceof Collection) {
+            return computeHashInternal(keys, ((Collection<?>) keys).size());
+        }
+
+        Class<?> clazz = keys.getClass();
+        if (clazz.isArray()) {
+            if (keys instanceof String[]) {
+                return computeHashFromStringArray((String[]) keys);
+            }
+            return computeHashInternal(keys, Array.getLength(keys));
+        }
+
+        return computeHashFromSingle(keys);
+    }
+
     private static int computeHashInternal(Object keys, int size) {
         if (size == 0) {
             return 0;
@@ -515,20 +545,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Follows Codex's approach for consistency.
      */
     private static int computeHashForKey(Object key) {
-        if (key == null) {
-            return 0;
-        }
-        Class<?> keyClass = key.getClass();
-        if (keyClass.isArray()) {
-            if (key instanceof Object[]) {
-                return computeHashFromArray((Object[]) key);
-            }
-            return computeHashFromTypedArray(key);
-        } else if (key instanceof Collection) {
-            return computeHashFromCollection((Collection<?>) key);
-        } else {
-            return computeHashFromSingle(key);
-        }
+        return computeHashInternal(key);
     }
 
     /**

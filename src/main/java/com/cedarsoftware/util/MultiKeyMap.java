@@ -188,8 +188,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * → ["a", "b", "c", "d"]  // Brackets skipped
      * </pre>
      */
-    public static final String BRACKET_OPEN = "[";
-    public static final String BRACKET_CLOSE = "]";
+    static final String BRACKET_OPEN = "<[{~";
+    static final String BRACKET_CLOSE = "~}]>";
 
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
@@ -1778,9 +1778,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (key == null) {
                 keySequence.append("NULL");
             } else if (BRACKET_OPEN.equals(key)) {
-                keySequence.append("["); // Include opening bracket
+                keySequence.append(BRACKET_OPEN); // Include opening bracket
             } else if (BRACKET_CLOSE.equals(key)) {
-                keySequence.append("]"); // Include closing bracket
+                keySequence.append(BRACKET_CLOSE); // Include closing bracket
             } else if (ClassUtilities.isPrimitive(key.getClass()) || key instanceof Number) {
                 // Primitives and Numbers: use toString() - deterministic
                 keySequence.append(key);

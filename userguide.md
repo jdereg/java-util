@@ -2664,6 +2664,33 @@ flexOrg.put(new String[]{"company", "engineering", "backend"}, engineering);  //
 Department same = flexOrg.getMultiKey("company", "engineering", "backend");   // Var-args - same key!
 ```
 
+### O(1) Decision Table Pattern
+
+MultiKeyMap serves as an exceptionally powerful **O(1) decision table** for business rules, configuration management, and multi-dimensional lookups. When using Maps or complex objects as values, you gain unlimited structured output parameters while maintaining constant-time performance.
+
+**[📋 Complete Decision Table Guide →](decision-tree.md)**
+
+**Quick Example:**
+```java
+// 4-dimensional business rule with rich structured result
+MultiKeyMap<Map<String, Object>> businessRules = new MultiKeyMap<>();
+
+Map<String, Object> pricingDecision = Map.of(
+    "baseDiscount", 15.0,
+    "expeditedShipping", true,
+    "accountManager", "senior-team",
+    "approvalRequired", false,
+    "creditTerms", "net-30"
+);
+
+// Store rule - O(1) insertion
+businessRules.put(pricingDecision, "enterprise", "north-america", "high-volume", "credit");
+
+// Execute rule - O(1) lookup, no iteration!
+Map<String, Object> decision = businessRules.get("enterprise", "north-america", "high-volume", "credit");
+double discount = (Double) decision.get("baseDiscount");  // 15.0
+```
+
 ### Migration Guide
 
 **From Nested Maps:**

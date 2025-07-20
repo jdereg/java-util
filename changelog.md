@@ -8,18 +8,11 @@
 >   * **Thread Safety**: Lock-free reads with minimal write locking; weakly consistent iteration reflects live changes; use `snapshot().iterator()` for point-in-time iteration
 >   * **Type Support**: Full support for Integer, Long, Date, Timestamp, LocalDate, ZonedDateTime, Duration, and all Comparable types
 >   * **Comprehensive Testing**: 116+ test cases covering all data types, concurrent operations, edge cases, and both storage modes
-> * **TEST FIX**: Stabilized `ConcurrentListIteratorTest.testReadFailsGracefullyWhenConcurrentRemoveShrinksList` by
->   using a latch to reliably detect the expected exception under heavy load
-> * **BUG FIX**: Prevented null elements from appearing in iterator snapshots
->   of `ConcurrentList` under extreme concurrency
-> * **BUG FIX**: Corrected `IntervalSet` range removal for discrete types,
->   enforced unique start keys in discrete mode, and removed unsupported
->   `AtomicInteger` and `AtomicLong` from documentation.
-> * **REFACTOR**: Simplified `MultiKeyMap` by removing the redundant
->   volatile `size` field and relying on the existing `AtomicInteger` for
->   size tracking.
-> * **REFACTOR**: Consolidated hash computation logic in `MultiKeyMap`
->   to reduce duplication and improve readability.
+> * **TEST FIX**: Stabilized `ConcurrentListIteratorTest.testReadFailsGracefullyWhenConcurrentRemoveShrinksList` by using a latch to reliably detect the expected exception under heavy load
+> * **BUG FIX**: Prevented null elements from appearing in iterator snapshots of `ConcurrentList` under extreme concurrency
+> * **BUG FIX**: Corrected `IntervalSet` range removal for discrete types, enforced unique start keys in discrete mode, and removed unsupported `AtomicInteger` and `AtomicLong` from documentation.
+> * **REFACTOR**: Simplified `MultiKeyMap` by removing the redundant volatile `size` field and relying on the existing `AtomicInteger` for size tracking.
+> * **REFACTOR**: Consolidated hash computation logic in `MultiKeyMap` to reduce duplication and improve readability.
 #### 3.7.0
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:
 >   * **N-Dimensional Array Expansion**: Nested arrays of any depth are automatically flattened recursively into multi-keys with sentinel preservation

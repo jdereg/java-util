@@ -811,13 +811,19 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * <p>
      * The caller provides a <code>toDuration</code> function that maps each interval's
      * start and end values to a {@link Duration}. This method sums those Durations
-     * over all intervals in key order. The read is lock-free (no locking).
+     * over all intervals in key order. For consistency under concurrent modifications,
+     * this method captures a snapshot of intervals at the time of invocation.
      * </p>
+     *
+     * @param toDuration a function that converts an interval [start, end] to a Duration
+     * @return the sum of all interval durations
      */
     public Duration totalDuration(java.util.function.BiFunction<T, T, Duration> toDuration) {
+        // Capture a consistent snapshot of intervals
+        List<Interval<T>> snapshot = asList();
         Duration d = Duration.ZERO;
-        for (Map.Entry<T, T> e : intervals.entrySet()) {
-            d = d.plus(toDuration.apply(e.getKey(), e.getValue()));
+        for (Interval<T> interval : snapshot) {
+            d = d.plus(toDuration.apply(interval.getStart(), interval.getEnd()));
         }
         return d;
     }

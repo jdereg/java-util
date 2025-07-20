@@ -4566,9 +4566,6 @@ class ConverterTest
         Insets i3 = converter.convert(mapOf("top", 5, "left", 10, "bottom", 15, "right", 20), Insets.class);
         assertEquals(new Insets(5, 10, 15, 20), i3);
         
-        // Test Insets to Dimension conversion - bounds become area dimensions ✅
-        Dimension d1 = converter.convert(new Insets(5, 10, 15, 20), Dimension.class);
-        assertEquals(new Dimension(30, 20), d1); // width=left+right=10+20=30, height=top+bottom=5+15=20
         
         // Test Insets to Map
         Map<?, ?> m1 = converter.convert(new Insets(5, 10, 15, 20), Map.class);

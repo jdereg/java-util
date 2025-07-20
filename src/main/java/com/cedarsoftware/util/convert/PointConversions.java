@@ -139,6 +139,16 @@ final class PointConversions {
     }
 
     /**
+     * Convert Point to AtomicBoolean. (0,0) → false, anything else → true.
+     * @param from Point instance
+     * @param converter Converter instance
+     * @return AtomicBoolean value
+     */
+    static java.util.concurrent.atomic.AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
+        return new java.util.concurrent.atomic.AtomicBoolean(toBoolean(from, converter));
+    }
+
+    /**
      * Convert Point to Rectangle (x,y become position, size is 0,0).
      * @param from Point instance
      * @param converter Converter instance

@@ -130,23 +130,17 @@ class ColorConversionsTest {
     // ========================================
 
     @Test
-    void testIntegerToColor() {
-        // RGB red (0xFF0000)
-        Color result = converter.convert(0xFF0000, Color.class);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(0);
-        assertThat(result.getBlue()).isEqualTo(0);
-        assertThat(result.getAlpha()).isEqualTo(255);
+    void testIntegerToColorBlocked() {
+        assertThatThrownBy(() -> converter.convert(0xFF0000, Color.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Integer");
     }
 
     @Test
-    void testLongToColor() {
-        // ARGB with alpha (0x80FF0000)
-        Color result = converter.convert(0x80FF0000L, Color.class);
-        assertThat(result.getAlpha()).isEqualTo(128);
-        assertThat(result.getRed()).isEqualTo(255);
-        assertThat(result.getGreen()).isEqualTo(0);
-        assertThat(result.getBlue()).isEqualTo(0);
+    void testLongToColorBlocked() {
+        assertThatThrownBy(() -> converter.convert(0x80FF0000L, Color.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Long");
     }
 
     // ========================================
@@ -336,33 +330,6 @@ class ColorConversionsTest {
     // Color to Number Tests
     // ========================================
 
-    @Test
-    void testColorToInteger() {
-        Color color = new Color(255, 128, 64);
-        Integer result = converter.convert(color, Integer.class);
-        assertThat(result).isEqualTo(0xFF8040 | 0xFF000000); // includes alpha
-    }
-
-    @Test
-    void testColorToLong() {
-        Color color = new Color(255, 128, 64);
-        Long result = converter.convert(color, Long.class);
-        assertThat(result).isEqualTo((long)(0xFF8040 | 0xFF000000));
-    }
-
-    @Test
-    void testColorToBigInteger() {
-        Color color = new Color(255, 128, 64);
-        BigInteger result = converter.convert(color, BigInteger.class);
-        assertThat(result).isEqualTo(BigInteger.valueOf(0xFF8040 | 0xFF000000));
-    }
-
-    @Test
-    void testColorToBigDecimal() {
-        Color color = new Color(255, 128, 64);
-        BigDecimal result = converter.convert(color, BigDecimal.class);
-        assertThat(result).isEqualTo(BigDecimal.valueOf(0xFF8040 | 0xFF000000));
-    }
 
     // ========================================
     // Color to Array Tests
@@ -447,17 +414,7 @@ class ColorConversionsTest {
         assertThat(restored).isEqualTo(original);
     }
 
-    @Test
-    void testRoundTrip_colorToIntegerToColor() {
-        Color original = new Color(255, 128, 64);
-        Integer packed = converter.convert(original, Integer.class);
-        Color restored = converter.convert(packed, Color.class);
-
-        assertThat(restored.getRed()).isEqualTo(original.getRed());
-        assertThat(restored.getGreen()).isEqualTo(original.getGreen());
-        assertThat(restored.getBlue()).isEqualTo(original.getBlue());
-        // Note: Alpha may differ due to RGB vs ARGB interpretation
-    }
+    // Round-trip test removed - Integer to Color conversion is blocked
 
     // ========================================
     // Identity and Null Tests

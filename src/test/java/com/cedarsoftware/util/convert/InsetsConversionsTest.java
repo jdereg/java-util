@@ -255,39 +255,31 @@ class InsetsConversionsTest {
     // ========================================
 
     @Test
-    void testIntegerToInsets() {
-        Insets result = converter.convert(10, Insets.class);
-        assertThat(result.top).isEqualTo(10);
-        assertThat(result.left).isEqualTo(10);
-        assertThat(result.bottom).isEqualTo(10);
-        assertThat(result.right).isEqualTo(10);
+    void testIntegerToInsetsBlocked() {
+        assertThatThrownBy(() -> converter.convert(10, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Integer");
     }
 
     @Test
-    void testLongToInsets() {
-        Insets result = converter.convert(25L, Insets.class);
-        assertThat(result.top).isEqualTo(25);
-        assertThat(result.left).isEqualTo(25);
-        assertThat(result.bottom).isEqualTo(25);
-        assertThat(result.right).isEqualTo(25);
+    void testLongToInsetsBlocked() {
+        assertThatThrownBy(() -> converter.convert(25L, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Long");
     }
 
     @Test
-    void testNumberToInsets_negative() {
-        Insets result = converter.convert(-5, Insets.class);
-        assertThat(result.top).isEqualTo(-5);
-        assertThat(result.left).isEqualTo(-5);
-        assertThat(result.bottom).isEqualTo(-5);
-        assertThat(result.right).isEqualTo(-5);
+    void testNumberToInsetsNegativeBlocked() {
+        assertThatThrownBy(() -> converter.convert(-5, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Integer");
     }
 
     @Test
-    void testBigIntegerToInsets() {
-        Insets result = converter.convert(BigInteger.valueOf(15), Insets.class);
-        assertThat(result.top).isEqualTo(15);
-        assertThat(result.left).isEqualTo(15);
-        assertThat(result.bottom).isEqualTo(15);
-        assertThat(result.right).isEqualTo(15);
+    void testBigIntegerToInsetsBlocked() {
+        assertThatThrownBy(() -> converter.convert(BigInteger.valueOf(15), Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
     @Test
@@ -300,57 +292,45 @@ class InsetsConversionsTest {
     }
 
     @Test
-    void testAtomicIntegerToInsets() {
-        Insets result = converter.convert(new AtomicInteger(12), Insets.class);
-        assertThat(result.top).isEqualTo(12);
-        assertThat(result.left).isEqualTo(12);
-        assertThat(result.bottom).isEqualTo(12);
-        assertThat(result.right).isEqualTo(12);
+    void testAtomicIntegerToInsetsBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicInteger(12), Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicInteger");
     }
 
     @Test
-    void testAtomicLongToInsets() {
-        Insets result = converter.convert(new AtomicLong(18), Insets.class);
-        assertThat(result.top).isEqualTo(18);
-        assertThat(result.left).isEqualTo(18);
-        assertThat(result.bottom).isEqualTo(18);
-        assertThat(result.right).isEqualTo(18);
+    void testAtomicLongToInsetsBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicLong(18), Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicLong");
     }
 
     @Test
-    void testAtomicBooleanToInsets_true() {
-        Insets result = converter.convert(new AtomicBoolean(true), Insets.class);
-        assertThat(result.top).isEqualTo(1);
-        assertThat(result.left).isEqualTo(1);
-        assertThat(result.bottom).isEqualTo(1);
-        assertThat(result.right).isEqualTo(1);
+    void testAtomicBooleanToInsets_trueBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(true), Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
     }
 
     @Test
-    void testAtomicBooleanToInsets_false() {
-        Insets result = converter.convert(new AtomicBoolean(false), Insets.class);
-        assertThat(result.top).isEqualTo(0);
-        assertThat(result.left).isEqualTo(0);
-        assertThat(result.bottom).isEqualTo(0);
-        assertThat(result.right).isEqualTo(0);
+    void testAtomicBooleanToInsets_falseBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(false), Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
     }
 
     @Test
-    void testBooleanToInsets_true() {
-        Insets result = converter.convert(Boolean.TRUE, Insets.class);
-        assertThat(result.top).isEqualTo(1);
-        assertThat(result.left).isEqualTo(1);
-        assertThat(result.bottom).isEqualTo(1);
-        assertThat(result.right).isEqualTo(1);
+    void testBooleanToInsets_trueBlocked() {
+        assertThatThrownBy(() -> converter.convert(Boolean.TRUE, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     @Test
-    void testBooleanToInsets_false() {
-        Insets result = converter.convert(Boolean.FALSE, Insets.class);
-        assertThat(result.top).isEqualTo(0);
-        assertThat(result.left).isEqualTo(0);
-        assertThat(result.bottom).isEqualTo(0);
-        assertThat(result.right).isEqualTo(0);
+    void testBooleanToInsets_falseBlocked() {
+        assertThatThrownBy(() -> converter.convert(Boolean.FALSE, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     // ========================================
@@ -422,49 +402,6 @@ class InsetsConversionsTest {
         }
     }
 
-    // ========================================
-    // Insets to Integer Tests (Sum)
-    // ========================================
-
-    @Test
-    void testInsetsToInteger() {
-        Insets insets = new Insets(5, 10, 15, 20);
-        Integer result = converter.convert(insets, Integer.class);
-        assertThat(result).isEqualTo(50); // 5 + 10 + 15 + 20 = 50
-    }
-
-    // ========================================
-    // Insets to Long Tests (Sum)
-    // ========================================
-
-    @Test
-    void testInsetsToLong() {
-        Insets insets = new Insets(100, 200, 300, 400);
-        Long result = converter.convert(insets, Long.class);
-        assertThat(result).isEqualTo(1000L); // 100 + 200 + 300 + 400 = 1000
-    }
-
-    // ========================================
-    // Insets to BigInteger Tests (Sum)
-    // ========================================
-
-    @Test
-    void testInsetsToBigInteger() {
-        Insets insets = new Insets(25, 50, 75, 100);
-        BigInteger result = converter.convert(insets, BigInteger.class);
-        assertThat(result).isEqualTo(BigInteger.valueOf(250L)); // 25 + 50 + 75 + 100 = 250
-    }
-
-    // ========================================
-    // Insets to BigDecimal Tests (Sum)
-    // ========================================
-
-    @Test
-    void testInsetsToBigDecimal() {
-        Insets insets = new Insets(12, 24, 36, 48);
-        BigDecimal result = converter.convert(insets, BigDecimal.class);
-        assertThat(result).isEqualTo(BigDecimal.valueOf(120L)); // 12 + 24 + 36 + 48 = 120
-    }
 
     // ========================================
     // Insets to Map Tests
@@ -535,94 +472,38 @@ class InsetsConversionsTest {
     // Insets to AWT Type Cross-Conversions
     // ========================================
 
-    @Test
-    void testInsetsToPoint() {
-        Insets insets = new Insets(25, 35, 45, 55);
-        Point result = converter.convert(insets, Point.class);
-        assertThat(result.x).isEqualTo(25); // top becomes x
-        assertThat(result.y).isEqualTo(35); // left becomes y
-    }
 
-    @Test
-    void testInsetsToDimension() {
-        Insets insets = new Insets(10, 20, 30, 40);
-        Dimension result = converter.convert(insets, Dimension.class);
-        assertThat(result.width).isEqualTo(60); // left + right = 20 + 40
-        assertThat(result.height).isEqualTo(40); // top + bottom = 10 + 30
-    }
 
-    @Test
-    void testInsetsToRectangle() {
-        Insets insets = new Insets(10, 20, 30, 40);
-        Rectangle result = converter.convert(insets, Rectangle.class);
-        assertThat(result.x).isEqualTo(20); // left
-        assertThat(result.y).isEqualTo(10); // top
-        assertThat(result.width).isEqualTo(20); // right - left = 40 - 20
-        assertThat(result.height).isEqualTo(20); // bottom - top = 30 - 10
-    }
 
     // ========================================
     // Round-trip Boolean Tests
     // ========================================
 
     @Test
-    void testBooleanInsetsRoundTrip_true() {
+    void testBooleanInsetsRoundTrip_trueBlocked() {
         Boolean originalBoolean = Boolean.TRUE;
         
-        // Boolean -> Insets -> Boolean
-        Insets insets = converter.convert(originalBoolean, Insets.class);
-        Boolean backToBoolean = converter.convert(insets, Boolean.class);
-        
-        assertThat(backToBoolean).isEqualTo(originalBoolean);
+        // Boolean -> Insets should be blocked
+        assertThatThrownBy(() -> converter.convert(originalBoolean, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     @Test
-    void testBooleanInsetsRoundTrip_false() {
+    void testBooleanInsetsRoundTrip_falseBlocked() {
         Boolean originalBoolean = Boolean.FALSE;
         
-        // Boolean -> Insets -> Boolean
-        Insets insets = converter.convert(originalBoolean, Insets.class);
-        Boolean backToBoolean = converter.convert(insets, Boolean.class);
-        
-        assertThat(backToBoolean).isEqualTo(originalBoolean);
+        // Boolean -> Insets should be blocked
+        assertThatThrownBy(() -> converter.convert(originalBoolean, Insets.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     // ========================================
     // Cross-Type Round-trip Tests
     // ========================================
 
-    @Test
-    void testInsetsPointConversion() {
-        Insets originalInsets = new Insets(15, 25, 0, 0);
-        
-        // Insets -> Point works (top becomes x, left becomes y)
-        Point point = converter.convert(originalInsets, Point.class);
-        assertThat(point.x).isEqualTo(15);
-        assertThat(point.y).isEqualTo(25);
-        
-        // Point -> Insets round-trip (preserves top/left since bottom/right were 0)
-        Insets backToInsets = converter.convert(point, Insets.class);
-        assertThat(backToInsets.top).isEqualTo(originalInsets.top);
-        assertThat(backToInsets.left).isEqualTo(originalInsets.left);
-        assertThat(backToInsets.bottom).isEqualTo(0); // Point -> Insets always sets bottom to 0
-        assertThat(backToInsets.right).isEqualTo(0); // Point -> Insets always sets right to 0
-    }
 
-    @Test
-    void testInsetsDimensionRoundTrip() {
-        Insets originalInsets = new Insets(20, 20, 20, 20); // uniform insets
-        
-        // Insets -> Dimension -> Insets (partial round-trip due to min() logic)
-        Dimension dimension = converter.convert(originalInsets, Dimension.class);
-        Insets backToInsets = converter.convert(dimension, Insets.class);
-        
-        // Dimension conversion uses min(width, height), so all sides become the same
-        int expectedValue = Math.min(dimension.width, dimension.height);
-        assertThat(backToInsets.top).isEqualTo(expectedValue);
-        assertThat(backToInsets.left).isEqualTo(expectedValue);
-        assertThat(backToInsets.bottom).isEqualTo(expectedValue);
-        assertThat(backToInsets.right).isEqualTo(expectedValue);
-    }
 
     @Test
     void testInsetsNativeToStringRoundTrip() {
@@ -641,28 +522,4 @@ class InsetsConversionsTest {
         assertThat(parsedInsets.right).isEqualTo(originalInsets.right);
     }
 
-    // ========================================
-    // Numeric Sum Tests
-    // ========================================
-
-    @Test
-    void testInsetsToNumber_zeroSum() {
-        Insets insets = new Insets(0, 0, 0, 0);
-        Integer result = converter.convert(insets, Integer.class);
-        assertThat(result).isEqualTo(0);
-    }
-
-    @Test
-    void testInsetsToNumber_negativeSum() {
-        Insets insets = new Insets(-10, -20, 5, 15);
-        Integer result = converter.convert(insets, Integer.class);
-        assertThat(result).isEqualTo(-10); // -10 + -20 + 5 + 15 = -10
-    }
-
-    @Test
-    void testInsetsToNumber_largeSum() {
-        Insets insets = new Insets(1000, 2000, 3000, 4000);
-        Long result = converter.convert(insets, Long.class);
-        assertThat(result).isEqualTo(10000L); // 1000 + 2000 + 3000 + 4000 = 10000
-    }
 }

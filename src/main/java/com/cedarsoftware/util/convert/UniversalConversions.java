@@ -740,17 +740,8 @@ final class UniversalConversions {
     // ========================================
 
     /**
-     * Universal bridge: IntStream → int[].
-     * Extracts the int array from IntStream for universal array system access.
-     */
-    static int[] intStreamToIntArray(Object from, Converter converter) {
-        IntStream stream = (IntStream) from;
-        return stream.toArray();
-    }
-
-    /**
-     * Universal reverse bridge: int[] → IntStream.
-     * Creates IntStream from int array for reverse bridge access.
+     * Array → Stream bridge: int[] → IntStream.
+     * Creates IntStream from int array for functional programming access.
      */
     static IntStream intArrayToIntStream(Object from, Converter converter) {
         int[] array = (int[]) from;
@@ -758,17 +749,8 @@ final class UniversalConversions {
     }
 
     /**
-     * Universal bridge: LongStream → long[].
-     * Extracts the long array from LongStream for universal array system access.
-     */
-    static long[] longStreamToLongArray(Object from, Converter converter) {
-        LongStream stream = (LongStream) from;
-        return stream.toArray();
-    }
-
-    /**
-     * Universal reverse bridge: long[] → LongStream.
-     * Creates LongStream from long array for reverse bridge access.
+     * Array → Stream bridge: long[] → LongStream.  
+     * Creates LongStream from long array for functional programming access.
      */
     static LongStream longArrayToLongStream(Object from, Converter converter) {
         long[] array = (long[]) from;
@@ -776,17 +758,8 @@ final class UniversalConversions {
     }
 
     /**
-     * Universal bridge: DoubleStream → double[].
-     * Extracts the double array from DoubleStream for universal array system access.
-     */
-    static double[] doubleStreamToDoubleArray(Object from, Converter converter) {
-        DoubleStream stream = (DoubleStream) from;
-        return stream.toArray();
-    }
-
-    /**
-     * Universal reverse bridge: double[] → DoubleStream.
-     * Creates DoubleStream from double array for reverse bridge access.
+     * Array → Stream bridge: double[] → DoubleStream.
+     * Creates DoubleStream from double array for functional programming access.
      */
     static DoubleStream doubleArrayToDoubleStream(Object from, Converter converter) {
         double[] array = (double[]) from;

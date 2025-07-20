@@ -171,31 +171,31 @@ class PointConversionsTest {
     // ========================================
 
     @Test
-    void testIntegerToPoint() {
-        Point result = converter.convert(250, Point.class);
-        assertThat(result.x).isEqualTo(250);
-        assertThat(result.y).isEqualTo(250);
+    void testIntegerToPointBlocked() {
+        assertThatThrownBy(() -> converter.convert(250, Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Integer");
     }
 
     @Test
-    void testLongToPoint() {
-        Point result = converter.convert(500L, Point.class);
-        assertThat(result.x).isEqualTo(500);
-        assertThat(result.y).isEqualTo(500);
+    void testLongToPointBlocked() {
+        assertThatThrownBy(() -> converter.convert(500L, Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Long");
     }
 
     @Test
-    void testNumberToPoint_negative() {
-        Point result = converter.convert(-100, Point.class);
-        assertThat(result.x).isEqualTo(-100);
-        assertThat(result.y).isEqualTo(-100);
+    void testNumberToPointNegativeBlocked() {
+        assertThatThrownBy(() -> converter.convert(-100, Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Integer");
     }
 
     @Test
-    void testBigIntegerToPoint() {
-        Point result = converter.convert(BigInteger.valueOf(750), Point.class);
-        assertThat(result.x).isEqualTo(750);
-        assertThat(result.y).isEqualTo(750);
+    void testBigIntegerToPointBlocked() {
+        assertThatThrownBy(() -> converter.convert(BigInteger.valueOf(750), Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
     @Test
@@ -206,45 +206,45 @@ class PointConversionsTest {
     }
 
     @Test
-    void testAtomicIntegerToPoint() {
-        Point result = converter.convert(new AtomicInteger(300), Point.class);
-        assertThat(result.x).isEqualTo(300);
-        assertThat(result.y).isEqualTo(300);
+    void testAtomicIntegerToPointBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicInteger(300), Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicInteger");
     }
 
     @Test
-    void testAtomicLongToPoint() {
-        Point result = converter.convert(new AtomicLong(400), Point.class);
-        assertThat(result.x).isEqualTo(400);
-        assertThat(result.y).isEqualTo(400);
+    void testAtomicLongToPointBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicLong(400), Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicLong");
     }
 
     @Test
-    void testAtomicBooleanToPoint_true() {
-        Point result = converter.convert(new AtomicBoolean(true), Point.class);
-        assertThat(result.x).isEqualTo(1);
-        assertThat(result.y).isEqualTo(1);
+    void testAtomicBooleanToPoint_trueBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(true), Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
     }
 
     @Test
-    void testAtomicBooleanToPoint_false() {
-        Point result = converter.convert(new AtomicBoolean(false), Point.class);
-        assertThat(result.x).isEqualTo(0);
-        assertThat(result.y).isEqualTo(0);
+    void testAtomicBooleanToPoint_falseBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(false), Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
     }
 
     @Test
-    void testBooleanToPoint_true() {
-        Point result = converter.convert(Boolean.TRUE, Point.class);
-        assertThat(result.x).isEqualTo(1);
-        assertThat(result.y).isEqualTo(1);
+    void testBooleanToPoint_trueBlocked() {
+        assertThatThrownBy(() -> converter.convert(Boolean.TRUE, Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     @Test
-    void testBooleanToPoint_false() {
-        Point result = converter.convert(Boolean.FALSE, Point.class);
-        assertThat(result.x).isEqualTo(0);
-        assertThat(result.y).isEqualTo(0);
+    void testBooleanToPoint_falseBlocked() {
+        assertThatThrownBy(() -> converter.convert(Boolean.FALSE, Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     // ========================================
@@ -277,49 +277,6 @@ class PointConversionsTest {
         assertThat(result).isEqualTo("(-50,-75)");
     }
 
-    // ========================================
-    // Point to Integer Tests (X coordinate)
-    // ========================================
-
-    @Test
-    void testPointToInteger() {
-        Point point = new Point(150, 250);
-        Integer result = converter.convert(point, Integer.class);
-        assertThat(result).isEqualTo(150); // Returns x coordinate
-    }
-
-    // ========================================
-    // Point to Long Tests (X coordinate)
-    // ========================================
-
-    @Test
-    void testPointToLong() {
-        Point point = new Point(300, 400);
-        Long result = converter.convert(point, Long.class);
-        assertThat(result).isEqualTo(300L); // Returns x coordinate
-    }
-
-    // ========================================
-    // Point to BigInteger Tests (X coordinate)
-    // ========================================
-
-    @Test
-    void testPointToBigInteger() {
-        Point point = new Point(500, 600);
-        BigInteger result = converter.convert(point, BigInteger.class);
-        assertThat(result).isEqualTo(BigInteger.valueOf(500L)); // Returns x coordinate
-    }
-
-    // ========================================
-    // Point to BigDecimal Tests (X coordinate)
-    // ========================================
-
-    @Test
-    void testPointToBigDecimal() {
-        Point point = new Point(750, 850);
-        BigDecimal result = converter.convert(point, BigDecimal.class);
-        assertThat(result).isEqualTo(BigDecimal.valueOf(750L)); // Returns x coordinate
-    }
 
     // ========================================
     // Point to Map Tests
@@ -436,24 +393,22 @@ class PointConversionsTest {
     // ========================================
 
     @Test
-    void testBooleanPointRoundTrip_true() {
+    void testBooleanPointRoundTrip_trueBlocked() {
         Boolean originalBoolean = Boolean.TRUE;
         
-        // Boolean -> Point -> Boolean
-        Point point = converter.convert(originalBoolean, Point.class);
-        Boolean backToBoolean = converter.convert(point, Boolean.class);
-        
-        assertThat(backToBoolean).isEqualTo(originalBoolean);
+        // Boolean -> Point should be blocked
+        assertThatThrownBy(() -> converter.convert(originalBoolean, Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     @Test
-    void testBooleanPointRoundTrip_false() {
+    void testBooleanPointRoundTrip_falseBlocked() {
         Boolean originalBoolean = Boolean.FALSE;
         
-        // Boolean -> Point -> Boolean
-        Point point = converter.convert(originalBoolean, Point.class);
-        Boolean backToBoolean = converter.convert(point, Boolean.class);
-        
-        assertThat(backToBoolean).isEqualTo(originalBoolean);
+        // Boolean -> Point should be blocked
+        assertThatThrownBy(() -> converter.convert(originalBoolean, Point.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 }

@@ -130,6 +130,16 @@ final class RectangleConversions {
     }
 
     /**
+     * Convert Rectangle to AtomicBoolean. (0,0,0,0) → false, anything else → true.
+     * @param from Rectangle instance
+     * @param converter Converter instance
+     * @return AtomicBoolean value
+     */
+    static java.util.concurrent.atomic.AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
+        return new java.util.concurrent.atomic.AtomicBoolean(toBoolean(from, converter));
+    }
+
+    /**
      * Convert Rectangle to Point (x, y coordinates).
      * @param from Rectangle instance
      * @param converter Converter instance

@@ -130,6 +130,16 @@ final class InsetsConversions {
     }
 
     /**
+     * Convert Insets to AtomicBoolean. (0,0,0,0) → false, anything else → true.
+     * @param from Insets instance
+     * @param converter Converter instance
+     * @return AtomicBoolean value
+     */
+    static java.util.concurrent.atomic.AtomicBoolean toAtomicBoolean(Object from, Converter converter) {
+        return new java.util.concurrent.atomic.AtomicBoolean(toBoolean(from, converter));
+    }
+
+    /**
      * Convert Insets to Point (top becomes x, left becomes y).
      * @param from Insets instance
      * @param converter Converter instance

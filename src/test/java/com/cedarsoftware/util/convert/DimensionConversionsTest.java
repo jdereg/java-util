@@ -172,31 +172,31 @@ class DimensionConversionsTest {
     // ========================================
 
     @Test
-    void testIntegerToDimension() {
-        Dimension result = converter.convert(500, Dimension.class);
-        assertThat(result.width).isEqualTo(500);
-        assertThat(result.height).isEqualTo(500);
+    void testIntegerToDimensionBlocked() {
+        assertThatThrownBy(() -> converter.convert(500, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Integer");
     }
 
     @Test
-    void testLongToDimension() {
-        Dimension result = converter.convert(1000L, Dimension.class);
-        assertThat(result.width).isEqualTo(1000);
-        assertThat(result.height).isEqualTo(1000);
+    void testLongToDimensionBlocked() {
+        assertThatThrownBy(() -> converter.convert(1000L, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Long");
     }
 
     @Test
     void testNumberToDimension_negative() {
         assertThatThrownBy(() -> converter.convert(-100, Dimension.class))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Dimension size must be non-negative");
+            .hasMessageContaining("Unsupported conversion, source type [Integer");
     }
 
     @Test
-    void testBigIntegerToDimension() {
-        Dimension result = converter.convert(BigInteger.valueOf(300), Dimension.class);
-        assertThat(result.width).isEqualTo(300);
-        assertThat(result.height).isEqualTo(300);
+    void testBigIntegerToDimensionBlocked() {
+        assertThatThrownBy(() -> converter.convert(BigInteger.valueOf(300), Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [BigInteger");
     }
 
     @Test
@@ -207,45 +207,45 @@ class DimensionConversionsTest {
     }
 
     @Test
-    void testAtomicIntegerToDimension() {
-        Dimension result = converter.convert(new AtomicInteger(250), Dimension.class);
-        assertThat(result.width).isEqualTo(250);
-        assertThat(result.height).isEqualTo(250);
+    void testAtomicIntegerToDimensionBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicInteger(250), Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicInteger");
     }
 
     @Test
-    void testAtomicLongToDimension() {
-        Dimension result = converter.convert(new AtomicLong(350), Dimension.class);
-        assertThat(result.width).isEqualTo(350);
-        assertThat(result.height).isEqualTo(350);
+    void testAtomicLongToDimensionBlocked() {
+        assertThatThrownBy(() -> converter.convert(new AtomicLong(350), Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicLong");
     }
 
     @Test
-    void testAtomicBooleanToDimension_true() {
-        Dimension result = converter.convert(new AtomicBoolean(true), Dimension.class);
-        assertThat(result.width).isEqualTo(1);
-        assertThat(result.height).isEqualTo(1);
+    void testAtomicBooleanToDimensionBlocked_true() {
+        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(true), Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
     }
 
     @Test
-    void testAtomicBooleanToDimension_false() {
-        Dimension result = converter.convert(new AtomicBoolean(false), Dimension.class);
-        assertThat(result.width).isEqualTo(0);
-        assertThat(result.height).isEqualTo(0);
+    void testAtomicBooleanToDimensionBlocked_false() {
+        assertThatThrownBy(() -> converter.convert(new AtomicBoolean(false), Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [AtomicBoolean");
     }
 
     @Test
-    void testBooleanToDimension_true() {
-        Dimension result = converter.convert(Boolean.TRUE, Dimension.class);
-        assertThat(result.width).isEqualTo(1);
-        assertThat(result.height).isEqualTo(1);
+    void testBooleanToDimensionBlocked_true() {
+        assertThatThrownBy(() -> converter.convert(Boolean.TRUE, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     @Test
-    void testBooleanToDimension_false() {
-        Dimension result = converter.convert(Boolean.FALSE, Dimension.class);
-        assertThat(result.width).isEqualTo(0);
-        assertThat(result.height).isEqualTo(0);
+    void testBooleanToDimensionBlocked_false() {
+        assertThatThrownBy(() -> converter.convert(Boolean.FALSE, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     // ========================================
@@ -259,49 +259,6 @@ class DimensionConversionsTest {
         assertThat(result).isEqualTo("800x600");
     }
 
-    // ========================================
-    // Dimension to Integer Tests (Area)
-    // ========================================
-
-    @Test
-    void testDimensionToInteger() {
-        Dimension dimension = new Dimension(10, 20);
-        Integer result = converter.convert(dimension, Integer.class);
-        assertThat(result).isEqualTo(200); // 10 * 20 = 200
-    }
-
-    // ========================================
-    // Dimension to Long Tests (Area)
-    // ========================================
-
-    @Test
-    void testDimensionToLong() {
-        Dimension dimension = new Dimension(100, 200);
-        Long result = converter.convert(dimension, Long.class);
-        assertThat(result).isEqualTo(20000L); // 100 * 200 = 20000
-    }
-
-    // ========================================
-    // Dimension to BigInteger Tests (Area)
-    // ========================================
-
-    @Test
-    void testDimensionToBigInteger() {
-        Dimension dimension = new Dimension(50, 60);
-        BigInteger result = converter.convert(dimension, BigInteger.class);
-        assertThat(result).isEqualTo(BigInteger.valueOf(3000L)); // 50 * 60 = 3000
-    }
-
-    // ========================================
-    // Dimension to BigDecimal Tests (Area)
-    // ========================================
-
-    @Test
-    void testDimensionToBigDecimal() {
-        Dimension dimension = new Dimension(25, 40);
-        BigDecimal result = converter.convert(dimension, BigDecimal.class);
-        assertThat(result).isEqualTo(BigDecimal.valueOf(1000L)); // 25 * 40 = 1000
-    }
 
     // ========================================
     // Dimension to Map Tests
@@ -367,28 +324,20 @@ class DimensionConversionsTest {
     }
 
     // ========================================
-    // Round-trip Boolean Tests
+    // Round-trip Boolean Tests (Now Blocked)
     // ========================================
 
     @Test
-    void testBooleanDimensionRoundTrip_true() {
-        Boolean originalBoolean = Boolean.TRUE;
-        
-        // Boolean -> Dimension -> Boolean
-        Dimension dimension = converter.convert(originalBoolean, Dimension.class);
-        Boolean backToBoolean = converter.convert(dimension, Boolean.class);
-        
-        assertThat(backToBoolean).isEqualTo(originalBoolean);
+    void testBooleanDimensionConversionBlocked_true() {
+        assertThatThrownBy(() -> converter.convert(Boolean.TRUE, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 
     @Test
-    void testBooleanDimensionRoundTrip_false() {
-        Boolean originalBoolean = Boolean.FALSE;
-        
-        // Boolean -> Dimension -> Boolean
-        Dimension dimension = converter.convert(originalBoolean, Dimension.class);
-        Boolean backToBoolean = converter.convert(dimension, Boolean.class);
-        
-        assertThat(backToBoolean).isEqualTo(originalBoolean);
+    void testBooleanDimensionConversionBlocked_false() {
+        assertThatThrownBy(() -> converter.convert(Boolean.FALSE, Dimension.class))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Unsupported conversion, source type [Boolean");
     }
 }

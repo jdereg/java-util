@@ -649,11 +649,11 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
             throw new IllegalArgumentException("toKey < fromKey");
         }
 
-        return intervals.subMap(fromKey, true, toKey, true)
-                .entrySet()
-                .stream()
-                .map(e -> new Interval<>(e.getKey(), e.getValue()))
-                .collect(java.util.stream.Collectors.toList());
+        List<Interval<T>> result = new ArrayList<>();
+        for (Map.Entry<T, T> entry : intervals.subMap(fromKey, true, toKey, true).entrySet()) {
+            result.add(new Interval<>(entry.getKey(), entry.getValue()));
+        }
+        return result;
     }
 
     /**
@@ -667,11 +667,11 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public List<Interval<T>> getIntervalsBefore(T toKey) {
         Objects.requireNonNull(toKey);
-        return intervals.headMap(toKey, false)
-                .entrySet()
-                .stream()
-                .map(e -> new Interval<>(e.getKey(), e.getValue()))
-                .collect(java.util.stream.Collectors.toList());
+        List<Interval<T>> result = new ArrayList<>();
+        for (Map.Entry<T, T> entry : intervals.headMap(toKey, false).entrySet()) {
+            result.add(new Interval<>(entry.getKey(), entry.getValue()));
+        }
+        return result;
     }
 
     /**
@@ -685,11 +685,11 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      */
     public List<Interval<T>> getIntervalsFrom(T fromKey) {
         Objects.requireNonNull(fromKey);
-        return intervals.tailMap(fromKey, true)
-                .entrySet()
-                .stream()
-                .map(e -> new Interval<>(e.getKey(), e.getValue()))
-                .collect(java.util.stream.Collectors.toList());
+        List<Interval<T>> result = new ArrayList<>();
+        for (Map.Entry<T, T> entry : intervals.tailMap(fromKey, true).entrySet()) {
+            result.add(new Interval<>(entry.getKey(), entry.getValue()));
+        }
+        return result;
     }
 
     /**
@@ -702,11 +702,20 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @return an iterator over intervals in descending order by start key
      */
     public Iterator<Interval<T>> descendingIterator() {
-        return intervals.descendingMap()
-                .entrySet()
-                .stream()
-                .map(e -> new Interval<>(e.getKey(), e.getValue()))
-                .iterator();
+        return new Iterator<Interval<T>>() {
+            private final Iterator<Map.Entry<T, T>> entryIterator = intervals.descendingMap().entrySet().iterator();
+
+            @Override
+            public boolean hasNext() {
+                return entryIterator.hasNext();
+            }
+
+            @Override
+            public Interval<T> next() {
+                Map.Entry<T, T> entry = entryIterator.next();
+                return new Interval<>(entry.getKey(), entry.getValue());
+            }
+        };
     }
 
     /**

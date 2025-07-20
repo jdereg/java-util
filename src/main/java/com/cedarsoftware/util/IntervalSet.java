@@ -388,7 +388,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         Objects.requireNonNull(end);
         lock.lock();
         try {
-            return intervals.remove(start, end);
+            T existingEnd = intervals.get(start);
+            if (existingEnd != null && existingEnd.equals(end)) {
+                intervals.remove(start);
+                return true;
+            }
+            return false;
         } finally {
             lock.unlock();
         }

@@ -902,7 +902,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *   <li>{@link Character} - returns previous Unicode character</li>
      *   <li>{@link Date} - returns value minus 1 millisecond</li>
      *   <li>{@link java.sql.Date} - returns value minus 1 day</li>
-     *   <li>{@link java.sql.Time} - returns value minus 1 millisecond</li>
      *   <li>{@link Timestamp} - returns value minus 1 nanosecond</li>
      *   <li>{@link Instant} - returns value minus 1 nanosecond</li>
      *   <li>{@link LocalDate} - returns value minus 1 day</li>
@@ -918,15 +917,24 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @param value the value for which to compute the previous value
      * @return the previous adjacent value
      * @throws UnsupportedOperationException if the value type is not supported
+     * @throws ArithmeticException if the operation would cause numeric underflow
      */
     @SuppressWarnings("unchecked")
     private T previousValue(T value) {
         // Handle Number types
         if (value instanceof Number) {
             if (value instanceof Integer) {
-                return (T) Integer.valueOf(((Integer) value) - 1);
+                int i = (Integer) value;
+                if (i == Integer.MIN_VALUE) {
+                    throw new ArithmeticException("Integer underflow: cannot compute previous value for Integer.MIN_VALUE");
+                }
+                return (T) Integer.valueOf(i - 1);
             } else if (value instanceof Long) {
-                return (T) Long.valueOf(((Long) value) - 1L);
+                long l = (Long) value;
+                if (l == Long.MIN_VALUE) {
+                    throw new ArithmeticException("Long underflow: cannot compute previous value for Long.MIN_VALUE");
+                }
+                return (T) Long.valueOf(l - 1L);
             } else if (value instanceof Float) {
                 float f = (Float) value;
                 return (T) Float.valueOf(Math.nextDown(f));
@@ -940,9 +948,17 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
                 BigDecimal increment = BigDecimal.ONE.scaleByPowerOfTen(-bd.scale());
                 return (T) bd.subtract(increment);
             } else if (value instanceof Byte) {
-                return (T) Byte.valueOf((byte) (((Byte) value) - 1));
+                byte b = (Byte) value;
+                if (b == Byte.MIN_VALUE) {
+                    throw new ArithmeticException("Byte underflow: cannot compute previous value for Byte.MIN_VALUE");
+                }
+                return (T) Byte.valueOf((byte) (b - 1));
             } else if (value instanceof Short) {
-                return (T) Short.valueOf((short) (((Short) value) - 1));
+                short s = (Short) value;
+                if (s == Short.MIN_VALUE) {
+                    throw new ArithmeticException("Short underflow: cannot compute previous value for Short.MIN_VALUE");
+                }
+                return (T) Short.valueOf((short) (s - 1));
             }
         }
 
@@ -988,6 +1004,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         // Handle Character
         if (value instanceof Character) {
             char c = (Character) value;
+            if (c == Character.MIN_VALUE) {
+                throw new ArithmeticException("Character underflow: cannot compute previous value for Character.MIN_VALUE");
+            }
             return (T) Character.valueOf((char) (c - 1));
         }
 
@@ -1020,7 +1039,6 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *   <li>{@link Character} - returns next Unicode character</li>
      *   <li>{@link Date} - returns value plus 1 millisecond</li>
      *   <li>{@link java.sql.Date} - returns value plus 1 day</li>
-     *   <li>{@link java.sql.Time} - returns value plus 1 millisecond</li>
      *   <li>{@link Timestamp} - returns value plus 1 nanosecond</li>
      *   <li>{@link Instant} - returns value plus 1 nanosecond</li>
      *   <li>{@link LocalDate} - returns value plus 1 day</li>
@@ -1036,15 +1054,24 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @param value the value for which to compute the next value
      * @return the next adjacent value
      * @throws UnsupportedOperationException if the value type is not supported
+     * @throws ArithmeticException if the operation would cause numeric overflow
      */
     @SuppressWarnings("unchecked")
     private T nextValue(T value) {
         // Handle Number types
         if (value instanceof Number) {
             if (value instanceof Integer) {
-                return (T) Integer.valueOf(((Integer) value) + 1);
+                int i = (Integer) value;
+                if (i == Integer.MAX_VALUE) {
+                    throw new ArithmeticException("Integer overflow: cannot compute next value for Integer.MAX_VALUE");
+                }
+                return (T) Integer.valueOf(i + 1);
             } else if (value instanceof Long) {
-                return (T) Long.valueOf(((Long) value) + 1L);
+                long l = (Long) value;
+                if (l == Long.MAX_VALUE) {
+                    throw new ArithmeticException("Long overflow: cannot compute next value for Long.MAX_VALUE");
+                }
+                return (T) Long.valueOf(l + 1L);
             } else if (value instanceof Float) {
                 float f = (Float) value;
                 return (T) Float.valueOf(Math.nextUp(f));
@@ -1058,9 +1085,17 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
                 BigDecimal increment = BigDecimal.ONE.scaleByPowerOfTen(-bd.scale());
                 return (T) bd.add(increment);
             } else if (value instanceof Byte) {
-                return (T) Byte.valueOf((byte) (((Byte) value) + 1));
+                byte b = (Byte) value;
+                if (b == Byte.MAX_VALUE) {
+                    throw new ArithmeticException("Byte overflow: cannot compute next value for Byte.MAX_VALUE");
+                }
+                return (T) Byte.valueOf((byte) (b + 1));
             } else if (value instanceof Short) {
-                return (T) Short.valueOf((short) (((Short) value) + 1));
+                short s = (Short) value;
+                if (s == Short.MAX_VALUE) {
+                    throw new ArithmeticException("Short overflow: cannot compute next value for Short.MAX_VALUE");
+                }
+                return (T) Short.valueOf((short) (s + 1));
             }
         }
 
@@ -1111,6 +1146,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         // Handle Character
         if (value instanceof Character) {
             char c = (Character) value;
+            if (c == Character.MAX_VALUE) {
+                throw new ArithmeticException("Character overflow: cannot compute next value for Character.MAX_VALUE");
+            }
             return (T) Character.valueOf((char) (c + 1));
         }
 

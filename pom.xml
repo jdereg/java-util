@@ -28,8 +28,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- testing only -->
-        <version.junit-jupiter-api>5.11.4</version.junit-jupiter-api>
-        <version.junit-jupiter-params>5.11.4</version.junit-jupiter-params>
+        <version.junit-jupiter-api>5.13.3</version.junit-jupiter-api>
+        <version.junit-jupiter-params>5.13.3</version.junit-jupiter-params>
         <version.mockito-junit-jupiter>4.11.0</version.mockito-junit-jupiter>
         <version.assertj-core>3.27.3</version.assertj-core>
         <version.json-io>4.57.0</version.json-io>

@@ -797,7 +797,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         for (E e : this) {
             hash = 31 * hash + (e == null ? 0 : e.hashCode());
         }
-        return hash;
+        return EncryptionUtilities.finalizeHash(hash);
     }
 
     @Override

@@ -579,7 +579,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                 int valueHash = (value == null ? 0 : value.hashCode());
                 hash += keyHash ^ valueHash;
             }
-            return hash;
+            return EncryptionUtilities.finalizeHash(hash);
         } finally {
             lock.unlock();
         }

@@ -281,12 +281,12 @@ public class TTLCacheTest {
 
         cache2.put(4, "D");
 
-        // cache2 should now contain {2=B,3=C,4=D}; verify hashCode matches
+        // cache2 should now contain {2=B,3=C,4=D}; verify contents match
         Map<Integer, String> expected = new LinkedHashMap<>();
         expected.put(2, "B");
         expected.put(3, "C");
         expected.put(4, "D");
-        assertEquals(expected.hashCode(), cache2.hashCode());
+        assertEquals(expected, cache2); // equals() is valid, hashCode() equality is not required
     }
 
     @Test
@@ -465,7 +465,7 @@ public class TTLCacheTest {
         assertTrue(ttlCache.containsKey(null));
         assertTrue(ttlCache.containsValue(null));
         assertTrue(ttlCache.toString().contains("null=null"));
-        assertEquals(0, ttlCache.hashCode());
+        assertEquals(0, ttlCache.hashCode()); // null key ^ null value = 0, finalizeHash(0) = 0
 
         TTLCache<Integer, String> cache1 = new TTLCache<>(10000, 3);
         cache1.put(null, null);

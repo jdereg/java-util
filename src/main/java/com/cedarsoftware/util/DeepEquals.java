@@ -341,7 +341,7 @@ public class DeepEquals {
 
         @Override
         public int hashCode() {
-            return System.identityHashCode(_key1) * 31 + System.identityHashCode(_key2);
+            return EncryptionUtilities.finalizeHash(System.identityHashCode(_key1) * 31 + System.identityHashCode(_key2));
         }
     }
 

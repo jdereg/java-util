@@ -9,6 +9,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
+import com.cedarsoftware.util.EncryptionUtilities;
 
 /**
  * This class provides a thread-safe Least Recently Used (LRU) cache API that evicts the least recently used items
@@ -458,7 +459,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
                 hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
                 hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
             }
-            return hashCode;
+            return EncryptionUtilities.finalizeHash(hashCode);
         } finally {
             lock.unlock();
         }

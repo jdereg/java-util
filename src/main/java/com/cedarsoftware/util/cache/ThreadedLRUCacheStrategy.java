@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.cedarsoftware.util.ConcurrentHashMapNullSafe;
 import com.cedarsoftware.util.ConcurrentSet;
+import com.cedarsoftware.util.EncryptionUtilities;
 import com.cedarsoftware.util.MapUtilities;
 
 /**
@@ -288,7 +289,7 @@ public class ThreadedLRUCacheStrategy<K, V> implements Map<K, V> {
             hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
             hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
         }
-        return hashCode;
+        return EncryptionUtilities.finalizeHash(hashCode);
     }
 
     @Override

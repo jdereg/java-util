@@ -9347,7 +9347,9 @@ class ConverterEverythingTest {
             }
         }
         
-        LOG.info("=== CONVERSION TEST COVERAGE ANALYSIS ===");
+        LOG.info("┌─────────────────────────────────────────┐");
+        LOG.info("│    CONVERSION TEST COVERAGE ANALYSIS    │");
+        LOG.info("└─────────────────────────────────────────┘");
         LOG.info("Total conversion pairs      = " + STAT_DB.size());
         LOG.info("Conversion pairs tested     = " + (STAT_DB.size() - missing));
         LOG.info("Conversion pairs not tested = " + missing);
@@ -9357,6 +9359,8 @@ class ConverterEverythingTest {
                 LOG.info(testPairName);
             }
         }
-        LOG.info("===========================================");
+        LOG.info("┌─────────────────────────────────────────┐");
+        LOG.info("│              END ANALYSIS               │");
+        LOG.info("└─────────────────────────────────────────┘");
     }
 }

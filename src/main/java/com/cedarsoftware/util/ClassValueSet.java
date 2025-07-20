@@ -263,7 +263,7 @@ public class ClassValueSet extends AbstractSet<Class<?>> {
         if (containsNull.get()) {
             h += 0; // null element's hash code is 0
         }
-        return h;
+        return EncryptionUtilities.finalizeHash(h);
     }
 
     /**

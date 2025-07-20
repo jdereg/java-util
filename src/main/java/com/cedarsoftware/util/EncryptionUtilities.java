@@ -1051,4 +1051,48 @@ public class EncryptionUtilities {
         d.update(bytes);
         return ByteUtilities.encode(d.digest());
     }
+
+    /**
+     * Applies MurmurHash3 finalization to improve the distribution of hash values.
+     * <p>
+     * This function implements the finalization step of the MurmurHash3 algorithm, which applies
+     * a series of bit-mixing operations to eliminate poor distribution in the lower bits of hash values.
+     * It is particularly useful for improving the quality of hashCode() implementations by reducing
+     * hash collisions and improving distribution across hash table buckets.
+     * </p>
+     * <p>
+     * <strong>Note:</strong> This is only the finalization step of MurmurHash3, not the complete
+     * MurmurHash3 algorithm. It takes an existing hash value and improves its bit distribution.
+     * </p>
+     * <p>
+     * <strong>Usage:</strong> Apply this to the result of your hashCode() computation:
+     * <pre>
+     * public int hashCode() {
+     *     int result = Objects.hash(field1, field2, field3);
+     *     return EncryptionUtilities.murmurHash3(result);
+     * }
+     * </pre>
+     * </p>
+     * <p>
+     * The finalization step performs the following operations:
+     * <ol>
+     * <li>XOR with right-shifted bits (eliminates poor distribution)</li>
+     * <li>Multiply by a carefully chosen constant</li>
+     * <li>Repeat the process to maximize avalanche effect</li>
+     * </ol>
+     * </p>
+     *
+     * @param hash the input hash value to be finalized
+     * @return the finalized hash value with improved bit distribution
+     * @see <a href="https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp">MurmurHash3 Reference Implementation</a>
+     */
+    public static int finalizeHash(int hash) {
+        // MurmurHash3 finalization
+        hash ^= (hash >>> 16);
+        hash *= 0x85ebca6b;
+        hash ^= (hash >>> 13);
+        hash *= 0xc2b2ae35;
+        hash ^= (hash >>> 16);
+        return hash;
+    }
 }

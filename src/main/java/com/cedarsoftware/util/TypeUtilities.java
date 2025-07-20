@@ -528,7 +528,7 @@ public class TypeUtilities {
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(args) ^ Objects.hashCode(raw) ^ Objects.hashCode(owner);
+            return EncryptionUtilities.finalizeHash(Arrays.hashCode(args) ^ Objects.hashCode(raw) ^ Objects.hashCode(owner));
         }
     }
 
@@ -627,7 +627,7 @@ public class TypeUtilities {
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(upperBounds) ^ Arrays.hashCode(lowerBounds);
+            return EncryptionUtilities.finalizeHash(Arrays.hashCode(upperBounds) ^ Arrays.hashCode(lowerBounds));
         }
     }
 }

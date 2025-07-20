@@ -24,6 +24,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import static com.cedarsoftware.util.EncryptionUtilities.finalizeHash;
 
 /**
  * High-performance N-dimensional key-value Map implementation using separate chaining.
@@ -482,17 +483,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         return key.hashCode();
     }
-
-    private static int finalizeHash(int hash) {
-        // MurmurHash3 finalization
-        hash ^= (hash >>> 16);
-        hash *= 0x85ebca6b;
-        hash ^= (hash >>> 13);
-        hash *= 0xc2b2ae35;
-        hash ^= (hash >>> 16);
-        return hash;
-    }
-
 
     /**
      * Selects the appropriate stripe lock based on the hash code.

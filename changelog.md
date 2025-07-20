@@ -12,6 +12,9 @@
 >   using a latch to reliably detect the expected exception under heavy load
 > * **BUG FIX**: Prevented null elements from appearing in iterator snapshots
 >   of `ConcurrentList` under extreme concurrency
+> * **BUG FIX**: Corrected `IntervalSet` range removal for discrete types,
+>   enforced unique start keys in discrete mode, and removed unsupported
+>   `AtomicInteger` and `AtomicLong` from documentation.
 #### 3.7.0
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:
 >   * **N-Dimensional Array Expansion**: Nested arrays of any depth are automatically flattened recursively into multi-keys with sentinel preservation

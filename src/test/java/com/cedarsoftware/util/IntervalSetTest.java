@@ -12,6 +12,7 @@ import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -28,6 +29,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IntervalSetTest {
+
+    // Helper method to convert IntervalSet to List for testing
+    private static <T extends Comparable<? super T>> List<IntervalSet.Interval<T>> toList(IntervalSet<T> set) {
+        List<IntervalSet.Interval<T>> list = new ArrayList<>();
+        for (IntervalSet.Interval<T> interval : set) {
+            list.add(interval);
+        }
+        return list;
+    }
 
     @Test
     void testAddAndContains() {
@@ -231,7 +241,7 @@ class IntervalSetTest {
         set.removeRange(3, 7);
         // Expect two intervals: [1,2] and [8,10] (correct boundary behavior)
         assertEquals(2, set.size());
-        List<IntervalSet.Interval<Integer>> list = set.asList();
+        List<IntervalSet.Interval<Integer>> list = toList(set);
         assertEquals(1, list.get(0).getStart());
         assertEquals(2, list.get(0).getEnd());
         assertEquals(8, list.get(1).getStart());
@@ -257,7 +267,7 @@ class IntervalSetTest {
         // removal range overlaps both intervals, triggers loop-based right shard
         set.removeRange(2, 6);
         // Expect two intervals: [1,1] and [7,10] (correct boundary behavior)
-        List<IntervalSet.Interval<Integer>> list = set.asList();
+        List<IntervalSet.Interval<Integer>> list = toList(set);
         assertEquals(2, list.size());
         assertEquals(1, list.get(0).getStart());
         assertEquals(1, list.get(0).getEnd());
@@ -423,7 +433,7 @@ class IntervalSetTest {
         assertFalse(set.contains(10));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(set);
         assertEquals(1, intervals.get(0).getStart());
         assertEquals(4, intervals.get(0).getEnd()); // This confirms previousValue(5) = 4 was used
     }
@@ -445,7 +455,7 @@ class IntervalSetTest {
         assertFalse(set.contains(200L));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<Long>> intervals = set.asList();
+        List<IntervalSet.Interval<Long>> intervals = toList(set);
         assertEquals(100L, intervals.get(0).getStart());
         assertEquals(149L, intervals.get(0).getEnd()); // This confirms previousValue(150L) = 149L was used
     }
@@ -471,7 +481,7 @@ class IntervalSetTest {
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<ZonedDateTime>> intervals = set.asList();
+        List<IntervalSet.Interval<ZonedDateTime>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
         assertEquals(removeStart.minusNanos(1), intervals.get(0).getEnd()); // This confirms previousValue() was used
     }
@@ -488,7 +498,7 @@ class IntervalSetTest {
         // Verify the result: should have two intervals [1, 7] and [13, 20]
         assertEquals(2, set.size());
 
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(set);
         // First interval: [1, 7] (using previousValue(8) = 7)
         assertEquals(1, intervals.get(0).getStart());
         assertEquals(7, intervals.get(0).getEnd());
@@ -521,7 +531,7 @@ class IntervalSetTest {
         assertTrue(set.contains(10));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(set);
         assertEquals(6, intervals.get(0).getStart()); // This confirms nextValue(5) = 6 was used
         assertEquals(10, intervals.get(0).getEnd());
     }
@@ -543,7 +553,7 @@ class IntervalSetTest {
         assertTrue(set.contains(200L));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<Long>> intervals = set.asList();
+        List<IntervalSet.Interval<Long>> intervals = toList(set);
         assertEquals(151L, intervals.get(0).getStart()); // This confirms nextValue(150L) = 151L was used
         assertEquals(200L, intervals.get(0).getEnd());
     }
@@ -569,7 +579,7 @@ class IntervalSetTest {
         assertTrue(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<ZonedDateTime>> intervals = set.asList();
+        List<IntervalSet.Interval<ZonedDateTime>> intervals = toList(set);
         assertEquals(removeEnd.plusNanos(1), intervals.get(0).getStart()); // This confirms nextValue() was used
         assertEquals(end, intervals.get(0).getEnd());
     }
@@ -586,7 +596,7 @@ class IntervalSetTest {
         // Verify the result: should have one interval [21, 30]
         assertEquals(1, set.size());
 
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(set);
         assertEquals(21, intervals.get(0).getStart()); // This confirms nextValue(20) = 21 was used
         assertEquals(30, intervals.get(0).getEnd());
 
@@ -618,7 +628,7 @@ class IntervalSetTest {
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<BigInteger>> intervals = set.asList();
+        List<IntervalSet.Interval<BigInteger>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
         assertEquals(BigInteger.valueOf(149), intervals.get(0).getEnd()); // This confirms previousValue(150) = 149
     }
@@ -644,7 +654,7 @@ class IntervalSetTest {
         assertTrue(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<BigInteger>> intervals = set.asList();
+        List<IntervalSet.Interval<BigInteger>> intervals = toList(set);
         assertEquals(BigInteger.valueOf(151), intervals.get(0).getStart()); // This confirms nextValue(150) = 151
         assertEquals(end, intervals.get(0).getEnd());
     }
@@ -670,7 +680,7 @@ class IntervalSetTest {
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<BigDecimal>> intervals = set.asList();
+        List<IntervalSet.Interval<BigDecimal>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
         assertEquals(new BigDecimal("14.99"), intervals.get(0).getEnd());
     }
@@ -696,7 +706,7 @@ class IntervalSetTest {
         assertTrue(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<BigDecimal>> intervals = set.asList();
+        List<IntervalSet.Interval<BigDecimal>> intervals = toList(set);
         assertEquals(new BigDecimal("15.001"), intervals.get(0).getStart());
         assertEquals(end, intervals.get(0).getEnd());
     }
@@ -722,7 +732,7 @@ class IntervalSetTest {
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<Double>> intervals = set.asList();
+        List<IntervalSet.Interval<Double>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
         assertEquals(Math.nextDown(removeStart), intervals.get(0).getEnd());
     }
@@ -748,7 +758,7 @@ class IntervalSetTest {
         assertTrue(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<Double>> intervals = set.asList();
+        List<IntervalSet.Interval<Double>> intervals = toList(set);
         assertEquals(Math.nextUp(removeEnd), intervals.get(0).getStart());
         assertEquals(end, intervals.get(0).getEnd());
     }
@@ -774,7 +784,7 @@ class IntervalSetTest {
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<Float>> intervals = set.asList();
+        List<IntervalSet.Interval<Float>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
         assertEquals(Math.nextDown(removeStart), intervals.get(0).getEnd());
     }
@@ -800,7 +810,7 @@ class IntervalSetTest {
         assertTrue(set.contains(end));
 
         // Verify the exact interval bounds
-        List<IntervalSet.Interval<Float>> intervals = set.asList();
+        List<IntervalSet.Interval<Float>> intervals = toList(set);
         assertEquals(Math.nextUp(removeEnd), intervals.get(0).getStart());
         assertEquals(end, intervals.get(0).getEnd());
     }
@@ -891,217 +901,65 @@ class IntervalSetTest {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // AutoMerge functionality tests
+    // Merging functionality tests
     // ──────────────────────────────────────────────────────────────────────────
 
     @Test
-    void testAutoMergeDefaultConstructor() {
-        IntervalSet<Integer> set = new IntervalSet<>(); // default: autoMerge = true
+    void testMergeDefaultConstructor() {
+        IntervalSet<Integer> set = new IntervalSet<>();
         set.add(10, 20);
         set.add(15, 25); // overlaps, should merge
         
         assertEquals(1, set.size());
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(set);
         assertEquals(10, intervals.get(0).getStart());
         assertEquals(25, intervals.get(0).getEnd());
     }
 
     @Test
-    void testAutoMergeExplicitTrue() {
-        IntervalSet<Integer> set = new IntervalSet<>(true);
+    void testMergeExplicitConstructor() {
+        IntervalSet<Integer> set = new IntervalSet<>();
         set.add(10, 20);
         set.add(15, 25); // overlaps, should merge
         
         assertEquals(1, set.size());
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(set);
         assertEquals(10, intervals.get(0).getStart());
         assertEquals(25, intervals.get(0).getEnd());
     }
 
-    @Test
-    void testDiscreteMode() {
-        IntervalSet<Integer> set = new IntervalSet<>(false); // discrete mode
-        set.add(10, 20);
-        set.add(15, 25); // overlaps, but kept separate
-        
-        assertEquals(2, set.size());
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
-        // Both intervals preserved
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 20)));
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(15, 25)));
-    }
 
     @Test
-    void testDiscreteModeQueriesWork() {
-        IntervalSet<Integer> set = new IntervalSet<>(false);
-        set.add(10, 20);
-        set.add(30, 40);
-        
-        // Queries should work across discrete intervals
-        assertTrue(set.contains(15)); // in first interval
-        assertTrue(set.contains(35)); // in second interval
-        assertFalse(set.contains(25)); // in gap between intervals
-        
-        // intervalContaining should work
-        IntervalSet.Interval<Integer> result = set.intervalContaining(15);
-        assertNotNull(result);
-        assertEquals(10, result.getStart());
-        assertEquals(20, result.getEnd());
-        
-        result = set.intervalContaining(35);
-        assertNotNull(result);
-        assertEquals(30, result.getStart());
-        assertEquals(40, result.getEnd());
-        
-        result = set.intervalContaining(25);
-        assertNull(result); // no interval contains 25
-    }
-
-    @Test
-    void testDiscreteModeOverlappingQueries() {
-        IntervalSet<Integer> set = new IntervalSet<>(false);
-        set.add(10, 20);
-        set.add(15, 25); // overlaps with first
-        set.add(30, 40);
-        
-        assertEquals(3, set.size()); // all kept separate
-        
-        // Value 17 is contained in first interval
-        assertTrue(set.contains(17));
-        IntervalSet.Interval<Integer> result = set.intervalContaining(17);
-        assertNotNull(result);
-        // floorEntry returns the interval with largest start <= 17, which could be [15,25]
-        // since 15 <= 17, but [10,20] also contains 17 (10 <= 17 <= 20)
-        // floorEntry will return the one with start closest to 17, which is [15,25]
-        assertEquals(15, result.getStart()); 
-        assertEquals(25, result.getEnd());
-        
-        // Value 22 is only contained in second interval
-        assertTrue(set.contains(22));
-        result = set.intervalContaining(22);
-        assertNotNull(result);
-        assertEquals(15, result.getStart());
-        assertEquals(25, result.getEnd());
-    }
-
-    @Test
-    void testAutoMergeRemoveWithSplitting() {
-        IntervalSet<Integer> set = new IntervalSet<>(true);
+    void testMergeRemoveWithSplitting() {
+        IntervalSet<Integer> set = new IntervalSet<>();
         set.add(10, 30); // one merged interval
         
         // Remove middle part, should split
         set.remove(15, 20);
         assertEquals(2, set.size());
         
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(set);
         assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 14))); // left part
         assertTrue(intervals.contains(new IntervalSet.Interval<>(21, 30))); // right part
     }
 
-    @Test
-    void testDiscreteModeRemoveEntireIntervals() {
-        IntervalSet<Integer> set = new IntervalSet<>(false);
-        set.add(10, 20);
-        set.add(15, 25);
-        set.add(30, 40);
-        
-        // Remove overlapping with first two intervals
-        set.remove(17, 18);
-        assertEquals(1, set.size()); // first two removed entirely
-        
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
-        assertEquals(30, intervals.get(0).getStart()); // only third interval remains
-        assertEquals(40, intervals.get(0).getEnd());
-    }
 
     @Test
-    void testAutoMergeRemoveRange() {
-        IntervalSet<Integer> set = new IntervalSet<>(true);
+    void testMergeRemoveRange() {
+        IntervalSet<Integer> set = new IntervalSet<>();
         set.add(10, 50); // one big interval
         
         // Remove range should split
         set.removeRange(20, 30);
         assertEquals(2, set.size());
         
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(set);
         assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 19)));
         assertTrue(intervals.contains(new IntervalSet.Interval<>(31, 50)));
     }
 
-    @Test
-    void testDiscreteModeRemoveRange() {
-        IntervalSet<Integer> set = new IntervalSet<>(false);
-        set.add(5, 10);      // no overlap with [20, 30]  
-        set.add(15, 25);     // overlaps with [20, 30]
-        set.add(35, 45);     // no overlap with [20, 30]
-        
-        assertEquals(3, set.size());
-        
-        // Remove range [20, 30] - should only remove [15,25]
-        set.removeRange(20, 30);
-        assertEquals(2, set.size());
-        
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(5, 10)));
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(35, 45)));
-    }
 
-    @Test
-    void testDiscreteModeComplexScenario() {
-        // Simulate audit log scenario - keep all pieces but query as unified
-        IntervalSet<Integer> auditLog = new IntervalSet<>(false);
-        
-        // Add verification ranges (would be kept separate for audit)
-        auditLog.add(100, 200);  // First verification
-        auditLog.add(150, 250);  // Second verification (overlaps)
-        auditLog.add(300, 400);  // Third verification (separate)
-        auditLog.add(350, 450);  // Fourth verification (overlaps with third)
-        
-        assertEquals(4, auditLog.size()); // All verification events preserved
-        
-        // But queries work as if it's one logical range
-        assertTrue(auditLog.contains(125));  // covered by first verification
-        assertTrue(auditLog.contains(175));  // covered by both first and second
-        assertTrue(auditLog.contains(225));  // covered by second only
-        assertFalse(auditLog.contains(275)); // gap between verifications
-        assertTrue(auditLog.contains(375));  // covered by both third and fourth
-        
-        // Can still get individual verification events for audit
-        List<IntervalSet.Interval<Integer>> events = auditLog.asList();
-        assertEquals(4, events.size());
-    }
 
-    @Test
-    void testMergeVsDiscreteBehaviorComparison() {
-        // Same operations on merge vs discrete sets
-        IntervalSet<Integer> mergeSet = new IntervalSet<>(true);
-        IntervalSet<Integer> discreteSet = new IntervalSet<>(false);
-        
-        // Add same intervals to both
-        mergeSet.add(10, 20);
-        mergeSet.add(15, 25);
-        mergeSet.add(30, 40);
-        
-        discreteSet.add(10, 20);
-        discreteSet.add(15, 25);
-        discreteSet.add(30, 40);
-        
-        // Merge set consolidates overlapping intervals
-        assertEquals(2, mergeSet.size()); // [10,25] and [30,40]
-        
-        // Discrete set keeps all pieces
-        assertEquals(3, discreteSet.size()); // [10,20], [15,25], [30,40]
-        
-        // But queries work the same on both
-        assertTrue(mergeSet.contains(17));
-        assertTrue(discreteSet.contains(17));
-        assertTrue(mergeSet.contains(22));
-        assertTrue(discreteSet.contains(22));
-        assertTrue(mergeSet.contains(35));
-        assertTrue(discreteSet.contains(35));
-        assertFalse(mergeSet.contains(27));
-        assertFalse(discreteSet.contains(27));
-    }
 
     // ──────────────────────────────────────────────────────────────────────────
     // previousInterval method tests
@@ -1354,19 +1212,6 @@ class IntervalSetTest {
         assertEquals(0, result.size());
     }
 
-    @Test
-    void testGetIntervalsInRangeDiscreteMode() {
-        IntervalSet<Integer> set = new IntervalSet<>(false); // discrete mode
-        set.add(10, 20);
-        set.add(15, 25); // overlapping but kept separate
-        set.add(30, 40);
-
-        // Should return intervals by start key in range
-        List<IntervalSet.Interval<Integer>> result = set.getIntervalsInRange(12, 35);
-        assertEquals(2, result.size()); // [15,25] and [30,40] have starts in [12,35]
-        assertTrue(result.contains(new IntervalSet.Interval<>(15, 25)));
-        assertTrue(result.contains(new IntervalSet.Interval<>(30, 40)));
-    }
 
     @Test
     void testGetIntervalsInRangeInvalidRange() {
@@ -1520,7 +1365,7 @@ class IntervalSetTest {
         IntervalSet<Byte> set = new IntervalSet<>();
         set.add((byte)10, (byte)20);
         set.remove((byte)15, (byte)20);
-        List<IntervalSet.Interval<Byte>> intervals = set.asList();
+        List<IntervalSet.Interval<Byte>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals((byte)10, intervals.get(0).getStart());
         assertEquals((byte)14, intervals.get(0).getEnd());
@@ -1531,7 +1376,7 @@ class IntervalSetTest {
         IntervalSet<Byte> set = new IntervalSet<>();
         set.add((byte)10, (byte)20);
         set.remove((byte)10, (byte)15);
-        List<IntervalSet.Interval<Byte>> intervals = set.asList();
+        List<IntervalSet.Interval<Byte>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals((byte)16, intervals.get(0).getStart());
         assertEquals((byte)20, intervals.get(0).getEnd());
@@ -1542,7 +1387,7 @@ class IntervalSetTest {
         IntervalSet<Short> set = new IntervalSet<>();
         set.add((short)100, (short)200);
         set.remove((short)150, (short)200);
-        List<IntervalSet.Interval<Short>> intervals = set.asList();
+        List<IntervalSet.Interval<Short>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals((short)100, intervals.get(0).getStart());
         assertEquals((short)149, intervals.get(0).getEnd());
@@ -1553,7 +1398,7 @@ class IntervalSetTest {
         IntervalSet<Short> set = new IntervalSet<>();
         set.add((short)100, (short)200);
         set.remove((short)100, (short)150);
-        List<IntervalSet.Interval<Short>> intervals = set.asList();
+        List<IntervalSet.Interval<Short>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals((short)151, intervals.get(0).getStart());
         assertEquals((short)200, intervals.get(0).getEnd());
@@ -1570,7 +1415,7 @@ class IntervalSetTest {
         // This remove operation should work without overflow
         set.remove((byte)-50, (byte)30);
         
-        List<IntervalSet.Interval<Byte>> intervals = set.asList();
+        List<IntervalSet.Interval<Byte>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals((byte)-100, intervals.get(0).getStart());
         assertEquals((byte)-51, intervals.get(0).getEnd());
@@ -1589,7 +1434,7 @@ class IntervalSetTest {
         // This remove operation should work without overflow
         set.remove((byte)-30, (byte)80);
         
-        List<IntervalSet.Interval<Byte>> intervals = set.asList();
+        List<IntervalSet.Interval<Byte>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals((byte)-50, intervals.get(0).getStart());
         assertEquals((byte)-31, intervals.get(0).getEnd());
@@ -1608,7 +1453,7 @@ class IntervalSetTest {
         // This remove operation should work without overflow
         set.remove((short)-20000, (short)500);
         
-        List<IntervalSet.Interval<Short>> intervals = set.asList();
+        List<IntervalSet.Interval<Short>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals((short)-30000, intervals.get(0).getStart());
         assertEquals((short)-20001, intervals.get(0).getEnd());
@@ -1627,7 +1472,7 @@ class IntervalSetTest {
         // This remove operation should work without overflow
         set.remove((short)-500, (short)20000);
         
-        List<IntervalSet.Interval<Short>> intervals = set.asList();
+        List<IntervalSet.Interval<Short>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals((short)-1000, intervals.get(0).getStart());
         assertEquals((short)-501, intervals.get(0).getEnd());
@@ -1643,7 +1488,7 @@ class IntervalSetTest {
         
         IntervalSet<Integer> copy = new IntervalSet<>(original);
         
-        assertEquals(original.asList(), copy.asList());
+        assertEquals(toList(original), toList(copy));
         
         // Verify independence - changes to copy don't affect original
         copy.add(20, 25);
@@ -1668,13 +1513,13 @@ class IntervalSetTest {
             return s.substring(0, s.length() - 1) + (char)(c + 1);
         };
         
-        IntervalSet<String> set = new IntervalSet<>(true, prevFunc, nextFunc);
+        IntervalSet<String> set = new IntervalSet<>(prevFunc, nextFunc);
         set.add("cat", "dog");
         
         // Remove middle portion to trigger splitting
         set.remove("cow", "cow");
         
-        List<IntervalSet.Interval<String>> intervals = set.asList();
+        List<IntervalSet.Interval<String>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals("cat", intervals.get(0).getStart());
         assertEquals("cov", intervals.get(0).getEnd()); // previousValue("cow") = "cov"
@@ -1717,32 +1562,6 @@ class IntervalSetTest {
         });
     }
 
-    @Test
-    void testDiscreteContains() {
-        IntervalSet<Integer> set = new IntervalSet<>(false); // discrete mode
-        set.add(1, 5);
-        set.add(3, 7); // overlaps but stored separately
-        
-        assertTrue(set.contains(1));
-        assertTrue(set.contains(3));
-        assertTrue(set.contains(5));
-        assertTrue(set.contains(7));
-        assertFalse(set.contains(0));
-        assertFalse(set.contains(8));
-    }
-
-    @Test
-    void testDiscreteIntervalContaining() {
-        IntervalSet<Integer> set = new IntervalSet<>(false); // discrete mode
-        set.add(1, 5);
-        set.add(3, 7); // overlaps but stored separately
-        
-        // Should return the interval with the largest start key that contains the value
-        IntervalSet.Interval<Integer> interval = set.intervalContaining(4);
-        assertNotNull(interval);
-        assertEquals(3, interval.getStart()); // interval [3,7] has larger start than [1,5]
-        assertEquals(7, interval.getEnd());
-    }
 
     @Test
     void testUnion() {
@@ -1756,7 +1575,7 @@ class IntervalSetTest {
         
         IntervalSet<Integer> union = set1.union(set2);
         
-        List<IntervalSet.Interval<Integer>> intervals = union.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(union);
         assertEquals(3, intervals.size());
         assertEquals(1, intervals.get(0).getStart());
         assertEquals(7, intervals.get(0).getEnd()); // [1,5] merged with [3,7]
@@ -1778,7 +1597,7 @@ class IntervalSetTest {
         
         IntervalSet<Integer> intersection = set1.intersection(set2);
         
-        List<IntervalSet.Interval<Integer>> intervals = intersection.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(intersection);
         assertEquals(2, intervals.size());
         assertEquals(5, intervals.get(0).getStart());
         assertEquals(10, intervals.get(0).getEnd()); // overlap of [1,10] and [5,15]
@@ -1797,7 +1616,7 @@ class IntervalSetTest {
         
         IntervalSet<Integer> difference = set1.difference(set2);
         
-        List<IntervalSet.Interval<Integer>> intervals = difference.asList();
+        List<IntervalSet.Interval<Integer>> intervals = toList(difference);
         assertEquals(2, intervals.size());
         assertEquals(1, intervals.get(0).getStart());
         assertEquals(4, intervals.get(0).getEnd()); // [1,10] minus [5,15] = [1,4]
@@ -1871,7 +1690,7 @@ class IntervalSetTest {
         IntervalSet<Character> set = new IntervalSet<>();
         set.add('a', 'z');
         set.remove('m', 'z');
-        List<IntervalSet.Interval<Character>> intervals = set.asList();
+        List<IntervalSet.Interval<Character>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(Character.valueOf('a'), intervals.get(0).getStart());
         assertEquals(Character.valueOf((char)('m' - 1)), intervals.get(0).getEnd());
@@ -1882,7 +1701,7 @@ class IntervalSetTest {
         IntervalSet<Character> set = new IntervalSet<>();
         set.add('a', 'z');
         set.remove('a', 'm');
-        List<IntervalSet.Interval<Character>> intervals = set.asList();
+        List<IntervalSet.Interval<Character>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(Character.valueOf((char)('m' + 1)), intervals.get(0).getStart());
         assertEquals(Character.valueOf('z'), intervals.get(0).getEnd());
@@ -1898,7 +1717,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
         Date prev = new Date(removeStart.getTime() - 1);
-        List<IntervalSet.Interval<Date>> intervals = set.asList();
+        List<IntervalSet.Interval<Date>> intervals = toList(set);
         assertEquals(prev, intervals.get(0).getEnd());
     }
 
@@ -1912,7 +1731,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         Date next = new Date(removeEnd.getTime() + 1);
-        List<IntervalSet.Interval<Date>> intervals = set.asList();
+        List<IntervalSet.Interval<Date>> intervals = toList(set);
         assertEquals(next, intervals.get(0).getStart());
     }
 
@@ -1930,7 +1749,7 @@ class IntervalSetTest {
         // So left boundary should be exactly 'start' 
         java.sql.Date expectedEnd = new java.sql.Date(removeStart.getTime() - 86400000L);
         
-        List<IntervalSet.Interval<java.sql.Date>> intervals = set.asList();
+        List<IntervalSet.Interval<java.sql.Date>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(start, intervals.get(0).getStart());
         assertEquals(expectedEnd, intervals.get(0).getEnd());
@@ -1950,7 +1769,7 @@ class IntervalSetTest {
         // So right boundary should start at 'end'
         java.sql.Date expectedStart = new java.sql.Date(removeEnd.getTime() + 86400000L);
         
-        List<IntervalSet.Interval<java.sql.Date>> intervals = set.asList();
+        List<IntervalSet.Interval<java.sql.Date>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(expectedStart, intervals.get(0).getStart());
         assertEquals(end, intervals.get(0).getEnd());
@@ -1970,7 +1789,7 @@ class IntervalSetTest {
         set.remove(removeStart, end);
         Timestamp prev = new Timestamp(removeStart.getTime());
         prev.setNanos(removeStart.getNanos() - 1);
-        List<IntervalSet.Interval<Timestamp>> intervals = set.asList();
+        List<IntervalSet.Interval<Timestamp>> intervals = toList(set);
         assertEquals(prev, intervals.get(0).getEnd());
     }
 
@@ -1988,7 +1807,7 @@ class IntervalSetTest {
         set.remove(start, removeEnd);
         Timestamp expected = new Timestamp(removeEnd.getTime());
         expected.setNanos(removeEnd.getNanos() + 1); // Should be 500000001
-        List<IntervalSet.Interval<Timestamp>> intervals = set.asList();
+        List<IntervalSet.Interval<Timestamp>> intervals = toList(set);
         Timestamp actualStart = intervals.get(0).getStart();
         assertEquals(expected, actualStart);
     }
@@ -2002,7 +1821,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
         Instant prev = removeStart.minusNanos(1);
-        List<IntervalSet.Interval<Instant>> intervals = set.asList();
+        List<IntervalSet.Interval<Instant>> intervals = toList(set);
         assertEquals(prev, intervals.get(0).getEnd());
     }
 
@@ -2015,7 +1834,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         Instant next = removeEnd.plusNanos(1);
-        List<IntervalSet.Interval<Instant>> intervals = set.asList();
+        List<IntervalSet.Interval<Instant>> intervals = toList(set);
         assertEquals(next, intervals.get(0).getStart());
     }
 
@@ -2028,7 +1847,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
         LocalDate prev = removeStart.minusDays(1);
-        List<IntervalSet.Interval<LocalDate>> intervals = set.asList();
+        List<IntervalSet.Interval<LocalDate>> intervals = toList(set);
         assertEquals(prev, intervals.get(0).getEnd());
     }
 
@@ -2041,7 +1860,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         LocalDate next = removeEnd.plusDays(1);
-        List<IntervalSet.Interval<LocalDate>> intervals = set.asList();
+        List<IntervalSet.Interval<LocalDate>> intervals = toList(set);
         assertEquals(next, intervals.get(0).getStart());
     }
 
@@ -2054,7 +1873,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
         LocalTime prev = removeStart.minusNanos(1);
-        List<IntervalSet.Interval<LocalTime>> intervals = set.asList();
+        List<IntervalSet.Interval<LocalTime>> intervals = toList(set);
         assertEquals(prev, intervals.get(0).getEnd());
     }
 
@@ -2067,7 +1886,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         LocalTime next = removeEnd.plusNanos(1);
-        List<IntervalSet.Interval<LocalTime>> intervals = set.asList();
+        List<IntervalSet.Interval<LocalTime>> intervals = toList(set);
         assertEquals(next, intervals.get(0).getStart());
     }
 
@@ -2080,7 +1899,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
         LocalDateTime prev = removeStart.minusNanos(1);
-        List<IntervalSet.Interval<LocalDateTime>> intervals = set.asList();
+        List<IntervalSet.Interval<LocalDateTime>> intervals = toList(set);
         assertEquals(prev, intervals.get(0).getEnd());
     }
 
@@ -2093,7 +1912,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         LocalDateTime next = removeEnd.plusNanos(1);
-        List<IntervalSet.Interval<LocalDateTime>> intervals = set.asList();
+        List<IntervalSet.Interval<LocalDateTime>> intervals = toList(set);
         assertEquals(next, intervals.get(0).getStart());
     }
 
@@ -2106,7 +1925,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
         OffsetDateTime prev = removeStart.minusNanos(1);
-        List<IntervalSet.Interval<OffsetDateTime>> intervals = set.asList();
+        List<IntervalSet.Interval<OffsetDateTime>> intervals = toList(set);
         assertEquals(prev, intervals.get(0).getEnd());
     }
 
@@ -2119,7 +1938,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         OffsetDateTime next = removeEnd.plusNanos(1);
-        List<IntervalSet.Interval<OffsetDateTime>> intervals = set.asList();
+        List<IntervalSet.Interval<OffsetDateTime>> intervals = toList(set);
         assertEquals(next, intervals.get(0).getStart());
     }
 
@@ -2182,7 +2001,7 @@ class IntervalSetTest {
 
         set.remove(removeStart, t2);
 
-        List<IntervalSet.Interval<Timestamp>> intervals = set.asList();
+        List<IntervalSet.Interval<Timestamp>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(t1, intervals.get(0).getStart());
 
@@ -2250,7 +2069,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
 
-        List<IntervalSet.Interval<OffsetTime>> intervals = set.asList();
+        List<IntervalSet.Interval<OffsetTime>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(start, intervals.get(0).getStart());
 
@@ -2319,7 +2138,7 @@ class IntervalSetTest {
         // Should merge into one interval
         assertEquals(1, set.size());
 
-        List<IntervalSet.Interval<Timestamp>> intervals = set.asList();
+        List<IntervalSet.Interval<Timestamp>> intervals = toList(set);
         assertEquals(t1, intervals.get(0).getStart());
         assertEquals(t4, intervals.get(0).getEnd());
     }
@@ -2341,7 +2160,7 @@ class IntervalSetTest {
         // Should merge into one interval
         assertEquals(1, set.size());
 
-        List<IntervalSet.Interval<OffsetTime>> intervals = set.asList();
+        List<IntervalSet.Interval<OffsetTime>> intervals = toList(set);
         assertEquals(start1, intervals.get(0).getStart());
         assertEquals(end2, intervals.get(0).getEnd());
     }
@@ -2360,7 +2179,7 @@ class IntervalSetTest {
         set.remove(start, removeEnd);
         
         OffsetTime expectedStart = removeEnd.plusNanos(1); // nextValue adds 1 nano
-        List<IntervalSet.Interval<OffsetTime>> intervals = set.asList();
+        List<IntervalSet.Interval<OffsetTime>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(expectedStart, intervals.get(0).getStart());
         assertEquals(end, intervals.get(0).getEnd());
@@ -2376,7 +2195,7 @@ class IntervalSetTest {
         set.remove(start, removeEnd);
         
         Duration expectedStart = removeEnd.plusNanos(1); // nextValue adds 1 nano
-        List<IntervalSet.Interval<Duration>> intervals = set.asList();
+        List<IntervalSet.Interval<Duration>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(expectedStart, intervals.get(0).getStart());
         assertEquals(end, intervals.get(0).getEnd());
@@ -2392,60 +2211,9 @@ class IntervalSetTest {
         set.remove(removeStart, end);
         
         Duration expectedEnd = removeStart.minusNanos(1); // previousValue subtracts 1 nano
-        List<IntervalSet.Interval<Duration>> intervals = set.asList();
+        List<IntervalSet.Interval<Duration>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(start, intervals.get(0).getStart());
         assertEquals(expectedEnd, intervals.get(0).getEnd());
-    }
-    
-    @Test
-    void testDiscreteModeDuplicateStartsAllowed() {
-        IntervalSet<Integer> set = new IntervalSet<>(false); // discrete mode
-        
-        // Add first interval
-        set.add(1, 3);
-        assertEquals(1, set.size());
-        assertTrue(set.contains(2));
-        
-        // Add interval with same start but different end - should replace first one (last-one-wins)
-        set.add(1, 5);
-        assertEquals(1, set.size()); // Still only one interval stored
-        assertTrue(set.contains(4));  // Value from new interval [1,5]
-        assertTrue(set.contains(2));  // Still contained since [1,5] includes 2
-        
-        // Verify the interval is actually [1,5] not [1,3]
-        List<IntervalSet.Interval<Integer>> intervals = set.asList();
-        assertEquals(1, intervals.size());
-        assertEquals(new IntervalSet.Interval<>(1, 5), intervals.get(0));
-        
-        // Add another interval with different start
-        set.add(10, 12);
-        assertEquals(2, set.size());
-        assertTrue(set.contains(11)); // Should be found in [10,12]
-        assertTrue(set.contains(4));  // Should still be found in [1,5]
-        
-        // Replace the second interval by using same start
-        set.add(10, 15);
-        assertEquals(2, set.size());
-        assertTrue(set.contains(14)); // Value from new [10,15] interval
-        assertTrue(set.contains(11)); // Still contained since [10,15] includes 11
-        
-        // Verify final state
-        intervals = set.asList();
-        assertEquals(2, intervals.size());
-        assertEquals(new IntervalSet.Interval<>(1, 5), intervals.get(0));
-        assertEquals(new IntervalSet.Interval<>(10, 15), intervals.get(1));
-        
-        // Demonstrate that old intervals with same start are truly replaced
-        // Add [1,2] - this should replace [1,5]
-        set.add(1, 2);
-        assertEquals(2, set.size());
-        assertTrue(set.contains(2));   // Still in range [1,2]
-        assertFalse(set.contains(4));  // No longer in range - [1,5] was replaced by [1,2]
-        
-        intervals = set.asList();
-        assertEquals(2, intervals.size());
-        assertEquals(new IntervalSet.Interval<>(1, 2), intervals.get(0)); // Replaced
-        assertEquals(new IntervalSet.Interval<>(10, 15), intervals.get(1)); // Unchanged
     }
 }

@@ -42,6 +42,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class IntervalSetExampleTest {
     
+    // Helper method to convert IntervalSet to List
+    private static <T extends Comparable<? super T>> List<IntervalSet.Interval<T>> toList(IntervalSet<T> set) {
+        List<IntervalSet.Interval<T>> list = new ArrayList<>();
+        for (IntervalSet.Interval<T> interval : set) {
+            list.add(interval);
+        }
+        return list;
+    }
+    
     private static final Logger LOG = Logger.getLogger(IntervalSetExampleTest.class.getName());
     static {
         LoggingConfig.init();
@@ -61,7 +70,7 @@ class IntervalSetExampleTest {
     void setUp() {
         sourceDatabase = new TreeMap<>();  // Chronological order like the real database
         targetDatabase = new TreeMap<>();  // Chronological order like the real database
-        verifiedTimeRanges = new IntervalSet<>();  // autoMerge=true by default
+        verifiedTimeRanges = new IntervalSet<>();
         // Base time for consistent test data - start at midnight UTC
         baseTime = ZonedDateTime.parse("2024-01-01T00:00:00Z");
     }
@@ -150,7 +159,7 @@ class IntervalSetExampleTest {
         }
         
         // Get all verified intervals sorted by start time
-        List<IntervalSet.Interval<ZonedDateTime>> intervals = new ArrayList<>(verifiedTimeRanges.asList());
+        List<IntervalSet.Interval<ZonedDateTime>> intervals = new ArrayList<>(toList(verifiedTimeRanges));
         intervals.sort(Comparator.comparing(IntervalSet.Interval::getStart));
         
         ZonedDateTime currentPos = startTime;
@@ -315,7 +324,7 @@ class IntervalSetExampleTest {
      * Log current IntervalSet bands for debugging enlargement behavior
      */
     void logCurrentIntervalBands() {
-        List<IntervalSet.Interval<ZonedDateTime>> intervals = verifiedTimeRanges.asList();
+        List<IntervalSet.Interval<ZonedDateTime>> intervals = toList(verifiedTimeRanges);
         if (intervals.isEmpty()) {
             LOG.info("         Bands: (none)");
             return;

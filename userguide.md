@@ -3907,44 +3907,29 @@ This implementation provides a robust set of I/O utilities with emphasis on reso
 
 [View Source](/src/main/java/com/cedarsoftware/util/IntervalSet.java)
 
-A thread-safe collection of non-overlapping closed intervals `[start, end]` for any `Comparable` type. IntervalSet efficiently manages collections of intervals with O(log n) performance using `ConcurrentSkipListMap` for lookups, insertions, and range queries.
+A thread-safe collection of non-overlapping closed intervals `[start, end]` for any `Comparable` type. IntervalSet 
+efficiently manages collections of intervals with O(log n) performance using `ConcurrentSkipListMap` for lookups, insertions, and range queries.
 
 ### Key Features
 
 - **High Performance**: O(log n) operations using ConcurrentSkipListMap
 - **Thread-Safe**: Lock-free reads with minimal locking for writes only
-- **Flexible Storage Modes**: 
-  - Auto-merge mode (default): Overlapping intervals automatically merged
-  - Discrete mode: Intervals stored separately for audit trails
+- **Auto-Merging Behavior**: Overlapping intervals automatically merged
 - **Intelligent Interval Management**: Automatic splitting during removal operations
 - **Rich Query API**: Comprehensive navigation and filtering methods
 - **Type-Safe Boundaries**: Supports precise boundary calculations for 20+ built-in types
-- **Weakly Consistent Iteration**: Default `.iterator()` sees live changes during iteration; `snapshot().iterator()` provides a fixed point-in-time view. Both are thread-safe.
+- **Weakly Consistent Iteration**: The iterator sees live changes during iteration and is thread-safe.
 
-### Auto-Merge vs. Discrete Modes
-
-**Auto-Merge Mode (default: `autoMerge = true`)**
+### Auto-Merging Behavior
 
 Overlapping intervals are automatically merged into larger, non-overlapping intervals:
 
 ```java
-IntervalSet<Integer> set = new IntervalSet<>();  // autoMerge = true by default
+IntervalSet<Integer> set = new IntervalSet<>();
 set.add(1, 5);
 set.add(3, 8);    // Merges with [1,5] to create [1,8]
 set.add(10, 15);  // Separate interval since no overlap
 // Result: [1,8], [10,15]
-```
-
-**Discrete Mode (`autoMerge = false`)**
-
-Intervals are stored separately even if they overlap, useful for audit trails:
-
-```java
-IntervalSet<Integer> audit = new IntervalSet<>(false);  // discrete mode
-audit.add(1, 5);     // First verification
-audit.add(3, 8);     // Second verification (overlaps but kept separate)
-audit.add(10, 15);   // Third verification
-// Result: [1,5], [3,8], [10,15] - all intervals preserved
 ```
 
 ### Usage Examples
@@ -3967,7 +3952,8 @@ if (schedule.contains(proposedMeetingTime)) {
 ```java
 IntervalSet<Long> processedIds = new IntervalSet<>();
 processedIds.add(1000L, 1999L);    // First batch
-processedIds.add(2000L, 2999L);    // Second batch - automatically merges to [1000, 2999]
+processedIds.add(2000L, 2500L);    // Second batch
+processedIds.add(2501L, 2999L);    // Third batch - merges with second to create [2000, 2999]
 
 // Calculate total work using Duration computation
 Duration totalWork = processedIds.totalDuration((start, end) ->
@@ -3998,17 +3984,6 @@ List<IntervalSet.Interval<Integer>> subset = ranges.getIntervalsInRange(15, 45);
 // Returns: [10, 20], [30, 40]
 ```
 
-**Audit Trail with Discrete Mode**
-
-```java
-IntervalSet<LocalDate> auditLog = new IntervalSet<>(false);  // Keep all entries
-auditLog.add(verification1Start, verification1End);
-auditLog.add(verification2Start, verification2End);  // Overlaps preserved
-
-// Query APIs still work across all intervals
-boolean dateVerified = auditLog.contains(targetDate);
-```
-
 ### Primary Client APIs
 
 **Basic Operations**
@@ -4026,15 +4001,51 @@ boolean dateVerified = auditLog.contains(targetDate);
 - `previousInterval(T)` - Find the previous interval at or before a value
 - `lowerInterval(T)` - Find the previous interval strictly before a value
 - `first()` / `last()` - Get the first/last intervals
-
+                                                                                                                                                                                                                  2
 **Bulk Operations and Iteration**
-- `asList()` / `snapshot()` - Get all intervals as an immutable list
 - `iterator()` - Iterate intervals in ascending order
 - `descendingIterator()` - Iterate intervals in descending order
 - `getIntervalsInRange(T, T)` - Get intervals within a key range
 - `getIntervalsBefore(T)` - Get intervals before a key
 - `getIntervalsFrom(T)` - Get intervals from a key onward
 - `removeIntervalsInKeyRange(T, T)` - Bulk removal by key range
+- `snapshot()` - Get atomic point-in-time copy of all intervals as a List
+
+**Set Operations**
+- `union(IntervalSet<T>)` - Create a new set containing all intervals from both sets
+- `intersection(IntervalSet<T>)` - Create a new set containing only overlapping portions
+- `difference(IntervalSet<T>)` - Create a new set with intervals from other removed from this set
+- `intersects(IntervalSet<T>)` - Test if two sets have any overlapping intervals
+
+### Set Operations Examples
+
+IntervalSet supports standard mathematical set operations for combining and comparing interval collections:
+
+```java
+IntervalSet<Integer> set1 = new IntervalSet<>();
+set1.add(1, 10);
+set1.add(20, 30);
+
+IntervalSet<Integer> set2 = new IntervalSet<>();
+set2.add(5, 15);
+set2.add(25, 35);
+
+// Union: combines all intervals from both sets
+IntervalSet<Integer> combined = set1.union(set2);
+// Result: [1, 15], [20, 35]
+
+// Intersection: only the overlapping parts
+IntervalSet<Integer> overlap = set1.intersection(set2);
+// Result: [5, 10], [25, 30]
+
+// Difference: set1 minus set2
+IntervalSet<Integer> remaining = set1.difference(set2);
+// Result: [1, 4], [20, 24]
+
+// Check for any overlap without computing intersection
+boolean hasOverlap = set1.intersects(set2);
+// Result: true
+```
 
 ### Supported Types
 
@@ -4047,7 +4058,7 @@ IntervalSet provides intelligent boundary calculation for interval splitting/mer
 
 ### Performance Characteristics
 
-- **Add**: O(log n) - May require merging adjacent intervals in auto-merge mode
+- **Add**: O(log n) - May require merging adjacent intervals
 - **Remove**: O(log n) - May require splitting intervals
 - **Contains**: O(log n) - Single floor lookup
 - **Navigation**: O(log n) - Leverages NavigableMap operations
@@ -4059,7 +4070,7 @@ IntervalSet is fully thread-safe with an optimized locking strategy:
 
 - **Lock-free reads**: All query operations (contains, navigation, iteration) require no locking
 - **Minimal write locking**: Only mutation operations acquire the internal ReentrantLock
-- **Weakly consistent iteration**: Default `.iterator()` sees live changes during iteration; `snapshot().iterator()` provides a fixed point-in-time view. Both are thread-safe.
+- **Weakly consistent iteration**: Default `.iterator()` sees live changes during iteration. Thread-safe.
 
 ### Use Cases
 
@@ -4068,7 +4079,7 @@ IntervalSet is fully thread-safe with an optimized locking strategy:
 - Time range conflict detection  
 - Numeric range tracking and validation
 - Data processing batch management
-- Audit trail systems (discrete mode)
+- Time-based event tracking
 - Memory-efficient interval storage
 - High-throughput concurrent read scenarios
 
@@ -4088,11 +4099,8 @@ IntervalSet is fully thread-safe with an optimized locking strategy:
 ### Best Practices
 
 ```java
-// Prefer auto-merge mode for most use cases
+// Create an IntervalSet for scheduling
 IntervalSet<ZonedDateTime> schedule = new IntervalSet<>();
-
-// Use discrete mode for audit trails and historical tracking  
-IntervalSet<LocalDate> auditLog = new IntervalSet<>(false);
 
 // Leverage rich query API for complex operations
 boolean hasConflict = schedule.contains(proposedTime);

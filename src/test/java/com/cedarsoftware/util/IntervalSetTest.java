@@ -2216,4 +2216,229 @@ class IntervalSetTest {
         assertEquals(start, intervals.get(0).getStart());
         assertEquals(expectedEnd, intervals.get(0).getEnd());
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Custom nextFunction and previousFunction tests with Alphabet enum
+    // ──────────────────────────────────────────────────────────────────────────
+
+    enum Letter {
+        A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z
+    }
+
+    @Test
+    void testAlphabetIntervalSetWithCustomFunctions() {
+        // Custom functions for alphabet enum
+        Function<Letter, Letter> previousFunction = letter -> {
+            int ordinal = letter.ordinal();
+            if (ordinal == 0) {
+                throw new ArithmeticException("Cannot go before A");
+            }
+            return Letter.values()[ordinal - 1];
+        };
+        
+        Function<Letter, Letter> nextFunction = letter -> {
+            int ordinal = letter.ordinal();
+            if (ordinal == Letter.values().length - 1) {
+                throw new ArithmeticException("Cannot go after Z");
+            }
+            return Letter.values()[ordinal + 1];
+        };
+        
+        IntervalSet<Letter> set = new IntervalSet<>(previousFunction, nextFunction);
+        
+        // Add range D-G
+        set.add(Letter.D, Letter.G);
+        assertEquals(1, set.size());
+        assertTrue(set.contains(Letter.D));
+        assertTrue(set.contains(Letter.E));
+        assertTrue(set.contains(Letter.F));
+        assertTrue(set.contains(Letter.G));
+        assertFalse(set.contains(Letter.C));
+        assertFalse(set.contains(Letter.H));
+        
+        // Add before (B-C) - should create separate interval since B-C and D-G don't touch
+        set.add(Letter.B, Letter.C);
+        assertEquals(2, set.size());
+        List<IntervalSet.Interval<Letter>> intervals = toList(set);
+        assertEquals(Letter.B, intervals.get(0).getStart());
+        assertEquals(Letter.C, intervals.get(0).getEnd());
+        assertEquals(Letter.D, intervals.get(1).getStart());
+        assertEquals(Letter.G, intervals.get(1).getEnd());
+        
+        // Now add the gap to connect them
+        set.add(Letter.C, Letter.D); // This should merge all three into one interval
+        assertEquals(1, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.B, intervals.get(0).getStart());
+        assertEquals(Letter.G, intervals.get(0).getEnd());
+        
+        // Add after (H-J) - should create separate interval
+        set.add(Letter.H, Letter.J);
+        assertEquals(2, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.B, intervals.get(0).getStart());
+        assertEquals(Letter.G, intervals.get(0).getEnd());
+        assertEquals(Letter.H, intervals.get(1).getStart());
+        assertEquals(Letter.J, intervals.get(1).getEnd());
+        
+        // Add at front (A-A) - should create separate interval since A and B-G don't touch  
+        set.add(Letter.A, Letter.A);
+        assertEquals(3, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.A, intervals.get(0).getStart());
+        assertEquals(Letter.A, intervals.get(0).getEnd());
+        assertEquals(Letter.B, intervals.get(1).getStart());
+        assertEquals(Letter.G, intervals.get(1).getEnd());
+        assertEquals(Letter.H, intervals.get(2).getStart());
+        assertEquals(Letter.J, intervals.get(2).getEnd());
+        
+        // Connect A to B-G by adding A-B overlap
+        set.add(Letter.A, Letter.B);
+        assertEquals(2, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.A, intervals.get(0).getStart());
+        assertEquals(Letter.G, intervals.get(0).getEnd());
+        assertEquals(Letter.H, intervals.get(1).getStart());
+        assertEquals(Letter.J, intervals.get(1).getEnd());
+        
+        // Add at end (K-Z) - should create separate interval since K-Z and H-J don't touch
+        set.add(Letter.K, Letter.Z);
+        assertEquals(3, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.A, intervals.get(0).getStart());
+        assertEquals(Letter.G, intervals.get(0).getEnd());
+        assertEquals(Letter.H, intervals.get(1).getStart());
+        assertEquals(Letter.J, intervals.get(1).getEnd());
+        assertEquals(Letter.K, intervals.get(2).getStart());
+        assertEquals(Letter.Z, intervals.get(2).getEnd());
+        
+        // Connect H-J and K-Z by adding J-K overlap  
+        set.add(Letter.J, Letter.K);
+        assertEquals(2, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.A, intervals.get(0).getStart());
+        assertEquals(Letter.G, intervals.get(0).getEnd());
+        assertEquals(Letter.H, intervals.get(1).getStart());
+        assertEquals(Letter.Z, intervals.get(1).getEnd());
+        
+        // Remove at front (A-B) - should split first interval, leaving C-G
+        set.remove(Letter.A, Letter.B);
+        assertEquals(2, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.C, intervals.get(0).getStart());
+        assertEquals(Letter.G, intervals.get(0).getEnd());
+        assertEquals(Letter.H, intervals.get(1).getStart());
+        assertEquals(Letter.Z, intervals.get(1).getEnd());
+        
+        // Remove at end (Y-Z) - should split second interval, leaving H-X
+        set.remove(Letter.Y, Letter.Z);
+        assertEquals(2, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.C, intervals.get(0).getStart());
+        assertEquals(Letter.G, intervals.get(0).getEnd());
+        assertEquals(Letter.H, intervals.get(1).getStart());
+        assertEquals(Letter.X, intervals.get(1).getEnd());
+    }
+
+    @Test
+    void testAlphabetIntervalSetRemoveTriggersSplitting() {
+        Function<Letter, Letter> previousFunction = letter -> {
+            int ordinal = letter.ordinal();
+            if (ordinal == 0) {
+                throw new ArithmeticException("Cannot go before A");
+            }
+            return Letter.values()[ordinal - 1];
+        };
+        
+        Function<Letter, Letter> nextFunction = letter -> {
+            int ordinal = letter.ordinal();
+            if (ordinal == Letter.values().length - 1) {
+                throw new ArithmeticException("Cannot go after Z");
+            }
+            return Letter.values()[ordinal + 1];
+        };
+        
+        IntervalSet<Letter> set = new IntervalSet<>(previousFunction, nextFunction);
+        
+        // Add large range A-Z
+        set.add(Letter.A, Letter.Z);
+        assertEquals(1, set.size());
+        
+        // Remove middle section M-N, should split into A-L and O-Z
+        set.remove(Letter.M, Letter.N);
+        assertEquals(2, set.size());
+        
+        List<IntervalSet.Interval<Letter>> intervals = toList(set);
+        assertEquals(Letter.A, intervals.get(0).getStart());
+        assertEquals(Letter.L, intervals.get(0).getEnd()); // previousFunction(M) = L
+        assertEquals(Letter.O, intervals.get(1).getStart()); // nextFunction(N) = O
+        assertEquals(Letter.Z, intervals.get(1).getEnd());
+        
+        // Verify the custom functions are being used correctly
+        assertTrue(set.contains(Letter.L));
+        assertFalse(set.contains(Letter.M));
+        assertFalse(set.contains(Letter.N));
+        assertTrue(set.contains(Letter.O));
+    }
+
+    @Test
+    void testAlphabetIntervalSetEdgeCases() {
+        Function<Letter, Letter> previousFunction = letter -> {
+            int ordinal = letter.ordinal();
+            if (ordinal == 0) {
+                throw new ArithmeticException("Cannot go before A");
+            }
+            return Letter.values()[ordinal - 1];
+        };
+        
+        Function<Letter, Letter> nextFunction = letter -> {
+            int ordinal = letter.ordinal();
+            if (ordinal == Letter.values().length - 1) {
+                throw new ArithmeticException("Cannot go after Z");
+            }
+            return Letter.values()[ordinal + 1];
+        };
+        
+        IntervalSet<Letter> set = new IntervalSet<>(previousFunction, nextFunction);
+        
+        // Test single letter intervals
+        set.add(Letter.M, Letter.M);
+        assertTrue(set.contains(Letter.M));
+        assertFalse(set.contains(Letter.L));
+        assertFalse(set.contains(Letter.N));
+        
+        // Test adjacent intervals - M and N don't automatically merge since they don't overlap
+        set.add(Letter.N, Letter.N); // Creates separate interval
+        assertEquals(2, set.size());
+        List<IntervalSet.Interval<Letter>> intervals = toList(set);
+        assertEquals(Letter.M, intervals.get(0).getStart());
+        assertEquals(Letter.M, intervals.get(0).getEnd());
+        assertEquals(Letter.N, intervals.get(1).getStart());
+        assertEquals(Letter.N, intervals.get(1).getEnd());
+        
+        // Connect them by overlapping
+        set.add(Letter.M, Letter.N); // This will merge both intervals
+        assertEquals(1, set.size());
+        intervals = toList(set);
+        assertEquals(Letter.M, intervals.get(0).getStart());
+        assertEquals(Letter.N, intervals.get(0).getEnd());
+        
+        // Test gap-filling
+        set.add(Letter.O, Letter.Q);
+        set.add(Letter.S, Letter.U);
+        assertEquals(3, set.size());
+        
+        // Fill the gap with R - this should connect O-Q and S-U into one interval
+        set.add(Letter.R, Letter.R);
+        // We'll have [M-N], [O-Q], [R], [S-U] which doesn't automatically merge adjacent intervals
+        // Let me create overlapping ranges to force merging
+        set.add(Letter.Q, Letter.R); // Connect O-Q with R
+        set.add(Letter.R, Letter.S); // Connect R with S-U
+        assertEquals(2, set.size()); // Should have [M-N] and [O-U]
+        intervals = toList(set);
+        assertEquals(Letter.M, intervals.get(0).getStart());
+        assertEquals(Letter.N, intervals.get(0).getEnd());
+        assertEquals(Letter.O, intervals.get(1).getStart());
+        assertEquals(Letter.U, intervals.get(1).getEnd());
+    }
 }

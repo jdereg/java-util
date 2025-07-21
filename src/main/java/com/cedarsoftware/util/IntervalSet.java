@@ -799,12 +799,15 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * This overload uses a default BiFunction based on the type of T:
      * - If T is Temporal (and supports SECONDS unit, e.g., Instant, LocalDateTime, etc.), uses Duration.between(start, end).
      * - If T is Number, computes (end.longValue() - start.longValue() + 1) and maps to Duration.ofNanos(diff) (arbitrary unit).
+     * - If T is Date (or subclasses), computes Duration.ofMillis(end.getTime() - start.getTime()).
+     * - If T is Character, computes (end - start + 1) and maps to Duration.ofNanos(diff) (arbitrary unit).
+     * - If T is Duration, computes end.minus(start).
      * - Otherwise, throws UnsupportedOperationException.
      * </p>
      * <p>
      * For Temporal types like LocalDate that do not support SECONDS, this will throw DateTimeException.
      * For custom or unsupported types, use the BiFunction overload.
-     * For numeric types, the unit (nanos) is arbitrary; use custom BiFunction for specific units.
+     * For numeric types and characters, the unit (nanos) is arbitrary; use custom BiFunction for specific units.
      * </p>
      *
      * @return the sum of all interval durations
@@ -822,6 +825,17 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         } else if (start instanceof Number && end instanceof Number) {
             long diff = ((Number) end).longValue() - ((Number) start).longValue() + 1;
             return Duration.ofNanos(diff);
+        } else if (start instanceof Date && end instanceof Date) {
+            long startMillis = ((Date) start).getTime();
+            long endMillis = ((Date) end).getTime();
+            return Duration.ofMillis(endMillis - startMillis);
+        } else if (start instanceof Character && end instanceof Character) {
+            int diff = ((Character) end) - ((Character) start) + 1;
+            return Duration.ofNanos(diff); // Arbitrary unit for character ranges
+        } else if (start instanceof Duration && end instanceof Duration) {
+            Duration startDuration = (Duration) start;
+            Duration endDuration = (Duration) end;
+            return endDuration.minus(startDuration);
         } else {
             throw new UnsupportedOperationException("No default duration mapping for type " + start.getClass());
         }

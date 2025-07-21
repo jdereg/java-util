@@ -103,7 +103,7 @@ import java.util.function.Function;
  *
  * <h3>Bulk Operations and Iteration</h3>
  * <ul>
- *   <li>{@link #asList()} / {@link #snapshot()} - Get all intervals as an immutable list</li>
+ *   <li>{@link #asList()} - Get all intervals as an immutable list</li>
  *   <li>{@link #iterator()} - Iterate intervals in ascending order</li>
  *   <li>{@link #descendingIterator()} - Iterate intervals in descending order</li>
  *   <li>{@link #getIntervalsInRange(T, T)} - Get intervals within a key range</li>
@@ -176,10 +176,28 @@ import java.util.function.Function;
  * }</pre>
  *
  * <h2>Performance Characteristics</h2>
+ * <p>
+ * Most operations maintain O(log n) complexity regardless of storage mode. However, when 
+ * {@code autoMerge = false} (discrete mode), certain query operations degrade to O(n) 
+ * because they must search through potentially overlapping intervals:
+ * </p>
+ * 
+ * <h3>AutoMerge Mode ({@code autoMerge = true}, default)</h3>
  * <ul>
- *   <li><b>Add:</b> O(log n) - May require merging adjacent intervals in auto-merge mode</li>
- *   <li><b>Remove:</b> O(log n) - May require splitting intervals</li>
+ *   <li><b>Add:</b> O(log n) - May require merging adjacent intervals</li>
+ *   <li><b>Remove/RemoveRange:</b> O(log n) - May require splitting intervals</li>
  *   <li><b>Contains:</b> O(log n) - Single floor lookup</li>
+ *   <li><b>IntervalContaining:</b> O(log n) - Single floor lookup</li>
+ *   <li><b>Navigation:</b> O(log n) - Leverages NavigableMap operations</li>
+ *   <li><b>Iteration:</b> O(n) - Direct map iteration, no additional overhead</li>
+ * </ul>
+ * 
+ * <h3>Discrete Mode ({@code autoMerge = false})</h3>
+ * <ul>
+ *   <li><b>Add:</b> O(log n) - No merging, direct map insertion</li>
+ *   <li><b>Remove/RemoveRange:</b> O(n) - Must iterate all intervals to find overlaps</li>
+ *   <li><b>Contains:</b> O(n) - Must search backwards through overlapping intervals</li>
+ *   <li><b>IntervalContaining:</b> O(n) - Must search backwards through overlapping intervals</li>
  *   <li><b>Navigation:</b> O(log n) - Leverages NavigableMap operations</li>
  *   <li><b>Iteration:</b> O(n) - Direct map iteration, no additional overhead</li>
  * </ul>
@@ -303,8 +321,26 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * Add the inclusive interval [start,end]. Both start and end are inclusive.
      * <p>
      * If autoMerge is true (default), overlapping intervals are merged automatically.
-     * If autoMerge is false, intervals are stored discretely but queries still work
-     * across all intervals to provide a unified view.
+     * When merging, if an interval with the same start key already exists, a union
+     * is performed using the maximum end value of both intervals.
+     * If autoMerge is false, intervals are stored discretely. If an interval with the
+     * same start key already exists, it will be replaced (last-one-wins behavior).
+     * Queries still work across all intervals to provide a unified view.
+     * </p>
+     * <p>
+     * <b>AutoMerge Mode Examples:</b>
+     * <ul>
+     *   <li>Adding [1,5] then [1,8] results in [1,8] (union of overlapping intervals)</li>
+     *   <li>Adding [1,5] then [3,8] results in [1,8] (overlapping intervals merged)</li>
+     *   <li>Adding [1,5] then [1,3] results in [1,5] (smaller interval absorbed)</li>
+     * </ul>
+     * </p>
+     * <p>
+     * <b>Discrete Mode Examples:</b>
+     * <ul>
+     *   <li>Adding [1,5] then [1,8] results in [1,8] (second interval replaces first)</li>
+     *   <li>Adding [1,5] then [3,8] results in [1,5], [3,8] (both stored separately)</li>
+     * </ul>
      * </p>
      */
     public void add(T start, T end) {
@@ -354,12 +390,14 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     }
 
     /**
-     * Add interval without merging (discrete storage).
+     * Add an interval without merging (discrete storage).
+     * <p>
+     * In discrete mode, if an interval with the same start key already exists,
+     * it will be replaced with the new interval (last-one-wins behavior).
+     * This provides compatibility with more permissive interval libraries.
+     * </p>
      */
     private void addDiscrete(T start, T end) {
-        if (intervals.containsKey(start)) {
-            throw new IllegalArgumentException("Duplicate start key not allowed in discrete mode");
-        }
         intervals.put(start, end);
     }
 
@@ -433,6 +471,10 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * </ul>
      * </p>
      * <p>This operation is thread-safe: it acquires the internal write lock during mutation.</p>
+     * <p>
+     * <b>Performance:</b> O(log n) when {@code autoMerge = true}, but O(n) when 
+     * {@code autoMerge = false} because all intervals must be checked for overlap.
+     * </p>
      *
      * @param start inclusive start of the range to remove
      * @param end   inclusive end of the range to remove
@@ -520,6 +562,11 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
     /**
      * True if the value lies in <i>any</i> closed interval [start,end].
      * Both boundaries are inclusive.
+     * <p>
+     * <b>Performance:</b> O(log n) when {@code autoMerge = true}, but O(n) when 
+     * {@code autoMerge = false} due to the need to search through potentially 
+     * overlapping discrete intervals.
+     * </p>
      */
     public boolean contains(T value) {
         Objects.requireNonNull(value);
@@ -548,6 +595,11 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * in an interval {@code if start <= v <= end }. This method performs a lock-free read
      * via {@link ConcurrentSkipListMap#floorEntry(Object)} and does not mutate the underlying set.</p>
      * <p>In discrete mode, if multiple intervals contain the value, returns the one with the largest start key.</p>
+     * <p>
+     * <b>Performance:</b> O(log n) when {@code autoMerge = true}, but O(n) when 
+     * {@code autoMerge = false} due to the need to search through potentially 
+     * overlapping discrete intervals.
+     * </p>
      *
      * @param value the non-null value to locate within stored intervals
      * @return an {@link Interval} whose start and end bracket <code>value</code>, or {@code null} if none
@@ -576,23 +628,24 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
 
     /**
      * Unmodifiable snapshot of all intervals (ordered).
+     * <p>
+     * This method acquires the read lock to ensure a consistent snapshot
+     * of all intervals at the time of invocation.
+     * </p>
+     *
+     * @return an unmodifiable list of all intervals in ascending order by start key
      */
     public List<Interval<T>> asList() {
-        List<Interval<T>> list = new ArrayList<>(intervals.size());
-        intervals.forEach((s, e) -> list.add(new Interval<>(s, e)));
-        return Collections.unmodifiableList(list);
+        lock.lock();
+        try {
+            List<Interval<T>> list = new ArrayList<>(intervals.size());
+            intervals.forEach((s, e) -> list.add(new Interval<>(s, e)));
+            return Collections.unmodifiableList(list);
+        } finally {
+            lock.unlock();
+        }
     }
 
-    /**
-     * Returns an unmodifiable snapshot of all intervals (ordered). Iterate this list for a applications
-     * that need to read the intervals without locking.  Use when clients have correctness requirements
-     * you can’t delegate (billing, audit, verification where missing an interval is catastrophic).
-     *
-     * @return
-     */
-    public List<Interval<T>> snapshot() {
-        return asList();   // already returns unmodifiable copy
-    }
 
     /**
      * Returns the <i>first</i> (lowest key) interval or {@code null}.
@@ -831,6 +884,11 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         return intervals.size();
     }
 
+    /**
+     * Returns {@code true} if this set contains no intervals.
+     *
+     * @return {@code true} if this set contains no intervals
+     */
     public boolean isEmpty() {
         return intervals.isEmpty();
     }
@@ -918,7 +976,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * </p>
      * <p>
      * For strongly consistent iteration that captures a snapshot at call time,
-     * use {@link #snapshot()}.iterator() instead.
+     * use {@link #asList()}.iterator() instead.
      * </p>
      *
      * @return an iterator over the intervals in this set, ordered by start key

@@ -150,7 +150,7 @@ class IntervalSetExampleTest {
         }
         
         // Get all verified intervals sorted by start time
-        List<IntervalSet.Interval<ZonedDateTime>> intervals = new ArrayList<>(verifiedTimeRanges.snapshot());
+        List<IntervalSet.Interval<ZonedDateTime>> intervals = new ArrayList<>(verifiedTimeRanges.asList());
         intervals.sort(Comparator.comparing(IntervalSet.Interval::getStart));
         
         ZonedDateTime currentPos = startTime;
@@ -315,7 +315,7 @@ class IntervalSetExampleTest {
      * Log current IntervalSet bands for debugging enlargement behavior
      */
     void logCurrentIntervalBands() {
-        List<IntervalSet.Interval<ZonedDateTime>> intervals = verifiedTimeRanges.snapshot();
+        List<IntervalSet.Interval<ZonedDateTime>> intervals = verifiedTimeRanges.asList();
         if (intervals.isEmpty()) {
             LOG.info("         Bands: (none)");
             return;

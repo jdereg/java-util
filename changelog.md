@@ -1,5 +1,6 @@
 ### Revision History
-#### 3.8.0 (Unreleased)
+#### 3.9.0 (unreleased)
+#### 3.8.0
 > * **MAJOR FEATURE**: Added `IntervalSet` - thread-safe set of closed intervals. Optimized (collapsed) by default, or all intervals retained if `autoMerge=false` (audit mode):
 >   * **High Performance**: O(log n) operations using `ConcurrentSkipListMap` for all queries, insertions, and range operations
 >   * **Dual Storage Modes**: Auto-merge mode (default) merges overlapping intervals; discrete mode preserves all intervals for audit trails

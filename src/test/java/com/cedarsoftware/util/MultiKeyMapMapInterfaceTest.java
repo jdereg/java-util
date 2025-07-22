@@ -62,7 +62,7 @@ class MultiKeyMapMapInterfaceTest {
         MultiKeyMap<String> source = new MultiKeyMap<>();
         source.put("key1", "value1");
         source.put("key2", "value2");
-        source.putMultiKey("multiValue", Arrays.asList("multi", "key"));
+        source.putMultiKey("multiValue", "multi", "key");
         
         Map<Object, String> multiKeyMap = new MultiKeyMap<>(16);
         multiKeyMap.putAll(source);
@@ -195,14 +195,14 @@ class MultiKeyMapMapInterfaceTest {
         
         // Single entry
         map.put("key1", "value1");
-        assertEquals("{key1=value1}", map.toString());
+        assertEquals("{📂key1, 📁=value1}", map.toString());
         
         // Clear and test with array key
         map.clear();
         map.put(new Object[]{"multi", "key"}, "arrayValue");
         String result = map.toString();
         assertTrue(result.contains("arrayValue"));
-        assertTrue(result.contains("[multi, key]"));
+        assertTrue(result.contains("📂multi, key, 📁"));
     }
     
     @Test

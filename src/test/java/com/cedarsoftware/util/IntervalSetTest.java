@@ -2441,4 +2441,191 @@ class IntervalSetTest {
         assertEquals(Letter.O, intervals.get(1).getStart());
         assertEquals(Letter.U, intervals.get(1).getEnd());
     }
+
+    @Test
+    void testConstructorFromIntervalList() {
+        // Create original IntervalSet
+        IntervalSet<Integer> original = new IntervalSet<>();
+        original.add(1, 5);
+        original.add(10, 15);
+        original.add(20, 25);
+
+        // Get snapshot
+        List<IntervalSet.Interval<Integer>> snapshot = original.snapshot();
+        assertEquals(3, snapshot.size());
+
+        // Create new IntervalSet from snapshot
+        IntervalSet<Integer> restored = new IntervalSet<>(snapshot);
+
+        // Verify they are equal
+        assertEquals(original, restored);
+        assertEquals(3, restored.size());
+
+        // Verify individual intervals
+        assertTrue(restored.contains(3));
+        assertTrue(restored.contains(12));
+        assertTrue(restored.contains(23));
+        assertFalse(restored.contains(7));
+        assertFalse(restored.contains(17));
+    }
+
+    @Test
+    void testConstructorFromIntervalListWithOverlaps() {
+        // Create list with overlapping intervals that should be merged
+        List<IntervalSet.Interval<Integer>> intervals = new ArrayList<>();
+        intervals.add(new IntervalSet.Interval<>(1, 5));
+        intervals.add(new IntervalSet.Interval<>(3, 8));  // Overlaps with first
+        intervals.add(new IntervalSet.Interval<>(10, 15));
+
+        IntervalSet<Integer> set = new IntervalSet<>(intervals);
+
+        // Should have merged first two intervals
+        assertEquals(2, set.size());
+        assertTrue(set.contains(1));
+        assertTrue(set.contains(8));  // Merged interval end
+        assertTrue(set.contains(12)); // Second interval
+    }
+
+    @Test
+    void testConstructorFromEmptyList() {
+        List<IntervalSet.Interval<Integer>> emptyList = new ArrayList<>();
+        IntervalSet<Integer> set = new IntervalSet<>(emptyList);
+
+        assertTrue(set.isEmpty());
+        assertEquals(0, set.size());
+        assertFalse(set.contains(1));
+    }
+
+    @Test
+    void testConstructorFromNullList() {
+        assertThrows(NullPointerException.class, () -> {
+            new IntervalSet<>((List<IntervalSet.Interval<Integer>>) null);
+        });
+    }
+
+    @Test
+    void testConstructorFromListWithNullInterval() {
+        List<IntervalSet.Interval<Integer>> intervals = new ArrayList<>();
+        intervals.add(new IntervalSet.Interval<>(1, 5));
+        intervals.add(null);
+
+        assertThrows(NullPointerException.class, () -> {
+            new IntervalSet<>(intervals);
+        });
+    }
+
+    @Test
+    void testConstructorWithCustomFunctions() {
+        // Create original with intervals
+        List<IntervalSet.Interval<Integer>> intervals = new ArrayList<>();
+        intervals.add(new IntervalSet.Interval<>(1, 5));
+        intervals.add(new IntervalSet.Interval<>(10, 15));
+
+        // Custom functions
+        Function<Integer, Integer> prevFunc = x -> x - 1;
+        Function<Integer, Integer> nextFunc = x -> x + 1;
+
+        IntervalSet<Integer> set = new IntervalSet<>(intervals, prevFunc, nextFunc);
+
+        assertEquals(2, set.size());
+        assertTrue(set.contains(3));
+        assertTrue(set.contains(12));
+
+        // Test that custom functions are used by triggering interval splitting
+        set.remove(3, 3);  // Should split first interval using custom functions
+
+        // Should now have 3 intervals: [1,2], [4,5], [10,15]
+        assertEquals(3, set.size());
+        assertTrue(set.contains(1));
+        assertTrue(set.contains(2));
+        assertFalse(set.contains(3));
+        assertTrue(set.contains(4));
+        assertTrue(set.contains(5));
+    }
+
+    @Test
+    void testConstructorWithCustomFunctionsNullValues() {
+        List<IntervalSet.Interval<Integer>> intervals = new ArrayList<>();
+        intervals.add(new IntervalSet.Interval<>(1, 5));
+
+        // Test with null functions (should use built-in logic)
+        IntervalSet<Integer> set = new IntervalSet<>(intervals, null, null);
+        assertEquals(1, set.size());
+        assertTrue(set.contains(3));
+    }
+
+    @Test
+    void testConstructorWithCustomFunctionsNullList() {
+        Function<Integer, Integer> prevFunc = x -> x - 1;
+        Function<Integer, Integer> nextFunc = x -> x + 1;
+
+        assertThrows(NullPointerException.class, () -> {
+            new IntervalSet<>(null, prevFunc, nextFunc);
+        });
+    }
+
+    @Test
+    void testConstructorSerializationWorkflow() {
+        // Simulate complete JSON serialization/deserialization workflow
+        
+        // 1. Create original IntervalSet with complex intervals
+        IntervalSet<Integer> original = new IntervalSet<>();
+        original.add(1, 10);
+        original.add(5, 15);  // Will merge with first
+        original.add(20, 30);
+        original.add(35, 45);
+
+        assertEquals(3, original.size());  // Should have merged first two
+
+        // 2. Get snapshot for "JSON serialization"
+        List<IntervalSet.Interval<Integer>> snapshot = original.snapshot();
+
+        // 3. "Deserialize" from snapshot
+        IntervalSet<Integer> restored = new IntervalSet<>(snapshot);
+
+        // 4. Verify complete equivalence
+        assertEquals(original, restored);
+        assertEquals(original.hashCode(), restored.hashCode());
+        assertEquals(original.toString(), restored.toString());
+
+        // 5. Verify functional equivalence
+        for (int i = 0; i < 50; i++) {
+            assertEquals(original.contains(i), restored.contains(i), 
+                "Mismatch at value " + i);
+        }
+
+        // 6. Verify snapshot independence
+        original.add(50, 60);
+        assertNotEquals(original, restored);  // Should no longer be equal
+    }
+
+    @Test
+    void testConstructorWithDifferentTypes() {
+        // Test with String type
+        List<IntervalSet.Interval<String>> stringIntervals = new ArrayList<>();
+        stringIntervals.add(new IntervalSet.Interval<>("a", "d"));
+        stringIntervals.add(new IntervalSet.Interval<>("m", "p"));
+
+        IntervalSet<String> stringSet = new IntervalSet<>(stringIntervals);
+        assertEquals(2, stringSet.size());
+        assertTrue(stringSet.contains("b"));
+        assertTrue(stringSet.contains("n"));
+        assertFalse(stringSet.contains("f"));
+
+        // Test with LocalDate type
+        LocalDate date1 = LocalDate.of(2023, 1, 1);
+        LocalDate date2 = LocalDate.of(2023, 1, 10);
+        LocalDate date3 = LocalDate.of(2023, 2, 1);
+        LocalDate date4 = LocalDate.of(2023, 2, 10);
+
+        List<IntervalSet.Interval<LocalDate>> dateIntervals = new ArrayList<>();
+        dateIntervals.add(new IntervalSet.Interval<>(date1, date2));
+        dateIntervals.add(new IntervalSet.Interval<>(date3, date4));
+
+        IntervalSet<LocalDate> dateSet = new IntervalSet<>(dateIntervals);
+        assertEquals(2, dateSet.size());
+        assertTrue(dateSet.contains(LocalDate.of(2023, 1, 5)));
+        assertTrue(dateSet.contains(LocalDate.of(2023, 2, 5)));
+        assertFalse(dateSet.contains(LocalDate.of(2023, 1, 15)));
+    }
 }

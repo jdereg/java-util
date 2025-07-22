@@ -14,7 +14,6 @@ import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.time.temporal.Temporal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -159,6 +158,22 @@ import static com.cedarsoftware.util.EncryptionUtilities.finalizeHash;
  * @param <T> the type of interval boundaries, must implement {@link Comparable}
  * @see ConcurrentSkipListMap
  * @see NavigableMap
+ * 
+ * @author John DeRegnaucourt (jdereg@gmail.com)
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 public class IntervalSet<T extends Comparable<? super T>> implements Iterable<IntervalSet.Interval<T>> {
     /**
@@ -233,7 +248,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * </p>
      *
      * @param previousFunction custom function to compute previous value, or null for built-in
-     * @param nextFunction custom function to compute next value, or null for built-in
+     * @param nextFunction     custom function to compute next value, or null for built-in
      */
     public IntervalSet(Function<T, T> previousFunction, Function<T, T> nextFunction) {
         this.previousFunction = previousFunction;
@@ -249,6 +264,76 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         this.previousFunction = other.previousFunction;
         this.nextFunction = other.nextFunction;
         this.intervals.putAll(other.intervals);
+    }
+
+    /**
+     * Creates a new IntervalSet from a list of intervals.
+     * <p>
+     * This constructor enables JSON deserialization by allowing reconstruction of an IntervalSet
+     * from a previously serialized list of intervals. The intervals are added in order, with
+     * automatic merging of overlapping intervals as per normal IntervalSet behavior.
+     * </p>
+     * <p>
+     * This is typically used in conjunction with {@link #snapshot()} for serialization workflows:
+     * </p>
+     * <pre>{@code
+     *   // Serialize: get snapshot for JSON serialization
+     *   List<Interval<T>> intervals = intervalSet.snapshot();
+     *   // ... serialize intervals to JSON ...
+     *   
+     *   // Deserialize: reconstruct from JSON-deserialized list
+     *   IntervalSet<T> restored = new IntervalSet<>(intervals);
+     * }</pre>
+     *
+     * @param intervals the list of intervals to populate this set with
+     * @throws NullPointerException if intervals list or any interval is null
+     */
+    public IntervalSet(List<Interval<T>> intervals) {
+        this(null, null);
+        Objects.requireNonNull(intervals, "intervals");
+        for (Interval<T> interval : intervals) {
+            Objects.requireNonNull(interval, "interval");
+            add(interval.getStart(), interval.getEnd());
+        }
+    }
+
+    /**
+     * Creates a new IntervalSet from a list of intervals with custom boundary functions.
+     * <p>
+     * This constructor enables JSON deserialization with custom discrete type support by allowing
+     * reconstruction of an IntervalSet from a previously serialized list of intervals along with
+     * the original boundary functions. This is essential when the IntervalSet was used with
+     * discrete types that require custom previous/next functions.
+     * </p>
+     * <p>
+     * This is typically used for discrete types not among the 20+ built-in types:
+     * </p>
+     * <pre>{@code
+     *   // Original IntervalSet with custom functions for discrete type
+     *   Function<MyType, MyType> prev = myType -> myType.previous();
+     *   Function<MyType, MyType> next = myType -> myType.next();
+     *   IntervalSet<MyType> original = new IntervalSet<>(prev, next);
+     *   
+     *   // Serialize: get snapshot for JSON serialization
+     *   List<Interval<MyType>> intervals = original.snapshot();
+     *   // ... serialize intervals and functions to JSON ...
+     *   
+     *   // Deserialize: reconstruct with original functions
+     *   IntervalSet<MyType> restored = new IntervalSet<>(intervals, prev, next);
+     * }</pre>
+     *
+     * @param intervals the list of intervals to populate this set with
+     * @param previousFunction custom function to compute previous value, or null for built-in
+     * @param nextFunction custom function to compute next value, or null for built-in
+     * @throws NullPointerException if intervals list or any interval is null
+     */
+    public IntervalSet(List<Interval<T>> intervals, Function<T, T> previousFunction, Function<T, T> nextFunction) {
+        this(previousFunction, nextFunction);
+        Objects.requireNonNull(intervals, "intervals");
+        for (Interval<T> interval : intervals) {
+            Objects.requireNonNull(interval, "interval");
+            add(interval.getStart(), interval.getEnd());
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -575,7 +660,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * </p>
      *
      * @param fromKey the start of the range (inclusive)
-     * @param toKey the end of the range (inclusive)
+     * @param toKey   the end of the range (inclusive)
      * @return a list of intervals within the specified range, ordered by start key
      * @throws IllegalArgumentException if fromKey &gt; toKey
      */
@@ -688,7 +773,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * </p>
      *
      * @param fromKey the start of the range (inclusive)
-     * @param toKey the end of the range (inclusive)
+     * @param toKey   the end of the range (inclusive)
      * @return the number of intervals removed
      * @throws IllegalArgumentException if fromKey &gt; toKey
      */
@@ -778,7 +863,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * </p>
      *
      * @return a new list containing copies of all intervals at the time of invocation,
-     *         ordered by start key. Never returns null; returns empty list if no intervals.
+     * ordered by start key. Never returns null; returns empty list if no intervals.
      */
     public List<Interval<T>> snapshot() {
         lock.lock();
@@ -812,8 +897,8 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      *
      * @return the sum of all interval durations
      * @throws UnsupportedOperationException if no default mapping for type T
-     * @throws DateTimeException if Temporal type does not support Duration.between
-     * @throws ArithmeticException if numeric computation overflows long
+     * @throws DateTimeException             if Temporal type does not support Duration.between
+     * @throws ArithmeticException           if numeric computation overflows long
      */
     public Duration totalDuration() {
         return totalDuration(this::defaultToDuration);
@@ -927,7 +1012,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         Iterator<Interval<T>> it2 = other.iterator();
         Interval<T> a = it1.hasNext() ? it1.next() : null;
         Interval<T> b = it2.hasNext() ? it2.next() : null;
-        
+
         while (a != null && b != null) {
             if (a.getEnd().compareTo(b.getStart()) < 0) {
                 a = it1.hasNext() ? it1.next() : null;
@@ -950,7 +1035,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         }
         return result;
     }
-    
+
     /**
      * Returns a new IntervalSet that is the difference of this set minus the other.
      * <p>
@@ -976,7 +1061,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * This method provides an optimized check that avoids computing the full intersection.
      * </p>
      * <p>
-     * <b>Performance:</b> O(n + m) where n and m are the sizes of the two sets, 
+     * <b>Performance:</b> O(n + m) where n and m are the sizes of the two sets,
      * using a two-pointer merge algorithm to detect overlap without building intermediate results.
      * </p>
      * <p>
@@ -997,7 +1082,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         Iterator<Interval<T>> it2 = other.iterator();
         Interval<T> a = it1.hasNext() ? it1.next() : null;
         Interval<T> b = it2.hasNext() ? it2.next() : null;
-        
+
         while (a != null && b != null) {
             if (a.getEnd().compareTo(b.getStart()) < 0) {
                 a = it1.hasNext() ? it1.next() : null;
@@ -1018,8 +1103,12 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         IntervalSet<?> that = (IntervalSet<?>) o;
 
         Iterator<Interval<T>> thisIt = iterator();
@@ -1047,7 +1136,9 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
         for (Interval<T> i : this) {
-            if (!first) sb.append(", ");
+            if (!first) {
+                sb.append(", ");
+            }
             sb.append("[").append(i.getStart()).append("-").append(i.getEnd()).append("]");
             first = false;
         }
@@ -1084,7 +1175,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @param value the value for which to compute the previous value
      * @return the previous adjacent value
      * @throws UnsupportedOperationException if no custom function and type not supported by built-in
-     * @throws ArithmeticException if the operation would cause numeric underflow
+     * @throws ArithmeticException           if the operation would cause numeric underflow
      */
     @SuppressWarnings("unchecked")
     private T previousValue(T value) {
@@ -1197,7 +1288,7 @@ public class IntervalSet<T extends Comparable<? super T>> implements Iterable<In
      * @param value the value for which to compute the next value
      * @return the next adjacent value
      * @throws UnsupportedOperationException if no custom function and type not supported by built-in
-     * @throws ArithmeticException if the operation would cause numeric overflow
+     * @throws ArithmeticException           if the operation would cause numeric overflow
      */
     @SuppressWarnings("unchecked")
     private T nextValue(T value) {

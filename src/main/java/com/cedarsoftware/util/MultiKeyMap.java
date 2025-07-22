@@ -279,10 +279,25 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     public V getMultiKey(Object... keys) {
-        if (keys == null) return get(null);
+        if (keys == null || keys.length == 0) return get(null);
+        if (keys.length == 1) return get(keys[0]);
+        // Fast path: check if expansion is even needed
+        boolean needsExpansion = false;
+        for (Object key : keys) {
+            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
+                needsExpansion = true;
+                break;
+            }
+        }
+
+        if (!needsExpansion) {
+            // Common case: just use the array directly!
+            return get(keys);
+        }
+
+        // Rare case: actually need expansion
         Object[] expanded = expandKeySequence(keys);
-        if (expanded.length == 1) return get(expanded[0]);
-        return getInternal(new MultiKey<>(expanded, null));
+        return get(expanded);
     }
 
     public V get(Object key) {
@@ -290,15 +305,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return entry != null ? entry.value : null;
     }
 
-    private V getInternal(MultiKey<V> lookupKey) {
-        MultiKey<V> entry = findEntry(lookupKey.keys);
-        return entry != null ? entry.value : null;
-    }
-
     public V putMultiKey(V value, Object... keys) {
         if (keys == null || keys.length == 0) return put(null, value);
+        if (keys.length == 1) return put(keys[0], value);
+        
+        // Fast path: check if expansion is even needed
+        boolean needsExpansion = false;
+        for (Object key : keys) {
+            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
+                needsExpansion = true;
+                break;
+            }
+        }
+        
+        if (!needsExpansion) {
+            // Common case: just use the array directly!
+            return putInternal(new MultiKey<>(keys, value));
+        }
+        
+        // Rare case: actually need expansion
         Object[] expanded = expandKeySequence(keys);
-        if (expanded.length == 1) return put(expanded[0], value);
         return putInternal(new MultiKey<>(expanded, value));
     }
 
@@ -344,24 +370,34 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         if (flattenDimensions || nested) {
+            // Simple optimization: if flattenDimensions=true but not nested, treat as flat array
+            if (flattenDimensions && !nested) {
+                return processFlatKey(key);
+            }
+            
+            // Only allocate for truly nested structures
             List<Object> expanded = new ArrayList<>();
             IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
             expand(key, expanded, visited, flattenDimensions);
             if (expanded.size() == 1) return expanded.get(0);
             return expanded;
         } else {
-            // Flat 1D - generalize to Object[], but optimize for Object[]
-            if (key instanceof Object[]) {
-                Object[] arr = (Object[]) key;
-                // Collapse single non-null element for lookup equivalence
-                if (arr.length == 1 && arr[0] != null) return arr[0];
-                return key;  // No alloc, direct use for lookup
-            } else {
-                Object[] generalized = generalizeToObjectArray(key);
-                // Apply same single-element optimization to collections for equivalence with arrays
-                if (generalized.length == 1 && generalized[0] != null) return generalized[0];
-                return generalized;
-            }
+            // Flat 1D - no allocations needed
+            return processFlatKey(key);
+        }
+    }
+    
+    private Object processFlatKey(Object key) {
+        if (key instanceof Object[]) {
+            Object[] arr = (Object[]) key;
+            // Collapse single non-null element for lookup equivalence
+            if (arr.length == 1 && arr[0] != null) return arr[0];
+            return key;  // No alloc, direct use for lookup
+        } else {
+            Object[] generalized = generalizeToObjectArray(key);
+            // Apply same single-element optimization to collections for equivalence with arrays
+            if (generalized.length == 1 && generalized[0] != null) return generalized[0];
+            return generalized;
         }
     }
 
@@ -621,9 +657,25 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     public boolean containsMultiKey(Object... keys) {
-        if (keys == null) return containsKey(null);
+        if (keys == null || keys.length == 0) return containsKey(null);
+        if (keys.length == 1) return containsKey(keys[0]);
+        
+        // Fast path: check if expansion is even needed
+        boolean needsExpansion = false;
+        for (Object key : keys) {
+            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
+                needsExpansion = true;
+                break;
+            }
+        }
+        
+        if (!needsExpansion) {
+            // Common case: just use the array directly!
+            return findEntry(keys) != null;
+        }
+        
+        // Rare case: actually need expansion
         Object[] expanded = expandKeySequence(keys);
-        if (expanded.length == 1) return containsKey(expanded[0]);
         return findEntry(expanded) != null;
     }
 
@@ -632,9 +684,25 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     public V removeMultiKey(Object... keys) {
-        if (keys == null) return remove(null);
+        if (keys == null || keys.length == 0) return remove(null);
+        if (keys.length == 1) return remove(keys[0]);
+        
+        // Fast path: check if expansion is even needed
+        boolean needsExpansion = false;
+        for (Object key : keys) {
+            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
+                needsExpansion = true;
+                break;
+            }
+        }
+        
+        if (!needsExpansion) {
+            // Common case: just use the array directly!
+            return removeInternal(new MultiKey<>(keys, null));
+        }
+        
+        // Rare case: actually need expansion
         Object[] expanded = expandKeySequence(keys);
-        if (expanded.length == 1) return remove(expanded[0]);
         return removeInternal(new MultiKey<>(expanded, null));
     }
 

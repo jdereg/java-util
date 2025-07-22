@@ -407,4 +407,76 @@ public class MultiKeyMapTest {
         
         assert map.isEmpty();
     }
+
+    @Test
+    void testCollectionKeyImmutability() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        
+        // Test with ArrayList - modify after put
+        java.util.ArrayList<String> mutableList = new java.util.ArrayList<>();
+        mutableList.add("a");
+        mutableList.add("b");
+        
+        map.put(mutableList, "original");
+        
+        // Verify key works before modification
+        assertEquals("original", map.get(mutableList));
+        assertTrue(map.containsKey(mutableList));
+        
+        // Modify the original list
+        mutableList.add("c");
+        
+        // Key should still work with original content (a,b) due to defensive copy
+        java.util.ArrayList<String> lookupList = new java.util.ArrayList<>();
+        lookupList.add("a");
+        lookupList.add("b");
+        assertEquals("original", map.get(lookupList));
+        assertTrue(map.containsKey(lookupList));
+        
+        // Modified list (a,b,c) should NOT find the entry
+        assertEquals(null, map.get(mutableList));
+        
+        // Test with LinkedList - modify after put
+        java.util.LinkedList<Integer> mutableLinkedList = new java.util.LinkedList<>();
+        mutableLinkedList.add(1);
+        mutableLinkedList.add(2);
+        
+        map.put(mutableLinkedList, "linkedlist");
+        
+        // Modify the original linked list
+        mutableLinkedList.add(3);
+        
+        // Key should still work with original content (1,2) due to defensive copy
+        java.util.LinkedList<Integer> lookupLinkedList = new java.util.LinkedList<>();
+        lookupLinkedList.add(1);
+        lookupLinkedList.add(2);
+        assertEquals("linkedlist", map.get(lookupLinkedList));
+        
+        // Test with HashSet - modify after put
+        java.util.HashSet<String> mutableSet = new java.util.HashSet<>();
+        mutableSet.add("x");
+        mutableSet.add("y");
+        
+        map.put(mutableSet, "hashset");
+        
+        // Modify the original set
+        mutableSet.add("z");
+        
+        // Key should still work with original content (x,y) due to defensive copy
+        java.util.HashSet<String> lookupSet = new java.util.HashSet<>();
+        lookupSet.add("x");
+        lookupSet.add("y");
+        assertEquals("hashset", map.get(lookupSet));
+        
+        // Test remove with modified collection
+        mutableList.clear();
+        mutableList.add("a");
+        mutableList.add("b");
+        assertEquals("original", map.remove(mutableList));
+        
+        // Verify all entries can be removed
+        assert map.size() == 2;
+        map.clear();
+        assert map.isEmpty();
+    }
 }

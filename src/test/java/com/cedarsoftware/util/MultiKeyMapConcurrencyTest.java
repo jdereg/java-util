@@ -93,13 +93,10 @@ class MultiKeyMapConcurrencyTest {
         LOG.info("Test completed in " + (totalTime / 1_000_000) + "ms");
         LOG.info("Operations per second: " + (NUM_THREADS * OPERATIONS_PER_THREAD * 1_000_000_000L / totalTime));
         LOG.info("Final map size: " + map.size());
-        LOG.info("Max chain length: " + map.getMaxChainLength());
-        LOG.info("Load factor: " + String.format("%.2f", map.getLoadFactor()));
-        
+
         map.printContentionStatistics();
 
         assertFalse(map.isEmpty(), "Map should have some entries after concurrent operations");
-        assertTrue(map.getMaxChainLength() >= 1, "Should have at least one chain");
     }
     
     @Test

@@ -24,8 +24,7 @@ class LoadFactorTest {
         }
         
         // Should have resized multiple times with 0.5f load factor
-        assertTrue(map.size() == 20, "Should have 20 entries");
-        LOG.info("Final capacity after aggressive resizing: " + map.getLoadFactor());
+        assertEquals(20, map.size(), "Should have 20 entries");
     }
     
     @Test
@@ -37,8 +36,8 @@ class LoadFactorTest {
         for (int i = 0; i < 15; i++) {
             map.putMultiKey("value" + i, String.class, Integer.class, (long) i);
         }
-        
-        assertTrue(map.size() == 15, "Should have 15 entries");
+
+        assertEquals(15, map.size(), "Should have 15 entries");
     }
     
     @Test

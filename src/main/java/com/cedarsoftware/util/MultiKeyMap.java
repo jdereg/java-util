@@ -281,23 +281,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V getMultiKey(Object... keys) {
         if (keys == null || keys.length == 0) return get(null);
         if (keys.length == 1) return get(keys[0]);
-        // Fast path: check if expansion is even needed
-        boolean needsExpansion = false;
-        for (Object key : keys) {
-            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-                needsExpansion = true;
-                break;
-            }
-        }
-
-        if (!needsExpansion) {
-            // Common case: just use the array directly!
-            return get(keys);
-        }
-
-        // Rare case: actually need expansion
-        Object[] expanded = expandKeySequence(keys);
-        return get(expanded);
+        return get(keys);  // Let get()'s normalizeLookup() handle everything!
     }
 
     public V get(Object key) {
@@ -308,24 +292,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V putMultiKey(V value, Object... keys) {
         if (keys == null || keys.length == 0) return put(null, value);
         if (keys.length == 1) return put(keys[0], value);
-        
-        // Fast path: check if expansion is even needed
-        boolean needsExpansion = false;
-        for (Object key : keys) {
-            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-                needsExpansion = true;
-                break;
-            }
-        }
-        
-        if (!needsExpansion) {
-            // Common case: just use the array directly!
-            return putInternal(new MultiKey<>(keys, value));
-        }
-        
-        // Rare case: actually need expansion
-        Object[] expanded = expandKeySequence(keys);
-        return putInternal(new MultiKey<>(expanded, value));
+        return put(keys, value);  // Let put()'s normalization handle everything!
     }
 
     public V put(Object key, V value) {
@@ -659,24 +626,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public boolean containsMultiKey(Object... keys) {
         if (keys == null || keys.length == 0) return containsKey(null);
         if (keys.length == 1) return containsKey(keys[0]);
-        
-        // Fast path: check if expansion is even needed
-        boolean needsExpansion = false;
-        for (Object key : keys) {
-            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-                needsExpansion = true;
-                break;
-            }
-        }
-        
-        if (!needsExpansion) {
-            // Common case: just use the array directly!
-            return findEntry(keys) != null;
-        }
-        
-        // Rare case: actually need expansion
-        Object[] expanded = expandKeySequence(keys);
-        return findEntry(expanded) != null;
+        return containsKey(keys);  // Let containsKey()'s normalization handle everything!
     }
 
     public boolean containsKey(Object key) {
@@ -686,24 +636,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V removeMultiKey(Object... keys) {
         if (keys == null || keys.length == 0) return remove(null);
         if (keys.length == 1) return remove(keys[0]);
-        
-        // Fast path: check if expansion is even needed
-        boolean needsExpansion = false;
-        for (Object key : keys) {
-            if (key != null && (key.getClass().isArray() || key instanceof Collection)) {
-                needsExpansion = true;
-                break;
-            }
-        }
-        
-        if (!needsExpansion) {
-            // Common case: just use the array directly!
-            return removeInternal(new MultiKey<>(keys, null));
-        }
-        
-        // Rare case: actually need expansion
-        Object[] expanded = expandKeySequence(keys);
-        return removeInternal(new MultiKey<>(expanded, null));
+        return remove(keys);  // Let remove()'s normalization handle everything!
     }
 
     public V remove(Object key) {

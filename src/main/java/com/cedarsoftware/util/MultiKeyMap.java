@@ -325,6 +325,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else {
             // Flat 1D - generalize to Object[]
             Object[] flat = generalizeToObjectArray(key);
+            // Collapse single non-null element to match single key storage location
+            if (flat.length == 1 && flat[0] != null) return new MultiKey<>(flat[0], value);
             return new MultiKey<>(flat, value);
         }
     }
@@ -334,11 +336,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Class<?> clazz = key.getClass();
         if (!clazz.isArray() && !(key instanceof Collection)) return key;
 
-        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && key instanceof Collection && !isNested(key)) {
+        // Cache the nested check to avoid calling twice
+        boolean nested = isNested(key);
+        
+        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && key instanceof Collection && !nested) {
             return key;
         }
 
-        if (flattenDimensions || isNested(key)) {
+        if (flattenDimensions || nested) {
             List<Object> expanded = new ArrayList<>();
             IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
             expand(key, expanded, visited, flattenDimensions);
@@ -347,9 +352,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else {
             // Flat 1D - generalize to Object[], but optimize for Object[]
             if (key instanceof Object[]) {
+                Object[] arr = (Object[]) key;
+                // Collapse single non-null element for lookup equivalence
+                if (arr.length == 1 && arr[0] != null) return arr[0];
                 return key;  // No alloc, direct use for lookup
             } else {
-                return generalizeToObjectArray(key);
+                Object[] generalized = generalizeToObjectArray(key);
+                // Apply same single-element optimization to collections for equivalence with arrays
+                if (generalized.length == 1 && generalized[0] != null) return generalized[0];
+                return generalized;
             }
         }
     }
@@ -688,7 +699,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (lf <= loadFactor) return;
 
             Object[] old = buckets;
-            buckets = new Object[old.length * 2];
+            Object[] newBuckets = new Object[old.length * 2];
             int newMax = 0;
             atomicSize.set(0);
 
@@ -697,13 +708,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     @SuppressWarnings("unchecked")
                     MultiKey<V>[] chain = (MultiKey<V>[]) b;
                     for (MultiKey<V> e : chain) {
-                        int len = rehashEntry(e, buckets);
+                        int len = rehashEntry(e, newBuckets);
                         atomicSize.incrementAndGet();
                         newMax = Math.max(newMax, len);
                     }
                 }
             }
             maxChainLength = newMax;
+            // Only replace buckets after all entries are rehashed
+            buckets = newBuckets;
         });
     }
 
@@ -937,12 +950,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     public String toString() {
         if (isEmpty()) return "{}";
-        StringBuilder sb = new StringBuilder("{");
+        StringBuilder sb = new StringBuilder("{\n");
         boolean first = true;
         for (MultiKeyEntry<V> e : entries()) {
-            if (!first) sb.append(", ");
+            if (!first) sb.append(",\n");
             first = false;
-            sb.append(dumpExpandedKey(e.keys, true, this)).append("=");
+            sb.append("  ");  // Two-space indentation
+            String keyStr = dumpExpandedKey(e.keys, true, this);
+            // Remove trailing comma and space if present
+            if (keyStr.endsWith(", ")) {
+                keyStr = keyStr.substring(0, keyStr.length() - 2);
+            }
+            sb.append(keyStr).append(" → ");
             // Handle self-reference in values
             if (e.value == this) {
                 sb.append("(this Map)");
@@ -950,7 +969,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 sb.append(e.value);
             }
         }
-        return sb.append("}").toString();
+        return sb.append("\n}").toString();
     }
 
     public String dumpExpandedKey(Object key) {
@@ -966,20 +985,52 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return EMOJI_KEY + key.toString();
         }
 
-        List<Object> expanded = new ArrayList<>();
-        IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
-        expand(key, expanded, visited, false);  // For debug, always preserve structure (false for flatten)
-
-        StringBuilder sb = new StringBuilder();
-        for (Object e : expanded) {
-            if (e == OPEN) sb.append(EMOJI_OPEN);
-            else if (e == CLOSE) sb.append(EMOJI_CLOSE);
-            else if (visited.containsKey(e)) sb.append(EMOJI_CYCLE);
-            else if (e == NULL_SENTINEL) sb.append(EMOJI_EMPTY).append(forToString ? ", " : " ");
-            else if (selfMap != null && e == selfMap) sb.append("(this Map)").append(forToString ? ", " : " ");
-            else sb.append(e).append(forToString ? ", " : " ");
+        // Special case: single-element arrays should be treated as single keys
+        if (key.getClass().isArray()) {
+            int len = Array.getLength(key);
+            if (len == 1) {
+                Object element = Array.get(key, 0);
+                if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
+                if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
+                return EMOJI_KEY + (element != null ? element.toString() : "null");
+            }
+        } else if (key instanceof Collection) {
+            Collection<?> coll = (Collection<?>) key;
+            if (coll.size() == 1) {
+                Object element = coll.iterator().next();
+                if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
+                if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
+                return EMOJI_KEY + (element != null ? element.toString() : "null");
+            }
         }
-        return sb.toString().trim();
+
+        // For multi-key arrays/collections, use format: 🔑[key1, key2, key3]
+        StringBuilder sb = new StringBuilder();
+        sb.append(EMOJI_KEY).append("[");
+        
+        if (key.getClass().isArray()) {
+            int len = Array.getLength(key);
+            for (int i = 0; i < len; i++) {
+                if (i > 0) sb.append(", ");
+                Object element = Array.get(key, i);
+                if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
+                else if (selfMap != null && element == selfMap) sb.append("(this Map)");
+                else sb.append(element != null ? element.toString() : "null");
+            }
+        } else if (key instanceof Collection) {
+            Collection<?> coll = (Collection<?>) key;
+            int i = 0;
+            for (Object element : coll) {
+                if (i > 0) sb.append(", ");
+                if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
+                else if (selfMap != null && element == selfMap) sb.append("(this Map)");
+                else sb.append(element != null ? element.toString() : "null");
+                i++;
+            }
+        }
+        
+        sb.append("]");
+        return sb.toString();
     }
 
     public Iterable<MultiKeyEntry<V>> entries() {

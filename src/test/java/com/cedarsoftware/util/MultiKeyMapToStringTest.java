@@ -19,28 +19,28 @@ class MultiKeyMapToStringTest {
     void testSingleKeyToString() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         map.put("key", "value");
-        assertEquals("{📂key, 📁=value}", map.toString());
+        assertEquals("{\n  🔑key → value\n}", map.toString());
     }
 
     @Test
     void testMultiKeyToString() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         map.putMultiKey("value", "key1", "key2");
-        assertTrue(map.toString().contains("📂key1, key2, 📁=value"));
+        assertEquals("{\n  🔑[key1, key2] → value\n}", map.toString());
     }
 
     @Test
     void testNullKeyToString() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         map.put(null, "nullValue");
-        assertEquals("{📂∅, 📁=nullValue}", map.toString());
+        assertEquals("{\n  🔑∅ → nullValue\n}", map.toString());
     }
 
     @Test
     void testNullValueToString() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         map.put((Object) "key", (String) null);
-        assertEquals("{📂key, 📁=null}", map.toString());
+        assertEquals("{\n  🔑key → null\n}", map.toString());
     }
 
     @Test
@@ -50,7 +50,7 @@ class MultiKeyMapToStringTest {
         mapInterface.put(map, "someValue");
         
         String result = map.toString();
-        assertEquals("{📂(this Map), 📁=someValue}", result);
+        assertEquals("{\n  🔑(this Map) → someValue\n}", result);
         
         // Should not throw StackOverflowError
         assertDoesNotThrow(() -> map.toString());
@@ -63,7 +63,7 @@ class MultiKeyMapToStringTest {
         mapInterface.put("someKey", map);
         
         String result = map.toString();
-        assertEquals("{📂someKey, 📁=(this Map)}", result);
+        assertEquals("{\n  🔑someKey → (this Map)\n}", result);
         
         // Should not throw StackOverflowError
         assertDoesNotThrow(() -> map.toString());
@@ -76,7 +76,7 @@ class MultiKeyMapToStringTest {
         mapInterface.put(map, map);
         
         String result = map.toString();
-        assertEquals("{📂(this Map), 📁=(this Map)}", result);
+        assertEquals("{\n  🔑(this Map) → (this Map)\n}", result);
         
         // Should not throw StackOverflowError
         assertDoesNotThrow(() -> map.toString());
@@ -88,7 +88,7 @@ class MultiKeyMapToStringTest {
         map.putMultiKey("value", map, "key2", "key3");
         
         String result = map.toString();
-        assertTrue(result.contains("📂(this Map), key2, key3, 📁=value"));
+        assertEquals("{\n  🔑[(this Map), key2, key3] → value\n}", result);
         
         // Should not throw StackOverflowError
         assertDoesNotThrow(() -> map.toString());
@@ -103,8 +103,8 @@ class MultiKeyMapToStringTest {
         String result = map.toString();
         
         // Should contain both entries (order may vary)
-        assertTrue(result.contains("📂key1, 📁=value1"));
-        assertTrue(result.contains("📂key2a, key2b, 📁=value2"));
+        assertTrue(result.contains("🔑key1 → value1"));
+        assertTrue(result.contains("🔑[key2a, key2b] → value2"));
         assertTrue(result.startsWith("{"));
         assertTrue(result.endsWith("}"));
     }
@@ -130,6 +130,6 @@ class MultiKeyMapToStringTest {
         
         // Should contain self-reference markers
         assertTrue(result.contains("(this Map)"));
-        assertTrue(result.contains("📂normal, 📁=value"));
+        assertTrue(result.contains("🔑normal → value"));
     }
 }

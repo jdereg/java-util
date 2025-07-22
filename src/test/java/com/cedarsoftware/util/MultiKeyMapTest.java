@@ -80,18 +80,16 @@ public class MultiKeyMapTest {
         CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(false));
 
         map.put("a", "alpha");
-        map.put(new String[]{"a"}, "[alpha]");
+        map.put(new String[]{"a"}, "[alpha]");  // This should overwrite "alpha" since single-element arrays are equivalent to single keys
 
-        assert map.size() == 2;
-        assertEquals("alpha", map.get("A"));                    // different case
-        assertEquals("[alpha]", map.get(new String[]{"A"}));      // different case
+        assert map.size() == 1;  // Single-element array overwrites single key
+        assertEquals("[alpha]", map.get("A"));                    // different case - should get the array value
+        assertEquals("[alpha]", map.get(new String[]{"A"}));      // different case - should get the array value
 
         assert map.containsKey("A");
         assert map.containsKey(new String[]{"A"});
 
-        map.remove("A");
-        assert map.size() == 1;
-        map.remove(new String[]{"A"});
+        map.remove("A");  // This removes both "a" and equivalent new String[]{"a"} since they're equivalent keys
         assert map.isEmpty();
     }
 
@@ -117,18 +115,16 @@ public class MultiKeyMapTest {
         CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(false));
 
         map.put("a", "alpha");
-        map.put(CollectionUtilities.listOf("a"), "[alpha]");
+        map.put(CollectionUtilities.listOf("a"), "[alpha]");  // This should overwrite "alpha" since single-element collections are equivalent to single keys
 
-        assert map.size() == 2;
-        assertEquals("alpha", map.get("A"));                    // string key value - different case
-        assertEquals("[alpha]", map.get(CollectionUtilities.listOf("A")));      // collection key value - different case
+        assert map.size() == 1;  // Single-element collection overwrites single key
+        assertEquals("[alpha]", map.get("A"));                    // string key value - different case - should get the collection value
+        assertEquals("[alpha]", map.get(CollectionUtilities.listOf("A")));      // collection key value - different case - should get the collection value
 
         assert map.containsKey("A");
         assert map.containsKey(CollectionUtilities.listOf("A"));
 
-        map.remove("A");
-        assert map.size() == 1;
-        map.remove(CollectionUtilities.listOf("A"));
+        map.remove("A");  // This removes both "a" and equivalent CollectionUtilities.listOf("a") since they're equivalent keys
         assert map.isEmpty();
     }
 
@@ -260,11 +256,11 @@ public class MultiKeyMapTest {
         map.put(new String[]{"a", "b", "c"}, "[alpha, beta, gamma]");
         map.put(CollectionUtilities.listOf("a", "b", "c"), "collection: [alpha, beta, gamma]");
 
-        assert map.size() == 4;  // All keys are different when not flattened: "a", "b", "c", array, collection
+        assert map.size() == 4;  // 3 string keys + 1 array/collection key (array and collection are equivalent in case-insensitive map)
         assertEquals("alpha", map.get("A"));                    // different case
         assertEquals("beta", map.get("B"));                     // different case
         assertEquals("gamma", map.get("C"));                    // different case
-        assertEquals(null, map.get(new String[]{"A", "B", "C"}));  // Array key was overwritten by collection
+        assertEquals("collection: [alpha, beta, gamma]", map.get(new String[]{"A", "B", "C"}));  // Array key equivalent to collection in case-insensitive map
         assertEquals("collection: [alpha, beta, gamma]", map.get(CollectionUtilities.listOf("A", "B", "C")));
 
         assert map.containsKey("A");
@@ -396,14 +392,14 @@ public class MultiKeyMapTest {
         assertTrue(map.containsKey(CollectionUtilities.listOf("")));
         
         // All keys are separate when not flattened
-        assert map.size() == 5;  // Some keys are equivalent: empty array/collection, array/collection with null, array/collection with empty string
+        assert map.size() == 4;  // Some keys are equivalent: empty array/collection, array/collection with null, array/collection with empty string, single-element array with ""/"" string
         
         // Test removal of edge cases
         assertEquals("null value", map.remove(null));
-        assertEquals("empty string value", map.remove(""));
+        assertEquals("collection with empty string", map.remove(""));  // single-element array with "" overwrote "" string
         assertEquals("empty collection value", map.remove(new String[0]));  // empty array/collection are same
         assertEquals("collection with null", map.remove(new String[]{null}));  // array/collection with null are same
-        assertEquals("collection with empty string", map.remove(new String[]{""}));  // array/collection with empty string are same
+        // Note: collection with empty string was already removed via remove("") since they're equivalent
         
         assert map.isEmpty();
     }

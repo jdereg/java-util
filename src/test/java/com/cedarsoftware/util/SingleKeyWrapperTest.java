@@ -72,20 +72,20 @@ class SingleKeyWrapperTest {
         // Store via single key Map interface
         map.put(testKey, "mapValue");
         
-        // Should NOT be retrievable via Object[] because coconut wrapper creates different key
-        assertNull(map.getMultiKey(new Object[]{testKey}));
+        // Should be retrievable via Object[] because single-element arrays are equivalent to single keys
+        assertEquals("mapValue", map.getMultiKey(new Object[]{testKey}));
         
-        // But should be retrievable via single key Map interface
+        // Also retrievable via single key Map interface
         assertEquals("mapValue", map.get(testKey));
         
-        // Now store via Object[] 
+        // Now store via Object[] - this should overwrite since they're equivalent keys
         map.put(new Object[]{testKey}, "arrayValue");
         
-        // Now we should have two separate entries
-        assertEquals("mapValue", map.get(testKey));  // Single key (coconut wrapped)
-        assertEquals("arrayValue", map.getMultiKey(new Object[]{testKey}));  // Array key (direct)
+        // Both access methods should now return the updated value
+        assertEquals("arrayValue", map.get(testKey));  // Single key access
+        assertEquals("arrayValue", map.getMultiKey(new Object[]{testKey}));  // Array access
         
-        assertEquals(2, map.size());
+        assertEquals(1, map.size());  // Still only one entry since keys are equivalent
     }
     
     @Test

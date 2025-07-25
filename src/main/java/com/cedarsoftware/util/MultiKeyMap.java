@@ -402,13 +402,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return new Object[]{key};
     }
 
-    private Object[] expandKeySequence(Object[] keys) {
-        List<Object> result = new ArrayList<>();
-        IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
-        for (Object k : keys) expand(k, result, visited, flattenDimensions);
-        return result.toArray();
-    }
-
     private static void expand(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited, boolean useFlatten) {
         if (current == null) {
             result.add(null);

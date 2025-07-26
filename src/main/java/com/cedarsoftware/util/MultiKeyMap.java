@@ -118,21 +118,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final int hash;
         final V value;
 
-        MultiKey(Object singleKey, V value) {
-            this.keys = (singleKey == null) ? NULL_SENTINEL : singleKey;
-            this.hash = computeHash(this.keys);
-            this.value = value;
-        }
-
-        MultiKey(Object[] multiKeys, V value) {
-            this.keys = multiKeys != null ? multiKeys.clone() : new Object[0];
-            this.hash = computeHash(this.keys);
-            this.value = value;
-        }
-
-        MultiKey(Collection<?> multiKeys, V value) {
-            this.keys = multiKeys != null ? new ArrayList<>(multiKeys) : new ArrayList<>(0);
-            this.hash = computeHash(this.keys);
+        // Unified constructor that accepts pre-normalized keys and pre-computed hash
+        MultiKey(Object normalizedKeys, int hash, V value) {
+            this.keys = normalizedKeys;
+            this.hash = hash;
             this.value = value;
         }
 
@@ -296,61 +285,279 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     public V put(Object key, V value) {
-        MultiKey<V> newKey = normalizeToMultiKey(key, value);
+        MultiKey<V> newKey = createMultiKey(key, value);
         return putInternal(newKey);
     }
 
-    private MultiKey<V> normalizeToMultiKey(Object key, V value) {
-        if (key == null) return new MultiKey<>((Object) null, value);
-        Class<?> clazz = key.getClass();
-        if (!clazz.isArray() && !(key instanceof Collection)) return new MultiKey<>(key, value);
 
-        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && key instanceof Collection && !isNested(key)) {
-            return new MultiKey<>(key, value);
-        }
-
-        if (flattenDimensions || isNested(key)) {
-            List<Object> expanded = new ArrayList<>();
-            IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
-            expand(key, expanded, visited, flattenDimensions);
-            if (expanded.size() == 1) return new MultiKey<>(expanded.get(0), value);
-            return new MultiKey<>(expanded, value);
-        } else {
-            // Flat 1D - generalize to Object[]
-            Object[] flat = generalizeToObjectArray(key);
-            // Collapse single non-null element to match single key storage location
-            if (flat.length == 1 && flat[0] != null) return new MultiKey<>(flat[0], value);
-            return new MultiKey<>(flat, value);
-        }
+    /**
+     * Creates a MultiKey from a key, normalizing it first.
+     * Used by put() and remove() operations that need MultiKey objects.
+     * @param key the key to normalize
+     * @param value the value (can be null for remove operations)
+     * @return a MultiKey object with normalized key and computed hash
+     */
+    private MultiKey<V> createMultiKey(Object key, V value) {
+        int[] hashPass = new int[1];
+        Object normalizedKey = normalizeLookup(key, hashPass);
+        return new MultiKey<>(normalizedKey, hashPass[0], value);
     }
 
-    private Object normalizeLookup(Object key) {
-        if (key == null) return NULL_SENTINEL;
-        Class<?> clazz = key.getClass();
-        if (!clazz.isArray() && !(key instanceof Collection)) return key;
+    private Object normalizeLookup(Object key, int[] hashPass) {
+        // Handle null case
+        if (key == null) {
+            hashPass[0] = 0;
+            return NULL_SENTINEL;
+        }
 
-        // Cache the nested check to avoid calling twice
-        boolean nested = isNested(key);
+        Class<?> clazz = key.getClass();
         
-        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && key instanceof Collection && !nested) {
+        // Simple object case - not array, not collection
+        if (!clazz.isArray() && !(key instanceof Collection)) {
+            hashPass[0] = finalizeHash(computeElementHash(key));
             return key;
         }
 
-        if (flattenDimensions || nested) {
-            // Simple optimization: if flattenDimensions=true but not nested, treat as flat array
-            if (flattenDimensions && !nested) {
-                return processFlatKey(key);
+        // Handle collections that should not be expanded
+        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && key instanceof Collection) {
+            Collection<?> coll = (Collection<?>) key;
+            // In NOT_EXPANDED mode, treat collections like regular Map keys - no special processing
+            hashPass[0] = finalizeHash(coll.hashCode());
+            // Make defensive copy for immutability
+            return new ArrayList<>(coll);
+        }
+
+        // Handle Object[] arrays
+        if (key instanceof Object[]) {
+            Object[] arr = (Object[]) key;
+            return process1DObjectArray(arr, hashPass);
+        }
+        
+        // Handle Collections
+        if (key instanceof Collection) {
+            Collection<?> coll = (Collection<?>) key;
+            // If flattening dimensions, always go through expansion
+            if (flattenDimensions) {
+                return expandWithHash(coll, hashPass);
             }
-            
-            // Only allocate for truly nested structures
-            List<Object> expanded = new ArrayList<>();
-            IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
-            expand(key, expanded, visited, flattenDimensions);
-            if (expanded.size() == 1) return expanded.get(0);
-            return expanded;
+            return process1DCollection(coll, hashPass);
+        }
+        
+        // Handle typed arrays (int[], String[], etc.)
+        if (clazz.isArray()) {
+            return processTypedArray(key, hashPass);
+        }
+        
+        // Should never reach here
+        hashPass[0] = finalizeHash(computeElementHash(key));
+        return key;
+    }
+    
+    private Object process1DObjectArray(Object[] arr, int[] hashPass) {
+        if (arr.length == 0) {
+            hashPass[0] = 0;
+            return arr;
+        }
+        
+        // Check if truly 1D while computing hash
+        int h = 1;
+        boolean is1D = true;
+        
+        for (Object e : arr) {
+            h = h * 31 + computeElementHash(e);
+            if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                is1D = false;
+                break;
+            }
+        }
+        
+        if (is1D) {
+            // Single element optimization - always collapse single element arrays
+            if (arr.length == 1 && arr[0] != null) {
+                // Recompute hash for the single element to match simple object case
+                hashPass[0] = finalizeHash(computeElementHash(arr[0]));
+                return arr[0];
+            }
+            hashPass[0] = finalizeHash(h);
+            return arr;
+        }
+        
+        // It's 2D+ - need to expand with hash computation
+        return expandWithHash(arr, hashPass);
+    }
+    
+    private Object process1DCollection(Collection<?> coll, int[] hashPass) {
+        if (coll.isEmpty()) {
+            hashPass[0] = 0;
+            return coll;
+        }
+        
+        // Check if truly 1D while computing hash
+        int h = 1;
+        boolean is1D = true;
+        
+        for (Object e : coll) {
+            h = h * 31 + computeElementHash(e);
+            if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                is1D = false;
+                break;
+            }
+        }
+        
+        if (is1D) {
+            // Single element optimization - always collapse single element collections
+            if (coll.size() == 1) {
+                Object single = coll.iterator().next();
+                if (single != null) {
+                    // Recompute hash for the single element to match simple object case
+                    hashPass[0] = finalizeHash(computeElementHash(single));
+                    return single;
+                }
+            }
+            hashPass[0] = finalizeHash(h);
+            // Make defensive copy of collection for immutability
+            return new ArrayList<>(coll);
+        }
+        
+        // It's 2D+ - need to expand with hash computation
+        return expandWithHash(coll, hashPass);
+    }
+    
+    private Object processTypedArray(Object arr, int[] hashPass) {
+        int len = Array.getLength(arr);
+        if (len == 0) {
+            hashPass[0] = 0;
+            return arr;
+        }
+        
+        // For typed arrays, compute hash directly
+        int h = 1;
+        for (int i = 0; i < len; i++) {
+            h = h * 31 + computeElementHash(Array.get(arr, i));
+        }
+        hashPass[0] = finalizeHash(h);
+        
+        // Single element optimization
+        if (len == 1) {
+            Object single = Array.get(arr, 0);
+            if (single != null) return single;
+        }
+        
+        return arr;
+    }
+    
+    private Object expandWithHash(Object key, int[] hashPass) {
+        List<Object> expanded = new ArrayList<>();
+        IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
+        int[] runningHash = new int[]{1};
+        
+        expandAndHash(key, expanded, visited, runningHash, flattenDimensions);
+        
+        hashPass[0] = finalizeHash(runningHash[0]);
+        
+        // Single element optimization - always collapse single elements after expansion
+        if (expanded.size() == 1) {
+            Object result = expanded.get(0);
+            // IMPORTANT: Recompute hash for the single element to match simple object case
+            hashPass[0] = finalizeHash(computeElementHash(result));
+            return result;
+        }
+        
+        return expanded;
+    }
+    
+    private static void expandAndHash(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited, 
+                                      int[] runningHash, boolean useFlatten) {
+        if (current == null) {
+            result.add(null);
+            runningHash[0] = runningHash[0] * 31 + 0;
+            return;
+        }
+
+        if (visited.containsKey(current)) {
+            Object cycle = EMOJI_CYCLE + System.identityHashCode(current);
+            result.add(cycle);
+            runningHash[0] = runningHash[0] * 31 + cycle.hashCode();
+            return;
+        }
+
+        if (current.getClass().isArray()) {
+            visited.put(current, true);
+            try {
+                if (!useFlatten) {
+                    result.add(OPEN);
+                    runningHash[0] = runningHash[0] * 31 + OPEN.hashCode();
+                }
+                int len = Array.getLength(current);
+                for (int i = 0; i < len; i++) {
+                    expandAndHash(Array.get(current, i), result, visited, runningHash, useFlatten);
+                }
+                if (!useFlatten) {
+                    result.add(CLOSE);
+                    runningHash[0] = runningHash[0] * 31 + CLOSE.hashCode();
+                }
+            } finally {
+                visited.remove(current);
+            }
+        } else if (current instanceof Collection) {
+            Collection<?> coll = (Collection<?>) current;
+            visited.put(current, true);
+            try {
+                if (!useFlatten) {
+                    result.add(OPEN);
+                    runningHash[0] = runningHash[0] * 31 + OPEN.hashCode();
+                }
+                for (Object e : coll) {
+                    expandAndHash(e, result, visited, runningHash, useFlatten);
+                }
+                if (!useFlatten) {
+                    result.add(CLOSE);
+                    runningHash[0] = runningHash[0] * 31 + CLOSE.hashCode();
+                }
+            } finally {
+                visited.remove(current);
+            }
         } else {
-            // Flat 1D - no allocations needed
-            return processFlatKey(key);
+            result.add(current);
+            runningHash[0] = runningHash[0] * 31 + computeElementHash(current);
+        }
+    }
+    
+    private int computeHashForProcessedKey(Object processed, Object original) {
+        if (processed == original) {
+            // Direct use case - compute hash based on type
+            if (original instanceof Object[]) {
+                Object[] arr = (Object[]) original;
+                if (arr.length == 0) return 0;
+                int h = 1;
+                for (Object e : arr) h = h * 31 + computeElementHash(e);
+                return finalizeHash(h);
+            } else if (original instanceof Collection) {
+                Collection<?> coll = (Collection<?>) original;
+                if (coll.isEmpty()) return 0;
+                int h = 1;
+                for (Object e : coll) h = h * 31 + computeElementHash(e);
+                return finalizeHash(h);
+            } else if (original.getClass().isArray()) {
+                // Typed array
+                int len = Array.getLength(original);
+                if (len == 0) return 0;
+                int h = 1;
+                for (int i = 0; i < len; i++) h = h * 31 + computeElementHash(Array.get(original, i));
+                return finalizeHash(h);
+            }
+            // Should not reach here
+            return finalizeHash(computeElementHash(original));
+        } else if (processed instanceof Object[]) {
+            // Must be the generalized Object[] from processFlatKey
+            Object[] arr = (Object[]) processed;
+            if (arr.length == 0) return 0;
+            int h = 1;
+            for (Object e : arr) h = h * 31 + computeElementHash(e);
+            return finalizeHash(h);
+        } else {
+            // Single element case
+            return finalizeHash(computeElementHash(processed));
         }
     }
     
@@ -439,8 +646,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private MultiKey<V> findEntry(Object lookupKey) {
-        Object normalized = normalizeLookup(lookupKey);
-        int hash = computeHash(normalized);
+        // Direct normalization without creating any objects
+        int[] hashPass = new int[1];
+        Object normalized = normalizeLookup(lookupKey, hashPass);
+        int hash = hashPass[0];
         Object[] currentBuckets = buckets;
         int index = hash & (currentBuckets.length - 1);
         @SuppressWarnings("unchecked")
@@ -633,7 +842,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     public V remove(Object key) {
-        MultiKey<V> removeKey = normalizeToMultiKey(key, null);
+        MultiKey<V> removeKey = createMultiKey(key, null);
         return removeInternal(removeKey);
     }
 
@@ -786,7 +995,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V putIfAbsent(Object key, V value) {
         V existing = get(key);
         if (existing != null) return existing;
-        int hash = computeHash(normalizeLookup(key));
+        MultiKey<V> lookupKey = createMultiKey(key, value);
+        int hash = lookupKey.hash;
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
         try {
@@ -802,7 +1012,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(mappingFunction);
         V v = get(key);
         if (v != null) return v;
-        int hash = computeHash(normalizeLookup(key));
+        int[] hashPass = new int[1];
+        normalizeLookup(key, hashPass);
+        int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
         try {
@@ -821,7 +1033,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(remappingFunction);
         V old = get(key);
         if (old == null) return null;
-        int hash = computeHash(normalizeLookup(key));
+        int[] hashPass = new int[1];
+        normalizeLookup(key, hashPass);
+        int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
         try {
@@ -842,7 +1056,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
-        int hash = computeHash(normalizeLookup(key));
+        int[] hashPass = new int[1];
+        normalizeLookup(key, hashPass);
+        int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
         try {
@@ -862,7 +1078,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V merge(Object key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
-        int hash = computeHash(normalizeLookup(key));
+        int[] hashPass = new int[1];
+        normalizeLookup(key, hashPass);
+        int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
         try {
@@ -880,7 +1098,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     public boolean remove(Object key, Object value) {
-        int hash = computeHash(normalizeLookup(key));
+        int[] hashPass = new int[1];
+        normalizeLookup(key, hashPass);
+        int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
         try {
@@ -894,7 +1114,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     public V replace(Object key, V value) {
-        int hash = computeHash(normalizeLookup(key));
+        int[] hashPass = new int[1];
+        normalizeLookup(key, hashPass);
+        int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
         try {
@@ -906,7 +1128,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     public boolean replace(Object key, V oldValue, V newValue) {
-        int hash = computeHash(normalizeLookup(key));
+        int[] hashPass = new int[1];
+        normalizeLookup(key, hashPass);
+        int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
         try {
@@ -1173,7 +1397,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         List<Object> expanded = new ArrayList<>();
         IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
-        expand(key, expanded, visited, false);  // For debug, always preserve structure (false for flatten)
+        int[] dummyHash = new int[]{1};  // We don't need the hash for debug output
+        expandAndHash(key, expanded, visited, dummyHash, false);  // For debug, always preserve structure (false for flatten)
 
         StringBuilder sb = new StringBuilder();
         for (Object e : expanded) {

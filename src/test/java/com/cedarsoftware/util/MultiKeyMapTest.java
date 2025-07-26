@@ -82,6 +82,7 @@ public class MultiKeyMapTest {
         map.put("a", "alpha");
         map.put(new String[]{"a"}, "[alpha]");  // This should overwrite "alpha" since single-element arrays are equivalent to single keys
 
+        System.out.println("Map size: " + map.size());
         assert map.size() == 1;  // Single-element array overwrites single key
         assertEquals("[alpha]", map.get("A"));                    // different case - should get the array value
         assertEquals("[alpha]", map.get(new String[]{"A"}));      // different case - should get the array value

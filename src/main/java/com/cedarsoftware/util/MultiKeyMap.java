@@ -189,57 +189,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public boolean getFlattenDimensions() {
         return flattenDimensions;
     }
-
-    private static int computeHash(final Object keys) {
-        if (keys == null) {
-            return 0;
-        }
-
-        Class<?> clazz = keys.getClass();
-        if (!clazz.isArray() && !(keys instanceof Collection)) {
-            return finalizeHash(computeElementHash(keys == NULL_SENTINEL ? null : keys));
-        }
-
-        if (keys instanceof Object[]) {
-            Object[] arr = (Object[]) keys;
-            if (arr.length == 0) return 0;
-            int h = 1;
-            for (Object e : arr) h = h * 31 + computeElementHash(e);
-            return finalizeHash(h);
-        }
-
-        if (keys instanceof Collection) {
-            Collection<?> coll = (Collection<?>) keys;
-            if (coll.isEmpty()) return 0;
-            int h = 1;
-            for (Object e : coll) h = h * 31 + computeElementHash(e);
-            return finalizeHash(h);
-        }
-
-        if (clazz.isArray()) {
-            int len = Array.getLength(keys);
-            if (len == 0) return 0;
-            int h = 1;
-
-            if (keys instanceof String[]) {
-                for (String e : (String[]) keys) h = h * 31 + computeElementHash(e);
-            } else if (keys instanceof int[]) {
-                for (int e : (int[]) keys) h = h * 31 + Integer.hashCode(e);
-            } else if (keys instanceof long[]) {
-                for (long e : (long[]) keys) h = h * 31 + Long.hashCode(e);
-            } else if (keys instanceof double[]) {
-                for (double e : (double[]) keys) h = h * 31 + Double.hashCode(e);
-            } else if (keys instanceof boolean[]) {
-                for (boolean e : (boolean[]) keys) h = h * 31 + Boolean.hashCode(e);
-            } else {
-                for (int i = 0; i < len; i++) h = h * 31 + computeElementHash(Array.get(keys, i));
-            }
-            return finalizeHash(h);
-        }
-
-        return finalizeHash(computeElementHash(keys));
-    }
-
+    
     private static int computeElementHash(Object key) {
         if (key == null) return 0;
         if (key instanceof Class || key instanceof java.lang.reflect.AccessibleObject || key instanceof ClassLoader || key instanceof java.lang.ref.Reference || key instanceof Thread) {
@@ -289,8 +239,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         MultiKey<V> newKey = createMultiKey(key, value);
         return putInternal(newKey);
     }
-
-
+    
     /**
      * Creates a MultiKey from a key, normalizing it first.
      * Used by put() and remove() operations that need MultiKey objects.
@@ -372,10 +321,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         if (is1D) {
             // Single element optimization - always collapse single element arrays
-            if (array.length == 1 && array[0] != null) {
-                // Recompute hash for the single element to match simple object case
-                hashPass[0] = finalizeHash(computeElementHash(array[0]));
-                return array[0];
+            if (array.length == 1) {
+                Object element = array[0];
+                if (element == null) {
+                    // Return NULL_SENTINEL with matching hash for consistency
+                    hashPass[0] = 0; // Match top-level null normalization
+                    return NULL_SENTINEL;
+                } else {
+                    // Recompute hash for the single element to match simple object case
+                    hashPass[0] = finalizeHash(computeElementHash(element));
+                    return element;
+                }
             }
             hashPass[0] = finalizeHash(h);
             return array;
@@ -407,7 +363,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Single element optimization - always collapse single element collections
             if (coll.size() == 1) {
                 Object single = coll.iterator().next();
-                if (single != null) {
+                if (single == null) {
+                    // Return NULL_SENTINEL with matching hash for consistency
+                    hashPass[0] = 0; // Match top-level null normalization
+                    return NULL_SENTINEL;
+                } else {
                     // Recompute hash for the single element to match simple object case
                     hashPass[0] = finalizeHash(computeElementHash(single));
                     return single;
@@ -446,7 +406,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Single element optimization - always collapse single element arrays
             if (len == 1) {
                 Object single = Array.get(arr, 0);
-                if (single != null) {
+                if (single == null) {
+                    // Return NULL_SENTINEL with matching hash for consistency
+                    hashPass[0] = 0; // Match top-level null normalization
+                    return NULL_SENTINEL;
+                } else {
                     // Recompute hash for the single element to match simple object case
                     hashPass[0] = finalizeHash(computeElementHash(single));
                     return single;
@@ -472,7 +436,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Single element optimization - always collapse single elements after expansion
         if (expanded.size() == 1) {
             Object result = expanded.get(0);
-            // IMPORTANT: Recompute hash for the single element to match simple object case
+            // IMPORTANT: Handle NULL_SENTINEL specially to match top-level null hash
+            if (result == NULL_SENTINEL) {
+                hashPass[0] = 0; // Match top-level null normalization
+                return NULL_SENTINEL;
+            }
+            // Recompute hash for the single element to match simple object case
             hashPass[0] = finalizeHash(computeElementHash(result));
             return result;
         }
@@ -483,8 +452,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static void expandAndHash(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited, 
                                       int[] runningHash, boolean useFlatten) {
         if (current == null) {
-            result.add(null);
-            runningHash[0] = runningHash[0] * 31 + 0;
+            result.add(NULL_SENTINEL);
+            runningHash[0] = runningHash[0] * 31 + NULL_SENTINEL.hashCode();
             return;
         }
 
@@ -537,128 +506,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
     
-    private int computeHashForProcessedKey(Object processed, Object original) {
-        if (processed == original) {
-            // Direct use case - compute hash based on type
-            if (original instanceof Object[]) {
-                Object[] arr = (Object[]) original;
-                if (arr.length == 0) return 0;
-                int h = 1;
-                for (Object e : arr) h = h * 31 + computeElementHash(e);
-                return finalizeHash(h);
-            } else if (original instanceof Collection) {
-                Collection<?> coll = (Collection<?>) original;
-                if (coll.isEmpty()) return 0;
-                int h = 1;
-                for (Object e : coll) h = h * 31 + computeElementHash(e);
-                return finalizeHash(h);
-            } else if (original.getClass().isArray()) {
-                // Typed array
-                int len = Array.getLength(original);
-                if (len == 0) return 0;
-                int h = 1;
-                for (int i = 0; i < len; i++) h = h * 31 + computeElementHash(Array.get(original, i));
-                return finalizeHash(h);
-            }
-            // Should not reach here
-            return finalizeHash(computeElementHash(original));
-        } else if (processed instanceof Object[]) {
-            // Must be the generalized Object[] from processFlatKey
-            Object[] arr = (Object[]) processed;
-            if (arr.length == 0) return 0;
-            int h = 1;
-            for (Object e : arr) h = h * 31 + computeElementHash(e);
-            return finalizeHash(h);
-        } else {
-            // Single element case
-            return finalizeHash(computeElementHash(processed));
-        }
-    }
-    
-    private Object processFlatKey(Object key) {
-        if (key instanceof Object[]) {
-            Object[] arr = (Object[]) key;
-            // Collapse single non-null element for lookup equivalence
-            if (arr.length == 1 && arr[0] != null) return arr[0];
-            return key;  // No alloc, direct use for lookup
-        } else {
-            Object[] generalized = generalizeToObjectArray(key);
-            // Apply same single-element optimization to collections for equivalence with arrays
-            if (generalized.length == 1 && generalized[0] != null) return generalized[0];
-            return generalized;
-        }
-    }
-
-    private boolean isNested(Object key) {
-        if (key.getClass().isArray()) {
-            int len = Array.getLength(key);
-            for (int i = 0; i < len; i++) {
-                Object e = Array.get(key, i);
-                if (e != null && (e.getClass().isArray() || e instanceof Collection)) return true;
-            }
-            return false;
-        } else if (key instanceof Collection) {
-            for (Object e : (Collection<?>) key) {
-                if (e != null && (e.getClass().isArray() || e instanceof Collection)) return true;
-            }
-            return false;
-        }
-        return false;
-    }
-
-    private Object[] generalizeToObjectArray(Object key) {
-        Class<?> clazz = key.getClass();
-        if (clazz.isArray()) {
-            int len = Array.getLength(key);
-            Object[] arr = new Object[len];
-            for (int i = 0; i < len; i++) arr[i] = Array.get(key, i);
-            return arr;
-        } else if (key instanceof Collection) {
-            Collection<?> coll = (Collection<?>) key;
-            Object[] arr = new Object[coll.size()];
-            int i = 0;
-            for (Object e : coll) arr[i++] = e;
-            return arr;
-        }
-        return new Object[]{key};
-    }
-
-    private static void expand(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited, boolean useFlatten) {
-        if (current == null) {
-            result.add(null);
-            return;
-        }
-
-        if (visited.containsKey(current)) {
-            result.add(EMOJI_CYCLE + System.identityHashCode(current));
-            return;
-        }
-
-        if (current.getClass().isArray()) {
-            visited.put(current, true);
-            try {
-                if (!useFlatten) result.add(OPEN);
-                int len = Array.getLength(current);
-                for (int i = 0; i < len; i++) expand(Array.get(current, i), result, visited, useFlatten);
-                if (!useFlatten) result.add(CLOSE);
-            } finally {
-                visited.remove(current);
-            }
-        } else if (current instanceof Collection) {
-            Collection<?> coll = (Collection<?>) current;
-            visited.put(current, true);
-            try {
-                if (!useFlatten) result.add(OPEN);
-                for (Object e : coll) expand(e, result, visited, useFlatten);
-                if (!useFlatten) result.add(CLOSE);
-            } finally {
-                visited.remove(current);
-            }
-        } else {
-            result.add(current);
-        }
-    }
-
     private MultiKey<V> findEntry(Object lookupKey) {
         // Direct normalization without creating any objects
         int[] hashPass = new int[1];

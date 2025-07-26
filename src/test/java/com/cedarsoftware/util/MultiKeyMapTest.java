@@ -6,8 +6,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.logging.Logger;
 
 public class MultiKeyMapTest {
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapTest.class.getName());
     @Test
     void testSingleElementArrayKeys() {
         MultiKeyMap<String> map = new MultiKeyMap<>(true);
@@ -82,7 +84,7 @@ public class MultiKeyMapTest {
         map.put("a", "alpha");
         map.put(new String[]{"a"}, "[alpha]");  // This should overwrite "alpha" since single-element arrays are equivalent to single keys
 
-        System.out.println("Map size: " + map.size());
+        LOG.info("Map size: " + map.size());
         assert map.size() == 1;  // Single-element array overwrites single key
         assertEquals("[alpha]", map.get("A"));                    // different case - should get the array value
         assertEquals("[alpha]", map.get(new String[]{"A"}));      // different case - should get the array value
@@ -392,15 +394,14 @@ public class MultiKeyMapTest {
         assertEquals("collection with empty string", map.get(CollectionUtilities.listOf("")));
         assertTrue(map.containsKey(CollectionUtilities.listOf("")));
         
-        // All keys are separate when not flattened
-        assert map.size() == 4;  // Some keys are equivalent: empty array/collection, array/collection with null, array/collection with empty string, single-element array with ""/"" string
+        // All keys are separate when not flattened, but some equivalences due to NULL_SENTINEL uniformity
+        assert map.size() == 3;  // Keys: NULL_SENTINEL (null + single null containers), "" (empty string + single empty string containers), empty containers
         
-        // Test removal of edge cases
-        assertEquals("null value", map.remove(null));
-        assertEquals("collection with empty string", map.remove(""));  // single-element array with "" overwrote "" string
+        // Test removal of edge cases with NULL_SENTINEL uniformity
+        assertEquals("collection with null", map.remove(null));  // null equivalent to single null containers (last put wins)
+        assertEquals("collection with empty string", map.remove(""));  // empty string equivalent to single empty string containers (last put wins)
         assertEquals("empty collection value", map.remove(new String[0]));  // empty array/collection are same
-        assertEquals("collection with null", map.remove(new String[]{null}));  // array/collection with null are same
-        // Note: collection with empty string was already removed via remove("") since they're equivalent
+        // Note: null-related keys and empty string-related keys were already removed above due to equivalence
         
         assert map.isEmpty();
     }

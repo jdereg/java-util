@@ -140,7 +140,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     void testFormatSimpleKey_SingleElementCollection_NullSentinel() throws Exception {
         List<Object> singleList = Arrays.asList(NULL_SENTINEL);
         String result = formatSimpleKey(singleList, null);
-        assertThat(result).isEqualTo("🆔 ∅");
+        assertThat(result).isEqualTo("🆔 [∅]");
     }
 
     @Test

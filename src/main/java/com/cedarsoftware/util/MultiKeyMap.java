@@ -1376,6 +1376,38 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Special case for toString: use bracket notation for readability
         if (forToString) {
+            // Check if this is an already-flattened structure (contains sentinel objects)
+            if (key instanceof Collection) {
+                Collection<?> coll = (Collection<?>) key;
+                boolean isAlreadyFlattened = false;
+                for (Object element : coll) {
+                    if (element == NULL_SENTINEL || element == OPEN || element == CLOSE || 
+                        (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE))) {
+                        isAlreadyFlattened = true;
+                        break;
+                    }
+                }
+                
+                if (isAlreadyFlattened) {
+                    // Process already-flattened collection directly
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(EMOJI_KEY).append("[");
+                    int i = 0;
+                    for (Object element : coll) {
+                        if (i > 0) sb.append(", ");
+                        if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
+                        else if (element == OPEN) sb.append(EMOJI_OPEN);
+                        else if (element == CLOSE) sb.append(EMOJI_CLOSE);
+                        else if (selfMap != null && element == selfMap) sb.append("(this Map)");
+                        else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) sb.append(element);
+                        else sb.append(element);
+                        i++;
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                }
+            }
+            
             if (key.getClass().isArray()) {
                 int len = Array.getLength(key);
                 if (len == 1) {
@@ -1391,7 +1423,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         if (i > 0) sb.append(", ");
                         Object element = Array.get(key, i);
                         if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
+                        else if (element == OPEN) sb.append(EMOJI_OPEN);
+                        else if (element == CLOSE) sb.append(EMOJI_CLOSE);
                         else if (selfMap != null && element == selfMap) sb.append("(this Map)");
+                        else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) sb.append(element);
                         else sb.append(element != null ? element.toString() : EMOJI_EMPTY);
                     }
                     sb.append("]");
@@ -1412,7 +1447,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     for (Object element : coll) {
                         if (i > 0) sb.append(", ");
                         if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
+                        else if (element == OPEN) sb.append(EMOJI_OPEN);
+                        else if (element == CLOSE) sb.append(EMOJI_CLOSE);
                         else if (selfMap != null && element == selfMap) sb.append("(this Map)");
+                        else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) sb.append(element);
                         else sb.append(element != null ? element.toString() : EMOJI_EMPTY);
                         i++;
                     }

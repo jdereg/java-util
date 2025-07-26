@@ -332,30 +332,24 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return makeDefensiveCopy ? new ArrayList<>(coll) : coll;
         }
 
-        // Handle Object[] arrays
-        if (key instanceof Object[]) {
-            Object[] arr = (Object[]) key;
-            return process1DObjectArray(arr, hashPass);
+        // Handle arrays - must check specific type to route correctly
+        if (clazz.isArray()) {
+            // Object[] arrays need special handling
+            if (clazz == Object[].class) {
+                Object[] arr = (Object[]) key;
+                return process1DObjectArray(arr, hashPass);
+            }
+            // All other array types (int[], String[], etc.) go to typed array processing
+            return process1DTypedArray(key, hashPass);
         }
         
         // Handle Collections
-        if (key instanceof Collection) {
-            Collection<?> coll = (Collection<?>) key;
-            // If flattening dimensions, always go through expansion
-            if (flattenDimensions) {
-                return expandWithHash(coll, hashPass);
-            }
-            return process1DCollection(coll, hashPass, makeDefensiveCopy);
+        Collection<?> coll = (Collection<?>) key;
+        // If flattening dimensions, always go through expansion
+        if (flattenDimensions) {
+            return expandWithHash(coll, hashPass);
         }
-        
-        // Handle typed arrays (int[], String[], etc.)
-        if (clazz.isArray()) {
-            return processTypedArray(key, hashPass);
-        }
-        
-        // Should never reach here
-        hashPass[0] = finalizeHash(computeElementHash(key));
-        return key;
+        return process1DCollection(coll, hashPass, makeDefensiveCopy);
     }
     
     private Object process1DObjectArray(Object[] array, int[] hashPass) {
@@ -428,27 +422,42 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return expandWithHash(coll, hashPass);
     }
     
-    private Object processTypedArray(Object arr, int[] hashPass) {
+    private Object process1DTypedArray(Object arr, int[] hashPass) {
         int len = Array.getLength(arr);
         if (len == 0) {
             hashPass[0] = 0;
             return arr;
         }
         
-        // For typed arrays, compute hash directly
+        // Check if truly 1D while computing hash (same as process1DObjectArray)
         int h = 1;
+        boolean is1D = true;
+        
         for (int i = 0; i < len; i++) {
-            h = h * 31 + computeElementHash(Array.get(arr, i));
-        }
-        hashPass[0] = finalizeHash(h);
-        
-        // Single element optimization
-        if (len == 1) {
-            Object single = Array.get(arr, 0);
-            if (single != null) return single;
+            Object e = Array.get(arr, i);
+            h = h * 31 + computeElementHash(e);
+            if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                is1D = false;
+                break;
+            }
         }
         
-        return arr;
+        if (is1D) {
+            // Single element optimization - always collapse single element arrays
+            if (len == 1) {
+                Object single = Array.get(arr, 0);
+                if (single != null) {
+                    // Recompute hash for the single element to match simple object case
+                    hashPass[0] = finalizeHash(computeElementHash(single));
+                    return single;
+                }
+            }
+            hashPass[0] = finalizeHash(h);
+            return arr;
+        }
+        
+        // It's 2D+ - need to expand with hash computation
+        return expandWithHash(arr, hashPass);
     }
     
     private Object expandWithHash(Object key, int[] hashPass) {

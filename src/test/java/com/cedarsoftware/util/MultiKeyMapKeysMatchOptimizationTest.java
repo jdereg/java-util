@@ -168,4 +168,175 @@ public class MultiKeyMapKeysMatchOptimizationTest {
         
         assertEquals(1, map.size());
     }
+    
+    @Test
+    void testArrayListFastPath() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        
+        // ArrayList should use optimized .get(i) path, not iterator
+        ArrayList<String> list1 = new ArrayList<>();
+        list1.add("alpha");
+        list1.add("beta");
+        list1.add("gamma");
+        
+        ArrayList<String> list2 = new ArrayList<>();
+        list2.add("alpha");
+        list2.add("beta");
+        list2.add("gamma");
+        
+        map.put(list1, "arraylist_value");
+        
+        // Should use ArrayList-specific fast path comparison
+        assertEquals("arraylist_value", map.get(list2));
+        assertTrue(map.containsKey(list2));
+        
+        // Verify they are treated as equivalent keys
+        assertEquals(1, map.size());
+    }
+    
+    @Test
+    void testVectorFastPath() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        
+        // Vector should use optimized .get(i) path, not iterator
+        Vector<String> vector1 = new Vector<>();
+        vector1.add("alpha");
+        vector1.add("beta");
+        vector1.add("gamma");
+        
+        Vector<String> vector2 = new Vector<>();
+        vector2.add("alpha");
+        vector2.add("beta");
+        vector2.add("gamma");
+        
+        map.put(vector1, "vector_value");
+        
+        // Should use Vector-specific fast path comparison
+        assertEquals("vector_value", map.get(vector2));
+        assertTrue(map.containsKey(vector2));
+        
+        // Verify they are treated as equivalent keys
+        assertEquals(1, map.size());
+    }
+    
+    @Test
+    void testArrayListVsOtherCollections() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        
+        // ArrayList should use fast path, LinkedList should use iterator
+        ArrayList<Integer> arrayList = new ArrayList<>();
+        arrayList.add(1);
+        arrayList.add(2);
+        arrayList.add(3);
+        
+        LinkedList<Integer> linkedList = new LinkedList<>();
+        linkedList.add(1);
+        linkedList.add(2);
+        linkedList.add(3);
+        
+        // These should be equivalent due to cross-type matching but use different code paths
+        map.put(arrayList, "list_value");
+        assertEquals("list_value", map.get(linkedList)); // Cross-type matching works
+        assertEquals(1, map.size(), "ArrayList and LinkedList with same content should be equivalent");
+    }
+    
+    @Test
+    void testCollectionOptimizationPerformance() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        
+        // Create many ArrayList keys to test performance improvement
+        List<ArrayList<String>> arrayLists = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            ArrayList<String> list = new ArrayList<>();
+            list.add("prefix" + i);
+            list.add("middle");
+            list.add("suffix" + i);
+            arrayLists.add(list);
+            map.put(list, "value" + i);
+        }
+        
+        // Test lookup performance - ArrayList should use fast .get(i) path
+        long startTime = System.nanoTime();
+        for (int i = 0; i < 1000; i++) {
+            ArrayList<String> lookupList = new ArrayList<>();
+            lookupList.add("prefix" + i);
+            lookupList.add("middle");
+            lookupList.add("suffix" + i);
+            String result = map.get(lookupList);
+            assertEquals("value" + i, result);
+        }
+        long endTime = System.nanoTime();
+        
+        // Performance test should complete reasonably quickly
+        long durationMs = (endTime - startTime) / 1_000_000;
+        assertTrue(durationMs < 100, "ArrayList lookup should be fast, took " + durationMs + "ms");
+        
+        assertEquals(1000, map.size());
+    }
+    
+    @Test
+    void testNullHandlingInCollectionOptimizations() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        
+        // Test ArrayList with null elements
+        ArrayList<String> arrayListWithNull = new ArrayList<>();
+        arrayListWithNull.add("before");
+        arrayListWithNull.add(null);
+        arrayListWithNull.add("after");
+        
+        ArrayList<String> anotherArrayListWithNull = new ArrayList<>();
+        anotherArrayListWithNull.add("before");
+        anotherArrayListWithNull.add(null);
+        anotherArrayListWithNull.add("after");
+        
+        map.put(arrayListWithNull, "arraylist_null_value");
+        assertEquals("arraylist_null_value", map.get(anotherArrayListWithNull));
+        
+        // Test Vector with null elements
+        Vector<String> vectorWithNull = new Vector<>();
+        vectorWithNull.add("before");
+        vectorWithNull.add(null);
+        vectorWithNull.add("after");
+        
+        // Should match ArrayList due to cross-type equivalence
+        assertEquals("arraylist_null_value", map.get(vectorWithNull));
+        
+        assertEquals(1, map.size(), "ArrayList and Vector with same null pattern should be equivalent");
+    }
+    
+    @Test
+    void testMixedCollectionTypes() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        
+        // Test that different collection types with same content are equivalent
+        ArrayList<String> arrayList = new ArrayList<>();
+        arrayList.add("a");
+        arrayList.add("b");
+        arrayList.add("c");
+        
+        Vector<String> vector = new Vector<>();
+        vector.add("a");
+        vector.add("b");
+        vector.add("c");
+        
+        LinkedList<String> linkedList = new LinkedList<>();
+        linkedList.add("a");
+        linkedList.add("b");
+        linkedList.add("c");
+        
+        HashSet<String> hashSet = new HashSet<>();
+        hashSet.add("a");
+        hashSet.add("b");
+        hashSet.add("c");
+        
+        map.put(arrayList, "collection_value");
+        
+        // All should be equivalent despite using different optimization paths
+        assertEquals("collection_value", map.get(vector));      // Vector fast path
+        assertEquals("collection_value", map.get(linkedList));  // Iterator path
+        assertEquals("collection_value", map.get(hashSet));     // Iterator path
+        
+        // Should all be the same key due to cross-type matching
+        assertEquals(1, map.size(), "All collections with same content should be equivalent");
+    }
 }

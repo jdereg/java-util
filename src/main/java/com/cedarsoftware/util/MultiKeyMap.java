@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -383,6 +384,153 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private Object process1DTypedArray(Object arr, int[] hashPass) {
+        Class<?> clazz = arr.getClass();
+        
+        // Use type-specific fast paths for optimal performance
+        if (clazz == String[].class) {
+            return process1DStringArray((String[]) arr, hashPass);
+        }
+        if (clazz == int[].class) {
+            return process1DIntArray((int[]) arr, hashPass);
+        }
+        if (clazz == long[].class) {
+            return process1DLongArray((long[]) arr, hashPass);
+        }
+        if (clazz == double[].class) {
+            return process1DDoubleArray((double[]) arr, hashPass);
+        }
+        if (clazz == boolean[].class) {
+            return process1DBooleanArray((boolean[]) arr, hashPass);
+        }
+        
+        // Fallback to reflection for uncommon array types
+        return process1DGenericArray(arr, hashPass);
+    }
+    
+    private Object process1DStringArray(String[] array, int[] hashPass) {
+        if (array.length == 0) {
+            hashPass[0] = 0;
+            return array;
+        }
+        
+        // String arrays are always 1D (String elements can't be arrays or collections)
+        int h = 1;
+        for (String e : array) {
+            h = h * 31 + computeElementHash(e);
+        }
+        
+        // Single element optimization - always collapse single element arrays
+        if (array.length == 1) {
+            String element = array[0];
+            if (element == null) {
+                // Return NULL_SENTINEL with matching hash for consistency
+                hashPass[0] = 0; // Match top-level null normalization
+                return NULL_SENTINEL;
+            } else {
+                // Recompute hash for the single element to match simple object case
+                hashPass[0] = finalizeHash(computeElementHash(element));
+                return element;
+            }
+        }
+        
+        hashPass[0] = finalizeHash(h);
+        return array;
+    }
+    
+    private Object process1DIntArray(int[] array, int[] hashPass) {
+        if (array.length == 0) {
+            hashPass[0] = 0;
+            return array;
+        }
+        
+        // int arrays are always 1D (primitives can't contain collections/arrays)
+        int h = 1;
+        for (int e : array) {
+            h = h * 31 + Integer.hashCode(e);
+        }
+        
+        // Single element optimization - always collapse single element arrays
+        if (array.length == 1) {
+            // Recompute hash for the single element to match simple object case
+            hashPass[0] = finalizeHash(Integer.hashCode(array[0]));
+            return array[0]; // Return the primitive value
+        }
+        
+        hashPass[0] = finalizeHash(h);
+        return array;
+    }
+    
+    private Object process1DLongArray(long[] array, int[] hashPass) {
+        if (array.length == 0) {
+            hashPass[0] = 0;
+            return array;
+        }
+        
+        // long arrays are always 1D (primitives can't contain collections/arrays)
+        int h = 1;
+        for (long e : array) {
+            h = h * 31 + Long.hashCode(e);
+        }
+        
+        // Single element optimization - always collapse single element arrays
+        if (array.length == 1) {
+            // Recompute hash for the single element to match simple object case
+            hashPass[0] = finalizeHash(Long.hashCode(array[0]));
+            return array[0]; // Return the primitive value
+        }
+        
+        hashPass[0] = finalizeHash(h);
+        return array;
+    }
+    
+    private Object process1DDoubleArray(double[] array, int[] hashPass) {
+        if (array.length == 0) {
+            hashPass[0] = 0;
+            return array;
+        }
+        
+        // double arrays are always 1D (primitives can't contain collections/arrays)
+        int h = 1;
+        for (double e : array) {
+            h = h * 31 + Double.hashCode(e);
+        }
+        
+        // Single element optimization - always collapse single element arrays
+        if (array.length == 1) {
+            // Recompute hash for the single element to match simple object case
+            hashPass[0] = finalizeHash(Double.hashCode(array[0]));
+            return array[0]; // Return the primitive value
+        }
+        
+        hashPass[0] = finalizeHash(h);
+        return array;
+    }
+    
+    private Object process1DBooleanArray(boolean[] array, int[] hashPass) {
+        if (array.length == 0) {
+            hashPass[0] = 0;
+            return array;
+        }
+        
+        // boolean arrays are always 1D (primitives can't contain collections/arrays)
+        int h = 1;
+        for (boolean e : array) {
+            h = h * 31 + Boolean.hashCode(e);
+        }
+        
+        // Single element optimization - always collapse single element arrays
+        if (array.length == 1) {
+            // Recompute hash for the single element to match simple object case
+            hashPass[0] = finalizeHash(Boolean.hashCode(array[0]));
+            return array[0]; // Return the primitive value
+        }
+        
+        hashPass[0] = finalizeHash(h);
+        return array;
+    }
+    
+    private Object process1DGenericArray(Object arr, int[] hashPass) {
+        // Fallback method using reflection for uncommon array types
         int len = Array.getLength(arr);
         if (len == 0) {
             hashPass[0] = 0;
@@ -585,6 +733,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             boolean[] s = (boolean[]) stored;
             boolean[] l = (boolean[]) lookup;
             for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
+            return true;
+        }
+
+        // Collection fast paths - use exact class matching for optimal performance
+        if (storedClass == ArrayList.class && lookupClass == ArrayList.class) {
+            ArrayList<?> s = (ArrayList<?>) stored;
+            ArrayList<?> l = (ArrayList<?>) lookup;
+            for (int i = 0; i < storedLen; i++) if (!Objects.equals(s.get(i), l.get(i))) return false;
+            return true;
+        }
+
+        if (storedClass == Vector.class && lookupClass == Vector.class) {
+            Vector<?> s = (Vector<?>) stored;
+            Vector<?> l = (Vector<?>) lookup;
+            for (int i = 0; i < storedLen; i++) if (!Objects.equals(s.get(i), l.get(i))) return false;
             return true;
         }
 
@@ -1063,7 +1226,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (!(key.getClass().isArray() || key instanceof Collection)) {
             // Handle self-reference in single keys
             if (selfMap != null && key == selfMap) return EMOJI_KEY + "(this Map)";
-            return EMOJI_KEY + key.toString();
+            return EMOJI_KEY + key;
         }
 
         // Special case: single-element arrays should be treated as single keys
@@ -1075,7 +1238,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
                 return EMOJI_KEY + (element != null ? element.toString() : "null");
             }
-        } else if (key instanceof Collection) {
+        } else {
             Collection<?> coll = (Collection<?>) key;
             if (coll.size() == 1) {
                 Object element = coll.iterator().next();
@@ -1098,7 +1261,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 else if (selfMap != null && element == selfMap) sb.append("(this Map)");
                 else sb.append(element != null ? element.toString() : "null");
             }
-        } else if (key instanceof Collection) {
+        } else {
             Collection<?> coll = (Collection<?>) key;
             int i = 0;
             for (Object element : coll) {
@@ -1255,7 +1418,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (!(key.getClass().isArray() || key instanceof Collection)) {
             // Handle self-reference in single keys
             if (selfMap != null && key == selfMap) return EMOJI_KEY + "(this Map)";
-            return EMOJI_KEY + key.toString();
+            return EMOJI_KEY + key;
         }
 
         List<Object> expanded = new ArrayList<>();

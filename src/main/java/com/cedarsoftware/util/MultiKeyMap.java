@@ -78,7 +78,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final String EMOJI_CLOSE = "⬆️"; // Up arrow for stepping back out of dimension
     private static final String EMOJI_CYCLE = "♻️"; // Recycle for cycles
     private static final String EMOJI_EMPTY = "∅";  // Empty set for null/empty
-    private static final String EMOJI_KEY = "🔑";   // Key for single keys
+    private static final String EMOJI_KEY = "🆔 ";   // ID for keys (with space)
+    private static final String EMOJI_VALUE = "🟣 "; // Purple circle for values (with space)
 
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
@@ -242,7 +243,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Used by put() and remove() operations that need MultiKey objects.
      * @param key the key to normalize
      * @param value the value (can be null for remove operations)
-     * @return a MultiKey object with normalized key and computed hash
+     * @return a MultiKey object with a normalized key and computed hash
      */
     private MultiKey<V> createMultiKey(Object key, V value) {
         int[] hashPass = new int[1];
@@ -262,7 +263,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private Object normalizeLookup(Object key, int[] hashPass, boolean makeDefensiveCopy) {
-        // Handle null case
+        // Handle "null" case
         if (key == null) {
             hashPass[0] = 0;
             return NULL_SENTINEL;
@@ -332,7 +333,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     hashPass[0] = 0; // Match top-level null normalization
                     return NULL_SENTINEL;
                 } else {
-                    // Recompute hash for the single element to match simple object case
+                    // Recompute hash for the single element to match a simple object case
                     hashPass[0] = finalizeHash(computeElementHash(element));
                     return element;
                 }
@@ -355,11 +356,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 1;
         boolean is1D = true;
         
-        for (Object e : coll) {
-            h = h * 31 + computeElementHash(e);
-            if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
-                is1D = false;
-                break;
+        // Use type-specific fast paths for optimal performance
+        if (coll instanceof ArrayList) {
+            ArrayList<?> list = (ArrayList<?>) coll;
+            final int size = list.size();
+            for (int i = 0; i < size; i++) {
+                Object e = list.get(i);
+                h = h * 31 + computeElementHash(e);
+                if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                    is1D = false;
+                    break;
+                }
+            }
+        } else {
+            // Fallback to iterator for other collection types
+            for (Object e : coll) {
+                h = h * 31 + computeElementHash(e);
+                if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                    is1D = false;
+                    break;
+                }
             }
         }
         
@@ -372,7 +388,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     hashPass[0] = 0; // Match top-level null normalization
                     return NULL_SENTINEL;
                 } else {
-                    // Recompute hash for the single element to match simple object case
+                    // Recompute hash for the single element to match a simple object case
                     hashPass[0] = finalizeHash(computeElementHash(single));
                     return single;
                 }
@@ -430,7 +446,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 hashPass[0] = 0; // Match top-level null normalization
                 return NULL_SENTINEL;
             } else {
-                // Recompute hash for the single element to match simple object case
+                // Recompute hash for the single element to match a simple object case
                 hashPass[0] = finalizeHash(computeElementHash(element));
                 return element;
             }
@@ -454,7 +470,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Single element optimization - always collapse single element arrays
         if (array.length == 1) {
-            // Recompute hash for the single element to match simple object case
+            // Recompute hash for the single element to match a simple object case
             hashPass[0] = finalizeHash(Integer.hashCode(array[0]));
             return array[0]; // Return the primitive value
         }
@@ -477,7 +493,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Single element optimization - always collapse single element arrays
         if (array.length == 1) {
-            // Recompute hash for the single element to match simple object case
+            // Recompute hash for the single element to match a simple object case
             hashPass[0] = finalizeHash(Long.hashCode(array[0]));
             return array[0]; // Return the primitive value
         }
@@ -500,7 +516,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Single element optimization - always collapse single element arrays
         if (array.length == 1) {
-            // Recompute hash for the single element to match simple object case
+            // Recompute hash for the single element to match a simple object case
             hashPass[0] = finalizeHash(Double.hashCode(array[0]));
             return array[0]; // Return the primitive value
         }
@@ -523,7 +539,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Single element optimization - always collapse single element arrays
         if (array.length == 1) {
-            // Recompute hash for the single element to match simple object case
+            // Recompute hash for the single element to match a simple object case
             hashPass[0] = finalizeHash(Boolean.hashCode(array[0]));
             return array[0]; // Return the primitive value
         }
@@ -562,7 +578,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     hashPass[0] = 0; // Match top-level null normalization
                     return NULL_SENTINEL;
                 } else {
-                    // Recompute hash for the single element to match simple object case
+                    // Recompute hash for the single element to match a simple object case
                     hashPass[0] = finalizeHash(computeElementHash(single));
                     return single;
                 }
@@ -592,7 +608,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 hashPass[0] = 0; // Match top-level null normalization
                 return NULL_SENTINEL;
             }
-            // Recompute hash for the single element to match simple object case
+            // Recompute hash for the single element to match a simple object case
             hashPass[0] = finalizeHash(computeElementHash(result));
             return result;
         }
@@ -1204,13 +1220,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             sb.append(keyStr).append(" → ");
             // Handle self-reference in values
             if (e.value == this) {
-                sb.append("(this Map)");
+                sb.append(EMOJI_VALUE).append("(this Map)");
             } else {
-                sb.append(e.value);
+                sb.append(EMOJI_VALUE).append(e.value);
             }
         }
         return sb.append("\n}").toString();
     }
+
 
 
     public Iterable<MultiKeyEntry<V>> entries() {
@@ -1380,7 +1397,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     sb.append("]");
                     return sb.toString();
                 }
-            } else if (key instanceof Collection) {
+            } else {
                 Collection<?> coll = (Collection<?>) key;
                 if (coll.size() == 1) {
                     Object element = coll.iterator().next();

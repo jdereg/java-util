@@ -1,15 +1,26 @@
 ### Revision History
 #### 3.10.0 (unreleased)
 #### 3.9.0
-> * **SECURITY ENHANCEMENT**: Replaced String sentinels with custom objects to prevent key collisions
-> * **ROBUSTNESS & PERFORMANCE**: General improvements to code stability and performance
-> * **FEATURE**: Added comprehensive nested structure tests and improved null formatting
-> * **PERFORMANCE**: Enhanced MultiKeyMap visual formatting and optimized ArrayList iteration
-> * **REFACTOR**: Replaced formatSimpleKey with enhanced dumpExpandedKeyStatic for better toString formatting
-> * **TESTS**: Added comprehensive test coverage for MultiKeyMap.formatSimpleKey method and NULL_SENTINEL/cycle detection
-> * **IMPROVEMENT**: Enhanced sentinel object display in toString() with proper emoji symbols
-> * **IMPROVEMENT**: Fixed MultiKeyMapMapInterfaceTest emoji format expectations
-> * **IMPROVEMENT**: General table improvements
+> * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with comprehensive performance and robustness improvements:
+>   * **Security Enhancement**: Replaced String sentinels with custom objects to prevent key collisions in internal operations
+>   * **Performance Optimization**: Added comprehensive collection and typed array optimizations with NULL_SENTINEL uniformity
+>   * **Performance**: Enhanced MultiKeyMap visual formatting and optimized ArrayList iteration patterns
+>   * **Hash Algorithm**: Added MurmurHash3 finalization for improved hash distribution
+>   * **Bug Fix**: Fixed instanceof Object[] hierarchy issues ensuring proper type handling across all array types
+>   * **Enhancement**: Improved null key handling and enhanced toString() formatting with proper emoji symbols
+>   * **Simplification**: Streamlined MultiKeyMap implementation for better maintainability and performance
+>   * **Test Coverage**: Added comprehensive test coverage including:
+>     * Generic array processing test coverage ensuring robust type handling
+>     * MultiKeyMap.formatSimpleKey method testing for output consistency
+>     * NULL_SENTINEL and cycle detection test coverage for edge case robustness
+>     * Fixed MultiKeyMapMapInterfaceTest emoji format expectations
+> * **ENHANCEMENT**: `IntervalSet` improvements:
+>   * **Extensibility**: Added nextFunction and previousFunction support allowing custom range-like types beyond the 20 built-in types
+>   * **API Enhancement**: Mirrors ConcurrentSkipListSet's behavior more accurately
+>   * **New Feature**: Added snapshot() method for obtaining point-in-time snapshots with better return types than toArray()
+>   * **JSON Round-Trip Support**: Added constructor that accepts snapshot() output, enabling easy JSON serialization/deserialization round-trips
+>   * **Bug Fix**: Fixed JSON serialization constructors for proper deserialization support
+> * **DOCUMENTATION**: Updated changelog.md and improved table formatting throughout documentation
 #### 3.8.0
 > * **MAJOR FEATURE**: Added `IntervalSet` - thread-safe set of closed intervals. Optimized (collapsed) by default, or all intervals retained if `autoMerge=false` (audit mode):
 >   * **High Performance**: O(log n) operations using `ConcurrentSkipListMap` for all queries, insertions, and range operations

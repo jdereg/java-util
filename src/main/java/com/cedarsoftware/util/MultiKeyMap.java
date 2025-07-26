@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -66,8 +65,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final Logger LOG = Logger.getLogger(MultiKeyMap.class.getName());
 
     static {
-        // Assuming LoggingConfig is defined elsewhere
-        // LoggingConfig.init();
+        LoggingConfig.init();
     }
 
     // Sentinels as private Objects for safety and zero collision risk
@@ -81,8 +79,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final String EMOJI_CYCLE = "♻️"; // Recycle for cycles
     private static final String EMOJI_EMPTY = "∅";  // Empty set for null/empty
     private static final String EMOJI_KEY = "🔑";   // Key for single keys
-    private static final String EMOJI_ARRAY = "[]"; // Brackets for arrays
-    private static final String EMOJI_COLLECTION = "()"; // Braces for collections
 
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
@@ -105,7 +101,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private volatile Object[] buckets;
     private final AtomicInteger atomicSize = new AtomicInteger(0);
-    private volatile int maxChainLength = 0;
+    private final AtomicInteger maxChainLength = new AtomicInteger(0);
     private final float loadFactor;
     private final CollectionKeyMode collectionKeyMode;
     private final boolean flattenDimensions;
@@ -254,8 +250,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return new MultiKey<>(normalizedKey, hashPass[0], value);
     }
 
-    private Object normalizeLookup(Object key, int[] hashPass) {
-        return normalizeLookup(key, hashPass, false); // false = no defensive copy needed for lookup
+    // Method for when only the hash is needed, not the normalized key
+    private void computeKeyHash(Object key, int[] hashPass) {
+        normalizeLookup(key, hashPass, false); // Ignore return value, only need hash side effect
+    }
+    
+    // Update maxChainLength to the maximum of current value and newValue
+    // Uses getAndAccumulate for better performance under contention
+    private void updateMaxChainLength(int newValue) {
+        maxChainLength.getAndAccumulate(newValue, Math::max);
     }
 
     private Object normalizeLookup(Object key, int[] hashPass, boolean makeDefensiveCopy) {
@@ -743,14 +746,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             for (int i = 0; i < storedLen; i++) if (!Objects.equals(s.get(i), l.get(i))) return false;
             return true;
         }
-
-        if (storedClass == Vector.class && lookupClass == Vector.class) {
-            Vector<?> s = (Vector<?>) stored;
-            Vector<?> l = (Vector<?>) lookup;
-            for (int i = 0; i < storedLen; i++) if (!Objects.equals(s.get(i), l.get(i))) return false;
-            return true;
-        }
-
+        
         // Cross-type or general
         Iterator<?> storedIter = iteratorFor(stored);
         Iterator<?> lookupIter = iteratorFor(lookup);
@@ -792,8 +788,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         ReentrantLock lock = getStripeLock(hash);
         int stripe = hash & STRIPE_MASK;
         boolean contended = lock.hasQueuedThreads();
-        V old = null;
-        boolean resize = false;
+        V old;
+        boolean resize;
 
         lock.lock();
         try {
@@ -830,7 +826,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (chain == null) {
             buckets[index] = new MultiKey[]{newKey};
             atomicSize.incrementAndGet();
-            maxChainLength = Math.max(maxChainLength, 1);
+            updateMaxChainLength(1);
             return null;
         }
 
@@ -847,7 +843,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         newChain[chain.length] = newKey;
         buckets[index] = newChain;
         atomicSize.incrementAndGet();
-        maxChainLength = Math.max(maxChainLength, newChain.length);
+        updateMaxChainLength(newChain.length);
         return null;
     }
 
@@ -877,7 +873,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         ReentrantLock lock = getStripeLock(hash);
         int stripe = hash & STRIPE_MASK;
         boolean contended = lock.hasQueuedThreads();
-        V old = null;
+        V old;
 
         lock.lock();
         try {
@@ -943,7 +939,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     }
                 }
             }
-            maxChainLength = newMax;
+            maxChainLength.set(newMax);
             // Only replace buckets after all entries are rehashed
             buckets = newBuckets;
         });
@@ -976,7 +972,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         withAllStripeLocks(() -> {
             Arrays.fill(buckets, null);
             atomicSize.set(0);
-            maxChainLength = 0;
+            maxChainLength.set(0);
         });
     }
 
@@ -1039,7 +1035,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         V v = get(key);
         if (v != null) return v;
         int[] hashPass = new int[1];
-        normalizeLookup(key, hashPass);
+        computeKeyHash(key, hashPass);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
@@ -1060,7 +1056,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         V old = get(key);
         if (old == null) return null;
         int[] hashPass = new int[1];
-        normalizeLookup(key, hashPass);
+        computeKeyHash(key, hashPass);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
@@ -1083,7 +1079,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
         int[] hashPass = new int[1];
-        normalizeLookup(key, hashPass);
+        computeKeyHash(key, hashPass);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
@@ -1105,7 +1101,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
         int[] hashPass = new int[1];
-        normalizeLookup(key, hashPass);
+        computeKeyHash(key, hashPass);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
@@ -1125,7 +1121,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     public boolean remove(Object key, Object value) {
         int[] hashPass = new int[1];
-        normalizeLookup(key, hashPass);
+        computeKeyHash(key, hashPass);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
@@ -1141,7 +1137,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     public V replace(Object key, V value) {
         int[] hashPass = new int[1];
-        normalizeLookup(key, hashPass);
+        computeKeyHash(key, hashPass);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
@@ -1155,7 +1151,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     public boolean replace(Object key, V oldValue, V newValue) {
         int[] hashPass = new int[1];
-        normalizeLookup(key, hashPass);
+        computeKeyHash(key, hashPass);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
         lock.lock();
@@ -1200,7 +1196,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (!first) sb.append(",\n");
             first = false;
             sb.append("  ");  // Two-space indentation
-            String keyStr = dumpExpandedKey(e.keys, true, this);
+            String keyStr = formatSimpleKey(e.keys, this);
             // Remove trailing comma and space if present
             if (keyStr.endsWith(", ")) {
                 keyStr = keyStr.substring(0, keyStr.length() - 2);
@@ -1216,13 +1212,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return sb.append("\n}").toString();
     }
 
-    public String dumpExpandedKey(Object key) {
-        return dumpExpandedKey(key, false, null);
-    }
 
-    private String dumpExpandedKey(Object key, boolean forToString, MultiKeyMap<?> selfMap) {
-        if (key == null) return EMOJI_EMPTY;
-        if (key == NULL_SENTINEL) return EMOJI_EMPTY;
+    private String formatSimpleKey(Object key, MultiKeyMap<?> selfMap) {
+        if (key == null) return EMOJI_KEY + EMOJI_EMPTY;
+        if (key == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
         if (!(key.getClass().isArray() || key instanceof Collection)) {
             // Handle self-reference in single keys
             if (selfMap != null && key == selfMap) return EMOJI_KEY + "(this Map)";

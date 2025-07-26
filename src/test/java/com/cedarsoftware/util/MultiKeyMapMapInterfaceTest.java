@@ -195,14 +195,14 @@ class MultiKeyMapMapInterfaceTest {
         
         // Single entry
         map.put("key1", "value1");
-        assertEquals("{\n  🔑key1 → value1\n}", map.toString());
+        assertEquals("{\n  🆔 key1 → 🟣 value1\n}", map.toString());
         
         // Clear and test with array key
         map.clear();
         map.put(new Object[]{"multi", "key"}, "arrayValue");
         String result = map.toString();
         assertTrue(result.contains("arrayValue"));
-        assertTrue(result.contains("🔑[multi, key]"));
+        assertTrue(result.contains("🆔 [multi, key]"));
     }
     
     @Test

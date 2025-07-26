@@ -81,7 +81,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final String EMOJI_EMPTY = "∅";  // Empty set for null/empty
     private static final String EMOJI_KEY = "🔑";   // Key for single keys
     private static final String EMOJI_ARRAY = "[]"; // Brackets for arrays
-    private static final String EMOJI_COLLECTION = "{}"; // Braces for collections
+    private static final String EMOJI_COLLECTION = "()"; // Braces for collections
 
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
@@ -537,48 +537,51 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (storedSingle) return Objects.equals(stored == NULL_SENTINEL ? null : stored, lookup == NULL_SENTINEL ? null : lookup);
 
         // Multi-key match
-        int storedLen = stored instanceof Object[] ? ((Object[]) stored).length : stored instanceof Collection ? ((Collection<?>) stored).size() : Array.getLength(stored);
-        int lookupLen = lookup instanceof Object[] ? ((Object[]) lookup).length : lookup instanceof Collection ? ((Collection<?>) lookup).size() : Array.getLength(lookup);
+        int storedLen = stored instanceof Collection ? ((Collection<?>) stored).size() : Array.getLength(stored);
+        int lookupLen = lookup instanceof Collection ? ((Collection<?>) lookup).size() : Array.getLength(lookup);
 
         if (storedLen != lookupLen) return false;
 
-        // Type-specific fast paths
-        if (stored instanceof Object[] && lookup instanceof Object[]) {
+        // Type-specific fast paths - use exact class matching to avoid instanceof hierarchy issues
+        Class<?> storedClass = stored.getClass();
+        Class<?> lookupClass = lookup.getClass();
+
+        if (storedClass == Object[].class && lookupClass == Object[].class) {
             Object[] s = (Object[]) stored;
             Object[] l = (Object[]) lookup;
             for (int i = 0; i < storedLen; i++) if (!Objects.equals(s[i], l[i])) return false;
             return true;
         }
-
-        if (stored instanceof String[] && lookup instanceof String[]) {
+        
+        if (storedClass == String[].class && lookupClass == String[].class) {
             String[] s = (String[]) stored;
             String[] l = (String[]) lookup;
             for (int i = 0; i < storedLen; i++) if (!Objects.equals(s[i], l[i])) return false;
             return true;
         }
 
-        if (stored instanceof int[] && lookup instanceof int[]) {
+        if (storedClass == int[].class && lookupClass == int[].class) {
             int[] s = (int[]) stored;
             int[] l = (int[]) lookup;
             for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
             return true;
         }
 
-        if (stored instanceof long[] && lookup instanceof long[]) {
+        if (storedClass == long[].class && lookupClass == long[].class) {
             long[] s = (long[]) stored;
             long[] l = (long[]) lookup;
             for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
             return true;
         }
 
-        if (stored instanceof double[] && lookup instanceof double[]) {
+        if (storedClass == double[].class && lookupClass == double[].class) {
             double[] s = (double[]) stored;
             double[] l = (double[]) lookup;
             for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
             return true;
         }
 
-        if (stored instanceof boolean[] && lookup instanceof boolean[]) {
+        if (storedClass == boolean[].class && lookupClass == boolean[].class) {
             boolean[] s = (boolean[]) stored;
             boolean[] l = (boolean[]) lookup;
             for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
@@ -596,7 +599,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private static Iterator<?> iteratorFor(Object obj) {
         if (obj instanceof Collection) return ((Collection<?>) obj).iterator();
-        if (obj instanceof Object[]) return Arrays.asList((Object[]) obj).iterator();
         if (obj.getClass().isArray()) return new ArrayIterator(obj);
         return Collections.singletonList(obj).iterator();
     }
@@ -1121,7 +1123,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         public final V value;
 
         MultiKeyEntry(Object k, V v) {
-            keys = k instanceof Object[] ? (Object[]) k : new Object[]{k};
+            keys = (k != null && k.getClass() == Object[].class) ? (Object[]) k : new Object[]{k};
             value = v;
         }
     }

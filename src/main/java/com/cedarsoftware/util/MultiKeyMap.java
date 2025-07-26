@@ -68,14 +68,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         LoggingConfig.init();
     }
 
-    // Sentinels as private Objects for safety and zero collision risk
-    private static final Object OPEN = new Object();
-    private static final Object CLOSE = new Object();
-    private static final Object NULL_SENTINEL = new Object();
+    // Sentinels as String objects - unique identity but beautiful toString() output
+    private static final Object OPEN = new String("[");
+    private static final Object CLOSE = new String("]");
+    private static final Object NULL_SENTINEL = new String("∅");
 
     // Emojis for debug output (professional yet intuitive)
-    private static final String EMOJI_OPEN = "⬇️";  // Down arrow for stepping into dimension
-    private static final String EMOJI_CLOSE = "⬆️"; // Up arrow for stepping back out of dimension
+    private static final String EMOJI_OPEN = "[";   // Opening bracket for stepping into dimension  
+    private static final String EMOJI_CLOSE = "]"; // Closing bracket for stepping back out of dimension
     private static final String EMOJI_CYCLE = "♻️"; // Recycle for cycles
     private static final String EMOJI_EMPTY = "∅";  // Empty set for null/empty
     private static final String EMOJI_KEY = "🆔 ";   // ID for keys (with space)
@@ -1218,12 +1218,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 keyStr = keyStr.substring(0, keyStr.length() - 2);
             }
             sb.append(keyStr).append(" → ");
-            // Handle self-reference in values
-            if (e.value == this) {
-                sb.append(EMOJI_VALUE).append("(this Map)");
-            } else {
-                sb.append(EMOJI_VALUE).append(e.value);
-            }
+            sb.append(EMOJI_VALUE);
+            sb.append(e.value == this ? "(this Map)" : e.value);
         }
         return sb.append("\n}").toString();
     }
@@ -1365,9 +1361,49 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return EncryptionUtilities.finalizeHash(h);
     }
 
+    private static void processNestedStructure(StringBuilder sb, List<Object> list, int[] index, MultiKeyMap<?> selfMap) {
+        if (index[0] >= list.size()) return;
+        
+        Object element = list.get(index[0]++);
+        
+        if (element == OPEN) {
+            sb.append(EMOJI_OPEN);
+            boolean first = true;
+            while (index[0] < list.size()) {
+                Object next = list.get(index[0]);
+                if (next == CLOSE) {
+                    index[0]++;
+                    sb.append(EMOJI_CLOSE);
+                    break;
+                }
+                if (!first) sb.append(", ");
+                first = false;
+                processNestedStructure(sb, list, index, selfMap);
+            }
+        } else if (element == NULL_SENTINEL) {
+            sb.append(EMOJI_EMPTY);
+        } else if (selfMap != null && element == selfMap) {
+            sb.append("(this Map)");
+        } else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) {
+            sb.append(element);
+        } else {
+            sb.append(element);
+        }
+    }
+
+
     private static String dumpExpandedKeyStatic(Object key, boolean forToString, MultiKeyMap<?> selfMap) {
         if (key == null) return forToString ? EMOJI_KEY + EMOJI_EMPTY : EMOJI_EMPTY;
         if (key == NULL_SENTINEL) return forToString ? EMOJI_KEY + EMOJI_EMPTY : EMOJI_EMPTY;
+        
+        // Handle single-element Object[] that contains a Collection (from MultiKeyEntry constructor)
+        if (key.getClass().isArray() && Array.getLength(key) == 1) {
+            Object element = Array.get(key, 0);
+            if (element instanceof Collection) {
+                return dumpExpandedKeyStatic(element, forToString, selfMap);
+            }
+        }
+        
         if (!(key.getClass().isArray() || key instanceof Collection)) {
             // Handle self-reference in single keys
             if (selfMap != null && key == selfMap) return EMOJI_KEY + "(this Map)";
@@ -1376,58 +1412,105 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Special case for toString: use bracket notation for readability
         if (forToString) {
-            // Check if this is an already-flattened structure (contains sentinel objects)
+            // Check if this is an already-flattened structure (starts with OPEN sentinel)
             if (key instanceof Collection) {
                 Collection<?> coll = (Collection<?>) key;
+                // A flattened structure should start with OPEN and end with CLOSE
                 boolean isAlreadyFlattened = false;
-                for (Object element : coll) {
-                    if (element == NULL_SENTINEL || element == OPEN || element == CLOSE || 
-                        (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE))) {
+                if (!coll.isEmpty()) {
+                    Object first = coll.iterator().next();
+                    if (first == OPEN) {
                         isAlreadyFlattened = true;
-                        break;
                     }
                 }
                 
                 if (isAlreadyFlattened) {
-                    // Process already-flattened collection directly
+                    // Process already-flattened collection with proper recursive structure
                     StringBuilder sb = new StringBuilder();
-                    sb.append(EMOJI_KEY).append("[");
-                    int i = 0;
-                    for (Object element : coll) {
-                        if (i > 0) sb.append(", ");
-                        if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
-                        else if (element == OPEN) sb.append(EMOJI_OPEN);
-                        else if (element == CLOSE) sb.append(EMOJI_CLOSE);
-                        else if (selfMap != null && element == selfMap) sb.append("(this Map)");
-                        else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) sb.append(element);
-                        else sb.append(element);
-                        i++;
-                    }
-                    sb.append("]");
+                    sb.append(EMOJI_KEY);
+                    List<Object> collList = new ArrayList<>(coll);
+                    int[] index = {0};
+                    // The flattened structure should start with OPEN, so process it directly
+                    processNestedStructure(sb, collList, index, selfMap);
                     return sb.toString();
                 }
             }
             
             if (key.getClass().isArray()) {
                 int len = Array.getLength(key);
+                
+                // Check if this array is already-flattened (starts with OPEN sentinel)
+                boolean isAlreadyFlattenedArray = false;
+                if (len > 0) {
+                    Object first = Array.get(key, 0);
+                    if (first == OPEN) {
+                        isAlreadyFlattenedArray = true;
+                    }
+                }
+                
+                if (isAlreadyFlattenedArray) {
+                    // Process already-flattened array with proper recursive structure
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(EMOJI_KEY);
+                    List<Object> arrayList = new ArrayList<>();
+                    for (int i = 0; i < len; i++) {
+                        arrayList.add(Array.get(key, i));
+                    }
+                    int[] index = {0};
+                    // The flattened structure should start with OPEN, so process it directly
+                    processNestedStructure(sb, arrayList, index, selfMap);
+                    return sb.toString();
+                }
+                
                 if (len == 1) {
                     Object element = Array.get(key, 0);
                     if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
                     if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
-                    return EMOJI_KEY + (element != null ? element.toString() : EMOJI_EMPTY);
+                    if (element == OPEN) {
+                        return EMOJI_KEY + EMOJI_OPEN;
+                    } else if (element == CLOSE) {
+                        return EMOJI_KEY + EMOJI_CLOSE;
+                    } else {
+                        return EMOJI_KEY + (element != null ? element.toString() : EMOJI_EMPTY);
+                    }
                 } else {
                     // Multi-element array - use bracket notation
                     StringBuilder sb = new StringBuilder();
                     sb.append(EMOJI_KEY).append("[");
+                    boolean needsComma = false;
                     for (int i = 0; i < len; i++) {
-                        if (i > 0) sb.append(", ");
                         Object element = Array.get(key, i);
-                        if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
-                        else if (element == OPEN) sb.append(EMOJI_OPEN);
-                        else if (element == CLOSE) sb.append(EMOJI_CLOSE);
-                        else if (selfMap != null && element == selfMap) sb.append("(this Map)");
-                        else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) sb.append(element);
-                        else sb.append(element != null ? element.toString() : EMOJI_EMPTY);
+                        if (element == NULL_SENTINEL) {
+                            if (needsComma) sb.append(", ");
+                            sb.append(EMOJI_EMPTY);
+                            needsComma = true;
+                        } else if (element == OPEN) {
+                            sb.append(EMOJI_OPEN);
+                            needsComma = false;
+                        } else if (element == CLOSE) {
+                            sb.append(EMOJI_CLOSE);
+                            needsComma = true;
+                        } else if (selfMap != null && element == selfMap) {
+                            if (needsComma) sb.append(", ");
+                            sb.append("(this Map)");
+                            needsComma = true;
+                        } else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) {
+                            if (needsComma) sb.append(", ");
+                            sb.append(element);
+                            needsComma = true;
+                        } else {
+                            if (needsComma) sb.append(", ");
+                            if (element == NULL_SENTINEL) {
+                                sb.append(EMOJI_EMPTY);
+                            } else if (element == OPEN) {
+                                sb.append(EMOJI_OPEN);
+                            } else if (element == CLOSE) {
+                                sb.append(EMOJI_CLOSE);
+                            } else {
+                                sb.append(element != null ? element.toString() : EMOJI_EMPTY);
+                            }
+                            needsComma = true;
+                        }
                     }
                     sb.append("]");
                     return sb.toString();
@@ -1436,23 +1519,55 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 Collection<?> coll = (Collection<?>) key;
                 if (coll.size() == 1) {
                     Object element = coll.iterator().next();
-                    if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
+                    if (element == NULL_SENTINEL) {
+                        // Use bracket notation for sentinel objects
+                        return EMOJI_KEY + "[" + EMOJI_EMPTY + "]";
+                    }
                     if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
-                    return EMOJI_KEY + (element != null ? element.toString() : EMOJI_EMPTY);
+                    if (element == OPEN) {
+                        return EMOJI_KEY + EMOJI_OPEN;
+                    } else if (element == CLOSE) {
+                        return EMOJI_KEY + EMOJI_CLOSE;
+                    } else {
+                        return EMOJI_KEY + (element != null ? element.toString() : EMOJI_EMPTY);
+                    }
                 } else {
                     // Multi-element collection - use bracket notation
                     StringBuilder sb = new StringBuilder();
                     sb.append(EMOJI_KEY).append("[");
-                    int i = 0;
+                    boolean needsComma = false;
                     for (Object element : coll) {
-                        if (i > 0) sb.append(", ");
-                        if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
-                        else if (element == OPEN) sb.append(EMOJI_OPEN);
-                        else if (element == CLOSE) sb.append(EMOJI_CLOSE);
-                        else if (selfMap != null && element == selfMap) sb.append("(this Map)");
-                        else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) sb.append(element);
-                        else sb.append(element != null ? element.toString() : EMOJI_EMPTY);
-                        i++;
+                        if (element == NULL_SENTINEL) {
+                            if (needsComma) sb.append(", ");
+                            sb.append(EMOJI_EMPTY);
+                            needsComma = true;
+                        } else if (element == OPEN) {
+                            sb.append(EMOJI_OPEN);
+                            needsComma = false;
+                        } else if (element == CLOSE) {
+                            sb.append(EMOJI_CLOSE);
+                            needsComma = true;
+                        } else if (selfMap != null && element == selfMap) {
+                            if (needsComma) sb.append(", ");
+                            sb.append("(this Map)");
+                            needsComma = true;
+                        } else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) {
+                            if (needsComma) sb.append(", ");
+                            sb.append(element);
+                            needsComma = true;
+                        } else {
+                            if (needsComma) sb.append(", ");
+                            if (element == NULL_SENTINEL) {
+                                sb.append(EMOJI_EMPTY);
+                            } else if (element == OPEN) {
+                                sb.append(EMOJI_OPEN);
+                            } else if (element == CLOSE) {
+                                sb.append(EMOJI_CLOSE);
+                            } else {
+                                sb.append(element != null ? element.toString() : EMOJI_EMPTY);
+                            }
+                            needsComma = true;
+                        }
                     }
                     sb.append("]");
                     return sb.toString();

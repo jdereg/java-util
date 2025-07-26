@@ -263,7 +263,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private Object normalizeLookup(Object key, int[] hashPass, boolean makeDefensiveCopy) {
-        // Handle "null" case
+        // Handle EMOJI_EMPTY case
         if (key == null) {
             hashPass[0] = 0;
             return NULL_SENTINEL;
@@ -1382,7 +1382,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     Object element = Array.get(key, 0);
                     if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
                     if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
-                    return EMOJI_KEY + (element != null ? element.toString() : "null");
+                    return EMOJI_KEY + (element != null ? element.toString() : EMOJI_EMPTY);
                 } else {
                     // Multi-element array - use bracket notation
                     StringBuilder sb = new StringBuilder();
@@ -1392,7 +1392,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         Object element = Array.get(key, i);
                         if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
                         else if (selfMap != null && element == selfMap) sb.append("(this Map)");
-                        else sb.append(element != null ? element.toString() : "null");
+                        else sb.append(element != null ? element.toString() : EMOJI_EMPTY);
                     }
                     sb.append("]");
                     return sb.toString();
@@ -1403,7 +1403,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     Object element = coll.iterator().next();
                     if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
                     if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
-                    return EMOJI_KEY + (element != null ? element.toString() : "null");
+                    return EMOJI_KEY + (element != null ? element.toString() : EMOJI_EMPTY);
                 } else {
                     // Multi-element collection - use bracket notation
                     StringBuilder sb = new StringBuilder();
@@ -1413,7 +1413,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         if (i > 0) sb.append(", ");
                         if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
                         else if (selfMap != null && element == selfMap) sb.append("(this Map)");
-                        else sb.append(element != null ? element.toString() : "null");
+                        else sb.append(element != null ? element.toString() : EMOJI_EMPTY);
                         i++;
                     }
                     sb.append("]");

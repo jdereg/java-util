@@ -97,7 +97,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     void testFormatSimpleKey_SingleElementArray_Null() throws Exception {
         Object[] singleArray = {null};
         String result = formatSimpleKey(singleArray, null);
-        assertThat(result).isEqualTo("🆔 null");
+        assertThat(result).isEqualTo("🆔 ∅");
     }
 
     @Test
@@ -133,7 +133,7 @@ class MultiKeyMapFormatSimpleKeyTest {
         List<Object> singleList = new ArrayList<>();
         singleList.add(null);
         String result = formatSimpleKey(singleList, null);
-        assertThat(result).isEqualTo("🆔 null");
+        assertThat(result).isEqualTo("🆔 ∅");
     }
 
     @Test
@@ -168,7 +168,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     void testFormatSimpleKey_MultiElementArray_WithNull() throws Exception {
         Object[] multiArray = {"key1", null, "key3"};
         String result = formatSimpleKey(multiArray, null);
-        assertThat(result).isEqualTo("🆔 [key1, null, key3]");
+        assertThat(result).isEqualTo("🆔 [key1, ∅, key3]");
     }
 
     @Test
@@ -206,7 +206,7 @@ class MultiKeyMapFormatSimpleKeyTest {
         multiList.add(null);
         multiList.add("key3");
         String result = formatSimpleKey(multiList, null);
-        assertThat(result).isEqualTo("🆔 [key1, null, key3]");
+        assertThat(result).isEqualTo("🆔 [key1, ∅, key3]");
     }
 
     @Test

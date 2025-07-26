@@ -481,45 +481,160 @@ System.setProperty("io.debug.detailed.paths", "true");
 
 ## Core Components
 
-| Component | Description                                                                                                                                                                                                                                                                      |
-| --- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Sets** |                                                                                                                                                                                                                                                                                  |
-| [CompactSet](userguide.md#compactset) | Memory-efficient Set that dynamically adapts its storage structure based on size.                                                                                                                                                                                                |
-| [CaseInsensitiveSet](userguide.md#caseinsensitiveset) | Set implementation with case-insensitive `String` handling.                                                                                                                                                                                                                      |
-| [ConcurrentSet](userguide.md#concurrentset) | Thread-safe Set supporting null elements.                                                                                                                                                                                                                                        |
-| [ConcurrentNavigableSetNullSafe](userguide.md#concurrentnavigablesetnullsafe) | Thread-safe `NavigableSet` supporting null elements.                                                                                                                                                                                                                             |
-| [ClassValueSet](userguide.md#classvalueset) | High-performance Set optimized for fast `Class` membership testing using JVM-optimized `ClassValue`.                                                                                                                                                                             |
-| [IntervalSet](userguide.md#intervalset) | Thread-safe interval set with O(log n) performance, automatically merges intervals, smart boundary handling for 20+ types, and you can add your own.                                                                                                                             |
-| **Maps** |                                                                                                                                                                                                                                                                                  |
-| [CompactMap](userguide.md#compactmap) | Memory-efficient Map that dynamically adapts its storage structure based on size.                                                                                                                                                                                                |
-| [CaseInsensitiveMap](userguide.md#caseinsensitivemap) | A `Map` wrapper that provides case-insensitive, case-retentive keys and inherits the features of the wrapped map (e.g., thread-safety from `ConcurrentMap` types, multi-key support from `MultiKeyMap`, sorted, thread-safe, allow nulls from `ConcurrentNavigableMapNullSafe`). |
-| [LRUCache](userguide.md#lrucache) | Thread-safe Least Recently Used cache with configurable eviction strategies.                                                                                                                                                                                                     |
-| [TTLCache](userguide.md#ttlcache) | Thread-safe Time-To-Live cache with optional size limits.                                                                                                                                                                                                                        |
-| [TrackingMap](userguide.md#trackingmap) | A `Map` wrapper that tracks key access. Inherits features from wrapped `Map`, including thread-safety (`ConcurrentMap` types), sorted, thread-safe, with null support (`ConcurrentNavigableMapNullSafe`)                                                                         |
-| [ConcurrentHashMapNullSafe](userguide.md#concurrenthashmapnullsafe) | Thread-safe `HashMap` supporting null keys and values.                                                                                                                                                                                                                           |
-| [ConcurrentNavigableMapNullSafe](userguide.md#concurrentnavigablemapnullsafe) | Thread-safe `NavigableMap` supporting null keys and values.                                                                                                                                                                                                                      |
-| [ClassValueMap](userguide.md#classvaluemap) | High-performance Map optimized for fast `Class` key lookups using JVM-optimized `ClassValue`.                                                                                                                                                                                    |
-| [MultiKeyMap](userguide.md#multikeymap) | Concurrent map supporting multiple keys.                                                                                                                                                                                                                                         |
-| **Lists** |                                                                                                                                                                                                                                                                                  |
-| [ConcurrentList](userguide.md#concurrentlist) | High-performance bucket-based concurrent `List` and `Deque` with lock-free operations.                                                                                                                                                                                           |
-| **Utilities** |                                                                                                                                                                                                                                                                                  |
-| [ArrayUtilities](userguide.md#arrayutilities) | Comprehensive array manipulation operations.                                                                                                                                                                                                                                     |
-| [ByteUtilities](userguide.md#byteutilities) | Byte array and hexadecimal conversion utilities.                                                                                                                                                                                                                                 |
-| [ClassUtilities](userguide.md#classutilities) | Class relationship and reflection helper methods.                                                                                                                                                                                                                                |
-| [Converter](userguide.md#converter) | An extensive and extensible conversion utility with thousands of built-in transformations between common JDK types (Dates, Collections, Primitives, EnumSets, etc.).                                                                                                             |
-| [DateUtilities](userguide.md#dateutilities) | Advanced date parsing and manipulation.                                                                                                                                                                                                                                          |
-| [DeepEquals](userguide.md#deepequals) | Recursive object graph comparison.                                                                                                                                                                                                                                               |
-| [EncryptionUtilities](userguide.md#encryptionutilities) | Simplified encryption and checksum operations.                                                                                                                                                                                                                                   |
-| [Executor](userguide.md#executor) | Streamlined system command execution.                                                                                                                                                                                                                                            |
-| [GraphComparator](userguide.md#graphcomparator) | Object graph difference detection and synchronization.                                                                                                                                                                                                                           |
-| [IOUtilities](userguide.md#ioutilities) | Enhanced I/O operations and streaming utilities.                                                                                                                                                                                                                                 |
-| [MathUtilities](userguide.md#mathutilities) | Extended mathematical operations.                                                                                                                                                                                                                                                |
-| [ReflectionUtils](userguide.md#reflectionutils) | Optimized reflection operations.                                                                                                                                                                                                                                                 |
-| [StringUtilities](userguide.md#stringutilities) | Extended `String` manipulation operations.                                                                                                                                                                                                                                       |
-| [SystemUtilities](userguide.md#systemutilities) | System and environment interaction utilities.                                                                                                                                                                                                                                    |
-| [Traverser](userguide.md#traverser) | Configurable object graph traversal.                                                                                                                                                                                                                                             |
-| [TypeUtilities](userguide.md#typeutilities) | Advanced Java type introspection and generic resolution utilities.                                                                                                                                                                                                               |
-| [UniqueIdGenerator](userguide.md#uniqueidgenerator) | Distributed-safe unique identifier generation.                                                                                                                                                                                                                                   |
+<table>
+<tr style="background-color: #334155;">
+<th style="color: #ffffff; font-weight: bold; padding: 8px;">Component</th>
+<th style="color: #ffffff; font-weight: bold; padding: 8px;">Description</th>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td style="color: #334155; font-weight: bold;"><strong>Sets</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="userguide.md#compactset">CompactSet</a></td>
+<td>Memory-efficient Set that dynamically adapts its storage structure based on size.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#caseinsensitiveset">CaseInsensitiveSet</a></td>
+<td>Set implementation with case-insensitive <code>String</code> handling.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#concurrentset">ConcurrentSet</a></td>
+<td>Thread-safe Set supporting null elements.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#concurrentnavigablesetnullsafe">ConcurrentNavigableSetNullSafe</a></td>
+<td>Thread-safe <code>NavigableSet</code> supporting null elements.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#classvalueset">ClassValueSet</a></td>
+<td>High-performance Set optimized for fast <code>Class</code> membership testing using JVM-optimized <code>ClassValue</code>.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#intervalset">IntervalSet</a></td>
+<td>Thread-safe interval set with O(log n) performance, automatically merges intervals, smart boundary handling for 20+ types, and you can add your own.</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td style="color: #334155; font-weight: bold;"><strong>Maps</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="userguide.md#compactmap">CompactMap</a></td>
+<td>Memory-efficient Map that dynamically adapts its storage structure based on size.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#caseinsensitivemap">CaseInsensitiveMap</a></td>
+<td>A <code>Map</code> wrapper that provides case-insensitive, case-retentive keys and inherits the features of the wrapped map (e.g., thread-safety from <code>ConcurrentMap</code> types, multi-key support from <code>MultiKeyMap</code>, sorted, thread-safe, allow nulls from <code>ConcurrentNavigableMapNullSafe</code>).</td>
+</tr>
+<tr>
+<td><a href="userguide.md#lrucache">LRUCache</a></td>
+<td>Thread-safe Least Recently Used cache with configurable eviction strategies.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#ttlcache">TTLCache</a></td>
+<td>Thread-safe Time-To-Live cache with optional size limits.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#trackingmap">TrackingMap</a></td>
+<td>A <code>Map</code> wrapper that tracks key access. Inherits features from wrapped <code>Map</code>, including thread-safety (<code>ConcurrentMap</code> types), sorted, thread-safe, with null support (<code>ConcurrentNavigableMapNullSafe</code>)</td>
+</tr>
+<tr>
+<td><a href="userguide.md#concurrenthashmapnullsafe">ConcurrentHashMapNullSafe</a></td>
+<td>Thread-safe <code>HashMap</code> supporting null keys and values.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#concurrentnavigablemapnullsafe">ConcurrentNavigableMapNullSafe</a></td>
+<td>Thread-safe <code>NavigableMap</code> supporting null keys and values.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#classvaluemap">ClassValueMap</a></td>
+<td>High-performance Map optimized for fast <code>Class</code> key lookups using JVM-optimized <code>ClassValue</code>.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#multikeymap">MultiKeyMap</a></td>
+<td>Concurrent map supporting multiple keys.</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td style="color: #334155; font-weight: bold;"><strong>Lists</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="userguide.md#concurrentlist">ConcurrentList</a></td>
+<td>High-performance bucket-based concurrent <code>List</code> and <code>Deque</code> with lock-free operations.</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td style="color: #334155; font-weight: bold;"><strong>Utilities</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="userguide.md#arrayutilities">ArrayUtilities</a></td>
+<td>Comprehensive array manipulation operations.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#byteutilities">ByteUtilities</a></td>
+<td>Byte array and hexadecimal conversion utilities.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#classutilities">ClassUtilities</a></td>
+<td>Class relationship and reflection helper methods.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#converter">Converter</a></td>
+<td>An extensive and extensible conversion utility with thousands of built-in transformations between common JDK types (Dates, Collections, Primitives, EnumSets, etc.).</td>
+</tr>
+<tr>
+<td><a href="userguide.md#dateutilities">DateUtilities</a></td>
+<td>Advanced date parsing and manipulation.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#deepequals">DeepEquals</a></td>
+<td>Recursive object graph comparison.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#encryptionutilities">EncryptionUtilities</a></td>
+<td>Simplified encryption and checksum operations.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#executor">Executor</a></td>
+<td>Streamlined system command execution.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#graphcomparator">GraphComparator</a></td>
+<td>Object graph difference detection and synchronization.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#ioutilities">IOUtilities</a></td>
+<td>Enhanced I/O operations and streaming utilities.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#mathutilities">MathUtilities</a></td>
+<td>Extended mathematical operations.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#reflectionutils">ReflectionUtils</a></td>
+<td>Optimized reflection operations.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#stringutilities">StringUtilities</a></td>
+<td>Extended <code>String</code> manipulation operations.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#systemutilities">SystemUtilities</a></td>
+<td>System and environment interaction utilities.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#traverser">Traverser</a></td>
+<td>Configurable object graph traversal.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#typeutilities">TypeUtilities</a></td>
+<td>Advanced Java type introspection and generic resolution utilities.</td>
+</tr>
+<tr>
+<td><a href="userguide.md#uniqueidgenerator">UniqueIdGenerator</a></td>
+<td>Distributed-safe unique identifier generation.</td>
+</tr>
+</table>
 ## Integration and Module Support
 
 ### JPMS (Java Platform Module System)
@@ -589,106 +704,560 @@ Rather than forcing a one-size-fits-all configuration, java-util provides granul
 
 All security features are **disabled by default** to ensure seamless upgrades, with the flexibility to enable and configure them per environment. This design philosophy allows java-util to serve both lightweight applications and enterprise-grade systems from the same codebase.
 
-| Fully Qualified Property Name | Allowed Values | Default Value | Description |
-|-------------------------------|----------------|---------------|-------------|
-| **ArrayUtilities** | | | |
-| `arrayutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all ArrayUtilities security features |
-| `arrayutilities.component.type.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Block dangerous system classes in array operations |
-| `arrayutilities.max.array.size` | Integer | <span style="color: #007acc">2147483639</span> | Maximum array size (Integer.MAX_VALUE-8) |
-| `arrayutilities.dangerous.class.patterns` | Comma-separated patterns | <span style="color: #007acc; font-size: 7pt">java.lang.Runtime,<br>java.lang.ProcessBuilder,<br>java.lang.System,<br>java.security.,javax.script.,<br>sun.,com.sun.,java.lang.Class</span> | Dangerous class patterns to block |
-| **ByteUtilities** | | | |
-| `byteutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all ByteUtilities security features |
-| `byteutilities.max.hex.string.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Hex string length limit for decode operations |
-| `byteutilities.max.array.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Byte array size limit for encode operations |
-| **DateUtilities** | | | |
-| `dateutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all DateUtilities security features |
-| `dateutilities.input.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable input length and content validation |
-| `dateutilities.regex.timeout.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable regex timeout protection |
-| `dateutilities.malformed.string.protection.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable malformed input protection |
-| `dateutilities.max.input.length` | Integer | <span style="color: #007acc">1000</span> | Maximum input string length |
-| `dateutilities.max.epoch.digits` | Integer | <span style="color: #007acc">19</span> | Maximum digits for epoch milliseconds |
-| `dateutilities.regex.timeout.milliseconds` | Long | <span style="color: #007acc">1000</span> | Timeout for regex operations in milliseconds |
-| **DeepEquals** | | | |
-| `deepequals.secure.errors` | `true`, `false` | <span style="color: #007acc">false</span> | Enable error message sanitization |
-| `deepequals.max.collection.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Collection size limit |
-| `deepequals.max.array.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Array size limit |
-| `deepequals.max.map.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Map size limit |
-| `deepequals.max.object.fields` | Integer | <span style="color: #007acc">0</span> (disabled) | Object field count limit |
-| `deepequals.max.recursion.depth` | Integer | <span style="color: #007acc">0</span> (disabled) | Recursion depth limit |
-| **EncryptionUtilities** | | | |
-| `encryptionutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all EncryptionUtilities security features |
-| `encryptionutilities.file.size.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable file size limits for hashing operations |
-| `encryptionutilities.buffer.size.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable buffer size validation |
-| `encryptionutilities.crypto.parameters.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enable cryptographic parameter validation |
-| `encryptionutilities.max.file.size` | Long | <span style="color: #007acc">2147483647</span> | Maximum file size for hashing operations (2GB) |
-| `encryptionutilities.max.buffer.size` | Integer | <span style="color: #007acc">1048576</span> | Maximum buffer size (1MB) |
-| `encryptionutilities.min.pbkdf2.iterations` | Integer | <span style="color: #007acc">10000</span> | Minimum PBKDF2 iterations |
-| `encryptionutilities.max.pbkdf2.iterations` | Integer | <span style="color: #007acc">1000000</span> | Maximum PBKDF2 iterations |
-| `encryptionutilities.min.salt.size` | Integer | <span style="color: #007acc">8</span> | Minimum salt size in bytes |
-| `encryptionutilities.max.salt.size` | Integer | <span style="color: #007acc">64</span> | Maximum salt size in bytes |
-| `encryptionutilities.min.iv.size` | Integer | <span style="color: #007acc">8</span> | Minimum IV size in bytes |
-| `encryptionutilities.max.iv.size` | Integer | <span style="color: #007acc">32</span> | Maximum IV size in bytes |
-| **IOUtilities** | | | |
-| `io.debug` | `true`, `false` | <span style="color: #007acc">false</span> | Enable debug logging |
-| `io.connect.timeout` | Integer (1000-300000) | <span style="color: #007acc">5000</span> | Connection timeout (1s-5min) |
-| `io.read.timeout` | Integer (1000-300000) | <span style="color: #007acc">30000</span> | Read timeout (1s-5min) |
-| `io.max.stream.size` | Long | <span style="color: #007acc">2147483647</span> | Stream size limit (2GB) |
-| `io.max.decompression.size` | Long | <span style="color: #007acc">2147483647</span> | Decompression size limit (2GB) |
-| `io.path.validation.disabled` | `true`, `false` | <span style="color: #007acc">false</span> | Path security validation enabled |
-| `io.url.protocol.validation.disabled` | `true`, `false` | <span style="color: #007acc">false</span> | URL protocol validation enabled |
-| `io.allowed.protocols` | Comma-separated | <span style="color: #007acc">http,https,file,jar</span> | Allowed URL protocols |
-| `io.file.protocol.validation.disabled` | `true`, `false` | <span style="color: #007acc">false</span> | File protocol validation enabled |
-| `io.debug.detailed.urls` | `true`, `false` | <span style="color: #007acc">false</span> | Detailed URL logging disabled |
-| `io.debug.detailed.paths` | `true`, `false` | <span style="color: #007acc">false</span> | Detailed path logging disabled |
-| **MathUtilities** | | | |
-| `mathutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all MathUtilities security features |
-| `mathutilities.max.array.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Array size limit for min/max operations |
-| `mathutilities.max.string.length` | Integer | <span style="color: #007acc">0</span> (disabled) | String length limit for parsing |
-| `mathutilities.max.permutation.size` | Integer | <span style="color: #007acc">0</span> (disabled) | List size limit for permutations |
-| **ReflectionUtils** | | | |
-| `reflectionutils.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all ReflectionUtils security features |
-| `reflectionutils.dangerous.class.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Block dangerous class access |
-| `reflectionutils.sensitive.field.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Block sensitive field access |
-| `reflectionutils.max.cache.size` | Integer | <span style="color: #007acc">50000</span> | Maximum cache size per cache type |
-| `reflectionutils.dangerous.class.patterns` | Comma-separated patterns | <span style="color: #007acc; font-size: 7pt">java.lang.Runtime,java.lang.Process,<br>java.lang.ProcessBuilder,sun.misc.Unsafe,<br>jdk.internal.misc.Unsafe,<br>javax.script.ScriptEngine,<br>javax.script.ScriptEngineManager</span> | Dangerous class patterns |
-| `reflectionutils.sensitive.field.patterns` | Comma-separated patterns | <span style="color: #007acc; font-size: 7pt">password,passwd,secret,secretkey,<br>apikey,api_key,authtoken,accesstoken,<br>credential,confidential,adminkey,private</span> | Sensitive field patterns |
-| `reflection.utils.cache.size` | Integer | <span style="color: #007acc">1500</span> | Reflection cache size |
-| **StringUtilities** | | | |
-| `stringutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all StringUtilities security features |
-| `stringutilities.max.hex.decode.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Max hex string size for decode() |
-| `stringutilities.max.wildcard.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Max wildcard pattern length |
-| `stringutilities.max.wildcard.count` | Integer | <span style="color: #007acc">0</span> (disabled) | Max wildcard characters in pattern |
-| `stringutilities.max.levenshtein.string.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Max string length for Levenshtein distance |
-| `stringutilities.max.damerau.levenshtein.string.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Max string length for Damerau-Levenshtein |
-| `stringutilities.max.repeat.count` | Integer | <span style="color: #007acc">0</span> (disabled) | Max repeat count for repeat() method |
-| `stringutilities.max.repeat.total.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Max total size for repeat() result |
-| **SystemUtilities** | | | |
-| `systemutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all SystemUtilities security features |
-| `systemutilities.environment.variable.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Block sensitive environment variable access |
-| `systemutilities.file.system.validation.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Validate file system operations |
-| `systemutilities.resource.limits.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Enforce resource usage limits |
-| `systemutilities.max.shutdown.hooks` | Integer | <span style="color: #007acc">100</span> | Maximum number of shutdown hooks |
-| `systemutilities.max.temp.prefix.length` | Integer | <span style="color: #007acc">100</span> | Maximum temporary directory prefix length |
-| `systemutilities.sensitive.variable.patterns` | Comma-separated patterns | <span style="color: #007acc; font-size: 7pt">PASSWORD,PASSWD,PASS,SECRET,KEY,<br>TOKEN,CREDENTIAL,AUTH,APIKEY,API_KEY,<br>PRIVATE,CERT,CERTIFICATE,DATABASE_URL,<br>DB_URL,CONNECTION_STRING,DSN,<br>AWS_SECRET,AZURE_CLIENT_SECRET,<br>GCP_SERVICE_ACCOUNT</span> | Sensitive variable patterns |
-| **Traverser** | | | |
-| `traverser.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all Traverser security features |
-| `traverser.max.stack.depth` | Integer | <span style="color: #007acc">0</span> (disabled) | Maximum stack depth |
-| `traverser.max.objects.visited` | Integer | <span style="color: #007acc">0</span> (disabled) | Maximum objects visited |
-| `traverser.max.collection.size` | Integer | <span style="color: #007acc">0</span> (disabled) | Maximum collection size to process |
-| `traverser.max.array.length` | Integer | <span style="color: #007acc">0</span> (disabled) | Maximum array length to process |
-| **UrlUtilities** | | | |
-| `urlutilities.security.enabled` | `true`, `false` | <span style="color: #007acc">false</span> | Master switch for all UrlUtilities security features |
-| `urlutilities.max.download.size` | Long | <span style="color: #007acc">0</span> (disabled) | Max download size in bytes |
-| `urlutilities.max.content.length` | Long | <span style="color: #007acc">0</span> (disabled) | Max Content-Length header value |
-| `urlutilities.allow.internal.hosts` | `true`, `false` | <span style="color: #007acc">true</span> | Allow access to internal/local hosts |
-| `urlutilities.allowed.protocols` | Comma-separated | <span style="color: #007acc">http,https,ftp</span> | Allowed protocols |
-| `urlutilities.strict.cookie.domain` | `true`, `false` | <span style="color: #007acc">false</span> | Enable strict cookie domain validation |
-| **Converter** | | | |
-| `converter.modern.time.long.precision` | `millis`, `nanos` | <span style="color: #007acc">millis</span> | Precision for Instant, ZonedDateTime, OffsetDateTime conversions |
-| `converter.duration.long.precision` | `millis`, `nanos` | <span style="color: #007acc">millis</span> | Precision for Duration conversions |
-| `converter.localtime.long.precision` | `millis`, `nanos` | <span style="color: #007acc">millis</span> | Precision for LocalTime conversions |
-| **Other** | | | |
-| `java.util.force.jre` | `true`, `false` | <span style="color: #007acc">false</span> | Force JRE simulation (testing only) |
+<table>
+<tr style="background-color: #334155;">
+<th style="color: #ffffff; font-weight: bold; padding: 8px;">Fully Qualified Property Name</th>
+<th style="color: #ffffff; font-weight: bold; padding: 8px;">Allowed Values</th>
+<th style="color: #ffffff; font-weight: bold; padding: 8px;">Default Value</th>
+<th style="color: #ffffff; font-weight: bold; padding: 8px;">Description</th>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>ArrayUtilities</strong></td>
+</tr>
+<tr>
+<td><code>arrayutilities.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all ArrayUtilities security features</td>
+</tr>
+<tr>
+<td><code>arrayutilities.component.type.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Block dangerous system classes in array operations</td>
+</tr>
+<tr>
+<td><code>arrayutilities.max.array.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">2147483639</span></td>
+<td>Maximum array size (Integer.MAX_VALUE-8)</td>
+</tr>
+<tr>
+<td><code>arrayutilities.dangerous.class.patterns</code></td>
+<td>Comma-separated patterns</td>
+<td><span style="color: #007acc; font-size: 7pt">java.lang.Runtime,<br>java.lang.ProcessBuilder,<br>java.lang.System,<br>java.security.,javax.script.,<br>sun.,com.sun.,java.lang.Class</span></td>
+<td>Dangerous class patterns to block</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>ByteUtilities</strong></td>
+</tr>
+<tr>
+<td><code>byteutilities.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all ByteUtilities security features</td>
+</tr>
+<tr>
+<td><code>byteutilities.max.hex.string.length</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Hex string length limit for decode operations</td>
+</tr>
+<tr>
+<td><code>byteutilities.max.array.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Byte array size limit for encode operations</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>DateUtilities</strong></td>
+</tr>
+<tr>
+<td><code>dateutilities.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all DateUtilities security features</td>
+</tr>
+<tr>
+<td><code>dateutilities.input.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable input length and content validation</td>
+</tr>
+<tr>
+<td><code>dateutilities.regex.timeout.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable regex timeout protection</td>
+</tr>
+<tr>
+<td><code>dateutilities.malformed.string.protection.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable malformed input protection</td>
+</tr>
+<tr>
+<td><code>dateutilities.max.input.length</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">1000</span></td>
+<td>Maximum input string length</td>
+</tr>
+<tr>
+<td><code>dateutilities.max.epoch.digits</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">19</span></td>
+<td>Maximum digits for epoch milliseconds</td>
+</tr>
+<tr>
+<td><code>dateutilities.regex.timeout.milliseconds</code></td>
+<td>Long</td>
+<td><span style="color: #007acc">1000</span></td>
+<td>Timeout for regex operations in milliseconds</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>DeepEquals</strong></td>
+</tr>
+<tr>
+<td><code>deepequals.secure.errors</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable error message sanitization</td>
+</tr>
+<tr>
+<td><code>deepequals.max.collection.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Collection size limit</td>
+</tr>
+<tr>
+<td><code>deepequals.max.array.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Array size limit</td>
+</tr>
+<tr>
+<td><code>deepequals.max.map.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Map size limit</td>
+</tr>
+<tr>
+<td><code>deepequals.max.object.fields</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Object field count limit</td>
+</tr>
+<tr>
+<td><code>deepequals.max.recursion.depth</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Recursion depth limit</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>EncryptionUtilities</strong></td>
+</tr>
+<tr>
+<td><code>encryptionutilities.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all EncryptionUtilities security features</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.file.size.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable file size limits for hashing operations</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.buffer.size.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable buffer size validation</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.crypto.parameters.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable cryptographic parameter validation</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.max.file.size</code></td>
+<td>Long</td>
+<td><span style="color: #007acc">2147483647</span></td>
+<td>Maximum file size for hashing operations (2GB)</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.max.buffer.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">1048576</span></td>
+<td>Maximum buffer size (1MB)</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.min.pbkdf2.iterations</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">10000</span></td>
+<td>Minimum PBKDF2 iterations</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.max.pbkdf2.iterations</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">1000000</span></td>
+<td>Maximum PBKDF2 iterations</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.min.salt.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">8</span></td>
+<td>Minimum salt size in bytes</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.max.salt.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">64</span></td>
+<td>Maximum salt size in bytes</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.min.iv.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">8</span></td>
+<td>Minimum IV size in bytes</td>
+</tr>
+<tr>
+<td><code>encryptionutilities.max.iv.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">32</span></td>
+<td>Maximum IV size in bytes</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>IOUtilities</strong></td>
+</tr>
+<tr>
+<td><code>io.debug</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable debug logging</td>
+</tr>
+<tr>
+<td><code>io.connect.timeout</code></td>
+<td>Integer (1000-300000)</td>
+<td><span style="color: #007acc">5000</span></td>
+<td>Connection timeout (1s-5min)</td>
+</tr>
+<tr>
+<td><code>io.read.timeout</code></td>
+<td>Integer (1000-300000)</td>
+<td><span style="color: #007acc">30000</span></td>
+<td>Read timeout (1s-5min)</td>
+</tr>
+<tr>
+<td><code>io.max.stream.size</code></td>
+<td>Long</td>
+<td><span style="color: #007acc">2147483647</span></td>
+<td>Stream size limit (2GB)</td>
+</tr>
+<tr>
+<td><code>io.max.decompression.size</code></td>
+<td>Long</td>
+<td><span style="color: #007acc">2147483647</span></td>
+<td>Decompression size limit (2GB)</td>
+</tr>
+<tr>
+<td><code>io.path.validation.disabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Path security validation enabled</td>
+</tr>
+<tr>
+<td><code>io.url.protocol.validation.disabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>URL protocol validation enabled</td>
+</tr>
+<tr>
+<td><code>io.allowed.protocols</code></td>
+<td>Comma-separated</td>
+<td><span style="color: #007acc">http,https,file,jar</span></td>
+<td>Allowed URL protocols</td>
+</tr>
+<tr>
+<td><code>io.file.protocol.validation.disabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>File protocol validation enabled</td>
+</tr>
+<tr>
+<td><code>io.debug.detailed.urls</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Detailed URL logging disabled</td>
+</tr>
+<tr>
+<td><code>io.debug.detailed.paths</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Detailed path logging disabled</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>MathUtilities</strong></td>
+</tr>
+<tr>
+<td><code>mathutilities.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all MathUtilities security features</td>
+</tr>
+<tr>
+<td><code>mathutilities.max.array.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Array size limit for min/max operations</td>
+</tr>
+<tr>
+<td><code>mathutilities.max.string.length</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>String length limit for parsing</td>
+</tr>
+<tr>
+<td><code>mathutilities.max.permutation.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>List size limit for permutations</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>ReflectionUtils</strong></td>
+</tr>
+<tr>
+<td><code>reflectionutils.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all ReflectionUtils security features</td>
+</tr>
+<tr>
+<td><code>reflectionutils.dangerous.class.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Block dangerous class access</td>
+</tr>
+<tr>
+<td><code>reflectionutils.sensitive.field.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Block sensitive field access</td>
+</tr>
+<tr>
+<td><code>reflectionutils.max.cache.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">50000</span></td>
+<td>Maximum cache size per cache type</td>
+</tr>
+<tr>
+<td><code>reflectionutils.dangerous.class.patterns</code></td>
+<td>Comma-separated patterns</td>
+<td><span style="color: #007acc; font-size: 7pt">java.lang.Runtime,java.lang.Process,<br>java.lang.ProcessBuilder,sun.misc.Unsafe,<br>jdk.internal.misc.Unsafe,<br>javax.script.ScriptEngine,<br>javax.script.ScriptEngineManager</span></td>
+<td>Dangerous class patterns</td>
+</tr>
+<tr>
+<td><code>reflectionutils.sensitive.field.patterns</code></td>
+<td>Comma-separated patterns</td>
+<td><span style="color: #007acc; font-size: 7pt">password,passwd,secret,secretkey,<br>apikey,api_key,authtoken,accesstoken,<br>credential,confidential,adminkey,private</span></td>
+<td>Sensitive field patterns</td>
+</tr>
+<tr>
+<td><code>reflection.utils.cache.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">1500</span></td>
+<td>Reflection cache size</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>StringUtilities</strong></td>
+</tr>
+<tr>
+<td><code>stringutilities.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all StringUtilities security features</td>
+</tr>
+<tr>
+<td><code>stringutilities.max.hex.decode.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max hex string size for decode()</td>
+</tr>
+<tr>
+<td><code>stringutilities.max.wildcard.length</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max wildcard pattern length</td>
+</tr>
+<tr>
+<td><code>stringutilities.max.wildcard.count</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max wildcard characters in pattern</td>
+</tr>
+<tr>
+<td><code>stringutilities.max.levenshtein.string.length</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max string length for Levenshtein distance</td>
+</tr>
+<tr>
+<td><code>stringutilities.max.damerau.levenshtein.string.length</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max string length for Damerau-Levenshtein</td>
+</tr>
+<tr>
+<td><code>stringutilities.max.repeat.count</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max repeat count for repeat() method</td>
+</tr>
+<tr>
+<td><code>stringutilities.max.repeat.total.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max total size for repeat() result</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>SystemUtilities</strong></td>
+</tr>
+<tr>
+<td><code>systemutilities.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all SystemUtilities security features</td>
+</tr>
+<tr>
+<td><code>systemutilities.environment.variable.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Block sensitive environment variable access</td>
+</tr>
+<tr>
+<td><code>systemutilities.file.system.validation.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Validate file system operations</td>
+</tr>
+<tr>
+<td><code>systemutilities.resource.limits.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enforce resource usage limits</td>
+</tr>
+<tr>
+<td><code>systemutilities.max.shutdown.hooks</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">100</span></td>
+<td>Maximum number of shutdown hooks</td>
+</tr>
+<tr>
+<td><code>systemutilities.max.temp.prefix.length</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">100</span></td>
+<td>Maximum temporary directory prefix length</td>
+</tr>
+<tr>
+<td><code>systemutilities.sensitive.variable.patterns</code></td>
+<td>Comma-separated patterns</td>
+<td><span style="color: #007acc; font-size: 7pt">PASSWORD,PASSWD,PASS,SECRET,KEY,<br>TOKEN,CREDENTIAL,AUTH,APIKEY,API_KEY,<br>PRIVATE,CERT,CERTIFICATE,DATABASE_URL,<br>DB_URL,CONNECTION_STRING,DSN,<br>AWS_SECRET,AZURE_CLIENT_SECRET,<br>GCP_SERVICE_ACCOUNT</span></td>
+<td>Sensitive variable patterns</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>Traverser</strong></td>
+</tr>
+<tr>
+<td><code>traverser.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all Traverser security features</td>
+</tr>
+<tr>
+<td><code>traverser.max.stack.depth</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Maximum stack depth</td>
+</tr>
+<tr>
+<td><code>traverser.max.objects.visited</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Maximum objects visited</td>
+</tr>
+<tr>
+<td><code>traverser.max.collection.size</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Maximum collection size to process</td>
+</tr>
+<tr>
+<td><code>traverser.max.array.length</code></td>
+<td>Integer</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Maximum array length to process</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>UrlUtilities</strong></td>
+</tr>
+<tr>
+<td><code>urlutilities.security.enabled</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Master switch for all UrlUtilities security features</td>
+</tr>
+<tr>
+<td><code>urlutilities.max.download.size</code></td>
+<td>Long</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max download size in bytes</td>
+</tr>
+<tr>
+<td><code>urlutilities.max.content.length</code></td>
+<td>Long</td>
+<td><span style="color: #007acc">0</span> (disabled)</td>
+<td>Max Content-Length header value</td>
+</tr>
+<tr>
+<td><code>urlutilities.allow.internal.hosts</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">true</span></td>
+<td>Allow access to internal/local hosts</td>
+</tr>
+<tr>
+<td><code>urlutilities.allowed.protocols</code></td>
+<td>Comma-separated</td>
+<td><span style="color: #007acc">http,https,ftp</span></td>
+<td>Allowed protocols</td>
+</tr>
+<tr>
+<td><code>urlutilities.strict.cookie.domain</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Enable strict cookie domain validation</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>Converter</strong></td>
+</tr>
+<tr>
+<td><code>converter.modern.time.long.precision</code></td>
+<td><code>millis</code>, <code>nanos</code></td>
+<td><span style="color: #007acc">millis</span></td>
+<td>Precision for Instant, ZonedDateTime, OffsetDateTime conversions</td>
+</tr>
+<tr>
+<td><code>converter.duration.long.precision</code></td>
+<td><code>millis</code>, <code>nanos</code></td>
+<td><span style="color: #007acc">millis</span></td>
+<td>Precision for Duration conversions</td>
+</tr>
+<tr>
+<td><code>converter.localtime.long.precision</code></td>
+<td><code>millis</code>, <code>nanos</code></td>
+<td><span style="color: #007acc">millis</span></td>
+<td>Precision for LocalTime conversions</td>
+</tr>
+<tr style="background-color: #f0f4f8;">
+<td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>Other</strong></td>
+</tr>
+<tr>
+<td><code>java.util.force.jre</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td><span style="color: #007acc">false</span></td>
+<td>Force JRE simulation (testing only)</td>
+</tr>
+</table>
 
 > **Note:** All security features are disabled by default for backward compatibility. Most properties accepting `0` disable the feature entirely. Properties can be set via system properties (`-D` flags) or environment variables.
 

@@ -5,6 +5,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -299,11 +300,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private MultiKey<V> createMultiKey(Object key, V value) {
         int[] hashPass = new int[1];
-        Object normalizedKey = normalizeLookup(key, hashPass);
+        Object normalizedKey = normalizeLookup(key, hashPass, true); // true = make defensive copy for storage
         return new MultiKey<>(normalizedKey, hashPass[0], value);
     }
 
     private Object normalizeLookup(Object key, int[] hashPass) {
+        return normalizeLookup(key, hashPass, false); // false = no defensive copy needed for lookup
+    }
+
+    private Object normalizeLookup(Object key, int[] hashPass, boolean makeDefensiveCopy) {
         // Handle null case
         if (key == null) {
             hashPass[0] = 0;
@@ -323,8 +328,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             Collection<?> coll = (Collection<?>) key;
             // In NOT_EXPANDED mode, treat collections like regular Map keys - no special processing
             hashPass[0] = finalizeHash(coll.hashCode());
-            // Make defensive copy for immutability
-            return new ArrayList<>(coll);
+            // Make defensive copy only when storing (put operations), not for lookups
+            return makeDefensiveCopy ? new ArrayList<>(coll) : coll;
         }
 
         // Handle Object[] arrays
@@ -340,7 +345,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (flattenDimensions) {
                 return expandWithHash(coll, hashPass);
             }
-            return process1DCollection(coll, hashPass);
+            return process1DCollection(coll, hashPass, makeDefensiveCopy);
         }
         
         // Handle typed arrays (int[], String[], etc.)
@@ -353,17 +358,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return key;
     }
     
-    private Object process1DObjectArray(Object[] arr, int[] hashPass) {
-        if (arr.length == 0) {
+    private Object process1DObjectArray(Object[] array, int[] hashPass) {
+        if (array.length == 0) {
             hashPass[0] = 0;
-            return arr;
+            return array;
         }
         
         // Check if truly 1D while computing hash
         int h = 1;
         boolean is1D = true;
         
-        for (Object e : arr) {
+        for (Object e : array) {
             h = h * 31 + computeElementHash(e);
             if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
                 is1D = false;
@@ -373,20 +378,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         if (is1D) {
             // Single element optimization - always collapse single element arrays
-            if (arr.length == 1 && arr[0] != null) {
+            if (array.length == 1 && array[0] != null) {
                 // Recompute hash for the single element to match simple object case
-                hashPass[0] = finalizeHash(computeElementHash(arr[0]));
-                return arr[0];
+                hashPass[0] = finalizeHash(computeElementHash(array[0]));
+                return array[0];
             }
             hashPass[0] = finalizeHash(h);
-            return arr;
+            return array;
         }
         
         // It's 2D+ - need to expand with hash computation
-        return expandWithHash(arr, hashPass);
+        return expandWithHash(array, hashPass);
     }
     
-    private Object process1DCollection(Collection<?> coll, int[] hashPass) {
+    private Object process1DCollection(Collection<?> coll, int[] hashPass, boolean makeDefensiveCopy) {
         if (coll.isEmpty()) {
             hashPass[0] = 0;
             return coll;
@@ -415,8 +420,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
             }
             hashPass[0] = finalizeHash(h);
-            // Make defensive copy of collection for immutability
-            return new ArrayList<>(coll);
+            // Make defensive copy only when storing (put operations), not for lookups
+            return makeDefensiveCopy ? new ArrayList<>(coll) : coll;
         }
         
         // It's 2D+ - need to expand with hash computation
@@ -648,7 +653,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private MultiKey<V> findEntry(Object lookupKey) {
         // Direct normalization without creating any objects
         int[] hashPass = new int[1];
-        Object normalized = normalizeLookup(lookupKey, hashPass);
+        Object normalized = normalizeLookup(lookupKey, hashPass, false);
         int hash = hashPass[0];
         Object[] currentBuckets = buckets;
         int index = hash & (currentBuckets.length - 1);
@@ -737,7 +742,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (obj instanceof Collection) return ((Collection<?>) obj).iterator();
         if (obj instanceof Object[]) return Arrays.asList((Object[]) obj).iterator();
         if (obj.getClass().isArray()) return new ArrayIterator(obj);
-        return Arrays.asList(obj).iterator();
+        return Collections.singletonList(obj).iterator();
     }
 
     private static class ArrayIterator implements Iterator<Object> {
@@ -1024,7 +1029,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (v != null) put(key, v);
             }
             return v;
-        } finally {
+        } finally {                  
             lock.unlock();
         }
     }

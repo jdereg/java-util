@@ -74,8 +74,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final Object NULL_SENTINEL = new Object();
 
     // Emojis for debug output (professional yet intuitive)
-    private static final String EMOJI_OPEN = "📂";  // Open folder for nesting start
-    private static final String EMOJI_CLOSE = "📁"; // Closed folder for nesting end
+    private static final String EMOJI_OPEN = "⬇️";  // Down arrow for stepping into dimension
+    private static final String EMOJI_CLOSE = "⬆️"; // Up arrow for stepping back out of dimension
     private static final String EMOJI_CYCLE = "♻️"; // Recycle for cycles
     private static final String EMOJI_EMPTY = "∅";  // Empty set for null/empty
     private static final String EMOJI_KEY = "🔑";   // Key for single keys
@@ -1196,7 +1196,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (!first) sb.append(",\n");
             first = false;
             sb.append("  ");  // Two-space indentation
-            String keyStr = formatSimpleKey(e.keys, this);
+            String keyStr = dumpExpandedKeyStatic(e.keys, true, this);
             // Remove trailing comma and space if present
             if (keyStr.endsWith(", ")) {
                 keyStr = keyStr.substring(0, keyStr.length() - 2);
@@ -1212,63 +1212,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return sb.append("\n}").toString();
     }
 
-
-    private String formatSimpleKey(Object key, MultiKeyMap<?> selfMap) {
-        if (key == null) return EMOJI_KEY + EMOJI_EMPTY;
-        if (key == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
-        if (!(key.getClass().isArray() || key instanceof Collection)) {
-            // Handle self-reference in single keys
-            if (selfMap != null && key == selfMap) return EMOJI_KEY + "(this Map)";
-            return EMOJI_KEY + key;
-        }
-
-        // Special case: single-element arrays should be treated as single keys
-        if (key.getClass().isArray()) {
-            int len = Array.getLength(key);
-            if (len == 1) {
-                Object element = Array.get(key, 0);
-                if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
-                if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
-                return EMOJI_KEY + (element != null ? element.toString() : "null");
-            }
-        } else {
-            Collection<?> coll = (Collection<?>) key;
-            if (coll.size() == 1) {
-                Object element = coll.iterator().next();
-                if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
-                if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
-                return EMOJI_KEY + (element != null ? element.toString() : "null");
-            }
-        }
-
-        // For multi-key arrays/collections, use format: 🔑[key1, key2, key3]
-        StringBuilder sb = new StringBuilder();
-        sb.append(EMOJI_KEY).append("[");
-        
-        if (key.getClass().isArray()) {
-            int len = Array.getLength(key);
-            for (int i = 0; i < len; i++) {
-                if (i > 0) sb.append(", ");
-                Object element = Array.get(key, i);
-                if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
-                else if (selfMap != null && element == selfMap) sb.append("(this Map)");
-                else sb.append(element != null ? element.toString() : "null");
-            }
-        } else {
-            Collection<?> coll = (Collection<?>) key;
-            int i = 0;
-            for (Object element : coll) {
-                if (i > 0) sb.append(", ");
-                if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
-                else if (selfMap != null && element == selfMap) sb.append("(this Map)");
-                else sb.append(element != null ? element.toString() : "null");
-                i++;
-            }
-        }
-        
-        sb.append("]");
-        return sb.toString();
-    }
 
     public Iterable<MultiKeyEntry<V>> entries() {
         return EntryIterator::new;
@@ -1406,12 +1349,60 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private static String dumpExpandedKeyStatic(Object key, boolean forToString, MultiKeyMap<?> selfMap) {
-        if (key == null) return EMOJI_EMPTY;
-        if (key == NULL_SENTINEL) return EMOJI_EMPTY;
+        if (key == null) return forToString ? EMOJI_KEY + EMOJI_EMPTY : EMOJI_EMPTY;
+        if (key == NULL_SENTINEL) return forToString ? EMOJI_KEY + EMOJI_EMPTY : EMOJI_EMPTY;
         if (!(key.getClass().isArray() || key instanceof Collection)) {
             // Handle self-reference in single keys
             if (selfMap != null && key == selfMap) return EMOJI_KEY + "(this Map)";
             return EMOJI_KEY + key;
+        }
+
+        // Special case for toString: use bracket notation for readability
+        if (forToString) {
+            if (key.getClass().isArray()) {
+                int len = Array.getLength(key);
+                if (len == 1) {
+                    Object element = Array.get(key, 0);
+                    if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
+                    if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
+                    return EMOJI_KEY + (element != null ? element.toString() : "null");
+                } else {
+                    // Multi-element array - use bracket notation
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(EMOJI_KEY).append("[");
+                    for (int i = 0; i < len; i++) {
+                        if (i > 0) sb.append(", ");
+                        Object element = Array.get(key, i);
+                        if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
+                        else if (selfMap != null && element == selfMap) sb.append("(this Map)");
+                        else sb.append(element != null ? element.toString() : "null");
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                }
+            } else if (key instanceof Collection) {
+                Collection<?> coll = (Collection<?>) key;
+                if (coll.size() == 1) {
+                    Object element = coll.iterator().next();
+                    if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
+                    if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
+                    return EMOJI_KEY + (element != null ? element.toString() : "null");
+                } else {
+                    // Multi-element collection - use bracket notation
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(EMOJI_KEY).append("[");
+                    int i = 0;
+                    for (Object element : coll) {
+                        if (i > 0) sb.append(", ");
+                        if (element == NULL_SENTINEL) sb.append(EMOJI_EMPTY);
+                        else if (selfMap != null && element == selfMap) sb.append("(this Map)");
+                        else sb.append(element != null ? element.toString() : "null");
+                        i++;
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                }
+            }
         }
 
         List<Object> expanded = new ArrayList<>();
@@ -1423,7 +1414,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         for (Object e : expanded) {
             if (e == OPEN) sb.append(EMOJI_OPEN);
             else if (e == CLOSE) sb.append(EMOJI_CLOSE);
-            else if (visited.containsKey(e)) sb.append(EMOJI_CYCLE);
+            else if (e instanceof String && ((String) e).startsWith(EMOJI_CYCLE)) sb.append(e).append(forToString ? ", " : " ");
             else if (e == NULL_SENTINEL) sb.append(EMOJI_EMPTY).append(forToString ? ", " : " ");
             else if (selfMap != null && e == selfMap) sb.append("(this Map)").append(forToString ? ", " : " ");
             else sb.append(e).append(forToString ? ", " : " ");

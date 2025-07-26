@@ -16,13 +16,13 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Comprehensive test coverage for MultiKeyMap.formatSimpleKey method.
+ * Comprehensive test coverage for MultiKeyMap.dumpExpandedKeyStatic method.
  * This method is private and used internally for toString() operations.
  */
 class MultiKeyMapFormatSimpleKeyTest {
 
     private MultiKeyMap<String> map;
-    private Method formatSimpleKeyMethod;
+    private Method dumpExpandedKeyStaticMethod;
     private Object NULL_SENTINEL;
 
     @BeforeEach
@@ -30,8 +30,8 @@ class MultiKeyMapFormatSimpleKeyTest {
         map = new MultiKeyMap<>();
         
         // Access private method using reflection
-        formatSimpleKeyMethod = MultiKeyMap.class.getDeclaredMethod("formatSimpleKey", Object.class, MultiKeyMap.class);
-        formatSimpleKeyMethod.setAccessible(true);
+        dumpExpandedKeyStaticMethod = MultiKeyMap.class.getDeclaredMethod("dumpExpandedKeyStatic", Object.class, boolean.class, MultiKeyMap.class);
+        dumpExpandedKeyStaticMethod.setAccessible(true);
         
         // Access private NULL_SENTINEL field
         Field nullSentinelField = MultiKeyMap.class.getDeclaredField("NULL_SENTINEL");
@@ -40,7 +40,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     }
 
     private String formatSimpleKey(Object key, MultiKeyMap<?> selfMap) throws Exception {
-        return (String) formatSimpleKeyMethod.invoke(map, key, selfMap);
+        return (String) dumpExpandedKeyStaticMethod.invoke(null, key, true, selfMap);
     }
 
     @Test

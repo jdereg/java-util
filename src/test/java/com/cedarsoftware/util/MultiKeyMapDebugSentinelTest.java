@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Debug test to understand why NULL_SENTINEL objects aren't being caught
  */
 class MultiKeyMapDebugSentinelTest {
+    private static final Logger log = Logger.getLogger(MultiKeyMapDebugSentinelTest.class.getName());
 
     @Test
     void debugSentinelObjects() throws Exception {
@@ -18,10 +20,10 @@ class MultiKeyMapDebugSentinelTest {
         Object[] arrayWithNull = {"test", null, "end"};
         map.put(arrayWithNull, "debug_value");
         
-        System.out.println("=== Debug Sentinel Objects ===");
-        System.out.println("Map toString output:");
-        System.out.println(map.toString());
-        System.out.println();
+        log.info("=== Debug Sentinel Objects ===");
+        log.info("Map toString output:");
+        log.info(map.toString());
+        log.info("");
         
         // Get access to the private fields and methods via reflection
         Field nullSentinelField = MultiKeyMap.class.getDeclaredField("NULL_SENTINEL");
@@ -36,17 +38,17 @@ class MultiKeyMapDebugSentinelTest {
         closeField.setAccessible(true);
         Object CLOSE = closeField.get(null);
         
-        System.out.println("NULL_SENTINEL object: " + NULL_SENTINEL);
-        System.out.println("OPEN object: " + OPEN);
-        System.out.println("CLOSE object: " + CLOSE);
-        System.out.println();
+        log.info("NULL_SENTINEL object: " + NULL_SENTINEL);
+        log.info("OPEN object: " + OPEN);
+        log.info("CLOSE object: " + CLOSE);
+        log.info("");
         
         // Access the dumpExpandedKeyStatic method
         Method dumpMethod = MultiKeyMap.class.getDeclaredMethod("dumpExpandedKeyStatic", Object.class, boolean.class, MultiKeyMap.class);
         dumpMethod.setAccessible(true);
         
         String result = (String) dumpMethod.invoke(null, arrayWithNull, true, map);
-        System.out.println("dumpExpandedKeyStatic result: " + result);
+        log.info("dumpExpandedKeyStatic result: " + result);
         
         // Let's also test the expandAndHash method directly
         Method expandAndHashMethod = null;
@@ -65,13 +67,13 @@ class MultiKeyMapDebugSentinelTest {
             
             expandAndHashMethod.invoke(null, arrayWithNull, expanded, visited, dummyHash, false);
             
-            System.out.println("\nExpanded list contents:");
+            log.info("\nExpanded list contents:");
             for (int i = 0; i < expanded.size(); i++) {
                 Object obj = expanded.get(i);
-                System.out.println("  [" + i + "] " + obj + " (class: " + obj.getClass().getSimpleName() + ")");
-                System.out.println("      == NULL_SENTINEL: " + (obj == NULL_SENTINEL));
-                System.out.println("      == OPEN: " + (obj == OPEN));
-                System.out.println("      == CLOSE: " + (obj == CLOSE));
+                log.info("  [" + i + "] " + obj + " (class: " + obj.getClass().getSimpleName() + ")");
+                log.info("      == NULL_SENTINEL: " + (obj == NULL_SENTINEL));
+                log.info("      == OPEN: " + (obj == OPEN));
+                log.info("      == CLOSE: " + (obj == CLOSE));
             }
         }
     }

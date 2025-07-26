@@ -40,7 +40,7 @@ class MultiKeyMapToStringTest {
     void testNullValueToString() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         map.put((Object) "key", (String) null);
-        assertEquals("{\n  🆔 key → 🟣 null\n}", map.toString());
+        assertEquals("{\n  🆔 key → 🟣 ∅\n}", map.toString());
     }
 
     @Test
@@ -50,7 +50,7 @@ class MultiKeyMapToStringTest {
         mapInterface.put(map, "someValue");
         
         String result = map.toString();
-        assertEquals("{\n  🆔 (this Map) → 🟣 someValue\n}", result);
+        assertEquals("{\n  🆔 (this Map ♻️) → 🟣 someValue\n}", result);
         
         // Should not throw StackOverflowError
         assertDoesNotThrow(() -> map.toString());
@@ -63,7 +63,7 @@ class MultiKeyMapToStringTest {
         mapInterface.put("someKey", map);
         
         String result = map.toString();
-        assertEquals("{\n  🆔 someKey → 🟣 (this Map)\n}", result);
+        assertEquals("{\n  🆔 someKey → 🟣 (this Map ♻️)\n}", result);
         
         // Should not throw StackOverflowError
         assertDoesNotThrow(() -> map.toString());
@@ -76,7 +76,7 @@ class MultiKeyMapToStringTest {
         mapInterface.put(map, map);
         
         String result = map.toString();
-        assertEquals("{\n  🆔 (this Map) → 🟣 (this Map)\n}", result);
+        assertEquals("{\n  🆔 (this Map ♻️) → 🟣 (this Map ♻️)\n}", result);
         
         // Should not throw StackOverflowError
         assertDoesNotThrow(() -> map.toString());
@@ -88,7 +88,7 @@ class MultiKeyMapToStringTest {
         map.putMultiKey("value", map, "key2", "key3");
         
         String result = map.toString();
-        assertEquals("{\n  🆔 [(this Map), key2, key3] → 🟣 value\n}", result);
+        assertEquals("{\n  🆔 [(this Map ♻️), key2, key3] → 🟣 value\n}", result);
         
         // Should not throw StackOverflowError
         assertDoesNotThrow(() -> map.toString());
@@ -129,7 +129,7 @@ class MultiKeyMapToStringTest {
         assertDoesNotThrow(() -> map.toString());
         
         // Should contain self-reference markers
-        assertTrue(result.contains("(this Map)"));
+        assertTrue(result.contains("(this Map ♻️)"));
         assertTrue(result.contains("🆔 normal → 🟣 value"));
     }
 }

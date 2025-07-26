@@ -3,11 +3,13 @@ package com.cedarsoftware.util;
 import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Debug test to understand what's in the flattened keys for complex structures
  */
 class MultiKeyMapFlattenedKeysDebugTest {
+    private static final Logger log = Logger.getLogger(MultiKeyMapFlattenedKeysDebugTest.class.getName());
 
     @Test
     void debugFlattenedKeys() throws Exception {
@@ -27,10 +29,10 @@ class MultiKeyMapFlattenedKeysDebugTest {
         
         map.put(outerArray, "debug_value");
         
-        System.out.println("=== Complex Structure Debug ===");
-        System.out.println("Map toString output:");
-        System.out.println(map.toString());
-        System.out.println();
+        log.info("=== Complex Structure Debug ===");
+        log.info("Map toString output:");
+        log.info(map.toString());
+        log.info("");
         
         // Get access to the private fields
         Field nullSentinelField = MultiKeyMap.class.getDeclaredField("NULL_SENTINEL");
@@ -48,30 +50,30 @@ class MultiKeyMapFlattenedKeysDebugTest {
         // Get the actual stored keys from the map entries
         for (MultiKeyMap.MultiKeyEntry<String> entry : map.entries()) {
             Object[] storedKeys = entry.keys;
-            System.out.println("Stored keys array length: " + storedKeys.length);
-            System.out.println("Stored keys contents:");
+            log.info("Stored keys array length: " + storedKeys.length);
+            log.info("Stored keys contents:");
             
             for (int i = 0; i < storedKeys.length; i++) {
                 Object obj = storedKeys[i];
-                System.out.println("  [" + i + "] " + obj + " (class: " + obj.getClass().getSimpleName() + ")");
-                System.out.println("      == NULL_SENTINEL: " + (obj == NULL_SENTINEL));
-                System.out.println("      == OPEN: " + (obj == OPEN));
-                System.out.println("      == CLOSE: " + (obj == CLOSE));
+                log.info("  [" + i + "] " + obj + " (class: " + obj.getClass().getSimpleName() + ")");
+                log.info("      == NULL_SENTINEL: " + (obj == NULL_SENTINEL));
+                log.info("      == OPEN: " + (obj == OPEN));
+                log.info("      == CLOSE: " + (obj == CLOSE));
                 
                 // If it's a collection, examine its contents
                 if (obj instanceof Collection) {
                     Collection<?> coll = (Collection<?>) obj;
-                    System.out.println("      Collection size: " + coll.size());
-                    System.out.println("      Collection contents:");
+                    log.info("      Collection size: " + coll.size());
+                    log.info("      Collection contents:");
                     int j = 0;
                     for (Object element : coll) {
-                        System.out.println("        [" + j + "] " + element + " (class: " + element.getClass().getSimpleName() + ")");
-                        System.out.println("            == NULL_SENTINEL: " + (element == NULL_SENTINEL));
-                        System.out.println("            == OPEN: " + (element == OPEN));
-                        System.out.println("            == CLOSE: " + (element == CLOSE));
+                        log.info("        [" + j + "] " + element + " (class: " + element.getClass().getSimpleName() + ")");
+                        log.info("            == NULL_SENTINEL: " + (element == NULL_SENTINEL));
+                        log.info("            == OPEN: " + (element == OPEN));
+                        log.info("            == CLOSE: " + (element == CLOSE));
                         j++;
                         if (j > 10) { // Limit output for readability
-                            System.out.println("        ... (truncated)");
+                            log.info("        ... (truncated)");
                             break;
                         }
                     }

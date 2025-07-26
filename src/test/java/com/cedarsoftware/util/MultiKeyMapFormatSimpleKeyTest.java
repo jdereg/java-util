@@ -21,6 +21,8 @@ import java.util.Set;
  */
 class MultiKeyMapFormatSimpleKeyTest {
 
+    private static final String THIS_MAP = "(this Map ♻️)"; // Should match MultiKeyMap.THIS_MAP
+    
     private MultiKeyMap<String> map;
     private Method dumpExpandedKeyStaticMethod;
     private Object NULL_SENTINEL;
@@ -76,7 +78,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     @Test
     void testFormatSimpleKey_SelfReferenceInSingleKey() throws Exception {
         String result = formatSimpleKey(map, map);
-        assertThat(result).isEqualTo("🆔 (this Map)");
+        assertThat(result).isEqualTo("🆔 " + THIS_MAP);
     }
 
     @Test
@@ -111,7 +113,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     void testFormatSimpleKey_SingleElementArray_SelfReference() throws Exception {
         Object[] singleArray = {map};
         String result = formatSimpleKey(singleArray, map);
-        assertThat(result).isEqualTo("🆔 (this Map)");
+        assertThat(result).isEqualTo("🆔 " + THIS_MAP);
     }
 
     @Test
@@ -147,7 +149,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     void testFormatSimpleKey_SingleElementCollection_SelfReference() throws Exception {
         List<Object> singleList = Arrays.asList(map);
         String result = formatSimpleKey(singleList, map);
-        assertThat(result).isEqualTo("🆔 (this Map)");
+        assertThat(result).isEqualTo("🆔 " + THIS_MAP);
     }
 
     @Test
@@ -182,7 +184,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     void testFormatSimpleKey_MultiElementArray_WithSelfReference() throws Exception {
         Object[] multiArray = {"key1", map, "key3"};
         String result = formatSimpleKey(multiArray, map);
-        assertThat(result).isEqualTo("🆔 [key1, (this Map), key3]");
+        assertThat(result).isEqualTo("🆔 [key1, " + THIS_MAP + ", key3]");
     }
 
     @Test
@@ -220,7 +222,7 @@ class MultiKeyMapFormatSimpleKeyTest {
     void testFormatSimpleKey_MultiElementCollection_WithSelfReference() throws Exception {
         List<Object> multiList = Arrays.asList("key1", map, "key3");
         String result = formatSimpleKey(multiList, map);
-        assertThat(result).isEqualTo("🆔 [key1, (this Map), key3]");
+        assertThat(result).isEqualTo("🆔 [key1, " + THIS_MAP + ", key3]");
     }
 
     @Test

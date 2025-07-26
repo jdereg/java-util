@@ -68,10 +68,23 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         LoggingConfig.init();
     }
 
-    // Sentinels as String objects - unique identity but beautiful toString() output
-    private static final Object OPEN = new String("[");
-    private static final Object CLOSE = new String("]");
-    private static final Object NULL_SENTINEL = new String("∅");
+    // Sentinels as custom objects - identity-based equality prevents user key collisions
+    private static final Object OPEN = new Object() {
+        @Override public String toString() { return "["; }
+        @Override public int hashCode() { return "[".hashCode(); }
+    };
+    private static final Object CLOSE = new Object() {
+        @Override public String toString() { return "]"; }
+        @Override public int hashCode() { return "]".hashCode(); }
+    };
+    private static final Object NULL_SENTINEL = new Object() {
+        @Override public String toString() { return "∅"; }
+        @Override public int hashCode() { return "∅".hashCode(); }
+    };
+
+    // Common strings
+    private static final String THIS_MAP = "(this Map ♻️)"; // Recycle for cycles
+
 
     // Emojis for debug output (professional yet intuitive)
     private static final String EMOJI_OPEN = "[";   // Opening bracket for stepping into dimension  
@@ -1219,7 +1232,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
             sb.append(keyStr).append(" → ");
             sb.append(EMOJI_VALUE);
-            sb.append(e.value == this ? "(this Map)" : e.value);
+            sb.append(formatValueForToString(e.value, this));
         }
         return sb.append("\n}").toString();
     }
@@ -1383,7 +1396,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (element == NULL_SENTINEL) {
             sb.append(EMOJI_EMPTY);
         } else if (selfMap != null && element == selfMap) {
-            sb.append("(this Map)");
+            sb.append(THIS_MAP);
         } else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) {
             sb.append(element);
         } else {
@@ -1406,7 +1419,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         if (!(key.getClass().isArray() || key instanceof Collection)) {
             // Handle self-reference in single keys
-            if (selfMap != null && key == selfMap) return EMOJI_KEY + "(this Map)";
+            if (selfMap != null && key == selfMap) return EMOJI_KEY + THIS_MAP;
             return EMOJI_KEY + key;
         }
 
@@ -1465,7 +1478,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (len == 1) {
                     Object element = Array.get(key, 0);
                     if (element == NULL_SENTINEL) return EMOJI_KEY + EMOJI_EMPTY;
-                    if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
+                    if (selfMap != null && element == selfMap) return EMOJI_KEY + THIS_MAP;
                     if (element == OPEN) {
                         return EMOJI_KEY + EMOJI_OPEN;
                     } else if (element == CLOSE) {
@@ -1492,7 +1505,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                             needsComma = true;
                         } else if (selfMap != null && element == selfMap) {
                             if (needsComma) sb.append(", ");
-                            sb.append("(this Map)");
+                            sb.append(THIS_MAP);
                             needsComma = true;
                         } else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) {
                             if (needsComma) sb.append(", ");
@@ -1523,7 +1536,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         // Use bracket notation for sentinel objects
                         return EMOJI_KEY + "[" + EMOJI_EMPTY + "]";
                     }
-                    if (selfMap != null && element == selfMap) return EMOJI_KEY + "(this Map)";
+                    if (selfMap != null && element == selfMap) return EMOJI_KEY + THIS_MAP;
                     if (element == OPEN) {
                         return EMOJI_KEY + EMOJI_OPEN;
                     } else if (element == CLOSE) {
@@ -1549,7 +1562,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                             needsComma = true;
                         } else if (selfMap != null && element == selfMap) {
                             if (needsComma) sb.append(", ");
-                            sb.append("(this Map)");
+                            sb.append(THIS_MAP);
                             needsComma = true;
                         } else if (element instanceof String && ((String) element).startsWith(EMOJI_CYCLE)) {
                             if (needsComma) sb.append(", ");
@@ -1581,14 +1594,74 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         expandAndHash(key, expanded, visited, dummyHash, false);  // For debug, always preserve structure (false for flatten)
 
         StringBuilder sb = new StringBuilder();
-        for (Object e : expanded) {
-            if (e == OPEN) sb.append(EMOJI_OPEN);
-            else if (e == CLOSE) sb.append(EMOJI_CLOSE);
-            else if (e instanceof String && ((String) e).startsWith(EMOJI_CYCLE)) sb.append(e).append(forToString ? ", " : " ");
-            else if (e == NULL_SENTINEL) sb.append(EMOJI_EMPTY).append(forToString ? ", " : " ");
-            else if (selfMap != null && e == selfMap) sb.append("(this Map)").append(forToString ? ", " : " ");
-            else sb.append(e).append(forToString ? ", " : " ");
+        sb.append(EMOJI_KEY);
+        int[] index = {0};
+        processNestedStructure(sb, expanded, index, selfMap);
+        return sb.toString();
+    }
+
+    /**
+     * Format a value for toString() display, replacing null with ∅ and handling nested structures
+     */
+    private static String formatValueForToString(Object value, MultiKeyMap<?> selfMap) {
+        if (value == null) return EMOJI_EMPTY;
+        if (selfMap != null && value == selfMap) return THIS_MAP;
+        
+        // For collections and arrays, recursively format with ∅ for nulls
+        if (value instanceof Collection || value.getClass().isArray()) {
+            return formatComplexValueForToString(value, selfMap);
         }
-        return sb.toString().trim();
+        
+        return value.toString();
+    }
+
+    /**
+     * Format complex values (collections/arrays) with ∅ for nulls while maintaining simple formatting
+     */
+    private static String formatComplexValueForToString(Object value, MultiKeyMap<?> selfMap) {
+        if (value == null) return EMOJI_EMPTY;
+        if (selfMap != null && value == selfMap) return THIS_MAP;
+        
+        if (value.getClass().isArray()) {
+            return formatArrayValueForToString(value, selfMap);
+        } else if (value instanceof Collection) {
+            return formatCollectionValueForToString((Collection<?>) value, selfMap);
+        }
+        
+        return value.toString();
+    }
+    
+    /**
+     * Format array values with ∅ for nulls
+     */
+    private static String formatArrayValueForToString(Object array, MultiKeyMap<?> selfMap) {
+        int len = Array.getLength(array);
+        if (len == 0) return "[]";
+        
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < len; i++) {
+            if (i > 0) sb.append(", ");
+            Object element = Array.get(array, i);
+            sb.append(formatValueForToString(element, selfMap));
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+    
+    /**
+     * Format collection values with ∅ for nulls  
+     */
+    private static String formatCollectionValueForToString(Collection<?> collection, MultiKeyMap<?> selfMap) {
+        if (collection.isEmpty()) return "[]";
+        
+        StringBuilder sb = new StringBuilder("[");
+        boolean first = true;
+        for (Object element : collection) {
+            if (!first) sb.append(", ");
+            first = false;
+            sb.append(formatValueForToString(element, selfMap));
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

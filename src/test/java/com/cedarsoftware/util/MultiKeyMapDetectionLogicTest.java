@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Test the detection logic for already-flattened collections
  */
 class MultiKeyMapDetectionLogicTest {
+    private static final Logger log = Logger.getLogger(MultiKeyMapDetectionLogicTest.class.getName());
 
     @Test
     void testDetectionLogic() throws Exception {
@@ -27,19 +29,19 @@ class MultiKeyMapDetectionLogicTest {
             break;
         }
         
-        System.out.println("Stored key type: " + storedKey.getClass().getSimpleName());
-        System.out.println("Stored key: " + storedKey);
+        log.info("Stored key type: " + storedKey.getClass().getSimpleName());
+        log.info("Stored key: " + storedKey);
         
         if (!(storedKey instanceof Collection)) {
-            System.out.println("Not a collection - using original debug test instead");
+            log.info("Not a collection - using original debug test instead");
             return;
         }
         
         ArrayList<Object> flattenedList = (ArrayList<Object>) storedKey;
         
-        System.out.println("=== Detection Logic Test ===");
-        System.out.println("Flattened list: " + flattenedList);
-        System.out.println("List size: " + flattenedList.size());
+        log.info("=== Detection Logic Test ===");
+        log.info("Flattened list: " + flattenedList);
+        log.info("List size: " + flattenedList.size());
         
         // Get access to sentinel objects
         Field nullSentinelField = MultiKeyMap.class.getDeclaredField("NULL_SENTINEL");
@@ -57,25 +59,25 @@ class MultiKeyMapDetectionLogicTest {
         // Test the detection logic manually
         boolean isAlreadyFlattened = false;
         for (Object element : flattenedList) {
-            System.out.println("Element: " + element + " (" + element.getClass().getSimpleName() + ")");
-            System.out.println("  == NULL_SENTINEL: " + (element == NULL_SENTINEL));
-            System.out.println("  == OPEN: " + (element == OPEN));
-            System.out.println("  == CLOSE: " + (element == CLOSE));
+            log.info("Element: " + element + " (" + element.getClass().getSimpleName() + ")");
+            log.info("  == NULL_SENTINEL: " + (element == NULL_SENTINEL));
+            log.info("  == OPEN: " + (element == OPEN));
+            log.info("  == CLOSE: " + (element == CLOSE));
             
             if (element == NULL_SENTINEL || element == OPEN || element == CLOSE) {
-                System.out.println("  DETECTION: Found sentinel object!");
+                log.info("  DETECTION: Found sentinel object!");
                 isAlreadyFlattened = true;
                 break;
             }
         }
         
-        System.out.println("Final detection result: " + isAlreadyFlattened);
+        log.info("Final detection result: " + isAlreadyFlattened);
         
         // Now test dumpExpandedKeyStatic directly
         Method dumpMethod = MultiKeyMap.class.getDeclaredMethod("dumpExpandedKeyStatic", Object.class, boolean.class, MultiKeyMap.class);
         dumpMethod.setAccessible(true);
         
         String result = (String) dumpMethod.invoke(null, flattenedList, true, map);
-        System.out.println("dumpExpandedKeyStatic result: " + result);
+        log.info("dumpExpandedKeyStatic result: " + result);
     }
 }

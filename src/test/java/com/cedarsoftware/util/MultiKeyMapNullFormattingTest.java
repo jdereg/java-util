@@ -2,12 +2,14 @@ package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
 import java.util.*;
+import java.util.logging.Logger;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test null formatting with the ∅ symbol
  */
 class MultiKeyMapNullFormattingTest {
+    private static final Logger log = Logger.getLogger(MultiKeyMapNullFormattingTest.class.getName());
 
     @Test
     void testNullFormattingInToString() {
@@ -22,17 +24,17 @@ class MultiKeyMapNullFormattingTest {
         // Test null in collection  
         map.put(Arrays.asList("list", null, "item"), "list_with_null");
         
-        System.out.println("=== Null Formatting Test ===");
-        System.out.println("Map with various null scenarios:");
-        System.out.println(map.toString());
+        log.info("=== Null Formatting Test ===");
+        log.info("Map with various null scenarios:");
+        log.info(map.toString());
         
         // Verify the output contains the ∅ symbol for nulls
         String mapString = map.toString();
         assertTrue(mapString.contains("∅"), "Map toString should contain ∅ symbol for nulls");
         
-        System.out.println("\nSimple lookups:");
-        System.out.println("Null key lookup: " + map.get(null));
-        System.out.println("Array with null lookup: " + map.get(new Object[]{"key", null, "key2"}));
-        System.out.println("List with null lookup: " + map.get(Arrays.asList("list", null, "item")));
+        log.info("\nSimple lookups:");
+        log.info("Null key lookup: " + map.get(null));
+        log.info("Array with null lookup: " + map.get(new Object[]{"key", null, "key2"}));
+        log.info("List with null lookup: " + map.get(Arrays.asList("list", null, "item")));
     }
 }

@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
 import java.util.*;
+import java.util.logging.Logger;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * and Collections containing Object arrays, ensuring cross-compatibility.
  */
 class MultiKeyMapNestedStructureTest {
+    private static final Logger log = Logger.getLogger(MultiKeyMapNestedStructureTest.class.getName());
 
     @Test
     void testObjectArrayWithCollectionVsCollectionWithObjectArray() {
@@ -33,26 +35,26 @@ class MultiKeyMapNestedStructureTest {
         // Store first structure - this will set the value
         map.put(outerArray, "found_via_array_structure");
         
-        System.out.println("=== Complex Nested Structure Test ===");
-        System.out.println("Map contents after putting array structure:");
-        System.out.println(map.toString());
-        System.out.println();
+        log.info("=== Complex Nested Structure Test ===");
+        log.info("Map contents after putting array structure:");
+        log.info(map.toString());
+        log.info("");
         
         // Store second structure - this should OVERWRITE the first since they're equivalent
         String previousValue = map.put(outerCollection, "found_via_collection_structure");
         
-        System.out.println("Previous value when putting collection: " + previousValue);
-        System.out.println("Map contents after putting collection structure:");
-        System.out.println(map.toString());
-        System.out.println();
+        log.info("Previous value when putting collection: " + previousValue);
+        log.info("Map contents after putting collection structure:");
+        log.info(map.toString());
+        log.info("");
         
         // Verify they map to the same flattened structure (collections and arrays with same content are equivalent)
         String resultFromArray = map.get(outerArray);
         String resultFromCollection = map.get(outerCollection);
         
-        System.out.println("Lookup results:");
-        System.out.println("Array structure lookup: " + resultFromArray);
-        System.out.println("Collection structure lookup: " + resultFromCollection);
+        log.info("Lookup results:");
+        log.info("Array structure lookup: " + resultFromArray);
+        log.info("Collection structure lookup: " + resultFromCollection);
         
         // They should both return the same value since they're equivalent keys
         assertEquals("found_via_collection_structure", resultFromArray);
@@ -81,28 +83,28 @@ class MultiKeyMapNestedStructureTest {
         String crossResultArray = map.get(equivalentArray);
         String crossResultCollection = map.get(equivalentCollection);
         
-        System.out.println("\nCross-compatibility test:");
-        System.out.println("Equivalent array lookup: " + crossResultArray);
-        System.out.println("Equivalent collection lookup: " + crossResultCollection);
+        log.info("\nCross-compatibility test:");
+        log.info("Equivalent array lookup: " + crossResultArray);
+        log.info("Equivalent collection lookup: " + crossResultCollection);
         
         assertEquals("found_via_collection_structure", crossResultArray);
         assertEquals("found_via_collection_structure", crossResultCollection);
         
         // Test individual element access
-        System.out.println("\nTesting individual element access:");
+        log.info("\nTesting individual element access:");
         
         // Should not find with just the inner elements
         assertNull(map.get(berriesList1D));
         assertNull(map.get(berries1D));
         
-        System.out.println("Individual 1D berries list lookup: " + map.get(berriesList1D));
-        System.out.println("Individual 1D berries array lookup: " + map.get(berries1D));
+        log.info("Individual 1D berries list lookup: " + map.get(berriesList1D));
+        log.info("Individual 1D berries array lookup: " + map.get(berries1D));
         
         // Verify map size - should be 1 since the structures are equivalent
         assertEquals(1, map.size());
         
-        System.out.println("\nFinal map size: " + map.size());
-        System.out.println("Test completed successfully!");
+        log.info("\nFinal map size: " + map.size());
+        log.info("Test completed successfully!");
     }
     
     @Test
@@ -129,17 +131,17 @@ class MultiKeyMapNestedStructureTest {
         map.put(deep3D, "3d_array_value");
         String previousValue = map.put(deepList3D, "3d_list_value");
         
-        System.out.println("\n=== Deeply Nested Null Handling Test ===");
-        System.out.println("Map with deeply nested nulls:");
-        System.out.println(map.toString());
+        log.info("\n=== Deeply Nested Null Handling Test ===");
+        log.info("Map with deeply nested nulls:");
+        log.info(map.toString());
         
         // Verify both structures are equivalent and return the latest value
         assertEquals("3d_list_value", map.get(deep3D));
         assertEquals("3d_list_value", map.get(deepList3D));
         assertEquals("3d_array_value", previousValue);
         
-        System.out.println("\nDeep 3D array lookup: " + map.get(deep3D));
-        System.out.println("Deep 3D list lookup: " + map.get(deepList3D));
+        log.info("\nDeep 3D array lookup: " + map.get(deep3D));
+        log.info("Deep 3D list lookup: " + map.get(deepList3D));
     }
     
     @Test
@@ -166,17 +168,17 @@ class MultiKeyMapNestedStructureTest {
         map.put(mixedArray, "mixed_array_value");
         String previousValue = map.put(mixedList, "mixed_list_value");
         
-        System.out.println("\n=== Mixed Type Nested Structures Test ===");
-        System.out.println("Map with mixed types and nested structures:");
-        System.out.println(map.toString());
+        log.info("\n=== Mixed Type Nested Structures Test ===");
+        log.info("Map with mixed types and nested structures:");
+        log.info(map.toString());
         
         // Both should return the latest value since they're equivalent
         assertEquals("mixed_list_value", map.get(mixedArray));
         assertEquals("mixed_list_value", map.get(mixedList));
         assertEquals("mixed_array_value", previousValue);
         
-        System.out.println("\nMixed array lookup: " + map.get(mixedArray));
-        System.out.println("Mixed list lookup: " + map.get(mixedList));
+        log.info("\nMixed array lookup: " + map.get(mixedArray));
+        log.info("Mixed list lookup: " + map.get(mixedList));
         
         assertEquals(1, map.size());
     }

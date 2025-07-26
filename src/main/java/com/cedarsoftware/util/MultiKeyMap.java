@@ -24,24 +24,66 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * High-performance N-dimensional key-value Map implementation using separate chaining.
+ * High-performance N-dimensional key-value Map implementation - the definitive solution for multi-dimensional lookups.
  *
  * <p>MultiKeyMap allows storing and retrieving values using multiple keys. Unlike traditional maps that
  * use a single key, this map can handle keys with any number of components, making it ideal for complex
- * lookup scenarios.</p>
+ * lookup scenarios like user permissions, configuration trees, and caching systems.</p>
  *
  * <h3>Key Features:</h3>
  * <ul>
  *   <li><b>N-Dimensional Keys:</b> Support for keys with any number of components (1, 2, 3, ... N).</li>
- *   <li><b>High Performance:</b> Zero-allocation polymorphic storage and optimized hash computation — no GC/heap used for "gets" in flat cases.</li>
- *   <li><b>Thread-Safe:</b> Lock-free reads with auto-tuned stripe locking that scales with your server, similar to ConcurrentHashMap.</li>
+ *   <li><b>High Performance:</b> Zero-allocation polymorphic storage, MurmurHash3 finalization, and optimized hash computation — no GC/heap pressure for gets in flat cases.</li>
+ *   <li><b>Thread-Safe:</b> Lock-free reads with auto-tuned stripe locking that scales with your server cores, similar to ConcurrentHashMap.</li>
  *   <li><b>Map Interface Compatible:</b> Supports single-key operations via the standard Map interface (get()/put() automatically unpack Collections/Arrays into multi-keys).</li>
  *   <li><b>Flexible API:</b> Var-args methods for convenient multi-key operations (getMultiKey()/putMultiKey() with many keys).</li>
- *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections — change the default automatic unpacking capability as needed.</li>
- *   <li><b>N-Dimensional Array Expansion:</b> Nested arrays of any depth are automatically flattened recursively into multi-keys, with optional structure preservation.</li>
+ *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections via {@link CollectionKeyMode} — change the default automatic unpacking capability as needed.</li>
+ *   <li><b>N-Dimensional Array Expansion:</b> Nested arrays of any depth are automatically flattened recursively into multi-keys, with configurable structure preservation.</li>
+ *   <li><b>Cross-Container Equivalence:</b> Arrays and Collections with equivalent structure are treated as identical keys, regardless of container type.</li>
  * </ul>
  *
- * <p>For detailed usage examples, see the class documentation in the source code.</p>
+ * <h3>Dimensional Behavior Control:</h3>
+ * <p>MultiKeyMap provides revolutionary control over how dimensions are handled through the {@code flattenDimensions} parameter:</p>
+ * <ul>
+ *   <li><b>Structure-Preserving Mode (default, flattenDimensions = false):</b> Different structural depths remain distinct keys. 
+ *       Arrays/Collections with different nesting levels create separate entries.</li>
+ *   <li><b>Dimension-Flattening Mode (flattenDimensions = true):</b> All equivalent flat representations are treated as identical keys, 
+ *       regardless of original container structure.</li>
+ * </ul>
+ *
+ * <h3>Performance Characteristics:</h3>
+ * <ul>
+ *   <li><b>Lock-Free Reads:</b> Get operations require no locking for optimal concurrent performance</li>
+ *   <li><b>Auto-Tuned Stripe Locking:</b> Write operations use stripe locking that adapts to your server's core count</li>
+ *   <li><b>Zero-Allocation Gets:</b> No temporary objects created during retrieval operations</li>
+ *   <li><b>MurmurHash3 Finalization:</b> Enhanced hash distribution reduces collisions</li>
+ *   <li><b>Polymorphic Storage:</b> Efficient memory usage adapts storage format based on key complexity</li>
+ * </ul>
+ *
+ * <h3>API Overview:</h3>
+ * <p>MultiKeyMap provides two complementary APIs:</p>
+ * <ul>
+ *   <li><b>Map Interface:</b> Use as {@code Map<Object, V>} for compatibility with existing code and single-key operations</li>
+ *   <li><b>MultiKeyMap API:</b> Declare as {@code MultiKeyMap<V>} to access powerful var-args methods for multi-dimensional operations</li>
+ * </ul>
+ *
+ * <h3>Usage Examples:</h3>
+ * <pre>{@code
+ * // Basic multi-dimensional usage
+ * MultiKeyMap<String> map = new MultiKeyMap<>();
+ * map.putMultiKey("user-config", "user123", "settings", "theme");
+ * String theme = map.getMultiKey("user123", "settings", "theme");
+ * 
+ * // Cross-container equivalence
+ * map.put(new String[]{"key1", "key2"}, "value1");           // Array key
+ * String value = map.get(Arrays.asList("key1", "key2"));     // Collection lookup - same key!
+ * 
+ * // Structure-preserving vs flattening modes
+ * MultiKeyMap<String> structured = new MultiKeyMap<>(false); // Structure-preserving (default)
+ * MultiKeyMap<String> flattened = new MultiKeyMap<>(true);   // Dimension-flattening
+ * }</pre>
+ *
+ * <p>For comprehensive examples and advanced usage patterns, see the user guide documentation.</p>
  *
  * @param <V> the type of values stored in the map
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -108,8 +150,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Prevent concurrent resize operations to avoid deadlock
     private final AtomicBoolean resizeInProgress = new AtomicBoolean(false);
 
+    /**
+     * Controls how Collections are treated when used as keys in MultiKeyMap.
+     * <p>Note: Arrays are ALWAYS expanded regardless of this setting, as they cannot
+     * override equals/hashCode and would only compare by identity (==).</p>
+     * 
+     * @since 3.6.0
+     */
     public enum CollectionKeyMode {
+        /**
+         * Collections are automatically unpacked into multi-key entries (default behavior).
+         * A List.of("a", "b", "c") becomes a 3-dimensional key equivalent to calling
+         * getMultiKey("a", "b", "c").
+         */
         COLLECTIONS_EXPANDED,
+        
+        /**
+         * Collections are treated as single key objects and not unpacked.
+         * A List.of("a", "b", "c") remains as a single Collection key.
+         * Use this mode when you want Collections to be compared by their equals() method
+         * rather than being expanded into multi-dimensional keys.
+         */
         COLLECTIONS_NOT_EXPANDED
     }
 

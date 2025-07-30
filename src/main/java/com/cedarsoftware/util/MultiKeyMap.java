@@ -254,10 +254,28 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this(16, DEFAULT_LOAD_FACTOR, CollectionKeyMode.COLLECTIONS_EXPANDED, flattenDimensions);
     }
 
+    /**
+     * Returns the current collection key mode setting.
+     * <p>This mode determines how Collections are treated when used as keys in this map.</p>
+     * 
+     * @return the current {@link CollectionKeyMode} - either COLLECTIONS_EXPANDED (default) 
+     *         where Collections are automatically unpacked into multi-key entries, or 
+     *         COLLECTIONS_NOT_EXPANDED where Collections are treated as single key objects
+     * @see CollectionKeyMode
+     */
     public CollectionKeyMode getCollectionKeyMode() {
         return collectionKeyMode;
     }
 
+    /**
+     * Returns the current dimension flattening setting.
+     * <p>This setting controls how nested arrays and collections are handled when used as keys.</p>
+     * 
+     * @return {@code true} if dimension flattening is enabled (all equivalent flat representations 
+     *         are treated as identical keys regardless of original container structure), 
+     *         {@code false} if structure-preserving mode is used (default, where different 
+     *         structural depths remain distinct keys)
+     */
     public boolean getFlattenDimensions() {
         return flattenDimensions;
     }
@@ -290,23 +308,66 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * Retrieves the value associated with the specified multi-dimensional key using var-args syntax.
+     * <p>This is a convenience method that allows easy multi-key lookups without having to pass
+     * arrays or collections. The keys are treated as separate dimensions of a multi-key.</p>
+     * 
+     * @param keys the key components to look up. Can be null or empty (treated as null key),
+     *             single key, or multiple key components
+     * @return the value associated with the multi-key, or {@code null} if no mapping exists
+     * @see #get(Object)
+     */
     public V getMultiKey(Object... keys) {
         if (keys == null || keys.length == 0) return get(null);
         if (keys.length == 1) return get(keys[0]);
         return get(keys);  // Let get()'s normalizeLookup() handle everything!
     }
 
+    /**
+     * Returns the value to which the specified key is mapped, or {@code null} if this map
+     * contains no mapping for the key.
+     * <p>This method supports both single keys and multi-dimensional keys. Arrays and Collections
+     * are automatically expanded into multi-keys based on the map's configuration settings.</p>
+     * 
+     * @param key the key whose associated value is to be returned. Can be a single object,
+     *            array, or Collection that will be normalized according to the map's settings
+     * @return the value to which the specified key is mapped, or {@code null} if no mapping exists
+     */
     public V get(Object key) {
         MultiKey<V> entry = findEntry(key);
         return entry != null ? entry.value : null;
     }
 
+    /**
+     * Associates the specified value with the specified multi-dimensional key using var-args syntax.
+     * <p>This is a convenience method that allows easy multi-key storage without having to pass
+     * arrays or collections. The keys are treated as separate dimensions of a multi-key.</p>
+     * 
+     * @param value the value to be associated with the multi-key
+     * @param keys the key components for the mapping. Can be null or empty (treated as null key),
+     *             single key, or multiple key components
+     * @return the previous value associated with the multi-key, or {@code null} if there was
+     *         no mapping for the key
+     * @see #put(Object, Object)
+     */
     public V putMultiKey(V value, Object... keys) {
         if (keys == null || keys.length == 0) return put(null, value);
         if (keys.length == 1) return put(keys[0], value);
         return put(keys, value);  // Let put()'s normalization handle everything!
     }
 
+    /**
+     * Associates the specified value with the specified key in this map.
+     * <p>This method supports both single keys and multi-dimensional keys. Arrays and Collections
+     * are automatically expanded into multi-keys based on the map's configuration settings.</p>
+     * 
+     * @param key the key with which the specified value is to be associated. Can be a single object,
+     *            array, or Collection that will be normalized according to the map's settings
+     * @param value the value to be associated with the specified key
+     * @return the previous value associated with the key, or {@code null} if there was
+     *         no mapping for the key
+     */
     public V put(Object key, V value) {
         MultiKey<V> newKey = createMultiKey(key, value);
         return putInternal(newKey);
@@ -937,22 +998,63 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return null;
     }
 
+    /**
+     * Returns {@code true} if this map contains a mapping for the specified multi-dimensional key
+     * using var-args syntax.
+     * <p>This is a convenience method that allows easy multi-key existence checks without having
+     * to pass arrays or collections. The keys are treated as separate dimensions of a multi-key.</p>
+     * 
+     * @param keys the key components to check for. Can be null or empty (treated as null key),
+     *             single key, or multiple key components
+     * @return {@code true} if this map contains a mapping for the specified multi-key
+     * @see #containsKey(Object)
+     */
     public boolean containsMultiKey(Object... keys) {
         if (keys == null || keys.length == 0) return containsKey(null);
         if (keys.length == 1) return containsKey(keys[0]);
         return containsKey(keys);  // Let containsKey()'s normalization handle everything!
     }
 
+    /**
+     * Returns {@code true} if this map contains a mapping for the specified key.
+     * <p>This method supports both single keys and multi-dimensional keys. Arrays and Collections
+     * are automatically expanded into multi-keys based on the map's configuration settings.</p>
+     * 
+     * @param key the key whose presence in this map is to be tested. Can be a single object,
+     *            array, or Collection that will be normalized according to the map's settings
+     * @return {@code true} if this map contains a mapping for the specified key
+     */
     public boolean containsKey(Object key) {
         return findEntry(key) != null;
     }
 
+    /**
+     * Removes the mapping for the specified multi-dimensional key using var-args syntax.
+     * <p>This is a convenience method that allows easy multi-key removal without having
+     * to pass arrays or collections. The keys are treated as separate dimensions of a multi-key.</p>
+     * 
+     * @param keys the key components for the mapping to remove. Can be null or empty (treated as null key),
+     *             single key, or multiple key components
+     * @return the previous value associated with the multi-key, or {@code null} if there was
+     *         no mapping for the key
+     * @see #remove(Object)
+     */
     public V removeMultiKey(Object... keys) {
         if (keys == null || keys.length == 0) return remove(null);
         if (keys.length == 1) return remove(keys[0]);
         return remove(keys);  // Let remove()'s normalization handle everything!
     }
 
+    /**
+     * Removes the mapping for the specified key from this map if it is present.
+     * <p>This method supports both single keys and multi-dimensional keys. Arrays and Collections
+     * are automatically expanded into multi-keys based on the map's configuration settings.</p>
+     * 
+     * @param key the key whose mapping is to be removed from the map. Can be a single object,
+     *            array, or Collection that will be normalized according to the map's settings
+     * @return the previous value associated with the key, or {@code null} if there was
+     *         no mapping for the key
+     */
     public V remove(Object key) {
         MultiKey<V> removeKey = createMultiKey(key, null);
         return removeInternal(removeKey);
@@ -1050,14 +1152,28 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * Returns the number of key-value mappings in this map.
+     * 
+     * @return the number of key-value mappings in this map
+     */
     public int size() {
         return atomicSize.get();
     }
 
+    /**
+     * Returns {@code true} if this map contains no key-value mappings.
+     * 
+     * @return {@code true} if this map contains no key-value mappings
+     */
     public boolean isEmpty() {
         return size() == 0;
     }
 
+    /**
+     * Removes all the mappings from this map.
+     * The map will be empty after this call returns.
+     */
     public void clear() {
         withAllStripeLocks(() -> {
             Arrays.fill(buckets, null);
@@ -1066,6 +1182,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         });
     }
 
+    /**
+     * Returns {@code true} if this map maps one or more keys to the specified value.
+     * <p>This operation requires time linear in the map size.</p>
+     * 
+     * @param value the value whose presence in this map is to be tested
+     * @return {@code true} if this map maps one or more keys to the specified value
+     */
     public boolean containsValue(Object value) {
         for (Object b : buckets) {
             if (b != null) {
@@ -1077,6 +1200,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return false;
     }
 
+    /**
+     * Returns a {@link Set} view of the keys contained in this map.
+     * <p>Multi-dimensional keys are represented as Object arrays, while single keys
+     * are returned as their original objects. Changes to the returned set are not
+     * reflected in the map.</p>
+     * 
+     * @return a set view of the keys contained in this map
+     */
     public Set<Object> keySet() {
         Set<Object> set = new HashSet<>();
         for (MultiKeyEntry<V> e : entries()) {
@@ -1085,12 +1216,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return set;
     }
 
+    /**
+     * Returns a {@link Collection} view of the values contained in this map.
+     * <p>Changes to the returned collection are not reflected in the map.</p>
+     * 
+     * @return a collection view of the values contained in this map
+     */
     public Collection<V> values() {
         List<V> vals = new ArrayList<>();
         for (MultiKeyEntry<V> e : entries()) vals.add(e.value);
         return vals;
     }
 
+    /**
+     * Returns a {@link Set} view of the mappings contained in this map.
+     * <p>Multi-dimensional keys are represented as Object arrays, while single keys
+     * are returned as their original objects. Changes to the returned set are not
+     * reflected in the map.</p>
+     * 
+     * @return a set view of the mappings contained in this map
+     */
     public Set<Map.Entry<Object, V>> entrySet() {
         Set<Map.Entry<Object, V>> set = new HashSet<>();
         for (MultiKeyEntry<V> e : entries()) {
@@ -1100,10 +1245,35 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return set;
     }
 
+    /**
+     * Copies all of the mappings from the specified map to this map.
+     * <p>The effect of this call is equivalent to that of calling {@link #put(Object, Object)}
+     * on this map once for each mapping from key {@code k} to value {@code v} in the
+     * specified map.</p>
+     * 
+     * @param m mappings to be stored in this map
+     * @throws NullPointerException if the specified map is null
+     */
     public void putAll(Map<?, ? extends V> m) {
         for (Map.Entry<?, ? extends V> e : m.entrySet()) put(e.getKey(), e.getValue());
     }
 
+    /**
+     * If the specified key is not already associated with a value, associates it with the given value.
+     * <p>This is equivalent to:
+     * <pre> {@code
+     * if (!map.containsKey(key))
+     *   return map.put(key, value);
+     * else
+     *   return map.get(key);
+     * }</pre>
+     * except that the action is performed atomically.</p>
+     * 
+     * @param key the key with which the specified value is to be associated
+     * @param value the value to be associated with the specified key
+     * @return the previous value associated with the specified key, or {@code null}
+     *         if there was no mapping for the key
+     */
     public V putIfAbsent(Object key, V value) {
         V existing = get(key);
         if (existing != null) return existing;
@@ -1120,6 +1290,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * If the specified key is not already associated with a value, attempts to compute its value
+     * using the given mapping function and enters it into this map unless {@code null}.
+     * <p>The entire method invocation is performed atomically, so the function is applied
+     * at most once per key.</p>
+     * 
+     * @param key the key with which the specified value is to be associated
+     * @param mappingFunction the function to compute a value
+     * @return the current (existing or computed) value associated with the specified key,
+     *         or {@code null} if the computed value is {@code null}
+     * @throws NullPointerException if the specified mappingFunction is null
+     */
     public V computeIfAbsent(Object key, Function<? super Object, ? extends V> mappingFunction) {
         Objects.requireNonNull(mappingFunction);
         V v = get(key);
@@ -1141,6 +1323,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * If the value for the specified key is present, attempts to compute a new mapping
+     * given the key and its current mapped value.
+     * <p>The entire method invocation is performed atomically. If the function returns
+     * {@code null}, the mapping is removed.</p>
+     * 
+     * @param key the key with which the specified value is to be associated
+     * @param remappingFunction the function to compute a value
+     * @return the new value associated with the specified key, or {@code null} if none
+     * @throws NullPointerException if the specified remappingFunction is null
+     */
     public V computeIfPresent(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
         V old = get(key);
@@ -1166,6 +1359,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * Attempts to compute a mapping for the specified key and its current mapped value
+     * (or {@code null} if there is no current mapping).
+     * <p>The entire method invocation is performed atomically. If the function returns
+     * {@code null}, the mapping is removed (or remains absent if initially absent).</p>
+     * 
+     * @param key the key with which the specified value is to be associated
+     * @param remappingFunction the function to compute a value
+     * @return the new value associated with the specified key, or {@code null} if none
+     * @throws NullPointerException if the specified remappingFunction is null
+     */
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
         int[] hashPass = new int[1];
@@ -1187,6 +1391,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * If the specified key is not already associated with a value or is associated with null,
+     * associates it with the given non-null value. Otherwise, replaces the associated value
+     * with the results of the given remapping function, or removes if the result is {@code null}.
+     * <p>The entire method invocation is performed atomically.</p>
+     * 
+     * @param key the key with which the resulting value is to be associated
+     * @param value the non-null value to be merged with the existing value
+     * @param remappingFunction the function to recompute a value if present
+     * @return the new value associated with the specified key, or {@code null} if no
+     *         value is associated with the key
+     * @throws NullPointerException if the specified value or remappingFunction is null
+     */
     public V merge(Object key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
@@ -1209,6 +1426,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * Removes the entry for a key only if it is currently mapped to the specified value.
+     * <p>This is equivalent to:
+     * <pre> {@code
+     * if (map.containsKey(key) && Objects.equals(map.get(key), value)) {
+     *   map.remove(key);
+     *   return true;
+     * } else
+     *   return false;
+     * }</pre>
+     * except that the action is performed atomically.</p>
+     * 
+     * @param key the key with which the specified value is associated
+     * @param value the value expected to be associated with the specified key
+     * @return {@code true} if the value was removed
+     */
     public boolean remove(Object key, Object value) {
         int[] hashPass = new int[1];
         computeKeyHash(key, hashPass);
@@ -1225,6 +1458,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * Replaces the entry for the specified key only if it is currently mapped to some value.
+     * <p>This is equivalent to:
+     * <pre> {@code
+     * if (map.containsKey(key)) {
+     *   return map.put(key, value);
+     * } else
+     *   return null;
+     * }</pre>
+     * except that the action is performed atomically.</p>
+     * 
+     * @param key the key with which the specified value is associated
+     * @param value the value to be associated with the specified key
+     * @return the previous value associated with the specified key, or {@code null}
+     *         if there was no mapping for the key
+     */
     public V replace(Object key, V value) {
         int[] hashPass = new int[1];
         computeKeyHash(key, hashPass);
@@ -1239,6 +1488,23 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * Replaces the entry for the specified key only if currently mapped to the specified value.
+     * <p>This is equivalent to:
+     * <pre> {@code
+     * if (map.containsKey(key) && Objects.equals(map.get(key), oldValue)) {
+     *   map.put(key, newValue);
+     *   return true;
+     * } else
+     *   return false;
+     * }</pre>
+     * except that the action is performed atomically.</p>
+     * 
+     * @param key the key with which the specified value is associated
+     * @param oldValue the value expected to be associated with the specified key
+     * @param newValue the value to be associated with the specified key
+     * @return {@code true} if the value was replaced
+     */
     public boolean replace(Object key, V oldValue, V newValue) {
         int[] hashPass = new int[1];
         computeKeyHash(key, hashPass);
@@ -1255,6 +1521,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    /**
+     * Returns the hash code value for this map.
+     * <p>The hash code of a map is defined to be the sum of the hash codes of each entry
+     * in the map's {@code entrySet()} view. This ensures that {@code m1.equals(m2)}
+     * implies that {@code m1.hashCode()==m2.hashCode()} for any two maps {@code m1} and
+     * {@code m2}, as required by the general contract of {@link Object#hashCode}.</p>
+     * 
+     * @return the hash code value for this map
+     */
     public int hashCode() {
         int h = 0;
         for (MultiKeyEntry<V> e : entries()) {
@@ -1264,6 +1539,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return h;
     }
 
+    /**
+     * Compares the specified object with this map for equality.
+     * <p>Returns {@code true} if the given object is also a map and the two maps
+     * represent the same mappings. Two maps {@code m1} and {@code m2} represent the
+     * same mappings if {@code m1.entrySet().equals(m2.entrySet())}.</p>
+     * 
+     * @param o object to be compared for equality with this map
+     * @return {@code true} if the specified object is equal to this map
+     */
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Map)) return false;
@@ -1278,6 +1562,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return true;
     }
 
+    /**
+     * Returns a string representation of this map.
+     * <p>The string representation consists of a list of key-value mappings in the order 
+     * returned by the map's entries iterator, enclosed in braces ({}).</p>
+     * <p>Each key-value mapping is rendered as "key → value", where the key part shows 
+     * all key components and the value part shows the mapped value. Adjacent mappings 
+     * are separated by commas and newlines.</p>
+     * <p>Empty maps are represented as "{}".</p>
+     * 
+     * @return a string representation of this map, formatted for readability with 
+     *         multi-line output and proper indentation
+     */
     public String toString() {
         if (isEmpty()) return "{}";
         StringBuilder sb = new StringBuilder("{\n");
@@ -1298,8 +1594,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return sb.append("\n}").toString();
     }
 
-
-
+    /**
+     * Returns an {@link Iterable} of {@link MultiKeyEntry} objects representing all key-value
+     * mappings in this map.
+     * <p>Each {@code MultiKeyEntry} contains the complete key information as an Object array
+     * and the associated value. This provides access to the full multi-dimensional key structure
+     * that may not be available through the standard {@link #entrySet()} method.</p>
+     * <p>The returned iterable provides a consistent view of the map at the time of creation,
+     * but changes to the map during iteration may or may not be reflected in the iteration results.</p>
+     * 
+     * @return an iterable of {@code MultiKeyEntry} objects containing all mappings in this map
+     * @see MultiKeyEntry
+     * @see #entrySet()
+     */
     public Iterable<MultiKeyEntry<V>> entries() {
         return EntryIterator::new;
     }
@@ -1358,6 +1665,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return Integer.highestOneBit(stripes - 1) << 1;
     }
 
+    /**
+     * Prints detailed contention statistics for this map's stripe locking system to the logger.
+     * <p>This method outputs comprehensive performance monitoring information including:</p>
+     * <ul>
+     *   <li>Total lock acquisitions and contentions across all operations</li>
+     *   <li>Global lock statistics (used during resize operations)</li>
+     *   <li>Per-stripe breakdown showing acquisitions, contentions, and contention rates</li>
+     *   <li>Analysis of stripe distribution including most/least contended stripes</li>
+     *   <li>Count of unused stripes for load balancing assessment</li>
+     * </ul>
+     * <p>This information is useful for performance tuning and understanding concurrency
+     * patterns in high-throughput scenarios. The statistics are logged at INFO level.</p>
+     * 
+     * @see #STRIPE_COUNT
+     */
     public void printContentionStatistics() {
         int totalAcquisitions = totalLockAcquisitions.get();
         int totalContentions = contentionCount.get();

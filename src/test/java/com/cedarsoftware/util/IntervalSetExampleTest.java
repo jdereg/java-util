@@ -120,8 +120,9 @@ class IntervalSetExampleTest {
             
             if (rangeValid) {
                 // Permanently mark this range as verified - IntervalSet merges overlapping ranges
+                // Convert from inclusive range to half-open range by adding 1 second to end
                 int intervalCountBefore = verifiedTimeRanges.size();
-                verifiedTimeRanges.add(rangeStart, rangeEnd);
+                verifiedTimeRanges.add(rangeStart, rangeEnd.plusSeconds(1));
                 int intervalCountAfter = verifiedTimeRanges.size();
                 
                 // Count actual records in this range
@@ -332,9 +333,9 @@ class IntervalSetExampleTest {
         
         for (int i = 0; i < intervals.size(); i++) {
             IntervalSet.Interval<ZonedDateTime> interval = intervals.get(i);
-            long recordCount = sourceDatabase.subMap(interval.getStart(), true, interval.getEnd(), true).size();
+            long recordCount = sourceDatabase.subMap(interval.getStart(), true, interval.getEnd(), false).size();
             long totalTimeSpan = Duration.between(interval.getStart(), interval.getEnd()).toMillis();
-            LOG.info(String.format("         Band %d: [%s - %s] (%d records, %dms span)", 
+            LOG.info(String.format("         Band %d: [%s - %s) (%d records, %dms span)", 
                 i + 1, interval.getStart(), interval.getEnd(), recordCount, totalTimeSpan));
         }
     }

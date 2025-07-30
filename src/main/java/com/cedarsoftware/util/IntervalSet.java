@@ -85,6 +85,98 @@ import static com.cedarsoftware.util.EncryptionUtilities.finalizeHash;
  *   <li>{@link #snapshot()} - Get atomic point-in-time copy of all intervals</li>
  * </ul>
  *
+ * <h2>Half-Open Interval Semantics: [start, end)</h2>
+ * <p>
+ * IntervalSet uses half-open intervals where the start is <b>inclusive</b> and the end is <b>exclusive</b>.
+ * This means interval [5, 10) includes 5, 6, 7, 8, 9 but NOT 10.
+ * </p>
+ * <pre>{@code
+ *   IntervalSet<Integer> set = new IntervalSet<>();
+ *   set.add(5, 10);  // Creates interval [5, 10)
+ *   
+ *   assertTrue(set.contains(5));   // ✓ start is inclusive
+ *   assertTrue(set.contains(9));   // ✓ values between start and end
+ *   assertFalse(set.contains(10)); // ✗ end is exclusive
+ * }</pre>
+ * 
+ * <p>
+ * Half-open intervals eliminate ambiguity in adjacent ranges and simplify interval arithmetic.
+ * Adjacent intervals [1, 5) and [5, 10) can be merged cleanly into [1, 10) without overlap or gaps.
+ * </p>
+ * 
+ * <h3>Creating Minimal Intervals (Quanta)</h3>
+ * <p>
+ * To create the smallest possible interval for a data type, you need to calculate the next representable value.
+ * This is useful when you need single-point intervals or want to work with the minimum granularity of a type:
+ * </p>
+ * 
+ * <h4>Floating Point Types (Float, Double)</h4>
+ * <pre>{@code
+ *   // Minimal interval containing exactly one floating point value
+ *   double value = 5.0;
+ *   double nextValue = Math.nextUp(value);  // 5.000000000000001
+ *   set.add(value, nextValue);  // Creates [5.0, 5.000000000000001)
+ *   
+ *   // For Float:
+ *   float floatValue = 5.0f;
+ *   float nextFloat = Math.nextUp(floatValue);
+ *   set.add(floatValue, nextFloat);
+ * }</pre>
+ * 
+ * <h4>Temporal Types</h4>
+ * <pre>{@code
+ *   // java.util.Date - minimum resolution is 1 millisecond
+ *   Date dateValue = new Date();
+ *   Date nextDate = new Date(dateValue.getTime() + 1);  // +1 millisecond
+ *   set.add(dateValue, nextDate);
+ *   
+ *   // java.sql.Date - minimum practical resolution is 1 day
+ *   java.sql.Date sqlDate = new java.sql.Date(System.currentTimeMillis());
+ *   java.sql.Date nextSqlDate = new java.sql.Date(sqlDate.getTime() + 86400000L); // +1 day
+ *   set.add(sqlDate, nextSqlDate);
+ *   
+ *   // java.sql.Timestamp - minimum resolution is 1 nanosecond
+ *   Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+ *   Timestamp nextTimestamp = new Timestamp(timestamp.getTime());
+ *   nextTimestamp.setNanos(timestamp.getNanos() + 1); // +1 nanosecond
+ *   set.add(timestamp, nextTimestamp);
+ *   
+ *   // java.time.LocalDateTime - minimum resolution is 1 nanosecond
+ *   LocalDateTime localDateTime = LocalDateTime.now();
+ *   LocalDateTime nextLocalDateTime = localDateTime.plusNanos(1);
+ *   set.add(localDateTime, nextLocalDateTime);
+ *   
+ *   // java.time.LocalDate - minimum resolution is 1 day
+ *   LocalDate localDate = LocalDate.now();
+ *   LocalDate nextLocalDate = localDate.plusDays(1);
+ *   set.add(localDate, nextLocalDate);
+ *   
+ *   // java.time.Instant - minimum resolution is 1 nanosecond
+ *   Instant instant = Instant.now();
+ *   Instant nextInstant = instant.plusNanos(1);
+ *   set.add(instant, nextInstant);
+ * }</pre>
+ * 
+ * <h4>Integer Types</h4>
+ * <pre>{@code
+ *   // Minimal interval containing exactly one integer value
+ *   int intValue = 5;
+ *   int nextInt = intValue + 1;  // 6
+ *   set.add(intValue, nextInt);  // Creates [5, 6) which contains only 5
+ *   
+ *   // Works similarly for Long, Short, Byte
+ *   long longValue = 1000L;
+ *   set.add(longValue, longValue + 1L);
+ * }</pre>
+ * 
+ * <h4>Character Type</h4>
+ * <pre>{@code
+ *   // Minimal interval containing exactly one character
+ *   char charValue = 'A';
+ *   char nextChar = (char) (charValue + 1);  // 'B'
+ *   set.add(charValue, nextChar);  // Creates ['A', 'B') which contains only 'A'
+ * }</pre>
+ *
  * <h2>Supported Types</h2>
  * <p>
  * IntervalSet supports any Comparable type. No special boundary calculations are needed due to half-open semantics.

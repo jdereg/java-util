@@ -45,7 +45,7 @@ class IntervalSetTest {
         set.add(1, 5);
         assertTrue(set.contains(1));
         assertTrue(set.contains(3));
-        assertTrue(set.contains(5));
+        assertFalse(set.contains(5)); // Half-open: 5 is not included in [1, 5)
         assertFalse(set.contains(0));
         assertFalse(set.contains(6));
     }
@@ -57,7 +57,7 @@ class IntervalSetTest {
         set.add(3, 7);
         assertEquals(1, set.size());
         assertTrue(set.contains(1));
-        assertTrue(set.contains(7));
+        assertFalse(set.contains(7)); // Half-open: 7 is not included in merged [1, 7)
         assertFalse(set.contains(0));
         assertFalse(set.contains(8));
     }
@@ -71,7 +71,7 @@ class IntervalSetTest {
         set.add(5, 6);
         assertEquals(1, set.size());
         assertTrue(set.contains(1));
-        assertTrue(set.contains(10));
+        assertFalse(set.contains(10)); // Half-open: 10 is not included in merged [1, 10)
     }
 
     @Test
@@ -81,7 +81,7 @@ class IntervalSetTest {
         set.add(3, 7);
         assertEquals(1, set.size());
         assertTrue(set.contains(1));
-        assertTrue(set.contains(10));
+        assertFalse(set.contains(10)); // Half-open: 10 is not included in [1, 10)
     }
 
     @Test
@@ -91,7 +91,7 @@ class IntervalSetTest {
         set.add(1, 10);
         assertEquals(1, set.size());
         assertTrue(set.contains(1));
-        assertTrue(set.contains(10));
+        assertFalse(set.contains(10)); // Half-open: 10 is not included in [1, 10)
     }
 
     @Test
@@ -103,9 +103,9 @@ class IntervalSetTest {
         assertTrue(set.contains(1));
         assertTrue(set.contains(3));
         assertFalse(set.contains(4));
-        assertFalse(set.contains(6));
+        assertTrue(set.contains(6)); // Half-open: 6 should be included in remaining [6, 10)
         assertTrue(set.contains(7));
-        assertTrue(set.contains(10));
+        assertFalse(set.contains(10)); // Half-open: 10 is not included in [6, 10)
     }
 
     @Test
@@ -115,8 +115,8 @@ class IntervalSetTest {
         set.remove(1, 5);
         assertEquals(1, set.size());
         assertFalse(set.contains(1));
-        assertFalse(set.contains(5));
-        assertTrue(set.contains(6));
+        assertTrue(set.contains(5)); // Half-open: removing [1, 5) from [1, 10) leaves [5, 10)
+        assertFalse(set.contains(10)); // Half-open: 10 is not included in [5, 10)
     }
 
     @Test
@@ -171,7 +171,7 @@ class IntervalSetTest {
         set.add(start, end);
         assertTrue(set.contains(start));
         assertTrue(set.contains(start.plusMinutes(30)));
-        assertTrue(set.contains(end));
+        assertFalse(set.contains(end)); // Half-open: end is exclusive
         assertFalse(set.contains(start.minusSeconds(1)));
         assertFalse(set.contains(end.plusSeconds(1)));
     }
@@ -179,19 +179,27 @@ class IntervalSetTest {
     @Test
     void testAddBackwardThrows() {
         IntervalSet<Integer> set = new IntervalSet<>();
-        assertThrows(IllegalArgumentException.class, () -> set.add(10, 1));
+        // Half-open intervals: start >= end is treated as empty interval (no-op)
+        set.add(10, 1);  // Should not throw, just ignore empty interval
+        assertTrue(set.isEmpty());
     }
 
     @Test
     void testRemoveBackwardThrows() {
         IntervalSet<Integer> set = new IntervalSet<>();
-        assertThrows(IllegalArgumentException.class, () -> set.remove(10, 1));
+        set.add(1, 15);  // Add some interval first
+        // Half-open intervals: start >= end is treated as empty interval (no-op)
+        set.remove(10, 1);  // Should not throw, just ignore empty interval
+        assertEquals(1, set.size()); // Original interval should remain unchanged
     }
 
     @Test
     void testRemoveRangeBackwardThrows() {
         IntervalSet<Integer> set = new IntervalSet<>();
-        assertThrows(IllegalArgumentException.class, () -> set.removeRange(10, 1));
+        set.add(1, 15);  // Add some interval first
+        // Half-open intervals: start >= end is treated as empty interval (no-op)
+        set.removeRange(10, 1);  // Should not throw, just ignore empty interval
+        assertEquals(1, set.size()); // Original interval should remain unchanged
     }
 
     @Test
@@ -199,7 +207,7 @@ class IntervalSetTest {
         IntervalSet.Interval<Integer> interval = new IntervalSet.Interval<>(1, 5);
         String repr = interval.toString();
         assertTrue(repr.startsWith("["));
-        assertTrue(repr.endsWith("]"));
+        assertTrue(repr.endsWith(")")); // Half-open: ends with )
         assertTrue(repr.contains("1 – 5"));
     }
 
@@ -223,7 +231,7 @@ class IntervalSetTest {
         assertEquals(1, set.size());
         assertTrue(set.contains(1));
         assertTrue(set.contains(5));
-        assertTrue(set.contains(10));
+        assertFalse(set.contains(10)); // Half-open: 10 is not contained in [1, 10)
     }
 
     @Test
@@ -239,24 +247,24 @@ class IntervalSetTest {
         set.add(1, 10);
         // removal range fully inside existing interval triggers split
         set.removeRange(3, 7);
-        // Expect two intervals: [1,2] and [8,10] (correct boundary behavior)
+        // Expect two intervals: [1,3) and [7,10) (half-open interval behavior)
         assertEquals(2, set.size());
         List<IntervalSet.Interval<Integer>> list = toList(set);
         assertEquals(1, list.get(0).getStart());
-        assertEquals(2, list.get(0).getEnd());
-        assertEquals(8, list.get(1).getStart());
+        assertEquals(3, list.get(0).getEnd()); // Half-open: [1, 3)
+        assertEquals(7, list.get(1).getStart()); // Half-open: [7, 10)
         assertEquals(10, list.get(1).getEnd());
         // Check membership accordingly
-        assertTrue(set.contains(1));
-        assertTrue(set.contains(2));
-        assertFalse(set.contains(3));
+        assertTrue(set.contains(1));   // in [1, 3)
+        assertTrue(set.contains(2));   // in [1, 3)
+        assertFalse(set.contains(3));  // not in [1, 3) - end is exclusive
         assertFalse(set.contains(4));
         assertFalse(set.contains(5));
         assertFalse(set.contains(6));
-        assertFalse(set.contains(7));
-        assertTrue(set.contains(8));
-        assertTrue(set.contains(9));
-        assertTrue(set.contains(10));
+        assertTrue(set.contains(7));   // in [7, 10) - start is inclusive
+        assertTrue(set.contains(8));   // in [7, 10)
+        assertTrue(set.contains(9));   // in [7, 10)
+        assertFalse(set.contains(10)); // not in [7, 10) - end is exclusive
     }
 
     @Test
@@ -266,24 +274,24 @@ class IntervalSetTest {
         set.add(5, 10);
         // removal range overlaps both intervals, triggers loop-based right shard
         set.removeRange(2, 6);
-        // Expect two intervals: [1,1] and [7,10] (correct boundary behavior)
+        // Expect two intervals: [1,2) and [6,10) (half-open interval behavior)
         List<IntervalSet.Interval<Integer>> list = toList(set);
         assertEquals(2, list.size());
         assertEquals(1, list.get(0).getStart());
-        assertEquals(1, list.get(0).getEnd());
-        assertEquals(7, list.get(1).getStart());
+        assertEquals(2, list.get(0).getEnd()); // Half-open: [1, 2)
+        assertEquals(6, list.get(1).getStart()); // Half-open: [6, 10)
         assertEquals(10, list.get(1).getEnd());
         // membership checks
-        assertTrue(set.contains(1));
-        assertFalse(set.contains(2));
+        assertTrue(set.contains(1));   // in [1, 2)
+        assertFalse(set.contains(2));  // not in [1, 2) - end is exclusive
         assertFalse(set.contains(3));
         assertFalse(set.contains(4));
         assertFalse(set.contains(5));
-        assertFalse(set.contains(6));
-        assertTrue(set.contains(7));
-        assertTrue(set.contains(8));
-        assertTrue(set.contains(9));
-        assertTrue(set.contains(10));
+        assertTrue(set.contains(6));   // in [6, 10) - start is inclusive
+        assertTrue(set.contains(7));   // in [6, 10)
+        assertTrue(set.contains(8));   // in [6, 10)
+        assertTrue(set.contains(9));   // in [6, 10)
+        assertFalse(set.contains(10)); // not in [6, 10) - end is exclusive
     }
 
     @Test
@@ -302,15 +310,13 @@ class IntervalSetTest {
         // start boundary
         IntervalSet.Interval<Integer> t1 = set.intervalContaining(1);
         assertEquals(1, t1.getStart()); assertEquals(3, t1.getEnd());
-        // end boundary
-        IntervalSet.Interval<Integer> t2 = set.intervalContaining(3);
-        assertEquals(1, t2.getStart()); assertEquals(3, t2.getEnd());
+        // end boundary - in half-open intervals [1, 3), value 3 is not contained
+        assertNull(set.intervalContaining(3), "Value 3 not contained in half-open interval [1, 3)");
         // inside second interval
         IntervalSet.Interval<Integer> t3 = set.intervalContaining(6);
         assertEquals(5, t3.getStart()); assertEquals(7, t3.getEnd());
-        // exact end
-        IntervalSet.Interval<Integer> t4 = set.intervalContaining(7);
-        assertEquals(5, t4.getStart()); assertEquals(7, t4.getEnd());
+        // exact end - in half-open intervals [5, 7), value 7 is not contained
+        assertNull(set.intervalContaining(7), "Value 7 not contained in half-open interval [5, 7)");
     }
 
     @Test
@@ -321,8 +327,8 @@ class IntervalSetTest {
         set.add(start, end);
         // exactly at start
         assertNotNull(set.intervalContaining(start));
-        // exactly at end
-        assertNotNull(set.intervalContaining(end));
+        // exactly at end - half-open: end is not contained
+        assertNull(set.intervalContaining(end));
         // in between
         assertNotNull(set.intervalContaining(start.plusHours(1)));
         // before start
@@ -422,20 +428,20 @@ class IntervalSetTest {
         // Add interval [1, 10]
         set.add(1, 10);
 
-        // Remove [5, 10] - this should trigger previousValue(5) to create left part [1, 4]
+        // Remove [5, 10) - creates left part [1, 5) in half-open interval system
         set.remove(5, 10);
 
-        // Verify the result: should have one interval [1, 4]
+        // Verify the result: should have one interval [1, 5)
         assertEquals(1, set.size());
         assertTrue(set.contains(1));
         assertTrue(set.contains(4));
-        assertFalse(set.contains(5));
+        assertFalse(set.contains(5)); // 5 not contained in [1, 5)
         assertFalse(set.contains(10));
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<Integer>> intervals = toList(set);
         assertEquals(1, intervals.get(0).getStart());
-        assertEquals(4, intervals.get(0).getEnd()); // This confirms previousValue(5) = 4 was used
+        assertEquals(5, intervals.get(0).getEnd()); // Half-open: end is exclusive
     }
 
     @Test
@@ -444,20 +450,20 @@ class IntervalSetTest {
         // Add interval [100L, 200L]
         set.add(100L, 200L);
 
-        // Remove [150L, 200L] - this should trigger previousValue(150L) to create left part [100L, 149L]
+        // Remove [150L, 200L) - creates left part [100L, 150L) in half-open interval system
         set.remove(150L, 200L);
 
-        // Verify the result: should have one interval [100L, 149L]
+        // Verify the result: should have one interval [100L, 150L)
         assertEquals(1, set.size());
         assertTrue(set.contains(100L));
         assertTrue(set.contains(149L));
-        assertFalse(set.contains(150L));
+        assertFalse(set.contains(150L)); // 150L not contained in [100L, 150L)
         assertFalse(set.contains(200L));
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<Long>> intervals = toList(set);
         assertEquals(100L, intervals.get(0).getStart());
-        assertEquals(149L, intervals.get(0).getEnd()); // This confirms previousValue(150L) = 149L was used
+        assertEquals(150L, intervals.get(0).getEnd()); // Half-open: end is exclusive
     }
 
     @Test
@@ -480,38 +486,38 @@ class IntervalSetTest {
         assertFalse(set.contains(removeStart));
         assertFalse(set.contains(end));
 
-        // Verify the exact interval bounds
+        // Verify the exact interval bounds for half-open intervals
         List<IntervalSet.Interval<ZonedDateTime>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
-        assertEquals(removeStart.minusNanos(1), intervals.get(0).getEnd()); // This confirms previousValue() was used
+        assertEquals(removeStart, intervals.get(0).getEnd()); // Half-open: removing [removeStart, end) leaves [start, removeStart)
     }
 
     @Test
     void testRemoveMiddlePortionTriggersBothPreviousAndNextValue() {
         IntervalSet<Integer> set = new IntervalSet<>();
-        // Add interval [1, 20]
+        // Add interval [1, 20)
         set.add(1, 20);
 
-        // Remove middle portion [8, 12] - this should trigger both previousValue(8) and nextValue(12)
+        // Remove middle portion [8, 12) - in half-open semantics, this leaves [1, 8) and [12, 20)
         set.remove(8, 12);
 
-        // Verify the result: should have two intervals [1, 7] and [13, 20]
+        // Verify the result: should have two intervals [1, 8) and [12, 20)
         assertEquals(2, set.size());
 
         List<IntervalSet.Interval<Integer>> intervals = toList(set);
-        // First interval: [1, 7] (using previousValue(8) = 7)
+        // First interval: [1, 8) - half-open semantics
         assertEquals(1, intervals.get(0).getStart());
-        assertEquals(7, intervals.get(0).getEnd());
+        assertEquals(8, intervals.get(0).getEnd()); // Half-open: [1, 8)
 
-        // Second interval: [13, 20] (using nextValue(12) = 13)
-        assertEquals(13, intervals.get(1).getStart());
+        // Second interval: [12, 20) - half-open semantics
+        assertEquals(12, intervals.get(1).getStart()); // Half-open: [12, 20)
         assertEquals(20, intervals.get(1).getEnd());
 
         // Verify membership
-        assertTrue(set.contains(7));
-        assertFalse(set.contains(8));
-        assertFalse(set.contains(12));
-        assertTrue(set.contains(13));
+        assertTrue(set.contains(7));   // in [1, 8)
+        assertFalse(set.contains(8));  // not in [1, 8) - end is exclusive
+        assertTrue(set.contains(12));  // in [12, 20) - start is inclusive
+        assertTrue(set.contains(13));  // in [12, 20)
     }
 
     @Test
@@ -520,19 +526,19 @@ class IntervalSetTest {
         // Add interval [1, 10]
         set.add(1, 10);
 
-        // Remove [1, 5] - this should trigger nextValue(5) to create right part [6, 10]
+        // Remove [1, 5) - creates right part [5, 10) in half-open interval system
         set.remove(1, 5);
 
-        // Verify the result: should have one interval [6, 10]
+        // Verify the result: should have one interval [5, 10)
         assertEquals(1, set.size());
         assertFalse(set.contains(1));
-        assertFalse(set.contains(5));
+        assertTrue(set.contains(5)); // 5 is contained in [5, 10)
         assertTrue(set.contains(6));
-        assertTrue(set.contains(10));
+        assertFalse(set.contains(10)); // 10 not contained in [5, 10)
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<Integer>> intervals = toList(set);
-        assertEquals(6, intervals.get(0).getStart()); // This confirms nextValue(5) = 6 was used
+        assertEquals(5, intervals.get(0).getStart()); // Half-open: start at removed end boundary
         assertEquals(10, intervals.get(0).getEnd());
     }
 
@@ -542,19 +548,19 @@ class IntervalSetTest {
         // Add interval [100L, 200L]
         set.add(100L, 200L);
 
-        // Remove [100L, 150L] - this should trigger nextValue(150L) to create right part [151L, 200L]
+        // Remove [100L, 150L) - creates right part [150L, 200L) in half-open interval system
         set.remove(100L, 150L);
 
-        // Verify the result: should have one interval [151L, 200L]
+        // Verify the result: should have one interval [150L, 200L)
         assertEquals(1, set.size());
         assertFalse(set.contains(100L));
-        assertFalse(set.contains(150L));
+        assertTrue(set.contains(150L)); // 150L is contained in [150L, 200L)
         assertTrue(set.contains(151L));
-        assertTrue(set.contains(200L));
+        assertFalse(set.contains(200L)); // 200L not contained in [150L, 200L)
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<Long>> intervals = toList(set);
-        assertEquals(151L, intervals.get(0).getStart()); // This confirms nextValue(150L) = 151L was used
+        assertEquals(150L, intervals.get(0).getStart()); // Half-open: start at removed end boundary
         assertEquals(200L, intervals.get(0).getEnd());
     }
 
@@ -565,46 +571,44 @@ class IntervalSetTest {
         ZonedDateTime end = start.plusHours(2);
         ZonedDateTime removeEnd = start.plusHours(1);
 
-        // Add interval [start, end]
+        // Add interval [start, end)
         set.add(start, end);
 
-        // Remove [start, removeEnd] - this should trigger nextValue(removeEnd)
+        // Remove [start, removeEnd) - in half-open semantics, this leaves [removeEnd, end)
         set.remove(start, removeEnd);
 
-        // Verify the result: should have one interval [removeEnd + 1 nano, end]
+        // Verify the result: should have one interval [removeEnd, end)
         assertEquals(1, set.size());
         assertFalse(set.contains(start));
-        assertFalse(set.contains(removeEnd));
-        assertTrue(set.contains(removeEnd.plusNanos(1)));
-        assertTrue(set.contains(end));
+        assertTrue(set.contains(removeEnd)); // removeEnd should be included in remaining interval
+        assertFalse(set.contains(end)); // end is exclusive
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<ZonedDateTime>> intervals = toList(set);
-        assertEquals(removeEnd.plusNanos(1), intervals.get(0).getStart()); // This confirms nextValue() was used
+        assertEquals(removeEnd, intervals.get(0).getStart()); // Half-open: remaining interval starts at removeEnd
         assertEquals(end, intervals.get(0).getEnd());
     }
 
     @Test
     void testRemoveStartPortionTriggersNextValueOnly() {
         IntervalSet<Integer> set = new IntervalSet<>();
-        // Add interval [10, 30]
+        // Add interval [10, 30)
         set.add(10, 30);
 
-        // Remove start portion [10, 20] - this should trigger only nextValue(20) for right part [21, 30]
+        // Remove start portion [10, 20) - in half-open semantics, this leaves [20, 30)
         set.remove(10, 20);
 
-        // Verify the result: should have one interval [21, 30]
+        // Verify the result: should have one interval [20, 30)
         assertEquals(1, set.size());
 
         List<IntervalSet.Interval<Integer>> intervals = toList(set);
-        assertEquals(21, intervals.get(0).getStart()); // This confirms nextValue(20) = 21 was used
+        assertEquals(20, intervals.get(0).getStart()); // Half-open: remaining interval starts at 20
         assertEquals(30, intervals.get(0).getEnd());
 
         // Verify membership
         assertFalse(set.contains(10));
-        assertFalse(set.contains(20));
-        assertTrue(set.contains(21));
-        assertTrue(set.contains(30));
+        assertTrue(set.contains(20)); // 20 should be included in the remaining interval [20, 30)
+        assertFalse(set.contains(30)); // 30 is exclusive
     }
 
     @Test
@@ -617,20 +621,20 @@ class IntervalSetTest {
         // Add interval [100, 200]
         set.add(start, end);
 
-        // Remove [150, 200] - this should trigger previousValue(150) to create left part [100, 149]
+        // Remove [150, 200) - creates left part [100, 150) in half-open interval system
         set.remove(removeStart, end);
 
-        // Verify the result: should have one interval [100, 149]
+        // Verify the result: should have one interval [100, 150)
         assertEquals(1, set.size());
         assertTrue(set.contains(start));
         assertTrue(set.contains(BigInteger.valueOf(149)));
-        assertFalse(set.contains(removeStart));
+        assertFalse(set.contains(removeStart)); // 150 not contained in [100, 150)
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<BigInteger>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
-        assertEquals(BigInteger.valueOf(149), intervals.get(0).getEnd()); // This confirms previousValue(150) = 149
+        assertEquals(removeStart, intervals.get(0).getEnd()); // Half-open: end is exclusive
     }
 
     @Test
@@ -643,19 +647,19 @@ class IntervalSetTest {
         // Add interval [100, 200]
         set.add(start, end);
 
-        // Remove [100, 150] - this should trigger nextValue(150) to create right part [151, 200]
+        // Remove [100, 150) - creates right part [150, 200) in half-open interval system
         set.remove(start, removeEnd);
 
-        // Verify the result: should have one interval [151, 200]
+        // Verify the result: should have one interval [150, 200)
         assertEquals(1, set.size());
         assertFalse(set.contains(start));
-        assertFalse(set.contains(removeEnd));
+        assertTrue(set.contains(removeEnd)); // 150 is contained in [150, 200)
         assertTrue(set.contains(BigInteger.valueOf(151)));
-        assertTrue(set.contains(end));
+        assertFalse(set.contains(end)); // 200 not contained in [150, 200)
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<BigInteger>> intervals = toList(set);
-        assertEquals(BigInteger.valueOf(151), intervals.get(0).getStart()); // This confirms nextValue(150) = 151
+        assertEquals(removeEnd, intervals.get(0).getStart()); // Half-open: start at removed end boundary
         assertEquals(end, intervals.get(0).getEnd());
     }
 
@@ -669,20 +673,20 @@ class IntervalSetTest {
         // Add interval [10.00, 20.00]
         set.add(start, end);
 
-        // Remove [15.00, 20.00] - this should trigger previousValue(15.00) = 14.99 (scale 2)
+        // Remove [15.00, 20.00) - creates left part [10.00, 15.00) in half-open interval system
         set.remove(removeStart, end);
 
-        // Verify the result: should have one interval [10.00, 14.99]
+        // Verify the result: should have one interval [10.00, 15.00)
         assertEquals(1, set.size());
         assertTrue(set.contains(start));
         assertTrue(set.contains(new BigDecimal("14.99")));
-        assertFalse(set.contains(removeStart));
+        assertFalse(set.contains(removeStart)); // 15.00 not contained in [10.00, 15.00)
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<BigDecimal>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
-        assertEquals(new BigDecimal("14.99"), intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd()); // Half-open: end is exclusive
     }
 
     @Test
@@ -695,19 +699,19 @@ class IntervalSetTest {
         // Add interval [10.000, 20.000]
         set.add(start, end);
 
-        // Remove [10.000, 15.000] - this should trigger nextValue(15.000) = 15.001 (scale 3)
+        // Remove [10.000, 15.000) - creates right part [15.000, 20.000) in half-open interval system
         set.remove(start, removeEnd);
 
-        // Verify the result: should have one interval [15.001, 20.000]
+        // Verify the result: should have one interval [15.000, 20.000)
         assertEquals(1, set.size());
         assertFalse(set.contains(start));
-        assertFalse(set.contains(removeEnd));
+        assertTrue(set.contains(removeEnd)); // 15.000 is contained in [15.000, 20.000)
         assertTrue(set.contains(new BigDecimal("15.001")));
-        assertTrue(set.contains(end));
+        assertFalse(set.contains(end)); // 20.000 not contained in [15.000, 20.000)
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<BigDecimal>> intervals = toList(set);
-        assertEquals(new BigDecimal("15.001"), intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart()); // Half-open: start at removed end boundary
         assertEquals(end, intervals.get(0).getEnd());
     }
 
@@ -724,17 +728,17 @@ class IntervalSetTest {
         // Remove [15.0, 20.0] - this should trigger previousValue(15.0) using Math.nextDown()
         set.remove(removeStart, end);
 
-        // Verify the result: should have one interval [10.0, nextDown(15.0)]
+        // Verify the result: should have one interval [10.0, 15.0) with half-open intervals
         assertEquals(1, set.size());
         assertTrue(set.contains(start));
-        assertTrue(set.contains(Math.nextDown(removeStart)));
-        assertFalse(set.contains(removeStart));
+        assertTrue(set.contains(Math.nextDown(removeStart))); // Still contained since end is exclusive
+        assertFalse(set.contains(removeStart)); // 15.0 not contained in [10.0, 15.0)
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<Double>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
-        assertEquals(Math.nextDown(removeStart), intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd()); // Half-open: end is exclusive
     }
 
     @Test
@@ -744,22 +748,21 @@ class IntervalSetTest {
         Double end = 20.0;
         Double removeEnd = 15.0;
 
-        // Add interval [10.0, 20.0]
+        // Add interval [10.0, 20.0)
         set.add(start, end);
 
-        // Remove [10.0, 15.0] - this should trigger nextValue(15.0) using Math.nextUp()
+        // Remove [10.0, 15.0) - in half-open semantics, this leaves [15.0, 20.0)
         set.remove(start, removeEnd);
 
-        // Verify the result: should have one interval [nextUp(15.0), 20.0]
+        // Verify the result: should have one interval [15.0, 20.0)
         assertEquals(1, set.size());
-        assertFalse(set.contains(start));
-        assertFalse(set.contains(removeEnd));
-        assertTrue(set.contains(Math.nextUp(removeEnd)));
-        assertTrue(set.contains(end));
+        assertFalse(set.contains(start)); // 10.0 was removed
+        assertTrue(set.contains(removeEnd)); // 15.0 should be included in the remaining interval [15.0, 20.0)
+        assertFalse(set.contains(end)); // 20.0 is not included since end is exclusive
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<Double>> intervals = toList(set);
-        assertEquals(Math.nextUp(removeEnd), intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart()); // Half-open: remaining interval starts at 15.0
         assertEquals(end, intervals.get(0).getEnd());
     }
 
@@ -773,20 +776,20 @@ class IntervalSetTest {
         // Add interval [10.0f, 20.0f]
         set.add(start, end);
 
-        // Remove [15.0f, 20.0f] - this should trigger previousValue(15.0f) using Math.nextDown()
+        // Remove [15.0f, 20.0f) - creates left part [10.0f, 15.0f) in half-open interval system
         set.remove(removeStart, end);
 
-        // Verify the result: should have one interval [10.0f, nextDown(15.0f)]
+        // Verify the result: should have one interval [10.0f, 15.0f)
         assertEquals(1, set.size());
         assertTrue(set.contains(start));
-        assertTrue(set.contains(Math.nextDown(removeStart)));
-        assertFalse(set.contains(removeStart));
+        assertTrue(set.contains(Math.nextDown(removeStart))); // Still contained since end is exclusive
+        assertFalse(set.contains(removeStart)); // 15.0f not contained in [10.0f, 15.0f)
         assertFalse(set.contains(end));
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<Float>> intervals = toList(set);
         assertEquals(start, intervals.get(0).getStart());
-        assertEquals(Math.nextDown(removeStart), intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd()); // Half-open: end is exclusive
     }
 
     @Test
@@ -799,19 +802,19 @@ class IntervalSetTest {
         // Add interval [10.0f, 20.0f]
         set.add(start, end);
 
-        // Remove [10.0f, 15.0f] - this should trigger nextValue(15.0f) using Math.nextUp()
+        // Remove [10.0f, 15.0f) - creates right part [15.0f, 20.0f) in half-open interval system
         set.remove(start, removeEnd);
 
-        // Verify the result: should have one interval [nextUp(15.0f), 20.0f]
+        // Verify the result: should have one interval [15.0f, 20.0f)
         assertEquals(1, set.size());
         assertFalse(set.contains(start));
-        assertFalse(set.contains(removeEnd));
+        assertTrue(set.contains(removeEnd)); // 15.0f is contained in [15.0f, 20.0f)
         assertTrue(set.contains(Math.nextUp(removeEnd)));
-        assertTrue(set.contains(end));
+        assertFalse(set.contains(end)); // 20.0f not contained in [15.0f, 20.0f)
 
         // Verify the exact interval bounds
         List<IntervalSet.Interval<Float>> intervals = toList(set);
-        assertEquals(Math.nextUp(removeEnd), intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart()); // Half-open: start at removed end boundary
         assertEquals(end, intervals.get(0).getEnd());
     }
 
@@ -939,8 +942,8 @@ class IntervalSetTest {
         assertEquals(2, set.size());
         
         List<IntervalSet.Interval<Integer>> intervals = toList(set);
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 14))); // left part
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(21, 30))); // right part
+        assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 15))); // Half-open: [10, 15)
+        assertTrue(intervals.contains(new IntervalSet.Interval<>(20, 30))); // Half-open: [20, 30)
     }
 
 
@@ -954,8 +957,8 @@ class IntervalSetTest {
         assertEquals(2, set.size());
         
         List<IntervalSet.Interval<Integer>> intervals = toList(set);
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 19)));
-        assertTrue(intervals.contains(new IntervalSet.Interval<>(31, 50)));
+        assertTrue(intervals.contains(new IntervalSet.Interval<>(10, 20))); // Half-open: [10, 20)
+        assertTrue(intervals.contains(new IntervalSet.Interval<>(30, 50))); // Half-open: [30, 50)
     }
 
 
@@ -1334,14 +1337,14 @@ class IntervalSetTest {
     @Test
     void testRemoveIntervalsInKeyRange() {
         IntervalSet<Integer> set = new IntervalSet<>();
-        set.add(1, 1);
-        set.add(3, 3);
-        set.add(5, 5);
-        set.add(7, 7);
+        set.add(1, 2);  // [1, 2)
+        set.add(3, 4);  // [3, 4)
+        set.add(5, 6);  // [5, 6)
+        set.add(7, 8);  // [7, 8)
         // remove intervals with start keys in [3,7]
         int count = set.removeIntervalsInKeyRange(3, 7);
-        assertEquals(3, count);
-        assertEquals(1, set.size());
+        assertEquals(3, count); // Should remove intervals starting at 3, 5, 7
+        assertEquals(1, set.size()); // Only [1,2) should remain
         assertTrue(set.contains(1));
         assertFalse(set.contains(3));
         assertFalse(set.contains(5));
@@ -1368,7 +1371,7 @@ class IntervalSetTest {
         List<IntervalSet.Interval<Byte>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals((byte)10, intervals.get(0).getStart());
-        assertEquals((byte)14, intervals.get(0).getEnd());
+        assertEquals((byte)15, intervals.get(0).getEnd()); // Half-open: end is exclusive
     }
 
     @Test
@@ -1378,7 +1381,7 @@ class IntervalSetTest {
         set.remove((byte)10, (byte)15);
         List<IntervalSet.Interval<Byte>> intervals = toList(set);
         assertEquals(1, intervals.size());
-        assertEquals((byte)16, intervals.get(0).getStart());
+        assertEquals((byte)15, intervals.get(0).getStart()); // Half-open: start at removed end boundary
         assertEquals((byte)20, intervals.get(0).getEnd());
     }
 
@@ -1390,7 +1393,7 @@ class IntervalSetTest {
         List<IntervalSet.Interval<Short>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals((short)100, intervals.get(0).getStart());
-        assertEquals((short)149, intervals.get(0).getEnd());
+        assertEquals((short)150, intervals.get(0).getEnd()); // Half-open: end is exclusive
     }
 
     @Test
@@ -1400,7 +1403,7 @@ class IntervalSetTest {
         set.remove((short)100, (short)150);
         List<IntervalSet.Interval<Short>> intervals = toList(set);
         assertEquals(1, intervals.size());
-        assertEquals((short)151, intervals.get(0).getStart());
+        assertEquals((short)150, intervals.get(0).getStart()); // Half-open: start at removed end boundary
         assertEquals((short)200, intervals.get(0).getEnd());
     }
 
@@ -1418,8 +1421,8 @@ class IntervalSetTest {
         List<IntervalSet.Interval<Byte>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals((byte)-100, intervals.get(0).getStart());
-        assertEquals((byte)-51, intervals.get(0).getEnd());
-        assertEquals((byte)31, intervals.get(1).getStart());
+        assertEquals((byte)-50, intervals.get(0).getEnd()); // Half-open: [-100, -50)
+        assertEquals((byte)30, intervals.get(1).getStart()); // Half-open: [30, 50)
         assertEquals((byte)50, intervals.get(1).getEnd());
     }
 
@@ -1437,8 +1440,8 @@ class IntervalSetTest {
         List<IntervalSet.Interval<Byte>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals((byte)-50, intervals.get(0).getStart());
-        assertEquals((byte)-31, intervals.get(0).getEnd());
-        assertEquals((byte)81, intervals.get(1).getStart());
+        assertEquals((byte)-30, intervals.get(0).getEnd()); // Half-open: [-50, -30)
+        assertEquals((byte)80, intervals.get(1).getStart()); // Half-open: [80, 100)
         assertEquals((byte)100, intervals.get(1).getEnd());
     }
 
@@ -1456,8 +1459,8 @@ class IntervalSetTest {
         List<IntervalSet.Interval<Short>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals((short)-30000, intervals.get(0).getStart());
-        assertEquals((short)-20001, intervals.get(0).getEnd());
-        assertEquals((short)501, intervals.get(1).getStart());
+        assertEquals((short)-20000, intervals.get(0).getEnd()); // Half-open: [-30000, -20000)
+        assertEquals((short)500, intervals.get(1).getStart()); // Half-open: [500, 1000)
         assertEquals((short)1000, intervals.get(1).getEnd());
     }
 
@@ -1469,14 +1472,14 @@ class IntervalSetTest {
         IntervalSet<Short> set = new IntervalSet<>();
         set.add((short)-1000, (short)30000);
         
-        // This remove operation should work without overflow
+        // This remove operation works with half-open intervals
         set.remove((short)-500, (short)20000);
         
         List<IntervalSet.Interval<Short>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals((short)-1000, intervals.get(0).getStart());
-        assertEquals((short)-501, intervals.get(0).getEnd());
-        assertEquals((short)20001, intervals.get(1).getStart());
+        assertEquals((short)-500, intervals.get(0).getEnd()); // Half-open: end is exclusive
+        assertEquals((short)20000, intervals.get(1).getStart()); // Half-open: start at removed end boundary
         assertEquals((short)30000, intervals.get(1).getEnd());
     }
 
@@ -1513,17 +1516,18 @@ class IntervalSetTest {
             return s.substring(0, s.length() - 1) + (char)(c + 1);
         };
         
-        IntervalSet<String> set = new IntervalSet<>(prevFunc, nextFunc);
+        IntervalSet<String> set = new IntervalSet<>();
         set.add("cat", "dog");
         
         // Remove middle portion to trigger splitting
-        set.remove("cow", "cow");
+        // In half-open intervals, to remove just "cow", we remove ["cow", "cox")
+        set.remove("cow", "cox");
         
         List<IntervalSet.Interval<String>> intervals = toList(set);
         assertEquals(2, intervals.size());
         assertEquals("cat", intervals.get(0).getStart());
-        assertEquals("cov", intervals.get(0).getEnd()); // previousValue("cow") = "cov"
-        assertEquals("cox", intervals.get(1).getStart()); // nextValue("cow") = "cox"
+        assertEquals("cow", intervals.get(0).getEnd()); // Half-open: includes up to but not including "cow"
+        assertEquals("cox", intervals.get(1).getStart()); // Starts after the removed portion
         assertEquals("dog", intervals.get(1).getEnd());
     }
 
@@ -1545,11 +1549,11 @@ class IntervalSetTest {
     @Test
     void testDefaultTotalDurationNumeric() {
         IntervalSet<Integer> set = new IntervalSet<>();
-        set.add(1, 5);   // duration: 5 nanos
-        set.add(10, 12); // duration: 3 nanos
+        set.add(1, 5);   // duration: 4 nanos (5-1 in half-open interval)
+        set.add(10, 12); // duration: 2 nanos (12-10 in half-open interval)
         
         Duration total = set.totalDuration();
-        assertEquals(Duration.ofNanos(8), total); // 5 + 3 nanos
+        assertEquals(Duration.ofNanos(6), total); // 4 + 2 nanos
     }
 
     @Test
@@ -1619,9 +1623,9 @@ class IntervalSetTest {
         List<IntervalSet.Interval<Integer>> intervals = toList(difference);
         assertEquals(2, intervals.size());
         assertEquals(1, intervals.get(0).getStart());
-        assertEquals(4, intervals.get(0).getEnd()); // [1,10] minus [5,15] = [1,4]
+        assertEquals(5, intervals.get(0).getEnd()); // Half-open: [1,10) minus [5,15) = [1,5)
         assertEquals(20, intervals.get(1).getStart());
-        assertEquals(30, intervals.get(1).getEnd()); // [20,30] unaffected
+        assertEquals(30, intervals.get(1).getEnd()); // Half-open: [20,30) unaffected
     }
 
     @Test
@@ -1679,8 +1683,8 @@ class IntervalSetTest {
         set.add(10, 15);
         
         String str = set.toString();
-        assertTrue(str.contains("[1-5]"));
-        assertTrue(str.contains("[10-15]"));
+        assertTrue(str.contains("[1-5)"));
+        assertTrue(str.contains("[10-15)"));
         assertTrue(str.startsWith("{"));
         assertTrue(str.endsWith("}"));
     }
@@ -1693,7 +1697,7 @@ class IntervalSetTest {
         List<IntervalSet.Interval<Character>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(Character.valueOf('a'), intervals.get(0).getStart());
-        assertEquals(Character.valueOf((char)('m' - 1)), intervals.get(0).getEnd());
+        assertEquals(Character.valueOf('m'), intervals.get(0).getEnd()); // Half-open: ['a', 'm')
     }
 
     @Test
@@ -1703,7 +1707,7 @@ class IntervalSetTest {
         set.remove('a', 'm');
         List<IntervalSet.Interval<Character>> intervals = toList(set);
         assertEquals(1, intervals.size());
-        assertEquals(Character.valueOf((char)('m' + 1)), intervals.get(0).getStart());
+        assertEquals(Character.valueOf('m'), intervals.get(0).getStart()); // Half-open: start at removed end boundary
         assertEquals(Character.valueOf('z'), intervals.get(0).getEnd());
     }
 
@@ -1716,9 +1720,9 @@ class IntervalSetTest {
         IntervalSet<Date> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(removeStart, end);
-        Date prev = new Date(removeStart.getTime() - 1);
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
         List<IntervalSet.Interval<Date>> intervals = toList(set);
-        assertEquals(prev, intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd()); // Half-open: ends at removeStart
     }
 
     @Test
@@ -1730,9 +1734,9 @@ class IntervalSetTest {
         IntervalSet<Date> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        Date next = new Date(removeEnd.getTime() + 1);
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<Date>> intervals = toList(set);
-        assertEquals(next, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart()); // Half-open: starts at removeEnd
     }
 
     @Test
@@ -1745,14 +1749,11 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
         
-        // previousValue(now + 1 day) = now + 1 day - 1 day = now
-        // So left boundary should be exactly 'start' 
-        java.sql.Date expectedEnd = new java.sql.Date(removeStart.getTime() - 86400000L);
-        
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
         List<IntervalSet.Interval<java.sql.Date>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(start, intervals.get(0).getStart());
-        assertEquals(expectedEnd, intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd()); // Half-open: ends at removeStart
     }
 
     @Test
@@ -1765,13 +1766,10 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         
-        // nextValue(now + 1 day) = now + 1 day + 1 day = now + 2 days
-        // So right boundary should start at 'end'
-        java.sql.Date expectedStart = new java.sql.Date(removeEnd.getTime() + 86400000L);
-        
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<java.sql.Date>> intervals = toList(set);
         assertEquals(1, intervals.size());
-        assertEquals(expectedStart, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart()); // Half-open: starts at removeEnd
         assertEquals(end, intervals.get(0).getEnd());
     }
 
@@ -1787,10 +1785,9 @@ class IntervalSetTest {
         IntervalSet<Timestamp> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(removeStart, end);
-        Timestamp prev = new Timestamp(removeStart.getTime());
-        prev.setNanos(removeStart.getNanos() - 1);
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
         List<IntervalSet.Interval<Timestamp>> intervals = toList(set);
-        assertEquals(prev, intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd());
     }
 
     @Test
@@ -1805,11 +1802,10 @@ class IntervalSetTest {
         IntervalSet<Timestamp> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        Timestamp expected = new Timestamp(removeEnd.getTime());
-        expected.setNanos(removeEnd.getNanos() + 1); // Should be 500000001
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<Timestamp>> intervals = toList(set);
         Timestamp actualStart = intervals.get(0).getStart();
-        assertEquals(expected, actualStart);
+        assertEquals(removeEnd, actualStart);
     }
 
     @Test
@@ -1820,9 +1816,9 @@ class IntervalSetTest {
         IntervalSet<Instant> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(removeStart, end);
-        Instant prev = removeStart.minusNanos(1);
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
         List<IntervalSet.Interval<Instant>> intervals = toList(set);
-        assertEquals(prev, intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd());
     }
 
     @Test
@@ -1833,9 +1829,9 @@ class IntervalSetTest {
         IntervalSet<Instant> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        Instant next = removeEnd.plusNanos(1);
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<Instant>> intervals = toList(set);
-        assertEquals(next, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart());
     }
 
     @Test
@@ -1846,9 +1842,9 @@ class IntervalSetTest {
         IntervalSet<LocalDate> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(removeStart, end);
-        LocalDate prev = removeStart.minusDays(1);
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
         List<IntervalSet.Interval<LocalDate>> intervals = toList(set);
-        assertEquals(prev, intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd());
     }
 
     @Test
@@ -1859,9 +1855,9 @@ class IntervalSetTest {
         IntervalSet<LocalDate> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        LocalDate next = removeEnd.plusDays(1);
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<LocalDate>> intervals = toList(set);
-        assertEquals(next, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart());
     }
 
     @Test
@@ -1872,9 +1868,9 @@ class IntervalSetTest {
         IntervalSet<LocalTime> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(removeStart, end);
-        LocalTime prev = removeStart.minusNanos(1);
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
         List<IntervalSet.Interval<LocalTime>> intervals = toList(set);
-        assertEquals(prev, intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd());
     }
 
     @Test
@@ -1885,9 +1881,9 @@ class IntervalSetTest {
         IntervalSet<LocalTime> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        LocalTime next = removeEnd.plusNanos(1);
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<LocalTime>> intervals = toList(set);
-        assertEquals(next, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart());
     }
 
     @Test
@@ -1898,9 +1894,9 @@ class IntervalSetTest {
         IntervalSet<LocalDateTime> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(removeStart, end);
-        LocalDateTime prev = removeStart.minusNanos(1);
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
         List<IntervalSet.Interval<LocalDateTime>> intervals = toList(set);
-        assertEquals(prev, intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd());
     }
 
     @Test
@@ -1911,9 +1907,9 @@ class IntervalSetTest {
         IntervalSet<LocalDateTime> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        LocalDateTime next = removeEnd.plusNanos(1);
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<LocalDateTime>> intervals = toList(set);
-        assertEquals(next, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart());
     }
 
     @Test
@@ -1924,9 +1920,9 @@ class IntervalSetTest {
         IntervalSet<OffsetDateTime> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(removeStart, end);
-        OffsetDateTime prev = removeStart.minusNanos(1);
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
         List<IntervalSet.Interval<OffsetDateTime>> intervals = toList(set);
-        assertEquals(prev, intervals.get(0).getEnd());
+        assertEquals(removeStart, intervals.get(0).getEnd());
     }
 
     @Test
@@ -1937,9 +1933,9 @@ class IntervalSetTest {
         IntervalSet<OffsetDateTime> set = new IntervalSet<>();
         set.add(start, end);
         set.remove(start, removeEnd);
-        OffsetDateTime next = removeEnd.plusNanos(1);
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<OffsetDateTime>> intervals = toList(set);
-        assertEquals(next, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart());
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -1957,11 +1953,11 @@ class IntervalSetTest {
         Timestamp end = new Timestamp(now + 2000);
         end.setNanos(200000000); // 200 million nanos
 
-        // Test basic interval operations
+        // Test basic interval operations - half-open interval [start, end)
         set.add(start, end);
         assertEquals(1, set.size());
         assertTrue(set.contains(start));
-        assertTrue(set.contains(end));
+        assertFalse(set.contains(end)); // Half-open: end is not included in [start, end)
 
         // Test contains with timestamp in between
         Timestamp middle = new Timestamp(now + 1000);
@@ -1991,9 +1987,9 @@ class IntervalSetTest {
 
         set.add(t1, t2);
 
-        // Test nano precision boundaries
+        // Test nano precision boundaries - half-open interval [t1, t2)
         assertTrue(set.contains(t1));
-        assertTrue(set.contains(t2));
+        assertFalse(set.contains(t2)); // Half-open: t2 is not included in [t1, t2)
 
         // Test interval splitting with nano precision
         Timestamp removeStart = new Timestamp(baseTime + 1);
@@ -2005,10 +2001,8 @@ class IntervalSetTest {
         assertEquals(1, intervals.size());
         assertEquals(t1, intervals.get(0).getStart());
 
-        // Should end at removeStart - 1 nano
-        Timestamp expectedEnd = new Timestamp(removeStart.getTime());
-        expectedEnd.setNanos(removeStart.getNanos() - 1);
-        assertEquals(expectedEnd, intervals.get(0).getEnd());
+        // Half-open: removing [removeStart, t2) from [t1, t2) leaves [t1, removeStart)
+        assertEquals(removeStart, intervals.get(0).getEnd());
     }
 
     @Test
@@ -2018,11 +2012,11 @@ class IntervalSetTest {
         OffsetTime start = OffsetTime.of(10, 0, 0, 0, java.time.ZoneOffset.UTC);
         OffsetTime end = start.plusHours(2);
 
-        // Test basic interval operations
+        // Test basic interval operations - half-open interval [start, end)
         set.add(start, end);
         assertEquals(1, set.size());
         assertTrue(set.contains(start));
-        assertTrue(set.contains(end));
+        assertFalse(set.contains(end)); // Half-open: end is not included in [start, end)
 
         // Test contains with time in between
         OffsetTime middle = start.plusHours(1);
@@ -2045,9 +2039,9 @@ class IntervalSetTest {
 
         set.add(start, end);
 
-        // Test nano precision boundaries
+        // Test nano precision boundaries - half-open interval [start, end)
         assertTrue(set.contains(start));
-        assertTrue(set.contains(end));
+        assertFalse(set.contains(end)); // Half-open: end is not included in [start, end)
 
         // Test one nano before start
         OffsetTime justBefore = start.minusNanos(1);
@@ -2073,9 +2067,8 @@ class IntervalSetTest {
         assertEquals(1, intervals.size());
         assertEquals(start, intervals.get(0).getStart());
 
-        // Should end at removeStart - 1 nano
-        OffsetTime expectedEnd = removeStart.minusNanos(1);
-        assertEquals(expectedEnd, intervals.get(0).getEnd());
+        // Half-open: removing [removeStart, end) from [start, end) leaves [start, removeStart)
+        assertEquals(removeStart, intervals.get(0).getEnd());
     }
 
     @Test
@@ -2092,9 +2085,9 @@ class IntervalSetTest {
         Timestamp middleTime = Timestamp.valueOf("2024-01-01 13:00:00.555555555");
         assertTrue(set.contains(middleTime));
 
-        // Test exact boundaries
+        // Test exact boundaries - half-open interval [utcTime, laterTime)
         assertTrue(set.contains(utcTime));
-        assertTrue(set.contains(laterTime));
+        assertFalse(set.contains(laterTime)); // Half-open: laterTime is not included in [utcTime, laterTime)
     }
 
     @Test
@@ -2111,9 +2104,9 @@ class IntervalSetTest {
         OffsetTime middleTime = OffsetTime.of(13, 0, 0, 0, java.time.ZoneOffset.of("+02:00"));
         assertTrue(set.contains(middleTime));
 
-        // Test boundaries
+        // Test boundaries - half-open interval [time1, time2)
         assertTrue(set.contains(time1));
-        assertTrue(set.contains(time2));
+        assertFalse(set.contains(time2)); // Half-open: time2 is not included in [time1, time2)
     }
 
     @Test
@@ -2178,10 +2171,10 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         
-        OffsetTime expectedStart = removeEnd.plusNanos(1); // nextValue adds 1 nano
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<OffsetTime>> intervals = toList(set);
         assertEquals(1, intervals.size());
-        assertEquals(expectedStart, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart());
         assertEquals(end, intervals.get(0).getEnd());
     }
 
@@ -2194,10 +2187,10 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(start, removeEnd);
         
-        Duration expectedStart = removeEnd.plusNanos(1); // nextValue adds 1 nano
+        // Half-open: removing [start, removeEnd) from [start, end) leaves [removeEnd, end)
         List<IntervalSet.Interval<Duration>> intervals = toList(set);
         assertEquals(1, intervals.size());
-        assertEquals(expectedStart, intervals.get(0).getStart());
+        assertEquals(removeEnd, intervals.get(0).getStart());
         assertEquals(end, intervals.get(0).getEnd());
     }
 
@@ -2210,7 +2203,7 @@ class IntervalSetTest {
         set.add(start, end);
         set.remove(removeStart, end);
         
-        Duration expectedEnd = removeStart.minusNanos(1); // previousValue subtracts 1 nano
+        Duration expectedEnd = removeStart; // Half-open intervals: end is exclusive
         List<IntervalSet.Interval<Duration>> intervals = toList(set);
         assertEquals(1, intervals.size());
         assertEquals(start, intervals.get(0).getStart());
@@ -2244,10 +2237,10 @@ class IntervalSetTest {
             return Letter.values()[ordinal + 1];
         };
         
-        IntervalSet<Letter> set = new IntervalSet<>(previousFunction, nextFunction);
+        IntervalSet<Letter> set = new IntervalSet<>();
         
-        // Add range D-G
-        set.add(Letter.D, Letter.G);
+        // Add range D-G (half-open: includes D,E,F but not G, so we need D to H)
+        set.add(Letter.D, Letter.H);
         assertEquals(1, set.size());
         assertTrue(set.contains(Letter.D));
         assertTrue(set.contains(Letter.E));
@@ -2256,88 +2249,72 @@ class IntervalSetTest {
         assertFalse(set.contains(Letter.C));
         assertFalse(set.contains(Letter.H));
         
-        // Add before (B-C) - should create separate interval since B-C and D-G don't touch
+        // Add before (B-C) - should create separate interval since [B,C) and [D,H) don't touch
         set.add(Letter.B, Letter.C);
         assertEquals(2, set.size());
         List<IntervalSet.Interval<Letter>> intervals = toList(set);
         assertEquals(Letter.B, intervals.get(0).getStart());
         assertEquals(Letter.C, intervals.get(0).getEnd());
         assertEquals(Letter.D, intervals.get(1).getStart());
-        assertEquals(Letter.G, intervals.get(1).getEnd());
+        assertEquals(Letter.H, intervals.get(1).getEnd());
         
         // Now add the gap to connect them
         set.add(Letter.C, Letter.D); // This should merge all three into one interval
         assertEquals(1, set.size());
         intervals = toList(set);
         assertEquals(Letter.B, intervals.get(0).getStart());
-        assertEquals(Letter.G, intervals.get(0).getEnd());
+        assertEquals(Letter.H, intervals.get(0).getEnd());
         
-        // Add after (H-J) - should create separate interval
+        // Add after (H-J) - should merge with [B,H) to create [B,J) since they're adjacent
         set.add(Letter.H, Letter.J);
-        assertEquals(2, set.size());
+        assertEquals(1, set.size()); // Half-open: [B,H) and [H,J) merge to [B,J)
         intervals = toList(set);
         assertEquals(Letter.B, intervals.get(0).getStart());
-        assertEquals(Letter.G, intervals.get(0).getEnd());
-        assertEquals(Letter.H, intervals.get(1).getStart());
-        assertEquals(Letter.J, intervals.get(1).getEnd());
+        assertEquals(Letter.J, intervals.get(0).getEnd()); // Half-open: merged to [B,J)
         
-        // Add at front (A-A) - should create separate interval since A and B-G don't touch  
+        // Add at front (A-A) - empty interval should be ignored
         set.add(Letter.A, Letter.A);
-        assertEquals(3, set.size());
+        assertEquals(1, set.size()); // Half-open: [A,A) is empty, should be ignored
         intervals = toList(set);
-        assertEquals(Letter.A, intervals.get(0).getStart());
-        assertEquals(Letter.A, intervals.get(0).getEnd());
-        assertEquals(Letter.B, intervals.get(1).getStart());
-        assertEquals(Letter.G, intervals.get(1).getEnd());
-        assertEquals(Letter.H, intervals.get(2).getStart());
-        assertEquals(Letter.J, intervals.get(2).getEnd());
+        assertEquals(Letter.B, intervals.get(0).getStart());
+        assertEquals(Letter.J, intervals.get(0).getEnd()); // Still have merged [B,J)
         
-        // Connect A to B-G by adding A-B overlap
+        // Connect A to B-J by adding A-B - should merge to [A,J) since [A,B) is adjacent to [B,J)
         set.add(Letter.A, Letter.B);
-        assertEquals(2, set.size());
+        assertEquals(1, set.size()); // Half-open: [A,B) and [B,J) merge to [A,J)
         intervals = toList(set);
         assertEquals(Letter.A, intervals.get(0).getStart());
-        assertEquals(Letter.G, intervals.get(0).getEnd());
-        assertEquals(Letter.H, intervals.get(1).getStart());
-        assertEquals(Letter.J, intervals.get(1).getEnd());
+        assertEquals(Letter.J, intervals.get(0).getEnd()); // Half-open: merged to [A,J)
         
-        // Add at end (K-Z) - should create separate interval since K-Z and H-J don't touch
+        // Add at end (K-Z) - should create separate interval since [A,J) and [K,Z) don't touch
         set.add(Letter.K, Letter.Z);
-        assertEquals(3, set.size());
+        assertEquals(2, set.size()); // Half-open: now have [A,J) and [K,Z)
         intervals = toList(set);
         assertEquals(Letter.A, intervals.get(0).getStart());
-        assertEquals(Letter.G, intervals.get(0).getEnd());
-        assertEquals(Letter.H, intervals.get(1).getStart());
-        assertEquals(Letter.J, intervals.get(1).getEnd());
-        assertEquals(Letter.K, intervals.get(2).getStart());
-        assertEquals(Letter.Z, intervals.get(2).getEnd());
+        assertEquals(Letter.J, intervals.get(0).getEnd()); // Half-open: [A,J)
+        assertEquals(Letter.K, intervals.get(1).getStart());
+        assertEquals(Letter.Z, intervals.get(1).getEnd()); // Half-open: [K,Z)
         
-        // Connect H-J and K-Z by adding J-K overlap  
+        // Connect [A,J) and [K,Z) by adding [J,K) - should merge all to [A,Z)
         set.add(Letter.J, Letter.K);
-        assertEquals(2, set.size());
+        assertEquals(1, set.size()); // Half-open: [A,J), [J,K), [K,Z) all merge to [A,Z)
         intervals = toList(set);
         assertEquals(Letter.A, intervals.get(0).getStart());
-        assertEquals(Letter.G, intervals.get(0).getEnd());
-        assertEquals(Letter.H, intervals.get(1).getStart());
-        assertEquals(Letter.Z, intervals.get(1).getEnd());
+        assertEquals(Letter.Z, intervals.get(0).getEnd()); // Half-open: merged to [A,Z)
         
-        // Remove at front (A-B) - should split first interval, leaving C-G
+        // Remove at front [A, B) from [A, Z) - should leave [B, Z)
         set.remove(Letter.A, Letter.B);
-        assertEquals(2, set.size());
+        assertEquals(1, set.size()); // Half-open: removing [A, B) leaves [B, Z)
         intervals = toList(set);
-        assertEquals(Letter.C, intervals.get(0).getStart());
-        assertEquals(Letter.G, intervals.get(0).getEnd());
-        assertEquals(Letter.H, intervals.get(1).getStart());
-        assertEquals(Letter.Z, intervals.get(1).getEnd());
+        assertEquals(Letter.B, intervals.get(0).getStart());
+        assertEquals(Letter.Z, intervals.get(0).getEnd());
         
-        // Remove at end (Y-Z) - should split second interval, leaving H-X
+        // Remove at end [Y, Z) from [B, Z) - should leave [B, Y)
         set.remove(Letter.Y, Letter.Z);
-        assertEquals(2, set.size());
+        assertEquals(1, set.size()); // Half-open: removing [Y, Z) from [B, Z) leaves [B, Y)
         intervals = toList(set);
-        assertEquals(Letter.C, intervals.get(0).getStart());
-        assertEquals(Letter.G, intervals.get(0).getEnd());
-        assertEquals(Letter.H, intervals.get(1).getStart());
-        assertEquals(Letter.X, intervals.get(1).getEnd());
+        assertEquals(Letter.B, intervals.get(0).getStart());
+        assertEquals(Letter.Y, intervals.get(0).getEnd());
     }
 
     @Test
@@ -2358,26 +2335,26 @@ class IntervalSetTest {
             return Letter.values()[ordinal + 1];
         };
         
-        IntervalSet<Letter> set = new IntervalSet<>(previousFunction, nextFunction);
+        IntervalSet<Letter> set = new IntervalSet<>();
         
-        // Add large range A-Z
+        // Add large range A-Y (half-open intervals [A, Z) includes A through Y)
         set.add(Letter.A, Letter.Z);
         assertEquals(1, set.size());
         
-        // Remove middle section M-N, should split into A-L and O-Z
+        // Remove middle section [M, N), should split into [A, M) and [N, Z)
         set.remove(Letter.M, Letter.N);
         assertEquals(2, set.size());
         
         List<IntervalSet.Interval<Letter>> intervals = toList(set);
         assertEquals(Letter.A, intervals.get(0).getStart());
-        assertEquals(Letter.L, intervals.get(0).getEnd()); // previousFunction(M) = L
-        assertEquals(Letter.O, intervals.get(1).getStart()); // nextFunction(N) = O
+        assertEquals(Letter.M, intervals.get(0).getEnd()); // Half-open: includes A through L, not M
+        assertEquals(Letter.N, intervals.get(1).getStart()); // Starts at N after removal
         assertEquals(Letter.Z, intervals.get(1).getEnd());
         
-        // Verify the custom functions are being used correctly
+        // Verify the half-open behavior
         assertTrue(set.contains(Letter.L));
         assertFalse(set.contains(Letter.M));
-        assertFalse(set.contains(Letter.N));
+        assertTrue(set.contains(Letter.N)); // Half-open: N is start of second interval [N, Z)
         assertTrue(set.contains(Letter.O));
     }
 
@@ -2399,25 +2376,23 @@ class IntervalSetTest {
             return Letter.values()[ordinal + 1];
         };
         
-        IntervalSet<Letter> set = new IntervalSet<>(previousFunction, nextFunction);
+        IntervalSet<Letter> set = new IntervalSet<>();
         
-        // Test single letter intervals
-        set.add(Letter.M, Letter.M);
+        // Test single letter intervals (half-open: [M, N) contains just M)
+        set.add(Letter.M, Letter.N);
         assertTrue(set.contains(Letter.M));
         assertFalse(set.contains(Letter.L));
         assertFalse(set.contains(Letter.N));
         
-        // Test adjacent intervals - M and N don't automatically merge since they don't overlap
-        set.add(Letter.N, Letter.N); // Creates separate interval
-        assertEquals(2, set.size());
+        // Test empty interval addition - [N, N) is empty and should not create a new interval
+        set.add(Letter.N, Letter.N); // Half-open: [N, N) is empty, no change
+        assertEquals(1, set.size()); // Still only one interval [M, N)
         List<IntervalSet.Interval<Letter>> intervals = toList(set);
         assertEquals(Letter.M, intervals.get(0).getStart());
-        assertEquals(Letter.M, intervals.get(0).getEnd());
-        assertEquals(Letter.N, intervals.get(1).getStart());
-        assertEquals(Letter.N, intervals.get(1).getEnd());
+        assertEquals(Letter.N, intervals.get(0).getEnd()); // Half-open: [M, N) ends at N
         
-        // Connect them by overlapping
-        set.add(Letter.M, Letter.N); // This will merge both intervals
+        // Re-adding the same interval [M, N) - no change
+        set.add(Letter.M, Letter.N); // This is the same interval, no change
         assertEquals(1, set.size());
         intervals = toList(set);
         assertEquals(Letter.M, intervals.get(0).getStart());
@@ -2429,12 +2404,12 @@ class IntervalSetTest {
         assertEquals(3, set.size());
         
         // Fill the gap with R - this should connect O-Q and S-U into one interval
-        set.add(Letter.R, Letter.R);
-        // We'll have [M-N], [O-Q], [R], [S-U] which doesn't automatically merge adjacent intervals
-        // Let me create overlapping ranges to force merging
+        set.add(Letter.R, Letter.S); // Half-open: [R, S) contains just R
+        // After adding [R, S), we should have intervals: [M, N), [O, Q), [R, S), [S, U)
+        // The [R, S) and [S, U) should merge into [R, U), and [O, Q) may connect
+        // Let's add [Q, R) to connect [O, Q) with [R, U)
         set.add(Letter.Q, Letter.R); // Connect O-Q with R
-        set.add(Letter.R, Letter.S); // Connect R with S-U
-        assertEquals(2, set.size()); // Should have [M-N] and [O-U]
+        assertEquals(2, set.size()); // Should have [M, N) and [O, U)
         intervals = toList(set);
         assertEquals(Letter.M, intervals.get(0).getStart());
         assertEquals(Letter.N, intervals.get(0).getEnd());
@@ -2482,8 +2457,8 @@ class IntervalSetTest {
         // Should have merged first two intervals
         assertEquals(2, set.size());
         assertTrue(set.contains(1));
-        assertTrue(set.contains(8));  // Merged interval end
-        assertTrue(set.contains(12)); // Second interval
+        assertFalse(set.contains(8));  // Half-open: 8 is not contained in merged [1, 8)
+        assertTrue(set.contains(12)); // Second interval [10, 15)
     }
 
     @Test
@@ -2525,22 +2500,22 @@ class IntervalSetTest {
         Function<Integer, Integer> prevFunc = x -> x - 1;
         Function<Integer, Integer> nextFunc = x -> x + 1;
 
-        IntervalSet<Integer> set = new IntervalSet<>(intervals, prevFunc, nextFunc);
+        IntervalSet<Integer> set = new IntervalSet<>(intervals);
 
         assertEquals(2, set.size());
         assertTrue(set.contains(3));
         assertTrue(set.contains(12));
 
-        // Test that custom functions are used by triggering interval splitting
-        set.remove(3, 3);  // Should split first interval using custom functions
+        // Test interval splitting with half-open intervals
+        set.remove(3, 4);  // Remove [3,4) to split first interval [1,5) into [1,3) and [4,5)
 
-        // Should now have 3 intervals: [1,2], [4,5], [10,15]
+        // Should now have 3 intervals: [1,3), [4,5), [10,15)
         assertEquals(3, set.size());
         assertTrue(set.contains(1));
         assertTrue(set.contains(2));
         assertFalse(set.contains(3));
         assertTrue(set.contains(4));
-        assertTrue(set.contains(5));
+        assertFalse(set.contains(5)); // [4,5) doesn't contain 5 in half-open intervals
     }
 
     @Test
@@ -2549,7 +2524,7 @@ class IntervalSetTest {
         intervals.add(new IntervalSet.Interval<>(1, 5));
 
         // Test with null functions (should use built-in logic)
-        IntervalSet<Integer> set = new IntervalSet<>(intervals, null, null);
+        IntervalSet<Integer> set = new IntervalSet<>(intervals);
         assertEquals(1, set.size());
         assertTrue(set.contains(3));
     }
@@ -2560,7 +2535,7 @@ class IntervalSetTest {
         Function<Integer, Integer> nextFunc = x -> x + 1;
 
         assertThrows(NullPointerException.class, () -> {
-            new IntervalSet<>(null, prevFunc, nextFunc);
+            new IntervalSet<>((List<IntervalSet.Interval<Integer>>) null);
         });
     }
 

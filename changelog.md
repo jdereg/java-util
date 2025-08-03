@@ -15,24 +15,27 @@
 >     * NULL_SENTINEL and cycle detection test coverage for edge case robustness
 >     * Fixed MultiKeyMapMapInterfaceTest emoji format expectations
 > * **ENHANCEMENT**: `IntervalSet` improvements:
->   * **Extensibility**: Added nextFunction and previousFunction support allowing custom range-like types beyond the 20 built-in types
+>   * **Simplified Architecture**: Uses half-open intervals [start, end) eliminating need for custom boundary functions
 >   * **API Enhancement**: Mirrors ConcurrentSkipListSet's behavior more accurately
 >   * **New Feature**: Added snapshot() method for obtaining point-in-time snapshots with better return types than toArray()
 >   * **JSON Round-Trip Support**: Added constructor that accepts snapshot() output, enabling easy JSON serialization/deserialization round-trips
 >   * **Bug Fix**: Fixed JSON serialization constructors for proper deserialization support
+>   * **Documentation**: Added comprehensive quanta calculation examples using Math.nextUp() and temporal precision APIs
 > * **DOCUMENTATION**: Updated changelog.md and improved table formatting throughout documentation
 #### 3.8.0
-> * **MAJOR FEATURE**: Added `IntervalSet` - thread-safe set of closed intervals. Optimized (collapsed) by default, or all intervals retained if `autoMerge=false` (audit mode):
+> * **MAJOR FEATURE**: Added `IntervalSet` - thread-safe set of half-open intervals [start, end). Optimized (collapsed) by default, or all intervals retained if `autoMerge=false` (audit mode):
+>   * **Half-Open Semantics**: Uses [start, end) intervals where start is inclusive, end is exclusive - eliminates boundary ambiguity
 >   * **High Performance**: O(log n) operations using `ConcurrentSkipListMap` for all queries, insertions, and range operations
 >   * **Dual Storage Modes**: Auto-merge mode (default) merges overlapping intervals; discrete mode preserves all intervals for audit trails
 >   * **Rich Query API**: Navigation methods (`nextInterval`, `previousInterval`, `higherInterval`, `lowerInterval`), containment checking, and range queries
->   * **Intelligent Boundaries**: Automatic boundary calculations for 20+ types (numeric, temporal, character) enabling precise interval splitting
+>   * **Simplified Boundaries**: Half-open intervals eliminate need for complex boundary calculations while supporting all Comparable types
 >   * **Thread Safety**: Lock-free reads with minimal write locking; weakly consistent iteration reflects live changes; use `snapshot().iterator()` for point-in-time iteration
+>   * **Quanta Support**: Comprehensive documentation for creating minimal intervals using Math.nextUp(), temporal precision, and integer arithmetic
 >   * **Type Support**: Full support for Integer, Long, Date, Timestamp, LocalDate, ZonedDateTime, Duration, and all Comparable types
 >   * **Comprehensive Testing**: 116+ test cases covering all data types, concurrent operations, edge cases, and both storage modes
 > * **TEST FIX**: Stabilized `ConcurrentListIteratorTest.testReadFailsGracefullyWhenConcurrentRemoveShrinksList` by using a latch to reliably detect the expected exception under heavy load
 > * **BUG FIX**: Prevented null elements from appearing in iterator snapshots of `ConcurrentList` under extreme concurrency
-> * **BUG FIX**: Corrected `IntervalSet` range removal for discrete types, enforced unique start keys in discrete mode, and removed unsupported `AtomicInteger` and `AtomicLong` from documentation.
+> * **BUG FIX**: Corrected `IntervalSet` range removal operations, enforced unique start keys in discrete mode, and improved type support documentation.
 > * **REFACTOR**: Simplified `MultiKeyMap` by removing the redundant volatile `size` field and relying on the existing `AtomicInteger` for size tracking.
 > * **REFACTOR**: Consolidated hash computation logic in `MultiKeyMap` to reduce duplication and improve readability.
 #### 3.7.0

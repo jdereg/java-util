@@ -3907,7 +3907,7 @@ This implementation provides a robust set of I/O utilities with emphasis on reso
 
 [View Source](/src/main/java/com/cedarsoftware/util/IntervalSet.java)
 
-A thread-safe collection of non-overlapping closed intervals `[start, end]` for any `Comparable` type. IntervalSet 
+A thread-safe collection of non-overlapping half-open intervals `[start, end)` for any `Comparable` type. IntervalSet 
 efficiently manages collections of intervals with O(log n) performance using `ConcurrentSkipListMap` for lookups, insertions, and range queries.
 
 ### Key Features
@@ -3917,7 +3917,7 @@ efficiently manages collections of intervals with O(log n) performance using `Co
 - **Auto-Merging Behavior**: Overlapping intervals automatically merged
 - **Intelligent Interval Management**: Automatic splitting during removal operations
 - **Rich Query API**: Comprehensive navigation and filtering methods
-- **Type-Safe Boundaries**: Supports precise boundary calculations for 20+ built-in types
+- **Type-Safe Boundaries**: Supports precise boundary calculations
 - **Weakly Consistent Iteration**: The iterator sees live changes during iteration and is thread-safe.
 
 ### Auto-Merging Behavior
@@ -3927,9 +3927,9 @@ Overlapping intervals are automatically merged into larger, non-overlapping inte
 ```java
 IntervalSet<Integer> set = new IntervalSet<>();
 set.add(1, 5);
-set.add(3, 8);    // Merges with [1,5] to create [1,8]
+set.add(3, 8);    // Merges with [1,5) to create [1,8)
 set.add(10, 15);  // Separate interval since no overlap
-// Result: [1,8], [10,15]
+// Result: [1,8), [10,15)
 ```
 
 ### Usage Examples
@@ -3951,9 +3951,9 @@ if (schedule.contains(proposedMeetingTime)) {
 
 ```java
 IntervalSet<Long> processedIds = new IntervalSet<>();
-processedIds.add(1000L, 1999L);    // First batch
-processedIds.add(2000L, 2500L);    // Second batch
-processedIds.add(2501L, 2999L);    // Third batch - merges with second to create [2000, 2999]
+processedIds.add(1000L, 2000L);    // First batch [1000, 2000)
+processedIds.add(2000L, 2500L);    // Second batch [2000, 2500)
+processedIds.add(2501L, 3000L);    // Third batch - [2500, 3000)
 
 // Calculate total work using Duration computation
 Duration totalWork = processedIds.totalDuration((start, end) ->
@@ -3970,24 +3970,24 @@ ranges.add(50, 60);
 
 // Find interval containing a value
 IntervalSet.Interval<Integer> containing = ranges.intervalContaining(15);
-// Returns: [10, 20]
+// Returns: [10, 20)
 
 // Navigate between intervals
 IntervalSet.Interval<Integer> next = ranges.nextInterval(25);
-// Returns: [30, 40]
+// Returns: [30, 40)
 
 IntervalSet.Interval<Integer> previous = ranges.previousInterval(35);  
-// Returns: [30, 40] (interval with start <= 35)
+// Returns: [30, 40) (latest interval that starts at or before 35)
 
 // Range queries
 List<IntervalSet.Interval<Integer>> subset = ranges.getIntervalsInRange(15, 45);
-// Returns: [10, 20], [30, 40]
+// Returns: [10, 20), [30, 40)
 ```
 
 ### Primary Client APIs
 
 **Basic Operations**
-- `add(T, T)` - Add an interval [start, end]
+- `add(T, T)` - Add an interval [start, end)
 - `remove(T, T)` - Remove an interval, splitting existing ones as needed
 - `removeExact(T, T)` - Remove only exact interval matches
 - `removeRange(T, T)` - Remove a range, trimming overlapping intervals
@@ -4032,15 +4032,15 @@ set2.add(25, 35);
 
 // Union: combines all intervals from both sets
 IntervalSet<Integer> combined = set1.union(set2);
-// Result: [1, 15], [20, 35]
+// Result: [1, 15), [20, 35)
 
 // Intersection: only the overlapping parts
 IntervalSet<Integer> overlap = set1.intersection(set2);
-// Result: [5, 10], [25, 30]
+// Result: [5, 10), [25, 30)
 
 // Difference: set1 minus set2
 IntervalSet<Integer> remaining = set1.difference(set2);
-// Result: [1, 4], [20, 24]
+// Result: [1, 5), [20, 25)
 
 // Check for any overlap without computing intersection
 boolean hasOverlap = set1.intersects(set2);

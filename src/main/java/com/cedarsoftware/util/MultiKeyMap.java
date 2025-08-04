@@ -1,5 +1,6 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -9,14 +10,12 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
@@ -430,9 +429,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private static int computeElementHash(Object key) {
         if (key == null) return 0;
-        if (key instanceof Class || key instanceof java.lang.reflect.AccessibleObject || key instanceof ClassLoader || key instanceof java.lang.ref.Reference || key instanceof Thread) {
+        
+        // Special case ONLY for AccessibleObject subclasses (Method, Field, Constructor)
+        // These use value-based hashCode() which can cause issues:
+        // - Multiple instances representing the same method/field/constructor
+        // - Same hashCode but different object identity
+        // Using identity hash ensures stable keys
+        if (key instanceof AccessibleObject) {
             return System.identityHashCode(key);
         }
+        
+        // All other types use their standard hashCode
+        // Class, Thread, ClassLoader, Reference already use identity-based hashCode
         return key.hashCode();
     }
 
@@ -530,13 +538,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private MultiKey<V> createMultiKey(Object key, V value) {
         int[] hashPass = new int[1];
-        Object normalizedKey = normalizeLookup(key, hashPass, true); // true = make defensive copy for storage
+        Object normalizedKey = flattenKey(key, hashPass, true); // true = make defensive copy for storage
         return new MultiKey<>(normalizedKey, hashPass[0], value);
     }
 
     // Method for when only the hash is needed, not the normalized key
     private void computeKeyHash(Object key, int[] hashPass) {
-        normalizeLookup(key, hashPass, false); // Ignore return value, only need hash side effect
+        flattenKey(key, hashPass, false); // Ignore return value, only need hash side effect
     }
     
     // Update maxChainLength to the maximum of current value and newValue
@@ -545,13 +553,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         maxChainLength.getAndAccumulate(newValue, Math::max);
     }
 
-    private Object normalizeLookup(Object key, int[] hashPass, boolean requestDefensiveCopy) {
+    private Object flattenKey(Object key, int[] hashPass, boolean requestDefensiveCopy) {
         // Only make defensive copy if both requested AND enabled
         boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
-        // Handle EMOJI_EMPTY case
+        
+        // Handle null case
         if (key == null) {
             hashPass[0] = 0;
             return NULL_SENTINEL;
+        }
+
+        // ULTRA-FAST PATH: Object[] arrays (most common case - 90%+ of real usage)
+        if (key.getClass() == Object[].class) {
+            return process1DObjectArray((Object[]) key, hashPass);
         }
 
         Class<?> clazz = key.getClass();
@@ -571,14 +585,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return makeDefensiveCopy ? new ArrayList<>(coll) : coll;
         }
 
-        // Handle arrays - must check specific type to route correctly
+        // Handle other array types (int[], String[], etc.)
         if (clazz.isArray()) {
-            // Object[] arrays need special handling
-            if (clazz == Object[].class) {
-                Object[] arr = (Object[]) key;
-                return process1DObjectArray(arr, hashPass);
-            }
-            // All other array types (int[], String[], etc.) go to typed array processing
             return process1DTypedArray(key, hashPass);
         }
         
@@ -591,8 +599,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return process1DCollection(coll, hashPass, requestDefensiveCopy);
     }
     
-    private Object process1DObjectArray(Object[] array, int[] hashPass) {
-        if (array.length == 0) {
+    private Object process1DObjectArray(final Object[] array, final int[] hashPass) {
+        final int len = array.length;
+        if (len == 0) {
             hashPass[0] = 0;
             return array;
         }
@@ -601,7 +610,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 1;
         boolean is1D = true;
         
-        for (Object e : array) {
+        for (int i = 0; i < len; i++) {
+            Object e = array[i];
             h = h * 31 + computeElementHash(e);
             if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
                 is1D = false;
@@ -631,7 +641,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return expandWithHash(array, hashPass);
     }
     
-    private Object process1DCollection(Collection<?> coll, int[] hashPass, boolean requestDefensiveCopy) {
+    private Object process1DCollection(final Collection<?> coll, final int[] hashPass, final boolean requestDefensiveCopy) {
         // Only make defensive copy if both requested AND enabled
         boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
         if (coll.isEmpty()) {
@@ -656,8 +666,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
             }
         } else {
-            // Fallback to iterator for other collection types
-            for (Object e : coll) {
+            // Fallback to explicit iterator for other collection types
+            Iterator<?> iter = coll.iterator();
+            while (iter.hasNext()) {
+                Object e = iter.next();
                 h = h * 31 + computeElementHash(e);
                 if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
                     is1D = false;
@@ -714,15 +726,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private Object process1DStringArray(String[] array, int[] hashPass) {
-        if (array.length == 0) {
+        final int len = array.length;
+        if (len == 0) {
             hashPass[0] = 0;
             return array;
         }
         
         // String arrays are always 1D (String elements can't be arrays or collections)
         int h = 1;
-        for (String e : array) {
-            h = h * 31 + computeElementHash(e);
+        for (int i = 0; i < len; i++) {
+            h = h * 31 + computeElementHash(array[i]);
         }
         
         // Single element optimization - always collapse single element arrays
@@ -744,15 +757,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private Object process1DIntArray(int[] array, int[] hashPass) {
-        if (array.length == 0) {
+        final int len = array.length;
+        if (len == 0) {
             hashPass[0] = 0;
             return array;
         }
         
         // int arrays are always 1D (primitives can't contain collections/arrays)
         int h = 1;
-        for (int e : array) {
-            h = h * 31 + Integer.hashCode(e);
+        for (int i = 0; i < len; i++) {
+            h = h * 31 + Integer.hashCode(array[i]);
         }
         
         // Single element optimization - always collapse single element arrays
@@ -767,15 +781,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private Object process1DLongArray(long[] array, int[] hashPass) {
-        if (array.length == 0) {
+        final int len = array.length;
+        if (len == 0) {
             hashPass[0] = 0;
             return array;
         }
         
         // long arrays are always 1D (primitives can't contain collections/arrays)
         int h = 1;
-        for (long e : array) {
-            h = h * 31 + Long.hashCode(e);
+        for (int i = 0; i < len; i++) {
+            h = h * 31 + Long.hashCode(array[i]);
         }
         
         // Single element optimization - always collapse single element arrays
@@ -790,15 +805,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private Object process1DDoubleArray(double[] array, int[] hashPass) {
-        if (array.length == 0) {
+        final int len = array.length;
+        if (len == 0) {
             hashPass[0] = 0;
             return array;
         }
         
         // double arrays are always 1D (primitives can't contain collections/arrays)
         int h = 1;
-        for (double e : array) {
-            h = h * 31 + Double.hashCode(e);
+        for (int i = 0; i < len; i++) {
+            h = h * 31 + Double.hashCode(array[i]);
         }
         
         // Single element optimization - always collapse single element arrays
@@ -813,15 +829,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private Object process1DBooleanArray(boolean[] array, int[] hashPass) {
-        if (array.length == 0) {
+        final int len = array.length;
+        if (len == 0) {
             hashPass[0] = 0;
             return array;
         }
         
         // boolean arrays are always 1D (primitives can't contain collections/arrays)
         int h = 1;
-        for (boolean e : array) {
-            h = h * 31 + Boolean.hashCode(e);
+        for (int i = 0; i < len; i++) {
+            h = h * 31 + Boolean.hashCode(array[i]);
         }
         
         // Single element optimization - always collapse single element arrays
@@ -837,7 +854,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private Object process1DGenericArray(Object arr, int[] hashPass) {
         // Fallback method using reflection for uncommon array types
-        int len = Array.getLength(arr);
+        final int len = Array.getLength(arr);
         if (len == 0) {
             hashPass[0] = 0;
             return arr;
@@ -960,166 +977,113 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
     
-    private MultiKey<V> findEntry(Object lookupKey) {
+    private MultiKey<V> findEntry(final Object lookupKey) {
         // Direct normalization without creating any objects
-        int[] hashPass = new int[1];
-        Object normalized = normalizeLookup(lookupKey, hashPass, false);
-        int hash = hashPass[0];
-        Object[] currentBuckets = buckets;
-        int index = hash & (currentBuckets.length - 1);
+        final int[] hashPass = new int[1];
+        final Object normalized = flattenKey(lookupKey, hashPass, false);
+        final int hash = hashPass[0];
+        int index = hash & (buckets.length - 1);
         @SuppressWarnings("unchecked")
-        MultiKey<V>[] chain = (MultiKey<V>[]) currentBuckets[index];
+        final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
         if (chain == null) return null;
-        for (MultiKey<V> entry : chain) {
+        final int chLen = chain.length;
+        for (int i = 0; i < chLen; i++) {
+            MultiKey<V> entry = chain[i];
             if (entry.hash == hash && keysMatch(entry.keys, normalized)) return entry;
         }
         return null;
     }
 
     private static boolean keysMatch(Object stored, Object lookup) {
+        // Fast identity and null checks
         if (stored == lookup) return true;
         if (stored == null || lookup == null) return false;
-
-        Class<?> storedClazz = stored.getClass();
-        Class<?> lookupClazz = lookup.getClass();
-
-        boolean storedSingle = !storedClazz.isArray() && !(stored instanceof Collection);
-        boolean lookupSingle = !lookupClazz.isArray() && !(lookup instanceof Collection);
-
-        if (storedSingle != lookupSingle) return false;
-
-        if (storedSingle) return Objects.equals(stored, lookup);
-
-        int storedLen = stored instanceof Collection ? ((Collection<?>) stored).size() : Array.getLength(stored);
-        int lookupLen = lookup instanceof Collection ? ((Collection<?>) lookup).size() : Array.getLength(lookup);
-
+        
+        final Class<?> storedClass = stored.getClass();
+        final Class<?> lookupClass = lookup.getClass();
+        
+        // ULTRA-FAST PATH: Object[] arrays (most common case - 90%+ of real usage)
+        // People typically use: new Object[] { a, b, c, d } for mixed types
+        if (storedClass == Object[].class && lookupClass == Object[].class) {
+            return Arrays.equals((Object[]) stored, (Object[]) lookup);
+        }
+        
+        // Quick single vs multi check
+        final boolean storedSingle = !storedClass.isArray() && !(stored instanceof Collection);
+        final boolean lookupSingle = !lookupClass.isArray() && !(lookup instanceof Collection);
+        
+        if (storedSingle != lookupSingle) return false; // Different cardinality
+        
+        if (storedSingle) {
+            return Objects.equals(stored == NULL_SENTINEL ? null : stored, lookup == NULL_SENTINEL ? null : lookup);
+        }
+        
+        // Multi-key comparison - check size first
+        final int storedLen = stored instanceof Collection ? ((Collection<?>) stored).size() : Array.getLength(stored);
+        final int lookupLen = lookup instanceof Collection ? ((Collection<?>) lookup).size() : Array.getLength(lookup);
+        
         if (storedLen != lookupLen) return false;
-
-        // Branch 1: Same type
-        if (storedClazz == lookupClazz) {
-            if (storedClazz == Object[].class) return Arrays.equals((Object[]) stored, (Object[]) lookup);
-            if (storedClazz == String[].class) return Arrays.equals((String[]) stored, (String[]) lookup);
-            if (storedClazz.getComponentType() != null && storedClazz.getComponentType().isPrimitive()) {
-                if (storedClazz == int[].class) return Arrays.equals((int[]) stored, (int[]) lookup);
-                if (storedClazz == long[].class) return Arrays.equals((long[]) stored, (long[]) lookup);
-                if (storedClazz == double[].class) return Arrays.equals((double[]) stored, (double[]) lookup);
-                if (storedClazz == boolean[].class) return Arrays.equals((boolean[]) stored, (boolean[]) lookup);
-                if (storedClazz == byte[].class) return Arrays.equals((byte[]) stored, (byte[]) lookup);
-                if (storedClazz == char[].class) return Arrays.equals((char[]) stored, (char[]) lookup);
-                if (storedClazz == float[].class) return Arrays.equals((float[]) stored, (float[]) lookup);
-                if (storedClazz == short[].class) return Arrays.equals((short[]) stored, (short[]) lookup);
-            }
-            if (storedClazz == ArrayList.class) {
-                List<?> s = (List<?>) stored;
-                List<?> l = (List<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (!Objects.equals(s.get(i), l.get(i))) return false;
-                return true;
-            }
-            if (storedClazz == CopyOnWriteArrayList.class) {  // As before
-                List<?> s = (List<?>) stored;
-                List<?> l = (List<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (!Objects.equals(s.get(i), l.get(i))) return false;
-                return true;
-            }
-            if (storedClazz == LinkedList.class) {  // New: Iterator for O(n) total
-                Iterator<?> sIter = ((LinkedList<?>) stored).iterator();
-                Iterator<?> lIter = ((LinkedList<?>) lookup).iterator();
-                while (sIter.hasNext() && lIter.hasNext()) {
-                    if (!Objects.equals(sIter.next(), lIter.next())) return false;
+        
+        // Fast paths for same-type comparisons
+        if (storedClass == lookupClass) {
+            // ArrayList (very common)
+            if (storedClass == ArrayList.class) {
+                ArrayList<?> s = (ArrayList<?>) stored;
+                ArrayList<?> l = (ArrayList<?>) lookup;
+                for (int i = 0; i < storedLen; i++) {
+                    if (!Objects.equals(s.get(i), l.get(i))) return false;
                 }
                 return true;
             }
-        }
-
-        // Branch 2: Cross-type
-        boolean storedIsArray = storedClazz.isArray();
-        boolean lookupIsArray = lookupClazz.isArray();
-
-        if (storedIsArray && !lookupIsArray) {
-            if (stored instanceof Object[] && lookup instanceof ArrayList) {
-                Object[] sArr = (Object[]) stored;
-                ArrayList<?> lList = (ArrayList<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (!Objects.equals(sArr[i], lList.get(i))) return false;
-                return true;
-            } else if (stored instanceof String[] && lookup instanceof List) {
-                String[] sArr = (String[]) stored;
-                List<?> lList = (List<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (!Objects.equals(sArr[i], lList.get(i))) return false;
-                return true;
-            } else if (stored instanceof int[] && lookup instanceof List) {
-                int[] sArr = (int[]) stored;
-                List<?> lList = (List<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (sArr[i] != (Integer) lList.get(i)) return false;
-                return true;
-            } else if (stored instanceof long[] && lookup instanceof List) {
-                long[] sArr = (long[]) stored;
-                List<?> lList = (List<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (sArr[i] != (Long) lList.get(i)) return false;
-                return true;
-            } else if (stored instanceof double[] && lookup instanceof List) {
-                double[] sArr = (double[]) stored;
-                List<?> lList = (List<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (sArr[i] != (Double) lList.get(i)) return false;
-                return true;
-            } else if (stored instanceof boolean[] && lookup instanceof List) {
-                boolean[] sArr = (boolean[]) stored;
-                List<?> lList = (List<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (sArr[i] != (Boolean) lList.get(i)) return false;
-                return true;
-            } else if (stored instanceof Object[] && lookup instanceof List) {  // General fallback
-                Object[] sArr = (Object[]) stored;
-                List<?> lList = (List<?>) lookup;
-                for (int i = 0; i < storedLen; i++) if (!Objects.equals(sArr[i], lList.get(i))) return false;
-                return true;
+            
+            // String[] (common for string keys)
+            if (storedClass == String[].class) {
+                return Arrays.equals((String[]) stored, (String[]) lookup);
             }
-        } else if (!storedIsArray && lookupIsArray) {
-            if (stored instanceof ArrayList && lookup instanceof Object[]) {
-                ArrayList<?> sList = (ArrayList<?>) stored;
-                Object[] lArr = (Object[]) lookup;
-                for (int i = 0; i < storedLen; i++) if (!Objects.equals(sList.get(i), lArr[i])) return false;
-                return true;
-            } else if (stored instanceof List && lookup instanceof String[]) {
-                List<?> sList = (List<?>) stored;
-                String[] lArr = (String[]) lookup;
-                for (int i = 0; i < storedLen; i++) if (!Objects.equals(sList.get(i), lArr[i])) return false;
-                return true;
-            } else if (stored instanceof List && lookup instanceof int[]) {
-                List<?> sList = (List<?>) stored;
-                int[] lArr = (int[]) lookup;
-                for (int i = 0; i < storedLen; i++) if ((Integer) sList.get(i) != lArr[i]) return false;
-                return true;
-            } else if (stored instanceof List && lookup instanceof long[]) {
-                List<?> sList = (List<?>) stored;
-                long[] lArr = (long[]) lookup;
-                for (int i = 0; i < storedLen; i++) if ((Long) sList.get(i) != lArr[i]) return false;
-                return true;
-            } else if (stored instanceof List && lookup instanceof double[]) {
-                List<?> sList = (List<?>) stored;
-                double[] lArr = (double[]) lookup;
-                for (int i = 0; i < storedLen; i++) if ((Double) sList.get(i) != lArr[i]) return false;
-                return true;
-            } else if (stored instanceof List && lookup instanceof boolean[]) {
-                List<?> sList = (List<?>) stored;
-                boolean[] lArr = (boolean[]) lookup;
-                for (int i = 0; i < storedLen; i++) if ((Boolean) sList.get(i) != lArr[i]) return false;
-                return true;
-            } else if (stored instanceof List && lookup instanceof Object[]) {  // General fallback
-                List<?> sList = (List<?>) stored;
-                Object[] lArr = (Object[]) lookup;
-                for (int i = 0; i < storedLen; i++) if (!Objects.equals(sList.get(i), lArr[i])) return false;
-                return true;
+            
+            // Primitive arrays (use JVM intrinsics)
+            if (storedClass.isArray()) {
+                Class<?> componentType = storedClass.getComponentType();
+                if (componentType != null && componentType.isPrimitive()) {
+                    if (storedClass == int[].class) return Arrays.equals((int[]) stored, (int[]) lookup);
+                    if (storedClass == long[].class) return Arrays.equals((long[]) stored, (long[]) lookup);
+                    if (storedClass == double[].class) return Arrays.equals((double[]) stored, (double[]) lookup);
+                    if (storedClass == boolean[].class) return Arrays.equals((boolean[]) stored, (boolean[]) lookup);
+                    if (storedClass == byte[].class) return Arrays.equals((byte[]) stored, (byte[]) lookup);
+                    if (storedClass == char[].class) return Arrays.equals((char[]) stored, (char[]) lookup);
+                    if (storedClass == float[].class) return Arrays.equals((float[]) stored, (float[]) lookup);
+                    if (storedClass == short[].class) return Arrays.equals((short[]) stored, (short[]) lookup);
+                }
             }
         }
-
-        // Fallback to iterator
+        
+        // Cross-type: Object[] <-> ArrayList (somewhat common)
+        if (storedClass == Object[].class && lookupClass == ArrayList.class) {
+            Object[] arr = (Object[]) stored;
+            ArrayList<?> list = (ArrayList<?>) lookup;
+            for (int i = 0; i < storedLen; i++) {
+                if (!Objects.equals(arr[i], list.get(i))) return false;
+            }
+            return true;
+        }
+        if (storedClass == ArrayList.class && lookupClass == Object[].class) {
+            ArrayList<?> list = (ArrayList<?>) stored;
+            Object[] arr = (Object[]) lookup;
+            for (int i = 0; i < storedLen; i++) {
+                if (!Objects.equals(list.get(i), arr[i])) return false;
+            }
+            return true;
+        }
+        
+        // Generic fallback for everything else
         Iterator<?> storedIter = iteratorFor(stored);
         Iterator<?> lookupIter = iteratorFor(lookup);
-        while (storedIter.hasNext() && lookupIter.hasNext()) {
+        while (storedIter.hasNext()) {
             if (!Objects.equals(storedIter.next(), lookupIter.next())) return false;
         }
         return true;
     }
-    
+
     private static Iterator<?> iteratorFor(Object obj) {
         if (obj instanceof Collection) return ((Collection<?>) obj).iterator();
         if (obj.getClass().isArray()) return new ArrayIterator(obj);

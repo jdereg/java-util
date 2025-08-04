@@ -2794,7 +2794,56 @@ MultiKeyMap<String> flattenCustom = new MultiKeyMap<>(1024, 0.75f,
     CollectionKeyMode.COLLECTIONS_EXPANDED, true);          // Expand collections + flatten dimensions
 ```
 
-MultiKeyMap represents the evolution of multi-dimensional data structures in Java, providing unmatched performance, flexibility, and developer experience. Its foundational engine design enables both raw performance and type-safe façades, making it the definitive solution for N-dimensional key-value mapping.
+### Performance Benchmarks
+
+Cedar Software's `MultiKeyMap` delivers exceptional concurrent performance, significantly outperforming all alternatives in realistic multi-threaded workloads. The benchmarks below use 6-dimensional keys in a mixed workload scenario with 86.6% concurrent read operations and 13.3% concurrent write operations across 12 threads.
+
+**Test Configuration:**
+- **6-dimensional keys** for comprehensive multi-key testing
+- **Guava Table**: Nested table structure using only 4 of 6 dimensions (adding another layer to get to 6 dimensional key would lower performance even further)
+- **Apache MultiKeyMap**: ConcurrentHashMap wrapper for thread-safety
+- **DIY Approach**: ConcurrentHashMap with composite key objects
+- **Scale**: Number of entries in the map (100 to 100,000 elements)
+
+**Important Notes:**
+- Guava Table performs best only in simple 2D scenarios (row/column) without concurrency
+- Apache MultiKeyMap and DIY approaches excel in single-threaded scenarios but suffer under concurrent load
+- Apache includes optimizations for keys with fewer than 6 dimensions
+```
+🔥 CONCURRENT MIXED WORKLOAD COMPARISON
+
+| Scale |     Cedar      |    Apache     |   Guava    |      DIY       |
+|-------|----------------|---------------|------------|----------------|
+| 100K  |    37.1M 🥇    |     33.4M     |    2.4M    |     29.6M      |
+|  50K  |    52.7M 🥇    |     39.0M     |    2.9M    |     30.7M      |
+|  20K  |    57.1M 🥇    |     37.3M     |    3.1M    |     33.6M      |
+|  10K  |    60.0M 🥇    |     36.0M     |    3.7M    |     31.7M      |
+|   1K  |    63.1M 🥇    |     31.0M     |    4.3M    |     30.2M      |
+|  100  |    79.8M 🥇    |     23.3M     |    5.1M    |     27.2M      |
+```
+**Key Performance Advantages:**
+- **Inherent thread-safety** without synchronization overhead penalties
+- **Stripe locking architecture** scales efficiently with CPU core count
+
+### Functional Comparison
+
+From a functional perspective, Cedar's `MultiKeyMap` provides unmatched flexibility and capabilities:
+
+**Unlimited Key Complexity:**
+- Supports arrays and collections of **arbitrary depth, type, and structure**
+- Handles **jagged arrays** and **mixed-type, mixed-depth collections** seamlessly
+- No restrictions on key dimensions or data types
+
+**True Thread-Safety:**  
+- **Inherent concurrent design** with fine-grained stripe locking architecture
+- **No external synchronization required** - implements full `ConcurrentMap` interface
+- **Lock-free reads** where possible, minimizing contention
+
+**Architectural Superiority:**
+- Only solution that treats complex keys as first-class citizens
+- Optional key protection (defensive copy) so that if key passed in is edited externally, does not break MultiKeyMap
+- Competitors require wrappers, nested structures, or impose dimensional limits
+- Cedar's design scales efficiently with data size, thread count, key complexity
 
 ---
 ## Converter

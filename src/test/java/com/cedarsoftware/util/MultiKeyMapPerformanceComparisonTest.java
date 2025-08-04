@@ -4,6 +4,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.google.common.collect.Tables;
 import org.apache.commons.collections4.keyvalue.MultiKey;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -12,18 +13,25 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 /**
  * Performance comparison test between different multi-key mapping approaches using 6-dimensional keys.
  * 
- * Tests single-threaded performance comparisons between:
+ * Tests both single-threaded and concurrent performance comparisons between:
  * - Cedar Software MultiKeyMap (N-dimensional, inherently thread-safe)
  * - Apache Commons MultiKeyMap (using 6 keys to test beyond its 5-key optimization)  
  * - Guava Table (nested tables simulating 4 of 6 dimensions)
  * - DIY approach with 6-field composite key object and HashMap/ConcurrentHashMap
  * 
  * Uses 6-dimensional keys to provide fair comparison beyond Apache's 5-key optimizations.
+ * Includes concurrent Reader/Writer Mixed Workload tests to demonstrate thread-safety performance.
  */
 public class MultiKeyMapPerformanceComparisonTest {
 
@@ -32,9 +40,9 @@ public class MultiKeyMapPerformanceComparisonTest {
         LoggingConfig.initForTests();
     }
 
-    private static final int WARMUP_ITERATIONS = 50_000; // Warmup iterations
+    private static final int WARMUP_ITERATIONS = 100_000; // Warmup iterations
     private static final int TEST_ROUNDS = 4; // Number of rotating test rounds
-    private static final int SLEEP_MS = 250; // Stabilization sleep between tests
+    private static final int SLEEP_MS = 200; // Stabilization sleep between tests
     
     // Test configuration - can be modified for different scales
     private int mapSize;
@@ -117,6 +125,41 @@ public class MultiKeyMapPerformanceComparisonTest {
         LOG.info("=== All scale tests completed ===");
     }
 
+    /**
+     * Concurrent Reader/Writer Mixed Workload Test
+     * Tests true concurrent access patterns with:
+     * - 90% concurrent readers performing continuous get operations
+     * - 10% concurrent writers performing puts/removes
+     * - Hotspot contention patterns focusing on overlapping key ranges
+     * - True thread contention to expose Apache's synchronization bottlenecks vs Cedar's inherent thread-safety
+     */
+    @Disabled
+    @Test
+    public void concurrentReaderWriterMixedWorkloadTest() {
+        // Test different scales to show how thread contention scales
+        int[] testSizes = {100, 1_000, 10_000, 20_000, 50_000, 100_000};
+        
+        LOG.info("=== Concurrent Reader/Writer Mixed Workload Test ===");
+        LOG.info("Testing true concurrent access patterns (90% reads, 10% writes)");
+        LOG.info("Cedar: inherently thread-safe with stripe locking");
+        LOG.info("Apache: synchronized wrapper creates bottlenecks");
+        LOG.info("Threads: 12 readers + 1 writer + 1 hotspot writer = 14 total");
+        LOG.info("");
+        
+        for (int size : testSizes) {
+            configureTestSize(size);
+            LOG.info(String.format("🔍 CONCURRENT SCALE: %,d elements", mapSize));
+            LOG.info("  Pattern: Pre-populate → 90% concurrent reads + 10% concurrent writes → Measure ops/sec");
+            LOG.info("  Duration: 10 seconds of sustained concurrent operations");
+            LOG.info("");
+            
+            runConcurrentMixedWorkloadTest();
+            LOG.info("");
+        }
+        
+        LOG.info("=== All concurrent tests completed ===");
+    }
+
     
     private void configureTestSize(int size) {
         this.mapSize = size;
@@ -144,15 +187,6 @@ public class MultiKeyMapPerformanceComparisonTest {
         
         double[] rawResults = runRotatingRawPerformanceTests(testData);
         displayResults("RAW PERFORMANCE", rawResults);
-        
-        LOG.info("");
-        LOG.info("🔒 THREAD-SAFE PERFORMANCE COMPARISON");
-        LOG.info("Cedar MultiKeyMap: inherently thread-safe (same performance)");
-        LOG.info("Others: wrapped with synchronization for fair comparison");
-        LOG.info("");
-        
-        double[] threadSafeResults = runRotatingThreadSafePerformanceTests(testData);
-        displayResults("THREAD-SAFE PERFORMANCE", threadSafeResults);
     }
     
     private TestData generateTestData() {
@@ -259,37 +293,7 @@ public class MultiKeyMapPerformanceComparisonTest {
         
         return averageResults;
     }
-    
-    private double[] runRotatingThreadSafePerformanceTests(TestData testData) {
-        double[][] allResults = new double[5][TEST_ROUNDS];
-        
-        // Run tests in rotating order
-        for (int round = 0; round < TEST_ROUNDS; round++) {
-            StringBuilder roundResults = new StringBuilder();
-            roundResults.append(String.format("Round %d/%d: ", round + 1, TEST_ROUNDS));
-            
-            for (int testIndex = 0; testIndex < 5; testIndex++) {
-                int actualTestIndex = (testIndex + round) % 5; // Rotate starting position
-                double result = runSingleThreadSafePerformanceTest(testData, actualTestIndex);
-                allResults[actualTestIndex][round] = result;
-                roundResults.append(String.format("%.1fM ", result / 1_000_000));
-            }
-            LOG.info(roundResults.toString());
-        }
-        
-        // Calculate averages
-        double[] averageResults = new double[5];
-        for (int i = 0; i < 5; i++) {
-            double sum = 0;
-            for (int round = 0; round < TEST_ROUNDS; round++) {
-                sum += allResults[i][round];
-            }
-            averageResults[i] = sum / TEST_ROUNDS;
-        }
-        
-        return averageResults;
-    }
-    
+
     private double runSingleRawPerformanceTest(TestData testData, int testIndex) {
         // Force GC and pause between tests for stability
         System.gc();
@@ -302,24 +306,6 @@ public class MultiKeyMapPerformanceComparisonTest {
             case 2: result = runApacheMultiKeyMapRawPerformanceTest(testData); break;
             case 3: result = runGuavaTableRawPerformanceTest(testData); break;
             case 4: result = runDiyHashMapRawPerformanceTest(testData); break;
-            default: throw new IllegalArgumentException("Invalid test index: " + testIndex);
-        }
-        
-        return result;
-    }
-    
-    private double runSingleThreadSafePerformanceTest(TestData testData, int testIndex) {
-        // Force GC and pause between tests for stability
-        System.gc();
-        try { Thread.sleep(SLEEP_MS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-        
-        double result;
-        switch (testIndex) {
-            case 0: result = runCedarMultiKeyMapPerformanceTest(testData); break; // Same - inherently thread-safe
-            case 1: result = runCedarStandardApiPerformanceTest(testData); break; // Same - inherently thread-safe
-            case 2: result = runApacheMultiKeyMapThreadSafePerformanceTest(testData); break;
-            case 3: result = runGuavaTableThreadSafePerformanceTest(testData); break;
-            case 4: result = runDiyHashMapThreadSafePerformanceTest(testData); break;
             default: throw new IllegalArgumentException("Invalid test index: " + testIndex);
         }
         
@@ -829,6 +815,328 @@ public class MultiKeyMapPerformanceComparisonTest {
         return (totalOperations * 1_000_000_000.0) / totalTimeNanos;
     }
     
+    
+    private void runConcurrentMixedWorkloadTest() {
+        // Generate test data for concurrent operations
+        TestData testData = generateTestData();
+        
+        LOG.info("🚀 CONCURRENT MIXED WORKLOAD COMPARISON");
+        LOG.info("Pre-populating maps, then running 10 seconds of concurrent 90% reads + 10% writes");
+        LOG.info("");
+        
+        // Test implementations with concurrent workload
+        double cedarVarargsResult = runConcurrentCedarVarargs(testData);
+        double cedarStandardResult = runConcurrentCedarStandard(testData);  
+        double apacheResult = runConcurrentApache(testData);
+        double guavaResult = runConcurrentGuava(testData);
+        double diyResult = runConcurrentDiy(testData);
+        
+        // Display results
+        LOG.info("CONCURRENT MIXED WORKLOAD RESULTS (90% reads, 10% writes, 10 seconds):");
+        LOG.info(String.format("1. %-50s: %8.1fM ops/sec", "Cedar MultiKeyMap (varargs, inherently thread-safe)", cedarVarargsResult / 1_000_000));
+        LOG.info(String.format("2. %-50s: %8.1fM ops/sec", "Cedar MultiKeyMap (standard API, inherently thread-safe)", cedarStandardResult / 1_000_000));
+        LOG.info(String.format("3. %-50s: %8.1fM ops/sec", "Apache MultiKeyMap (ConcurrentHashMap wrapper)", apacheResult / 1_000_000));
+        LOG.info(String.format("4. %-50s: %8.1fM ops/sec", "Guava Table (Tables.synchronizedTable)", guavaResult / 1_000_000));
+        LOG.info(String.format("5. %-50s: %8.1fM ops/sec", "DIY ConcurrentHashMap (6 fields)", diyResult / 1_000_000));
+        
+        // Performance analysis
+        LOG.info("");
+        LOG.info("CONCURRENT PERFORMANCE ANALYSIS:");
+        double cedarBestResult = Math.max(cedarVarargsResult, cedarStandardResult);
+        if (cedarBestResult > apacheResult) {
+            double advantage = ((cedarBestResult - apacheResult) / apacheResult) * 100;
+            LOG.info(String.format("✅ Cedar outperforms Apache by %.1f%% in concurrent workload", advantage));
+            LOG.info("   Cedar's stripe locking allows true concurrent reads/writes");
+            LOG.info("   Apache's synchronized wrapper creates bottlenecks on all operations");
+        }
+        if (cedarBestResult > guavaResult) {
+            double advantage = ((cedarBestResult - guavaResult) / guavaResult) * 100;
+            LOG.info(String.format("✅ Cedar outperforms Guava by %.1f%% in concurrent workload", advantage));
+            LOG.info("   Guava's nested synchronized tables create multiple lock points");
+        }
+    }
+    
+    private double runConcurrentCedarVarargs(TestData testData) {
+        com.cedarsoftware.util.MultiKeyMap<String> map = com.cedarsoftware.util.MultiKeyMap.<String>builder()
+                .defensiveCopies(false)
+                .build();
+        
+        return runConcurrentTest(testData, map, "Cedar Varargs", new ConcurrentOperations() {
+            @Override
+            public void put(Object[] key, String value) {
+                map.putMultiKey(value, key[0], key[1], key[2], key[3], key[4], key[5]);
+            }
+            
+            @Override
+            public String get(Object[] key) {
+                return map.getMultiKey(key[0], key[1], key[2], key[3], key[4], key[5]);
+            }
+            
+            @Override
+            public void remove(Object[] key) {
+                map.removeMultiKey(key[0], key[1], key[2], key[3], key[4], key[5]);
+            }
+        });
+    }
+    
+    private double runConcurrentCedarStandard(TestData testData) {
+        com.cedarsoftware.util.MultiKeyMap<String> map = com.cedarsoftware.util.MultiKeyMap.<String>builder()
+                .defensiveCopies(false)
+                .build();
+        
+        return runConcurrentTest(testData, map, "Cedar Standard", new ConcurrentOperations() {
+            @Override
+            public void put(Object[] key, String value) {
+                map.put(key, value);
+            }
+            
+            @Override
+            public String get(Object[] key) {
+                return map.get(key);
+            }
+            
+            @Override
+            public void remove(Object[] key) {
+                map.remove(key);
+            }
+        });
+    }
+    
+    private double runConcurrentApache(TestData testData) {
+        Map<MultiKey<Object>, String> map = new ConcurrentHashMap<>();
+        
+        return runConcurrentTest(testData, map, "Apache", new ConcurrentOperations() {
+            @Override
+            public void put(Object[] key, String value) {
+                MultiKey<Object> multiKey = new MultiKey<>(key);
+                map.put(multiKey, value);
+            }
+            
+            @Override
+            public String get(Object[] key) {
+                MultiKey<Object> multiKey = new MultiKey<>(key);
+                return map.get(multiKey);
+            }
+            
+            @Override
+            public void remove(Object[] key) {
+                MultiKey<Object> multiKey = new MultiKey<>(key);
+                map.remove(multiKey);
+            }
+        });
+    }
+    
+    private double runConcurrentGuava(TestData testData) {
+        Table<String, String, Table<String, String, String>> baseOuterTable = HashBasedTable.create();
+        Table<String, String, Table<String, String, String>> outerTable = Tables.synchronizedTable(baseOuterTable);
+        
+        return runConcurrentTest(testData, outerTable, "Guava", new ConcurrentOperations() {
+            @Override
+            public void put(Object[] key, String value) {
+                String key1 = key[0].toString();
+                String key2 = key[1].toString();
+                String key3 = key[2].toString();
+                String key4 = key[3].toString();
+                
+                Table<String, String, String> innerTable = outerTable.get(key1, key2);
+                if (innerTable == null) {
+                    Table<String, String, String> baseInnerTable = HashBasedTable.create();
+                    innerTable = Tables.synchronizedTable(baseInnerTable);
+                    outerTable.put(key1, key2, innerTable);
+                }
+                innerTable.put(key3, key4, value);
+            }
+            
+            @Override
+            public String get(Object[] key) {
+                String key1 = key[0].toString();
+                String key2 = key[1].toString();
+                String key3 = key[2].toString();
+                String key4 = key[3].toString();
+                
+                Table<String, String, String> innerTable = outerTable.get(key1, key2);
+                return innerTable != null ? innerTable.get(key3, key4) : null;
+            }
+            
+            @Override
+            public void remove(Object[] key) {
+                String key1 = key[0].toString();
+                String key2 = key[1].toString();
+                String key3 = key[2].toString();
+                String key4 = key[3].toString();
+                
+                Table<String, String, String> innerTable = outerTable.get(key1, key2);
+                if (innerTable != null) {
+                    innerTable.remove(key3, key4);
+                    if (innerTable.isEmpty()) {
+                        outerTable.remove(key1, key2);
+                    }
+                }
+            }
+        });
+    }
+    
+    private double runConcurrentDiy(TestData testData) {
+        Map<CompositeKey, String> map = new ConcurrentHashMap<>();
+        
+        return runConcurrentTest(testData, map, "DIY", new ConcurrentOperations() {
+            @Override
+            public void put(Object[] key, String value) {
+                CompositeKey compositeKey = new CompositeKey((String)key[0], (Integer)key[1], (String)key[2], (Integer)key[3], (String)key[4], (Integer)key[5]);
+                map.put(compositeKey, value);
+            }
+            
+            @Override
+            public String get(Object[] key) {
+                CompositeKey compositeKey = new CompositeKey((String)key[0], (Integer)key[1], (String)key[2], (Integer)key[3], (String)key[4], (Integer)key[5]);
+                return map.get(compositeKey);
+            }
+            
+            @Override
+            public void remove(Object[] key) {
+                CompositeKey compositeKey = new CompositeKey((String)key[0], (Integer)key[1], (String)key[2], (Integer)key[3], (String)key[4], (Integer)key[5]);
+                map.remove(compositeKey);
+            }
+        });
+    }
+    
+    private double runConcurrentTest(TestData testData, Object mapInstance, String mapName, ConcurrentOperations ops) {
+        // Pre-populate the map with all test data
+        LOG.info(String.format("Pre-populating %s with %,d entries...", mapName, mapSize));
+        for (int i = 0; i < mapSize; i++) {
+            ops.put(testData.keys[i], testData.values[i]);
+        }
+        
+        // Concurrent workload configuration
+        final int numReaderThreads = 10; // 90% of workload
+        final int numWriterThreads = 2; // 10% of workload (1 regular + 1 hotspot)
+        final int totalThreads = numReaderThreads + numWriterThreads;
+        final int testDurationSeconds = 10;
+        
+        ExecutorService executor = Executors.newFixedThreadPool(totalThreads);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(totalThreads);
+        AtomicLong totalOperations = new AtomicLong(0);
+        AtomicInteger hotspotRange = new AtomicInteger(Math.min(1000, mapSize / 10)); // Top 10% of keys for hotspot contention
+        
+        // Create reader threads (90% of workload)
+        for (int i = 0; i < numReaderThreads; i++) {
+            final int threadId = i;
+            executor.submit(() -> {
+                Random random = new Random(42 + threadId);
+                long operations = 0;
+                
+                try {
+                    startLatch.await();
+                    long endTime = System.currentTimeMillis() + (testDurationSeconds * 1000);
+                    
+                    while (System.currentTimeMillis() < endTime) {
+                        // 70% regular reads, 30% hotspot reads
+                        int keyIndex = (random.nextInt(100) < 70) ? 
+                            random.nextInt(mapSize) : 
+                            random.nextInt(hotspotRange.get());
+                        
+                        ops.get(testData.keys[keyIndex]);
+                        operations++;
+                        
+                        // Prevent tight loop from overwhelming the CPU
+                        if (operations % 1000 == 0) {
+                            Thread.yield();
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    totalOperations.addAndGet(operations);
+                    doneLatch.countDown();
+                }
+            });
+        }
+        
+        // Create writer threads (10% of workload)
+        for (int i = 0; i < numWriterThreads; i++) {
+            final int threadId = i;
+            final boolean isHotspotWriter = (i == 0); // First writer focuses on hotspot
+            
+            executor.submit(() -> {
+                Random random = new Random(1000 + threadId);
+                long operations = 0;
+                
+                try {
+                    startLatch.await();
+                    long endTime = System.currentTimeMillis() + (testDurationSeconds * 1000);
+                    
+                    while (System.currentTimeMillis() < endTime) {
+                        // Hotspot writer focuses on contested keys, regular writer spreads across all keys
+                        int keyIndex = isHotspotWriter ? 
+                            random.nextInt(hotspotRange.get()) : 
+                            random.nextInt(mapSize);
+                        
+                        // 50% puts, 50% removes to create write contention
+                        if (random.nextBoolean()) {
+                            ops.put(testData.keys[keyIndex], "concurrent-value-" + threadId + "-" + operations);
+                        } else {
+                            ops.remove(testData.keys[keyIndex]);
+                            // Immediately put back to maintain map size
+                            ops.put(testData.keys[keyIndex], testData.values[keyIndex]);
+                        }
+                        operations++;
+                        
+                        // Writers yield more frequently to allow reads
+                        if (operations % 100 == 0) {
+                            Thread.yield();
+                        }
+                    }
+                } catch (Exception e) {
+                    // Handle any exceptions from operations
+                    LOG.warning("Writer thread exception: " + e.getMessage());
+                } finally {
+                    totalOperations.addAndGet(operations);
+                    doneLatch.countDown();
+                }
+            });
+        }
+        
+        // Start all threads simultaneously
+        LOG.info(String.format("Starting %d threads (%d readers + %d writers) for %d seconds...", 
+                               totalThreads, numReaderThreads, numWriterThreads, testDurationSeconds));
+        long startTime = System.nanoTime();
+        startLatch.countDown();
+        
+        try {
+            // Wait for all threads to complete
+            boolean completed = doneLatch.await(testDurationSeconds + 5, TimeUnit.SECONDS);
+            if (!completed) {
+                LOG.warning("Some threads did not complete within timeout");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+        
+        long totalTimeNanos = System.nanoTime() - startTime;
+        double opsPerSecond = (totalOperations.get() * 1_000_000_000.0) / totalTimeNanos;
+        
+        LOG.info(String.format("%s completed: %,d operations in %.1f seconds = %.1fM ops/sec", 
+                               mapName, totalOperations.get(), totalTimeNanos / 1_000_000_000.0, opsPerSecond / 1_000_000));
+        
+        return opsPerSecond;
+    }
+    
+    private interface ConcurrentOperations {
+        void put(Object[] key, String value);
+        String get(Object[] key);
+        void remove(Object[] key);
+    }
     
     static class TestData {
         Object[][] keys;

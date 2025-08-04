@@ -588,12 +588,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return process1DCollection(coll, hashPass, requestDefensiveCopy);
     }
-    
+
     private Object process1DObjectArray(final Object[] array, final int[] hashPass, final boolean requestDefensiveCopy) {
         // Only make defensive copy if both requested AND enabled
         final boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
-        
         final int len = array.length;
+
         if (len == 0) {
             hashPass[0] = 0;
             return array;
@@ -603,12 +603,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 1;
         boolean is1D = true;
         
+        // Optimized loop - stop as soon as we know it's not 1D
         for (int i = 0; i < len; i++) {
             final Object e = array[i];
-            h = h * 31 + computeElementHash(e);
-            if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
-                is1D = false;
-                break;
+            if (e == null) {
+                // h = h * 31 + 0; // This is just h * 31, optimize it
+                h *= 31;
+            } else {
+                final Class<?> eClass = e.getClass();
+                // Check dimension first (before expensive hash computation if we're going to break)
+                if (eClass.isArray() || e instanceof Collection) {
+                    // Not 1D - delegate to expandWithHash which will handle everything
+                    is1D = false;
+                    break;
+                }
+                // Most common path - regular object, inline the common cases
+                h = h * 31 + (eClass == String.class || eClass == Integer.class || eClass == Long.class || eClass == Double.class || eClass == Boolean.class ? e.hashCode() : computeElementHash(e));
             }
         }
         
@@ -730,9 +740,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         // String arrays are always 1D (String elements can't be arrays or collections)
+        // Optimized: Strings are common and don't need special handling
         int h = 1;
         for (int i = 0; i < len; i++) {
-            h = h * 31 + computeElementHash(array[i]);
+            final String s = array[i];
+            h = h * 31 + (s == null ? 0 : s.hashCode());
         }
         
         // Single element optimization - always collapse single element arrays
@@ -765,9 +777,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         // int arrays are always 1D (primitives can't contain collections/arrays)
+        // Optimized: Direct primitive access without method call overhead
         int h = 1;
         for (int i = 0; i < len; i++) {
-            h = h * 31 + Integer.hashCode(array[i]);
+            h = h * 31 + array[i];  // Integer.hashCode(x) just returns x
         }
         
         // Single element optimization - always collapse single element arrays
@@ -793,9 +806,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         // long arrays are always 1D (primitives can't contain collections/arrays)
+        // Optimized: Inline Long.hashCode for better performance
         int h = 1;
         for (int i = 0; i < len; i++) {
-            h = h * 31 + Long.hashCode(array[i]);
+            final long v = array[i];
+            h = h * 31 + (int)(v ^ (v >>> 32));  // Inlined Long.hashCode
         }
         
         // Single element optimization - always collapse single element arrays
@@ -821,9 +836,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         // double arrays are always 1D (primitives can't contain collections/arrays)
+        // Optimized: Inline Double.hashCode for better performance
         int h = 1;
         for (int i = 0; i < len; i++) {
-            h = h * 31 + Double.hashCode(array[i]);
+            final long bits = Double.doubleToLongBits(array[i]);
+            h = h * 31 + (int)(bits ^ (bits >>> 32));  // Inlined Double.hashCode
         }
         
         // Single element optimization - always collapse single element arrays
@@ -849,9 +866,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         // boolean arrays are always 1D (primitives can't contain collections/arrays)
+        // Optimized: Inline Boolean.hashCode for better performance
         int h = 1;
         for (int i = 0; i < len; i++) {
-            h = h * 31 + Boolean.hashCode(array[i]);
+            h = h * 31 + (array[i] ? 1231 : 1237);  // Inlined Boolean.hashCode
         }
         
         // Single element optimization - always collapse single element arrays

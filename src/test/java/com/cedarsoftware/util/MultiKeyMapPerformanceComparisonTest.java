@@ -98,7 +98,7 @@ public class MultiKeyMapPerformanceComparisonTest {
         }
     }
     
-//    @Disabled
+    @Disabled
     @Test
     public void compareMultiKeyMapPerformance() {
         // Run tests at different scales - LARGEST TO SMALLEST for optimal JIT warming
@@ -133,8 +133,8 @@ public class MultiKeyMapPerformanceComparisonTest {
      * - Hotspot contention patterns focusing on overlapping key ranges
      * - True thread contention to expose Apache's synchronization bottlenecks vs Cedar's inherent thread-safety
      */
-    @Disabled
-    @Test
+//    @Disabled
+//    @Test
     public void concurrentReaderWriterMixedWorkloadTest() {
         // Test different scales to show how thread contention scales
         int[] testSizes = {100, 1_000, 10_000, 20_000, 50_000, 100_000};
@@ -1011,7 +1011,7 @@ public class MultiKeyMapPerformanceComparisonTest {
         final int numReaderThreads = 10; // 90% of workload
         final int numWriterThreads = 2; // 10% of workload (1 regular + 1 hotspot)
         final int totalThreads = numReaderThreads + numWriterThreads;
-        final int testDurationSeconds = 10;
+        final int testDurationSeconds = 2;
         
         ExecutorService executor = Executors.newFixedThreadPool(totalThreads);
         CountDownLatch startLatch = new CountDownLatch(1);

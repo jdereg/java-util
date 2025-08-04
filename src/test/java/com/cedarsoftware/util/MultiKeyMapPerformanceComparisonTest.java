@@ -94,7 +94,7 @@ public class MultiKeyMapPerformanceComparisonTest {
     @Test
     public void compareMultiKeyMapPerformance() {
         // Run tests at different scales - LARGEST TO SMALLEST for optimal JIT warming
-        int[] testSizes = {50_000, 20_000, 10_000, 1_000, 100};
+        int[] testSizes = {100_000, 50_000, 20_000, 10_000, 1_000, 100};
         
         LOG.info("=== Multi-Key Map Performance Comparison ===");
         LOG.info("Testing 6-dimensional keys with realistic operation mix at different scales");

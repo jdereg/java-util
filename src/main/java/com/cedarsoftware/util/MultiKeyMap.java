@@ -87,20 +87,20 @@ import java.util.logging.Logger;
  *
  * @param <V> the type of values stored in the map
  * @author John DeRegnaucourt (jdereg@gmail.com)
- * <br>
- * Copyright (c) Cedar Software LLC
- * <br><br>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <br><br>
- * <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
- * <br><br>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *         <br>
+ *         Copyright (c) Cedar Software LLC
+ *         <br><br>
+ *         Licensed under the Apache License, Version 2.0 (the "License");
+ *         you may not use this file except in compliance with the License.
+ *         You may obtain a copy of the License at
+ *         <br><br>
+ *         <a href="http://www.apache.org/licenses/LICENSE-2.0">License</a>
+ *         <br><br>
+ *         Unless required by applicable law or agreed to in writing, software
+ *         distributed under the License is distributed on an "AS IS" BASIS,
+ *         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *         See the License for the specific language governing permissions and
+ *         limitations under the License.
  */
 public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
@@ -268,8 +268,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         if (entry != null) {
                             // Re-create MultiKey with potentially copied keys
                             Object copiedKeys = copyKeysIfNeeded(entry.keys, this.defensiveCopies);
-                            @SuppressWarnings("unchecked")
-                            V value = (V) entry.value;
+                            V value = entry.value;
                             // Create new MultiKey and use internal put to avoid double-copying
                             MultiKey<V> newKey = new MultiKey<>(copiedKeys, entry.hash, value);
                             putInternal(newKey);
@@ -280,25 +279,44 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         });
     }
 
-    // Helper for deep-copying keys if enabled
+    // Optimized copyKeysIfNeeded with cross-type support
     private static Object copyKeysIfNeeded(Object keys, boolean defensive) {
         if (!defensive) return keys;
+
         if (keys instanceof Object[]) {
+            // Deep copy array
             Object[] arr = (Object[]) keys;
             Object[] copy = new Object[arr.length];
-            for (int i = 0; i < arr.length; i++) {
-                copy[i] = copyKeysIfNeeded(arr[i], true);  // Recurse for nested arrays
+            System.arraycopy(arr, 0, copy, 0, arr.length);
+            // Recurse for nested
+            for (int i = 0; i < copy.length; i++) {
+                copy[i] = copyKeysIfNeeded(copy[i], true);
             }
             return copy;
         } else if (keys instanceof Collection<?>) {
-            return new ArrayList<>((Collection<?>) keys);  // Shallow copy of collection
+            // Deep copy collection - use fast path for ArrayList
+            Collection<?> coll = (Collection<?>) keys;
+            if (coll instanceof ArrayList) {
+                ArrayList<?> src = (ArrayList<?>) coll;
+                ArrayList<Object> copy = new ArrayList<>(src.size());
+                for (int i = 0; i < src.size(); i++) {
+                    copy.add(copyKeysIfNeeded(src.get(i), true));
+                }
+                return copy;
+            }
+            // Fallback for other collections
+            ArrayList<Object> copy = new ArrayList<>(coll.size());
+            for (Object item : coll) {
+                copy.add(copyKeysIfNeeded(item, true));
+            }
+            return copy;
         }
-        return keys;  // Primitives/objects unchanged
+        return keys;  // No copy needed
     }
 
     // Keep the most commonly used convenience constructors
     public MultiKeyMap() {
-        this(MultiKeyMap.<V>builder());
+        this(MultiKeyMap.builder());
     }
 
     public MultiKeyMap(int capacity) {
@@ -966,71 +984,111 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         boolean storedSingle = !storedClazz.isArray() && !(stored instanceof Collection);
         boolean lookupSingle = !lookupClazz.isArray() && !(lookup instanceof Collection);
 
-        if (storedSingle != lookupSingle) return false;
+        if (storedSingle != lookupSingle) return false;   // Array/Collection versus Single Object - never equals
 
         if (storedSingle) return Objects.equals(stored == NULL_SENTINEL ? null : stored, lookup == NULL_SENTINEL ? null : lookup);
 
-        // Multi-key match
+        // Multi-key match - check size first
         int storedLen = stored instanceof Collection ? ((Collection<?>) stored).size() : Array.getLength(stored);
         int lookupLen = lookup instanceof Collection ? ((Collection<?>) lookup).size() : Array.getLength(lookup);
 
         if (storedLen != lookupLen) return false;
 
-        // Type-specific fast paths - use exact class matching to avoid instanceof hierarchy issues
-        Class<?> storedClass = stored.getClass();
-        Class<?> lookupClass = lookup.getClass();
-
-        if (storedClass == Object[].class && lookupClass == Object[].class) {
-            Object[] s = (Object[]) stored;
-            Object[] l = (Object[]) lookup;
-            for (int i = 0; i < storedLen; i++) if (!Objects.equals(s[i], l[i])) return false;
-            return true;
+        // HIERARCHICAL BRANCH STRUCTURE for better performance
+        // Branch 1: Both are same type (most common case - ~70% of comparisons)
+        if (storedClazz == lookupClazz) {
+            // Sub-branch 1A: Primitive arrays (very fast with intrinsics)
+            if (storedClazz.getComponentType() != null && storedClazz.getComponentType().isPrimitive()) {
+                if (storedClazz == int[].class) return Arrays.equals((int[]) stored, (int[]) lookup);
+                if (storedClazz == long[].class) return Arrays.equals((long[]) stored, (long[]) lookup);
+                if (storedClazz == double[].class) return Arrays.equals((double[]) stored, (double[]) lookup);
+                if (storedClazz == boolean[].class) return Arrays.equals((boolean[]) stored, (boolean[]) lookup);
+                if (storedClazz == byte[].class) return Arrays.equals((byte[]) stored, (byte[]) lookup);
+                if (storedClazz == char[].class) return Arrays.equals((char[]) stored, (char[]) lookup);
+                if (storedClazz == float[].class) return Arrays.equals((float[]) stored, (float[]) lookup);
+                if (storedClazz == short[].class) return Arrays.equals((short[]) stored, (short[]) lookup);
+            }
+            // Sub-branch 1B: Object arrays
+            if (storedClazz == Object[].class) {
+                return Arrays.equals((Object[]) stored, (Object[]) lookup);
+            }
+            if (storedClazz == String[].class) {
+                return Arrays.equals((String[]) stored, (String[]) lookup);
+            }
+            // Sub-branch 1C: Collection types
+            if (storedClazz == ArrayList.class) {
+                List<?> s = (List<?>) stored;
+                List<?> l = (List<?>) lookup;
+                for (int i = 0; i < storedLen; i++) {
+                    if (!Objects.equals(s.get(i), l.get(i))) return false;
+                }
+                return true;
+            }
         }
         
-        if (storedClass == String[].class && lookupClass == String[].class) {
-            String[] s = (String[]) stored;
-            String[] l = (String[]) lookup;
-            for (int i = 0; i < storedLen; i++) if (!Objects.equals(s[i], l[i])) return false;
-            return true;
-        }
-
-        if (storedClass == int[].class && lookupClass == int[].class) {
-            int[] s = (int[]) stored;
-            int[] l = (int[]) lookup;
-            for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
-            return true;
-        }
-
-        if (storedClass == long[].class && lookupClass == long[].class) {
-            long[] s = (long[]) stored;
-            long[] l = (long[]) lookup;
-            for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
-            return true;
-        }
-
-        if (storedClass == double[].class && lookupClass == double[].class) {
-            double[] s = (double[]) stored;
-            double[] l = (double[]) lookup;
-            for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
-            return true;
-        }
-
-        if (storedClass == boolean[].class && lookupClass == boolean[].class) {
-            boolean[] s = (boolean[]) stored;
-            boolean[] l = (boolean[]) lookup;
-            for (int i = 0; i < storedLen; i++) if (s[i] != l[i]) return false;
-            return true;
-        }
-
-        // Collection fast paths - use exact class matching for optimal performance
-        if (storedClass == ArrayList.class && lookupClass == ArrayList.class) {
-            ArrayList<?> s = (ArrayList<?>) stored;
-            ArrayList<?> l = (ArrayList<?>) lookup;
-            for (int i = 0; i < storedLen; i++) if (!Objects.equals(s.get(i), l.get(i))) return false;
-            return true;
-        }
+        // Branch 2: Cross-type comparisons between arrays and collections
+        boolean storedIsArray = storedClazz.isArray();
+        boolean lookupIsArray = lookupClazz.isArray();
         
-        // Cross-type or general
+        if (storedIsArray && !lookupIsArray) {
+            // Array to Collection comparison
+            if (storedClazz == String[].class) {
+                String[] sArr = (String[]) stored;
+                if (lookup instanceof List) {
+                    List<?> lList = (List<?>) lookup;
+                    for (int i = 0; i < storedLen; i++) {
+                        if (!Objects.equals(sArr[i], lList.get(i))) return false;
+                    }
+                    return true;
+                }
+            } else if (stored instanceof Object[]) {
+                Object[] sArr = (Object[]) stored;
+                if (lookup instanceof ArrayList) {
+                    ArrayList<?> lList = (ArrayList<?>) lookup;
+                    for (int i = 0; i < storedLen; i++) {
+                        if (!Objects.equals(sArr[i], lList.get(i))) return false;
+                    }
+                    return true;
+                }
+                if (lookup instanceof List) {
+                    List<?> lList = (List<?>) lookup;
+                    for (int i = 0; i < storedLen; i++) {
+                        if (!Objects.equals(sArr[i], lList.get(i))) return false;
+                    }
+                    return true;
+                }
+            }
+        } else if (!storedIsArray && lookupIsArray) {
+            // Collection to Array comparison
+            if (lookupClazz == String[].class) {
+                String[] lArr = (String[]) lookup;
+                if (stored instanceof List) {
+                    List<?> sList = (List<?>) stored;
+                    for (int i = 0; i < storedLen; i++) {
+                        if (!Objects.equals(sList.get(i), lArr[i])) return false;
+                    }
+                    return true;
+                }
+            } else if (lookup instanceof Object[]) {
+                Object[] lArr = (Object[]) lookup;
+                if (stored instanceof ArrayList) {
+                    ArrayList<?> sList = (ArrayList<?>) stored;
+                    for (int i = 0; i < storedLen; i++) {
+                        if (!Objects.equals(sList.get(i), lArr[i])) return false;
+                    }
+                    return true;
+                }
+                if (stored instanceof List) {
+                    List<?> sList = (List<?>) stored;
+                    for (int i = 0; i < storedLen; i++) {
+                        if (!Objects.equals(sList.get(i), lArr[i])) return false;
+                    }
+                    return true;
+                }
+            }
+        }
+
+        // Branch 3: Fallback to iterator for uncommon cases
         Iterator<?> storedIter = iteratorFor(stored);
         Iterator<?> lookupIter = iteratorFor(lookup);
         while (storedIter.hasNext() && lookupIter.hasNext()) {

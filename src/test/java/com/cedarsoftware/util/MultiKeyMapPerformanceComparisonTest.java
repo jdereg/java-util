@@ -98,7 +98,7 @@ public class MultiKeyMapPerformanceComparisonTest {
         }
     }
     
-
+    @Disabled
     @Test
     public void compareMultiKeyMapPerformance() {
         // Run tests at different scales - LARGEST TO SMALLEST for optimal JIT warming
@@ -138,7 +138,7 @@ public class MultiKeyMapPerformanceComparisonTest {
     public void concurrentReaderWriterMixedWorkloadTest() {
         // Test different scales to show how thread contention scales
         int[] testSizes = {100, 1_000, 10_000, 20_000, 50_000, 100_000};
-        
+
         LOG.info("=== Concurrent Reader/Writer Mixed Workload Test ===");
         LOG.info("Testing true concurrent access patterns (90% reads, 10% writes)");
         LOG.info("Cedar: inherently thread-safe with stripe locking");

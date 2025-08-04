@@ -2814,12 +2814,12 @@ Cedar Software's `MultiKeyMap` delivers exceptional concurrent performance, sign
 
 | Scale |     Cedar      |    Apache     |   Guava    |      DIY       |
 |-------|----------------|---------------|------------|----------------|
-| 100K  |    37.1M 🥇    |     33.4M     |    2.4M    |     29.6M      |
+| 100K  |    37.8M 🥇    |     36.4M     |    2.5M    |     29.6M      |
 |  50K  |    52.7M 🥇    |     39.0M     |    2.9M    |     30.7M      |
-|  20K  |    57.1M 🥇    |     37.3M     |    3.1M    |     33.6M      |
+|  20K  |    59.1M 🥇    |     37.3M     |    3.1M    |     33.6M      |
 |  10K  |    60.0M 🥇    |     36.0M     |    3.7M    |     31.7M      |
-|   1K  |    63.1M 🥇    |     31.0M     |    4.3M    |     30.2M      |
-|  100  |    79.8M 🥇    |     23.3M     |    5.1M    |     27.2M      |
+|   1K  |    64.8M 🥇    |     31.0M     |    4.3M    |     30.2M      |
+|  100  |    93.2M 🥇    |     23.3M     |    5.1M    |     27.2M      |
 ```
 **Key Performance Advantages:**
 - **Inherent thread-safety** without synchronization overhead penalties

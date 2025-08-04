@@ -98,7 +98,7 @@ public class MultiKeyMapPerformanceComparisonTest {
         }
     }
     
-    @Disabled
+//    @Disabled
     @Test
     public void compareMultiKeyMapPerformance() {
         // Run tests at different scales - LARGEST TO SMALLEST for optimal JIT warming

@@ -12,8 +12,11 @@ public class MultiKeyMapDebugTest {
     
     @Test
     void debugSingleElementOptimization() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED, false);
-        
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+                .flattenDimensions(false)
+                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED)
+                .build(); 
+
         // Test simple case first
         List<String> simpleList = new ArrayList<>();
         simpleList.add("test");

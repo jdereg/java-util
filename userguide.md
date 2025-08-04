@@ -2804,6 +2804,7 @@ Cedar Software's `MultiKeyMap` delivers exceptional concurrent performance, sign
 - **Apache MultiKeyMap**: ConcurrentHashMap wrapper for thread-safety
 - **DIY Approach**: ConcurrentHashMap with composite key objects
 - **Scale**: Number of entries in the map (100 to 100,000 elements)
+- **Defensive Copy**: off (to make Cedar MultiKeyMap functionally equivalent to others)
 
 **Important Notes:**
 - Guava Table performs best only in simple 2D scenarios (row/column) without concurrency

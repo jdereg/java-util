@@ -80,7 +80,7 @@ public class MultiKeyMapCycleDetectionVerificationTest {
     @Test
     void testCycleWithFlattenTrue() {
         // Test cycle detection when flattenDimensions = true
-        MultiKeyMap<String> map = new MultiKeyMap<>(true);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build();
         
         Object[] circular = new Object[2];
         circular[0] = "data";
@@ -97,7 +97,7 @@ public class MultiKeyMapCycleDetectionVerificationTest {
     @Test
     void testCycleWithFlattenFalse() {
         // Test cycle detection when flattenDimensions = false
-        MultiKeyMap<String> map = new MultiKeyMap<>(false);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(false).build();
         
         Object[] circular = new Object[2];
         circular[0] = "data";

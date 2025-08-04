@@ -12,7 +12,7 @@ public class MultiKeyMapTest {
     private static final Logger LOG = Logger.getLogger(MultiKeyMapTest.class.getName());
     @Test
     void testSingleElementArrayKeys() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(true);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build();
 
         map.put("a", "alpha");
         map.put(new String[]{"a"}, "[alpha]");
@@ -62,7 +62,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementArrayKeysFlattenInCaseInsensitiveMap() {
-        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(true));
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(true).build());
 
         map.put("a", "alpha");
         map.put(new String[]{"a"}, "[alpha]");
@@ -79,7 +79,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementArrayKeysNoFlattenInCaseInsensitiveMap() {
-        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(false));
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(false).build());
 
         map.put("a", "alpha");
         map.put(new String[]{"a"}, "[alpha]");  // This should overwrite "alpha" since single-element arrays are equivalent to single keys
@@ -98,7 +98,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementCollectionKeysFlattenInCaseInsensitiveMap() {
-        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(true));
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(true).build());
 
         map.put("a", "alpha");
         map.put(CollectionUtilities.listOf("a"), "[alpha]");
@@ -115,7 +115,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementCollectionKeysNoFlattenInCaseInsensitiveMap() {
-        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(false));
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(false).build());
 
         map.put("a", "alpha");
         map.put(CollectionUtilities.listOf("a"), "[alpha]");  // This should overwrite "alpha" since single-element collections are equivalent to single keys
@@ -133,7 +133,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementArrayKeys3() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(true);
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build();
 
         map.put("a", "alpha");
         map.put("b", "beta");
@@ -219,7 +219,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementArrayKeysFlattenInCaseInsensitiveMap3() {
-        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(true));
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(true).build());
 
         map.put("a", "alpha");
         map.put("b", "beta");
@@ -251,7 +251,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementArrayKeysNoFlattenInCaseInsensitiveMap3() {
-        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(false));
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(false).build());
 
         map.put("a", "alpha");
         map.put("b", "beta");
@@ -284,7 +284,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementCollectionKeysFlattenInCaseInsensitiveMap3() {
-        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(true));
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(true).build());
 
         map.put("a", "alpha");
         map.put("b", "beta");
@@ -316,7 +316,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testSingleElementCollectionKeysNoFlattenInCaseInsensitiveMap3() {
-        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), new MultiKeyMap<>(false));
+        CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(false).build());
 
         map.put("a", "alpha");
         map.put("b", "beta");
@@ -349,7 +349,7 @@ public class MultiKeyMapTest {
 
     @Test
     void testMultiKeyMapEdgeCases() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(false);  // Use false to avoid flattening confusion
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(false).build();  // Use false to avoid flattening confusion
 
         // Test null key
         map.put(null, "null value");

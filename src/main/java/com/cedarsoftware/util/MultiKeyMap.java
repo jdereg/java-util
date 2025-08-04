@@ -80,8 +80,8 @@ import java.util.logging.Logger;
  * String value = map.get(Arrays.asList("key1", "key2"));     // Collection lookup - same key!
  * 
  * // Structure-preserving vs flattening modes
- * MultiKeyMap<String> structured = new MultiKeyMap<>(false); // Structure-preserving (default)
- * MultiKeyMap<String> flattened = new MultiKeyMap<>(true);   // Dimension-flattening
+ * MultiKeyMap<String> structured = MultiKeyMap.<String>builder().flattenDimensions(false).build(); // Structure-preserving (default)
+ * MultiKeyMap<String> flattened = MultiKeyMap.<String>builder().flattenDimensions(true).build();   // Dimension-flattening
  * }</pre>
  *
  * <p>For comprehensive examples and advanced usage patterns, see the user guide documentation.</p>
@@ -328,16 +328,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this(MultiKeyMap.<V>builder().capacity(capacity).loadFactor(loadFactor));
     }
     
-    // Constructor for common test usage patterns
-    public MultiKeyMap(CollectionKeyMode collectionKeyMode, boolean flattenDimensions) {
-        this(MultiKeyMap.<V>builder()
-                .collectionKeyMode(collectionKeyMode)
-                .flattenDimensions(flattenDimensions));
-    }
-    
-    public MultiKeyMap(boolean flattenDimensions) {
-        this(MultiKeyMap.<V>builder().flattenDimensions(flattenDimensions));
-    }
 
     // Builder class
     public static class Builder<V> {
@@ -565,7 +555,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // ULTRA-FAST PATH: Object[] arrays (most common case - 90%+ of real usage)
         if (key.getClass() == Object[].class) {
-            return process1DObjectArray((Object[]) key, hashPass);
+            return process1DObjectArray((Object[]) key, hashPass, requestDefensiveCopy);
         }
 
         Class<?> clazz = key.getClass();
@@ -587,7 +577,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Handle other array types (int[], String[], etc.)
         if (clazz.isArray()) {
-            return process1DTypedArray(key, hashPass);
+            return process1DTypedArray(key, hashPass, requestDefensiveCopy);
         }
         
         // Handle Collections
@@ -599,7 +589,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return process1DCollection(coll, hashPass, requestDefensiveCopy);
     }
     
-    private Object process1DObjectArray(final Object[] array, final int[] hashPass) {
+    private Object process1DObjectArray(final Object[] array, final int[] hashPass, final boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        final boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+        
         final int len = array.length;
         if (len == 0) {
             hashPass[0] = 0;
@@ -611,7 +604,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         boolean is1D = true;
         
         for (int i = 0; i < len; i++) {
-            Object e = array[i];
+            final Object e = array[i];
             h = h * 31 + computeElementHash(e);
             if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
                 is1D = false;
@@ -634,7 +627,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
             }
             hashPass[0] = finalizeHash(h);
-            return array;
+            // Make defensive copy only when storing (put operations), not for lookups
+            return makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
         }
         
         // It's 2D+ - need to expand with hash computation
@@ -701,31 +695,34 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return expandWithHash(coll, hashPass);
     }
     
-    private Object process1DTypedArray(Object arr, int[] hashPass) {
+    private Object process1DTypedArray(Object arr, int[] hashPass, boolean requestDefensiveCopy) {
         Class<?> clazz = arr.getClass();
         
         // Use type-specific fast paths for optimal performance
         if (clazz == String[].class) {
-            return process1DStringArray((String[]) arr, hashPass);
+            return process1DStringArray((String[]) arr, hashPass, requestDefensiveCopy);
         }
         if (clazz == int[].class) {
-            return process1DIntArray((int[]) arr, hashPass);
+            return process1DIntArray((int[]) arr, hashPass, requestDefensiveCopy);
         }
         if (clazz == long[].class) {
-            return process1DLongArray((long[]) arr, hashPass);
+            return process1DLongArray((long[]) arr, hashPass, requestDefensiveCopy);
         }
         if (clazz == double[].class) {
-            return process1DDoubleArray((double[]) arr, hashPass);
+            return process1DDoubleArray((double[]) arr, hashPass, requestDefensiveCopy);
         }
         if (clazz == boolean[].class) {
-            return process1DBooleanArray((boolean[]) arr, hashPass);
+            return process1DBooleanArray((boolean[]) arr, hashPass, requestDefensiveCopy);
         }
         
         // Fallback to reflection for uncommon array types
-        return process1DGenericArray(arr, hashPass);
+        return process1DGenericArray(arr, hashPass, requestDefensiveCopy);
     }
     
-    private Object process1DStringArray(String[] array, int[] hashPass) {
+    private Object process1DStringArray(String[] array, int[] hashPass, boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+        
         final int len = array.length;
         if (len == 0) {
             hashPass[0] = 0;
@@ -753,10 +750,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         hashPass[0] = finalizeHash(h);
-        return array;
+        // Make defensive copy only when storing (put operations), not for lookups
+        return makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
     }
     
-    private Object process1DIntArray(int[] array, int[] hashPass) {
+    private Object process1DIntArray(int[] array, int[] hashPass, boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+        
         final int len = array.length;
         if (len == 0) {
             hashPass[0] = 0;
@@ -777,10 +778,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         hashPass[0] = finalizeHash(h);
-        return array;
+        // Make defensive copy only when storing (put operations), not for lookups
+        return makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
     }
     
-    private Object process1DLongArray(long[] array, int[] hashPass) {
+    private Object process1DLongArray(long[] array, int[] hashPass, boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+        
         final int len = array.length;
         if (len == 0) {
             hashPass[0] = 0;
@@ -801,10 +806,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         hashPass[0] = finalizeHash(h);
-        return array;
+        // Make defensive copy only when storing (put operations), not for lookups
+        return makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
     }
     
-    private Object process1DDoubleArray(double[] array, int[] hashPass) {
+    private Object process1DDoubleArray(double[] array, int[] hashPass, boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+        
         final int len = array.length;
         if (len == 0) {
             hashPass[0] = 0;
@@ -825,10 +834,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         hashPass[0] = finalizeHash(h);
-        return array;
+        // Make defensive copy only when storing (put operations), not for lookups
+        return makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
     }
     
-    private Object process1DBooleanArray(boolean[] array, int[] hashPass) {
+    private Object process1DBooleanArray(boolean[] array, int[] hashPass, boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+        
         final int len = array.length;
         if (len == 0) {
             hashPass[0] = 0;
@@ -849,10 +862,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         hashPass[0] = finalizeHash(h);
-        return array;
+        // Make defensive copy only when storing (put operations), not for lookups
+        return makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
     }
     
-    private Object process1DGenericArray(Object arr, int[] hashPass) {
+    private Object process1DGenericArray(Object arr, int[] hashPass, boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+        
         // Fallback method using reflection for uncommon array types
         final int len = Array.getLength(arr);
         if (len == 0) {
@@ -888,6 +905,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
             }
             hashPass[0] = finalizeHash(h);
+            // For generic arrays, create a copy using reflection if needed
+            if (makeDefensiveCopy) {
+                Object copy = Array.newInstance(arr.getClass().getComponentType(), len);
+                for (int i = 0; i < len; i++) {
+                    Array.set(copy, i, Array.get(arr, i));
+                }
+                return copy;
+            }
             return arr;
         }
         

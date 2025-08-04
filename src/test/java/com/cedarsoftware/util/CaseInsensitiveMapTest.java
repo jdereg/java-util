@@ -2904,7 +2904,7 @@ void testComputeIfAbsent() {
     public void testAutoExpansionCaseInsensitiveStringHandling() {
         // Create CaseInsensitiveMap with MultiKeyMap backing (flattenDimensions=true for auto-expansion)
         @SuppressWarnings("unchecked")
-        Map backing = new MultiKeyMap<String>(true);
+        Map backing = MultiKeyMap.<String>builder().flattenDimensions(true).build();
         CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), backing);
         
         // Test that String elements in arrays/collections are handled case-insensitively

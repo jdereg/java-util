@@ -234,7 +234,7 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         // Create a MultiKeyMap with flattenDimensions = true
         // This ensures that when expandAndHash processes a single-element array with null,
         // it results in exactly [NULL_SENTINEL] without OPEN/CLOSE markers
-        MultiKeyMap<String> map = new MultiKeyMap<>(true); // flattenDimensions = true
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build(); // flattenDimensions = true
         
         // Single-element array containing null
         Object[] singleNullArray = {null};
@@ -266,7 +266,7 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         // Create a MultiKeyMap with flattenDimensions = false
         // This ensures OPEN/CLOSE markers are added, so single-element array with null
         // becomes [OPEN, NULL_SENTINEL, CLOSE] - not single-element, different behavior
-        MultiKeyMap<String> map = new MultiKeyMap<>(false); // flattenDimensions = false
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(false).build(); // flattenDimensions = false
         
         // Single-element array containing null
         Object[] singleNullArray = {null};

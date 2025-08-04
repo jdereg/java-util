@@ -15,8 +15,11 @@ public class MultiKeyMapCollectionHashTest {
     @Test
     void testCollectionHashConsistency() {
         // Use COLLECTIONS_NOT_EXPANDED mode to test the optimization
-        MultiKeyMap<String> map = new MultiKeyMap<>(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED, false);
-        
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+                .flattenDimensions(false)
+                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED)
+                .build();
+
         // Test 0 elements - empty collections
         List<Object> emptyList1 = new ArrayList<>();
         List<Object> emptyList2 = new ArrayList<>();  // Same type
@@ -122,8 +125,12 @@ public class MultiKeyMapCollectionHashTest {
     
     @Test
     void testCollectionHashNonEquivalenceInNotExpandedMode() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED, false);
-        
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+                .flattenDimensions(false)
+                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED)
+                .build();
+
+
         // Test that collections with same content but different types are NOT equivalent in NOT_EXPANDED mode
         List<String> list = Arrays.asList("x", "y", "z");
         Set<String> set = new LinkedHashSet<>(Arrays.asList("x", "y", "z")); // Maintain order
@@ -146,7 +153,7 @@ public class MultiKeyMapCollectionHashTest {
     @Test
     void testCollectionHashEquivalenceInExpandedMode() {
         // Test the opposite - in normal expanded mode, List and Set with same elements should be equivalent
-        MultiKeyMap<String> map = new MultiKeyMap<>(true); // Default expanded mode
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build(); // Default expanded mode
         
         List<String> list = Arrays.asList("x", "y", "z");
         Set<String> set = new LinkedHashSet<>(Arrays.asList("x", "y", "z")); // Maintain order
@@ -164,8 +171,11 @@ public class MultiKeyMapCollectionHashTest {
     
     @Test
     void testCollectionModificationIsolation() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED, false);
-        
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+                .flattenDimensions(false)
+                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED)
+                .build();
+
         // Test that modifying original collection doesn't affect stored key
         List<String> mutableList = new ArrayList<>();
         mutableList.add("original");
@@ -186,8 +196,11 @@ public class MultiKeyMapCollectionHashTest {
     
     @Test
     void testNoSingleElementOptimizationInNotExpandedMode() {
-        MultiKeyMap<String> map = new MultiKeyMap<>(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED, false);
-        
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+                .flattenDimensions(false)
+                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED)
+                .build();
+
         // In NOT_EXPANDED mode, no single-element optimization should occur
         List<String> singleElement = Arrays.asList("test");
         map.put(singleElement, "value");

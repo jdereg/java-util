@@ -177,9 +177,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private volatile Object[] buckets;
     private final AtomicInteger atomicSize = new AtomicInteger(0);
     private final AtomicInteger maxChainLength = new AtomicInteger(0);
+    private final int capacity;
     private final float loadFactor;
     private final CollectionKeyMode collectionKeyMode;
     private final boolean flattenDimensions;
+    private final boolean defensiveCopies;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
@@ -204,18 +206,41 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
-    public MultiKeyMap(int capacity, float loadFactor, CollectionKeyMode collectionKeyMode, boolean flattenDimensions) {
-        if (loadFactor <= 0 || Float.isNaN(loadFactor)) {
-            throw new IllegalArgumentException("Load factor must be positive: " + loadFactor);
+    /**
+     * Returns a power of 2 size for the given target capacity.
+     * This method implements the same logic as HashMap's tableSizeFor method,
+     * ensuring optimal hash table performance through power-of-2 sizing.
+     * 
+     * @param cap the target capacity
+     * @return the smallest power of 2 greater than or equal to cap, or 1 if cap <= 0
+     */
+    private static int tableSizeFor(int cap) {
+        int n = cap - 1;
+        n |= n >>> 1;
+        n |= n >>> 2;
+        n |= n >>> 4;
+        n |= n >>> 8;
+        n |= n >>> 16;
+        return (n < 0) ? 1 : (n >= (1 << 30)) ? (1 << 30) : n + 1;
+    }
+
+    // Private constructor called by Builder
+    private MultiKeyMap(Builder<V> builder) {
+        if (builder.loadFactor <= 0 || Float.isNaN(builder.loadFactor)) {
+            throw new IllegalArgumentException("Load factor must be positive: " + builder.loadFactor);
         }
-        if (capacity < 0) {
-            throw new IllegalArgumentException("Capacity must be non-negative: " + capacity);
+        if (builder.capacity < 0) {
+            throw new IllegalArgumentException("Illegal initial capacity: " + builder.capacity);
         }
 
-        this.buckets = new Object[capacity];
-        this.loadFactor = loadFactor;
-        this.collectionKeyMode = collectionKeyMode != null ? collectionKeyMode : CollectionKeyMode.COLLECTIONS_EXPANDED;
-        this.flattenDimensions = flattenDimensions;
+        // Ensure capacity is a power of 2, following HashMap's behavior
+        int actualCapacity = tableSizeFor(builder.capacity);
+        this.buckets = new Object[actualCapacity];
+        this.capacity = builder.capacity;
+        this.loadFactor = builder.loadFactor;
+        this.collectionKeyMode = builder.collectionKeyMode;
+        this.flattenDimensions = builder.flattenDimensions;
+        this.defensiveCopies = builder.defensiveCopies;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
@@ -229,29 +254,132 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
-    // Convenience constructors (as in original)
-    public MultiKeyMap(int capacity, float loadFactor) {
-        this(capacity, loadFactor, CollectionKeyMode.COLLECTIONS_EXPANDED, false);
+    // Copy constructor
+    public MultiKeyMap(MultiKeyMap<? extends V> source) {
+        this(MultiKeyMap.<V>builder().from(source));
+        
+        // Deep-copy entries (respect defensiveCopies)
+        source.withAllStripeLocks(() -> {  // Lock for consistent snapshot
+            for (Object b : source.buckets) {
+                if (b != null) {
+                    @SuppressWarnings("unchecked")
+                    MultiKey<? extends V>[] chain = (MultiKey<? extends V>[]) b;
+                    for (MultiKey<? extends V> entry : chain) {
+                        if (entry != null) {
+                            // Re-create MultiKey with potentially copied keys
+                            Object copiedKeys = copyKeysIfNeeded(entry.keys, this.defensiveCopies);
+                            @SuppressWarnings("unchecked")
+                            V value = (V) entry.value;
+                            // Create new MultiKey and use internal put to avoid double-copying
+                            MultiKey<V> newKey = new MultiKey<>(copiedKeys, entry.hash, value);
+                            putInternal(newKey);
+                        }
+                    }
+                }
+            }
+        });
     }
 
-    public MultiKeyMap(int capacity, float loadFactor, CollectionKeyMode collectionKeyMode) {
-        this(capacity, loadFactor, collectionKeyMode, false);
+    // Helper for deep-copying keys if enabled
+    private static Object copyKeysIfNeeded(Object keys, boolean defensive) {
+        if (!defensive) return keys;
+        if (keys instanceof Object[]) {
+            Object[] arr = (Object[]) keys;
+            Object[] copy = new Object[arr.length];
+            for (int i = 0; i < arr.length; i++) {
+                copy[i] = copyKeysIfNeeded(arr[i], true);  // Recurse for nested arrays
+            }
+            return copy;
+        } else if (keys instanceof Collection<?>) {
+            return new ArrayList<>((Collection<?>) keys);  // Shallow copy of collection
+        }
+        return keys;  // Primitives/objects unchanged
     }
 
+    // Keep the most commonly used convenience constructors
     public MultiKeyMap() {
-        this(16);
+        this(MultiKeyMap.<V>builder());
     }
 
     public MultiKeyMap(int capacity) {
-        this(capacity, DEFAULT_LOAD_FACTOR);
+        this(MultiKeyMap.<V>builder().capacity(capacity));
     }
 
+    public MultiKeyMap(int capacity, float loadFactor) {
+        this(MultiKeyMap.<V>builder().capacity(capacity).loadFactor(loadFactor));
+    }
+    
+    // Constructor for common test usage patterns
     public MultiKeyMap(CollectionKeyMode collectionKeyMode, boolean flattenDimensions) {
-        this(16, DEFAULT_LOAD_FACTOR, collectionKeyMode, flattenDimensions);
+        this(MultiKeyMap.<V>builder()
+                .collectionKeyMode(collectionKeyMode)
+                .flattenDimensions(flattenDimensions));
+    }
+    
+    public MultiKeyMap(boolean flattenDimensions) {
+        this(MultiKeyMap.<V>builder().flattenDimensions(flattenDimensions));
     }
 
-    public MultiKeyMap(boolean flattenDimensions) {
-        this(16, DEFAULT_LOAD_FACTOR, CollectionKeyMode.COLLECTIONS_EXPANDED, flattenDimensions);
+    // Builder class
+    public static class Builder<V> {
+        private int capacity = 16;
+        private float loadFactor = DEFAULT_LOAD_FACTOR;
+        private CollectionKeyMode collectionKeyMode = CollectionKeyMode.COLLECTIONS_EXPANDED;
+        private boolean flattenDimensions = false;
+        private boolean defensiveCopies = true;
+
+        // Private constructor - instantiate via MultiKeyMap.builder()
+        private Builder() {}
+
+        public Builder<V> capacity(int capacity) {
+            if (capacity < 0) {
+                throw new IllegalArgumentException("Capacity must be non-negative");
+            }
+            this.capacity = capacity;
+            return this;
+        }
+
+        public Builder<V> loadFactor(float loadFactor) {
+            if (loadFactor <= 0 || Float.isNaN(loadFactor)) {
+                throw new IllegalArgumentException("Load factor must be positive");
+            }
+            this.loadFactor = loadFactor;
+            return this;
+        }
+
+        public Builder<V> collectionKeyMode(CollectionKeyMode mode) {
+            this.collectionKeyMode = Objects.requireNonNull(mode);
+            return this;
+        }
+
+        public Builder<V> flattenDimensions(boolean flatten) {
+            this.flattenDimensions = flatten;
+            return this;
+        }
+
+        public Builder<V> defensiveCopies(boolean defensive) {
+            this.defensiveCopies = defensive;
+            return this;
+        }
+
+        // Copy config from existing map
+        public Builder<V> from(MultiKeyMap<?> source) {
+            this.capacity = source.capacity;
+            this.loadFactor = source.loadFactor;
+            this.collectionKeyMode = source.collectionKeyMode;
+            this.flattenDimensions = source.flattenDimensions;
+            this.defensiveCopies = source.defensiveCopies;
+            return this;
+        }
+
+        public MultiKeyMap<V> build() {
+            return new MultiKeyMap<>(this);
+        }
+    }
+
+    // Static factory for builder
+    public static <V> Builder<V> builder() {
+        return new Builder<>();
     }
 
     /**
@@ -397,7 +525,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         maxChainLength.getAndAccumulate(newValue, Math::max);
     }
 
-    private Object normalizeLookup(Object key, int[] hashPass, boolean makeDefensiveCopy) {
+    private Object normalizeLookup(Object key, int[] hashPass, boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
         // Handle EMOJI_EMPTY case
         if (key == null) {
             hashPass[0] = 0;
@@ -438,7 +568,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (flattenDimensions) {
             return expandWithHash(coll, hashPass);
         }
-        return process1DCollection(coll, hashPass, makeDefensiveCopy);
+        return process1DCollection(coll, hashPass, requestDefensiveCopy);
     }
     
     private Object process1DObjectArray(Object[] array, int[] hashPass) {
@@ -481,7 +611,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return expandWithHash(array, hashPass);
     }
     
-    private Object process1DCollection(Collection<?> coll, int[] hashPass, boolean makeDefensiveCopy) {
+    private Object process1DCollection(Collection<?> coll, int[] hashPass, boolean requestDefensiveCopy) {
+        // Only make defensive copy if both requested AND enabled
+        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
         if (coll.isEmpty()) {
             hashPass[0] = 0;
             return coll;

@@ -133,8 +133,8 @@ public class MultiKeyMapPerformanceComparisonTest {
      * - Hotspot contention patterns focusing on overlapping key ranges
      * - True thread contention to expose Apache's synchronization bottlenecks vs Cedar's inherent thread-safety
      */
-//    @Disabled
-//    @Test
+    @Disabled
+    @Test
     public void concurrentReaderWriterMixedWorkloadTest() {
         // Test different scales to show how thread contention scales
         int[] testSizes = {100, 1_000, 10_000, 20_000, 50_000, 100_000};

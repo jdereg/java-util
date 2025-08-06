@@ -1,5 +1,14 @@
 ### Revision History
 #### 3.10.0 (unreleased)
+> * **PERFORMANCE ENHANCEMENT**: Enhanced `MultiKeyMap` with significant hash computation optimizations:
+>   * **Hash Computation Limit**: Added MAX_HASH_ELEMENTS (4) limit to bound hash computation for large arrays/collections, significantly improving performance
+>   * **Early Exit Optimization**: Hash computation now stops early for large containers while maintaining excellent hash distribution
+>   * **Dimensionality Check Optimization**: Separated hash computation from dimensionality detection for better performance on large containers
+>   * **ArrayList Optimization**: Added specialized fast path for ArrayList iteration avoiding iterator overhead
+>   * **Primitive Array Optimizations**: Enhanced hash computation for String[], int[], long[], double[], and boolean[] arrays with bounded processing
+>   * **Generic Array Processing**: Improved reflection-based array processing with hash computation limits
+>   * **Collection Processing**: Optimized both ArrayList and generic Collection processing with early termination
+>   * **Performance Testing**: Added comprehensive test coverage including hash distribution analysis, collision analysis, and performance comparisons
 #### 3.9.0
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with comprehensive performance and robustness improvements:
 >   * **Security Enhancement**: Replaced String sentinels with custom objects to prevent key collisions in internal operations

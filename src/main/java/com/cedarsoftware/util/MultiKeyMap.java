@@ -139,6 +139,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
+    
+    // Performance optimization: limit hash computation to first N elements
+    // This significantly improves performance for large arrays while maintaining good hash distribution
+    private static final int MAX_HASH_ELEMENTS = 4;
 
     // Contention monitoring fields (retained from original)
     private final AtomicInteger totalLockAcquisitions = new AtomicInteger(0);
@@ -603,8 +607,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 1;
         boolean is1D = true;
         
-        // Optimized loop - stop as soon as we know it's not 1D
-        for (int i = 0; i < len; i++) {
+        // Optimized loop - stop as soon as we know it's not 1D or reach MAX_HASH_ELEMENTS
+        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        int i;
+        for (i = 0; i < hashLimit; i++) {
             final Object e = array[i];
             if (e == null) {
                 // h = h * 31 + 0; // This is just h * 31, optimize it
@@ -619,6 +625,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 // Most common path - regular object, inline the common cases
                 h = h * 31 + (eClass == String.class || eClass == Integer.class || eClass == Long.class || eClass == Double.class || eClass == Boolean.class ? e.hashCode() : computeElementHash(e));
+            }
+        }
+        
+        // If we haven't checked all elements for dimensionality, continue checking (but don't update hash)
+        if (is1D && i < len) {
+            for (; i < len; i++) {
+                final Object e = array[i];
+                if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                    is1D = false;
+                    break;
+                }
             }
         }
         
@@ -661,7 +678,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (coll instanceof ArrayList) {
             ArrayList<?> list = (ArrayList<?>) coll;
             final int size = list.size();
-            for (int i = 0; i < size; i++) {
+            final int hashLimit = Math.min(size, MAX_HASH_ELEMENTS);
+            int i;
+            for (i = 0; i < hashLimit; i++) {
                 Object e = list.get(i);
                 h = h * 31 + computeElementHash(e);
                 if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
@@ -669,15 +688,35 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     break;
                 }
             }
+            // If we haven't checked all elements for dimensionality, continue checking
+            if (is1D && i < size) {
+                for (; i < size; i++) {
+                    Object e = list.get(i);
+                    if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                        is1D = false;
+                        break;
+                    }
+                }
+            }
         } else {
             // Fallback to explicit iterator for other collection types
             Iterator<?> iter = coll.iterator();
+            int count = 0;
             while (iter.hasNext()) {
                 Object e = iter.next();
-                h = h * 31 + computeElementHash(e);
+                // Only compute hash for first MAX_HASH_ELEMENTS
+                if (count < MAX_HASH_ELEMENTS) {
+                    h = h * 31 + computeElementHash(e);
+                }
                 if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
                     is1D = false;
-                    break;
+                    if (count >= MAX_HASH_ELEMENTS) {
+                        break; // We've computed enough hash and found it's not 1D
+                    }
+                }
+                count++;
+                if (!is1D && count >= MAX_HASH_ELEMENTS) {
+                    break; // No need to continue
                 }
             }
         }
@@ -742,7 +781,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // String arrays are always 1D (String elements can't be arrays or collections)
         // Optimized: Strings are common and don't need special handling
         int h = 1;
-        for (int i = 0; i < len; i++) {
+        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        for (int i = 0; i < hashLimit; i++) {
             final String s = array[i];
             h = h * 31 + (s == null ? 0 : s.hashCode());
         }
@@ -779,7 +819,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // int arrays are always 1D (primitives can't contain collections/arrays)
         // Optimized: Direct primitive access without method call overhead
         int h = 1;
-        for (int i = 0; i < len; i++) {
+        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        for (int i = 0; i < hashLimit; i++) {
             h = h * 31 + array[i];  // Integer.hashCode(x) just returns x
         }
         
@@ -808,7 +849,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // long arrays are always 1D (primitives can't contain collections/arrays)
         // Optimized: Inline Long.hashCode for better performance
         int h = 1;
-        for (int i = 0; i < len; i++) {
+        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        for (int i = 0; i < hashLimit; i++) {
             final long v = array[i];
             h = h * 31 + (int)(v ^ (v >>> 32));  // Inlined Long.hashCode
         }
@@ -838,7 +880,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // double arrays are always 1D (primitives can't contain collections/arrays)
         // Optimized: Inline Double.hashCode for better performance
         int h = 1;
-        for (int i = 0; i < len; i++) {
+        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        for (int i = 0; i < hashLimit; i++) {
             final long bits = Double.doubleToLongBits(array[i]);
             h = h * 31 + (int)(bits ^ (bits >>> 32));  // Inlined Double.hashCode
         }
@@ -868,7 +911,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // boolean arrays are always 1D (primitives can't contain collections/arrays)
         // Optimized: Inline Boolean.hashCode for better performance
         int h = 1;
-        for (int i = 0; i < len; i++) {
+        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        for (int i = 0; i < hashLimit; i++) {
             h = h * 31 + (array[i] ? 1231 : 1237);  // Inlined Boolean.hashCode
         }
         
@@ -899,12 +943,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 1;
         boolean is1D = true;
         
-        for (int i = 0; i < len; i++) {
+        // Optimized loop - stop as soon as we know it's not 1D or reach MAX_HASH_ELEMENTS
+        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        int i;
+        for (i = 0; i < hashLimit; i++) {
             Object e = Array.get(arr, i);
             h = h * 31 + computeElementHash(e);
             if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
                 is1D = false;
                 break;
+            }
+        }
+        
+        // If we haven't checked all elements for dimensionality, continue checking (but don't update hash)
+        if (is1D && i < len) {
+            for (; i < len; i++) {
+                Object e = Array.get(arr, i);
+                if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                    is1D = false;
+                    break;
+                }
             }
         }
         
@@ -926,8 +984,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // For generic arrays, create a copy using reflection if needed
             if (makeDefensiveCopy) {
                 Object copy = Array.newInstance(arr.getClass().getComponentType(), len);
-                for (int i = 0; i < len; i++) {
-                    Array.set(copy, i, Array.get(arr, i));
+                for (int j = 0; j < len; j++) {
+                    Array.set(copy, j, Array.get(arr, j));
                 }
                 return copy;
             }

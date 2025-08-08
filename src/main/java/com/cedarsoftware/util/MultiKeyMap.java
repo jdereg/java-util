@@ -142,7 +142,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     // Performance optimization: limit hash computation to first N elements
     // This significantly improves performance for large arrays while maintaining good hash distribution
-    private static final int MAX_HASH_ELEMENTS = 4;
+    private static final int MAX_HASH_ELEMENTS = 5;
+    
+    // Optimization flags for informed handoff from fast paths to general expansion
+    private static final int NESTED_NONE = 0;
+    private static final int NESTED_KEY1 = 1;
+    private static final int NESTED_KEY2 = 2;
+    private static final int NESTED_BOTH = 3;
 
     // Contention monitoring fields (retained from original)
     private final AtomicInteger totalLockAcquisitions = new AtomicInteger(0);
@@ -485,7 +491,45 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the value to which the specified key is mapped, or {@code null} if no mapping exists
      */
     public V get(Object key) {
-        MultiKey<V> entry = findEntry(key);
+        // Single key fast path
+        if (!isArrayOrCollection(key)) {
+            // TRUE ULTRA-FAST PATH: Direct lookup, bypasses ALL normalization
+            return getSimpleSingleKey(key);
+        }
+        
+        // SMART ROUTING FOR ARRAYS - optimized paths based on length
+        if (key.getClass() == Object[].class) {
+            Object[] array = (Object[]) key;
+            
+            switch (array.length) {
+                case 0:
+                    // Empty array - special case
+                    return getEmptyArray();
+                case 1:
+                    // Single element array - might collapse to single key
+                    return getArrayLength1(array);
+                case 2:
+                    // Two element array - common case, optimize!
+                    return getArrayLength2(array);
+                case 3:
+                    // Three element array - worth optimizing
+                    return getArrayLength3(array);
+                case 4:
+                    // Four element array - worth optimizing
+                    return getArrayLength4(array);
+                case 5:
+                    // Five element array - worth optimizing
+                    return getArrayLength5(array);
+                default:
+                    // 6+ elements - use general path
+                    return getArrayLengthN(array);
+            }
+        }
+        
+        // Collections and other array types - use informed handoff
+        int[] hashPass = new int[1];
+        Object normalizedKey = flattenKeyKnownArrayOrCollection(key, hashPass, false);
+        MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
         return entry != null ? entry.value : null;
     }
 
@@ -545,6 +589,59 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Uses getAndAccumulate for better performance under contention
     private void updateMaxChainLength(int newValue) {
         maxChainLength.getAndAccumulate(newValue, Math::max);
+    }
+    
+    /**
+     * Fast check if an object is an array or collection that might contain nested structures.
+     * Used by optimized fast paths to determine routing.
+     */
+    private static boolean isArrayOrCollection(Object key) {
+        return key != null && (key.getClass().isArray() || key instanceof Collection);
+    }
+    
+    /**
+     * Informed expansion for keys where we already detected they are arrays/collections.
+     * This allows the fast paths (1-2 keys) to pass along information about which
+     * keys need expansion, avoiding redundant type checking in the general path.
+     * 
+     * @param key the key we KNOW is an array or collection
+     * @param hashPass output parameter for computed hash
+     * @param requestDefensiveCopy whether defensive copying is requested
+     * @return the expanded key representation
+     */
+    private Object flattenKeyKnownArrayOrCollection(Object key, int[] hashPass, boolean requestDefensiveCopy) {
+        // We KNOW key is an array or collection, so skip the basic type checks
+        if (key == null) {
+            hashPass[0] = 0;
+            return NULL_SENTINEL;
+        }
+        
+        Class<?> clazz = key.getClass();
+        
+        if (clazz.isArray()) {
+            // Route directly to appropriate array processor
+            if (clazz == Object[].class) {
+                return process1DObjectArray((Object[]) key, hashPass, requestDefensiveCopy);
+            } else {
+                return process1DTypedArray(key, hashPass, requestDefensiveCopy);
+            }
+        } else {
+            // We know it's a Collection
+            Collection<?> coll = (Collection<?>) key;
+            
+            // Handle collections that should not be expanded
+            if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
+                boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+                hashPass[0] = finalizeHash(coll.hashCode());
+                return makeDefensiveCopy ? new ArrayList<>(coll) : coll;
+            }
+            
+            // Route to collection processor
+            if (flattenDimensions) {
+                return expandWithHash(coll, hashPass);
+            }
+            return process1DCollection(coll, hashPass, requestDefensiveCopy);
+        }
     }
 
     private Object flattenKey(Object key, int[] hashPass, boolean requestDefensiveCopy) {
@@ -1093,6 +1190,344 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (entry.hash == hash && keysMatch(entry.keys, normalized)) return entry;
         }
         return null;
+    }
+    
+    /**
+     * Optimized findEntry that skips the flattenKey() call when we already have
+     * the normalized key and precomputed hash. This is the core of informed handoff optimization.
+     */
+    private MultiKey<V> findEntryWithPrecomputedHash(final Object normalizedKey, final int hash) {
+        int index = hash & (buckets.length - 1);
+        @SuppressWarnings("unchecked")
+        final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+        if (chain == null) return null;
+        final int chLen = chain.length;
+        for (int i = 0; i < chLen; i++) {
+            MultiKey<V> entry = chain[i];
+            if (entry.hash == hash && keysMatch(entry.keys, normalizedKey)) return entry;
+        }
+        return null;
+    }
+    
+    /**
+     * TRUE FAST PATH: Direct bucket lookup for simple single keys.
+     * Completely bypasses flattenKey() and all normalization overhead.
+     * This is the fastest possible lookup for single non-array, non-collection keys.
+     */
+    private V getSimpleSingleKey(final Object key) {
+        // Direct hash computation without any normalization
+        final int hash = finalizeHash(key == null ? 0 : key.hashCode());
+        final Object lookupKey = key == null ? NULL_SENTINEL : key;
+        
+        int index = hash & (buckets.length - 1);
+        @SuppressWarnings("unchecked")
+        final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+        if (chain == null) return null;
+        
+        return findInChainUnrolledSingle(chain, hash, lookupKey);
+    }
+    
+    /**
+     * Optimized lookup for empty arrays.
+     */
+    private V getEmptyArray() {
+        // Empty array has hash 0
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = flattenKey(new Object[0], hashPass, false);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null ? entry.value : null;
+    }
+    
+    /**
+     * Optimized lookup for single-element Object arrays.
+     */
+    private V getArrayLength1(Object[] array) {
+        final Object element = array[0];
+        
+        // Check if element is simple or complex
+        if (!isArrayOrCollection(element)) {
+            // Simple element - array might collapse to single element
+            // Must check both the array form and collapsed form
+            
+            MultiKey<V> entry;
+            
+            // First try as collapsed single element
+            if (element == null) {
+                // Null collapses to NULL_SENTINEL
+                entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
+                if (entry != null) return entry.value;
+            } else {
+                final int hash = finalizeHash(element.hashCode());
+                entry = findEntryWithPrecomputedHash(element, hash);
+                if (entry != null) return entry.value;
+            }
+            
+            // Also try as array (in case it was stored as array)
+            int h = 1;
+            h = h * 31 + (element == null ? 0 : element.hashCode());
+            final int arrayHash = finalizeHash(h);
+            entry = findEntryWithPrecomputedHash(array, arrayHash);
+            return entry != null ? entry.value : null;
+        }
+        
+        // Complex element - go DIRECTLY to expansion (we know it has nested structures)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null ? entry.value : null;
+    }
+    
+    /**
+     * Unrolled collision chain lookup optimized for single key lookups.
+     * Falls back to loop for longer chains (very rare - <0.1% collision rate).
+     */
+    private V findInChainUnrolledSingle(MultiKey<V>[] chain, int hash, Object lookupKey) {
+        final int chLen = chain.length;
+        if (chLen >= 1) {
+            MultiKey<V> entry = chain[0];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 2) {
+            MultiKey<V> entry = chain[1];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 3) {
+            MultiKey<V> entry = chain[2];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 4) {
+            // Fall back to loop for longer chains (very rare)
+            for (int i = 3; i < chLen; i++) {
+                MultiKey<V> entry = chain[i];
+                if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                    return entry.value;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Unrolled collision chain lookup optimized for common case of 1-3 elements.
+     * Falls back to loop for longer chains (very rare - <0.1% collision rate).
+     */
+    private V findInChainUnrolled(MultiKey<V>[] chain, int hash, Object[] keys) {
+        final int chLen = chain.length;
+        if (chLen >= 1) {
+            MultiKey<V> entry = chain[0];
+            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 2) {
+            MultiKey<V> entry = chain[1];
+            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 3) {
+            MultiKey<V> entry = chain[2];
+            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 4) {
+            // Fall back to loop for longer chains (very rare)
+            for (int i = 3; i < chLen; i++) {
+                MultiKey<V> entry = chain[i];
+                if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+                    return entry.value;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Optimized lookup for two-element Object arrays.
+     * This is a very common case that deserves optimization.
+     */
+    private V getArrayLength2(Object[] array) {
+        final Object key1 = array[0];
+        final Object key2 = array[1];
+        
+        // Check if both elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
+            // TRUE FAST PATH - compute hash directly
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            final int hash = finalizeHash(h);
+            
+            // Direct bucket lookup
+            final int index = hash & (buckets.length - 1);
+            @SuppressWarnings("unchecked")
+            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            if (chain == null) return null;
+            
+            return findInChainUnrolled(chain, hash, array);
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null ? entry.value : null;
+    }
+    
+    /**
+     * Optimized lookup for three-element Object arrays.
+     */
+    private V getArrayLength3(Object[] array) {
+        final Object key1 = array[0];
+        final Object key2 = array[1];
+        final Object key3 = array[2];
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && !isArrayOrCollection(key3)) {
+            // TRUE FAST PATH - compute hash directly
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            int hash = finalizeHash(h);
+            
+            // Direct bucket lookup
+            final int index = hash & (buckets.length - 1);
+            @SuppressWarnings("unchecked")
+            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            if (chain == null) return null;
+            
+            return findInChainUnrolled(chain, hash, array);
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null ? entry.value : null;
+    }
+    
+    /**
+     * Optimized lookup for four-element Object arrays.
+     */
+    private V getArrayLength4(Object[] array) {
+        final Object key1 = array[0];
+        final Object key2 = array[1];
+        final Object key3 = array[2];
+        final Object key4 = array[3];
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
+            !isArrayOrCollection(key3) && !isArrayOrCollection(key4)) {
+            // TRUE FAST PATH - compute hash directly (only first 4 elements per MAX_HASH_ELEMENTS)
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            int hash = finalizeHash(h);
+            
+            // Direct bucket lookup
+            final int index = hash & (buckets.length - 1);
+            @SuppressWarnings("unchecked")
+            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            if (chain == null) return null;
+            
+            return findInChainUnrolled(chain, hash, array);
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null ? entry.value : null;
+    }
+    
+    /**
+     * Optimized lookup for five-element Object arrays.
+     * Uses all 5 elements in hash computation for better distribution.
+     */
+    private V getArrayLength5(Object[] array) {
+        final Object key1 = array[0];
+        final Object key2 = array[1];
+        final Object key3 = array[2];
+        final Object key4 = array[3];
+        final Object key5 = array[4];
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
+            !isArrayOrCollection(key3) && !isArrayOrCollection(key4) && 
+            !isArrayOrCollection(key5)) {
+            // TRUE FAST PATH - compute hash directly using ALL 5 elements
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            h = h * 31 + (key5 == null ? 0 : key5.hashCode());
+            int hash = finalizeHash(h);
+            
+            // Direct bucket lookup
+            final int index = hash & (buckets.length - 1);
+            @SuppressWarnings("unchecked")
+            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            if (chain == null) return null;
+            
+            return findInChainUnrolled(chain, hash, array);
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null ? entry.value : null;
+    }
+    
+    /**
+     * General lookup for Object arrays with 6+ elements.
+     * Even though hash uses only 4 elements, we can still optimize by detecting dimensionality.
+     */
+    private V getArrayLengthN(Object[] array) {
+        // Quick scan to check if all elements are simple (1D)
+        boolean is1D = true;
+        for (Object element : array) {
+            if (isArrayOrCollection(element)) {
+                is1D = false;
+                break;
+            }
+        }
+        
+        if (is1D) {
+            // All elements are simple - compute hash directly (using first 4 per MAX_HASH_ELEMENTS)
+            int h = 1;
+            int limit = Math.min(array.length, MAX_HASH_ELEMENTS);
+            for (int i = 0; i < limit; i++) {
+                Object element = array[i];
+                h = h * 31 + (element == null ? 0 : element.hashCode());
+            }
+            int hash = finalizeHash(h);
+            
+            // Direct bucket lookup
+            int index = hash & (buckets.length - 1);
+            @SuppressWarnings("unchecked")
+            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            if (chain == null) return null;
+            
+            return findInChainUnrolled(chain, hash, array);
+        } else {
+            // Has nested structures - go DIRECTLY to expansion
+            int[] hashPass = new int[1];
+            Object normalizedKey = expandWithHash(array, hashPass);
+            MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+            return entry != null ? entry.value : null;
+        }
     }
 
     private static boolean keysMatch(Object stored, Object lookup) {
@@ -2031,8 +2466,23 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    // SplitMix64 finalizer: extremely fast, excellent avalanche
+    private static long mix64(long z) {
+        z = (z ^ (z >>> 30)) * 0xbf58476d1ce4e5b9L;
+        z = (z ^ (z >>> 27)) * 0x94d049bb133111ebL;
+        return z ^ (z >>> 31);
+    }
+
+    // Fold 64 -> 32 for HashMap/CHM
+    private static int fold32(long z) {
+        return (int)(z ^ (z >>> 32));
+    }
+
+
     private static int finalizeHash(int h) {
-        return EncryptionUtilities.finalizeHash(h);
+        // Use SplitMix64 approach: convert to long, mix, fold back to int
+        long z = h & 0xffffffffL; // Zero-extend to long
+        return fold32(mix64(z));
     }
 
     private static void processNestedStructure(StringBuilder sb, List<Object> list, int[] index, MultiKeyMap<?> selfMap) {

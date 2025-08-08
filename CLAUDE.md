@@ -59,7 +59,7 @@ mvn clean test
    - Human approves, commit immediately
    - Move to next change in the list
 
-### Core Principles
+### Core Agent Behavior principles
 - **Start work**: At the start of new work, create a "Todo" list.
 - **Chat First**: As a general work guideline, when starting a new Todo list, or a feature idea, always "chat first, get agreement from human, then code."
 - **Minimize Work-in-Process**: Keep delta between local files and committed git files as small as possible

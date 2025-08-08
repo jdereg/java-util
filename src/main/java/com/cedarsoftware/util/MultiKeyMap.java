@@ -302,15 +302,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Deep copy collection - use fast path for ArrayList
             Collection<?> coll = (Collection<?>) keys;
             if (coll instanceof ArrayList) {
-                ArrayList<?> src = (ArrayList<?>) coll;
-                ArrayList<Object> copy = new ArrayList<>(src.size());
-                for (int i = 0; i < src.size(); i++) {
+                List<?> src = (ArrayList<?>) coll;
+                List<Object> copy = new ArrayList<>(src.size());
+                int len = src.size();
+                for (int i = 0; i < len; i++) {
                     copy.add(copyKeysIfNeeded(src.get(i), true));
                 }
                 return copy;
             }
             // Fallback for other collections
-            ArrayList<Object> copy = new ArrayList<>(coll.size());
+            List<Object> copy = new ArrayList<>(coll.size());
             for (Object item : coll) {
                 copy.add(copyKeysIfNeeded(item, true));
             }

@@ -490,62 +490,37 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // TRUE ULTRA-FAST PATH: Direct lookup, bypasses ALL normalization
             return getSimpleSingleKey(key);
         }
-
-        Object[] array = null;
-        int len = Integer.MAX_VALUE;
-
-        // SMART ROUTING FOR OBJECT ARRAYS - fastest path (most common case)
-        if (key instanceof Object[]) {
-            // Zero-cost cast for all Object array types (String[], Integer[], etc.)
-            array = (Object[]) key;
-        } else if (key.getClass().isArray()) {
-            // Primitive array - need to convert (but only for length <= 5)
-            len = Array.getLength(key);
-            if (len <= 5) {
-                // Convert primitive array to Object[] (only 1-5 elements, so fast)
-                array = new Object[len];
-                for (int i = 0; i < len; i++) {
-                    array[i] = Array.get(key, i);  // Auto-boxing happens here
-                }
-            }
-        } else {
-            // SMART ROUTING FOR COLLECTIONS - reuse array optimizations
-            if (key instanceof Collection) {
-                Collection<?> coll = (Collection<?>) key;
-
-                // Check if collections should be expanded
-                if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-                    // In NOT_EXPANDED mode, treat collections as single atomic keys
-                    int hash = finalizeHash(coll.hashCode());
-                    MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-                    return entry != null ? entry.value : null;
-                }
-                array = coll.toArray();
-                len = array.length;
+        
+        // SMART ROUTING FOR ARRAYS - optimized paths based on length
+        if (key.getClass() == Object[].class) {
+            Object[] array = (Object[]) key;
+            
+            switch (array.length) {
+                case 0:
+                    // Empty array - special case
+                    return getEmptyArray();
+                case 1:
+                    // Single element array - might collapse to single key
+                    return getArrayLength1(array);
+                case 2:
+                    // Two element array - common case, optimize!
+                    return getArrayLength2(array);
+                case 3:
+                    // Three element array - worth optimizing
+                    return getArrayLength3(array);
+                case 4:
+                    // Four element array - worth optimizing
+                    return getArrayLength4(array);
+                case 5:
+                    // Five element array - worth optimizing
+                    return getArrayLength5(array);
+                default:
+                    // 6+ elements - fall through to general path
+                    break;
             }
         }
-        switch (len) {
-            case 0:
-                // Empty array - special case
-                return getEmptyArray();
-            case 1:
-                // Single element array - might collapse to single key
-                return getArrayLength1(array);
-            case 2:
-                // Two element array - common case, optimize!
-                return getArrayLength2(array);
-            case 3:
-                // Three element array - worth optimizing
-                return getArrayLength3(array);
-            case 4:
-                // Four element array - worth optimizing
-                return getArrayLength4(array);
-            case 5:
-                // Five element array - worth optimizing
-                return getArrayLength5(array);
-        }
-
-        // Other types or large collections - use informed handoff
+        
+        // Collections and other array types - use informed handoff
         int[] hashPass = new int[1];
         Object normalizedKey = flattenKeyKnownArrayOrCollection(key, hashPass, false);
         MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
@@ -1243,7 +1218,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
         if (chain == null) return null;
         
-        return findInChainUnrolled(chain, hash, lookupKey);
+        return findInChainUnrolledSingle(chain, hash, lookupKey);
     }
     
     /**
@@ -1295,14 +1270,48 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
         return entry != null ? entry.value : null;
     }
-
+    
+    /**
+     * Unrolled collision chain lookup optimized for single key lookups.
+     * Falls back to loop for longer chains (very rare - <0.1% collision rate).
+     */
+    private V findInChainUnrolledSingle(MultiKey<V>[] chain, int hash, Object lookupKey) {
+        final int chLen = chain.length;
+        if (chLen >= 1) {
+            MultiKey<V> entry = chain[0];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 2) {
+            MultiKey<V> entry = chain[1];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 3) {
+            MultiKey<V> entry = chain[2];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry.value;
+            }
+        }
+        if (chLen >= 4) {
+            // Fall back to loop for longer chains (very rare)
+            for (int i = 3; i < chLen; i++) {
+                MultiKey<V> entry = chain[i];
+                if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                    return entry.value;
+                }
+            }
+        }
+        return null;
+    }
 
     /**
      * Unrolled collision chain lookup optimized for common case of 1-3 elements.
-     * Handles both single keys (Object) and multi-keys (Object[]) via keysMatch().
      * Falls back to loop for longer chains (very rare - <0.1% collision rate).
      */
-    private V findInChainUnrolled(MultiKey<V>[] chain, int hash, Object keys) {
+    private V findInChainUnrolled(MultiKey<V>[] chain, int hash, Object[] keys) {
         final int chLen = chain.length;
         if (chLen >= 1) {
             MultiKey<V> entry = chain[0];

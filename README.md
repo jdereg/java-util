@@ -292,7 +292,7 @@ map.get(nestedArray);      // ✅ "nested-value" - same nested structure!
 
 | Feature | Guava Table | Apache Commons MultiKeyMap | DIY Record+HashMap | **java-util MultiKeyMap**                                 |
 |---------|-------------|----------------------------|-------------------|-----------------------------------------------------------|
-| **Performance** | ⚠️ Good (map-of-maps overhead) | ❌ Poor (no optimizations) | ❌ Poor (key object creation) | ✅ **Excellent** (Reads: lock-free and zero heap pressure) |
+| **Performance** | ⚠️ Good (map-of-maps overhead) | ⚠️ Good (single-threaded) | ❌ Poor (key object creation) | ✅ **Excellent** (Thread-safe + competitive performance) |
 | **Key Dimensions** | ❌ Limited to 2D only | ✅ Unlimited N-D | ✅ Unlimited N-D | ✅ **Unlimited N-D**                                       |
 | **Thread Safety** | ❌ None built-in | ❌ Not thread-safe | ❌ None (manual synchronization) | ✅ **Full ConcurrentMap** (nulls allowed)                  |
 | **Type Safety** | ✅ Built-in compile-time | ❌ Untyped Object keys | ✅ Built-in compile-time | ✅ **Façade-ready** (flexible core + typed wrapper)        |

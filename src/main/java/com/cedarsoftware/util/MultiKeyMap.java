@@ -1239,17 +1239,354 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Completely bypasses flattenKey() and all normalization overhead.
      * This is the fastest possible lookup for single non-array, non-collection keys.
      */
-    private V getSimpleSingleKey(final Object key) {
+    private MultiKey<V> findSimpleSingleKeyEntry(Object key) {
         // Direct hash computation without any normalization
         final int hash = finalizeHash(key == null ? 0 : key.hashCode());
         final Object lookupKey = key == null ? NULL_SENTINEL : key;
         
-        int index = hash & (buckets.length - 1);
+        // Direct bucket lookup
+        final int index = hash & (buckets.length - 1);
         @SuppressWarnings("unchecked")
         final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
         if (chain == null) return null;
         
-        return findInChainUnrolledSingle(chain, hash, lookupKey);
+        // Find the entry
+        final int chLen = chain.length;
+        if (chLen >= 1) {
+            MultiKey<V> entry = chain[0];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry;
+            }
+        }
+        if (chLen >= 2) {
+            MultiKey<V> entry = chain[1];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry;
+            }
+        }
+        if (chLen >= 3) {
+            MultiKey<V> entry = chain[2];
+            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                return entry;
+            }
+        }
+        if (chLen >= 4) {
+            // Fall back to loop for longer chains (very rare)
+            for (int i = 3; i < chLen; i++) {
+                MultiKey<V> entry = chain[i];
+                if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                    return entry;
+                }
+            }
+        }
+        return null;
+    }
+    
+    private boolean containsSimpleSingleKey(Object key) {
+        return findSimpleSingleKeyEntry(key) != null;
+    }
+    
+    private boolean containsEmptyArray() {
+        // Empty array - find the normalized empty key
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = flattenKey(new Object[0], hashPass, false);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsArrayLength1(Object[] array) {
+        final Object element = array[0];
+        
+        // Check if element is simple or complex
+        if (!isArrayOrCollection(element)) {
+            // Simple element - array might collapse to single element
+            // Must check both the array form and collapsed form
+            
+            MultiKey<V> entry;
+            
+            // First try as collapsed single element
+            if (element == null) {
+                // Null collapses to NULL_SENTINEL
+                entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
+                if (entry != null) return true;
+            } else {
+                final int hash = finalizeHash(element.hashCode());
+                entry = findEntryWithPrecomputedHash(element, hash);
+                if (entry != null) return true;
+            }
+            
+            // Also try as array (in case it was stored as array)
+            int h = 1;
+            h = h * 31 + (element == null ? 0 : element.hashCode());
+            final int arrayHash = finalizeHash(h);
+            entry = findEntryWithPrecomputedHash(array, arrayHash);
+            return entry != null;
+        }
+        
+        // Complex element - go DIRECTLY to expansion (we know it has nested structures)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsArrayLength2(Object[] array) {
+        final Object key1 = array[0];
+        final Object key2 = array[1];
+        
+        // Check if both elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
+            // TRUE FAST PATH - compute hash directly
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            final int hash = finalizeHash(h);
+            
+            final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
+            return entry != null;
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsArrayLength3(Object[] array) {
+        final Object key1 = array[0];
+        final Object key2 = array[1];
+        final Object key3 = array[2];
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && !isArrayOrCollection(key3)) {
+            // TRUE FAST PATH - compute hash directly
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            int hash = finalizeHash(h);
+            
+            final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
+            return entry != null;
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsArrayLength4(Object[] array) {
+        final Object key1 = array[0];
+        final Object key2 = array[1];
+        final Object key3 = array[2];
+        final Object key4 = array[3];
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
+            !isArrayOrCollection(key3) && !isArrayOrCollection(key4)) {
+            // TRUE FAST PATH - compute hash directly
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            int hash = finalizeHash(h);
+            
+            final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
+            return entry != null;
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsArrayLength5(Object[] array) {
+        final Object key1 = array[0];
+        final Object key2 = array[1];
+        final Object key3 = array[2];
+        final Object key4 = array[3];
+        final Object key5 = array[4];
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
+            !isArrayOrCollection(key3) && !isArrayOrCollection(key4) && 
+            !isArrayOrCollection(key5)) {
+            // TRUE FAST PATH - compute hash directly using ALL 5 elements
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            h = h * 31 + (key5 == null ? 0 : key5.hashCode());
+            int hash = finalizeHash(h);
+            
+            final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
+            return entry != null;
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(array, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsCollectionLength1(Collection<?> coll) {
+        final Object element = coll.iterator().next();
+        
+        // Check if element is simple or complex
+        if (!isArrayOrCollection(element)) {
+            // Simple element - collection might collapse to single element
+            // Must check both the collection form and collapsed form
+            
+            MultiKey<V> entry;
+            
+            // First try as collapsed single element
+            if (element == null) {
+                // Null collapses to NULL_SENTINEL
+                entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
+                if (entry != null) return true;
+            } else {
+                final int hash = finalizeHash(element.hashCode());
+                entry = findEntryWithPrecomputedHash(element, hash);
+                if (entry != null) return true;
+            }
+            
+            // Also try as collection (in case it was stored as collection)
+            int h = 1;
+            h = h * 31 + (element == null ? 0 : element.hashCode());
+            final int collectionHash = finalizeHash(h);
+            entry = findEntryWithPrecomputedHash(coll, collectionHash);
+            return entry != null;
+        }
+        
+        // Complex element - go DIRECTLY to expansion (we know it has nested structures)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(coll, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsCollectionLength2(Collection<?> coll) {
+        final Iterator<?> iter = coll.iterator();
+        final Object key1 = iter.next();
+        final Object key2 = iter.next();
+        
+        // Check if both elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
+            // TRUE FAST PATH - compute hash directly
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            final int hash = finalizeHash(h);
+            
+            final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
+            return entry != null;
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(coll, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsCollectionLength3(Collection<?> coll) {
+        final Iterator<?> iter = coll.iterator();
+        final Object key1 = iter.next();
+        final Object key2 = iter.next();
+        final Object key3 = iter.next();
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && !isArrayOrCollection(key3)) {
+            // TRUE FAST PATH - compute hash directly
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            int hash = finalizeHash(h);
+            
+            final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
+            return entry != null;
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(coll, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsCollectionLength4(Collection<?> coll) {
+        final Iterator<?> iter = coll.iterator();
+        final Object key1 = iter.next();
+        final Object key2 = iter.next();
+        final Object key3 = iter.next();
+        final Object key4 = iter.next();
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
+            !isArrayOrCollection(key3) && !isArrayOrCollection(key4)) {
+            // TRUE FAST PATH - compute hash directly
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            int hash = finalizeHash(h);
+            
+            final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
+            return entry != null;
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(coll, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private boolean containsCollectionLength5(Collection<?> coll) {
+        final Iterator<?> iter = coll.iterator();
+        final Object key1 = iter.next();
+        final Object key2 = iter.next();
+        final Object key3 = iter.next();
+        final Object key4 = iter.next();
+        final Object key5 = iter.next();
+        
+        // Check if all elements are simple
+        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
+            !isArrayOrCollection(key3) && !isArrayOrCollection(key4) && 
+            !isArrayOrCollection(key5)) {
+            // TRUE FAST PATH - compute hash directly using ALL 5 elements
+            int h = 1;
+            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
+            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            h = h * 31 + (key5 == null ? 0 : key5.hashCode());
+            int hash = finalizeHash(h);
+            
+            final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
+            return entry != null;
+        }
+        
+        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
+        final int[] hashPass = new int[1];
+        final Object normalizedKey = expandWithHash(coll, hashPass);
+        final MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
+    }
+    
+    private V getSimpleSingleKey(final Object key) {
+        MultiKey<V> entry = findSimpleSingleKeyEntry(key);
+        return entry != null ? entry.value : null;
     }
     
     /**
@@ -1898,7 +2235,77 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if this map contains a mapping for the specified key
      */
     public boolean containsKey(Object key) {
-        return findEntry(key) != null;
+        // Single key fast path
+        if (!isArrayOrCollection(key)) {
+            // TRUE ULTRA-FAST PATH: Direct lookup, bypasses ALL normalization
+            return containsSimpleSingleKey(key);
+        }
+        
+        // SMART ROUTING FOR ALL OBJECT ARRAYS - optimized paths based on length
+        // Check exact Object[] first (fastest), then other Object array types
+        if (key.getClass() == Object[].class || key instanceof Object[]) {
+            Object[] array = (Object[]) key;
+            
+            switch (array.length) {
+                case 0:
+                    // Empty array - special case
+                    return containsEmptyArray();
+                case 1:
+                    // Single element array - might collapse to single key
+                    return containsArrayLength1(array);
+                case 2:
+                    // Two element array - common case, optimize!
+                    return containsArrayLength2(array);
+                case 3:
+                    // Three element array - worth optimizing
+                    return containsArrayLength3(array);
+                case 4:
+                    // Four element array - worth optimizing
+                    return containsArrayLength4(array);
+                case 5:
+                    // Five element array - worth optimizing
+                    return containsArrayLength5(array);
+                default:
+                    // 6+ elements - fall through to general path
+                    break;
+            }
+        }
+        
+        // SMART ROUTING FOR COLLECTIONS - optimized paths based on size
+        // Only if collections are expanded (not treated as regular keys)
+        if (key instanceof Collection && collectionKeyMode != CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
+            Collection<?> coll = (Collection<?>) key;
+            
+            switch (coll.size()) {
+                case 0:
+                    // Empty collection - special case (same as empty array)
+                    return containsEmptyArray();
+                case 1:
+                    // Single element collection - might collapse to single key
+                    return containsCollectionLength1(coll);
+                case 2:
+                    // Two element collection - common case, optimize!
+                    return containsCollectionLength2(coll);
+                case 3:
+                    // Three element collection - worth optimizing
+                    return containsCollectionLength3(coll);
+                case 4:
+                    // Four element collection - worth optimizing
+                    return containsCollectionLength4(coll);
+                case 5:
+                    // Five element collection - worth optimizing
+                    return containsCollectionLength5(coll);
+                default:
+                    // 6+ elements - fall through to general path
+                    break;
+            }
+        }
+        
+        // Other array types and large collections - use informed handoff
+        int[] hashPass = new int[1];
+        Object normalizedKey = flattenKeyKnownArrayOrCollection(key, hashPass, false);
+        MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey, hashPass[0]);
+        return entry != null;
     }
 
     /**

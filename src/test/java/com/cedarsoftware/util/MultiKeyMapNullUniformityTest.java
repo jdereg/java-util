@@ -204,12 +204,12 @@ public class MultiKeyMapNullUniformityTest {
         
         Object retrievedKey = keySet.iterator().next();
         
-        // The key should be the original array type, not contain NULL_SENTINEL
-        assertTrue(retrievedKey.getClass().isArray());
-        Object[] retrievedArray = (Object[]) retrievedKey;
+        // The key should be exposed as a List for proper equals/hashCode behavior
+        assertTrue(retrievedKey instanceof List, "Multi-keys should be exposed as Lists");
+        List<?> retrievedList = (List<?>) retrievedKey;
         
-        // The array should contain actual null, not NULL_SENTINEL
-        assertNull(retrievedArray[0], "User should see actual null, not NULL_SENTINEL");
-        assertEquals("data", retrievedArray[1]);
+        // The list should contain actual null, not NULL_SENTINEL
+        assertNull(retrievedList.get(0), "User should see actual null, not NULL_SENTINEL");
+        assertEquals("data", retrievedList.get(1));
     }
 }

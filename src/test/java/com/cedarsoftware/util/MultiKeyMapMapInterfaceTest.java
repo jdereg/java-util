@@ -90,7 +90,8 @@ class MultiKeyMapMapInterfaceTest {
         for (Object key : keys) {
             if ("singleKey".equals(key)) {
                 hasSingleKey = true;
-            } else if (key instanceof Object[] && Arrays.deepEquals((Object[]) key, new Object[]{"multi", "key"})) {
+            } else if (key instanceof List && Arrays.deepEquals(((List<?>) key).toArray(), new Object[]{"multi", "key"})) {
+                // Multi-keys are now exposed as Lists for proper equals/hashCode behavior
                 hasArrayKey = true;
             }
         }

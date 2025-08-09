@@ -1242,8 +1242,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * This is the fastest possible lookup for single non-array, non-collection keys.
      */
     private MultiKey<V> findSimpleSingleKeyEntry(Object key) {
-        // Direct hash computation without any normalization
-        final int hash = finalizeHash(key == null ? 0 : key.hashCode());
+        // Direct hash computation using computeElementHash for consistency
+        final int hash = finalizeHash(computeElementHash(key));
         final Object lookupKey = key == null ? NULL_SENTINEL : key;
         
         // Direct bucket lookup
@@ -1319,7 +1319,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             
             // Also try as array (in case it was stored as array)
             int h = 1;
-            h = h * 31 + (element == null ? 0 : element.hashCode());
+            h = h * 31 + computeElementHash(element);
             final int arrayHash = finalizeHash(h);
             entry = findEntryWithPrecomputedHash(array, arrayHash);
             return entry != null;
@@ -1338,10 +1338,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Check if both elements are simple
         if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
-            // TRUE FAST PATH - compute hash directly
+            // TRUE FAST PATH - compute hash directly using computeElementHash
             int h = 1;
-            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
-            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + computeElementHash(key1);
+            h = h * 31 + computeElementHash(key2);
             final int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
@@ -1366,7 +1366,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + computeElementHash(key3);
             int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
@@ -1393,8 +1393,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
-            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            h = h * 31 + computeElementHash(key3);
+            h = h * 31 + computeElementHash(key4);
             int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
@@ -1423,9 +1423,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
-            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
-            h = h * 31 + (key5 == null ? 0 : key5.hashCode());
+            h = h * 31 + computeElementHash(key3);
+            h = h * 31 + computeElementHash(key4);
+            h = h * 31 + computeElementHash(key5);
             int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
@@ -1462,7 +1462,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             
             // Also try as collection (in case it was stored as collection)
             int h = 1;
-            h = h * 31 + (element == null ? 0 : element.hashCode());
+            h = h * 31 + computeElementHash(element);
             final int collectionHash = finalizeHash(h);
             entry = findEntryWithPrecomputedHash(coll, collectionHash);
             return entry != null;
@@ -1482,10 +1482,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Check if both elements are simple
         if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
-            // TRUE FAST PATH - compute hash directly
+            // TRUE FAST PATH - compute hash directly using computeElementHash
             int h = 1;
-            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
-            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + computeElementHash(key1);
+            h = h * 31 + computeElementHash(key2);
             final int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
@@ -1511,7 +1511,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + computeElementHash(key3);
             int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
@@ -1539,8 +1539,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
-            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            h = h * 31 + computeElementHash(key3);
+            h = h * 31 + computeElementHash(key4);
             int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
@@ -1570,9 +1570,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
-            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
-            h = h * 31 + (key5 == null ? 0 : key5.hashCode());
+            h = h * 31 + computeElementHash(key3);
+            h = h * 31 + computeElementHash(key4);
+            h = h * 31 + computeElementHash(key5);
             int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
@@ -1621,14 +1621,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
                 if (entry != null) return entry.value;
             } else {
-                final int hash = finalizeHash(element.hashCode());
+                final int hash = finalizeHash(computeElementHash(element));
                 entry = findEntryWithPrecomputedHash(element, hash);
                 if (entry != null) return entry.value;
             }
             
             // Also try as array (in case it was stored as array)
             int h = 1;
-            h = h * 31 + (element == null ? 0 : element.hashCode());
+            h = h * 31 + computeElementHash(element);
             final int arrayHash = finalizeHash(h);
             entry = findEntryWithPrecomputedHash(array, arrayHash);
             return entry != null ? entry.value : null;
@@ -1723,10 +1723,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Check if both elements are simple
         if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
-            // TRUE FAST PATH - compute hash directly
+            // TRUE FAST PATH - compute hash directly using computeElementHash
             int h = 1;
-            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
-            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + computeElementHash(key1);
+            h = h * 31 + computeElementHash(key2);
             final int hash = finalizeHash(h);
             
             // Direct bucket lookup
@@ -1759,7 +1759,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + computeElementHash(key3);
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
@@ -1794,8 +1794,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
-            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            h = h * 31 + computeElementHash(key3);
+            h = h * 31 + computeElementHash(key4);
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
@@ -1833,9 +1833,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
-            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
-            h = h * 31 + (key5 == null ? 0 : key5.hashCode());
+            h = h * 31 + computeElementHash(key3);
+            h = h * 31 + computeElementHash(key4);
+            h = h * 31 + computeElementHash(key5);
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
@@ -1877,7 +1877,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             
             // Also try as collection (in case it was stored as collection)
             int h = 1;
-            h = h * 31 + (element == null ? 0 : element.hashCode());
+            h = h * 31 + computeElementHash(element);
             final int collectionHash = finalizeHash(h);
             entry = findEntryWithPrecomputedHash(coll, collectionHash);
             return entry != null ? entry.value : null;
@@ -1897,10 +1897,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Check if both elements are simple
         if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
-            // TRUE FAST PATH - compute hash directly
+            // TRUE FAST PATH - compute hash directly using computeElementHash
             int h = 1;
-            h = h * 31 + (key1 == null ? 0 : key1.hashCode());
-            h = h * 31 + (key2 == null ? 0 : key2.hashCode());
+            h = h * 31 + computeElementHash(key1);
+            h = h * 31 + computeElementHash(key2);
             final int hash = finalizeHash(h);
             
             // Direct bucket lookup
@@ -1933,7 +1933,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
+            h = h * 31 + computeElementHash(key3);
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
@@ -1968,8 +1968,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
-            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
+            h = h * 31 + computeElementHash(key3);
+            h = h * 31 + computeElementHash(key4);
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
@@ -2006,9 +2006,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + (key1 == null ? 0 : key1.hashCode());
             h = h * 31 + (key2 == null ? 0 : key2.hashCode());
-            h = h * 31 + (key3 == null ? 0 : key3.hashCode());
-            h = h * 31 + (key4 == null ? 0 : key4.hashCode());
-            h = h * 31 + (key5 == null ? 0 : key5.hashCode());
+            h = h * 31 + computeElementHash(key3);
+            h = h * 31 + computeElementHash(key4);
+            h = h * 31 + computeElementHash(key5);
             int hash = finalizeHash(h);
             
             // Direct bucket lookup

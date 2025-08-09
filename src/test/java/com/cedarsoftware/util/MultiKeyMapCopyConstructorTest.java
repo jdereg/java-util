@@ -49,50 +49,39 @@ public class MultiKeyMapCopyConstructorTest {
     }
 
     @Test
-    void testCopyWithDefensiveCopiesEnabled() {
-        // Create original with defensive copies enabled
-        MultiKeyMap<String> original = MultiKeyMap.<String>builder()
-            .defensiveCopies(true)
-            .build();
+    void testCopyWithNoDefensiveCopies() {
+        // MultiKeyMap no longer supports defensive copies for performance
+        MultiKeyMap<String> original = new MultiKeyMap<>();
         
-        // Use mutable collections and arrays
-        List<String> mutableList = new ArrayList<>(Arrays.asList("mutable", "list"));
-        Object[] mutableArray = {"mutable", "array"};
+        // Use collections and arrays
+        List<String> list = Arrays.asList("test", "list");
+        Object[] array = {"test", "array"};
         
-        original.put(mutableList, "listValue");
-        original.put(mutableArray, "arrayValue");
+        original.put(list, "listValue");
+        original.put(array, "arrayValue");
         
-        // Create copy (should also have defensive copies enabled)
+        // Create copy
         MultiKeyMap<String> copy = new MultiKeyMap<>(original);
         
         // Verify values are copied correctly
-        assertEquals("listValue", copy.get(Arrays.asList("mutable", "list")));
-        assertEquals("arrayValue", copy.get(new Object[]{"mutable", "array"}));
+        assertEquals("listValue", copy.get(Arrays.asList("test", "list")));
+        assertEquals("arrayValue", copy.get(new Object[]{"test", "array"}));
         
-        // Modify original collections - should not affect the copy
-        mutableList.add("modified");
-        mutableArray[0] = "modified";
-        
-        // Verify copy is unaffected (defensive copies working)
-        assertEquals("listValue", copy.get(Arrays.asList("mutable", "list")));
-        assertEquals("arrayValue", copy.get(new Object[]{"mutable", "array"}));
-        
-        // Verify we can't find modified versions in copy
-        assertNull(copy.get(Arrays.asList("mutable", "list", "modified")));
-        assertNull(copy.get(new Object[]{"modified", "array"}));
+        // The copy is independent - modifying the copy doesn't affect original
+        copy.put(list, "modifiedListValue");
+        assertEquals("listValue", original.get(list));
+        assertEquals("modifiedListValue", copy.get(list));
     }
 
     @Test
-    void testCopyWithDefensiveCopiesDisabled() {
-        // Create original with defensive copies disabled
-        MultiKeyMap<String> original = MultiKeyMap.<String>builder()
-            .defensiveCopies(false)
-            .build();
+    void testCopyWithSharedArrayReference() {
+        // MultiKeyMap doesn't make defensive copies
+        MultiKeyMap<String> original = new MultiKeyMap<>();
         
         Object[] sharedArray = {"shared", "array"};
         original.put(sharedArray, "sharedValue");
         
-        // Create copy (should inherit defensiveCopies=false)
+        // Create copy
         MultiKeyMap<String> copy = new MultiKeyMap<>(original);
         
         // Verify value is copied correctly
@@ -106,7 +95,6 @@ public class MultiKeyMapCopyConstructorTest {
         MultiKeyMap<String> original = MultiKeyMap.<String>builder()
             .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_NOT_EXPANDED)
             .flattenDimensions(true)
-            .defensiveCopies(false)
             .build();
         
         // Add some data to verify the configuration works

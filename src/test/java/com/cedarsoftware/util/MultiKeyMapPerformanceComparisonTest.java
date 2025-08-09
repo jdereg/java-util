@@ -120,10 +120,8 @@ public class MultiKeyMapPerformanceComparisonTest {
         // Warm up both implementations with various key counts
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
             for (int keyCount : KEY_COUNTS) {
-                // Cedar warmup - disable defensive copies for fair comparison with Apache
-                com.cedarsoftware.util.MultiKeyMap<String> cedarMap = com.cedarsoftware.util.MultiKeyMap.<String>builder()
-                    .defensiveCopies(false)
-                    .build();
+                // Cedar warmup - no defensive copies for maximum performance
+                com.cedarsoftware.util.MultiKeyMap<String> cedarMap = new com.cedarsoftware.util.MultiKeyMap<>();
                 Object[][] keys = generateKeys(1000, keyCount);
                 for (Object[] key : keys) {
                     if (keyCount == 1) {
@@ -194,10 +192,8 @@ public class MultiKeyMapPerformanceComparisonTest {
         long totalGetNanos = 0;
         
         for (int iter = 0; iter < TEST_ITERATIONS; iter++) {
-            // Disable defensive copies for fair comparison with Apache (which doesn't do defensive copying)
-            com.cedarsoftware.util.MultiKeyMap<String> map = com.cedarsoftware.util.MultiKeyMap.<String>builder()
-                .defensiveCopies(false)
-                .build();
+            // MultiKeyMap doesn't do defensive copying for maximum performance
+            com.cedarsoftware.util.MultiKeyMap<String> map = new com.cedarsoftware.util.MultiKeyMap<>();
             
             // Test PUT operations
             long putStart = System.nanoTime();

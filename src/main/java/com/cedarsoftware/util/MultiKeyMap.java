@@ -39,7 +39,7 @@ import java.util.logging.Logger;
  *   <li><b>Map Interface Compatible:</b> Supports single-key operations via the standard Map interface (get()/put() automatically unpack Collections/Arrays into multi-keys).</li>
  *   <li><b>Flexible API:</b> Var-args methods for convenient multi-key operations (getMultiKey()/putMultiKey() with many keys).</li>
  *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections via {@link CollectionKeyMode} — change the default automatic unpacking capability as needed.</li>
- *   <li><b>N-Dimensional Array Expansion:</b> Nested arrays of any depth are automatically flattened recursively into multi-keys, with configurable structure preservation.</li>
+ *   <li><b>N-Dimensional Array Expansion:</b> Nested arrays of any depth are automatically flattened recursively into multi-keys.</li>
  *   <li><b>Cross-Container Equivalence:</b> Arrays and Collections with equivalent structure are treated as identical keys, regardless of container type.</li>
  * </ul>
  *
@@ -57,7 +57,6 @@ import java.util.logging.Logger;
  *   <li><b>Lock-Free Reads:</b> Get operations require no locking for optimal concurrent performance</li>
  *   <li><b>Auto-Tuned Stripe Locking:</b> Write operations use stripe locking that adapts to your server's core count</li>
  *   <li><b>Zero-Allocation Gets:</b> No temporary objects created during retrieval operations</li>
- *   <li><b>MurmurHash3 Finalization:</b> Enhanced hash distribution reduces collisions</li>
  *   <li><b>Polymorphic Storage:</b> Efficient memory usage adapts storage format based on key complexity</li>
  * </ul>
  *
@@ -187,7 +186,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final float loadFactor;
     private final CollectionKeyMode collectionKeyMode;
     private final boolean flattenDimensions;
-    private final boolean defensiveCopies;
     private final int maxHashElements;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
@@ -247,7 +245,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this.loadFactor = builder.loadFactor;
         this.collectionKeyMode = builder.collectionKeyMode;
         this.flattenDimensions = builder.flattenDimensions;
-        this.defensiveCopies = builder.defensiveCopies;
         this.maxHashElements = builder.maxHashElements;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
@@ -266,18 +263,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public MultiKeyMap(MultiKeyMap<? extends V> source) {
         this(MultiKeyMap.<V>builder().from(source));
         
-        // Deep-copy entries (respect defensiveCopies)
         source.withAllStripeLocks(() -> {  // Lock for consistent snapshot
             for (int i = 0; i < source.buckets.length(); i++) {
                 MultiKey<? extends V>[] chain = source.buckets.get(i);
                 if (chain != null) {
                     for (MultiKey<? extends V> entry : chain) {
                         if (entry != null) {
-                            // Re-create MultiKey with potentially copied keys
-                            Object copiedKeys = copyKeysIfNeeded(entry.keys, this.defensiveCopies);
+                            // Re-use keys directly - no copying  
                             V value = entry.value;
-                            // Create new MultiKey and use internal put to avoid double-copying
-                            MultiKey<V> newKey = new MultiKey<>(copiedKeys, entry.hash, value);
+                            MultiKey<V> newKey = new MultiKey<>(entry.keys, entry.hash, value);
                             putInternal(newKey);
                         }
                     }
@@ -286,42 +280,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         });
     }
 
-    // Optimized copyKeysIfNeeded with cross-type support
-    private static Object copyKeysIfNeeded(Object keys, boolean defensive) {
-        if (!defensive) return keys;
-
-        if (keys instanceof Object[]) {
-            // Deep copy array
-            Object[] arr = (Object[]) keys;
-            Object[] copy = new Object[arr.length];
-            System.arraycopy(arr, 0, copy, 0, arr.length);
-            // Recurse for nested
-            int len = copy.length;
-            for (int i = 0; i < len; i++) {
-                copy[i] = copyKeysIfNeeded(copy[i], true);
-            }
-            return copy;
-        } else if (keys instanceof Collection<?>) {
-            // Deep copy collection - use fast path for ArrayList
-            Collection<?> coll = (Collection<?>) keys;
-            if (coll instanceof ArrayList) {
-                List<?> src = (ArrayList<?>) coll;
-                List<Object> copy = new ArrayList<>(src.size());
-                int len = src.size();
-                for (int i = 0; i < len; i++) {
-                    copy.add(copyKeysIfNeeded(src.get(i), true));
-                }
-                return copy;
-            }
-            // Fallback for other collections
-            List<Object> copy = new ArrayList<>(coll.size());
-            for (Object item : coll) {
-                copy.add(copyKeysIfNeeded(item, true));
-            }
-            return copy;
-        }
-        return keys;  // No copy needed
-    }
 
     // Keep the most commonly used convenience constructors
     public MultiKeyMap() {
@@ -342,7 +300,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         private float loadFactor = DEFAULT_LOAD_FACTOR;
         private CollectionKeyMode collectionKeyMode = CollectionKeyMode.COLLECTIONS_EXPANDED;
         private boolean flattenDimensions = false;
-        private boolean defensiveCopies = true;
         private int maxHashElements = DEFAULT_MAX_HASH_ELEMENTS;
 
         // Private constructor - instantiate via MultiKeyMap.builder()
@@ -374,10 +331,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return this;
         }
 
-        public Builder<V> defensiveCopies(boolean defensive) {
-            this.defensiveCopies = defensive;
-            return this;
-        }
 
         // Copy config from existing map
         public Builder<V> from(MultiKeyMap<?> source) {
@@ -385,7 +338,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.loadFactor = source.loadFactor;
             this.collectionKeyMode = source.collectionKeyMode;
             this.flattenDimensions = source.flattenDimensions;
-            this.defensiveCopies = source.defensiveCopies;
             this.maxHashElements = source.maxHashElements;
             return this;
         }
@@ -603,7 +555,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a MultiKey object with a normalized key and computed hash
      */
     private MultiKey<V> createMultiKey(Object key, V value) {
-        final Norm norm = flattenKey(key, true); // true = make defensive copy for storage
+        final Norm norm = flattenKey(key);
         return new MultiKey<>(norm.key, norm.hash, value);
     }
 
@@ -641,9 +593,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (clazz.isArray()) {
             // Route directly to appropriate array processor
             if (clazz == Object[].class) {
-                return process1DObjectArray((Object[]) key, false);
+                return process1DObjectArray((Object[]) key);
             } else {
-                return process1DTypedArray(key, false);
+                return process1DTypedArray(key);
             }
         } else {
             // We know it's a Collection
@@ -651,7 +603,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             
             // Handle collections that should not be expanded
             if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-                // Since requestDefensiveCopy is always false, makeDefensiveCopy is always false
                 return new Norm(coll, coll.hashCode());
             }
             
@@ -659,13 +610,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (flattenDimensions) {
                 return expandWithHash(coll);
             }
-            return process1DCollection(coll, false);
+            return process1DCollection(coll);
         }
     }
 
-    private Norm flattenKey(Object key, boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm flattenKey(Object key) {
         
         // Handle null case
         if (key == null) {
@@ -687,7 +636,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // ULTRA-FAST PATH: Object[] arrays (most common case - 90%+ of real usage)
         if (key.getClass() == Object[].class) {
-            return process1DObjectArray((Object[]) key, requestDefensiveCopy);
+            return process1DObjectArray((Object[]) key);
         }
 
         Class<?> clazz = key.getClass();
@@ -702,14 +651,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             Collection<?> coll = (Collection<?>) key;
             // In NOT_EXPANDED mode, treat collections like regular Map keys - no special processing
             int hash = coll.hashCode();
-            // Make defensive copy only when storing (put operations), not for lookups
-            Object normKey = makeDefensiveCopy ? new ArrayList<>(coll) : coll;
-            return new Norm(normKey, hash);
+            return new Norm(coll, hash);
         }
 
         // Handle other array types (int[], String[], etc.)
         if (clazz.isArray()) {
-            return process1DTypedArray(key, requestDefensiveCopy);
+            return process1DTypedArray(key);
         }
         
         // Handle Collections
@@ -718,12 +665,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (flattenDimensions) {
             return expandWithHash(coll);
         }
-        return process1DCollection(coll, requestDefensiveCopy);
+        return process1DCollection(coll);
     }
 
-    private Norm process1DObjectArray(final Object[] array, final boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        final boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm process1DObjectArray(final Object[] array) {
         final int len = array.length;
 
         if (len == 0) {
@@ -779,18 +724,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
             }
             int hash = h;
-            // Make defensive copy only when storing (put operations), not for lookups
-            Object result = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-            return new Norm(result, hash);
+            return new Norm(array, hash);
         }
         
         // It's 2D+ - need to expand with hash computation
         return expandWithHash(array);
     }
     
-    private Norm process1DCollection(final Collection<?> coll, final boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm process1DCollection(final Collection<?> coll) {
         if (coll.isEmpty()) {
             // Normalize empty collections to empty array for cross-container equivalence
             return new Norm(new Object[0], 0);
@@ -859,42 +800,38 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     return new Norm(single, computeElementHash(single));
                 }
             }
-            // Make defensive copy only when storing (put operations), not for lookups
-            Object key = makeDefensiveCopy ? new ArrayList<>(coll) : coll;
-            return new Norm(key, h);
+            return new Norm(coll, h);
         }
         
         // It's 2D+ - need to expand with hash computation
         return expandWithHash(coll);
     }
     
-    private Norm process1DTypedArray(Object arr, boolean requestDefensiveCopy) {
+    private Norm process1DTypedArray(Object arr) {
         Class<?> clazz = arr.getClass();
         
         // Use type-specific fast paths for optimal performance
         if (clazz == String[].class) {
-            return process1DStringArray((String[]) arr, requestDefensiveCopy);
+            return process1DStringArray((String[]) arr);
         }
         if (clazz == int[].class) {
-            return process1DIntArray((int[]) arr, requestDefensiveCopy);
+            return process1DIntArray((int[]) arr);
         }
         if (clazz == long[].class) {
-            return process1DLongArray((long[]) arr, requestDefensiveCopy);
+            return process1DLongArray((long[]) arr);
         }
         if (clazz == double[].class) {
-            return process1DDoubleArray((double[]) arr, requestDefensiveCopy);
+            return process1DDoubleArray((double[]) arr);
         }
         if (clazz == boolean[].class) {
-            return process1DBooleanArray((boolean[]) arr, requestDefensiveCopy);
+            return process1DBooleanArray((boolean[]) arr);
         }
         
         // Fallback to reflection for uncommon array types
-        return process1DGenericArray(arr, requestDefensiveCopy);
+        return process1DGenericArray(arr);
     }
     
-    private Norm process1DStringArray(String[] array, boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm process1DStringArray(String[] array) {
         
         final int len = array.length;
         if (len == 0) {
@@ -922,14 +859,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
         
-        // Make defensive copy only when storing (put operations), not for lookups
-        Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(array, h);
     }
     
-    private Norm process1DIntArray(int[] array, boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm process1DIntArray(int[] array) {
         
         final int len = array.length;
         if (len == 0) {
@@ -950,14 +883,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return new Norm(array[0], Integer.hashCode(array[0])); // Return the primitive value
         }
         
-        // Make defensive copy only when storing (put operations), not for lookups
-        Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(array, h);
     }
     
-    private Norm process1DLongArray(long[] array, boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm process1DLongArray(long[] array) {
         
         final int len = array.length;
         if (len == 0) {
@@ -979,14 +908,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return new Norm(array[0], Long.hashCode(array[0])); // Return the primitive value
         }
         
-        // Make defensive copy only when storing (put operations), not for lookups
-        Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(array, h);
     }
     
-    private Norm process1DDoubleArray(double[] array, boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm process1DDoubleArray(double[] array) {
         
         final int len = array.length;
         if (len == 0) {
@@ -1008,14 +933,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return new Norm(array[0], Double.hashCode(array[0])); // Return the primitive value
         }
         
-        // Make defensive copy only when storing (put operations), not for lookups
-        Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(array, h);
     }
     
-    private Norm process1DBooleanArray(boolean[] array, boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm process1DBooleanArray(boolean[] array) {
         
         final int len = array.length;
         if (len == 0) {
@@ -1036,14 +957,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return new Norm(array[0], Boolean.hashCode(array[0])); // Return the primitive value
         }
         
-        // Make defensive copy only when storing (put operations), not for lookups
-        Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(array, h);
     }
     
-    private Norm process1DGenericArray(Object arr, boolean requestDefensiveCopy) {
-        // Only make defensive copy if both requested AND enabled
-        boolean makeDefensiveCopy = requestDefensiveCopy && this.defensiveCopies;
+    private Norm process1DGenericArray(Object arr) {
         
         // Fallback method using reflection for uncommon array types
         final int len = Array.getLength(arr);
@@ -1090,18 +1007,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     return new Norm(single, computeElementHash(single));
                 }
             }
-            // For generic arrays, create a copy using reflection if needed
-            Object key;
-            if (makeDefensiveCopy) {
-                Object copy = Array.newInstance(arr.getClass().getComponentType(), len);
-                for (int j = 0; j < len; j++) {
-                    Array.set(copy, j, Array.get(arr, j));
-                }
-                key = copy;
-            } else {
-                key = arr;
-            }
-            return new Norm(key, h);
+            return new Norm(arr, h);
         }
         
         // It's 2D+ - need to expand with hash computation
@@ -1266,7 +1172,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private boolean containsEmptyArray() {
         // Empty array - find the normalized empty key
-        final Norm norm = flattenKey(new Object[0], false);
+        final Norm norm = flattenKey(new Object[0]);
         final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
         return entry != null;
     }
@@ -1561,7 +1467,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private V getEmptyArray() {
         // Empty array has hash 0
-        final Norm norm = flattenKey(new Object[0], false);
+        final Norm norm = flattenKey(new Object[0]);
         final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
         return entry != null ? entry.value : null;
     }
@@ -2434,7 +2340,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * This ensures external code cannot mutate our internal key arrays.
      */
     private static List<Object> keyView(Object[] keys) {
-        return Collections.unmodifiableList(Arrays.asList(keys.clone()));
+        return Collections.unmodifiableList(Arrays.asList(keys));
     }
     
     /**
@@ -2523,7 +2429,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (existing != null) return existing;
         
         // Normalize the key once, outside the lock
-        Norm norm = flattenKey(key, true);
+        Norm norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2567,7 +2473,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         V v = get(key);
         if (v != null) return v;
         
-        Norm norm = flattenKey(key, true);
+        Norm norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2613,7 +2519,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         V old = get(key);
         if (old == null) return null;
         
-        Norm norm = flattenKey(key, true);
+        Norm norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2662,7 +2568,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
         
-        Norm norm = flattenKey(key, true);
+        Norm norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2716,7 +2622,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
         
-        Norm norm = flattenKey(key, true);
+        Norm norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2767,7 +2673,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was removed
      */
     public boolean remove(Object key, Object value) {
-        Norm norm = flattenKey(key, true);
+        Norm norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2804,7 +2710,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V replace(Object key, V value) {
-        Norm norm = flattenKey(key, true);
+        Norm norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2851,7 +2757,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was replaced
      */
     public boolean replace(Object key, V oldValue, V newValue) {
-        Norm norm = flattenKey(key, true);
+        Norm norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2990,10 +2896,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         MultiKeyEntry(Object k, V v) {
             // Canonicalize to Object[] for consistent external presentation
-            // Always defensive copy to prevent external mutation
             if (k instanceof Object[]) {
-                Object[] original = (Object[]) k;
-                keys = Arrays.copyOf(original, original.length);
+                keys = (Object[]) k;
             } else if (k instanceof Collection) {
                 // Convert internal List representation back to Object[] for API consistency
                 keys = ((Collection<?>) k).toArray();

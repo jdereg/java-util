@@ -608,10 +608,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     // Method for when only the hash is needed, not the normalized key
-    private void computeKeyHash(Object key, int[] hashPass) {
-        flattenKey(key, hashPass, false); // Ignore return value, only need hash side effect
-    }
-    
     // Update maxChainLength to the maximum of current value and newValue
     // Uses getAndAccumulate for better performance under contention
     private void updateMaxChainLength(int newValue) {
@@ -2180,6 +2176,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return old;
     }
 
+    private V getNoLock(MultiKey<V> lookupKey) {
+        int hash = lookupKey.hash;
+        int index = hash & (buckets.length() - 1);
+        MultiKey<V>[] chain = buckets.get(index);
+        
+        if (chain == null) return null;
+        
+        for (MultiKey<V> e : chain) {
+            if (e.hash == hash && keysMatch(e.keys, lookupKey.keys)) {
+                return e.value;
+            }
+        }
+        return null;
+    }
+    
     private V putNoLock(MultiKey<V> newKey) {
         int hash = newKey.hash;
         int index = hash & (buckets.length() - 1);
@@ -2564,17 +2575,31 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V putIfAbsent(Object key, V value) {
         V existing = get(key);
         if (existing != null) return existing;
-        MultiKey<V> lookupKey = createMultiKey(key, value);
-        int hash = lookupKey.hash;
+        
+        // Normalize the key once, outside the lock
+        int[] hashPass = new int[1];
+        Object normalizedKey = flattenKey(key, hashPass, true);
+        int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
+        boolean resize = false;
+        
         lock.lock();
         try {
-            existing = get(key);
-            if (existing == null) return put(key, value);
-            return existing;
+            // Check again inside the lock
+            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
+            existing = getNoLock(lookupKey);
+            if (existing == null) {
+                // Use putNoLock directly to avoid double locking
+                MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
+                putNoLock(newKey);
+                resize = atomicSize.get() > buckets.length() * loadFactor;
+            }
         } finally {
             lock.unlock();
         }
+        // Handle resize outside the lock
+        if (resize) resizeInternal();
+        return existing;
     }
 
     /**
@@ -2593,21 +2618,33 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(mappingFunction);
         V v = get(key);
         if (v != null) return v;
+        
         int[] hashPass = new int[1];
-        computeKeyHash(key, hashPass);
+        Object normalizedKey = flattenKey(key, hashPass, true);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
+        boolean resize = false;
+        
         lock.lock();
         try {
-            v = get(key);
+            // Create lookup key for checking existence
+            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
+            v = getNoLock(lookupKey);
             if (v == null) {
                 v = mappingFunction.apply(key);
-                if (v != null) put(key, v);
+                if (v != null) {
+                    // Create new key with value and use putNoLock
+                    MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, v);
+                    putNoLock(newKey);
+                    resize = atomicSize.get() > buckets.length() * loadFactor;
+                }
             }
-            return v;
         } finally {                  
             lock.unlock();
         }
+        // Handle resize outside the lock
+        if (resize) resizeInternal();
+        return v;
     }
 
     /**
@@ -2625,25 +2662,39 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(remappingFunction);
         V old = get(key);
         if (old == null) return null;
+        
         int[] hashPass = new int[1];
-        computeKeyHash(key, hashPass);
+        Object normalizedKey = flattenKey(key, hashPass, true);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
+        boolean resize = false;
+        
+        V result = null;
         lock.lock();
         try {
-            old = get(key);
-            if (old == null) return null;
-            V newV = remappingFunction.apply(key, old);
-            if (newV != null) {
-                put(key, newV);
-                return newV;
-            } else {
-                remove(key);
-                return null;
+            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
+            old = getNoLock(lookupKey);
+            if (old != null) {
+                V newV = remappingFunction.apply(key, old);
+                if (newV != null) {
+                    // Replace with new value using putNoLock
+                    MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
+                    putNoLock(newKey);
+                    resize = atomicSize.get() > buckets.length() * loadFactor;
+                    result = newV;
+                } else {
+                    // Remove using removeNoLock
+                    MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, old);
+                    removeNoLock(removeKey);
+                    result = null;
+                }
             }
         } finally {
             lock.unlock();
         }
+        // Handle resize outside the lock
+        if (resize) resizeInternal();
+        return result;
     }
 
     /**
@@ -2659,23 +2710,40 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
+        
         int[] hashPass = new int[1];
-        computeKeyHash(key, hashPass);
+        Object normalizedKey = flattenKey(key, hashPass, true);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
+        boolean resize = false;
+        
+        V result = null;
         lock.lock();
         try {
-            V old = get(key);
+            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
+            V old = getNoLock(lookupKey);
             V newV = remappingFunction.apply(key, old);
+            
             if (newV == null) {
-                if (old != null || containsKey(key)) remove(key);
-                return null;
+                // Check if key existed (even with null value) and remove if so
+                if (old != null || findEntryWithPrecomputedHash(normalizedKey, hash) != null) {
+                    MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, old);
+                    removeNoLock(removeKey);
+                }
+                result = null;
+            } else {
+                // Put new value using putNoLock
+                MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
+                putNoLock(newKey);
+                resize = atomicSize.get() > buckets.length() * loadFactor;
+                result = newV;
             }
-            put(key, newV);
-            return newV;
         } finally {
             lock.unlock();
         }
+        // Handle resize outside the lock
+        if (resize) resizeInternal();
+        return result;
     }
 
     /**
@@ -2694,23 +2762,37 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V merge(Object key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
+        
         int[] hashPass = new int[1];
-        computeKeyHash(key, hashPass);
+        Object normalizedKey = flattenKey(key, hashPass, true);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
+        boolean resize = false;
+        
+        V result = null;
         lock.lock();
         try {
-            V old = get(key);
+            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
+            V old = getNoLock(lookupKey);
             V newV = old == null ? value : remappingFunction.apply(old, value);
+            
             if (newV == null) {
-                remove(key);
+                // Remove using removeNoLock
+                MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, old);
+                removeNoLock(removeKey);
             } else {
-                put(key, newV);
+                // Put new value using putNoLock
+                MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newV);
+                putNoLock(newKey);
+                resize = atomicSize.get() > buckets.length() * loadFactor;
             }
-            return newV;
+            result = newV;
         } finally {
             lock.unlock();
         }
+        // Handle resize outside the lock
+        if (resize) resizeInternal();
+        return result;
     }
 
     /**
@@ -2731,14 +2813,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public boolean remove(Object key, Object value) {
         int[] hashPass = new int[1];
-        computeKeyHash(key, hashPass);
+        Object normalizedKey = flattenKey(key, hashPass, true);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
+        
         lock.lock();
         try {
-            V current = get(key);
+            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
+            V current = getNoLock(lookupKey);
             if (!Objects.equals(current, value)) return false;
-            remove(key);
+            
+            // Remove using removeNoLock
+            MultiKey<V> removeKey = new MultiKey<>(normalizedKey, hash, current);
+            removeNoLock(removeKey);
             return true;
         } finally {
             lock.unlock();
@@ -2763,16 +2850,30 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V replace(Object key, V value) {
         int[] hashPass = new int[1];
-        computeKeyHash(key, hashPass);
+        Object normalizedKey = flattenKey(key, hashPass, true);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
+        boolean resize = false;
+        
+        V result = null;
         lock.lock();
         try {
-            if (!containsKey(key)) return null;
-            return put(key, value);
+            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
+            V old = getNoLock(lookupKey);
+            if (old == null && findEntryWithPrecomputedHash(normalizedKey, hash) == null) {
+                result = null; // Key doesn't exist
+            } else {
+                // Replace with new value using putNoLock
+                MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, value);
+                result = putNoLock(newKey);
+                resize = atomicSize.get() > buckets.length() * loadFactor;
+            }
         } finally {
             lock.unlock();
         }
+        // Handle resize outside the lock
+        if (resize) resizeInternal();
+        return result;
     }
 
     /**
@@ -2794,18 +2895,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public boolean replace(Object key, V oldValue, V newValue) {
         int[] hashPass = new int[1];
-        computeKeyHash(key, hashPass);
+        Object normalizedKey = flattenKey(key, hashPass, true);
         int hash = hashPass[0];
         ReentrantLock lock = getStripeLock(hash);
+        boolean resize = false;
+        
+        boolean result = false;
         lock.lock();
         try {
-            V current = get(key);
-            if (!Objects.equals(current, oldValue)) return false;
-            put(key, newValue);
-            return true;
+            MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
+            V current = getNoLock(lookupKey);
+            if (Objects.equals(current, oldValue)) {
+                // Replace with new value using putNoLock
+                MultiKey<V> newKey = new MultiKey<>(normalizedKey, hash, newValue);
+                putNoLock(newKey);
+                resize = atomicSize.get() > buckets.length() * loadFactor;
+                result = true;
+            }
         } finally {
             lock.unlock();
         }
+        // Handle resize outside the lock
+        if (resize) resizeInternal();
+        return result;
     }
 
     /**

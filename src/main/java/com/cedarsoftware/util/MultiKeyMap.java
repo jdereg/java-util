@@ -194,15 +194,45 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final ReentrantLock[] stripeLocks = new ReentrantLock[STRIPE_COUNT];
 
     private static final class MultiKey<V> {
+        // Kind constants for fast type-based switching
+        static final byte KIND_SINGLE = 0;    // Single object
+        static final byte KIND_OBJECT_ARRAY = 1;  // Object[] array
+        static final byte KIND_COLLECTION = 2;    // Collection (List, etc.)
+        static final byte KIND_PRIMITIVE_ARRAY = 3; // Primitive arrays (int[], etc.)
+        
         final Object keys;  // Polymorphic: Object (single), Object[] (flat multi), Collection<?> (nested multi)
         final int hash;
         final V value;
+        final int arity;    // Number of keys (1 for single, array.length for arrays, collection.size() for collections)
+        final byte kind;    // Type of keys structure (0=single, 1=obj[], 2=collection, 3=prim[])
 
         // Unified constructor that accepts pre-normalized keys and pre-computed hash
         MultiKey(Object normalizedKeys, int hash, V value) {
             this.keys = normalizedKeys;
             this.hash = hash;
             this.value = value;
+            
+            // Compute and cache arity and kind for fast operations
+            if (normalizedKeys == null) {
+                this.arity = 1;
+                this.kind = KIND_SINGLE;
+            } else {
+                Class<?> keyClass = normalizedKeys.getClass();
+                if (keyClass.isArray()) {
+                    this.arity = Array.getLength(normalizedKeys);
+                    // Check if it's a primitive array
+                    Class<?> componentType = keyClass.getComponentType();
+                    this.kind = (componentType != null && componentType.isPrimitive()) 
+                        ? KIND_PRIMITIVE_ARRAY 
+                        : KIND_OBJECT_ARRAY;
+                } else if (normalizedKeys instanceof Collection) {
+                    this.arity = ((Collection<?>) normalizedKeys).size();
+                    this.kind = KIND_COLLECTION;
+                } else {
+                    this.arity = 1;
+                    this.kind = KIND_SINGLE;
+                }
+            }
         }
 
         @Override
@@ -264,8 +294,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this(MultiKeyMap.<V>builder().from(source));
         
         source.withAllStripeLocks(() -> {  // Lock for consistent snapshot
-            for (int i = 0; i < source.buckets.length(); i++) {
-                MultiKey<? extends V>[] chain = source.buckets.get(i);
+            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
+            final int len = table.length();
+            for (int i = 0; i < len; i++) {
+                MultiKey<? extends V>[] chain = table.get(i);
                 if (chain != null) {
                     for (MultiKey<? extends V> entry : chain) {
                         if (entry != null) {
@@ -571,7 +603,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Used by optimized fast paths to determine routing.
      */
     private static boolean isArrayOrCollection(Object o) {
-        return (o instanceof Collection) || (o != null && o.getClass().isArray());
+        return (o != null && o.getClass().isArray()) || (o instanceof Collection);
     }
     
     /**
@@ -1106,7 +1138,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final int chLen = chain.length;
         for (int i = 0; i < chLen; i++) {
             MultiKey<V> entry = chain[i];
-            if (entry.hash == hash && keysMatch(entry.keys, normalizedKey)) return entry;
+            if (entry.hash == hash && keysMatch(entry, normalizedKey)) return entry;
         }
         return null;
     }
@@ -1138,19 +1170,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final int chLen = chain.length;
         if (chLen >= 1) {
             MultiKey<V> entry = chain[0];
-            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+            if (entry.hash == hash && keysMatch(entry, lookupKey)) {
                 return entry;
             }
         }
         if (chLen >= 2) {
             MultiKey<V> entry = chain[1];
-            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+            if (entry.hash == hash && keysMatch(entry, lookupKey)) {
                 return entry;
             }
         }
         if (chLen >= 3) {
             MultiKey<V> entry = chain[2];
-            if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+            if (entry.hash == hash && keysMatch(entry, lookupKey)) {
                 return entry;
             }
         }
@@ -1158,7 +1190,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Fall back to loop for longer chains (very rare)
             for (int i = 3; i < chLen; i++) {
                 MultiKey<V> entry = chain[i];
-                if (entry.hash == hash && keysMatch(entry.keys, lookupKey)) {
+                if (entry.hash == hash && keysMatch(entry, lookupKey)) {
                     return entry;
                 }
             }
@@ -1518,19 +1550,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final int chLen = chain.length;
         if (chLen >= 1) {
             MultiKey<V> entry = chain[0];
-            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+            if (entry.hash == hash && keysMatch(entry, keys)) {
                 return entry.value;
             }
         }
         if (chLen >= 2) {
             MultiKey<V> entry = chain[1];
-            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+            if (entry.hash == hash && keysMatch(entry, keys)) {
                 return entry.value;
             }
         }
         if (chLen >= 3) {
             MultiKey<V> entry = chain[2];
-            if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+            if (entry.hash == hash && keysMatch(entry, keys)) {
                 return entry.value;
             }
         }
@@ -1538,7 +1570,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Fall back to loop for longer chains (very rare)
             for (int i = 3; i < chLen; i++) {
                 MultiKey<V> entry = chain[i];
-                if (entry.hash == hash && keysMatch(entry.keys, keys)) {
+                if (entry.hash == hash && keysMatch(entry, keys)) {
                     return entry.value;
                 }
             }
@@ -1853,101 +1885,116 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return entry != null ? entry.value : null;
     }
 
-    private static boolean keysMatch(Object stored, Object lookup) {
-        // Fast identity and null checks
-        if (stored == lookup) return true;
-        if (stored == null || lookup == null) return false;
+    /**
+     * Optimized keysMatch that leverages MultiKey's precomputed arity and kind.
+     * This is used when we have access to the stored MultiKey object.
+     */
+    private static <V> boolean keysMatch(MultiKey<V> stored, Object lookup) {
+        // Fast identity check
+        if (stored.keys == lookup) return true;
+        if (stored.keys == null || lookup == null) return false;
         
-        final Class<?> storedClass = stored.getClass();
+        // Early arity rejection - if stored has precomputed arity, check it first
+        if (stored.kind == MultiKey.KIND_SINGLE) {
+            // Single key optimization
+            if (lookup.getClass().isArray() || lookup instanceof Collection) {
+                return false; // Different cardinality
+            }
+            return Objects.equals(stored.keys == NULL_SENTINEL ? null : stored.keys, 
+                                 lookup == NULL_SENTINEL ? null : lookup);
+        }
+        
+        // Multi-key case - use precomputed kind for fast switching
         final Class<?> lookupClass = lookup.getClass();
         
-        // ULTRA-FAST PATH: Object[] arrays (most common case - 90%+ of real usage)
-        // People typically use: new Object[] { a, b, c, d } for mixed types
-        if (storedClass == Object[].class && lookupClass == Object[].class) {
-            return Arrays.equals((Object[]) stored, (Object[]) lookup);
+        // Check arity match first (early rejection)
+        final int lookupArity;
+        final byte lookupKind;
+        
+        if (lookupClass.isArray()) {
+            lookupArity = Array.getLength(lookup);
+            Class<?> componentType = lookupClass.getComponentType();
+            lookupKind = (componentType != null && componentType.isPrimitive()) 
+                ? MultiKey.KIND_PRIMITIVE_ARRAY 
+                : MultiKey.KIND_OBJECT_ARRAY;
+        } else if (lookup instanceof Collection) {
+            lookupArity = ((Collection<?>) lookup).size();
+            lookupKind = MultiKey.KIND_COLLECTION;
+        } else {
+            // Lookup is single but stored is multi
+            return false;
         }
         
-        // Quick single vs multi check
-        final boolean storedSingle = !storedClass.isArray() && !(stored instanceof Collection);
-        final boolean lookupSingle = !lookupClass.isArray() && !(lookup instanceof Collection);
+        // Early rejection on arity mismatch
+        if (stored.arity != lookupArity) return false;
         
-        if (storedSingle != lookupSingle) return false; // Different cardinality
-        
-        if (storedSingle) {
-            return Objects.equals(stored == NULL_SENTINEL ? null : stored, lookup == NULL_SENTINEL ? null : lookup);
-        }
-        
-        // Multi-key comparison - check size first
-        final int storedLen = stored instanceof Collection ? ((Collection<?>) stored).size() : Array.getLength(stored);
-        final int lookupLen = lookup instanceof Collection ? ((Collection<?>) lookup).size() : Array.getLength(lookup);
-        
-        if (storedLen != lookupLen) return false;
-        
-        // Fast paths for same-type comparisons
-        if (storedClass == lookupClass) {
-            // ArrayList (very common)
-            if (storedClass == ArrayList.class) {
-                ArrayList<?> s = (ArrayList<?>) stored;
-                ArrayList<?> l = (ArrayList<?>) lookup;
-                for (int i = 0; i < storedLen; i++) {
-                    if (!Objects.equals(s.get(i), l.get(i))) return false;
+        // Now use kind-based fast paths
+        switch (stored.kind) {
+            case MultiKey.KIND_OBJECT_ARRAY:
+                if (lookupKind == MultiKey.KIND_OBJECT_ARRAY) {
+                    return Arrays.equals((Object[]) stored.keys, (Object[]) lookup);
                 }
-                return true;
-            }
-            
-            // String[] (common for string keys)
-            if (storedClass == String[].class) {
-                return Arrays.equals((String[]) stored, (String[]) lookup);
-            }
-            
-            // Primitive arrays (use JVM intrinsics)
-            if (storedClass.isArray()) {
-                Class<?> componentType = storedClass.getComponentType();
-                if (componentType != null && componentType.isPrimitive()) {
-                    if (storedClass == int[].class) return Arrays.equals((int[]) stored, (int[]) lookup);
-                    if (storedClass == long[].class) return Arrays.equals((long[]) stored, (long[]) lookup);
-                    if (storedClass == double[].class) return Arrays.equals((double[]) stored, (double[]) lookup);
-                    if (storedClass == boolean[].class) return Arrays.equals((boolean[]) stored, (boolean[]) lookup);
-                    if (storedClass == byte[].class) return Arrays.equals((byte[]) stored, (byte[]) lookup);
-                    if (storedClass == char[].class) return Arrays.equals((char[]) stored, (char[]) lookup);
-                    if (storedClass == float[].class) return Arrays.equals((float[]) stored, (float[]) lookup);
-                    if (storedClass == short[].class) return Arrays.equals((short[]) stored, (short[]) lookup);
+                // Fall through to cross-type comparison
+                break;
+                
+            case MultiKey.KIND_COLLECTION:
+                if (lookupKind == MultiKey.KIND_COLLECTION && 
+                    stored.keys.getClass() == lookupClass) {
+                    // Same collection type - optimize for ArrayList
+                    if (stored.keys.getClass() == ArrayList.class) {
+                        ArrayList<?> s = (ArrayList<?>) stored.keys;
+                        ArrayList<?> l = (ArrayList<?>) lookup;
+                        for (int i = 0; i < stored.arity; i++) {
+                            if (!Objects.equals(s.get(i), l.get(i))) return false;
+                        }
+                        return true;
+                    }
                 }
-            }
+                // Fall through to cross-type comparison
+                break;
+                
+            case MultiKey.KIND_PRIMITIVE_ARRAY:
+                if (lookupKind == MultiKey.KIND_PRIMITIVE_ARRAY && 
+                    stored.keys.getClass() == lookupClass) {
+                    // Same primitive array type - use specialized equals
+                    if (stored.keys.getClass() == int[].class) return Arrays.equals((int[]) stored.keys, (int[]) lookup);
+                    if (stored.keys.getClass() == long[].class) return Arrays.equals((long[]) stored.keys, (long[]) lookup);
+                    if (stored.keys.getClass() == double[].class) return Arrays.equals((double[]) stored.keys, (double[]) lookup);
+                    if (stored.keys.getClass() == boolean[].class) return Arrays.equals((boolean[]) stored.keys, (boolean[]) lookup);
+                    if (stored.keys.getClass() == byte[].class) return Arrays.equals((byte[]) stored.keys, (byte[]) lookup);
+                    if (stored.keys.getClass() == char[].class) return Arrays.equals((char[]) stored.keys, (char[]) lookup);
+                    if (stored.keys.getClass() == float[].class) return Arrays.equals((float[]) stored.keys, (float[]) lookup);
+                    if (stored.keys.getClass() == short[].class) return Arrays.equals((short[]) stored.keys, (short[]) lookup);
+                }
+                // Fall through to cross-type comparison
+                break;
         }
         
-        // Cross-type: Object[] <-> ArrayList (somewhat common)
-        if (storedClass == Object[].class && lookupClass == ArrayList.class) {
-            Object[] arr = (Object[]) stored;
-            ArrayList<?> list = (ArrayList<?>) lookup;
-            for (int i = 0; i < storedLen; i++) {
-                if (!Objects.equals(arr[i], list.get(i))) return false;
+        // Cross-type comparison or fallback to element-wise
+        return keysMatchCrossType(stored.keys, lookup, stored.arity, stored.kind, lookupKind);
+    }
+    
+    /**
+     * Helper for cross-type comparisons when stored and lookup have different types.
+     * Uses precomputed kind to avoid instanceof checks.
+     */
+    private static boolean keysMatchCrossType(Object stored, Object lookup, int arity, byte storedKind, byte lookupKind) {
+        // Convert to iterators for uniform comparison - no instanceof needed!
+        final Iterator<?> storedIter = (storedKind == MultiKey.KIND_COLLECTION)
+            ? ((Collection<?>) stored).iterator()
+            : new ArrayIterator(stored);
+        final Iterator<?> lookupIter = (lookupKind == MultiKey.KIND_COLLECTION)
+            ? ((Collection<?>) lookup).iterator()
+            : new ArrayIterator(lookup);
+            
+        for (int i = 0; i < arity; i++) {
+            if (!Objects.equals(storedIter.next(), lookupIter.next())) {
+                return false;
             }
-            return true;
-        }
-        if (storedClass == ArrayList.class && lookupClass == Object[].class) {
-            ArrayList<?> list = (ArrayList<?>) stored;
-            Object[] arr = (Object[]) lookup;
-            for (int i = 0; i < storedLen; i++) {
-                if (!Objects.equals(list.get(i), arr[i])) return false;
-            }
-            return true;
-        }
-        
-        // Generic fallback for everything else
-        Iterator<?> storedIter = iteratorFor(stored);
-        Iterator<?> lookupIter = iteratorFor(lookup);
-        while (storedIter.hasNext()) {
-            if (!Objects.equals(storedIter.next(), lookupIter.next())) return false;
         }
         return true;
     }
 
-    private static Iterator<?> iteratorFor(Object obj) {
-        if (obj instanceof Collection) return ((Collection<?>) obj).iterator();
-        if (obj.getClass().isArray()) return new ArrayIterator(obj);
-        return Collections.singletonList(obj).iterator();
-    }
 
     private static class ArrayIterator implements Iterator<Object> {
         private final Object array;
@@ -1993,13 +2040,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
 
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try {
-                resizeInternal();
-            } finally {
-                resizeInProgress.set(false);
-            }
-        }
+        resizeRequest(resize);
 
         return old;
     }
@@ -2013,7 +2054,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (chain == null) return null;
         
         for (MultiKey<V> e : chain) {
-            if (e.hash == hash && keysMatch(e.keys, lookupKey.keys)) {
+            if (e.hash == hash && keysMatch(e, lookupKey.keys)) {
                 return e.value;
             }
         }
@@ -2035,7 +2076,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         for (int i = 0; i < chain.length; i++) {
             MultiKey<V> e = chain[i];
-            if (e.hash == hash && keysMatch(e.keys, newKey.keys)) {
+            if (e.hash == hash && keysMatch(e, newKey.keys)) {
                 V old = e.value;
                 // Create new array with replaced element - never mutate published array
                 MultiKey<V>[] newChain = chain.clone();
@@ -2226,7 +2267,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         for (int i = 0; i < chain.length; i++) {
             MultiKey<V> e = chain[i];
-            if (e.hash == hash && keysMatch(e.keys, removeKey.keys)) {
+            if (e.hash == hash && keysMatch(e, removeKey.keys)) {
                 V old = e.value;
                 if (chain.length == 1) {
                     buckets.set(index, null);
@@ -2287,6 +2328,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
+     * Helper method to handle resize request.
+     * Performs resize if requested and no resize is already in progress.
+     * 
+     * @param resize whether to perform resize
+     */
+    private void resizeRequest(boolean resize) {
+        if (resize && resizeInProgress.compareAndSet(false, true)) {
+            try { 
+                resizeInternal(); 
+            } finally { 
+                resizeInProgress.set(false); 
+            }
+        }
+    }
+
+    /**
      * Returns the number of key-value mappings in this map.
      * 
      * @return the number of key-value mappings in this map
@@ -2310,8 +2367,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public void clear() {
         withAllStripeLocks(() -> {
-            for (int i = 0; i < buckets.length(); i++) {
-                buckets.set(i, null);
+            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
+            for (int i = 0; i < table.length(); i++) {
+                table.set(i, null);
             }
             atomicSize.set(0);
             maxChainLength.set(0);
@@ -2326,8 +2384,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if this map maps one or more keys to the specified value
      */
     public boolean containsValue(Object value) {
-        for (int i = 0; i < buckets.length(); i++) {
-            MultiKey<V>[] chain = buckets.get(i);
+        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
+        for (int i = 0; i < table.length(); i++) {
+            MultiKey<V>[] chain = table.get(i);
             if (chain != null) {
                 for (MultiKey<V> e : chain) if (Objects.equals(e.value, value)) return true;
             }
@@ -2450,9 +2509,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try { resizeInternal(); } finally { resizeInProgress.set(false); }
-        }
+        resizeRequest(resize);
         return existing;
     }
 
@@ -2497,9 +2554,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try { resizeInternal(); } finally { resizeInProgress.set(false); }
-        }
+        resizeRequest(resize);
         return v;
     }
 
@@ -2548,9 +2603,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try { resizeInternal(); } finally { resizeInProgress.set(false); }
-        }
+        resizeRequest(resize);
         return result;
     }
 
@@ -2599,9 +2652,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try { resizeInternal(); } finally { resizeInProgress.set(false); }
-        }
+        resizeRequest(resize);
         return result;
     }
 
@@ -2650,9 +2701,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try { resizeInternal(); } finally { resizeInProgress.set(false); }
-        }
+        resizeRequest(resize);
         return result;
     }
 
@@ -2733,9 +2782,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try { resizeInternal(); } finally { resizeInProgress.set(false); }
-        }
+        resizeRequest(resize);
         return result;
     }
 
@@ -2779,9 +2826,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try { resizeInternal(); } finally { resizeInProgress.set(false); }
-        }
+        resizeRequest(resize);
         return result;
     }
 
@@ -3038,8 +3083,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             unlockAllStripes();
         }
     }
-
-
+    
     private static void processNestedStructure(StringBuilder sb, List<Object> list, int[] index, MultiKeyMap<?> selfMap) {
         if (index[0] >= list.size()) return;
         
@@ -3069,8 +3113,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             sb.append(element);
         }
     }
-
-
+    
     private static String dumpExpandedKeyStatic(Object key, boolean forToString, MultiKeyMap<?> selfMap) {
         if (key == null) return forToString ? EMOJI_KEY + EMOJI_EMPTY : EMOJI_EMPTY;
         if (key == NULL_SENTINEL) return forToString ? EMOJI_KEY + EMOJI_EMPTY : EMOJI_EMPTY;

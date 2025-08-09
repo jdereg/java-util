@@ -488,19 +488,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return getSimpleSingleKey(key);
         }
         
-        // PRIMITIVE ARRAY CONVERSION FOR FAST PATH OPTIMIZATION
-        // Convert small primitive arrays to Object[] to leverage existing fast paths
-        if (key.getClass().isArray() && key.getClass().getComponentType().isPrimitive()) {
-            int length = Array.getLength(key);
-            if (length <= 5) {  // Only convert small arrays for fast path
-                Object[] converted = new Object[length];
-                for (int i = 0; i < length; i++) {
-                    converted[i] = Array.get(key, i);  // Auto-boxes primitives
-                }
-                key = converted;  // Replace key with converted Object[]
-            }
-        }
-        
         // SMART ROUTING FOR ALL OBJECT ARRAYS - optimized paths based on length
         // Check exact Object[] first (fastest), then other Object array types
         if (key instanceof Object[]) {
@@ -525,6 +512,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 case 5:
                     // Five element array - worth optimizing
                     return getArrayLength5(array);
+                default:
+                    // 6+ elements - fall through to general path
+                    break;
             }
         }
         
@@ -552,6 +542,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 case 5:
                     // Five element collection - worth optimizing
                     return getCollectionLength5(coll);
+                default:
+                    // 6+ elements - fall through to general path
+                    break;
             }
         }
         
@@ -603,7 +596,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a MultiKey object with a normalized key and computed hash
      */
     private MultiKey<V> createMultiKey(Object key, V value) {
-        final Norm norm = flattenKey(key, true); // true = make defensive copy for storage
+        Norm norm = flattenKey(key, true); // true = make defensive copy for storage
         return new MultiKey<>(norm.key, norm.hash, value);
     }
 
@@ -652,7 +645,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Handle collections that should not be expanded
             if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
                 // Since requestDefensiveCopy is always false, makeDefensiveCopy is always false
-                return new Norm(coll, coll.hashCode());
+                return new Norm(coll, finalizeHash(coll.hashCode()));
             }
             
             // Route to collection processor
@@ -672,19 +665,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return new Norm(NULL_SENTINEL, 0);
         }
 
-        // PRIMITIVE ARRAY CONVERSION FOR FAST PATH OPTIMIZATION
-        // Convert small primitive arrays to Object[] to leverage existing fast paths
-        if (key.getClass().isArray() && key.getClass().getComponentType().isPrimitive()) {
-            int length = Array.getLength(key);
-            if (length <= 5) {  // Only convert small arrays for fast path
-                Object[] converted = new Object[length];
-                for (int i = 0; i < length; i++) {
-                    converted[i] = Array.get(key, i);  // Auto-boxes primitives
-                }
-                key = converted;  // Replace key with converted Object[]
-            }
-        }
-
         // ULTRA-FAST PATH: Object[] arrays (most common case - 90%+ of real usage)
         if (key.getClass() == Object[].class) {
             return process1DObjectArray((Object[]) key, requestDefensiveCopy);
@@ -694,14 +674,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Simple object case - not array, not collection
         if (!clazz.isArray() && !(key instanceof Collection)) {
-            return new Norm(key, computeElementHash(key));
+            return new Norm(key, finalizeHash(computeElementHash(key)));
         }
 
         // Handle collections that should not be expanded
         if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && key instanceof Collection) {
             Collection<?> coll = (Collection<?>) key;
             // In NOT_EXPANDED mode, treat collections like regular Map keys - no special processing
-            int hash = coll.hashCode();
+            int hash = finalizeHash(coll.hashCode());
             // Make defensive copy only when storing (put operations), not for lookups
             Object normKey = makeDefensiveCopy ? new ArrayList<>(coll) : coll;
             return new Norm(normKey, hash);
@@ -775,10 +755,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
                 } else {
                     // Recompute hash for the single element to match a simple object case
-                    return new Norm(element, computeElementHash(element));
+                    return new Norm(element, finalizeHash(computeElementHash(element)));
                 }
             }
-            int hash = h;
+            int hash = finalizeHash(h);
             // Make defensive copy only when storing (put operations), not for lookups
             Object result = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
             return new Norm(result, hash);
@@ -856,12 +836,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
                 } else {
                     // Recompute hash for the single element to match a simple object case
-                    return new Norm(single, computeElementHash(single));
+                    return new Norm(single, finalizeHash(computeElementHash(single)));
                 }
             }
             // Make defensive copy only when storing (put operations), not for lookups
             Object key = makeDefensiveCopy ? new ArrayList<>(coll) : coll;
-            return new Norm(key, h);
+            return new Norm(key, finalizeHash(h));
         }
         
         // It's 2D+ - need to expand with hash computation
@@ -918,13 +898,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
             } else {
                 // Recompute hash for the single element to match a simple object case
-                return new Norm(element, computeElementHash(element));
+                return new Norm(element, finalizeHash(computeElementHash(element)));
             }
         }
         
         // Make defensive copy only when storing (put operations), not for lookups
         Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(key, finalizeHash(h));
     }
     
     private Norm process1DIntArray(int[] array, boolean requestDefensiveCopy) {
@@ -947,12 +927,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Single element optimization - always collapse single element arrays
         if (array.length == 1) {
             // Recompute hash for the single element to match a simple object case
-            return new Norm(array[0], Integer.hashCode(array[0])); // Return the primitive value
+            return new Norm(array[0], finalizeHash(Integer.hashCode(array[0]))); // Return the primitive value
         }
         
         // Make defensive copy only when storing (put operations), not for lookups
         Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(key, finalizeHash(h));
     }
     
     private Norm process1DLongArray(long[] array, boolean requestDefensiveCopy) {
@@ -976,12 +956,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Single element optimization - always collapse single element arrays
         if (array.length == 1) {
             // Recompute hash for the single element to match a simple object case
-            return new Norm(array[0], Long.hashCode(array[0])); // Return the primitive value
+            return new Norm(array[0], finalizeHash(Long.hashCode(array[0]))); // Return the primitive value
         }
         
         // Make defensive copy only when storing (put operations), not for lookups
         Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(key, finalizeHash(h));
     }
     
     private Norm process1DDoubleArray(double[] array, boolean requestDefensiveCopy) {
@@ -1005,12 +985,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Single element optimization - always collapse single element arrays
         if (array.length == 1) {
             // Recompute hash for the single element to match a simple object case
-            return new Norm(array[0], Double.hashCode(array[0])); // Return the primitive value
+            return new Norm(array[0], finalizeHash(Double.hashCode(array[0]))); // Return the primitive value
         }
         
         // Make defensive copy only when storing (put operations), not for lookups
         Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(key, finalizeHash(h));
     }
     
     private Norm process1DBooleanArray(boolean[] array, boolean requestDefensiveCopy) {
@@ -1033,12 +1013,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Single element optimization - always collapse single element arrays
         if (array.length == 1) {
             // Recompute hash for the single element to match a simple object case
-            return new Norm(array[0], Boolean.hashCode(array[0])); // Return the primitive value
+            return new Norm(array[0], finalizeHash(Boolean.hashCode(array[0]))); // Return the primitive value
         }
         
         // Make defensive copy only when storing (put operations), not for lookups
         Object key = makeDefensiveCopy ? Arrays.copyOf(array, array.length) : array;
-        return new Norm(key, h);
+        return new Norm(key, finalizeHash(h));
     }
     
     private Norm process1DGenericArray(Object arr, boolean requestDefensiveCopy) {
@@ -1087,7 +1067,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
                 } else {
                     // Recompute hash for the single element to match a simple object case
-                    return new Norm(single, computeElementHash(single));
+                    return new Norm(single, finalizeHash(computeElementHash(single)));
                 }
             }
             // For generic arrays, create a copy using reflection if needed
@@ -1101,7 +1081,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             } else {
                 key = arr;
             }
-            return new Norm(key, h);
+            return new Norm(key, finalizeHash(h));
         }
         
         // It's 2D+ - need to expand with hash computation
@@ -1115,7 +1095,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         expandAndHash(key, expanded, visited, runningHash, flattenDimensions);
         
-        int hash = runningHash[0];
+        int hash = finalizeHash(runningHash[0]);
         
         // Single element optimization - always collapse single elements after expansion
         if (expanded.size() == 1) {
@@ -1125,7 +1105,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
             }
             // Recompute hash for the single element to match a simple object case
-            return new Norm(result, computeElementHash(result));
+            return new Norm(result, finalizeHash(computeElementHash(result)));
         }
         
         return new Norm(expanded, hash);
@@ -1193,9 +1173,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * the normalized key and precomputed hash. This is the core of informed handoff optimization.
      */
     private MultiKey<V> findEntryWithPrecomputedHash(final Object normalizedKey, final int hash) {
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int index = hash & (table.length() - 1);
-        final MultiKey<V>[] chain = table.get(index);
+        int index = hash & (buckets.length() - 1);
+        final MultiKey<V>[] chain = buckets.get(index);
         if (chain == null) return null;
         final int chLen = chain.length;
         for (int i = 0; i < chLen; i++) {
@@ -1218,14 +1197,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             hash = 0; // Same as flattenKey: hashPass[0] = 0
             lookupKey = NULL_SENTINEL;
         } else {
-            hash = computeElementHash(key);
+            hash = finalizeHash(computeElementHash(key));
             lookupKey = key;
         }
         
-        // Direct bucket lookup - pin table reference to avoid race condition
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int index = hash & (table.length() - 1);
-        final MultiKey<V>[] chain = table.get(index);
+        // Direct bucket lookup
+        final int index = hash & (buckets.length() - 1);
+        final MultiKey<V>[] chain = buckets.get(index);
         if (chain == null) return null;
         
         // Find the entry
@@ -1287,7 +1265,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
                 if (entry != null) return true;
             } else {
-                final int hash = element.hashCode();
+                final int hash = finalizeHash(element.hashCode());
                 entry = findEntryWithPrecomputedHash(element, hash);
                 if (entry != null) return true;
             }
@@ -1295,7 +1273,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Also try as array (in case it was stored as array)
             int h = 1;
             h = h * 31 + computeElementHash(element);
-            final int arrayHash = h;
+            final int arrayHash = finalizeHash(h);
             entry = findEntryWithPrecomputedHash(array, arrayHash);
             return entry != null;
         }
@@ -1316,7 +1294,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + computeElementHash(key1);
             h = h * 31 + computeElementHash(key2);
-            final int hash = h;
+            final int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
             return entry != null;
@@ -1340,7 +1318,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key1);
             h = h * 31 + computeElementHash(key2);
             h = h * 31 + computeElementHash(key3);
-            int hash = h;
+            int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
             return entry != null;
@@ -1367,7 +1345,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key2);
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
-            int hash = h;
+            int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
             return entry != null;
@@ -1397,7 +1375,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
             h = h * 31 + computeElementHash(key5);
-            int hash = h;
+            int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
             return entry != null;
@@ -1425,7 +1403,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
                 if (entry != null) return true;
             } else {
-                final int hash = element.hashCode();
+                final int hash = finalizeHash(element.hashCode());
                 entry = findEntryWithPrecomputedHash(element, hash);
                 if (entry != null) return true;
             }
@@ -1433,7 +1411,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Also try as collection (in case it was stored as collection)
             int h = 1;
             h = h * 31 + computeElementHash(element);
-            final int collectionHash = h;
+            final int collectionHash = finalizeHash(h);
             entry = findEntryWithPrecomputedHash(coll, collectionHash);
             return entry != null;
         }
@@ -1455,7 +1433,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + computeElementHash(key1);
             h = h * 31 + computeElementHash(key2);
-            final int hash = h;
+            final int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
             return entry != null;
@@ -1480,7 +1458,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key1);
             h = h * 31 + computeElementHash(key2);
             h = h * 31 + computeElementHash(key3);
-            int hash = h;
+            int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
             return entry != null;
@@ -1508,7 +1486,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key2);
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
-            int hash = h;
+            int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
             return entry != null;
@@ -1539,7 +1517,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
             h = h * 31 + computeElementHash(key5);
-            int hash = h;
+            int hash = finalizeHash(h);
             
             final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
             return entry != null;
@@ -1585,7 +1563,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
                 if (entry != null) return entry.value;
             } else {
-                final int hash = computeElementHash(element);
+                final int hash = finalizeHash(computeElementHash(element));
                 entry = findEntryWithPrecomputedHash(element, hash);
                 if (entry != null) return entry.value;
             }
@@ -1593,7 +1571,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Also try as array (in case it was stored as array)
             int h = 1;
             h = h * 31 + computeElementHash(element);
-            final int arrayHash = h;
+            final int arrayHash = finalizeHash(h);
             entry = findEntryWithPrecomputedHash(array, arrayHash);
             return entry != null ? entry.value : null;
         }
@@ -1654,12 +1632,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + computeElementHash(key1);
             h = h * 31 + computeElementHash(key2);
-            final int hash = h;
+            final int hash = finalizeHash(h);
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
+            // Direct bucket lookup
+            final int index = hash & (buckets.length() - 1);
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             return findInChainUnrolled(chain, hash, array);
@@ -1686,12 +1663,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key1);
             h = h * 31 + computeElementHash(key2);
             h = h * 31 + computeElementHash(key3);
-            int hash = h;
+            int hash = finalizeHash(h);
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
+            // Direct bucket lookup
+            final int index = hash & (buckets.length() - 1);
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             return findInChainUnrolled(chain, hash, array);
@@ -1721,12 +1697,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key2);
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
-            int hash = h;
+            int hash = finalizeHash(h);
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
+            // Direct bucket lookup
+            final int index = hash & (buckets.length() - 1);
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             return findInChainUnrolled(chain, hash, array);
@@ -1760,12 +1735,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
             h = h * 31 + computeElementHash(key5);
-            int hash = h;
+            int hash = finalizeHash(h);
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
+            // Direct bucket lookup
+            final int index = hash & (buckets.length() - 1);
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             return findInChainUnrolled(chain, hash, array);
@@ -1793,7 +1767,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
                 if (entry != null) return entry.value;
             } else {
-                final int hash = element.hashCode();
+                final int hash = finalizeHash(element.hashCode());
                 entry = findEntryWithPrecomputedHash(element, hash);
                 if (entry != null) return entry.value;
             }
@@ -1801,7 +1775,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Also try as collection (in case it was stored as collection)
             int h = 1;
             h = h * 31 + computeElementHash(element);
-            final int collectionHash = h;
+            final int collectionHash = finalizeHash(h);
             entry = findEntryWithPrecomputedHash(coll, collectionHash);
             return entry != null ? entry.value : null;
         }
@@ -1823,12 +1797,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             h = h * 31 + computeElementHash(key1);
             h = h * 31 + computeElementHash(key2);
-            final int hash = h;
+            final int hash = finalizeHash(h);
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
+            // Direct bucket lookup
+            final int index = hash & (buckets.length() - 1);
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             
@@ -1855,12 +1828,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key1);
             h = h * 31 + computeElementHash(key2);
             h = h * 31 + computeElementHash(key3);
-            int hash = h;
+            int hash = finalizeHash(h);
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
+            // Direct bucket lookup
+            final int index = hash & (buckets.length() - 1);
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             
@@ -1890,12 +1862,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key2);
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
-            int hash = h;
+            int hash = finalizeHash(h);
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
+            // Direct bucket lookup
+            final int index = hash & (buckets.length() - 1);
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             
@@ -1928,12 +1899,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
             h = h * 31 + computeElementHash(key5);
-            int hash = h;
+            int hash = finalizeHash(h);
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
+            // Direct bucket lookup
+            final int index = hash & (buckets.length() - 1);
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             
@@ -2100,9 +2070,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private V getNoLock(MultiKey<V> lookupKey) {
         int hash = lookupKey.hash;
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        int index = hash & (table.length() - 1);
-        MultiKey<V>[] chain = table.get(index);
+        int index = hash & (buckets.length() - 1);
+        MultiKey<V>[] chain = buckets.get(index);
         
         if (chain == null) return null;
         
@@ -2116,9 +2085,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private V putNoLock(MultiKey<V> newKey) {
         int hash = newKey.hash;
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        int index = hash & (table.length() - 1);
-        MultiKey<V>[] chain = table.get(index);
+        int index = hash & (buckets.length() - 1);
+        MultiKey<V>[] chain = buckets.get(index);
 
         if (chain == null) {
             buckets.set(index, new MultiKey[]{newKey});
@@ -2180,19 +2148,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return containsSimpleSingleKey(key);
         }
         
-        // PRIMITIVE ARRAY CONVERSION FOR FAST PATH OPTIMIZATION
-        // Convert small primitive arrays to Object[] to leverage existing fast paths
-        if (key.getClass().isArray() && key.getClass().getComponentType().isPrimitive()) {
-            int length = Array.getLength(key);
-            if (length <= 5) {  // Only convert small arrays for fast path
-                Object[] converted = new Object[length];
-                for (int i = 0; i < length; i++) {
-                    converted[i] = Array.get(key, i);  // Auto-boxes primitives
-                }
-                key = converted;  // Replace key with converted Object[]
-            }
-        }
-        
         // SMART ROUTING FOR ALL OBJECT ARRAYS - optimized paths based on length
         // Check exact Object[] first (fastest), then other Object array types
         if (key instanceof Object[]) {
@@ -2217,6 +2172,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 case 5:
                     // Five element array - worth optimizing
                     return containsArrayLength5(array);
+                default:
+                    // 6+ elements - fall through to general path
+                    break;
             }
         }
         
@@ -2244,6 +2202,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 case 5:
                     // Five element collection - worth optimizing
                     return containsCollectionLength5(coll);
+                default:
+                    // 6+ elements - fall through to general path
+                    break;
             }
         }
         
@@ -2281,11 +2242,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         no mapping for the key
      */
     public V remove(Object key) {
-        final MultiKey<V> removeKey = createMultiKey(key, null);
+        MultiKey<V> removeKey = createMultiKey(key, null);
         return removeInternal(removeKey);
     }
 
-    private V removeInternal(final MultiKey<V> removeKey) {
+    private V removeInternal(MultiKey<V> removeKey) {
         int hash = removeKey.hash;
         ReentrantLock lock = getStripeLock(hash);
         int stripe = hash & STRIPE_MASK;
@@ -2311,9 +2272,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private V removeNoLock(MultiKey<V> removeKey) {
         int hash = removeKey.hash;
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        int index = hash & (table.length() - 1);
-        MultiKey<V>[] chain = table.get(index);
+        int index = hash & (buckets.length() - 1);
+        MultiKey<V>[] chain = buckets.get(index);
 
         if (chain == null) return null;
 
@@ -3109,6 +3069,24 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
     }
 
+    // SplitMix64 finalizer: extremely fast, excellent avalanche
+    private static long mix64(long z) {
+        z = (z ^ (z >>> 30)) * 0xbf58476d1ce4e5b9L;
+        z = (z ^ (z >>> 27)) * 0x94d049bb133111ebL;
+        return z ^ (z >>> 31);
+    }
+
+    // Fold 64 -> 32 for HashMap/CHM
+    private static int fold32(long z) {
+        return (int)(z ^ (z >>> 32));
+    }
+
+
+    private static int finalizeHash(int h) {
+        // Use SplitMix64 approach: convert to long, mix, fold back to int
+        long z = h & 0xffffffffL; // Zero-extend to long
+        return fold32(mix64(z));
+    }
 
     private static void processNestedStructure(StringBuilder sb, List<Object> list, int[] index, MultiKeyMap<?> selfMap) {
         if (index[0] >= list.size()) return;

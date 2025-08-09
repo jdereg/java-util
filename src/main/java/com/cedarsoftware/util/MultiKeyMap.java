@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -179,7 +180,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         COLLECTIONS_NOT_EXPANDED
     }
 
-    private volatile Object[] buckets;
+    private volatile AtomicReferenceArray<MultiKey<V>[]> buckets;
     private final AtomicInteger atomicSize = new AtomicInteger(0);
     private final AtomicInteger maxChainLength = new AtomicInteger(0);
     private final int capacity;
@@ -240,7 +241,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Ensure capacity is a power of 2, following HashMap's behavior
         int actualCapacity = tableSizeFor(builder.capacity);
-        this.buckets = new Object[actualCapacity];
+        this.buckets = new AtomicReferenceArray<>(actualCapacity);
         this.capacity = builder.capacity;
         this.loadFactor = builder.loadFactor;
         this.collectionKeyMode = builder.collectionKeyMode;
@@ -265,10 +266,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Deep-copy entries (respect defensiveCopies)
         source.withAllStripeLocks(() -> {  // Lock for consistent snapshot
-            for (Object b : source.buckets) {
-                if (b != null) {
-                    @SuppressWarnings("unchecked")
-                    MultiKey<? extends V>[] chain = (MultiKey<? extends V>[]) b;
+            for (int i = 0; i < source.buckets.length(); i++) {
+                MultiKey<? extends V>[] chain = source.buckets.get(i);
+                if (chain != null) {
                     for (MultiKey<? extends V> entry : chain) {
                         if (entry != null) {
                             // Re-create MultiKey with potentially copied keys
@@ -1207,9 +1207,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final int[] hashPass = new int[1];
         final Object normalized = flattenKey(lookupKey, hashPass, false);
         final int hash = hashPass[0];
-        int index = hash & (buckets.length - 1);
+        int index = hash & (buckets.length() - 1);
         @SuppressWarnings("unchecked")
-        final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+        final MultiKey<V>[] chain = buckets.get(index);
         if (chain == null) return null;
         final int chLen = chain.length;
         for (int i = 0; i < chLen; i++) {
@@ -1224,9 +1224,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * the normalized key and precomputed hash. This is the core of informed handoff optimization.
      */
     private MultiKey<V> findEntryWithPrecomputedHash(final Object normalizedKey, final int hash) {
-        int index = hash & (buckets.length - 1);
+        int index = hash & (buckets.length() - 1);
         @SuppressWarnings("unchecked")
-        final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+        final MultiKey<V>[] chain = buckets.get(index);
         if (chain == null) return null;
         final int chLen = chain.length;
         for (int i = 0; i < chLen; i++) {
@@ -1247,9 +1247,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final Object lookupKey = key == null ? NULL_SENTINEL : key;
         
         // Direct bucket lookup
-        final int index = hash & (buckets.length - 1);
+        final int index = hash & (buckets.length() - 1);
         @SuppressWarnings("unchecked")
-        final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+        final MultiKey<V>[] chain = buckets.get(index);
         if (chain == null) return null;
         
         // Find the entry
@@ -1730,9 +1730,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             final int hash = finalizeHash(h);
             
             // Direct bucket lookup
-            final int index = hash & (buckets.length - 1);
+            final int index = hash & (buckets.length() - 1);
             @SuppressWarnings("unchecked")
-            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             return findInChainUnrolled(chain, hash, array);
@@ -1763,9 +1763,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
-            final int index = hash & (buckets.length - 1);
+            final int index = hash & (buckets.length() - 1);
             @SuppressWarnings("unchecked")
-            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             return findInChainUnrolled(chain, hash, array);
@@ -1799,9 +1799,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
-            final int index = hash & (buckets.length - 1);
+            final int index = hash & (buckets.length() - 1);
             @SuppressWarnings("unchecked")
-            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             return findInChainUnrolled(chain, hash, array);
@@ -1839,9 +1839,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
-            final int index = hash & (buckets.length - 1);
+            final int index = hash & (buckets.length() - 1);
             @SuppressWarnings("unchecked")
-            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             return findInChainUnrolled(chain, hash, array);
@@ -1904,9 +1904,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             final int hash = finalizeHash(h);
             
             // Direct bucket lookup
-            final int index = hash & (buckets.length - 1);
+            final int index = hash & (buckets.length() - 1);
             @SuppressWarnings("unchecked")
-            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             
@@ -1937,9 +1937,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
-            final int index = hash & (buckets.length - 1);
+            final int index = hash & (buckets.length() - 1);
             @SuppressWarnings("unchecked")
-            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             
@@ -1973,9 +1973,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
-            final int index = hash & (buckets.length - 1);
+            final int index = hash & (buckets.length() - 1);
             @SuppressWarnings("unchecked")
-            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             
@@ -2012,9 +2012,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int hash = finalizeHash(h);
             
             // Direct bucket lookup
-            final int index = hash & (buckets.length - 1);
+            final int index = hash & (buckets.length() - 1);
             @SuppressWarnings("unchecked")
-            final MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+            final MultiKey<V>[] chain = buckets.get(index);
             if (chain == null) return null;
             
             
@@ -2164,7 +2164,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
 
             old = putNoLock(newKey);
-            resize = atomicSize.get() > buckets.length * loadFactor;
+            resize = atomicSize.get() > buckets.length() * loadFactor;
         } finally {
             lock.unlock();
         }
@@ -2182,12 +2182,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private V putNoLock(MultiKey<V> newKey) {
         int hash = newKey.hash;
-        int index = hash & (buckets.length - 1);
+        int index = hash & (buckets.length() - 1);
         @SuppressWarnings("unchecked")
-        MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+        MultiKey<V>[] chain = buckets.get(index);
 
         if (chain == null) {
-            buckets[index] = new MultiKey[]{newKey};
+            buckets.set(index, new MultiKey[]{newKey});
             atomicSize.incrementAndGet();
             updateMaxChainLength(1);
             return null;
@@ -2204,7 +2204,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         MultiKey<V>[] newChain = Arrays.copyOf(chain, chain.length + 1);
         newChain[chain.length] = newKey;
-        buckets[index] = newChain;
+        buckets.set(index, newChain);
         atomicSize.incrementAndGet();
         updateMaxChainLength(newChain.length);
         return null;
@@ -2368,9 +2368,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private V removeNoLock(MultiKey<V> removeKey) {
         int hash = removeKey.hash;
-        int index = hash & (buckets.length - 1);
-        @SuppressWarnings("unchecked")
-        MultiKey<V>[] chain = (MultiKey<V>[]) buckets[index];
+        int index = hash & (buckets.length() - 1);
+        MultiKey<V>[] chain = buckets.get(index);
 
         if (chain == null) return null;
 
@@ -2379,11 +2378,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (e.hash == hash && keysMatch(e.keys, removeKey.keys)) {
                 V old = e.value;
                 if (chain.length == 1) {
-                    buckets[index] = null;
+                    buckets.set(index, null);
                 } else {
                     // Shift in-place to avoid full copy
                     System.arraycopy(chain, i + 1, chain, i, chain.length - i - 1);
-                    buckets[index] = Arrays.copyOf(chain, chain.length - 1);  // Shrink
+                    buckets.set(index, Arrays.copyOf(chain, chain.length - 1));  // Shrink
                 }
                 atomicSize.decrementAndGet();
                 return old;
@@ -2394,18 +2393,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private void resizeInternal() {
         withAllStripeLocks(() -> {
-            double lf = (double) atomicSize.get() / buckets.length;
+            double lf = (double) atomicSize.get() / buckets.length();
             if (lf <= loadFactor) return;
 
-            Object[] old = buckets;
-            Object[] newBuckets = new Object[old.length * 2];
+            AtomicReferenceArray<MultiKey<V>[]> oldBuckets = buckets;
+            AtomicReferenceArray<MultiKey<V>[]> newBuckets = new AtomicReferenceArray<>(oldBuckets.length() * 2);
             int newMax = 0;
             atomicSize.set(0);
 
-            for (Object b : old) {
-                if (b != null) {
-                    @SuppressWarnings("unchecked")
-                    MultiKey<V>[] chain = (MultiKey<V>[]) b;
+            for (int i = 0; i < oldBuckets.length(); i++) {
+                MultiKey<V>[] chain = oldBuckets.get(i);
+                if (chain != null) {
                     for (MultiKey<V> e : chain) {
                         int len = rehashEntry(e, newBuckets);
                         atomicSize.incrementAndGet();
@@ -2414,22 +2412,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
             }
             maxChainLength.set(newMax);
-            // Only replace buckets after all entries are rehashed
+            // Replace buckets atomically after all entries are rehashed
             buckets = newBuckets;
         });
     }
 
-    private int rehashEntry(MultiKey<V> entry, Object[] target) {
-        int index = entry.hash & (target.length - 1);
-        @SuppressWarnings("unchecked")
-        MultiKey<V>[] chain = (MultiKey<V>[]) target[index];
+    private int rehashEntry(MultiKey<V> entry, AtomicReferenceArray<MultiKey<V>[]> target) {
+        int index = entry.hash & (target.length() - 1);
+        MultiKey<V>[] chain = target.get(index);
         if (chain == null) {
-            target[index] = new MultiKey[]{entry};
+            target.set(index, new MultiKey[]{entry});
             return 1;
         } else {
             MultiKey<V>[] newChain = Arrays.copyOf(chain, chain.length + 1);
             newChain[chain.length] = entry;
-            target[index] = newChain;
+            target.set(index, newChain);
             return newChain.length;
         }
     }
@@ -2458,7 +2455,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public void clear() {
         withAllStripeLocks(() -> {
-            Arrays.fill(buckets, null);
+            for (int i = 0; i < buckets.length(); i++) {
+                buckets.set(i, null);
+            }
             atomicSize.set(0);
             maxChainLength.set(0);
         });
@@ -2472,10 +2471,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if this map maps one or more keys to the specified value
      */
     public boolean containsValue(Object value) {
-        for (Object b : buckets) {
-            if (b != null) {
-                @SuppressWarnings("unchecked")
-                MultiKey<V>[] chain = (MultiKey<V>[]) b;
+        for (int i = 0; i < buckets.length(); i++) {
+            MultiKey<V>[] chain = buckets.get(i);
+            if (chain != null) {
                 for (MultiKey<V> e : chain) if (Objects.equals(e.value, value)) return true;
             }
         }
@@ -2904,7 +2902,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private class EntryIterator implements Iterator<MultiKeyEntry<V>> {
-        private final Object[] snapshot = buckets;
+        private final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
         private int bucketIdx = 0;
         private int chainIdx = 0;
         private MultiKeyEntry<V> next;
@@ -2925,9 +2923,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         private void advance() {
-            while (bucketIdx < snapshot.length) {
-                @SuppressWarnings("unchecked")
-                MultiKey<V>[] chain = (MultiKey<V>[]) snapshot[bucketIdx];
+            while (bucketIdx < snapshot.length()) {
+                MultiKey<V>[] chain = snapshot.get(bucketIdx);
                 if (chain != null && chainIdx < chain.length) {
                     MultiKey<V> e = chain[chainIdx++];
                     next = new MultiKeyEntry<>(e.keys, e.value);

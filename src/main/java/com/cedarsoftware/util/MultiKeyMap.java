@@ -294,7 +294,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             Object[] copy = new Object[arr.length];
             System.arraycopy(arr, 0, copy, 0, arr.length);
             // Recurse for nested
-            for (int i = 0; i < copy.length; i++) {
+            int len = copy.length;
+            for (int i = 0; i < len; i++) {
                 copy[i] = copyKeysIfNeeded(copy[i], true);
             }
             return copy;

@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.Logger;
 
 /**
  * Performance comparison between Cedar's MultiKeyMap and Apache Commons Collections' MultiKeyMap.
@@ -23,6 +24,8 @@ import java.util.Random;
  * 5. Running multiple iterations and averaging results
  */
 public class MultiKeyMapPerformanceComparisonTest {
+    
+    private static final Logger LOG = Logger.getLogger(MultiKeyMapPerformanceComparisonTest.class.getName());
     
     private static final int WARMUP_ITERATIONS = 50;
     private static final int TEST_ITERATIONS = 10;
@@ -77,13 +80,13 @@ public class MultiKeyMapPerformanceComparisonTest {
     @Disabled
     @Test
     void comparePerformance() {
-        System.out.println("=== Cedar vs Apache MultiKeyMap Performance Comparison ===");
-        System.out.println("Warming up JIT compiler...");
+        LOG.info("=== Cedar vs Apache MultiKeyMap Performance Comparison ===");
+        LOG.info("Warming up JIT compiler...");
         
         // Warm up JIT
         warmupJIT();
         
-        System.out.println("JIT warmup complete. Starting performance tests...\n");
+        LOG.info("JIT warmup complete. Starting performance tests...\n");
         
         // Create all test configurations
         List<TestConfig> configs = new ArrayList<>();
@@ -97,12 +100,13 @@ public class MultiKeyMapPerformanceComparisonTest {
         Collections.shuffle(configs, random);
         
         // Run tests and collect results
-        System.out.println("Running " + configs.size() + " test configurations...\n");
-        System.out.println(String.format("%-30s | %-12s | %15s | %15s | %15s | %15s | %10s",
+        LOG.info("Running " + configs.size() + " test configurations...\n");
+        LOG.info(String.format("%-30s | %-12s | %15s | %15s | %15s | %15s | %10s",
                 "Configuration", "Implementation", "Put (ops/ms)", "Get (ops/ms)", 
                 "Avg Put (ns)", "Avg Get (ns)", "Winner"));
-        for (int i = 0; i < 145; i++) System.out.print("-");
-        System.out.println();
+        StringBuilder separator = new StringBuilder();
+        for (int i = 0; i < 145; i++) separator.append("-");
+        LOG.info(separator.toString());
         
         for (TestConfig config : configs) {
             runComparison(config);
@@ -178,10 +182,11 @@ public class MultiKeyMapPerformanceComparisonTest {
         
         // Determine winner
         String winner = determineWinner(cedarResult, apacheResult);
-        System.out.println(String.format("%-30s | %-12s | %15s | %15s | %15s | %15s | %10s",
+        LOG.info(String.format("%-30s | %-12s | %15s | %15s | %15s | %15s | %10s",
                 "", "", "", "", "", "", winner));
-        for (int i = 0; i < 145; i++) System.out.print("-");
-        System.out.println();
+        StringBuilder separator = new StringBuilder();
+        for (int i = 0; i < 145; i++) separator.append("-");
+        LOG.info(separator.toString());
     }
     
     private TestResult testCedar(Object[][] keys, String[] values, TestConfig config) {
@@ -302,7 +307,7 @@ public class MultiKeyMapPerformanceComparisonTest {
     }
     
     private void printResults(TestConfig config, TestResult result) {
-        System.out.println(String.format("%-30s | %-12s | %,15.1f | %,15.1f | %,15.1f | %,15.1f |",
+        LOG.info(String.format("%-30s | %-12s | %,15.1f | %,15.1f | %,15.1f | %,15.1f |",
                 config.name,
                 result.implementation,
                 result.putOpsPerMs(),
@@ -326,22 +331,22 @@ public class MultiKeyMapPerformanceComparisonTest {
     }
     
     private void printSummaryStatistics() {
-        System.out.println("\n=== Summary Statistics ===");
-        System.out.println("Note: Results may vary based on JVM version, hardware, and system load.");
-        System.out.println("\nCedar MultiKeyMap advantages:");
-        System.out.println("  - Supports arrays and collections as keys (Apache does not)");
-        System.out.println("  - Thread-safe with striped locking");
-        System.out.println("  - Optimized fast paths for 1-4 simple keys");
-        System.out.println("  - Smart routing based on key complexity");
-        System.out.println("  - Handles nested structures efficiently");
-        System.out.println("\nApache MultiKeyMap advantages:");
-        System.out.println("  - Simpler implementation for basic use cases");
-        System.out.println("  - No overhead for thread safety when not needed");
-        System.out.println("  - Part of widely-used Apache Commons Collections");
-        System.out.println("\nPerformance expectations:");
-        System.out.println("  - Cedar should excel with 1-4 simple keys (optimized paths)");
-        System.out.println("  - Cedar should perform well with 5+ keys (optimized 1D detection)");
-        System.out.println("  - Apache may have advantage at 5 keys (hardcoded optimization)");
-        System.out.println("  - Cedar's thread safety adds some overhead in single-threaded tests");
+        LOG.info("\n=== Summary Statistics ===");
+        LOG.info("Note: Results may vary based on JVM version, hardware, and system load.");
+        LOG.info("\nCedar MultiKeyMap advantages:");
+        LOG.info("  - Supports arrays and collections as keys (Apache does not)");
+        LOG.info("  - Thread-safe with striped locking");
+        LOG.info("  - Optimized fast paths for 1-4 simple keys");
+        LOG.info("  - Smart routing based on key complexity");
+        LOG.info("  - Handles nested structures efficiently");
+        LOG.info("\nApache MultiKeyMap advantages:");
+        LOG.info("  - Simpler implementation for basic use cases");
+        LOG.info("  - No overhead for thread safety when not needed");
+        LOG.info("  - Part of widely-used Apache Commons Collections");
+        LOG.info("\nPerformance expectations:");
+        LOG.info("  - Cedar should excel with 1-4 simple keys (optimized paths)");
+        LOG.info("  - Cedar should perform well with 5+ keys (optimized 1D detection)");
+        LOG.info("  - Apache may have advantage at 5 keys (hardcoded optimization)");
+        LOG.info("  - Cedar's thread safety adds some overhead in single-threaded tests");
     }
 }

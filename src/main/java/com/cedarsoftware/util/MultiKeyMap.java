@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.RandomAccess;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -425,8 +426,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private void lockAllStripes() {
         int contended = 0;
         for (ReentrantLock lock : stripeLocks) {
-            if (lock.hasQueuedThreads()) contended++;
-            lock.lock();
+            // Use tryLock() to accurately detect contention
+            if (!lock.tryLock()) {
+                contended++;
+                lock.lock(); // Now wait for the lock
+            }
         }
         globalLockAcquisitions.incrementAndGet();
         if (contended > 0) globalLockContentions.incrementAndGet();
@@ -832,6 +836,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     return new Norm(single, computeElementHash(single));
                 }
             }
+            
+            // For non-random-access collections, convert to Object[] for fast indexed access
+            // This ensures consistent O(1) element access in keysMatch comparisons
+            if (!(coll instanceof RandomAccess)) {
+                Object[] array = coll.toArray();
+                return new Norm(array, h);
+            }
+            
             return new Norm(coll, h);
         }
         
@@ -1047,7 +1059,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private Norm expandWithHash(Object key) {
-        List<Object> expanded = new ArrayList<>();
+        // Pre-size the expanded list based on heuristic:
+        // - Arrays/Collections typically expand to their size + potential nesting markers
+        // - Default to 8 for unknown types (better than ArrayList's default 10 for small keys)
+        int estimatedSize = 8;
+        if (key != null) {
+            if (key.getClass().isArray()) {
+                int len = Array.getLength(key);
+                // For arrays: size + potential OPEN/CLOSE markers + buffer for nested expansion
+                estimatedSize = flattenDimensions ? len : len + 2;
+                // Add some buffer for potential nested structures
+                estimatedSize = Math.min(estimatedSize + (estimatedSize / 2), 64); // Cap at reasonable size
+            } else if (key instanceof Collection) {
+                int size = ((Collection<?>) key).size();
+                // For collections: similar to arrays
+                estimatedSize = flattenDimensions ? size : size + 2;
+                estimatedSize = Math.min(estimatedSize + (estimatedSize / 2), 64);
+            }
+        }
+        
+        List<Object> expanded = new ArrayList<>(estimatedSize);
         IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
         int[] runningHash = new int[]{1};
         
@@ -1795,13 +1826,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key3);
             int hash = h;
             
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
-            if (chain == null) return null;
-            
-            
             MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
             return entry != null ? entry.value : null;
         }
@@ -1829,13 +1853,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key3);
             h = h * 31 + computeElementHash(key4);
             int hash = h;
-            
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
-            if (chain == null) return null;
-            
             
             MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
             return entry != null ? entry.value : null;
@@ -1867,13 +1884,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             h = h * 31 + computeElementHash(key4);
             h = h * 31 + computeElementHash(key5);
             int hash = h;
-            
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
-            if (chain == null) return null;
-            
             
             MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
             return entry != null ? entry.value : null;
@@ -2021,18 +2031,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int hash = newKey.hash;
         ReentrantLock lock = getStripeLock(hash);
         int stripe = hash & STRIPE_MASK;
-        boolean contended = lock.hasQueuedThreads();
         V old;
         boolean resize;
 
-        lock.lock();
+        // Use tryLock() to accurately detect contention
+        boolean contended = !lock.tryLock();
+        if (contended) {
+            // Failed to acquire immediately - this is true contention
+            lock.lock(); // Now wait for the lock
+            contentionCount.incrementAndGet();
+            stripeLockContention[stripe].incrementAndGet();
+        }
+        
         try {
             totalLockAcquisitions.incrementAndGet();
             stripeLockAcquisitions[stripe].incrementAndGet();
-            if (contended) {
-                contentionCount.incrementAndGet();
-                stripeLockContention[stripe].incrementAndGet();
-            }
 
             old = putNoLock(newKey);
             resize = atomicSize.get() > buckets.length() * loadFactor;
@@ -2237,17 +2250,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int hash = removeKey.hash;
         ReentrantLock lock = getStripeLock(hash);
         int stripe = hash & STRIPE_MASK;
-        boolean contended = lock.hasQueuedThreads();
         V old;
 
-        lock.lock();
+        // Use tryLock() to accurately detect contention
+        boolean contended = !lock.tryLock();
+        if (contended) {
+            // Failed to acquire immediately - this is true contention
+            lock.lock(); // Now wait for the lock
+            contentionCount.incrementAndGet();
+            stripeLockContention[stripe].incrementAndGet();
+        }
+        
         try {
             totalLockAcquisitions.incrementAndGet();
             stripeLockAcquisitions[stripe].incrementAndGet();
-            if (contended) {
-                contentionCount.incrementAndGet();
-                stripeLockContention[stripe].incrementAndGet();
-            }
 
             old = removeNoLock(removeKey);
         } finally {

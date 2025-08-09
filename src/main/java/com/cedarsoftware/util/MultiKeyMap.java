@@ -2197,7 +2197,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             MultiKey<V> e = chain[i];
             if (e.hash == hash && keysMatch(e.keys, newKey.keys)) {
                 V old = e.value;
-                chain[i] = newKey;
+                // Create new array with replaced element - never mutate published array
+                MultiKey<V>[] newChain = chain.clone();
+                newChain[i] = newKey;
+                buckets.set(index, newChain);
                 return old;
             }
         }
@@ -2380,9 +2383,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (chain.length == 1) {
                     buckets.set(index, null);
                 } else {
-                    // Shift in-place to avoid full copy
-                    System.arraycopy(chain, i + 1, chain, i, chain.length - i - 1);
-                    buckets.set(index, Arrays.copyOf(chain, chain.length - 1));  // Shrink
+                    // Create new array without the removed element - never mutate published array
+                    MultiKey<V>[] newChain = new MultiKey[chain.length - 1];
+                    // Copy elements before the removed one
+                    System.arraycopy(chain, 0, newChain, 0, i);
+                    // Copy elements after the removed one
+                    System.arraycopy(chain, i + 1, newChain, i, chain.length - i - 1);
+                    buckets.set(index, newChain);
                 }
                 atomicSize.decrementAndGet();
                 return old;

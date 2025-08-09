@@ -143,7 +143,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     // Performance optimization: limit hash computation to first N elements
     // This significantly improves performance for large arrays while maintaining good hash distribution
-    private static final int MAX_HASH_ELEMENTS = 5;
+    // Default value - can be overridden via builder
+    private static final int DEFAULT_MAX_HASH_ELEMENTS = 5;
 
     // Contention monitoring fields (retained from original)
     private final AtomicInteger totalLockAcquisitions = new AtomicInteger(0);
@@ -182,12 +183,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private volatile AtomicReferenceArray<MultiKey<V>[]> buckets;
     private final AtomicInteger atomicSize = new AtomicInteger(0);
+    // Diagnostic metric: tracks the maximum chain length seen since map creation (never decreases on remove)
     private final AtomicInteger maxChainLength = new AtomicInteger(0);
     private final int capacity;
     private final float loadFactor;
     private final CollectionKeyMode collectionKeyMode;
     private final boolean flattenDimensions;
     private final boolean defensiveCopies;
+    private final int maxHashElements;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
@@ -247,6 +250,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this.collectionKeyMode = builder.collectionKeyMode;
         this.flattenDimensions = builder.flattenDimensions;
         this.defensiveCopies = builder.defensiveCopies;
+        this.maxHashElements = builder.maxHashElements;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
@@ -333,7 +337,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public MultiKeyMap(int capacity, float loadFactor) {
         this(MultiKeyMap.<V>builder().capacity(capacity).loadFactor(loadFactor));
     }
-    
 
     // Builder class
     public static class Builder<V> {
@@ -342,6 +345,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         private CollectionKeyMode collectionKeyMode = CollectionKeyMode.COLLECTIONS_EXPANDED;
         private boolean flattenDimensions = false;
         private boolean defensiveCopies = true;
+        private int maxHashElements = DEFAULT_MAX_HASH_ELEMENTS;
 
         // Private constructor - instantiate via MultiKeyMap.builder()
         private Builder() {}
@@ -384,6 +388,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.collectionKeyMode = source.collectionKeyMode;
             this.flattenDimensions = source.flattenDimensions;
             this.defensiveCopies = source.defensiveCopies;
+            this.maxHashElements = source.maxHashElements;
             return this;
         }
 
@@ -495,7 +500,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // SMART ROUTING FOR ALL OBJECT ARRAYS - optimized paths based on length
         // Check exact Object[] first (fastest), then other Object array types
-        if (key.getClass() == Object[].class || key instanceof Object[]) {
+        if (key instanceof Object[]) {
             Object[] array = (Object[]) key;
             
             switch (array.length) {
@@ -728,7 +733,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         boolean is1D = true;
         
         // Optimized loop - stop as soon as we know it's not 1D or reach MAX_HASH_ELEMENTS
-        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        final int hashLimit = Math.min(len, maxHashElements);
         int i;
         for (i = 0; i < hashLimit; i++) {
             final Object e = array[i];
@@ -798,7 +803,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (coll instanceof ArrayList) {
             ArrayList<?> list = (ArrayList<?>) coll;
             final int size = list.size();
-            final int hashLimit = Math.min(size, MAX_HASH_ELEMENTS);
+            final int hashLimit = Math.min(size, maxHashElements);
             int i;
             for (i = 0; i < hashLimit; i++) {
                 Object e = list.get(i);
@@ -825,17 +830,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             while (iter.hasNext()) {
                 Object e = iter.next();
                 // Only compute hash for first MAX_HASH_ELEMENTS
-                if (count < MAX_HASH_ELEMENTS) {
+                if (count < maxHashElements) {
                     h = h * 31 + computeElementHash(e);
                 }
                 if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
                     is1D = false;
-                    if (count >= MAX_HASH_ELEMENTS) {
+                    if (count >= maxHashElements) {
                         break; // We've computed enough hash and found it's not 1D
                     }
                 }
                 count++;
-                if (!is1D && count >= MAX_HASH_ELEMENTS) {
+                if (!is1D && count >= maxHashElements) {
                     break; // No need to continue
                 }
             }
@@ -901,7 +906,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // String arrays are always 1D (String elements can't be arrays or collections)
         // Optimized: Strings are common and don't need special handling
         int h = 1;
-        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        final int hashLimit = Math.min(len, maxHashElements);
         for (int i = 0; i < hashLimit; i++) {
             final String s = array[i];
             h = h * 31 + (s == null ? 0 : s.hashCode());
@@ -939,7 +944,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // int arrays are always 1D (primitives can't contain collections/arrays)
         // Optimized: Direct primitive access without method call overhead
         int h = 1;
-        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        final int hashLimit = Math.min(len, maxHashElements);
         for (int i = 0; i < hashLimit; i++) {
             h = h * 31 + array[i];  // Integer.hashCode(x) just returns x
         }
@@ -969,7 +974,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // long arrays are always 1D (primitives can't contain collections/arrays)
         // Optimized: Inline Long.hashCode for better performance
         int h = 1;
-        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        final int hashLimit = Math.min(len, maxHashElements);
         for (int i = 0; i < hashLimit; i++) {
             final long v = array[i];
             h = h * 31 + (int)(v ^ (v >>> 32));  // Inlined Long.hashCode
@@ -1000,7 +1005,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // double arrays are always 1D (primitives can't contain collections/arrays)
         // Optimized: Inline Double.hashCode for better performance
         int h = 1;
-        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        final int hashLimit = Math.min(len, maxHashElements);
         for (int i = 0; i < hashLimit; i++) {
             final long bits = Double.doubleToLongBits(array[i]);
             h = h * 31 + (int)(bits ^ (bits >>> 32));  // Inlined Double.hashCode
@@ -1031,7 +1036,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // boolean arrays are always 1D (primitives can't contain collections/arrays)
         // Optimized: Inline Boolean.hashCode for better performance
         int h = 1;
-        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        final int hashLimit = Math.min(len, maxHashElements);
         for (int i = 0; i < hashLimit; i++) {
             h = h * 31 + (array[i] ? 1231 : 1237);  // Inlined Boolean.hashCode
         }
@@ -1064,7 +1069,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         boolean is1D = true;
         
         // Optimized loop - stop as soon as we know it's not 1D or reach MAX_HASH_ELEMENTS
-        final int hashLimit = Math.min(len, MAX_HASH_ELEMENTS);
+        final int hashLimit = Math.min(len, maxHashElements);
         int i;
         for (i = 0; i < hashLimit; i++) {
             Object e = Array.get(arr, i);
@@ -2259,7 +2264,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // SMART ROUTING FOR ALL OBJECT ARRAYS - optimized paths based on length
         // Check exact Object[] first (fastest), then other Object array types
-        if (key.getClass() == Object[].class || key instanceof Object[]) {
+        if (key instanceof Object[]) {
             Object[] array = (Object[]) key;
             
             switch (array.length) {
@@ -2999,8 +3004,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * <p>Each {@code MultiKeyEntry} contains the complete key information as an Object array
      * and the associated value. This provides access to the full multi-dimensional key structure
      * that may not be available through the standard {@link #entrySet()} method.</p>
-     * <p>The returned iterable provides a consistent view of the map at the time of creation,
-     * but changes to the map during iteration may or may not be reflected in the iteration results.</p>
+     * <p>The returned iterable provides a <b>weakly consistent</b> view - it captures the buckets
+     * reference at creation time and walks live bucket elements. Concurrent modifications may or may
+     * not be reflected during iteration, and the iterator will never throw ConcurrentModificationException.</p>
      * 
      * @return an iterable of {@code MultiKeyEntry} objects containing all mappings in this map
      * @see MultiKeyEntry
@@ -3015,7 +3021,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         public final V value;
 
         MultiKeyEntry(Object k, V v) {
-            keys = (k != null && k.getClass() == Object[].class) ? (Object[]) k : new Object[]{k};
+            // Canonicalize to Object[] for consistent external presentation
+            if (k instanceof Object[]) {
+                keys = (Object[]) k;
+            } else if (k instanceof Collection) {
+                // Convert internal List representation back to Object[] for API consistency
+                keys = ((Collection<?>) k).toArray();
+            } else {
+                keys = new Object[]{k};
+            }
             value = v;
         }
     }

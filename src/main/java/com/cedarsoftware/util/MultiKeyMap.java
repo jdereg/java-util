@@ -128,7 +128,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Common strings
     private static final String THIS_MAP = "(this Map ♻️)"; // Recycle for cycles
 
-
     // Emojis for debug output (professional yet intuitive)
     private static final String EMOJI_OPEN = "[";   // Opening bracket for stepping into dimension  
     private static final String EMOJI_CLOSE = "]"; // Closing bracket for stepping back out of dimension
@@ -490,7 +489,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // PRIMITIVE ARRAY CONVERSION FOR FAST PATH OPTIMIZATION
         // Convert small primitive arrays to Object[] to leverage existing fast paths
-        if (key.getClass().isArray() && key.getClass().getComponentType().isPrimitive()) {
+        final Class<?> keyClass = key.getClass();
+        if (keyClass.isArray() && keyClass.getComponentType().isPrimitive()) {
             int length = Array.getLength(key);
             if (length <= 5) {  // Only convert small arrays for fast path
                 Object[] converted = new Object[length];
@@ -2182,7 +2182,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // PRIMITIVE ARRAY CONVERSION FOR FAST PATH OPTIMIZATION
         // Convert small primitive arrays to Object[] to leverage existing fast paths
-        if (key.getClass().isArray() && key.getClass().getComponentType().isPrimitive()) {
+        final Class<?> keyClass = key.getClass();
+        if (keyClass.isArray() && keyClass.getComponentType().isPrimitive()) {
             int length = Array.getLength(key);
             if (length <= 5) {  // Only convert small arrays for fast path
                 Object[] converted = new Object[length];
@@ -2429,8 +2430,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
+     * Helper method to create an immutable view of multi-key arrays.
+     * This ensures external code cannot mutate our internal key arrays.
+     */
+    private static List<Object> keyView(Object[] keys) {
+        return Collections.unmodifiableList(Arrays.asList(keys.clone()));
+    }
+    
+    /**
      * Returns a {@link Set} view of the keys contained in this map.
-     * <p>Multi-dimensional keys are represented as Object arrays, while single keys
+     * <p>Multi-dimensional keys are represented as immutable List<Object>, while single keys
      * are returned as their original objects. Changes to the returned set are not
      * reflected in the map.</p>
      * 
@@ -2443,8 +2452,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Single key case
                 set.add(e.keys[0] == NULL_SENTINEL ? null : e.keys[0]);
             } else {
-                // Multi-key case: expose as List for proper equals/hashCode behavior
-                set.add(Arrays.asList(e.keys));
+                // Multi-key case: expose as immutable List for proper equals/hashCode behavior
+                // and to prevent mutation of internal arrays
+                set.add(keyView(e.keys));
             }
         }
         return set;
@@ -2464,7 +2474,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     /**
      * Returns a {@link Set} view of the mappings contained in this map.
-     * <p>Multi-dimensional keys are represented as Object arrays, while single keys
+     * <p>Multi-dimensional keys are represented as immutable List<Object>, while single keys
      * are returned as their original objects. Changes to the returned set are not
      * reflected in the map.</p>
      * 
@@ -2473,7 +2483,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public Set<Map.Entry<Object, V>> entrySet() {
         Set<Map.Entry<Object, V>> set = new HashSet<>();
         for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : e.keys;
+            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : keyView(e.keys);
             set.add(new AbstractMap.SimpleEntry<>(k, e.value));
         }
         return set;
@@ -2534,7 +2544,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize) resizeInternal();
+        if (resize && resizeInProgress.compareAndSet(false, true)) {
+            try { resizeInternal(); } finally { resizeInProgress.set(false); }
+        }
         return existing;
     }
 
@@ -2579,7 +2591,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize) resizeInternal();
+        if (resize && resizeInProgress.compareAndSet(false, true)) {
+            try { resizeInternal(); } finally { resizeInProgress.set(false); }
+        }
         return v;
     }
 
@@ -2628,7 +2642,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize) resizeInternal();
+        if (resize && resizeInProgress.compareAndSet(false, true)) {
+            try { resizeInternal(); } finally { resizeInProgress.set(false); }
+        }
         return result;
     }
 
@@ -2677,7 +2693,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize) resizeInternal();
+        if (resize && resizeInProgress.compareAndSet(false, true)) {
+            try { resizeInternal(); } finally { resizeInProgress.set(false); }
+        }
         return result;
     }
 
@@ -2726,7 +2744,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize) resizeInternal();
+        if (resize && resizeInProgress.compareAndSet(false, true)) {
+            try { resizeInternal(); } finally { resizeInProgress.set(false); }
+        }
         return result;
     }
 
@@ -2807,7 +2827,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize) resizeInternal();
+        if (resize && resizeInProgress.compareAndSet(false, true)) {
+            try { resizeInternal(); } finally { resizeInProgress.set(false); }
+        }
         return result;
     }
 
@@ -2851,7 +2873,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             lock.unlock();
         }
         // Handle resize outside the lock
-        if (resize) resizeInternal();
+        if (resize && resizeInProgress.compareAndSet(false, true)) {
+            try { resizeInternal(); } finally { resizeInProgress.set(false); }
+        }
         return result;
     }
 
@@ -2867,8 +2891,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public int hashCode() {
         int h = 0;
         for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : Arrays.hashCode(e.keys);
-            h += (k == null ? 0 : k.hashCode()) ^ (e.value == null ? 0 : e.value.hashCode());
+            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : keyView(e.keys);
+            h += Objects.hashCode(k) ^ Objects.hashCode(e.value);
         }
         return h;
     }
@@ -2888,10 +2912,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Map<?, ?> m = (Map<?, ?>) o;
         if (m.size() != size()) return false;
         for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : e.keys;
-            if (e.value == null) {
-                if (!(m.get(k) == null && m.containsKey(k))) return false;
-            } else if (!e.value.equals(m.get(k))) return false;
+            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : keyView(e.keys);
+            V v = e.value;
+            Object mv = m.get(k);
+            if (!Objects.equals(v, mv) || (v == null && !m.containsKey(k))) return false;
         }
         return true;
     }
@@ -2966,8 +2990,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         MultiKeyEntry(Object k, V v) {
             // Canonicalize to Object[] for consistent external presentation
+            // Always defensive copy to prevent external mutation
             if (k instanceof Object[]) {
-                keys = (Object[]) k;
+                Object[] original = (Object[]) k;
+                keys = Arrays.copyOf(original, original.length);
             } else if (k instanceof Collection) {
                 // Convert internal List representation back to Object[] for API consistency
                 keys = ((Collection<?>) k).toArray();

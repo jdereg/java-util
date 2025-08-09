@@ -136,11 +136,11 @@ class MultiKeyMapMapInterfaceTest {
         assertTrue(entryMap.containsKey("singleKey"));
         assertEquals("value1", entryMap.get("singleKey"));
         
-        // Check array key entry - need to find it by comparing arrays
+        // Check array key entry - now exposed as List, not array
         String arrayValue = null;
         for (Map.Entry<Object, String> entry : entryMap.entrySet()) {
-            if (entry.getKey() instanceof Object[] && 
-                Arrays.deepEquals((Object[]) entry.getKey(), arrayKey)) {
+            if (entry.getKey() instanceof List && 
+                Arrays.asList(arrayKey).equals(entry.getKey())) {
                 arrayValue = entry.getValue();
                 break;
             }

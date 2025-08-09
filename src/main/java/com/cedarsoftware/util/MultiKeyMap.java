@@ -272,7 +272,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Ensure capacity is a power of 2, following HashMap's behavior
         int actualCapacity = tableSizeFor(builder.capacity);
         this.buckets = new AtomicReferenceArray<>(actualCapacity);
-        this.capacity = builder.capacity;
+        // Store the ACTUAL capacity, not the requested one, to avoid confusion
+        this.capacity = actualCapacity;
         this.loadFactor = builder.loadFactor;
         this.collectionKeyMode = builder.collectionKeyMode;
         this.flattenDimensions = builder.flattenDimensions;
@@ -295,10 +296,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this(MultiKeyMap.<V>builder().from(source));
         
         source.withAllStripeLocks(() -> {  // Lock for consistent snapshot
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int len = table.length();
+            final AtomicReferenceArray<? extends MultiKey<? extends V>[]> sourceTable = source.buckets;  // Pin source table reference
+            final int len = sourceTable.length();
             for (int i = 0; i < len; i++) {
-                MultiKey<? extends V>[] chain = table.get(i);
+                MultiKey<? extends V>[] chain = sourceTable.get(i);
                 if (chain != null) {
                     for (MultiKey<? extends V> entry : chain) {
                         if (entry != null) {

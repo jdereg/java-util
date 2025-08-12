@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -1090,38 +1091,34 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Primitive arrays are already handled in flattenKey() and never reach here
         // Only handle common non-primitive array types for optimization
         
-        if (clazz == String[].class) {
-            return process1DStringArray((String[]) arr);
+        // Handle common Object[] subtypes efficiently (these can't contain nested arrays/collections)
+        if (clazz == String[].class || clazz == Integer[].class || clazz == Long[].class || 
+            clazz == Double[].class || clazz == Date[].class || clazz == Boolean[].class || 
+            clazz == Float[].class || clazz == Short[].class || clazz == Byte[].class || 
+            clazz == Character[].class) {
+            
+            Object[] objArray = (Object[]) arr;
+            final int len = objArray.length;
+            if (len == 0) {
+                return new Norm(objArray, 0);
+            }
+
+            // These array types are always 1D (their elements can't be arrays or collections)
+            // Optimized: Direct array access without checks
+            int h = 1;
+            for (int i = 0; i < len; i++) {
+                final Object o = objArray[i];
+                h = h * 31 + (o == null ? 0 : o.hashCode());
+            }
+
+            // No collapse - arrays stay as arrays
+            return new Norm(objArray, h);
         }
-        
-        // Could add more common types here if needed:
-        // Integer[], Long[], Double[], Date[], UUID[], etc.
-        // For now, String[] is the most common non-primitive array type
         
         // Fallback to reflection for other array types
         return process1DGenericArray(arr);
     }
-    
-    private Norm process1DStringArray(String[] array) {
-        
-        final int len = array.length;
-        if (len == 0) {
-            return new Norm(array, 0);
-        }
-        
-        // String arrays are always 1D (String elements can't be arrays or collections)
-        // Optimized: Strings are common and don't need special handling
-        int h = 1;
-        // Compute full hash for all elements
-        for (int i = 0; i < len; i++) {
-            final String s = array[i];
-            h = h * 31 + (s == null ? 0 : s.hashCode());
-        }
-        
-        // No collapse - arrays stay as arrays
-        return new Norm(array, h);
-    }
-    
+
     private Norm process1DGenericArray(Object arr) {
         // Fallback method using reflection for uncommon array types
         final int len = Array.getLength(arr);

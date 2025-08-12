@@ -21,14 +21,14 @@ public class MultiKeyMapNullUniformityTest {
         // Store single-element array with null
         map.put(new Object[]{null}, "array_with_null");
         
-        // These should be the SAME key due to NULL_SENTINEL uniformity and single-element optimization
-        assertEquals(1, map.size(), "Top-level null and single-element array with null should be same key");
+        // These are DIFFERENT keys - no collapse behavior
+        assertEquals(2, map.size(), "Top-level null and single-element array with null should be different keys");
         
-        // Both lookups should return the same value (last put wins)
-        assertEquals("array_with_null", map.get(null));
+        // Each lookup returns its own value
+        assertEquals("top_level_null", map.get(null));
         assertEquals("array_with_null", map.get(new Object[]{null}));
         
-        // Cross-lookup verification
+        // Both keys exist independently
         assertTrue(map.containsKey(null));
         assertTrue(map.containsKey(new Object[]{null}));
     }
@@ -44,14 +44,14 @@ public class MultiKeyMapNullUniformityTest {
         List<Object> listWithNull = Arrays.asList((Object) null);
         map.put(listWithNull, "collection_with_null");
         
-        // These should be the SAME key due to NULL_SENTINEL uniformity and single-element optimization
-        assertEquals(1, map.size(), "Top-level null and single-element collection with null should be same key");
+        // These are DIFFERENT keys - no collapse behavior
+        assertEquals(2, map.size(), "Top-level null and single-element collection with null should be different keys");
         
-        // Both lookups should return the same value (last put wins)
-        assertEquals("collection_with_null", map.get(null));
+        // Each lookup returns its own value
+        assertEquals("top_level_null", map.get(null));
         assertEquals("collection_with_null", map.get(listWithNull));
         
-        // Cross-lookup verification
+        // Both keys exist independently
         assertTrue(map.containsKey(null));
         assertTrue(map.containsKey(listWithNull));
     }
@@ -69,7 +69,7 @@ public class MultiKeyMapNullUniformityTest {
         // Store using one type
         map.put(objectArray, "stored_value");
         
-        // All should be equivalent due to NULL_SENTINEL uniformity
+        // All containers with same content should be equivalent (berries not branches)
         assertEquals(1, map.size());
         assertEquals("stored_value", map.get(objectArray));
         assertEquals("stored_value", map.get(stringArray));

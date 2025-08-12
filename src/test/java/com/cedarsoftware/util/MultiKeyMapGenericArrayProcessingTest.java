@@ -16,27 +16,33 @@ public class MultiKeyMapGenericArrayProcessingTest {
     void testSingleElementGenericArrayWithNullElement() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
-        // Single element Float[] array containing null - should return NULL_SENTINEL
+        // Single element Float[] array containing null - NO COLLAPSE, stays as array
         Float[] singleNullFloat = {null};
         map.put(singleNullFloat, "null_float_value");
         
-        // Should be accessible via null lookup due to single-element optimization
-        assertEquals("null_float_value", map.get((Object) null));
-        assertTrue(map.containsKey((Object) null));
+        // NOT accessible via null lookup - arrays don't collapse
+        assertNull(map.get((Object) null));
+        assertFalse(map.containsKey((Object) null));
         
-        // Single element Short[] array containing null - should return NULL_SENTINEL  
+        // But accessible via array lookup
+        assertEquals("null_float_value", map.get(new Float[]{null}));
+        assertTrue(map.containsKey(new Float[]{null}));
+        
+        // Single element Short[] array containing null - same content as Float[]{null}
         Short[] singleNullShort = {null};
-        map.put(singleNullShort, "null_short_value"); // Should overwrite due to null normalization
+        map.put(singleNullShort, "null_short_value"); // Should overwrite due to content equivalence
         
-        assertEquals("null_short_value", map.get((Object) null));
+        assertEquals("null_short_value", map.get(new Float[]{null}));
+        assertEquals("null_short_value", map.get(new Short[]{null}));
         
         // Single element Object[] array containing null
         Object[] singleNullObject = {null};
-        map.put(singleNullObject, "null_object_value"); // Should overwrite due to null normalization
+        map.put(singleNullObject, "null_object_value"); // Should overwrite due to content equivalence
         
-        assertEquals("null_object_value", map.get((Object) null));
+        assertEquals("null_object_value", map.get(new Float[]{null}));
+        assertEquals("null_object_value", map.get(new Object[]{null}));
         
-        // All null single-element arrays should be equivalent (normalized to null)
+        // All single-element arrays with null content are equivalent (berries not branches)
         assertEquals(1, map.size());
     }
     
@@ -44,34 +50,44 @@ public class MultiKeyMapGenericArrayProcessingTest {
     void testSingleElementGenericArrayWithNonNullElement() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
-        // Single element Float[] array with non-null element - should return the element directly
+        // Single element Float[] array with non-null element - NO COLLAPSE, stays as array
         Float[] singleFloat = {3.14f};
         map.put(singleFloat, "single_float_value");
         
-        // Should be accessible via the unwrapped element due to single-element optimization
-        assertEquals("single_float_value", map.get(3.14f));
-        assertTrue(map.containsKey(3.14f));
+        // NOT accessible via unwrapped element - arrays don't collapse
+        assertNull(map.get(3.14f));
+        assertFalse(map.containsKey(3.14f));
+        
+        // But accessible via array lookup
+        assertEquals("single_float_value", map.get(new Float[]{3.14f}));
+        assertTrue(map.containsKey(new Float[]{3.14f}));
         
         // Single element Short[] array with non-null element
         Short[] singleShort = {(short) 42};
         map.put(singleShort, "single_short_value");
         
-        assertEquals("single_short_value", map.get((short) 42));
-        assertTrue(map.containsKey((short) 42));
+        assertNull(map.get((short) 42));
+        assertFalse(map.containsKey((short) 42));
+        assertEquals("single_short_value", map.get(new Short[]{(short) 42}));
+        assertTrue(map.containsKey(new Short[]{(short) 42}));
         
         // Single element Character[] array with non-null element
         Character[] singleChar = {'A'};
         map.put(singleChar, "single_char_value");
         
-        assertEquals("single_char_value", map.get('A'));
-        assertTrue(map.containsKey('A'));
+        assertNull(map.get('A'));
+        assertFalse(map.containsKey('A'));
+        assertEquals("single_char_value", map.get(new Character[]{'A'}));
+        assertTrue(map.containsKey(new Character[]{'A'}));
         
         // Single element Byte[] array with non-null element
         Byte[] singleByte = {(byte) 123};
         map.put(singleByte, "single_byte_value");
         
-        assertEquals("single_byte_value", map.get((byte) 123));
-        assertTrue(map.containsKey((byte) 123));
+        assertNull(map.get((byte) 123));
+        assertFalse(map.containsKey((byte) 123));
+        assertEquals("single_byte_value", map.get(new Byte[]{(byte) 123}));
+        assertTrue(map.containsKey(new Byte[]{(byte) 123}));
         
         // Each should be a separate key
         assertEquals(4, map.size());

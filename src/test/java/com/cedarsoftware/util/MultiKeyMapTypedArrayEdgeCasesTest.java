@@ -77,13 +77,13 @@ public class MultiKeyMapTypedArrayEdgeCasesTest {
         
         map.put(singleInt, "single_int");
         map.put(singleString, "single_string");  
-        map.put(singleObject, "single_object"); // Overwrites single_string
+        map.put(singleObject, "single_object"); // Overwrites single_string (content equivalence)
         
-        // Single element optimization should extract the element
-        assertEquals("single_int", map.get(42));              // Direct int lookup
-        assertEquals("single_object", map.get("hello"));      // Direct string lookup - last put wins
+        // No collapse - arrays stay as arrays
+        assertNull(map.get(42));  // Direct int is not stored
+        assertNull(map.get("hello"));  // Direct string is not stored
         
-        // Array lookups should also work
+        // Array lookups work
         assertEquals("single_int", map.get(new int[]{42}));
         // Both should return "single_object" since String[] and Object[] with same content are equivalent
         String stringResult = map.get(new String[]{"hello"});
@@ -92,7 +92,7 @@ public class MultiKeyMapTypedArrayEdgeCasesTest {
         assertEquals("single_object", stringResult);
         assertEquals("single_object", objectResult);
         
-        assertEquals(2, map.size()); // Two keys: 42 and "hello"
+        assertEquals(2, map.size()); // Two keys: [42] and ["hello"]
     }
     
     @Test

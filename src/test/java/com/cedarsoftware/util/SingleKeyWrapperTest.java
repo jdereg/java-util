@@ -66,26 +66,27 @@ class SingleKeyWrapperTest {
     void testCoconutWrapperIsolation() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
         
-        // The same logical key should work whether accessed as single key or wrapped in Object[]
+        // Single keys and Object[] arrays are DIFFERENT keys now (no collapse)
         String testKey = "isolationKey";
         
         // Store via single key Map interface
         map.put(testKey, "mapValue");
         
-        // Should be retrievable via Object[] because single-element arrays are equivalent to single keys
-        assertEquals("mapValue", map.getMultiKey(new Object[]{testKey}));
+        // getMultiKey with varargs: getMultiKey(testKey) finds the single key
+        assertEquals("mapValue", map.getMultiKey(testKey));
         
-        // Also retrievable via single key Map interface
+        // But retrievable via single key Map interface
         assertEquals("mapValue", map.get(testKey));
         
-        // Now store via Object[] - this should overwrite since they're equivalent keys
+        // Now store via Object[] - this is a DIFFERENT key, does not overwrite
         map.put(new Object[]{testKey}, "arrayValue");
         
-        // Both access methods should now return the updated value
-        assertEquals("arrayValue", map.get(testKey));  // Single key access
-        assertEquals("arrayValue", map.getMultiKey(new Object[]{testKey}));  // Array access
+        // Each access method returns its own value
+        assertEquals("mapValue", map.get(testKey));  // Single key access
+        // To get the array key via getMultiKey, we need to cast to Object to prevent varargs expansion
+        assertEquals("arrayValue", map.get(new Object[]{testKey}));  // Direct array access
         
-        assertEquals(1, map.size());  // Still only one entry since keys are equivalent
+        assertEquals(2, map.size());  // Two entries since keys are different
     }
     
     @Test

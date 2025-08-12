@@ -139,11 +139,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
     
-    // Performance optimization: limit hash computation to first N elements
-    // This significantly improves performance for large arrays while maintaining good hash distribution
-    // Default value - can be overridden via builder
-    private static final int DEFAULT_MAX_HASH_ELEMENTS = 5;
-
     // Contention monitoring fields (retained from original)
     private final AtomicInteger totalLockAcquisitions = new AtomicInteger(0);
     private final AtomicInteger contentionCount = new AtomicInteger(0);
@@ -187,7 +182,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final float loadFactor;
     private final CollectionKeyMode collectionKeyMode;
     private final boolean flattenDimensions;
-    private final int maxHashElements;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
@@ -277,7 +271,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this.loadFactor = builder.loadFactor;
         this.collectionKeyMode = builder.collectionKeyMode;
         this.flattenDimensions = builder.flattenDimensions;
-        this.maxHashElements = builder.maxHashElements;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
@@ -334,7 +327,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         private float loadFactor = DEFAULT_LOAD_FACTOR;
         private CollectionKeyMode collectionKeyMode = CollectionKeyMode.COLLECTIONS_EXPANDED;
         private boolean flattenDimensions = false;
-        private int maxHashElements = DEFAULT_MAX_HASH_ELEMENTS;
 
         // Private constructor - instantiate via MultiKeyMap.builder()
         private Builder() {}
@@ -372,7 +364,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.loadFactor = source.loadFactor;
             this.collectionKeyMode = source.collectionKeyMode;
             this.flattenDimensions = source.flattenDimensions;
-            this.maxHashElements = source.maxHashElements;
             return this;
         }
 
@@ -470,82 +461,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the value to which the specified key is mapped, or {@code null} if no mapping exists
      */
     public V get(Object key) {
-        // Single key fast path
-        if (!isArrayOrCollection(key)) {
-            // TRUE ULTRA-FAST PATH: Direct lookup, bypasses ALL normalization
-            return getSimpleSingleKey(key);
-        }
-        
-        // PRIMITIVE ARRAY CONVERSION FOR FAST PATH OPTIMIZATION
-        // Convert small primitive arrays to Object[] to leverage existing fast paths
-        final Class<?> keyClass = key.getClass();
-        if (keyClass.isArray() && keyClass.getComponentType().isPrimitive()) {
-            int length = Array.getLength(key);
-            if (length <= 5) {  // Only convert small arrays for fast path
-                Object[] converted = new Object[length];
-                for (int i = 0; i < length; i++) {
-                    converted[i] = Array.get(key, i);  // Auto-boxes primitives
-                }
-                key = converted;  // Replace key with converted Object[]
-            }
-        }
-        
-        // SMART ROUTING FOR ALL OBJECT ARRAYS - optimized paths based on length
-        // Check exact Object[] first (fastest), then other Object array types
-        if (key instanceof Object[]) {
-            Object[] array = (Object[]) key;
-            
-            switch (array.length) {
-                case 0:
-                    // Empty array - special case
-                    return getEmptyArray();
-                case 1:
-                    // Single element array - might collapse to single key
-                    return getArrayLength1(array);
-                case 2:
-                    // Two element array - common case, optimize!
-                    return getArrayLength2(array);
-                case 3:
-                    // Three element array - worth optimizing
-                    return getArrayLength3(array);
-                case 4:
-                    // Four element array - worth optimizing
-                    return getArrayLength4(array);
-                case 5:
-                    // Five element array - worth optimizing
-                    return getArrayLength5(array);
-            }
-        }
-        
-        // SMART ROUTING FOR COLLECTIONS - optimized paths based on size
-        // Only if collections are expanded (not treated as regular keys)
-        if (key instanceof Collection && collectionKeyMode != CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-            Collection<?> coll = (Collection<?>) key;
-            
-            switch (coll.size()) {
-                case 0:
-                    // Empty collection - special case (same as empty array)
-                    return getEmptyArray();
-                case 1:
-                    // Single element collection - might collapse to single key
-                    return getCollectionLength1(coll);
-                case 2:
-                    // Two element collection - common case, optimize!
-                    return getCollectionLength2(coll);
-                case 3:
-                    // Three element collection - worth optimizing
-                    return getCollectionLength3(coll);
-                case 4:
-                    // Four element collection - worth optimizing
-                    return getCollectionLength4(coll);
-                case 5:
-                    // Five element collection - worth optimizing
-                    return getCollectionLength5(coll);
-            }
-        }
-        
-        // Other array types and large collections - use informed handoff
-        Norm norm = flattenKeyKnownArrayOrCollection(key);
+        // Use the unified normalization method
+        Norm norm = flattenKey(key);
         MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
         return entry != null ? entry.value : null;
     }
@@ -608,49 +525,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Used by optimized fast paths to determine routing.
      */
     private static boolean isArrayOrCollection(Object o) {
-        return (o != null && o.getClass().isArray()) || (o instanceof Collection);
+        // Optimized check order for better performance
+        // 1. null check first (fastest)
+        // 2. instanceof Collection (faster than isArray)
+        // 3. isArray check last (requires getClass() call)
+        return o instanceof Collection || (o != null && o.getClass().isArray());
     }
     
     /**
-     * Informed expansion for keys where we already detected they are arrays/collections.
-     * This allows the fast paths (1-2 keys) to pass along information about which
-     * keys need expansion, avoiding redundant type checking in the general path.
+     * CENTRAL NORMALIZATION METHOD - Single source of truth for all key operations.
+     * <p>
+     * This method is the ONLY place where keys are normalized in the entire MultiKeyMap.
+     * ALL operations (get, put, remove, containsKey, compute*, etc.) use this method
+     * to ensure consistent key normalization across the entire API.
+     * <p>
+     * Performance optimizations:
+     * - Fast path for simple objects (non-arrays, non-collections)
+     * - Specialized handling for 0-5 element arrays/collections (covers 90%+ of use cases)
+     * - Type-specific processing for primitive arrays to avoid reflection
+     * - Direct computation of hash codes during traversal to avoid redundant passes
      * 
-     * @param key the key we KNOW is an array or collection
-     * @return the normalized key with hash in a Norm record
+     * @param key the key to normalize (can be null, single object, array, or collection)
+     * @return Norm object containing normalized key and precomputed hash
      */
-    private Norm flattenKeyKnownArrayOrCollection(Object key) {
-        // We KNOW key is an array or collection, so skip the basic type checks
-        if (key == null) {
-            return new Norm(NULL_SENTINEL, 0);
-        }
-        
-        Class<?> clazz = key.getClass();
-        
-        if (clazz.isArray()) {
-            // Route directly to appropriate array processor
-            if (clazz == Object[].class) {
-                return process1DObjectArray((Object[]) key);
-            } else {
-                return process1DTypedArray(key);
-            }
-        } else {
-            // We know it's a Collection
-            Collection<?> coll = (Collection<?>) key;
-            
-            // Handle collections that should not be expanded
-            if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-                return new Norm(coll, coll.hashCode());
-            }
-            
-            // Route to collection processor
-            if (flattenDimensions) {
-                return expandWithHash(coll);
-            }
-            return process1DCollection(coll);
-        }
-    }
-
     private Norm flattenKey(Object key) {
         
         // Handle null case
@@ -658,51 +555,440 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return new Norm(NULL_SENTINEL, 0);
         }
 
-        // PRIMITIVE ARRAY CONVERSION FOR FAST PATH OPTIMIZATION
-        // Convert small primitive arrays to Object[] to leverage existing fast paths
-        if (key.getClass().isArray() && key.getClass().getComponentType().isPrimitive()) {
-            int length = Array.getLength(key);
-            if (length <= 5) {  // Only convert small arrays for fast path
-                Object[] converted = new Object[length];
-                for (int i = 0; i < length; i++) {
-                    converted[i] = Array.get(key, i);  // Auto-boxes primitives
-                }
-                key = converted;  // Replace key with converted Object[]
-            }
-        }
-
-        // ULTRA-FAST PATH: Object[] arrays (most common case - 90%+ of real usage)
-        if (key.getClass() == Object[].class) {
-            return process1DObjectArray((Object[]) key);
-        }
-
-        Class<?> clazz = key.getClass();
+        Class<?> keyClass = key.getClass();
+        boolean isKeyArray = keyClass.isArray();
         
-        // Simple object case - not array, not collection
-        if (!clazz.isArray() && !(key instanceof Collection)) {
+        // === FAST PATH: Simple objects (not arrays or collections) ===
+        if (!isKeyArray && !(key instanceof Collection)) {
             return new Norm(key, computeElementHash(key));
         }
-
-        // Handle collections that should not be expanded
-        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && key instanceof Collection) {
-            Collection<?> coll = (Collection<?>) key;
-            // In NOT_EXPANDED mode, treat collections like regular Map keys - no special processing
-            int hash = coll.hashCode();
-            return new Norm(coll, hash);
+        
+        // === FAST PATH: Object[] arrays with length-based optimization ===
+        if (keyClass == Object[].class) {
+            Object[] array = (Object[]) key;
+            switch (array.length) {
+                case 0:
+                    return new Norm(array, 0);
+                case 1:
+                    return flattenObjectArray1(array);  // Unrolled for maximum speed
+                case 2:
+                    return flattenObjectArray2(array);  // Unrolled for performance  
+                case 3:
+                    return flattenObjectArray3(array);  // Unrolled for performance
+                case 4:
+                    return flattenObjectArray4(array);  // Unrolled for performance
+                case 5:
+                case 6:
+                case 7:
+                case 8:
+                case 9:
+                case 10:
+                    return flattenObjectArrayN(array, array.length);  // Use parameterized version
+                default:
+                    return process1DObjectArray(array);
+            }
+        }
+        
+        // === FAST PATH: Primitive arrays - handle each type separately to keep them unboxed ===
+        if (isKeyArray && keyClass.getComponentType().isPrimitive()) {
+            // Handle empty arrays once for all primitive types
+            int length = Array.getLength(key);
+            if (length == 0) {
+                return new Norm(key, 0);
+            }
+            
+            // Each primitive type handled separately with inline loops for maximum performance
+            // These return the primitive array directly as the key (no boxing)
+            int h = 1;
+            
+            if (keyClass == int[].class) {
+                int[] array = (int[]) key;
+                for (int i = 0; i < array.length; i++) {
+                    h = h * 31 + Integer.hashCode(array[i]);
+                }
+                return new Norm(array, h);
+            }
+            
+            if (keyClass == long[].class) {
+                long[] array = (long[]) key;
+                for (int i = 0; i < array.length; i++) {
+                    h = h * 31 + Long.hashCode(array[i]);
+                }
+                return new Norm(array, h);
+            }
+            
+            if (keyClass == double[].class) {
+                double[] array = (double[]) key;
+                for (int i = 0; i < array.length; i++) {
+                    h = h * 31 + Double.hashCode(array[i]);
+                }
+                return new Norm(array, h);
+            }
+            
+            if (keyClass == float[].class) {
+                float[] array = (float[]) key;
+                for (int i = 0; i < array.length; i++) {
+                    h = h * 31 + Float.hashCode(array[i]);
+                }
+                return new Norm(array, h);
+            }
+            
+            if (keyClass == boolean[].class) {
+                boolean[] array = (boolean[]) key;
+                for (int i = 0; i < array.length; i++) {
+                    h = h * 31 + Boolean.hashCode(array[i]);
+                }
+                return new Norm(array, h);
+            }
+            
+            if (keyClass == byte[].class) {
+                byte[] array = (byte[]) key;
+                for (int i = 0; i < array.length; i++) {
+                    h = h * 31 + Byte.hashCode(array[i]);
+                }
+                return new Norm(array, h);
+            }
+            
+            if (keyClass == short[].class) {
+                short[] array = (short[]) key;
+                for (int i = 0; i < array.length; i++) {
+                    h = h * 31 + Short.hashCode(array[i]);
+                }
+                return new Norm(array, h);
+            }
+            
+            if (keyClass == char[].class) {
+                char[] array = (char[]) key;
+                for (int i = 0; i < array.length; i++) {
+                    h = h * 31 + Character.hashCode(array[i]);
+                }
+                return new Norm(array, h);
+            }
+            
+            // This shouldn't happen, but handle it with the generic approach as fallback
+            throw new IllegalStateException("Unknown primitive key type: " + keyClass.getName());
         }
 
-        // Handle other array types (int[], String[], etc.)
-        if (clazz.isArray()) {
+        // === Other array types (String[], etc.) ===
+        if (isKeyArray) {
             return process1DTypedArray(key);
         }
         
-        // Handle Collections
+        // === FAST PATH: Collections with size-based optimization ===
         Collection<?> coll = (Collection<?>) key;
+        
+        // Handle collections that should not be expanded
+        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
+            return new Norm(coll, coll.hashCode());
+        }
+        
         // If flattening dimensions, always go through expansion
         if (flattenDimensions) {
             return expandWithHash(coll);
         }
+        
+        // Size-based optimization for collections
+        int size = coll.size();
+        switch (size) {
+            case 0:
+                return new Norm(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0);
+            case 1:
+                return flattenCollection1(coll);  // Unrolled for maximum speed
+            case 2:
+                return flattenCollection2(coll);  // Unrolled for performance
+            case 3:
+                return flattenCollection3(coll);  // Unrolled for performance
+            case 4:
+                return flattenCollection4(coll);  // Unrolled for performance
+            case 5:
+            case 6:
+            case 7:
+            case 8:
+            case 9:
+            case 10:
+                return flattenCollectionN(coll, size);  // Use parameterized version
+            default:
+                return process1DCollection(coll);
+        }
+    }
+    
+    // === Fast path helper methods for flattenKey() ===
+    
+    private Norm flattenObjectArray1(Object[] array) {
+        Object elem = array[0];
+        
+        // Simple element - fast path
+        if (!isArrayOrCollection(elem)) {
+            int hash = 31 + computeElementHash(elem);
+            return new Norm(array, hash);
+        }
+        
+        // Complex element - check flattenDimensions
+        if (flattenDimensions) {
+            return expandWithHash(array);
+        }
+        
+        // Not flattening - delegate to process1DObjectArray
+        return process1DObjectArray(array);
+    }
+    
+    private Norm flattenObjectArray2(Object[] array) {
+        // Optimized unrolled version for size 2
+        Object elem0 = array[0];
+        Object elem1 = array[1];
+        
+        if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1)) {
+            if (flattenDimensions) return expandWithHash(array);
+            return process1DObjectArray(array);
+        }
+        
+        int h = 31 + computeElementHash(elem0);
+        h = h * 31 + computeElementHash(elem1);
+        return new Norm(array, h);
+    }
+    
+    private Norm flattenObjectArray3(Object[] array) {
+        // Optimized unrolled version for size 3
+        Object elem0 = array[0];
+        Object elem1 = array[1];
+        Object elem2 = array[2];
+        
+        if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1) || isArrayOrCollection(elem2)) {
+            if (flattenDimensions) return expandWithHash(array);
+            return process1DObjectArray(array);
+        }
+        
+        int h = 31 + computeElementHash(elem0);
+        h = h * 31 + computeElementHash(elem1);
+        h = h * 31 + computeElementHash(elem2);
+        return new Norm(array, h);
+    }
+    
+    private Norm flattenObjectArray4(Object[] array) {
+        // Optimized unrolled version for size 4
+        Object elem0 = array[0];
+        Object elem1 = array[1];
+        Object elem2 = array[2];
+        Object elem3 = array[3];
+        
+        if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1) || 
+            isArrayOrCollection(elem2) || isArrayOrCollection(elem3)) {
+            if (flattenDimensions) return expandWithHash(array);
+            return process1DObjectArray(array);
+        }
+        
+        int h = 31 + computeElementHash(elem0);
+        h = h * 31 + computeElementHash(elem1);
+        h = h * 31 + computeElementHash(elem2);
+        h = h * 31 + computeElementHash(elem3);
+        return new Norm(array, h);
+    }
+    
+    private Norm flattenCollection1(Collection<?> coll) {
+        Iterator<?> iter = coll.iterator();
+        Object elem = iter.next();
+        
+        // Simple element - fast path
+        if (!isArrayOrCollection(elem)) {
+            int hash = 31 + computeElementHash(elem);
+            
+            // Convert non-RandomAccess to array for consistent lookup
+            if (!(coll instanceof RandomAccess)) {
+                return new Norm(new Object[]{elem}, hash);
+            }
+            return new Norm(coll, hash);
+        }
+        
+        // Complex element - check flattenDimensions
+        if (flattenDimensions) {
+            return expandWithHash(coll);
+        }
+        
+        // Not flattening - delegate to process1DCollection
         return process1DCollection(coll);
+    }
+    
+    private Norm flattenCollection2(Collection<?> coll) {
+        // Optimized unrolled version for size 2
+        if (coll instanceof RandomAccess) {
+            List<?> list = (List<?>) coll;
+            Object elem0 = list.get(0);
+            Object elem1 = list.get(1);
+            
+            if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1)) {
+                if (flattenDimensions) return expandWithHash(coll);
+                return process1DCollection(coll);
+            }
+            
+            int h = 31 + computeElementHash(elem0);
+            h = h * 31 + computeElementHash(elem1);
+            return new Norm(coll, h);
+        }
+        
+        // Non-RandomAccess path
+        Object[] elements = new Object[2];
+        Iterator<?> iter = coll.iterator();
+        elements[0] = iter.next();
+        elements[1] = iter.next();
+        
+        if (isArrayOrCollection(elements[0]) || isArrayOrCollection(elements[1])) {
+            if (flattenDimensions) return expandWithHash(coll);
+            return process1DCollection(coll);
+        }
+        
+        int h = 31 + computeElementHash(elements[0]);
+        h = h * 31 + computeElementHash(elements[1]);
+        return new Norm(elements, h);
+    }
+    
+    private Norm flattenCollection3(Collection<?> coll) {
+        // Optimized unrolled version for size 3
+        if (coll instanceof RandomAccess) {
+            List<?> list = (List<?>) coll;
+            Object elem0 = list.get(0);
+            Object elem1 = list.get(1);
+            Object elem2 = list.get(2);
+            
+            if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1) || isArrayOrCollection(elem2)) {
+                if (flattenDimensions) return expandWithHash(coll);
+                return process1DCollection(coll);
+            }
+            
+            int h = 31 + computeElementHash(elem0);
+            h = h * 31 + computeElementHash(elem1);
+            h = h * 31 + computeElementHash(elem2);
+            return new Norm(coll, h);
+        }
+        
+        // Non-RandomAccess path
+        Object[] elements = new Object[3];
+        Iterator<?> iter = coll.iterator();
+        elements[0] = iter.next();
+        elements[1] = iter.next();
+        elements[2] = iter.next();
+        
+        if (isArrayOrCollection(elements[0]) || isArrayOrCollection(elements[1]) || 
+            isArrayOrCollection(elements[2])) {
+            if (flattenDimensions) return expandWithHash(coll);
+            return process1DCollection(coll);
+        }
+        
+        int h = 31 + computeElementHash(elements[0]);
+        h = h * 31 + computeElementHash(elements[1]);
+        h = h * 31 + computeElementHash(elements[2]);
+        return new Norm(elements, h);
+    }
+    
+    private Norm flattenCollection4(Collection<?> coll) {
+        // Optimized unrolled version for size 4
+        if (coll instanceof RandomAccess) {
+            List<?> list = (List<?>) coll;
+            Object elem0 = list.get(0);
+            Object elem1 = list.get(1);
+            Object elem2 = list.get(2);
+            Object elem3 = list.get(3);
+            
+            if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1) || 
+                isArrayOrCollection(elem2) || isArrayOrCollection(elem3)) {
+                if (flattenDimensions) return expandWithHash(coll);
+                return process1DCollection(coll);
+            }
+            
+            int h = 31 + computeElementHash(elem0);
+            h = h * 31 + computeElementHash(elem1);
+            h = h * 31 + computeElementHash(elem2);
+            h = h * 31 + computeElementHash(elem3);
+            return new Norm(coll, h);
+        }
+        
+        // Non-RandomAccess path
+        Object[] elements = new Object[4];
+        Iterator<?> iter = coll.iterator();
+        elements[0] = iter.next();
+        elements[1] = iter.next();
+        elements[2] = iter.next();
+        elements[3] = iter.next();
+        
+        if (isArrayOrCollection(elements[0]) || isArrayOrCollection(elements[1]) || 
+            isArrayOrCollection(elements[2]) || isArrayOrCollection(elements[3])) {
+            if (flattenDimensions) return expandWithHash(coll);
+            return process1DCollection(coll);
+        }
+        
+        int h = 31 + computeElementHash(elements[0]);
+        h = h * 31 + computeElementHash(elements[1]);
+        h = h * 31 + computeElementHash(elements[2]);
+        h = h * 31 + computeElementHash(elements[3]);
+        return new Norm(elements, h);
+    }
+    
+    /**
+     * Parameterized version of Object[] flattening for sizes 6-10.
+     * Uses loops instead of unrolling to handle any size efficiently.
+     */
+    private Norm flattenObjectArrayN(Object[] array, int size) {
+        // Single pass: check complexity AND compute hash
+        int h = 1;
+        for (int i = 0; i < size; i++) {
+            Object elem = array[i];
+            if (isArrayOrCollection(elem)) {
+                // Found complex element - bail out
+                if (flattenDimensions) return expandWithHash(array);
+                return process1DObjectArray(array);
+            }
+            h = h * 31 + computeElementHash(elem);
+        }
+        
+        // All simple - return with computed hash
+        return new Norm(array, h);
+    }
+    
+    /**
+     * Parameterized version of collection flattening for sizes 6-10.
+     * This version uses loops instead of unrolling to handle any size.
+     */
+    private Norm flattenCollectionN(Collection<?> coll, int size) {
+        // RandomAccess path - NO HEAP ALLOCATION
+        if (coll instanceof RandomAccess) {
+            List<?> list = (List<?>) coll;
+            
+            // Single pass: check complexity AND compute hash
+            int h = 1;
+            for (int i = 0; i < size; i++) {
+                Object elem = list.get(i);
+                if (isArrayOrCollection(elem)) {
+                    // Found complex element - bail out
+                    if (flattenDimensions) return expandWithHash(coll);
+                    return process1DCollection(coll);
+                }
+                h = h * 31 + computeElementHash(elem);
+            }
+            
+            // All simple - return with computed hash
+            return new Norm(coll, h);
+        }
+        
+        // Non-RandomAccess path - must create array
+        Object[] elements = new Object[size];
+        Iterator<?> iter = coll.iterator();
+        
+        // Single pass: fill array, check complexity, AND compute hash
+        int h = 1;
+        for (int i = 0; i < size; i++) {
+            elements[i] = iter.next();
+            if (isArrayOrCollection(elements[i])) {
+                // Found complex element - fill rest of array then bail out
+                for (int j = i + 1; j < size; j++) {
+                    elements[j] = iter.next();
+                }
+                if (flattenDimensions) return expandWithHash(coll);
+                return process1DCollection(coll);
+            }
+            h = h * 31 + computeElementHash(elements[i]);
+        }
+        
+        // All simple - return with computed hash
+        return new Norm(elements, h);
     }
 
     private Norm process1DObjectArray(final Object[] array) {
@@ -712,14 +998,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return new Norm(array, 0);
         }
         
-        // Check if truly 1D while computing hash
+        // Check if truly 1D while computing full hash
         int h = 1;
         boolean is1D = true;
         
-        // Optimized loop - stop as soon as we know it's not 1D or reach MAX_HASH_ELEMENTS
-        final int hashLimit = Math.min(len, maxHashElements);
-        int i;
-        for (i = 0; i < hashLimit; i++) {
+        // Check all elements and compute full hash
+        for (int i = 0; i < len; i++) {
             final Object e = array[i];
             if (e == null) {
                 // h = h * 31 + 0; // This is just h * 31, optimize it
@@ -737,29 +1021,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
         
-        // If we haven't checked all elements for dimensionality, continue checking (but don't update hash)
-        if (is1D && i < len) {
-            for (; i < len; i++) {
-                final Object e = array[i];
-                if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
-                    is1D = false;
-                    break;
-                }
-            }
-        }
-        
         if (is1D) {
-            // Single element optimization - always collapse single element arrays
-            if (array.length == 1) {
-                Object element = array[0];
-                if (element == null) {
-                    // Return NULL_SENTINEL with matching hash for consistency
-                    return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
-                } else {
-                    // Recompute hash for the single element to match a simple object case
-                    return new Norm(element, computeElementHash(element));
-                }
-            }
+            // No collapse - arrays stay as arrays
             return new Norm(array, h);
         }
         
@@ -778,64 +1041,34 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         boolean is1D = true;
         
         // Use type-specific fast paths for optimal performance
-        if (coll instanceof ArrayList) {
-            ArrayList<?> list = (ArrayList<?>) coll;
+        if (coll instanceof RandomAccess && coll instanceof List) {
+            List<?> list = (List<?>) coll;
             final int size = list.size();
-            final int hashLimit = Math.min(size, maxHashElements);
-            int i;
-            for (i = 0; i < hashLimit; i++) {
+            // Compute full hash for all elements
+            for (int i = 0; i < size; i++) {
                 Object e = list.get(i);
                 h = h * 31 + computeElementHash(e);
-                if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                if (e instanceof Collection || (e != null && e.getClass().isArray())) {
                     is1D = false;
                     break;
-                }
-            }
-            // If we haven't checked all elements for dimensionality, continue checking
-            if (is1D && i < size) {
-                for (; i < size; i++) {
-                    Object e = list.get(i);
-                    if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
-                        is1D = false;
-                        break;
-                    }
                 }
             }
         } else {
             // Fallback to explicit iterator for other collection types
             Iterator<?> iter = coll.iterator();
-            int count = 0;
             while (iter.hasNext()) {
                 Object e = iter.next();
-                // Only compute hash for first MAX_HASH_ELEMENTS
-                if (count < maxHashElements) {
-                    h = h * 31 + computeElementHash(e);
-                }
-                if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+                // Compute hash for all elements
+                h = h * 31 + computeElementHash(e);
+                if (e instanceof Collection || (e != null && e.getClass().isArray())) {
                     is1D = false;
-                    if (count >= maxHashElements) {
-                        break; // We've computed enough hash and found it's not 1D
-                    }
-                }
-                count++;
-                if (!is1D && count >= maxHashElements) {
-                    break; // No need to continue
+                    break;
                 }
             }
         }
         
         if (is1D) {
-            // Single element optimization - always collapse single element collections
-            if (coll.size() == 1) {
-                Object single = coll.iterator().next();
-                if (single == null) {
-                    // Return NULL_SENTINEL with matching hash for consistency
-                    return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
-                } else {
-                    // Recompute hash for the single element to match a simple object case
-                    return new Norm(single, computeElementHash(single));
-                }
-            }
+            // No collapse - collections stay as collections
             
             // For non-random-access collections, convert to Object[] for fast indexed access
             // This ensures consistent O(1) element access in keysMatch comparisons
@@ -854,24 +1087,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private Norm process1DTypedArray(Object arr) {
         Class<?> clazz = arr.getClass();
         
-        // Use type-specific fast paths for optimal performance
+        // Primitive arrays are already handled in flattenKey() and never reach here
+        // Only handle common non-primitive array types for optimization
+        
         if (clazz == String[].class) {
             return process1DStringArray((String[]) arr);
         }
-        if (clazz == int[].class) {
-            return process1DIntArray((int[]) arr);
-        }
-        if (clazz == long[].class) {
-            return process1DLongArray((long[]) arr);
-        }
-        if (clazz == double[].class) {
-            return process1DDoubleArray((double[]) arr);
-        }
-        if (clazz == boolean[].class) {
-            return process1DBooleanArray((boolean[]) arr);
-        }
         
-        // Fallback to reflection for uncommon array types
+        // Could add more common types here if needed:
+        // Integer[], Long[], Double[], Date[], UUID[], etc.
+        // For now, String[] is the most common non-primitive array type
+        
+        // Fallback to reflection for other array types
         return process1DGenericArray(arr);
     }
     
@@ -885,122 +1112,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // String arrays are always 1D (String elements can't be arrays or collections)
         // Optimized: Strings are common and don't need special handling
         int h = 1;
-        final int hashLimit = Math.min(len, maxHashElements);
-        for (int i = 0; i < hashLimit; i++) {
+        // Compute full hash for all elements
+        for (int i = 0; i < len; i++) {
             final String s = array[i];
             h = h * 31 + (s == null ? 0 : s.hashCode());
         }
         
-        // Single element optimization - always collapse single element arrays
-        if (array.length == 1) {
-            String element = array[0];
-            if (element == null) {
-                // Return NULL_SENTINEL with matching hash for consistency
-                return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
-            } else {
-                // Recompute hash for the single element to match a simple object case
-                return new Norm(element, computeElementHash(element));
-            }
-        }
-        
-        return new Norm(array, h);
-    }
-    
-    private Norm process1DIntArray(int[] array) {
-        
-        final int len = array.length;
-        if (len == 0) {
-            return new Norm(array, 0);
-        }
-        
-        // int arrays are always 1D (primitives can't contain collections/arrays)
-        // Optimized: Direct primitive access without method call overhead
-        int h = 1;
-        final int hashLimit = Math.min(len, maxHashElements);
-        for (int i = 0; i < hashLimit; i++) {
-            h = h * 31 + array[i];  // Integer.hashCode(x) just returns x
-        }
-        
-        // Single element optimization - always collapse single element arrays
-        if (array.length == 1) {
-            // Recompute hash for the single element to match a simple object case
-            return new Norm(array[0], Integer.hashCode(array[0])); // Return the primitive value
-        }
-        
-        return new Norm(array, h);
-    }
-    
-    private Norm process1DLongArray(long[] array) {
-        
-        final int len = array.length;
-        if (len == 0) {
-            return new Norm(array, 0);
-        }
-        
-        // long arrays are always 1D (primitives can't contain collections/arrays)
-        // Optimized: Inline Long.hashCode for better performance
-        int h = 1;
-        final int hashLimit = Math.min(len, maxHashElements);
-        for (int i = 0; i < hashLimit; i++) {
-            final long v = array[i];
-            h = h * 31 + (int)(v ^ (v >>> 32));  // Inlined Long.hashCode
-        }
-        
-        // Single element optimization - always collapse single element arrays
-        if (array.length == 1) {
-            // Recompute hash for the single element to match a simple object case
-            return new Norm(array[0], Long.hashCode(array[0])); // Return the primitive value
-        }
-        
-        return new Norm(array, h);
-    }
-    
-    private Norm process1DDoubleArray(double[] array) {
-        
-        final int len = array.length;
-        if (len == 0) {
-            return new Norm(array, 0);
-        }
-        
-        // double arrays are always 1D (primitives can't contain collections/arrays)
-        // Optimized: Inline Double.hashCode for better performance
-        int h = 1;
-        final int hashLimit = Math.min(len, maxHashElements);
-        for (int i = 0; i < hashLimit; i++) {
-            final long bits = Double.doubleToLongBits(array[i]);
-            h = h * 31 + (int)(bits ^ (bits >>> 32));  // Inlined Double.hashCode
-        }
-        
-        // Single element optimization - always collapse single element arrays
-        if (array.length == 1) {
-            // Recompute hash for the single element to match a simple object case
-            return new Norm(array[0], Double.hashCode(array[0])); // Return the primitive value
-        }
-        
-        return new Norm(array, h);
-    }
-    
-    private Norm process1DBooleanArray(boolean[] array) {
-        
-        final int len = array.length;
-        if (len == 0) {
-            return new Norm(array, 0);
-        }
-        
-        // boolean arrays are always 1D (primitives can't contain collections/arrays)
-        // Optimized: Inline Boolean.hashCode for better performance
-        int h = 1;
-        final int hashLimit = Math.min(len, maxHashElements);
-        for (int i = 0; i < hashLimit; i++) {
-            h = h * 31 + (array[i] ? 1231 : 1237);  // Inlined Boolean.hashCode
-        }
-        
-        // Single element optimization - always collapse single element arrays
-        if (array.length == 1) {
-            // Recompute hash for the single element to match a simple object case
-            return new Norm(array[0], Boolean.hashCode(array[0])); // Return the primitive value
-        }
-        
+        // No collapse - arrays stay as arrays
         return new Norm(array, h);
     }
     
@@ -1011,45 +1129,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return new Norm(arr, 0);
         }
         
-        // Check if truly 1D while computing hash (same as process1DObjectArray)
+        // Check if truly 1D while computing full hash (same as process1DObjectArray)
         int h = 1;
         boolean is1D = true;
         
-        // Optimized loop - stop as soon as we know it's not 1D or reach MAX_HASH_ELEMENTS
-        final int hashLimit = Math.min(len, maxHashElements);
-        int i;
-        for (i = 0; i < hashLimit; i++) {
+        // Compute full hash for all elements
+        for (int i = 0; i < len; i++) {
             Object e = Array.get(arr, i);
             h = h * 31 + computeElementHash(e);
-            if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
+            if (e instanceof Collection || (e != null && e.getClass().isArray())) {
                 is1D = false;
                 break;
             }
         }
         
-        // If we haven't checked all elements for dimensionality, continue checking (but don't update hash)
-        if (is1D && i < len) {
-            for (; i < len; i++) {
-                Object e = Array.get(arr, i);
-                if (e != null && (e.getClass().isArray() || e instanceof Collection)) {
-                    is1D = false;
-                    break;
-                }
-            }
-        }
-        
         if (is1D) {
-            // Single element optimization - always collapse single element arrays
-            if (len == 1) {
-                Object single = Array.get(arr, 0);
-                if (single == null) {
-                    // Return NULL_SENTINEL with matching hash for consistency
-                    return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
-                } else {
-                    // Recompute hash for the single element to match a simple object case
-                    return new Norm(single, computeElementHash(single));
-                }
-            }
+            // No collapse - arrays stay as arrays
             return new Norm(arr, h);
         }
         
@@ -1082,16 +1177,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         int hash = expandAndHash(key, expanded, visited, 1, flattenDimensions);
         
-        // Single element optimization - always collapse single elements after expansion
-        if (expanded.size() == 1) {
-            Object result = expanded.get(0);
-            // IMPORTANT: Handle NULL_SENTINEL specially to match top-level null hash
-            if (result == NULL_SENTINEL) {
-                return new Norm(NULL_SENTINEL, 0); // Match top-level null normalization
-            }
-            // Recompute hash for the single element to match a simple object case
-            return new Norm(result, computeElementHash(result));
-        }
+        // NO COLLAPSE - expanded results stay as lists
+        // Even single-element expanded results remain as lists to maintain consistency
+        // [x] should never become x
         
         return new Norm(expanded, hash);
     }
@@ -1168,639 +1256,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return null;
     }
-    
-    /**
-     * TRUE FAST PATH: Direct bucket lookup for simple single keys.
-     * Completely bypasses flattenKey() and all normalization overhead.
-     * This is the fastest possible lookup for single non-array, non-collection keys.
-     */
-    private MultiKey<V> findSimpleSingleKeyEntry(Object key) {
-        // Fix null key hashing consistency: use same logic as flattenKey
-        final int hash;
-        final Object lookupKey;
-        if (key == null) {
-            hash = 0; // Same as flattenKey: hashPass[0] = 0
-            lookupKey = NULL_SENTINEL;
-        } else {
-            hash = computeElementHash(key);
-            lookupKey = key;
-        }
-        
-        // Direct bucket lookup - pin table reference to avoid race condition
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int index = hash & (table.length() - 1);
-        final MultiKey<V>[] chain = table.get(index);
-        if (chain == null) return null;
-        
-        // Find the entry
-        final int chLen = chain.length;
-
-        for (int i = 0; i < chLen; i++) {
-            MultiKey<V> entry = chain[i];
-            if (entry.hash == hash && keysMatch(entry, lookupKey)) {
-                return entry;
-            }
-        }
-        return null;
-    }
-    
-    private boolean containsSimpleSingleKey(Object key) {
-        return findSimpleSingleKeyEntry(key) != null;
-    }
-    
-    private boolean containsEmptyArray() {
-        // Empty array - find the normalized empty key
-        final Norm norm = flattenKey(ArrayUtilities.EMPTY_OBJECT_ARRAY);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsArrayLength1(Object[] array) {
-        final Object element = array[0];
-        
-        // Check if element is simple or complex
-        if (!isArrayOrCollection(element)) {
-            // Simple element - array might collapse to single element
-            // Must check both the array form and collapsed form
-            
-            MultiKey<V> entry;
-            
-            // First try as collapsed single element
-            if (element == null) {
-                // Null collapses to NULL_SENTINEL
-                entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
-            } else {
-                final int hash = element.hashCode();
-                entry = findEntryWithPrecomputedHash(element, hash);
-            }
-            if (entry != null) return true;
-
-            // Also try as array (in case it was stored as array)
-            entry = findEntryWithPrecomputedHash(array, 31 + computeElementHash(element));
-            return entry != null;
-        }
-        
-        // Complex element - go DIRECTLY to expansion (we know it has nested structures)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsArrayLength2(Object[] array) {
-        final Object key1 = array[0];
-        final Object key2 = array[1];
-        
-        // Check if both elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
-            // TRUE FAST PATH - compute hash directly using computeElementHash
-            int h = 31 + computeElementHash(key1);
-            final int hash = h * 31 + computeElementHash(key2);
-
-            final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
-            return entry != null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsArrayLength3(Object[] array) {
-        final Object key1 = array[0];
-        final Object key2 = array[1];
-        final Object key3 = array[2];
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && !isArrayOrCollection(key3)) {
-            // TRUE FAST PATH - compute hash directly
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            final int hash = h * 31 + computeElementHash(key3);
-
-            final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
-            return entry != null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsArrayLength4(Object[] array) {
-        final Object key1 = array[0];
-        final Object key2 = array[1];
-        final Object key3 = array[2];
-        final Object key4 = array[3];
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
-            !isArrayOrCollection(key3) && !isArrayOrCollection(key4)) {
-            // TRUE FAST PATH - compute hash directly
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            h = h * 31 + computeElementHash(key3);
-            final int hash = h * 31 + computeElementHash(key4);
-
-            final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
-            return entry != null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsArrayLength5(Object[] array) {
-        final Object key1 = array[0];
-        final Object key2 = array[1];
-        final Object key3 = array[2];
-        final Object key4 = array[3];
-        final Object key5 = array[4];
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
-            !isArrayOrCollection(key3) && !isArrayOrCollection(key4) && 
-            !isArrayOrCollection(key5)) {
-            // TRUE FAST PATH - compute hash directly using ALL 5 elements
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            h = h * 31 + computeElementHash(key3);
-            h = h * 31 + computeElementHash(key4);
-            final int hash = h * 31 + computeElementHash(key5);
-
-            final MultiKey<V> entry = findEntryWithPrecomputedHash(array, hash);
-            return entry != null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsCollectionLength1(Collection<?> coll) {
-        final Object element = coll.iterator().next();
-        
-        // Check if element is simple or complex
-        if (!isArrayOrCollection(element)) {
-            // Simple element - collection might collapse to single element
-            // Must check both the collection form and collapsed form
-            
-            MultiKey<V> entry;
-            
-            // First try as collapsed single element
-            if (element == null) {
-                // Null collapses to NULL_SENTINEL
-                entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
-            } else {
-                final int hash = element.hashCode();
-                entry = findEntryWithPrecomputedHash(element, hash);
-            }
-            if (entry != null) return true;
-
-            // Also try as collection (in case it was stored as collection)
-            entry = findEntryWithPrecomputedHash(coll, 31 + computeElementHash(element));
-            return entry != null;
-        }
-        
-        // Complex element - go DIRECTLY to expansion (we know it has nested structures)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsCollectionLength2(Collection<?> coll) {
-        final Iterator<?> iter = coll.iterator();
-        final Object key1 = iter.next();
-        final Object key2 = iter.next();
-        
-        // Check if both elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
-            // TRUE FAST PATH - compute hash directly using computeElementHash
-            int h = 31 + computeElementHash(key1);
-            final int hash = h * 31 + computeElementHash(key2);
-
-            final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-            return entry != null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsCollectionLength3(Collection<?> coll) {
-        final Iterator<?> iter = coll.iterator();
-        final Object key1 = iter.next();
-        final Object key2 = iter.next();
-        final Object key3 = iter.next();
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && !isArrayOrCollection(key3)) {
-            // TRUE FAST PATH - compute hash directly
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            final int hash = h * 31 + computeElementHash(key3);
-
-            final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-            return entry != null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsCollectionLength4(Collection<?> coll) {
-        final Iterator<?> iter = coll.iterator();
-        final Object key1 = iter.next();
-        final Object key2 = iter.next();
-        final Object key3 = iter.next();
-        final Object key4 = iter.next();
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
-            !isArrayOrCollection(key3) && !isArrayOrCollection(key4)) {
-            // TRUE FAST PATH - compute hash directly
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            h = h * 31 + computeElementHash(key3);
-            final int hash = h * 31 + computeElementHash(key4);
-
-            final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-            return entry != null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private boolean containsCollectionLength5(Collection<?> coll) {
-        final Iterator<?> iter = coll.iterator();
-        final Object key1 = iter.next();
-        final Object key2 = iter.next();
-        final Object key3 = iter.next();
-        final Object key4 = iter.next();
-        final Object key5 = iter.next();
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
-            !isArrayOrCollection(key3) && !isArrayOrCollection(key4) && 
-            !isArrayOrCollection(key5)) {
-            // TRUE FAST PATH - compute hash directly using ALL 5 elements
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            h = h * 31 + computeElementHash(key3);
-            h = h * 31 + computeElementHash(key4);
-            final int hash = h * 31 + computeElementHash(key5);
-
-            final MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-            return entry != null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null;
-    }
-    
-    private V getSimpleSingleKey(final Object key) {
-        MultiKey<V> entry = findSimpleSingleKeyEntry(key);
-        return entry != null ? entry.value : null;
-    }
-    
-    /**
-     * Optimized lookup for empty arrays.
-     */
-    private V getEmptyArray() {
-        // Empty array has hash 0
-        final Norm norm = flattenKey(ArrayUtilities.EMPTY_OBJECT_ARRAY);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    /**
-     * Optimized lookup for single-element Object arrays.
-     */
-    private V getArrayLength1(Object[] array) {
-        final Object element = array[0];
-        
-        // Check if element is simple or complex
-        if (!isArrayOrCollection(element)) {
-            // Simple element - array might collapse to single element
-            // Must check both the array form and collapsed form
-            
-            MultiKey<V> entry;
-            
-            // First try as collapsed single element
-            if (element == null) {
-                // Null collapses to NULL_SENTINEL
-                entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
-            } else {
-                final int hash = computeElementHash(element);
-                entry = findEntryWithPrecomputedHash(element, hash);
-            }
-            if (entry != null) return entry.value;
-
-            // Also try as array (in case it was stored as array)
-            entry = findEntryWithPrecomputedHash(array, 31 + computeElementHash(element));
-            return entry != null ? entry.value : null;
-        }
-        
-        // Complex element - go DIRECTLY to expansion (we know it has nested structures)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    /**
-     * Unrolled collision chain lookup optimized for common case of 1-3 elements.
-     * Falls back to loop for longer chains (very rare - <0.1% collision rate).
-     */
-    private V findInChain(MultiKey<V>[] chain, int hash, Object[] keys) {
-        final int chLen = chain.length;
-        // Fall back to loop for longer chains (very rare)
-        
-        for (int i = 0; i < chLen; i++) {
-            MultiKey<V> entry = chain[i];
-            if (entry.hash == hash && keysMatch(entry, keys)) {
-                return entry.value;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Optimized lookup for two-element Object arrays.
-     * This is a very common case that deserves optimization.
-     */
-    private V getArrayLength2(Object[] array) {
-        final Object key1 = array[0];
-        final Object key2 = array[1];
-        
-        // Check if both elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
-            // TRUE FAST PATH - compute hash directly using computeElementHash
-            int h = 31 + computeElementHash(key1);
-            final int hash = h * 31 + computeElementHash(key2);
-
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
-            if (chain == null) return null;
-            
-            return findInChain(chain, hash, array);
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    /**
-     * Optimized lookup for three-element Object arrays.
-     */
-    private V getArrayLength3(Object[] array) {
-        final Object key1 = array[0];
-        final Object key2 = array[1];
-        final Object key3 = array[2];
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && !isArrayOrCollection(key3)) {
-            // TRUE FAST PATH - compute hash directly
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            final int hash = h * 31 + computeElementHash(key3);
-
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
-            if (chain == null) return null;
-            
-            return findInChain(chain, hash, array);
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    /**
-     * Optimized lookup for four-element Object arrays.
-     */
-    private V getArrayLength4(Object[] array) {
-        final Object key1 = array[0];
-        final Object key2 = array[1];
-        final Object key3 = array[2];
-        final Object key4 = array[3];
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
-            !isArrayOrCollection(key3) && !isArrayOrCollection(key4)) {
-            // TRUE FAST PATH - compute hash directly (only first 4 elements per MAX_HASH_ELEMENTS)
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            h = h * 31 + computeElementHash(key3);
-            final int hash = h * 31 + computeElementHash(key4);
-
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
-            if (chain == null) return null;
-            
-            return findInChain(chain, hash, array);
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    /**
-     * Optimized lookup for five-element Object arrays.
-     * Uses all 5 elements in hash computation for better distribution.
-     */
-    private V getArrayLength5(Object[] array) {
-        final Object key1 = array[0];
-        final Object key2 = array[1];
-        final Object key3 = array[2];
-        final Object key4 = array[3];
-        final Object key5 = array[4];
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
-            !isArrayOrCollection(key3) && !isArrayOrCollection(key4) && 
-            !isArrayOrCollection(key5)) {
-            // TRUE FAST PATH - compute hash directly using ALL 5 elements
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            h = h * 31 + computeElementHash(key3);
-            h = h * 31 + computeElementHash(key4);
-            final int hash = h * 31 + computeElementHash(key5);
-
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
-            if (chain == null) return null;
-            
-            return findInChain(chain, hash, array);
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(array);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-
-    private V getCollectionLength1(Collection<?> coll) {
-        final Object element = coll.iterator().next();
-        
-        // Check if element is simple or complex
-        if (!isArrayOrCollection(element)) {
-            // Simple element - collection might collapse to single element
-            // Must check both the collection form and collapsed form
-            
-            MultiKey<V> entry;
-            
-            // First try as collapsed single element
-            if (element == null) {
-                // Null collapses to NULL_SENTINEL
-                entry = findEntryWithPrecomputedHash(NULL_SENTINEL, 0);
-            } else {
-                final int hash = element.hashCode();
-                entry = findEntryWithPrecomputedHash(element, hash);
-            }
-            if (entry != null) return entry.value;
-
-            // Also try as collection (in case it was stored as collection)
-            entry = findEntryWithPrecomputedHash(coll, 31 + computeElementHash(element));
-            return entry != null ? entry.value : null;
-        }
-        
-        // Complex element - go DIRECTLY to expansion (we know it has nested structures)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    private V getCollectionLength2(Collection<?> coll) {
-        final Iterator<?> iter = coll.iterator();
-        final Object key1 = iter.next();
-        final Object key2 = iter.next();
-        
-        // Check if both elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2)) {
-            // TRUE FAST PATH - compute hash directly using computeElementHash
-            int h = 31 + computeElementHash(key1);
-            final int hash = h * 31 + computeElementHash(key2);
-
-            // Direct bucket lookup - pin table reference to avoid race condition
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-            final int index = hash & (table.length() - 1);
-            final MultiKey<V>[] chain = table.get(index);
-            if (chain == null) return null;
-
-            MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-            return entry != null ? entry.value : null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    private V getCollectionLength3(Collection<?> coll) {
-        final Iterator<?> iter = coll.iterator();
-        final Object key1 = iter.next();
-        final Object key2 = iter.next();
-        final Object key3 = iter.next();
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && !isArrayOrCollection(key3)) {
-            // TRUE FAST PATH - compute hash directly
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            final int hash = h * 31 + computeElementHash(key3);
-
-            MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-            return entry != null ? entry.value : null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    private V getCollectionLength4(Collection<?> coll) {
-        final Iterator<?> iter = coll.iterator();
-        final Object key1 = iter.next();
-        final Object key2 = iter.next();
-        final Object key3 = iter.next();
-        final Object key4 = iter.next();
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
-            !isArrayOrCollection(key3) && !isArrayOrCollection(key4)) {
-            // TRUE FAST PATH - compute hash directly
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            h = h * 31 + computeElementHash(key3);
-            final int hash = h * 31 + computeElementHash(key4);
-
-            MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-            return entry != null ? entry.value : null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
-    
-    private V getCollectionLength5(Collection<?> coll) {
-        final Iterator<?> iter = coll.iterator();
-        final Object key1 = iter.next();
-        final Object key2 = iter.next();
-        final Object key3 = iter.next();
-        final Object key4 = iter.next();
-        final Object key5 = iter.next();
-        
-        // Check if all elements are simple
-        if (!isArrayOrCollection(key1) && !isArrayOrCollection(key2) && 
-            !isArrayOrCollection(key3) && !isArrayOrCollection(key4) && 
-            !isArrayOrCollection(key5)) {
-            // TRUE FAST PATH - compute hash directly using ALL 5 elements
-            int h = 31 + computeElementHash(key1);
-            h = h * 31 + computeElementHash(key2);
-            h = h * 31 + computeElementHash(key3);
-            h = h * 31 + computeElementHash(key4);
-            final int hash = h * 31 + computeElementHash(key5);
-
-            MultiKey<V> entry = findEntryWithPrecomputedHash(coll, hash);
-            return entry != null ? entry.value : null;
-        }
-        
-        // At least one complex element - go DIRECTLY to expansion (skip dimensionality check)
-        final Norm norm = expandWithHash(coll);
-        final MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
-        return entry != null ? entry.value : null;
-    }
 
     /**
      * Optimized keysMatch that leverages MultiKey's precomputed arity and kind.
@@ -1857,16 +1312,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 
             case MultiKey.KIND_COLLECTION:
                 if (lookupKind == MultiKey.KIND_COLLECTION && storeKeysClass == lookupClass) {
-                    // Same collection type - optimize for ArrayList
-                    if (storeKeysClass == ArrayList.class) {
-                        ArrayList<?> s = (ArrayList<?>) stored.keys;
-                        ArrayList<?> l = (ArrayList<?>) lookup;
-                        int len = stored.arity;
-                        for (int i = 0; i < len; i++) {
-                            if (!Objects.equals(s.get(i), l.get(i))) return false;
-                        }
-                        return true;
-                    }
+                    // Same collection type - use built-in equals() method
+                    return stored.keys.equals(lookup);
                 }
                 // Fall through to cross-type comparison
                 break;
@@ -1892,7 +1339,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     /**
-     * Helper for cross-type comparisons when stored and lookup have different types.
+     * Helper for cross-type comparisons when stored and lookup have different container types.
      * Uses precomputed kind to avoid instanceof checks.
      */
     private static boolean keysMatchCrossType(Object stored, Object lookup, int arity, byte storedKind, byte lookupKind) {
@@ -1911,8 +1358,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return true;
     }
-
-
+    
     private static class ArrayIterator implements Iterator<Object> {
         private final Object array;
         private final int len;
@@ -2041,82 +1487,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if this map contains a mapping for the specified key
      */
     public boolean containsKey(Object key) {
-        // Single key fast path
-        if (!isArrayOrCollection(key)) {
-            // TRUE ULTRA-FAST PATH: Direct lookup, bypasses ALL normalization
-            return containsSimpleSingleKey(key);
-        }
-        
-        // PRIMITIVE ARRAY CONVERSION FOR FAST PATH OPTIMIZATION
-        // Convert small primitive arrays to Object[] to leverage existing fast paths
-        final Class<?> keyClass = key.getClass();
-        if (keyClass.isArray() && keyClass.getComponentType().isPrimitive()) {
-            int length = Array.getLength(key);
-            if (length <= 5) {  // Only convert small arrays for fast path
-                Object[] converted = new Object[length];
-                for (int i = 0; i < length; i++) {
-                    converted[i] = Array.get(key, i);  // Auto-boxes primitives
-                }
-                key = converted;  // Replace key with converted Object[]
-            }
-        }
-        
-        // SMART ROUTING FOR ALL OBJECT ARRAYS - optimized paths based on length
-        // Check exact Object[] first (fastest), then other Object array types
-        if (key instanceof Object[]) {
-            Object[] array = (Object[]) key;
-            
-            switch (array.length) {
-                case 0:
-                    // Empty array - special case
-                    return containsEmptyArray();
-                case 1:
-                    // Single element array - might collapse to single key
-                    return containsArrayLength1(array);
-                case 2:
-                    // Two element array - common case, optimize!
-                    return containsArrayLength2(array);
-                case 3:
-                    // Three element array - worth optimizing
-                    return containsArrayLength3(array);
-                case 4:
-                    // Four element array - worth optimizing
-                    return containsArrayLength4(array);
-                case 5:
-                    // Five element array - worth optimizing
-                    return containsArrayLength5(array);
-            }
-        }
-        
-        // SMART ROUTING FOR COLLECTIONS - optimized paths based on size
-        // Only if collections are expanded (not treated as regular keys)
-        if (key instanceof Collection && collectionKeyMode != CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-            Collection<?> coll = (Collection<?>) key;
-            
-            switch (coll.size()) {
-                case 0:
-                    // Empty collection - special case (same as empty array)
-                    return containsEmptyArray();
-                case 1:
-                    // Single element collection - might collapse to single key
-                    return containsCollectionLength1(coll);
-                case 2:
-                    // Two element collection - common case, optimize!
-                    return containsCollectionLength2(coll);
-                case 3:
-                    // Three element collection - worth optimizing
-                    return containsCollectionLength3(coll);
-                case 4:
-                    // Four element collection - worth optimizing
-                    return containsCollectionLength4(coll);
-                case 5:
-                    // Five element collection - worth optimizing
-                    return containsCollectionLength5(coll);
-            }
-        }
-        
-        // Other array types and large collections - use informed handoff
-        Norm norm = flattenKeyKnownArrayOrCollection(key);
+        // Use the unified normalization method
+        Norm norm = flattenKey(key);
         MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
         return entry != null;
     }

@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 
 /**
  * Performance comparison between Cedar's MultiKeyMap and Apache Commons Collections' MultiKeyMap.
- * Tests various key counts (1-6) and data sizes (100-250,000).
+ * Tests various key counts (1-8) and data sizes (100-250,000).
  * 
  * This test ensures fair comparison by:
  * 1. Warming up the JIT compiler
@@ -111,9 +111,6 @@ public class MultiKeyMapPerformanceComparisonTest {
         for (TestConfig config : configs) {
             runComparison(config);
         }
-        
-        // Summary statistics
-        printSummaryStatistics();
     }
     
     private void warmupJIT() {
@@ -324,25 +321,5 @@ public class MultiKeyMapPerformanceComparisonTest {
         } else {
             return "Tie";
         }
-    }
-    
-    private void printSummaryStatistics() {
-        LOG.info("\n=== Summary Statistics ===");
-        LOG.info("Note: Results may vary based on JVM version, hardware, and system load.");
-        LOG.info("\nCedar MultiKeyMap advantages:");
-        LOG.info("  - Supports arrays and collections as keys (Apache does not)");
-        LOG.info("  - Thread-safe with striped locking");
-        LOG.info("  - Optimized fast paths for 1-4 simple keys");
-        LOG.info("  - Smart routing based on key complexity");
-        LOG.info("  - Handles nested structures efficiently");
-        LOG.info("\nApache MultiKeyMap advantages:");
-        LOG.info("  - Simpler implementation for basic use cases");
-        LOG.info("  - No overhead for thread safety when not needed");
-        LOG.info("  - Part of widely-used Apache Commons Collections");
-        LOG.info("\nPerformance expectations:");
-        LOG.info("  - Cedar should excel with 1-4 simple keys (optimized paths)");
-        LOG.info("  - Cedar should perform well with 5+ keys (optimized 1D detection)");
-        LOG.info("  - Apache may have advantage at 5 keys (hardcoded optimization)");
-        LOG.info("  - Cedar's thread safety adds some overhead in single-threaded tests");
     }
 }

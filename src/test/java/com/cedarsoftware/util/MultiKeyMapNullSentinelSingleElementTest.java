@@ -6,9 +6,11 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test to verify NULL_SENTINEL single-element optimization in expandWithHash method.
- * This test ensures that single-element arrays/collections containing null are properly
- * handled with the correct hash value and normalization.
+ * Test to verify single-element container behavior.
+ * Key principles:
+ * 1. No collapse: [x] never becomes x
+ * 2. Container type doesn't matter: {null} == Arrays.asList(null) == LinkedList with null
+ * 3. Direct values are different from containers: null != [null]
  */
 public class MultiKeyMapNullSentinelSingleElementTest {
     
@@ -20,16 +22,14 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         Object[] singleNullArray = {null};
         map.put(singleNullArray, "null_array_value");
         
-        // This should be normalized to NULL_SENTINEL and have hash 0
-        // The key should be accessible as null due to single-element optimization
-        assertEquals("null_array_value", map.get((Object) null));
-        assertTrue(map.containsKey((Object) null));
+        // [null] and null are DIFFERENT - no collapse
+        assertNull(map.get((Object) null));
+        assertFalse(map.containsKey((Object) null));
         
-        // Also verify direct access with the array
+        // Getting with the array should work
         assertEquals("null_array_value", map.get(singleNullArray));
         assertTrue(map.containsKey(singleNullArray));
         
-        // Should have only 1 entry (null normalization)
         assertEquals(1, map.size());
     }
     
@@ -42,13 +42,16 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         singleNullList.add(null);
         map.put(singleNullList, "null_list_value");
         
-        // This should be normalized to NULL_SENTINEL and have hash 0
-        assertEquals("null_list_value", map.get((Object) null));
-        assertTrue(map.containsKey((Object) null));
+        // Direct null is different from [null]
+        assertNull(map.get((Object) null));
+        assertFalse(map.containsKey((Object) null));
         
-        // Also verify direct access with the list
+        // Getting with the list should work
         assertEquals("null_list_value", map.get(singleNullList));
         assertTrue(map.containsKey(singleNullList));
+        
+        // Array with same content should find the same entry (container type doesn't matter)
+        assertEquals("null_list_value", map.get(new Object[]{null}));
         
         assertEquals(1, map.size());
     }
@@ -62,11 +65,11 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         singleNullSet.add(null);
         map.put(singleNullSet, "null_set_value");
         
-        // This should be normalized to NULL_SENTINEL and have hash 0
-        assertEquals("null_set_value", map.get((Object) null));
-        assertTrue(map.containsKey((Object) null));
+        // Direct null is different
+        assertNull(map.get((Object) null));
+        assertFalse(map.containsKey((Object) null));
         
-        // Also verify direct access with the set
+        // Getting with the set should work
         assertEquals("null_set_value", map.get(singleNullSet));
         assertTrue(map.containsKey(singleNullSet));
         
@@ -77,27 +80,27 @@ public class MultiKeyMapNullSentinelSingleElementTest {
     void testMixedSingleElementNullContainers() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
-        // Different single-element containers with null should all be equivalent
+        // Different single-element containers with null - all map to same key (content-based)
         Object[] nullArray = {null};
-        List<Object> nullList = Arrays.asList((Object) null);
+        List<Object> nullList = Arrays.asList((Object) null);  // Non-RandomAccess, becomes array
         Set<Object> nullSet = new HashSet<>();
         nullSet.add(null);
-        Vector<Object> nullVector = new Vector<>();
+        Vector<Object> nullVector = new Vector<>();  // RandomAccess
         nullVector.add(null);
         
         map.put(nullArray, "first_null");
-        map.put(nullList, "second_null");    // Should overwrite first_null
-        map.put(nullSet, "third_null");      // Should overwrite second_null
-        map.put(nullVector, "fourth_null");  // Should overwrite third_null
+        map.put(nullList, "second_null");    // Same key - OVERWRITES
+        map.put(nullSet, "third_null");      // Same key - OVERWRITES  
+        map.put(nullVector, "fourth_null");  // Same key - OVERWRITES
         
-        // All should resolve to the same normalized null key
-        assertEquals("fourth_null", map.get((Object) null));
+        // All resolve to same key (same content)
+        assertNull(map.get((Object) null)); // Direct null is different
         assertEquals("fourth_null", map.get(nullArray));
         assertEquals("fourth_null", map.get(nullList));
         assertEquals("fourth_null", map.get(nullSet));
         assertEquals("fourth_null", map.get(nullVector));
         
-        // Should have only 1 entry (all normalize to NULL_SENTINEL)
+        // Should have only 1 entry (all same content)
         assertEquals(1, map.size());
     }
     
@@ -108,16 +111,16 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         // Put direct null
         map.put(null, "direct_null");
         
-        // Put single-element array with null - should overwrite direct null
+        // Put single-element array with null - different key
         Object[] singleNull = {null};
         map.put(singleNull, "array_null");
         
-        // Both should resolve to the same key
-        assertEquals("array_null", map.get((Object) null));
+        // Each is a different key
+        assertEquals("direct_null", map.get((Object) null));
         assertEquals("array_null", map.get(singleNull));
         
-        // Should have only 1 entry (both normalize to NULL_SENTINEL with hash 0)
-        assertEquals(1, map.size());
+        // Should have 2 entries
+        assertEquals(2, map.size());
     }
     
     @Test
@@ -126,15 +129,15 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         
         // Put different single-element null containers
         Object[] nullArray = {null};
-        List<Object> nullList = Collections.singletonList(null);
+        List<Object> nullList = Collections.singletonList(null); // Non-RandomAccess
         
         map.put(nullArray, "value1");
-        map.put(nullList, "value2");  // Should overwrite value1
+        map.put(nullList, "value2");  // Same content - OVERWRITES
         
-        // Verify they hash to the same bucket by checking they're equivalent
+        // They map to the same key (content-based equality)
         assertEquals("value2", map.get(nullArray));
         assertEquals("value2", map.get(nullList));
-        assertEquals("value2", map.get((Object) null));
+        assertNull(map.get((Object) null)); // Direct null is different
         
         assertEquals(1, map.size());
     }
@@ -143,43 +146,37 @@ public class MultiKeyMapNullSentinelSingleElementTest {
     void testNullSentinelSpecificCase() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
-        // This test specifically targets the NULL_SENTINEL single-element optimization
-        // by using a single-element array that, after expansion, contains only NULL_SENTINEL
-        
         // Create an array with a single null element
         Object[] singleNullArray = new Object[1];
-        singleNullArray[0] = null;  // This will become NULL_SENTINEL internally
+        singleNullArray[0] = null;
         
         // Put this array as a key
         map.put(singleNullArray, "sentinel_test_value");
         
-        // The expansion should result in a single NULL_SENTINEL element
-        // which should trigger the special case: hashPass[0] = 0; return NULL_SENTINEL;
-        
-        // Verify the behavior matches expectations
-        assertEquals("sentinel_test_value", map.get((Object) null));
+        // Direct null is different
+        assertNull(map.get((Object) null));
         assertEquals("sentinel_test_value", map.get(singleNullArray));
         
-        // Create another single-null array to test equivalence
+        // Another array with same content should find it
         Object[] anotherNullArray = {null};
         assertEquals("sentinel_test_value", map.get(anotherNullArray));
         
-        // Test that putting another equivalent single-null container overwrites
+        // List with same content should also find it (content-based)
         List<Object> singleNullList = new ArrayList<>();
         singleNullList.add(null);
-        map.put(singleNullList, "overwritten_value");
+        map.put(singleNullList, "list_value");  // OVERWRITES
         
-        // Should all resolve to the same key due to NULL_SENTINEL optimization
-        assertEquals("overwritten_value", map.get((Object) null));
-        assertEquals("overwritten_value", map.get(singleNullArray));
-        assertEquals("overwritten_value", map.get(anotherNullArray));
-        assertEquals("overwritten_value", map.get(singleNullList));
+        // All containers with [null] map to same key
+        assertNull(map.get((Object) null)); // Direct null still different
+        assertEquals("list_value", map.get(singleNullArray));
+        assertEquals("list_value", map.get(anotherNullArray));
+        assertEquals("list_value", map.get(singleNullList));
         
-        // Should still have only one entry
+        // Should have only 1 entry
         assertEquals(1, map.size());
         
-        // Test containsKey for all equivalent forms
-        assertTrue(map.containsKey((Object) null));
+        // Test containsKey
+        assertFalse(map.containsKey((Object) null));
         assertTrue(map.containsKey(singleNullArray));
         assertTrue(map.containsKey(anotherNullArray));
         assertTrue(map.containsKey(singleNullList));
@@ -197,13 +194,16 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         Object[] singleNull = {null};
         map.put(singleNull, "null_value");
         
+        // Add direct null (different key)
+        map.put((Object) null, "direct_null");
+        
         // Verify all entries are accessible
         assertEquals("regular_value", map.get("regular_key"));
         assertEquals("multi_value", map.get(Arrays.asList("multi", "key")));
-        assertEquals("null_value", map.get((Object) null));
         assertEquals("null_value", map.get(singleNull));
+        assertEquals("direct_null", map.get((Object) null));
         
-        assertEquals(3, map.size());
+        assertEquals(4, map.size());
     }
     
     @Test
@@ -215,10 +215,11 @@ public class MultiKeyMapNullSentinelSingleElementTest {
         map.put(singleNull, "null_value");
         
         assertEquals(1, map.size());
-        assertEquals("null_value", map.get((Object) null));
+        assertNull(map.get((Object) null)); // Direct null not stored
+        assertEquals("null_value", map.get(singleNull));
         
-        // Remove via direct null
-        String removed = map.remove((Object) null);
+        // Remove via array key
+        String removed = map.remove(singleNull);
         assertEquals("null_value", removed);
         assertEquals(0, map.size());
         
@@ -232,52 +233,40 @@ public class MultiKeyMapNullSentinelSingleElementTest {
     @Test
     void testNullSentinelOptimizationWithFlattenTrue() {
         // Create a MultiKeyMap with flattenDimensions = true
-        // This ensures that when expandAndHash processes a single-element array with null,
-        // it results in exactly [NULL_SENTINEL] without OPEN/CLOSE markers
-        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build(); // flattenDimensions = true
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build();
         
         // Single-element array containing null
         Object[] singleNullArray = {null};
         map.put(singleNullArray, "flattened_null_value");
         
-        // This should trigger the NULL_SENTINEL single-element optimization in expandWithHash:
-        // - expandAndHash produces [NULL_SENTINEL] (no OPEN/CLOSE due to flatten=true)
-        // - expanded.size() == 1 and expanded.get(0) == NULL_SENTINEL
-        // - This triggers: hashPass[0] = 0; return NULL_SENTINEL;
-        
-        // Verify the result
-        assertEquals("flattened_null_value", map.get((Object) null));
+        // Direct null should be different - arrays don't collapse
+        assertNull(map.get((Object) null));
         assertEquals("flattened_null_value", map.get(singleNullArray));
         
-        // Test with collection too
+        // List with same content - with flatten=true, lists go through expandWithHash
+        // while arrays don't, so they end up as different keys
         List<Object> singleNullList = Arrays.asList((Object) null);
-        map.put(singleNullList, "flattened_null_list");
+        map.put(singleNullList, "flattened_null_list");  // Different key with flatten=true
         
-        // Should overwrite due to same normalized key
-        assertEquals("flattened_null_list", map.get((Object) null));
-        assertEquals("flattened_null_list", map.get(singleNullArray));
-        assertEquals("flattened_null_list", map.get(singleNullList));
+        // Direct null is still different from [null]
+        assertNull(map.get((Object) null));
+        assertEquals("flattened_null_value", map.get(singleNullArray)); // Array keeps its value
+        assertEquals("flattened_null_list", map.get(singleNullList)); // List has its own value with flatten=true
         
-        assertEquals(1, map.size());
+        assertEquals(2, map.size()); // Two entries with flatten=true: array and expanded list
     }
     
     @Test  
     void testNullSentinelOptimizationWithFlattenFalse() {
         // Create a MultiKeyMap with flattenDimensions = false
-        // This ensures OPEN/CLOSE markers are added, so single-element array with null
-        // becomes [OPEN, NULL_SENTINEL, CLOSE] - not single-element, different behavior
-        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(false).build(); // flattenDimensions = false
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(false).build();
         
         // Single-element array containing null
         Object[] singleNullArray = {null};
         map.put(singleNullArray, "structured_null_value");
         
-        // With flatten=false, expandAndHash produces [OPEN, NULL_SENTINEL, CLOSE]
-        // This is NOT a single-element case, so the NULL_SENTINEL optimization doesn't apply
-        
-        // However, the single-element optimization in expandWithHash still applies
-        // because it checks the original key structure first
-        assertEquals("structured_null_value", map.get((Object) null));
+        // Direct null is different
+        assertNull(map.get((Object) null));
         assertEquals("structured_null_value", map.get(singleNullArray));
         
         assertEquals(1, map.size());

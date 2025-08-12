@@ -14,18 +14,21 @@ public class MultiKeyMapTest {
     void testSingleElementArrayKeys() {
         MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build();
 
+        // With flatten=true, nested arrays are flattened, but single-element arrays don't collapse to their contents
+        // So "a" and ["a"] are different keys, but [["a"]] flattens to ["a"]
         map.put("a", "alpha");
         map.put(new String[]{"a"}, "[alpha]");
-        map.put(new String[][]{{"a"}}, "[[alpha]]");
-        map.put(new String[][][]{{{"a"}}}, "[[[alpha]]]");
+        map.put(new String[][]{{"a"}}, "[[alpha]]");  // Flattens to ["a"], overwrites previous
+        map.put(new String[][][]{{{"a"}}}, "[[[alpha]]]");  // Flattens to ["a"], overwrites again
 
-        assert map.size() == 1;
-        assertEquals("[[[alpha]]]", map.get("a"));      // last put
+        assert map.size() == 2;  // "a" and ["a"] are different
+        assertEquals("alpha", map.get("a"));  // "a" keeps its own value
+        assertEquals("[[[alpha]]]", map.get(new String[]{"a"}));  // Flattened [["a"]] and [[["a"]]] overwrite ["a"]
 
         assert map.containsKey("a");
         assert map.containsKey(new String[]{"a"});
-        assert map.containsKey(new String[][]{{"a"}});
-        assert map.containsKey(new String[][][]{{{"a"}}});
+        assert map.containsKey(new String[][]{{"a"}});  // Flattens to ["a"]
+        assert map.containsKey(new String[][][]{{{"a"}}});  // Flattens to ["a"]
         
         assert map.containsMultiKey("a");
         assert map.containsMultiKey((Object) new String[]{"a"});
@@ -33,14 +36,30 @@ public class MultiKeyMapTest {
         assert map.containsMultiKey((Object) new String[][][]{{{"a"}}});
         
         map.remove("a");
+        assert map.size() == 1;  // Only ["a"] remains
+        map.remove(new String[]{"a"});
         assert map.isEmpty();
         
         map.putMultiKey("alpha", "a");
         map.putMultiKey("[alpha]", (Object) new String[]{"a"});
-        map.putMultiKey("[[alpha]]", (Object) new String[][]{{"a"}});
-        map.putMultiKey("[[[alpha]]]", (Object) new String[][][]{{{"a"}}});
+        map.putMultiKey("[[alpha]]", (Object) new String[][]{{"a"}});  // Flattens to ["a"], overwrites
+        map.putMultiKey("[[[alpha]]]", (Object) new String[][][]{{{"a"}}});  // Flattens to ["a"], overwrites
 
+        assert map.size() == 2;
         map.removeMultiKey("a");
+        assert map.size() == 1;
+        map.removeMultiKey((Object) new String[]{"a"});
+        assert map.isEmpty();
+
+        map.put("a", "alpha");
+        map.put(new String[]{"a"}, "[alpha]");
+        map.put(new String[][]{{"a"}}, "[[alpha]]");  // Flattens to "a", overwrites
+        map.put(new String[][][]{{{"a"}}}, "[[[alpha]]]");  // Flattens to "a", overwrites again
+
+        assert map.size() == 2;
+        map.remove(new String[][][]{{{"a"}}});  // Removes ["a"] (flattened 3D becomes 1D)
+        assert map.size() == 1;  // Only "a" remains
+        map.remove("a");
         assert map.isEmpty();
 
         map.put("a", "alpha");
@@ -48,15 +67,10 @@ public class MultiKeyMapTest {
         map.put(new String[][]{{"a"}}, "[[alpha]]");
         map.put(new String[][][]{{{"a"}}}, "[[[alpha]]]");
 
-        map.remove(new String[][][]{{{"a"}}});
-        assert map.isEmpty();
-
-        map.put("a", "alpha");
-        map.put(new String[]{"a"}, "[alpha]");
-        map.put(new String[][]{{"a"}}, "[[alpha]]");
-        map.put(new String[][][]{{{"a"}}}, "[[[alpha]]]");
-
-        map.removeMultiKey((Object) new String[][][]{{{"a"}}});
+        assert map.size() == 2;
+        map.removeMultiKey((Object) new String[][][]{{{"a"}}});  // Removes ["a"] (flattened)
+        assert map.size() == 1;
+        map.removeMultiKey("a");  // Remove "a"
         assert map.isEmpty();
     }
 
@@ -67,13 +81,16 @@ public class MultiKeyMapTest {
         map.put("a", "alpha");
         map.put(new String[]{"a"}, "[alpha]");
 
-        assert map.size() == 1;
-        assertEquals("[alpha]", map.get("A"));      // last put - different case
+        assert map.size() == 2;  // No collapse - two different keys
+        assertEquals("alpha", map.get("A"));  // Case insensitive single key
+        assertEquals("[alpha]", map.get(new String[]{"A"}));  // Case insensitive array
 
         assert map.containsKey("A");
         assert map.containsKey(new String[]{"A"});
 
         map.remove("A");
+        assert map.size() == 1;
+        map.remove(new String[]{"A"});
         assert map.isEmpty();
     }
 
@@ -85,14 +102,16 @@ public class MultiKeyMapTest {
         map.put(new String[]{"a"}, "[alpha]");  // This should overwrite "alpha" since single-element arrays are equivalent to single keys
 
         LOG.info("Map size: " + map.size());
-        assert map.size() == 1;  // Single-element array overwrites single key
-        assertEquals("[alpha]", map.get("A"));                    // different case - should get the array value
-        assertEquals("[alpha]", map.get(new String[]{"A"}));      // different case - should get the array value
+        assert map.size() == 2;  // No collapse - two different keys
+        assertEquals("alpha", map.get("A"));  // Case insensitive single key
+        assertEquals("[alpha]", map.get(new String[]{"A"}));  // Case insensitive array key
 
         assert map.containsKey("A");
         assert map.containsKey(new String[]{"A"});
 
-        map.remove("A");  // This removes both "a" and equivalent new String[]{"a"} since they're equivalent keys
+        map.remove("A");  // Only removes "a"
+        assert map.size() == 1;
+        map.remove(new String[]{"A"});
         assert map.isEmpty();
     }
 
@@ -103,13 +122,16 @@ public class MultiKeyMapTest {
         map.put("a", "alpha");
         map.put(CollectionUtilities.listOf("a"), "[alpha]");
 
-        assert map.size() == 1;
-        assertEquals("[alpha]", map.get("A"));      // last put - different case
+        assert map.size() == 2;  // No collapse - two different keys
+        assertEquals("alpha", map.get("A"));  // Case insensitive single key
+        assertEquals("[alpha]", map.get(CollectionUtilities.listOf("A")));  // Case insensitive collection
 
         assert map.containsKey("A");
         assert map.containsKey(CollectionUtilities.listOf("A"));
 
         map.remove("A");
+        assert map.size() == 1;
+        map.remove(CollectionUtilities.listOf("A"));
         assert map.isEmpty();
     }
 
@@ -117,17 +139,20 @@ public class MultiKeyMapTest {
     void testSingleElementCollectionKeysNoFlattenInCaseInsensitiveMap() {
         CaseInsensitiveMap<Object, String> map = new CaseInsensitiveMap<>(Collections.emptyMap(), MultiKeyMap.<String>builder().flattenDimensions(false).build());
 
+        // No collapse: "a" and collection ["a"] are different keys
         map.put("a", "alpha");
-        map.put(CollectionUtilities.listOf("a"), "[alpha]");  // This should overwrite "alpha" since single-element collections are equivalent to single keys
+        map.put(CollectionUtilities.listOf("a"), "[alpha]");  // Different key, does not overwrite
 
-        assert map.size() == 1;  // Single-element collection overwrites single key
-        assertEquals("[alpha]", map.get("A"));                    // string key value - different case - should get the collection value
-        assertEquals("[alpha]", map.get(CollectionUtilities.listOf("A")));      // collection key value - different case - should get the collection value
+        assert map.size() == 2;  // Two different keys
+        assertEquals("alpha", map.get("A"));  // Case insensitive single key
+        assertEquals("[alpha]", map.get(CollectionUtilities.listOf("A")));  // Case insensitive collection
 
         assert map.containsKey("A");
         assert map.containsKey(CollectionUtilities.listOf("A"));
 
-        map.remove("A");  // This removes both "a" and equivalent CollectionUtilities.listOf("a") since they're equivalent keys
+        map.remove("A");  // Only removes "a"
+        assert map.size() == 1;  // Collection remains
+        map.remove(CollectionUtilities.listOf("A"));
         assert map.isEmpty();
     }
 
@@ -374,9 +399,12 @@ public class MultiKeyMapTest {
         assertEquals("empty collection value", map.get(CollectionUtilities.listOf()));
         assertTrue(map.containsKey(CollectionUtilities.listOf()));
         
-        // Test array with null element
+        // Test array with null element - no collapse, so [null] is different from null
+        map.put((Object) null, "direct null");
         map.put(new String[]{null}, "array with null");
+        assertEquals("direct null", map.get((Object) null));
         assertEquals("array with null", map.get(new String[]{null}));
+        assertTrue(map.containsKey((Object) null));
         assertTrue(map.containsKey(new String[]{null}));
         
         // Test array with empty string element
@@ -394,14 +422,16 @@ public class MultiKeyMapTest {
         assertEquals("collection with empty string", map.get(CollectionUtilities.listOf("")));
         assertTrue(map.containsKey(CollectionUtilities.listOf("")));
         
-        // All keys are separate when not flattened, but some equivalences due to NULL_SENTINEL uniformity
-        assert map.size() == 3;  // Keys: NULL_SENTINEL (null + single null containers), "" (empty string + single empty string containers), empty containers
+        // With no collapse, all containers are separate keys
+        // But containers with same content are equivalent (berries not branches)
+        assert map.size() == 5;  // Keys: null, "", empty containers, [null] containers, [""] containers
         
-        // Test removal of edge cases with NULL_SENTINEL uniformity
-        assertEquals("collection with null", map.remove(null));  // null equivalent to single null containers (last put wins)
-        assertEquals("collection with empty string", map.remove(""));  // empty string equivalent to single empty string containers (last put wins)
-        assertEquals("empty collection value", map.remove(new String[0]));  // empty array/collection are same
-        // Note: null-related keys and empty string-related keys were already removed above due to equivalence
+        // Test removal - no collapse, so each key is separate
+        assertEquals("direct null", map.remove(null));  // Removes direct null only
+        assertEquals("empty string value", map.remove(""));  // Removes empty string only
+        assertEquals("empty collection value", map.remove(new String[0]));  // Removes empty containers
+        assertEquals("collection with null", map.remove(new String[]{null}));  // Removes [null] containers
+        assertEquals("collection with empty string", map.remove(new String[]{""}));  // Removes [""] containers
         
         assert map.isEmpty();
     }

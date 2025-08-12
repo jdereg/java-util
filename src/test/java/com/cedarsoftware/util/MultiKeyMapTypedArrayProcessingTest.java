@@ -95,7 +95,7 @@ public class MultiKeyMapTypedArrayProcessingTest {
     void testSingleElementOptimizationTypedArrays() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
-        // Single element arrays should be optimized to return the element directly
+        // Single element arrays NO LONGER collapse - they stay as arrays
         String[] singleString = {"single"};
         int[] singleInt = {42};
         long[] singleLong = {123L};
@@ -108,14 +108,21 @@ public class MultiKeyMapTypedArrayProcessingTest {
         map.put(singleDouble, "single_double");
         map.put(singleBoolean, "single_boolean");
         
-        // These should all work due to single-element optimization
-        assertEquals("single_string", map.get("single"));
-        assertEquals("single_int", map.get(42));
-        assertEquals("single_long", map.get(123L));
-        assertEquals("single_double", map.get(3.14));
-        assertEquals("single_boolean", map.get(true));
+        // Direct values are NOT stored - arrays don't collapse
+        assertNull(map.get("single"));
+        assertNull(map.get(42));
+        assertNull(map.get(123L));
+        assertNull(map.get(3.14));
+        assertNull(map.get(true));
         
-        // Should have 5 different keys (each single element)
+        // But arrays work
+        assertEquals("single_string", map.get(new String[]{"single"}));
+        assertEquals("single_int", map.get(new int[]{42}));
+        assertEquals("single_long", map.get(new long[]{123L}));
+        assertEquals("single_double", map.get(new double[]{3.14}));
+        assertEquals("single_boolean", map.get(new boolean[]{true}));
+        
+        // Should have 5 different keys (each array)
         assertEquals(5, map.size());
     }
     

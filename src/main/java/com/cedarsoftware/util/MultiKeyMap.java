@@ -60,6 +60,7 @@ import java.util.logging.Logger;
  *   <li><b>Auto-Tuned Stripe Locking:</b> Write operations use stripe locking that adapts to your server's core count</li>
  *   <li><b>Zero-Allocation Gets:</b> No temporary objects created during retrieval operations</li>
  *   <li><b>Polymorphic Storage:</b> Efficient memory usage adapts storage format based on key complexity</li>
+ *   <li><b>Simple Keys Mode:</b> Optional performance optimization that skips nested structure checks when keys are known to be flat</li>
  * </ul>
  *
  * <h3>API Overview:</h3>
@@ -83,6 +84,12 @@ import java.util.logging.Logger;
  * // Structure-preserving vs flattening modes
  * MultiKeyMap<String> structured = MultiKeyMap.<String>builder().flattenDimensions(false).build(); // Structure-preserving (default)
  * MultiKeyMap<String> flattened = MultiKeyMap.<String>builder().flattenDimensions(true).build();   // Dimension-flattening
+ * 
+ * // Performance optimization for flat keys (no nested arrays/collections)
+ * MultiKeyMap<String> fast = MultiKeyMap.<String>builder()
+ *     .simpleKeysMode(true)  // Skip nested structure checks for maximum performance
+ *     .capacity(50000)       // Pre-size for known data volume
+ *     .build();
  * }</pre>
  *
  * <p>For comprehensive examples and advanced usage patterns, see the user guide documentation.</p>
@@ -183,6 +190,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final float loadFactor;
     private final CollectionKeyMode collectionKeyMode;
     private final boolean flattenDimensions;
+    private final boolean simpleKeysMode;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
@@ -272,6 +280,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this.loadFactor = builder.loadFactor;
         this.collectionKeyMode = builder.collectionKeyMode;
         this.flattenDimensions = builder.flattenDimensions;
+        this.simpleKeysMode = builder.simpleKeysMode;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
@@ -323,15 +332,35 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     // Builder class
+    /**
+     * Builder for creating configured MultiKeyMap instances.
+     * <p>The builder provides a fluent API for configuring various aspects of the map's behavior:</p>
+     * <ul>
+     *   <li>{@code capacity} - Initial capacity (will be rounded up to power of 2)</li>
+     *   <li>{@code loadFactor} - Load factor for resizing (default 0.75)</li>
+     *   <li>{@code collectionKeyMode} - How Collections are treated as keys</li>
+     *   <li>{@code flattenDimensions} - Whether to flatten nested structures</li>
+     *   <li>{@code simpleKeysMode} - Performance optimization for non-nested keys</li>
+     * </ul>
+     */
     public static class Builder<V> {
         private int capacity = 16;
         private float loadFactor = DEFAULT_LOAD_FACTOR;
         private CollectionKeyMode collectionKeyMode = CollectionKeyMode.COLLECTIONS_EXPANDED;
         private boolean flattenDimensions = false;
+        private boolean simpleKeysMode = false;
 
         // Private constructor - instantiate via MultiKeyMap.builder()
         private Builder() {}
 
+        /**
+         * Sets the initial capacity of the map.
+         * <p>The actual capacity will be rounded up to the nearest power of 2 for optimal performance.</p>
+         * 
+         * @param capacity the initial capacity (must be non-negative)
+         * @return this builder instance for method chaining
+         * @throws IllegalArgumentException if capacity is negative
+         */
         public Builder<V> capacity(int capacity) {
             if (capacity < 0) {
                 throw new IllegalArgumentException("Capacity must be non-negative");
@@ -340,6 +369,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return this;
         }
 
+        /**
+         * Sets the load factor for the map.
+         * <p>The load factor determines when the map will resize. A value of 0.75 means
+         * the map will resize when it's 75% full.</p>
+         * 
+         * @param loadFactor the load factor (must be positive)
+         * @return this builder instance for method chaining
+         * @throws IllegalArgumentException if loadFactor is not positive or is NaN
+         */
         public Builder<V> loadFactor(float loadFactor) {
             if (loadFactor <= 0 || Float.isNaN(loadFactor)) {
                 throw new IllegalArgumentException("Load factor must be positive");
@@ -348,26 +386,77 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return this;
         }
 
+        /**
+         * Sets the collection key mode for the map.
+         * <p>This determines how Collections are treated when used as keys:</p>
+         * <ul>
+         *   <li>{@code COLLECTIONS_EXPANDED} (default) - Collections are unpacked into multi-dimensional keys</li>
+         *   <li>{@code COLLECTIONS_NOT_EXPANDED} - Collections are treated as single key objects</li>
+         * </ul>
+         * 
+         * @param mode the collection key mode (must not be null)
+         * @return this builder instance for method chaining
+         * @throws NullPointerException if mode is null
+         */
         public Builder<V> collectionKeyMode(CollectionKeyMode mode) {
             this.collectionKeyMode = Objects.requireNonNull(mode);
             return this;
         }
 
+        /**
+         * Sets whether to flatten nested dimensions.
+         * <p>When enabled, nested arrays and collections are recursively flattened so that
+         * all equivalent flat representations are treated as the same key.</p>
+         * <p>When disabled (default), structure is preserved and different nesting levels
+         * create distinct keys.</p>
+         * 
+         * @param flatten {@code true} to flatten nested structures, {@code false} to preserve structure
+         * @return this builder instance for method chaining
+         */
         public Builder<V> flattenDimensions(boolean flatten) {
             this.flattenDimensions = flatten;
             return this;
         }
 
+        /**
+         * Enables simple keys mode for maximum performance.
+         * <p>When enabled, the map assumes keys do not contain nested arrays or collections,
+         * allowing it to skip expensive nested structure checks. This provides significant
+         * performance improvements when you know your keys are "flat" (no nested containers).</p>
+         * <p><b>Warning:</b> If you enable this mode but use keys with nested arrays/collections,
+         * they will not be expanded and may not match as expected.</p>
+         * 
+         * @param simple {@code true} to enable simple keys optimization, {@code false} for normal operation
+         * @return this builder instance for method chaining
+         */
+        public Builder<V> simpleKeysMode(boolean simple) {
+            this.simpleKeysMode = simple;
+            return this;
+        }
 
-        // Copy config from existing map
+
+        /**
+         * Copies configuration from an existing MultiKeyMap.
+         * <p>This copies all configuration settings including capacity, load factor,
+         * collection key mode, and dimension flattening settings.</p>
+         * 
+         * @param source the MultiKeyMap to copy configuration from
+         * @return this builder instance for method chaining
+         */
         public Builder<V> from(MultiKeyMap<?> source) {
             this.capacity = source.capacity;
             this.loadFactor = source.loadFactor;
             this.collectionKeyMode = source.collectionKeyMode;
             this.flattenDimensions = source.flattenDimensions;
+            this.simpleKeysMode = source.simpleKeysMode;
             return this;
         }
 
+        /**
+         * Builds and returns a new MultiKeyMap with the configured settings.
+         * 
+         * @return a new MultiKeyMap instance with the specified configuration
+         */
         public MultiKeyMap<V> build() {
             return new MultiKeyMap<>(this);
         }
@@ -402,6 +491,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public boolean getFlattenDimensions() {
         return flattenDimensions;
+    }
+    
+    /**
+     * Returns the current simple keys mode setting.
+     * <p>This performance optimization setting indicates whether the map assumes keys do not
+     * contain nested arrays or collections.</p>
+     * 
+     * @return {@code true} if simple keys mode is enabled (nested structure checks are skipped
+     *         for maximum performance), {@code false} if normal operation with full nested
+     *         structure support
+     */
+    public boolean getSimpleKeysMode() {
+        return simpleKeysMode;
     }
     
     private static int computeElementHash(Object key) {
@@ -463,8 +565,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V get(Object key) {
         // Use the unified normalization method
-        Norm norm = flattenKey(key);
-        MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
+        NormalizedKey normalizedKey = flattenKey(key);
+        MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey.key, normalizedKey.hash);
         return entry != null ? entry.value : null;
     }
 
@@ -510,8 +612,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a MultiKey object with a normalized key and computed hash
      */
     private MultiKey<V> createMultiKey(Object key, V value) {
-        final Norm norm = flattenKey(key);
-        return new MultiKey<>(norm.key, norm.hash, value);
+        final NormalizedKey normalizedKey = flattenKey(key);
+        return new MultiKey<>(normalizedKey.key, normalizedKey.hash, value);
     }
 
     // Method for when only the hash is needed, not the normalized key
@@ -525,7 +627,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Fast check if an object is an array or collection that might contain nested structures.
      * Used by optimized fast paths to determine routing.
      */
-    private static boolean isArrayOrCollection(Object o) {
+    private boolean isArrayOrCollection(Object o) {
+        // In simpleKeysMode, immediately return false to avoid all checks
+        if (simpleKeysMode) {
+            return false;
+        }
         // Optimized check order for better performance
         // 1. null check first (fastest)
         // 2. instanceof Collection (faster than isArray)
@@ -549,11 +655,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param key the key to normalize (can be null, single object, array, or collection)
      * @return Norm object containing normalized key and precomputed hash
      */
-    private Norm flattenKey(Object key) {
+    private NormalizedKey flattenKey(Object key) {
         
         // Handle null case
         if (key == null) {
-            return new Norm(NULL_SENTINEL, 0);
+            return new NormalizedKey(NULL_SENTINEL, 0);
         }
 
         Class<?> keyClass = key.getClass();
@@ -561,32 +667,50 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // === FAST PATH: Simple objects (not arrays or collections) ===
         if (!isKeyArray && !(key instanceof Collection)) {
-            return new Norm(key, computeElementHash(key));
+            return new NormalizedKey(key, computeElementHash(key));
         }
         
         // === FAST PATH: Object[] arrays with length-based optimization ===
         if (keyClass == Object[].class) {
             Object[] array = (Object[]) key;
-            switch (array.length) {
-                case 0:
-                    return new Norm(array, 0);
-                case 1:
-                    return flattenObjectArray1(array);  // Unrolled for maximum speed
-                case 2:
-                    return flattenObjectArray2(array);  // Unrolled for performance  
-                case 3:
-                    return flattenObjectArray3(array);  // Unrolled for performance
-                case 4:
-                    return flattenObjectArray4(array);  // Unrolled for performance
-                case 5:
-                case 6:
-                case 7:
-                case 8:
-                case 9:
-                case 10:
-                    return flattenObjectArrayN(array, array.length);  // Use parameterized version
-                default:
-                    return process1DObjectArray(array);
+            
+            // In simpleKeysMode, route ALL sizes through optimized methods
+            if (simpleKeysMode) {
+                switch (array.length) {
+                    case 0:
+                        return new NormalizedKey(array, 0);
+                    case 1:
+                        return flattenObjectArray1(array);  // Unrolled for maximum speed
+                    case 2:
+                        return flattenObjectArray2(array);  // Unrolled for performance  
+                    case 3:
+                        return flattenObjectArray3(array);  // Unrolled for performance
+                    default:
+                        // For larger arrays in simpleKeysMode, use parameterized version
+                        return flattenObjectArrayN(array, array.length);
+                }
+            } else {
+                // Normal mode: use size-based routing
+                switch (array.length) {
+                    case 0:
+                        return new NormalizedKey(array, 0);
+                    case 1:
+                        return flattenObjectArray1(array);  // Unrolled for maximum speed
+                    case 2:
+                        return flattenObjectArray2(array);  // Unrolled for performance  
+                    case 3:
+                        return flattenObjectArray3(array);  // Unrolled for performance
+                    case 4:
+                    case 5:
+                    case 6:
+                    case 7:
+                    case 8:
+                    case 9:
+                    case 10:
+                        return flattenObjectArrayN(array, array.length);  // Use parameterized version
+                    default:
+                        return process1DObjectArray(array);
+                }
             }
         }
         
@@ -595,7 +719,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // Handle empty arrays once for all primitive types
             int length = Array.getLength(key);
             if (length == 0) {
-                return new Norm(key, 0);
+                return new NormalizedKey(key, 0);
             }
             
             // Each primitive type handled separately with inline loops for maximum performance
@@ -607,7 +731,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 for (int i = 0; i < array.length; i++) {
                     h = h * 31 + Integer.hashCode(array[i]);
                 }
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
             if (keyClass == long[].class) {
@@ -615,7 +739,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 for (int i = 0; i < array.length; i++) {
                     h = h * 31 + Long.hashCode(array[i]);
                 }
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
             if (keyClass == double[].class) {
@@ -623,7 +747,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 for (int i = 0; i < array.length; i++) {
                     h = h * 31 + Double.hashCode(array[i]);
                 }
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
             if (keyClass == float[].class) {
@@ -631,7 +755,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 for (int i = 0; i < array.length; i++) {
                     h = h * 31 + Float.hashCode(array[i]);
                 }
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
             if (keyClass == boolean[].class) {
@@ -639,7 +763,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 for (int i = 0; i < array.length; i++) {
                     h = h * 31 + Boolean.hashCode(array[i]);
                 }
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
             if (keyClass == byte[].class) {
@@ -647,7 +771,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 for (int i = 0; i < array.length; i++) {
                     h = h * 31 + Byte.hashCode(array[i]);
                 }
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
             if (keyClass == short[].class) {
@@ -655,7 +779,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 for (int i = 0; i < array.length; i++) {
                     h = h * 31 + Short.hashCode(array[i]);
                 }
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
             if (keyClass == char[].class) {
@@ -663,7 +787,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 for (int i = 0; i < array.length; i++) {
                     h = h * 31 + Character.hashCode(array[i]);
                 }
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
             // This shouldn't happen, but handle it with the generic approach as fallback
@@ -680,7 +804,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Handle collections that should not be expanded
         if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-            return new Norm(coll, coll.hashCode());
+            return new NormalizedKey(coll, coll.hashCode());
         }
         
         // If flattening dimensions, always go through expansion
@@ -690,38 +814,56 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Size-based optimization for collections
         int size = coll.size();
-        switch (size) {
-            case 0:
-                return new Norm(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0);
-            case 1:
-                return flattenCollection1(coll);  // Unrolled for maximum speed
-            case 2:
-                return flattenCollection2(coll);  // Unrolled for performance
-            case 3:
-                return flattenCollection3(coll);  // Unrolled for performance
-            case 4:
-                return flattenCollection4(coll);  // Unrolled for performance
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-            case 9:
-            case 10:
-                return flattenCollectionN(coll, size);  // Use parameterized version
-            default:
-                return process1DCollection(coll);
+        
+        // In simpleKeysMode, route ALL sizes through optimized methods
+        if (simpleKeysMode) {
+            switch (size) {
+                case 0:
+                    return new NormalizedKey(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0);
+                case 1:
+                    return flattenCollection1(coll);  // Unrolled for maximum speed
+                case 2:
+                    return flattenCollection2(coll);  // Unrolled for performance
+                case 3:
+                    return flattenCollection3(coll);  // Unrolled for performance
+                default:
+                    // For larger collections in simpleKeysMode, use parameterized version
+                    return flattenCollectionN(coll, size);
+            }
+        } else {
+            // Normal mode: use size-based routing
+            switch (size) {
+                case 0:
+                    return new NormalizedKey(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0);
+                case 1:
+                    return flattenCollection1(coll);  // Unrolled for maximum speed
+                case 2:
+                    return flattenCollection2(coll);  // Unrolled for performance
+                case 3:
+                    return flattenCollection3(coll);  // Unrolled for performance
+                case 4:
+                case 5:
+                case 6:
+                case 7:
+                case 8:
+                case 9:
+                case 10:
+                    return flattenCollectionN(coll, size);  // Use parameterized version
+                default:
+                    return process1DCollection(coll);
+            }
         }
     }
     
     // === Fast path helper methods for flattenKey() ===
     
-    private Norm flattenObjectArray1(Object[] array) {
+    private NormalizedKey flattenObjectArray1(Object[] array) {
         Object elem = array[0];
         
         // Simple element - fast path
         if (!isArrayOrCollection(elem)) {
             int hash = 31 + computeElementHash(elem);
-            return new Norm(array, hash);
+            return new NormalizedKey(array, hash);
         }
         
         // Complex element - check flattenDimensions
@@ -733,7 +875,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return process1DObjectArray(array);
     }
     
-    private Norm flattenObjectArray2(Object[] array) {
+    private NormalizedKey flattenObjectArray2(Object[] array) {
         // Optimized unrolled version for size 2
         Object elem0 = array[0];
         Object elem1 = array[1];
@@ -745,10 +887,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         int h = 31 + computeElementHash(elem0);
         h = h * 31 + computeElementHash(elem1);
-        return new Norm(array, h);
+        return new NormalizedKey(array, h);
     }
     
-    private Norm flattenObjectArray3(Object[] array) {
+    private NormalizedKey flattenObjectArray3(Object[] array) {
         // Optimized unrolled version for size 3
         Object elem0 = array[0];
         Object elem1 = array[1];
@@ -762,30 +904,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 31 + computeElementHash(elem0);
         h = h * 31 + computeElementHash(elem1);
         h = h * 31 + computeElementHash(elem2);
-        return new Norm(array, h);
+        return new NormalizedKey(array, h);
     }
     
-    private Norm flattenObjectArray4(Object[] array) {
-        // Optimized unrolled version for size 4
-        Object elem0 = array[0];
-        Object elem1 = array[1];
-        Object elem2 = array[2];
-        Object elem3 = array[3];
-        
-        if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1) || 
-            isArrayOrCollection(elem2) || isArrayOrCollection(elem3)) {
-            if (flattenDimensions) return expandWithHash(array);
-            return process1DObjectArray(array);
-        }
-        
-        int h = 31 + computeElementHash(elem0);
-        h = h * 31 + computeElementHash(elem1);
-        h = h * 31 + computeElementHash(elem2);
-        h = h * 31 + computeElementHash(elem3);
-        return new Norm(array, h);
-    }
-    
-    private Norm flattenCollection1(Collection<?> coll) {
+    private NormalizedKey flattenCollection1(Collection<?> coll) {
         Iterator<?> iter = coll.iterator();
         Object elem = iter.next();
         
@@ -795,9 +917,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             
             // Convert non-RandomAccess to array for consistent lookup
             if (!(coll instanceof RandomAccess)) {
-                return new Norm(new Object[]{elem}, hash);
+                return new NormalizedKey(new Object[]{elem}, hash);
             }
-            return new Norm(coll, hash);
+            return new NormalizedKey(coll, hash);
         }
         
         // Complex element - check flattenDimensions
@@ -809,7 +931,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return process1DCollection(coll);
     }
     
-    private Norm flattenCollection2(Collection<?> coll) {
+    private NormalizedKey flattenCollection2(Collection<?> coll) {
         // Optimized unrolled version for size 2
         if (coll instanceof RandomAccess) {
             List<?> list = (List<?>) coll;
@@ -823,7 +945,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             
             int h = 31 + computeElementHash(elem0);
             h = h * 31 + computeElementHash(elem1);
-            return new Norm(coll, h);
+            return new NormalizedKey(coll, h);
         }
         
         // Non-RandomAccess path
@@ -839,10 +961,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         int h = 31 + computeElementHash(elements[0]);
         h = h * 31 + computeElementHash(elements[1]);
-        return new Norm(elements, h);
+        return new NormalizedKey(elements, h);
     }
     
-    private Norm flattenCollection3(Collection<?> coll) {
+    private NormalizedKey flattenCollection3(Collection<?> coll) {
         // Optimized unrolled version for size 3
         if (coll instanceof RandomAccess) {
             List<?> list = (List<?>) coll;
@@ -858,7 +980,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 31 + computeElementHash(elem0);
             h = h * 31 + computeElementHash(elem1);
             h = h * 31 + computeElementHash(elem2);
-            return new Norm(coll, h);
+            return new NormalizedKey(coll, h);
         }
         
         // Non-RandomAccess path
@@ -877,126 +999,99 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         int h = 31 + computeElementHash(elements[0]);
         h = h * 31 + computeElementHash(elements[1]);
         h = h * 31 + computeElementHash(elements[2]);
-        return new Norm(elements, h);
+        return new NormalizedKey(elements, h);
     }
-    
-    private Norm flattenCollection4(Collection<?> coll) {
-        // Optimized unrolled version for size 4
-        if (coll instanceof RandomAccess) {
-            List<?> list = (List<?>) coll;
-            Object elem0 = list.get(0);
-            Object elem1 = list.get(1);
-            Object elem2 = list.get(2);
-            Object elem3 = list.get(3);
-            
-            if (isArrayOrCollection(elem0) || isArrayOrCollection(elem1) || 
-                isArrayOrCollection(elem2) || isArrayOrCollection(elem3)) {
-                if (flattenDimensions) return expandWithHash(coll);
-                return process1DCollection(coll);
-            }
-            
-            int h = 31 + computeElementHash(elem0);
-            h = h * 31 + computeElementHash(elem1);
-            h = h * 31 + computeElementHash(elem2);
-            h = h * 31 + computeElementHash(elem3);
-            return new Norm(coll, h);
-        }
-        
-        // Non-RandomAccess path
-        Object[] elements = new Object[4];
-        Iterator<?> iter = coll.iterator();
-        elements[0] = iter.next();
-        elements[1] = iter.next();
-        elements[2] = iter.next();
-        elements[3] = iter.next();
-        
-        if (isArrayOrCollection(elements[0]) || isArrayOrCollection(elements[1]) || 
-            isArrayOrCollection(elements[2]) || isArrayOrCollection(elements[3])) {
-            if (flattenDimensions) return expandWithHash(coll);
-            return process1DCollection(coll);
-        }
-        
-        int h = 31 + computeElementHash(elements[0]);
-        h = h * 31 + computeElementHash(elements[1]);
-        h = h * 31 + computeElementHash(elements[2]);
-        h = h * 31 + computeElementHash(elements[3]);
-        return new Norm(elements, h);
-    }
-    
+
     /**
      * Parameterized version of Object[] flattening for sizes 6-10.
      * Uses loops instead of unrolling to handle any size efficiently.
      */
-    private Norm flattenObjectArrayN(Object[] array, int size) {
+    private NormalizedKey flattenObjectArrayN(Object[] array, int size) {
         // Single pass: check complexity AND compute hash
         int h = 1;
-        for (int i = 0; i < size; i++) {
-            Object elem = array[i];
-            if (isArrayOrCollection(elem)) {
-                // Found complex element - bail out
-                if (flattenDimensions) return expandWithHash(array);
-                return process1DObjectArray(array);
+
+        if (simpleKeysMode) {
+            for (int i = 0; i < size; i++) {
+                h = h * 31 + computeElementHash(array[i]);
             }
-            h = h * 31 + computeElementHash(elem);
+        } else {
+            for (int i = 0; i < size; i++) {
+                Object elem = array[i];
+                boolean isArrayOrCollection = elem instanceof Collection || (elem != null && elem.getClass().isArray());
+                if (isArrayOrCollection) {
+                    // Found complex element - bail out
+                    if (flattenDimensions) return expandWithHash(array);
+                    return process1DObjectArray(array);
+                }
+                h = h * 31 + computeElementHash(elem);
+            }
         }
         
         // All simple - return with computed hash
-        return new Norm(array, h);
+        return new NormalizedKey(array, h);
     }
     
     /**
      * Parameterized version of collection flattening for sizes 6-10.
      * This version uses loops instead of unrolling to handle any size.
      */
-    private Norm flattenCollectionN(Collection<?> coll, int size) {
+    private NormalizedKey flattenCollectionN(Collection<?> coll, int size) {
         // RandomAccess path - NO HEAP ALLOCATION
+        final boolean flattenLocal = flattenDimensions;
         if (coll instanceof RandomAccess) {
             List<?> list = (List<?>) coll;
             
             // Single pass: check complexity AND compute hash
             int h = 1;
-            for (int i = 0; i < size; i++) {
-                Object elem = list.get(i);
-                if (isArrayOrCollection(elem)) {
-                    // Found complex element - bail out
-                    if (flattenDimensions) return expandWithHash(coll);
-                    return process1DCollection(coll);
+
+            if (simpleKeysMode) {
+                for (int i = 0; i < size; i++) {
+                    h = h * 31 + computeElementHash(list.get(i));
                 }
-                h = h * 31 + computeElementHash(elem);
+            } else {
+                for (int i = 0; i < size; i++) {
+                    Object elem = list.get(i);
+                    boolean isArrayOrCollection = elem instanceof Collection || (elem != null && elem.getClass().isArray());
+                    if (isArrayOrCollection) {
+                        // Found complex element - bail out
+                        if (flattenLocal) return expandWithHash(coll);
+                        return process1DCollection(coll);
+                    }
+                    h = h * 31 + computeElementHash(elem);
+                }
             }
-            
+
             // All simple - return with computed hash
-            return new Norm(coll, h);
+            return new NormalizedKey(coll, h);
         }
         
-        // Non-RandomAccess path - must create array
-        Object[] elements = new Object[size];
+        // Non-RandomAccess path - check complexity first, create array only if needed
         Iterator<?> iter = coll.iterator();
-        
-        // Single pass: fill array, check complexity, AND compute hash
+        Object[] elements = new Object[size];
         int h = 1;
+
+        // First pass: check for complex elements without creating array
         for (int i = 0; i < size; i++) {
-            elements[i] = iter.next();
-            if (isArrayOrCollection(elements[i])) {
-                // Found complex element - fill rest of array then bail out
-                for (int j = i + 1; j < size; j++) {
-                    elements[j] = iter.next();
-                }
-                if (flattenDimensions) return expandWithHash(coll);
+            Object elem = iter.next();
+            boolean isArrayOrCollection = elem instanceof Collection || (elem != null && elem.getClass().isArray());
+            if (isArrayOrCollection) {
+                // Found complex element - handle immediately without array creation
+                if (flattenLocal) return expandWithHash(coll);
                 return process1DCollection(coll);
             }
-            h = h * 31 + computeElementHash(elements[i]);
+            elements[i] = elem;
+            h = h * 31 + computeElementHash(elem);
         }
         
         // All simple - return with computed hash
-        return new Norm(elements, h);
+        return new NormalizedKey(elements, h);
     }
 
-    private Norm process1DObjectArray(final Object[] array) {
+    private NormalizedKey process1DObjectArray(final Object[] array) {
         final int len = array.length;
 
         if (len == 0) {
-            return new Norm(array, 0);
+            return new NormalizedKey(array, 0);
         }
         
         // Check if truly 1D while computing full hash
@@ -1024,17 +1119,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         if (is1D) {
             // No collapse - arrays stay as arrays
-            return new Norm(array, h);
+            return new NormalizedKey(array, h);
         }
         
         // It's 2D+ - need to expand with hash computation
         return expandWithHash(array);
     }
     
-    private Norm process1DCollection(final Collection<?> coll) {
+    private NormalizedKey process1DCollection(final Collection<?> coll) {
         if (coll.isEmpty()) {
             // Normalize empty collections to empty array for cross-container equivalence
-            return new Norm(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0);
+            return new NormalizedKey(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0);
         }
         
         // Check if truly 1D while computing hash
@@ -1075,17 +1170,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             // This ensures consistent O(1) element access in keysMatch comparisons
             if (!(coll instanceof RandomAccess)) {
                 Object[] array = coll.toArray();
-                return new Norm(array, h);
+                return new NormalizedKey(array, h);
             }
             
-            return new Norm(coll, h);
+            return new NormalizedKey(coll, h);
         }
         
         // It's 2D+ - need to expand with hash computation
         return expandWithHash(coll);
     }
     
-    private Norm process1DTypedArray(Object arr) {
+    private NormalizedKey process1DTypedArray(Object arr) {
         Class<?> clazz = arr.getClass();
         
         // Primitive arrays are already handled in flattenKey() and never reach here
@@ -1100,7 +1195,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             Object[] objArray = (Object[]) arr;
             final int len = objArray.length;
             if (len == 0) {
-                return new Norm(objArray, 0);
+                return new NormalizedKey(objArray, 0);
             }
 
             // These array types are always 1D (their elements can't be arrays or collections)
@@ -1112,18 +1207,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
 
             // No collapse - arrays stay as arrays
-            return new Norm(objArray, h);
+            return new NormalizedKey(objArray, h);
         }
         
         // Fallback to reflection for other array types
         return process1DGenericArray(arr);
     }
 
-    private Norm process1DGenericArray(Object arr) {
+    private NormalizedKey process1DGenericArray(Object arr) {
         // Fallback method using reflection for uncommon array types
         final int len = Array.getLength(arr);
         if (len == 0) {
-            return new Norm(arr, 0);
+            return new NormalizedKey(arr, 0);
         }
         
         // Check if truly 1D while computing full hash (same as process1DObjectArray)
@@ -1142,14 +1237,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         if (is1D) {
             // No collapse - arrays stay as arrays
-            return new Norm(arr, h);
+            return new NormalizedKey(arr, h);
         }
         
         // It's 2D+ - need to expand with hash computation
         return expandWithHash(arr);
     }
     
-    private Norm expandWithHash(Object key) {
+    private NormalizedKey expandWithHash(Object key) {
         // Pre-size the expanded list based on heuristic:
         // - Arrays/Collections typically expand to their size + potential nesting markers
         // - Default to 8 for unknown types (better than ArrayList's default 10 for small keys)
@@ -1178,7 +1273,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Even single-element expanded results remain as lists to maintain consistency
         // [x] should never become x
         
-        return new Norm(expanded, hash);
+        return new NormalizedKey(expanded, hash);
     }
     
     private static int expandAndHash(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited, 
@@ -1485,8 +1580,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public boolean containsKey(Object key) {
         // Use the unified normalization method
-        Norm norm = flattenKey(key);
-        MultiKey<V> entry = findEntryWithPrecomputedHash(norm.key, norm.hash);
+        NormalizedKey normalizedKey = flattenKey(key);
+        MultiKey<V> entry = findEntryWithPrecomputedHash(normalizedKey.key, normalizedKey.hash);
         return entry != null;
     }
 
@@ -1780,7 +1875,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (existing != null) return existing;
         
         // Normalize the key once, outside the lock
-        Norm norm = flattenKey(key);
+        NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -1822,7 +1917,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         V v = get(key);
         if (v != null) return v;
         
-        Norm norm = flattenKey(key);
+        NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -1866,7 +1961,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         V old = get(key);
         if (old == null) return null;
         
-        Norm norm = flattenKey(key);
+        NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -1913,7 +2008,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
         
-        Norm norm = flattenKey(key);
+        NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -1965,7 +2060,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(value);
         Objects.requireNonNull(remappingFunction);
         
-        Norm norm = flattenKey(key);
+        NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2014,7 +2109,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was removed
      */
     public boolean remove(Object key, Object value) {
-        Norm norm = flattenKey(key);
+        NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2051,7 +2146,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *         if there was no mapping for the key
      */
     public V replace(Object key, V value) {
-        Norm norm = flattenKey(key);
+        NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2096,7 +2191,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if the value was replaced
      */
     public boolean replace(Object key, V oldValue, V newValue) {
-        Norm norm = flattenKey(key);
+        NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
@@ -2217,11 +2312,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Normalized key with hash - eliminates int[] allocation overhead.
      * This small record is often scalar-replaced by C2 compiler, avoiding heap allocation.
      */
-    static final class Norm {
+    static final class NormalizedKey {
         final Object key;
         final int hash;
         
-        Norm(Object key, int hash) {
+        NormalizedKey(Object key, int hash) {
             this.key = key;
             this.hash = hash;
         }

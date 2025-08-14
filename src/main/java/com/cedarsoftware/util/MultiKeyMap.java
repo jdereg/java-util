@@ -16,6 +16,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.RandomAccess;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -143,6 +144,78 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final String EMOJI_EMPTY = "∅";  // Empty set for null/empty
     private static final String EMOJI_KEY = "🆔 ";   // ID for keys (with space)
     private static final String EMOJI_VALUE = "🟣 "; // Purple circle for values (with space)
+
+    // JDK DTO array types that are guaranteed to be 1D (elements can't be arrays/collections)
+    // Using ConcurrentHashMap-backed Set for thread-safe, high-performance lookups
+    private static final Set<Class<?>> SIMPLE_ARRAY_TYPES = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    static {
+        // Wrapper types
+        SIMPLE_ARRAY_TYPES.add(String[].class);
+        SIMPLE_ARRAY_TYPES.add(Integer[].class);
+        SIMPLE_ARRAY_TYPES.add(Long[].class);
+        SIMPLE_ARRAY_TYPES.add(Double[].class);
+        SIMPLE_ARRAY_TYPES.add(Float[].class);
+        SIMPLE_ARRAY_TYPES.add(Boolean[].class);
+        SIMPLE_ARRAY_TYPES.add(Character[].class);
+        SIMPLE_ARRAY_TYPES.add(Byte[].class);
+        SIMPLE_ARRAY_TYPES.add(Short[].class);
+        
+        // Date/Time types
+        SIMPLE_ARRAY_TYPES.add(Date[].class);
+        SIMPLE_ARRAY_TYPES.add(java.sql.Date[].class);
+        SIMPLE_ARRAY_TYPES.add(java.sql.Time[].class);
+        SIMPLE_ARRAY_TYPES.add(java.sql.Timestamp[].class);
+        
+        // java.time types (Java 8+)
+        SIMPLE_ARRAY_TYPES.add(java.time.LocalDate[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.LocalTime[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.LocalDateTime[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.ZonedDateTime[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.OffsetDateTime[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.OffsetTime[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.Instant[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.Duration[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.Period[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.Year[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.YearMonth[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.MonthDay[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.ZoneId[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.ZoneOffset[].class);
+        
+        // Math/Precision types
+        SIMPLE_ARRAY_TYPES.add(java.math.BigInteger[].class);
+        SIMPLE_ARRAY_TYPES.add(java.math.BigDecimal[].class);
+        
+        // Network/IO types
+        SIMPLE_ARRAY_TYPES.add(java.net.URL[].class);
+        SIMPLE_ARRAY_TYPES.add(java.net.URI[].class);
+        SIMPLE_ARRAY_TYPES.add(java.net.InetAddress[].class);
+        SIMPLE_ARRAY_TYPES.add(java.net.Inet4Address[].class);
+        SIMPLE_ARRAY_TYPES.add(java.net.Inet6Address[].class);
+        SIMPLE_ARRAY_TYPES.add(java.io.File[].class);
+        SIMPLE_ARRAY_TYPES.add(java.nio.file.Path[].class);
+        
+        // Utility types
+        SIMPLE_ARRAY_TYPES.add(java.util.UUID[].class);
+        SIMPLE_ARRAY_TYPES.add(java.util.Locale[].class);
+        SIMPLE_ARRAY_TYPES.add(java.util.Currency[].class);
+        SIMPLE_ARRAY_TYPES.add(java.util.TimeZone[].class);
+        SIMPLE_ARRAY_TYPES.add(java.util.regex.Pattern[].class);
+        
+        // AWT/Swing basic types (immutable DTOs)
+        SIMPLE_ARRAY_TYPES.add(java.awt.Color[].class);
+        SIMPLE_ARRAY_TYPES.add(java.awt.Font[].class);
+        SIMPLE_ARRAY_TYPES.add(java.awt.Dimension[].class);
+        SIMPLE_ARRAY_TYPES.add(java.awt.Point[].class);
+        SIMPLE_ARRAY_TYPES.add(java.awt.Rectangle[].class);
+        SIMPLE_ARRAY_TYPES.add(java.awt.Insets[].class);
+        
+        // Enum arrays are also simple (enums can't contain collections/arrays)
+        SIMPLE_ARRAY_TYPES.add(java.time.DayOfWeek[].class);
+        SIMPLE_ARRAY_TYPES.add(java.time.Month[].class);
+        SIMPLE_ARRAY_TYPES.add(java.nio.file.StandardOpenOption[].class);
+        SIMPLE_ARRAY_TYPES.add(java.nio.file.LinkOption[].class);
+    }
 
     // Static flag to log stripe configuration only once per JVM
     private static final AtomicBoolean STRIPE_CONFIG_LOGGED = new AtomicBoolean(false);
@@ -1184,13 +1257,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Class<?> clazz = arr.getClass();
         
         // Primitive arrays are already handled in flattenKey() and never reach here
-        // Only handle common non-primitive array types for optimization
+        // Handle JDK DTO array types for optimization (elements guaranteed to be simple)
         
-        // Handle common Object[] subtypes efficiently (these can't contain nested arrays/collections)
-        if (clazz == String[].class || clazz == Integer[].class || clazz == Long[].class || 
-            clazz == Double[].class || clazz == Date[].class || clazz == Boolean[].class || 
-            clazz == Float[].class || clazz == Short[].class || clazz == Byte[].class || 
-            clazz == Character[].class) {
+        // Handle simple array types efficiently (these can't contain nested arrays/collections)
+        if (SIMPLE_ARRAY_TYPES.contains(clazz)) {
             
             Object[] objArray = (Object[]) arr;
             final int len = objArray.length;
@@ -1198,8 +1268,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return new NormalizedKey(objArray, 0);
             }
 
-            // These array types are always 1D (their elements can't be arrays or collections)
-            // Optimized: Direct array access without checks
+            // JDK DTO array types are always 1D (their elements can't be arrays or collections)
+            // Optimized: Direct array access without nested structure checks
             int h = 1;
             for (int i = 0; i < len; i++) {
                 final Object o = objArray[i];

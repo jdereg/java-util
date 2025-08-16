@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
@@ -264,6 +265,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final CollectionKeyMode collectionKeyMode;
     private final boolean flattenDimensions;
     private final boolean simpleKeysMode;
+    private final boolean valueBasedEquality;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
@@ -354,6 +356,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this.collectionKeyMode = builder.collectionKeyMode;
         this.flattenDimensions = builder.flattenDimensions;
         this.simpleKeysMode = builder.simpleKeysMode;
+        this.valueBasedEquality = builder.valueBasedEquality;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
@@ -422,6 +425,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         private CollectionKeyMode collectionKeyMode = CollectionKeyMode.COLLECTIONS_EXPANDED;
         private boolean flattenDimensions = false;
         private boolean simpleKeysMode = false;
+        private boolean valueBasedEquality = false;
 
         // Private constructor - instantiate via MultiKeyMap.builder()
         private Builder() {}
@@ -506,7 +510,26 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.simpleKeysMode = simple;
             return this;
         }
-
+        
+        /**
+         * Enables value-based equality for numeric keys.
+         * <p>When enabled, numeric keys are compared by value rather than type:</p>
+         * <ul>
+         *   <li>Integral types (byte, short, int, long) compare as longs</li>
+         *   <li>Floating point types (float, double) compare as doubles</li>
+         *   <li>Float/double can equal integers only when they represent whole numbers</li>
+         *   <li>Booleans only equal other booleans</li>
+         *   <li>Characters only equal other characters</li>
+         * </ul>
+         * <p>Default is {@code false} (type-based equality using Object.equals()).</p>
+         * 
+         * @param valueBasedEquality {@code true} to enable value-based equality, {@code false} for type-based
+         * @return this builder instance for method chaining
+         */
+        public Builder<V> valueBasedEquality(boolean valueBasedEquality) {
+            this.valueBasedEquality = valueBasedEquality;
+            return this;
+        }
 
         /**
          * Copies configuration from an existing MultiKeyMap.
@@ -522,6 +545,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.collectionKeyMode = source.collectionKeyMode;
             this.flattenDimensions = source.flattenDimensions;
             this.simpleKeysMode = source.simpleKeysMode;
+            this.valueBasedEquality = source.valueBasedEquality;
             return this;
         }
 
@@ -582,9 +606,110 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static int computeElementHash(Object key) {
         if (key == null) return 0;
         
-        // Use standard hashCode for all types to maintain Map contract
-        // Equal objects must have equal hash codes
+        // Use value-based numeric hashing for all Numbers (includes AtomicInteger/AtomicLong),
+        // plus Boolean/AtomicBoolean/Character so that when valueBasedEquality is enabled the
+        // hash codes are already aligned across numeric wrapper types. This introduces no
+        // functional change for type-based equality (it may create extra collisions like
+        // Byte(1) vs Integer(1), which is acceptable) and removes redundant instanceof checks.
+        if (key instanceof Number || key instanceof Boolean || key instanceof AtomicBoolean) {
+            return valueHashCode(key); // align whole floats with integrals
+        }
+        
+        // Non-numeric, non-boolean, non-char types use their natural hashCode
         return key.hashCode();
+    }
+    
+    /**
+     * Compute hash code that aligns with value-based equality semantics.
+     * Based on the provided reference implementation.
+     */
+    private static int valueHashCode(Object o) {
+        if (o == null) return 0;
+        
+        // Booleans & chars: use their standard hash (including AtomicBoolean)
+        if (o instanceof Boolean) return Boolean.hashCode((Boolean) o);
+        if (o instanceof AtomicBoolean) return Boolean.hashCode(((AtomicBoolean) o).get());
+        
+        // Integrals: hash by long so all integral wrappers collide when values match
+        if (o instanceof Byte) return hashLong(((Byte) o).longValue());
+        if (o instanceof Short) return hashLong(((Short) o).longValue());
+        if (o instanceof Integer) return hashLong(((Integer) o).longValue());
+        if (o instanceof Long) return hashLong((Long) o);
+        if (o instanceof AtomicInteger) return hashLong(((AtomicInteger) o).get());
+        if (o instanceof AtomicLong) return hashLong(((AtomicLong) o).get());
+        
+        // Floating: promote to double, normalize -0.0, optionally align to long when exactly integer
+        if (o instanceof Float || o instanceof Double) {
+            double d = (o instanceof Double) ? (Double) o : ((Float) o).doubleValue();
+            
+            // Canonicalize -0.0 to +0.0 so it matches integral 0 and +0.0
+            if (d == 0.0d) d = 0.0d;
+            
+            if (Double.isFinite(d) && d == Math.rint(d) &&
+                    d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                return hashLong((long) d);
+            }
+            return hashDouble(d);
+        }
+        
+        // BigInteger/BigDecimal: convert to primitive type for consistent hashing
+        if (o instanceof java.math.BigDecimal) {
+            java.math.BigDecimal bd = (java.math.BigDecimal) o;
+            try {
+                // Check if it can be represented as a long (whole number)
+                if (bd.scale() <= 0 || bd.remainder(java.math.BigDecimal.ONE).compareTo(java.math.BigDecimal.ZERO) == 0) {
+                    // It's a whole number - try to convert to long
+                    if (bd.compareTo(new java.math.BigDecimal(Long.MAX_VALUE)) <= 0 && 
+                        bd.compareTo(new java.math.BigDecimal(Long.MIN_VALUE)) >= 0) {
+                        return hashLong(bd.longValue());
+                    }
+                }
+                // Not a whole number or too large for long - use double representation
+                double d = bd.doubleValue();
+                if (d == 0.0d) d = 0.0d; // canonicalize -0.0
+                if (Double.isFinite(d) && d == Math.rint(d) &&
+                        d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                    return hashLong((long) d);
+                }
+                return hashDouble(d);
+            } catch (Exception e) {
+                // Fallback to original hash
+                return bd.hashCode();
+            }
+        }
+        
+        if (o instanceof java.math.BigInteger) {
+            java.math.BigInteger bi = (java.math.BigInteger) o;
+            try {
+                // Try to convert to long if it fits
+                if (bi.bitLength() < 64) {
+                    return hashLong(bi.longValue());
+                }
+                // Too large for long - use double approximation
+                double d = bi.doubleValue();
+                if (Double.isFinite(d) && d == Math.rint(d) &&
+                        d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                    return hashLong((long) d);
+                }
+                return hashDouble(d);
+            } catch (Exception e) {
+                // Fallback to original hash
+                return bi.hashCode();
+            }
+        }
+        
+        // Other Number types: use their hash
+        return o.hashCode();
+    }
+    
+    private static int hashLong(long v) {
+        return (int) (v ^ (v >>> 32));
+    }
+    
+    private static int hashDouble(double d) {
+        // Use the canonicalized IEEE bits (doubleToLongBits collapses all NaNs to one NaN)
+        long bits = Double.doubleToLongBits(d);
+        return (int) (bits ^ (bits >>> 32));
     }
 
     private ReentrantLock getStripeLock(int hash) {
@@ -802,7 +927,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == int[].class) {
                 int[] array = (int[]) key;
                 for (int i = 0; i < array.length; i++) {
-                    h = h * 31 + Integer.hashCode(array[i]);
+                    h = h * 31 + hashLong(array[i]);
                 }
                 return new NormalizedKey(array, h);
             }
@@ -810,7 +935,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == long[].class) {
                 long[] array = (long[]) key;
                 for (int i = 0; i < array.length; i++) {
-                    h = h * 31 + Long.hashCode(array[i]);
+                    h = h * 31 + hashLong(array[i]);
                 }
                 return new NormalizedKey(array, h);
             }
@@ -818,7 +943,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == double[].class) {
                 double[] array = (double[]) key;
                 for (int i = 0; i < array.length; i++) {
-                    h = h * 31 + Double.hashCode(array[i]);
+                    // Use value-based hash for doubles
+                    double d = array[i];
+                    if (d == 0.0d) d = 0.0d; // canonicalize -0.0
+                    if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                        h = h * 31 + hashLong((long) d);
+                    } else {
+                        h = h * 31 + hashDouble(d);
+                    }
                 }
                 return new NormalizedKey(array, h);
             }
@@ -826,7 +958,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == float[].class) {
                 float[] array = (float[]) key;
                 for (int i = 0; i < array.length; i++) {
-                    h = h * 31 + Float.hashCode(array[i]);
+                    // Convert float to double and use value-based hash
+                    double d = array[i];
+                    if (d == 0.0d) d = 0.0d; // canonicalize -0.0
+                    if (Double.isFinite(d) && d == Math.rint(d) && d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                        h = h * 31 + hashLong((long) d);
+                    } else {
+                        h = h * 31 + hashDouble(d);
+                    }
                 }
                 return new NormalizedKey(array, h);
             }
@@ -842,7 +981,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == byte[].class) {
                 byte[] array = (byte[]) key;
                 for (int i = 0; i < array.length; i++) {
-                    h = h * 31 + Byte.hashCode(array[i]);
+                    h = h * 31 + hashLong(array[i]);
                 }
                 return new NormalizedKey(array, h);
             }
@@ -850,7 +989,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (keyClass == short[].class) {
                 short[] array = (short[]) key;
                 for (int i = 0; i < array.length; i++) {
-                    h = h * 31 + Short.hashCode(array[i]);
+                    h = h * 31 + hashLong(array[i]);
                 }
                 return new NormalizedKey(array, h);
             }
@@ -1006,7 +1145,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private NormalizedKey flattenCollection2(Collection<?> coll) {
         // Optimized unrolled version for size 2
-        if (coll instanceof RandomAccess) {
+        if (coll instanceof List && coll instanceof RandomAccess) {
             List<?> list = (List<?>) coll;
             Object elem0 = list.get(0);
             Object elem1 = list.get(1);
@@ -1039,7 +1178,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private NormalizedKey flattenCollection3(Collection<?> coll) {
         // Optimized unrolled version for size 3
-        if (coll instanceof RandomAccess) {
+        if (coll instanceof List && coll instanceof RandomAccess) {
             List<?> list = (List<?>) coll;
             Object elem0 = list.get(0);
             Object elem1 = list.get(1);
@@ -1111,7 +1250,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private NormalizedKey flattenCollectionN(Collection<?> coll, int size) {
         // RandomAccess path - NO HEAP ALLOCATION
         final boolean flattenLocal = flattenDimensions;
-        if (coll instanceof RandomAccess) {
+        if (coll instanceof List && coll instanceof RandomAccess) {
             List<?> list = (List<?>) coll;
             
             // Single pass: check complexity AND compute hash
@@ -1273,7 +1412,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             for (int i = 0; i < len; i++) {
                 final Object o = objArray[i];
-                h = h * 31 + (o == null ? 0 : o.hashCode());
+                h = h * 31 + computeElementHash(o);
             }
 
             // No collapse - arrays stay as arrays
@@ -1423,7 +1562,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Optimized keysMatch that leverages MultiKey's precomputed arity and kind.
      * This is used when we have access to the stored MultiKey object.
      */
-    private static <V> boolean keysMatch(MultiKey<V> stored, Object lookup) {
+    private boolean keysMatch(MultiKey<V> stored, Object lookup) {
         // Fast identity check
         if (stored.keys == lookup) return true;
         if (stored.keys == null || lookup == null) return false;
@@ -1467,14 +1606,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         switch (stored.kind) {
             case MultiKey.KIND_OBJECT_ARRAY:
                 if (lookupKind == MultiKey.KIND_OBJECT_ARRAY) {
-                    return Arrays.equals((Object[]) stored.keys, (Object[]) lookup);
+                    return compareObjectArrays((Object[]) stored.keys, (Object[]) lookup, lookupArity);
                 }
                 // Fall through to cross-type comparison
                 break;
                 
             case MultiKey.KIND_COLLECTION:
-                if (lookupKind == MultiKey.KIND_COLLECTION && storeKeysClass == lookupClass) {
-                    // Same collection type - use built-in equals() method
+                if (!valueBasedEquality && lookupKind == MultiKey.KIND_COLLECTION && storeKeysClass == lookupClass) {
+                    // Same collection type - use built-in equals() method only when not using value-based equality
+                    // (value-based equality needs element-wise comparison for cross-type numeric equality)
                     return stored.keys.equals(lookup);
                 }
                 // Fall through to cross-type comparison
@@ -1483,13 +1623,55 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             case MultiKey.KIND_PRIMITIVE_ARRAY:
                 if (lookupKind == MultiKey.KIND_PRIMITIVE_ARRAY && storeKeysClass == lookupClass) {
                     // Same primitive array type - use specialized equals
+                    
+                    // Special handling for double[] with NaN equality in valueBasedEquality mode
+                    if (storeKeysClass == double[].class) {
+                        double[] a = (double[]) stored.keys;
+                        double[] b = (double[]) lookup;
+                        if (valueBasedEquality) {
+                            // Value-based mode: NaN == NaN
+                            for (int i = 0; i < a.length; i++) {
+                                double x = a[i], y = b[i];
+                                // Fast path: if equal (including -0.0 == +0.0), continue
+                                if (x == y) continue;
+                                // Special case: both NaN should be equal
+                                if (Double.isNaN(x) && Double.isNaN(y)) continue;
+                                return false;
+                            }
+                            return true;
+                        } else {
+                            // Type-strict mode: use standard Arrays.equals (NaN != NaN)
+                            return Arrays.equals(a, b);
+                        }
+                    }
+                    
+                    // Special handling for float[] with NaN equality in valueBasedEquality mode
+                    if (storeKeysClass == float[].class) {
+                        float[] a = (float[]) stored.keys;
+                        float[] b = (float[]) lookup;
+                        if (valueBasedEquality) {
+                            // Value-based mode: NaN == NaN
+                            for (int i = 0; i < a.length; i++) {
+                                float x = a[i], y = b[i];
+                                // Fast path: if equal (including -0.0f == +0.0f), continue
+                                if (x == y) continue;
+                                // Special case: both NaN should be equal
+                                if (Float.isNaN(x) && Float.isNaN(y)) continue;
+                                return false;
+                            }
+                            return true;
+                        } else {
+                            // Type-strict mode: use standard Arrays.equals (NaN != NaN)
+                            return Arrays.equals(a, b);
+                        }
+                    }
+                    
+                    // Other primitive types: Arrays.equals is fine (no NaN issues)
                     if (storeKeysClass == int[].class) return Arrays.equals((int[]) stored.keys, (int[]) lookup);
                     if (storeKeysClass == long[].class) return Arrays.equals((long[]) stored.keys, (long[]) lookup);
-                    if (storeKeysClass == double[].class) return Arrays.equals((double[]) stored.keys, (double[]) lookup);
                     if (storeKeysClass == boolean[].class) return Arrays.equals((boolean[]) stored.keys, (boolean[]) lookup);
                     if (storeKeysClass == byte[].class) return Arrays.equals((byte[]) stored.keys, (byte[]) lookup);
                     if (storeKeysClass == char[].class) return Arrays.equals((char[]) stored.keys, (char[]) lookup);
-                    if (storeKeysClass == float[].class) return Arrays.equals((float[]) stored.keys, (float[]) lookup);
                     if (storeKeysClass == short[].class) return Arrays.equals((short[]) stored.keys, (short[]) lookup);
                 }
                 // Fall through to cross-type comparison
@@ -1497,15 +1679,77 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         // Cross-type comparison or fallback to element-wise
-        return keysMatchCrossType(stored.keys, lookup, stored.arity, stored.kind, lookupKind);
+        return keysMatchCrossType(stored.keys, lookup, stored.arity, stored.kind, lookupKind, valueBasedEquality);
     }
     
     /**
      * Helper for cross-type comparisons when stored and lookup have different container types.
-     * Uses precomputed kind to avoid instanceof checks.
+     * Optimized to avoid iterator creation for common cases.
      */
-    private static boolean keysMatchCrossType(Object stored, Object lookup, int arity, byte storedKind, byte lookupKind) {
-        // Convert to iterators for uniform comparison - no instanceof needed!
+    private static boolean keysMatchCrossType(Object stored, Object lookup, int arity, byte storedKind, byte lookupKind, boolean valueBasedEquality) {
+        // Optimized dispatch based on type combinations
+        
+        // Case 1: Object[] vs Collection
+        if (storedKind == MultiKey.KIND_OBJECT_ARRAY && lookupKind == MultiKey.KIND_COLLECTION) {
+            Collection<?> lookupColl = (Collection<?>) lookup;
+            if (lookupColl instanceof List && lookupColl instanceof RandomAccess) {
+                // ZERO allocation path: direct indexed access
+                return compareObjectArrayToRandomAccess((Object[]) stored, (List<?>) lookupColl, arity, valueBasedEquality);
+            } else {
+                // One iterator path: array direct access + collection iterator
+                return compareObjectArrayToCollection((Object[]) stored, lookupColl, arity, valueBasedEquality);
+            }
+        }
+        
+        // Case 2: Collection vs Object[]
+        if (storedKind == MultiKey.KIND_COLLECTION && lookupKind == MultiKey.KIND_OBJECT_ARRAY) {
+            Collection<?> storedColl = (Collection<?>) stored;
+            if (storedColl instanceof List && storedColl instanceof RandomAccess) {
+                // ZERO allocation path: direct indexed access
+                return compareRandomAccessToObjectArray((List<?>) storedColl, (Object[]) lookup, arity, valueBasedEquality);
+            } else {
+                // One iterator path: collection iterator + array direct access
+                return compareCollectionToObjectArray(storedColl, (Object[]) lookup, arity, valueBasedEquality);
+            }
+        }
+        
+        // Case 3: Collection vs Collection (different types)
+        if (storedKind == MultiKey.KIND_COLLECTION && lookupKind == MultiKey.KIND_COLLECTION) {
+            Collection<?> storedColl = (Collection<?>) stored;
+            Collection<?> lookupColl = (Collection<?>) lookup;
+            
+            // Both RandomAccess Lists: zero allocation
+            if (storedColl instanceof List && storedColl instanceof RandomAccess && 
+                lookupColl instanceof List && lookupColl instanceof RandomAccess) {
+                return compareRandomAccessToRandomAccess((List<?>) storedColl, (List<?>) lookupColl, arity, valueBasedEquality);
+            }
+            
+            // One or both non-RandomAccess: use iterators
+            return compareCollections(storedColl, lookupColl, arity, valueBasedEquality);
+        }
+        
+        // Case 4: Primitive array vs Collection
+        if (storedKind == MultiKey.KIND_PRIMITIVE_ARRAY && lookupKind == MultiKey.KIND_COLLECTION) {
+            return comparePrimitiveArrayToCollection(stored, (Collection<?>) lookup, arity, valueBasedEquality);
+        }
+        
+        // Case 5: Collection vs Primitive array
+        if (storedKind == MultiKey.KIND_COLLECTION && lookupKind == MultiKey.KIND_PRIMITIVE_ARRAY) {
+            return compareCollectionToPrimitiveArray((Collection<?>) stored, lookup, arity, valueBasedEquality);
+        }
+        
+        // Case 6: Primitive array vs Object array
+        if (storedKind == MultiKey.KIND_PRIMITIVE_ARRAY && lookupKind == MultiKey.KIND_OBJECT_ARRAY) {
+            return comparePrimitiveArrayToObjectArray(stored, (Object[]) lookup, arity, valueBasedEquality);
+        }
+        
+        // Case 7: Object array vs Primitive array
+        if (storedKind == MultiKey.KIND_OBJECT_ARRAY && lookupKind == MultiKey.KIND_PRIMITIVE_ARRAY) {
+            return compareObjectArrayToPrimitiveArray((Object[]) stored, lookup, arity, valueBasedEquality);
+        }
+        
+        // Fallback for any other cases (e.g., different primitive array types)
+        // This is the slow path with iterator creation
         final Iterator<?> storedIter = (storedKind == MultiKey.KIND_COLLECTION)
             ? ((Collection<?>) stored).iterator()
             : new ArrayIterator(stored);
@@ -1514,7 +1758,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             : new ArrayIterator(lookup);
             
         for (int i = 0; i < arity; i++) {
-            if (!Objects.equals(storedIter.next(), lookupIter.next())) {
+            if (!elementEquals(storedIter.next(), lookupIter.next(), valueBasedEquality)) {
                 return false;
             }
         }
@@ -1540,6 +1784,823 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         public Object next() {
             return Array.get(array, index++);
         }
+    }
+    
+    // ======================== Optimized Comparison Methods ========================
+    // These methods provide zero-allocation paths for common cross-container comparisons
+    
+    /**
+     * Compare two Object[] arrays using configured equality semantics.
+     */
+    private boolean compareObjectArrays(Object[] array1, Object[] array2, int arity) {
+        if (valueBasedEquality) {
+            // Value-based equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = array1[i];
+                Object b = array2[i];
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels and compare
+                if (!valueEquals(a == NULL_SENTINEL ? null : a,
+                               b == NULL_SENTINEL ? null : b)) {
+                    return false;
+                }
+            }
+        } else {
+            // Type-strict equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = array1[i];
+                Object b = array2[i];
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels
+                if (a == NULL_SENTINEL) a = null;
+                if (b == NULL_SENTINEL) b = null;
+                // Atomic types use value equality even in strict mode
+                if (isAtomicType(a) && isAtomicType(b)) {
+                    if (!atomicValueEquals(a, b)) return false;
+                } else if (!Objects.equals(a, b)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Compare Object[] to RandomAccess List with zero allocation.
+     * Direct indexed access on both sides with value-based equality.
+     */
+    private static boolean compareObjectArrayToRandomAccess(Object[] array, List<?> list, int arity, boolean valueBasedEquality) {
+        if (valueBasedEquality) {
+            // Value-based equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = array[i];
+                Object b = list.get(i);
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels and compare
+                if (!valueEquals(a == NULL_SENTINEL ? null : a,
+                               b == NULL_SENTINEL ? null : b)) {
+                    return false;
+                }
+            }
+        } else {
+            // Type-strict equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = array[i];
+                Object b = list.get(i);
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels
+                if (a == NULL_SENTINEL) a = null;
+                if (b == NULL_SENTINEL) b = null;
+                // Atomic types use value equality even in strict mode
+                if (isAtomicType(a) && isAtomicType(b)) {
+                    if (!atomicValueEquals(a, b)) return false;
+                } else if (!Objects.equals(a, b)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Compare RandomAccess List to Object[] with zero allocation.
+     * Symmetric with compareObjectArrayToRandomAccess - just delegates with swapped arguments.
+     */
+    private static boolean compareRandomAccessToObjectArray(List<?> list, Object[] array, int arity, boolean valueBasedEquality) {
+        // Since our equality checks are symmetric, we can just swap the arguments
+        return compareObjectArrayToRandomAccess(array, list, arity, valueBasedEquality);
+    }
+    
+    /**
+     * Compare Object[] to non-RandomAccess Collection.
+     * Direct array access + collection's native iterator (1 allocation).
+     */
+    private static boolean compareObjectArrayToCollection(Object[] array, Collection<?> coll, int arity, boolean valueBasedEquality) {
+        Iterator<?> iter = coll.iterator();
+        if (valueBasedEquality) {
+            // Value-based equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = array[i];
+                Object b = iter.next();
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels and compare
+                if (!valueEquals(a == NULL_SENTINEL ? null : a,
+                               b == NULL_SENTINEL ? null : b)) {
+                    return false;
+                }
+            }
+        } else {
+            // Type-strict equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = array[i];
+                Object b = iter.next();
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels
+                if (a == NULL_SENTINEL) a = null;
+                if (b == NULL_SENTINEL) b = null;
+                // Atomic types use value equality even in strict mode
+                if (isAtomicType(a) && isAtomicType(b)) {
+                    if (!atomicValueEquals(a, b)) return false;
+                } else if (!Objects.equals(a, b)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Compare non-RandomAccess Collection to Object[].
+     * Symmetric with compareObjectArrayToCollection - just delegates with swapped arguments.
+     */
+    private static boolean compareCollectionToObjectArray(Collection<?> coll, Object[] array, int arity, boolean valueBasedEquality) {
+        // Since our equality checks are symmetric, we can just swap the arguments
+        return compareObjectArrayToCollection(array, coll, arity, valueBasedEquality);
+    }
+    
+    /**
+     * Compare two RandomAccess Lists with zero allocation.
+     * Direct indexed access on both sides.
+     */
+    private static boolean compareRandomAccessToRandomAccess(List<?> list1, List<?> list2, int arity, boolean valueBasedEquality) {
+        if (valueBasedEquality) {
+            // Value-based equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = list1.get(i);
+                Object b = list2.get(i);
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels and compare
+                if (!valueEquals(a == NULL_SENTINEL ? null : a,
+                               b == NULL_SENTINEL ? null : b)) {
+                    return false;
+                }
+            }
+        } else {
+            // Type-strict equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = list1.get(i);
+                Object b = list2.get(i);
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels
+                if (a == NULL_SENTINEL) a = null;
+                if (b == NULL_SENTINEL) b = null;
+                // Atomic types use value equality even in strict mode
+                if (isAtomicType(a) && isAtomicType(b)) {
+                    if (!atomicValueEquals(a, b)) return false;
+                } else if (!Objects.equals(a, b)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Compare two Collections (at least one non-RandomAccess).
+     * Uses native iterators from both collections.
+     */
+    private static boolean compareCollections(Collection<?> coll1, Collection<?> coll2, int arity, boolean valueBasedEquality) {
+        Iterator<?> iter1 = coll1.iterator();
+        Iterator<?> iter2 = coll2.iterator();
+        if (valueBasedEquality) {
+            // Value-based equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = iter1.next();
+                Object b = iter2.next();
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels and compare
+                if (!valueEquals(a == NULL_SENTINEL ? null : a,
+                               b == NULL_SENTINEL ? null : b)) {
+                    return false;
+                }
+            }
+        } else {
+            // Type-strict equality mode: branch-free inner loop
+            for (int i = 0; i < arity; i++) {
+                Object a = iter1.next();
+                Object b = iter2.next();
+                // Fast identity check
+                if (a == b) continue;
+                // Normalize sentinels
+                if (a == NULL_SENTINEL) a = null;
+                if (b == NULL_SENTINEL) b = null;
+                // Atomic types use value equality even in strict mode
+                if (isAtomicType(a) && isAtomicType(b)) {
+                    if (!atomicValueEquals(a, b)) return false;
+                } else if (!Objects.equals(a, b)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Compare primitive array to Collection.
+     * Optimized for each primitive type to avoid Array.get() overhead.
+     */
+    private static boolean comparePrimitiveArrayToCollection(Object array, Collection<?> coll, int arity, boolean valueBasedEquality) {
+        // Use RandomAccess optimization if available
+        if (coll instanceof List && coll instanceof RandomAccess) {
+            return primVsList(array, (List<?>) coll, arity, valueBasedEquality);
+        } else {
+            // Non-RandomAccess: use iterator
+            return primVsIter(array, coll.iterator(), arity, valueBasedEquality);
+        }
+    }
+    
+    /**
+     * Compare primitive array to List with direct indexed access.
+     * Single type ladder for all primitive types.
+     */
+    private static boolean primVsList(Object array, List<?> list, int arity, boolean valueBasedEquality) {
+        Class<?> arrayClass = array.getClass();
+            
+            // Specialized comparison for each primitive type
+            if (arrayClass == int[].class) {
+                int[] intArray = (int[]) array;
+                if (!valueBasedEquality) {
+                    // Type-strict mode: avoid boxing, direct type check
+                    for (int i = 0; i < arity; i++) {
+                        Object v = list.get(i);
+                        if (v == NULL_SENTINEL) v = null;
+                        if (!(v instanceof Integer) || ((Integer) v).intValue() != intArray[i]) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Value-based mode: allow cross-type numeric equality
+                    for (int i = 0; i < arity; i++) {
+                        Object v = list.get(i);
+                        if (v == NULL_SENTINEL) v = null;
+                        if (!valueEquals(Integer.valueOf(intArray[i]), v)) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            } else if (arrayClass == long[].class) {
+                long[] longArray = (long[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(longArray[i], list.get(i), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == double[].class) {
+                double[] doubleArray = (double[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(doubleArray[i], list.get(i), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == boolean[].class) {
+                boolean[] boolArray = (boolean[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(boolArray[i], list.get(i), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == byte[].class) {
+                byte[] byteArray = (byte[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(byteArray[i], list.get(i), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == char[].class) {
+                char[] charArray = (char[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(charArray[i], list.get(i), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == float[].class) {
+                float[] floatArray = (float[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(floatArray[i], list.get(i), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == short[].class) {
+                short[] shortArray = (short[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(shortArray[i], list.get(i), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        
+        // Fallback for unknown primitive array types (shouldn't happen)
+        return false;
+    }
+    
+    /**
+     * Compare primitive array to Iterator for non-RandomAccess collections.
+     * Single type ladder for all primitive types.
+     */
+    private static boolean primVsIter(Object array, Iterator<?> iter, int arity, boolean valueBasedEquality) {
+        Class<?> arrayClass = array.getClass();
+            
+            if (arrayClass == int[].class) {
+                int[] intArray = (int[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(intArray[i], iter.next(), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == long[].class) {
+                long[] longArray = (long[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(longArray[i], iter.next(), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == double[].class) {
+                double[] doubleArray = (double[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(doubleArray[i], iter.next(), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == boolean[].class) {
+                boolean[] boolArray = (boolean[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(boolArray[i], iter.next(), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == byte[].class) {
+                byte[] byteArray = (byte[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(byteArray[i], iter.next(), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == char[].class) {
+                char[] charArray = (char[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(charArray[i], iter.next(), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == float[].class) {
+                float[] floatArray = (float[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(floatArray[i], iter.next(), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (arrayClass == short[].class) {
+                short[] shortArray = (short[]) array;
+                for (int i = 0; i < arity; i++) {
+                    if (!elementEquals(shortArray[i], iter.next(), valueBasedEquality)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        
+        // Fallback for unknown primitive array types (shouldn't happen)
+        return false;
+    }
+    
+    /**
+     * Compare Collection to primitive array.
+     * Symmetric version of comparePrimitiveArrayToCollection.
+     */
+    private static boolean compareCollectionToPrimitiveArray(Collection<?> coll, Object array, int arity, boolean valueBasedEquality) {
+        // Just delegate to the primitive array version with swapped arguments
+        // The element equality method is symmetric, so this works correctly
+        return comparePrimitiveArrayToCollection(array, coll, arity, valueBasedEquality);
+    }
+    
+    /**
+     * Compare primitive array to Object[].
+     * Direct access on both sides, but requires boxing for primitives.
+     */
+    private static boolean comparePrimitiveArrayToObjectArray(Object primArray, Object[] objArray, int arity, boolean valueBasedEquality) {
+        Class<?> arrayClass = primArray.getClass();
+        
+        if (arrayClass == int[].class) {
+            int[] intArray = (int[]) primArray;
+            if (!valueBasedEquality) {
+                // Type-strict mode: avoid boxing, direct type check
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    // Ref-equality guard for cached Integer values
+                    Integer boxed = Integer.valueOf(intArray[i]);
+                    if (v == boxed) continue;
+                    if (!(v instanceof Integer) || ((Integer) v).intValue() != intArray[i]) {
+                        return false;
+                    }
+                }
+            } else {
+                // Value-based mode: allow cross-type numeric equality
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    Integer boxed = Integer.valueOf(intArray[i]);
+                    // Ref-equality guard
+                    if (v == boxed) continue;
+                    if (!valueEquals(boxed, v)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (arrayClass == long[].class) {
+            long[] longArray = (long[]) primArray;
+            if (!valueBasedEquality) {
+                // Type-strict mode: avoid boxing, direct type check
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    // Ref-equality guard for cached Long values
+                    Long boxed = Long.valueOf(longArray[i]);
+                    if (v == boxed) continue;
+                    if (!(v instanceof Long) || ((Long) v).longValue() != longArray[i]) {
+                        return false;
+                    }
+                }
+            } else {
+                // Value-based mode: allow cross-type numeric equality
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    Long boxed = Long.valueOf(longArray[i]);
+                    // Ref-equality guard
+                    if (v == boxed) continue;
+                    if (!valueEquals(boxed, v)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (arrayClass == double[].class) {
+            double[] doubleArray = (double[]) primArray;
+            if (!valueBasedEquality) {
+                // Type-strict mode: avoid boxing, direct type check
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    if (!(v instanceof Double)) return false;
+                    double d = ((Double) v).doubleValue();
+                    double a = doubleArray[i];
+                    // Handle NaN equality
+                    if (a != d && !(Double.isNaN(a) && Double.isNaN(d))) {
+                        return false;
+                    }
+                }
+            } else {
+                // Value-based mode: allow cross-type numeric equality
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    if (!valueEquals(Double.valueOf(doubleArray[i]), v)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (arrayClass == boolean[].class) {
+            boolean[] boolArray = (boolean[]) primArray;
+            if (!valueBasedEquality) {
+                // Type-strict mode: avoid boxing, direct type check
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    // Ref-equality guard for cached Boolean values
+                    Boolean boxed = Boolean.valueOf(boolArray[i]);
+                    if (v == boxed) continue;
+                    if (!(v instanceof Boolean) || ((Boolean) v).booleanValue() != boolArray[i]) {
+                        return false;
+                    }
+                }
+            } else {
+                // Value-based mode
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    Boolean boxed = Boolean.valueOf(boolArray[i]);
+                    // Ref-equality guard
+                    if (v == boxed) continue;
+                    if (!valueEquals(boxed, v)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (arrayClass == byte[].class) {
+            byte[] byteArray = (byte[]) primArray;
+            if (!valueBasedEquality) {
+                // Type-strict mode: avoid boxing, direct type check
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    // Ref-equality guard for cached Byte values
+                    Byte boxed = Byte.valueOf(byteArray[i]);
+                    if (v == boxed) continue;
+                    if (!(v instanceof Byte) || ((Byte) v).byteValue() != byteArray[i]) {
+                        return false;
+                    }
+                }
+            } else {
+                // Value-based mode: allow cross-type numeric equality
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    Byte boxed = Byte.valueOf(byteArray[i]);
+                    // Ref-equality guard
+                    if (v == boxed) continue;
+                    if (!valueEquals(boxed, v)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (arrayClass == char[].class) {
+            char[] charArray = (char[]) primArray;
+            if (!valueBasedEquality) {
+                // Type-strict mode: avoid boxing, direct type check
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    // Ref-equality guard for cached Character values
+                    Character boxed = Character.valueOf(charArray[i]);
+                    if (v == boxed) continue;
+                    if (!(v instanceof Character) || ((Character) v).charValue() != charArray[i]) {
+                        return false;
+                    }
+                }
+            } else {
+                // Value-based mode
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    Character boxed = Character.valueOf(charArray[i]);
+                    // Ref-equality guard
+                    if (v == boxed) continue;
+                    if (!valueEquals(boxed, v)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (arrayClass == float[].class) {
+            float[] floatArray = (float[]) primArray;
+            if (!valueBasedEquality) {
+                // Type-strict mode: avoid boxing, direct type check
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    if (!(v instanceof Float)) return false;
+                    float f = ((Float) v).floatValue();
+                    float a = floatArray[i];
+                    // Handle NaN equality
+                    if (a != f && !(Float.isNaN(a) && Float.isNaN(f))) {
+                        return false;
+                    }
+                }
+            } else {
+                // Value-based mode: allow cross-type numeric equality
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    if (!valueEquals(Float.valueOf(floatArray[i]), v)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else if (arrayClass == short[].class) {
+            short[] shortArray = (short[]) primArray;
+            if (!valueBasedEquality) {
+                // Type-strict mode: avoid boxing, direct type check
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    // Ref-equality guard for cached Short values
+                    Short boxed = Short.valueOf(shortArray[i]);
+                    if (v == boxed) continue;
+                    if (!(v instanceof Short) || ((Short) v).shortValue() != shortArray[i]) {
+                        return false;
+                    }
+                }
+            } else {
+                // Value-based mode: allow cross-type numeric equality
+                for (int i = 0; i < arity; i++) {
+                    Object v = objArray[i];
+                    if (v == NULL_SENTINEL) v = null;
+                    Short boxed = Short.valueOf(shortArray[i]);
+                    // Ref-equality guard
+                    if (v == boxed) continue;
+                    if (!valueEquals(boxed, v)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // Fallback for unknown primitive array types
+        return false;
+    }
+    
+    /**
+     * Compare Object[] to primitive array.
+     * Symmetric version of comparePrimitiveArrayToObjectArray.
+     */
+    private static boolean compareObjectArrayToPrimitiveArray(Object[] objArray, Object primArray, int arity, boolean valueBasedEquality) {
+        // Just delegate with swapped arguments
+        return comparePrimitiveArrayToObjectArray(primArray, objArray, arity, valueBasedEquality);
+    }
+    
+    // ======================== Value-Based Equality Methods ========================
+    // These methods provide "semantic key matching" - focusing on logical value rather than exact type
+    
+    /**
+     * Element equality comparison that respects the valueBasedEquality configuration.
+     */
+    private static boolean elementEquals(Object a, Object b, boolean valueBasedEquality) {
+        // Normalize internal null sentinel so comparisons treat stored sentinel and real null as equivalent
+        if (a == NULL_SENTINEL) { a = null; }
+        if (b == NULL_SENTINEL) { b = null; }
+        if (valueBasedEquality) {
+            return valueEquals(a, b);
+        } else {
+            // Type-strict equality: use Objects.equals, except for atomic types which
+            // always use value-based comparison for intuitive behavior
+            if (isAtomicType(a) && isAtomicType(b)) {
+                return atomicValueEquals(a, b);
+            }
+            return Objects.equals(a, b);
+        }
+    }
+    
+    /**
+     * Check if an object is an atomic type (AtomicBoolean, AtomicInteger, AtomicLong).
+     */
+    private static boolean isAtomicType(Object o) {
+        return o instanceof AtomicBoolean || o instanceof AtomicInteger || o instanceof AtomicLong;
+    }
+    
+    /**
+     * Compare atomic types by their contained values.
+     * This provides intuitive value-based equality for atomic types even in type-strict mode.
+     * In type-strict mode, only same-type comparisons are allowed.
+     */
+    private static boolean atomicValueEquals(Object a, Object b) {
+        // Fast path
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        
+        // AtomicBoolean comparison - only with other AtomicBoolean
+        if (a instanceof AtomicBoolean && b instanceof AtomicBoolean) {
+            return ((AtomicBoolean) a).get() == ((AtomicBoolean) b).get();
+        }
+        
+        // AtomicInteger comparison - only with other AtomicInteger
+        if (a instanceof AtomicInteger && b instanceof AtomicInteger) {
+            return ((AtomicInteger) a).get() == ((AtomicInteger) b).get();
+        }
+        
+        // AtomicLong comparison - only with other AtomicLong
+        if (a instanceof AtomicLong && b instanceof AtomicLong) {
+            return ((AtomicLong) a).get() == ((AtomicLong) b).get();
+        }
+        
+        // Different atomic types don't match in type-strict mode
+        return false;
+    }
+    
+    private static boolean valueEquals(Object a, Object b) {
+        // Fast path for exact matches
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        
+        // Booleans: only equal to other booleans (including AtomicBoolean)
+        if ((a instanceof Boolean || a instanceof AtomicBoolean) && 
+            (b instanceof Boolean || b instanceof AtomicBoolean)) {
+            boolean valA = (a instanceof Boolean) ? (Boolean) a : ((AtomicBoolean) a).get();
+            boolean valB = (b instanceof Boolean) ? (Boolean) b : ((AtomicBoolean) b).get();
+            return valA == valB;
+        }
+        
+        // Numeric types: use value-based comparison (including atomic numeric types)
+        if (a instanceof Number && b instanceof Number) {
+            return compareNumericValues(a, b);
+        }
+        
+        // All other types: use standard equals
+        return a.equals(b);
+    }
+    
+    
+    /**
+     * Compare two numeric values for equality with sensible type promotion rules:
+     * 1. byte, short, int, long, AtomicInteger, AtomicLong compare as longs
+     * 2. float & double compare by promoting float to double
+     * 3. float/double can equal integral types only if they represent whole numbers
+     * 4. BigInteger/BigDecimal use BigDecimal comparison
+     */
+    private static boolean compareNumericValues(Object a, Object b) {
+        // Precondition in your codepath: a and b are Numbers
+        final Class<?> ca = a.getClass();
+        final Class<?> cb = b.getClass();
+
+        // 0) Same-class fast path (monomorphic & cheapest)
+        if (ca == cb) {
+            if (ca == Integer.class) return ((Integer) a).intValue()  == ((Integer) b).intValue();
+            if (ca == Long.class)    return ((Long) a).longValue()     == ((Long) b).longValue();
+            if (ca == Short.class)   return ((Short) a).shortValue()   == ((Short) b).shortValue();
+            if (ca == Byte.class)    return ((Byte) a).byteValue()     == ((Byte) b).byteValue();
+            if (ca == Double.class)  { double x = (Double) a, y = (Double) b; return (x == y) || (Double.isNaN(x) && Double.isNaN(y)); }
+            if (ca == Float.class)   { float  x = (Float)  a, y = (Float)  b; return (x == y) || (Float.isNaN(x)  && Float.isNaN(y)); }
+            if (ca == AtomicInteger.class) return ((AtomicInteger) a).get() == ((AtomicInteger) b).get();
+            if (ca == AtomicLong.class)    return ((AtomicLong) a).get()    == ((AtomicLong) b).get();
+            if (ca == java.math.BigInteger.class) return ((java.math.BigInteger) a).compareTo((java.math.BigInteger) b) == 0;
+            if (ca == java.math.BigDecimal.class) return ((java.math.BigDecimal) a).compareTo((java.math.BigDecimal) b) == 0;
+        }
+
+        // 1) Integral-like ↔ integral-like (byte/short/int/long/atomics) as longs
+        final boolean aInt = isIntegralLike(ca);
+        final boolean bInt = isIntegralLike(cb);
+        if (aInt && bInt) return extractLongFast(a) == extractLongFast(b);
+
+        // 2) Float-like ↔ float-like (float/double): promote to double
+        final boolean aFp = (ca == Double.class || ca == Float.class);
+        final boolean bFp = (cb == Double.class || cb == Float.class);
+        if (aFp && bFp) {
+            final double x = ((Number) a).doubleValue();
+            final double y = ((Number) b).doubleValue();
+            return (x == y) || (Double.isNaN(x) && Double.isNaN(y));
+        }
+
+        // 3) Mixed integral ↔ float: equal only if finite and exactly integer (.0)
+        if ((aInt && bFp) || (aFp && bInt)) {
+            final double d = aFp ? ((Number) a).doubleValue() : ((Number) b).doubleValue();
+            if (!Double.isFinite(d)) return false;
+            final long li = aInt ? extractLongFast(a) : extractLongFast(b);
+            // Quick fail then exactness check
+            if ((long) d != li) return false;
+            return d == (double) li;
+        }
+
+        // 4) BigInteger/BigDecimal involvement → compare via BigDecimal (no exceptions)
+        if (isBig(ca) || isBig(cb)) {
+            return toBigDecimal((Number) a).compareTo(toBigDecimal((Number) b)) == 0;
+        }
+
+        // 5) Fallback for odd Number subclasses
+        return Objects.equals(a, b);
+    }
+    
+    private static boolean isIntegralLike(Class<?> c) {
+        return c == Integer.class || c == Long.class || c == Short.class || c == Byte.class
+            || c == AtomicInteger.class || c == AtomicLong.class;
+    }
+    
+    private static boolean isBig(Class<?> c) {
+        return c == java.math.BigInteger.class || c == java.math.BigDecimal.class;
+    }
+
+    private static long extractLongFast(Object o) {
+        if (o instanceof Long) return (Long)o;
+        if (o instanceof Integer) return (Integer)o;
+        if (o instanceof Short) return (Short)o;
+        if (o instanceof Byte) return (Byte)o;
+        return ((Number) o).longValue();
+    }
+    
+    private static java.math.BigDecimal toBigDecimal(Number n) {
+        if (n instanceof java.math.BigDecimal) return (java.math.BigDecimal) n;
+        if (n instanceof java.math.BigInteger) return new java.math.BigDecimal((java.math.BigInteger) n);
+        if (n instanceof Double || n instanceof Float) return new java.math.BigDecimal(n.toString()); // exact
+        return java.math.BigDecimal.valueOf(n.longValue());
     }
 
     private V putInternal(MultiKey<V> newKey) {
@@ -1578,9 +2639,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
         int index = hash & (table.length() - 1);
         MultiKey<V>[] chain = table.get(index);
-        
+
         if (chain == null) return null;
-        
+
         for (MultiKey<V> e : chain) {
             if (e.hash == hash && keysMatch(e, lookupKey.keys)) {
                 return e.value;
@@ -2016,11 +3077,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * If the value for the specified key is present, attempts to compute a new mapping
+     * If the specified key is not already associated with a value, attempts to compute a new mapping
      * given the key and its current mapped value.
      * <p>The entire method invocation is performed atomically. If the function returns
      * {@code null}, the mapping is removed.</p>
-     * 
+     *
      * @param key the key with which the specified value is to be associated
      * @param remappingFunction the function to compute a value
      * @return the new value associated with the specified key, or {@code null} if none
@@ -2030,13 +3091,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Objects.requireNonNull(remappingFunction);
         V old = get(key);
         if (old == null) return null;
-        
+
         NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
-        
+
         V result = null;
         lock.lock();
         try {
@@ -2069,7 +3130,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * (or {@code null} if there is no current mapping).
      * <p>The entire method invocation is performed atomically. If the function returns
      * {@code null}, the mapping is removed (or remains absent if initially absent).</p>
-     * 
+     *
      * @param key the key with which the specified value is to be associated
      * @param remappingFunction the function to compute a value
      * @return the new value associated with the specified key, or {@code null} if none
@@ -2077,20 +3138,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public V compute(Object key, BiFunction<? super Object, ? super V, ? extends V> remappingFunction) {
         Objects.requireNonNull(remappingFunction);
-        
+
         NormalizedKey norm = flattenKey(key);
         Object normalizedKey = norm.key;
         int hash = norm.hash;
         ReentrantLock lock = getStripeLock(hash);
         boolean resize = false;
-        
+
         V result;
         lock.lock();
         try {
             MultiKey<V> lookupKey = new MultiKey<>(normalizedKey, hash, null);
             V old = getNoLock(lookupKey);
             V newV = remappingFunction.apply(key, old);
-            
+
             if (newV == null) {
                 // Check if key existed (even with null value) and remove if so
                 if (old != null || findEntryWithPrecomputedHash(normalizedKey, hash) != null) {
@@ -2174,7 +3235,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * }</pre>
      * except that the action is performed atomically.</p>
      * 
-     * @param key the key with which the specified value is associated
+     * @param key the key with which the specified value is to be associated
      * @param value the value expected to be associated with the specified key
      * @return {@code true} if the value was removed
      */
@@ -2210,7 +3271,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * }</pre>
      * except that the action is performed atomically.</p>
      * 
-     * @param key the key with which the specified value is associated
+     * @param key the key with which the specified value is to be associated
      * @param value the value to be associated with the specified key
      * @return the previous value associated with the specified key, or {@code null}
      *         if there was no mapping for the key
@@ -2255,7 +3316,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * }</pre>
      * except that the action is performed atomically.</p>
      * 
-     * @param key the key with which the specified value is associated
+     * @param key the key with which the specified value is to be associated
      * @param oldValue the value expected to be associated with the specified key
      * @param newValue the value to be associated with the specified key
      * @return {@code true} if the value was replaced
@@ -2544,7 +3605,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static void processNestedStructure(StringBuilder sb, List<Object> list, int[] index, MultiKeyMap<?> selfMap) {
         if (index[0] >= list.size()) return;
         
-        Object element = list.get(index[0]++);
+        Object element = list.get(index[0]);
+        index[0]++;
         
         if (element == OPEN) {
             sb.append(EMOJI_OPEN);
@@ -2802,8 +3864,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private static String formatArrayValueForToString(Object array, MultiKeyMap<?> selfMap) {
         int len = Array.getLength(array);
-        if (len == 0) return "[]";
-        
+        if (len == 0) {
+            return "[]";
+        }
+
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < len; i++) {
             if (i > 0) sb.append(", ");

@@ -1,5 +1,15 @@
 ### Revision History
-#### 3.10.0 (unreleased)
+#### 4.0.0 (unreleased)
+> * **MAJOR PERFORMANCE OPTIMIZATION**: Enhanced `MultiKeyMap` with comprehensive performance improvements based on GPT5 code review:
+>   * **Fixed KIND_COLLECTION Fast Path**: Added `!valueBasedEquality` check to gate fast path, ensuring collections with numerically equivalent but type-different elements match correctly (e.g., [1,2,3] matches [1L,2L,3L] in value-based mode)
+>   * **Optimized compareNumericValues**: Replaced with highly optimized version using same-class fast paths, avoiding BigDecimal conversion for common cases. Added helper methods: `isIntegralLike`, `isBig`, `extractLongFast`, `toBigDecimal`
+>   * **Defensive RandomAccess Checking**: Added `instanceof List` checks before `instanceof RandomAccess` in 6 locations to prevent ClassCastException
+>   * **Branch-Free Loop Optimization**: Split loops by `valueBasedEquality` mode in 7 comparison methods, eliminating per-element branching for better JIT optimization and CPU branch prediction
+>   * **Avoided Primitive Boxing**: Refactored `comparePrimitiveArrayToObjectArray` to avoid boxing in type-strict mode with direct type checking
+>   * **Collapsed Duplicate Type Ladders**: Created `primVsList` and `primVsIter` helper methods, eliminating redundant 8-type switch statements and reducing bytecode size
+>   * **Consolidated Symmetric Methods**: Made symmetric comparison methods delegate to their counterparts, reducing code duplication
+>   * **NaN Handling for Primitive Arrays**: Added special NaN handling for double[] and float[] arrays respecting valueBasedEquality mode
+>   * **Ref-Equality Guards**: Added `if (a == b) continue;` guards in all comparison loops, leveraging JVM caching for common values
 > * **PERFORMANCE ENHANCEMENT**: Enhanced `MultiKeyMap` with significant hash computation optimizations:
 >   * **Hash Computation Limit**: Added MAX_HASH_ELEMENTS (4) limit to bound hash computation for large arrays/collections, significantly improving performance
 >   * **Early Exit Optimization**: Hash computation now stops early for large containers while maintaining excellent hash distribution

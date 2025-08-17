@@ -288,6 +288,25 @@ map.put(nestedList, "nested-value");
 map.get(nestedArray);      // ✅ "nested-value" - same nested structure!
 ```
 
+**Advanced Configuration Options:**
+
+```java
+// Case-sensitive mode for String keys (default is case-insensitive)
+MultiKeyMap<String> caseMap = new MultiKeyMap<>(true);  // Case-sensitive mode
+caseMap.putMultiKey("Value1", "ABC", "def");
+caseMap.putMultiKey("Value2", "abc", "def");  // Different key from "ABC"
+String val1 = caseMap.getMultiKey("ABC", "def");  // "Value1"
+String val2 = caseMap.getMultiKey("abc", "def");  // "Value2" 
+
+// Value-based equality mode for cross-type numeric comparisons
+MultiKeyMap<String> valueMap = new MultiKeyMap<>(1024, true);  // Value-based equality
+valueMap.putMultiKey("NumericValue", 42L, 3.14);
+// All these retrieve the same entry (cross-type numeric equality):
+String result1 = valueMap.getMultiKey(42, 3.14);     // Integer and Double
+String result2 = valueMap.getMultiKey(42L, 3.14f);   // Long and Float  
+String result3 = valueMap.getMultiKey(42.0, 3.14);   // Double and Double
+```
+
 **Why MultiKeyMap is the industry-leading solution:**
 
 | Feature | Guava Table | Apache Commons MultiKeyMap | DIY Record+HashMap | **java-util MultiKeyMap**                                 |
@@ -296,6 +315,8 @@ map.get(nestedArray);      // ✅ "nested-value" - same nested structure!
 | **Key Dimensions** | ❌ Limited to 2D only | ✅ Unlimited N-D | ✅ Unlimited N-D | ✅ **Unlimited N-D**                                       |
 | **Thread Safety** | ❌ None built-in | ❌ Not thread-safe | ❌ None (manual synchronization) | ✅ **Full ConcurrentMap** (nulls allowed)                  |
 | **Type Safety** | ✅ Built-in compile-time | ❌ Untyped Object keys | ✅ Built-in compile-time | ✅ **Façade-ready** (flexible core + typed wrapper)        |
+| **Case Handling** | ❌ No built-in support | ❌ No built-in support | ❌ Manual implementation | ✅ **Configurable** (case-sensitive/insensitive)           |
+| **Numeric Equality** | ❌ Type-strict only | ❌ Type-strict only | ❌ Type-strict only | ✅ **Value-based option** (42 == 42L == 42.0)             |
 
 ### ⏰ TTLCache - Time-Based Caching with LRU
 Automatic expiration with optional size limits - supports null keys and values:

@@ -1,5 +1,14 @@
 ### Revision History
 #### 4.0.0 (unreleased)
+> * **FEATURE**: Added `caseSensitive` configuration option to `MultiKeyMap`:
+>   * **Case-Sensitive Mode**: New constructor `MultiKeyMap(boolean caseSensitive)` allows case-sensitive String key comparisons (default remains case-insensitive)
+>   * **Performance Optimization**: Eliminated per-key branching by storing caseSensitive as final field, improving JIT optimization
+>   * **Full API Support**: Case sensitivity applies to all MultiKeyMap operations including standard Map interface and multi-key methods
+>   * **Documentation**: Updated README.md with examples showing case-sensitive vs case-insensitive behavior
+> * **DOCUMENTATION**: Updated README.md to document MultiKeyMap's advanced configuration options:
+>   * Added examples for case-sensitive mode configuration
+>   * Added examples for value-based equality mode for cross-type numeric comparisons
+>   * Updated comparison table showing MultiKeyMap's unique features vs competitors
 > * **MAJOR PERFORMANCE OPTIMIZATION**: Enhanced `MultiKeyMap` with comprehensive performance improvements based on GPT5 code review:
 >   * **Fixed KIND_COLLECTION Fast Path**: Added `!valueBasedEquality` check to gate fast path, ensuring collections with numerically equivalent but type-different elements match correctly (e.g., [1,2,3] matches [1L,2L,3L] in value-based mode)
 >   * **Optimized compareNumericValues**: Replaced with highly optimized version using same-class fast paths, avoiding BigDecimal conversion for common cases. Added helper methods: `isIntegralLike`, `isBig`, `extractLongFast`, `toBigDecimal`

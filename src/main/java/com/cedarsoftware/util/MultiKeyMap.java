@@ -642,8 +642,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // hash codes are already aligned across numeric wrapper types. This introduces no
         // functional change for type-based equality (it may create extra collisions like
         // Byte(1) vs Integer(1), which is acceptable) and removes redundant instanceof checks.
-        if (key instanceof Number || key instanceof Boolean || key instanceof AtomicBoolean
-            || key instanceof AtomicInteger || key instanceof AtomicLong) {
+        if (key instanceof Number || key instanceof Boolean || key instanceof AtomicBoolean) {
             return valueHashCode(key); // align whole floats with integrals
         }
         
@@ -1242,7 +1241,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private NormalizedKey flattenCollectionN(Collection<?> coll, int size) {
         // Simplified: always use iterator and store Collection as-is
-        final boolean flattenLocal = flattenDimensions;
         Iterator<?> iter = coll.iterator();
         int h = 1;
 
@@ -1254,12 +1252,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         } else {
             // Check for nested structures
+            final boolean flattenDimLocal = flattenDimensions;
+            
             for (int i = 0; i < size; i++) {
                 Object elem = iter.next();
                 boolean isArrayOrCollection = elem instanceof Collection || (elem != null && elem.getClass().isArray());
                 if (isArrayOrCollection) {
                     // Found complex element - bail out
-                    if (flattenLocal) return expandWithHash(coll);
+                    if (flattenDimLocal) return expandWithHash(coll);
                     return process1DCollection(coll);
                 }
                 h = h * 31 + computeElementHash(elem);
@@ -3396,11 +3396,23 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < len; i++) {
-            if (i > 0) sb.append(", ");
-            Object element = Array.get(array, i);
-            sb.append(formatValueForToString(element, selfMap));
+        
+        // Fast path for Object[] - avoid reflection overhead
+        if (array instanceof Object[]) {
+            Object[] oa = (Object[]) array;
+            for (int i = 0; i < len; i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(formatValueForToString(oa[i], selfMap));  // Direct array access
+            }
+        } else {
+            // Primitive arrays require reflection for boxing
+            for (int i = 0; i < len; i++) {
+                if (i > 0) sb.append(", ");
+                Object element = Array.get(array, i);  // Reflection only for primitives
+                sb.append(formatValueForToString(element, selfMap));
+            }
         }
+        
         sb.append("]");
         return sb.toString();
     }

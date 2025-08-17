@@ -2477,6 +2477,53 @@ String v4 = map.getMultiKey(42);                    // null - Integer doesn't ma
 - **Legacy compatibility** with traditional Java Map behavior
 - **Systems requiring exact type matching** for correctness
 
+### Case Sensitivity for CharSequences
+
+`MultiKeyMap` provides configurable case sensitivity for CharSequence keys (String, StringBuilder, etc.), controlled via the `caseSensitive` parameter:
+
+#### Case-Sensitive Mode (Default)
+**`caseSensitive = true` - CharSequences are compared using standard equals():**
+
+```java
+// Default behavior - case-sensitive comparison
+MultiKeyMap<String> map = new MultiKeyMap<>();  // or explicitly: builder().caseSensitive(true).build()
+
+// Different cases create different entries
+map.putMultiKey("value1", "User", "Settings", "Theme");
+map.putMultiKey("value2", "user", "settings", "theme");
+
+String val1 = map.getMultiKey("User", "Settings", "Theme");  // "value1"
+String val2 = map.getMultiKey("user", "settings", "theme");  // "value2"
+String val3 = map.getMultiKey("USER", "SETTINGS", "THEME");  // null - not found
+```
+
+#### Case-Insensitive Mode
+**`caseSensitive = false` - All CharSequences compared case-insensitively:**
+
+```java
+// Case-insensitive mode
+MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+    .caseSensitive(false)
+    .build();
+
+// All case variations refer to the same key
+map.putMultiKey("dark-theme", "User", "Settings", "Theme");
+String theme1 = map.getMultiKey("user", "settings", "theme");  // "dark-theme"
+String theme2 = map.getMultiKey("USER", "SETTINGS", "THEME");  // "dark-theme"
+String theme3 = map.getMultiKey("UsEr", "SeTtInGs", "ThEmE");  // "dark-theme"
+
+// Works with mixed CharSequence types
+StringBuilder sb = new StringBuilder("USER");
+StringBuffer buf = new StringBuffer("SETTINGS");
+String theme4 = map.getMultiKey(sb, buf, "theme");  // "dark-theme"
+```
+
+**Use Cases for Case-Insensitive Mode:**
+- **Configuration systems** where keys shouldn't be case-sensitive
+- **User input processing** where case variations should be normalized
+- **URL path routing** for case-insensitive matching
+- **Command parsers** that accept various case inputs
+
 ### CollectionKeyMode - Treating Collections as Keys
 
 By default, MultiKeyMap expands Collections and Arrays into their elements. However, sometimes you want to use a Collection itself as a single atomic key (a "berry"). The `CollectionKeyMode` parameter controls this behavior:
@@ -2550,6 +2597,7 @@ MultiKeyMap provides several configuration options via the builder pattern:
 ```java
 MultiKeyMap<String> map = MultiKeyMap.<String>builder()
     .valueBasedEquality(true)     // Default: true - Cross-type numeric matching
+    .caseSensitive(true)          // Default: true - Case-sensitive CharSequence comparison
     .flattenDimensions(false)     // Default: false - Preserve structural depth
     .collectionKeyMode(            // Default: COLLECTIONS_EXPANDED
         MultiKeyMap.CollectionKeyMode.COLLECTIONS_EXPANDED)
@@ -2561,6 +2609,7 @@ MultiKeyMap<String> map = MultiKeyMap.<String>builder()
 
 **Key Configuration Options:**
 - **`valueBasedEquality`**: Controls numeric comparison behavior (Integer 1 == Long 1L in value mode)
+- **`caseSensitive`**: Controls CharSequence comparison (String, StringBuilder, etc.) - case-insensitive when false
 - **`flattenDimensions`**: Controls whether nested structures create different keys
 - **`collectionKeyMode`**: Whether collections expand into dimensions or act as atomic keys
 - **`simpleKeysMode`**: Performance optimization when keys are guaranteed to be flat

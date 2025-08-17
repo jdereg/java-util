@@ -65,7 +65,7 @@ class MultiKeyMapDebugSentinelTest {
             IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
             int runningHash = 1;
             
-            int resultHash = (int) expandAndHashMethod.invoke(null, arrayWithNull, expanded, visited, runningHash, false);
+            int resultHash = (int) expandAndHashMethod.invoke(null, arrayWithNull, expanded, visited, runningHash, false, true);
             
             log.info("\nExpanded list contents:");
             for (int i = 0; i < expanded.size(); i++) {

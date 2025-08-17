@@ -87,6 +87,16 @@ import java.util.logging.Logger;
  *       In value-based mode, atomic types participate in numeric families (AtomicInteger(1) == Integer(1)).</li>
  * </ul>
  *
+ * <h3>Case Sensitivity for CharSequences:</h3>
+ * <p>MultiKeyMap provides configurable case sensitivity for CharSequence keys (String, StringBuilder, etc.),
+ * controlled via the {@code caseSensitive} parameter:</p>
+ * <ul>
+ *   <li><b>Case-Sensitive Mode (default, caseSensitive = true):</b> CharSequences are compared using their
+ *       standard equals() methods. "Hello" and "hello" are different keys.</li>
+ *   <li><b>Case-Insensitive Mode (caseSensitive = false):</b> All CharSequence instances are compared
+ *       case-insensitively. "Hello", "HELLO", and "hello" are treated as the same key.</li>
+ * </ul>
+ *
  * <h3>API Overview:</h3>
  * <p>MultiKeyMap provides two complementary APIs:</p>
  * <ul>
@@ -123,6 +133,11 @@ import java.util.logging.Logger;
  * MultiKeyMap<String> typeMap = MultiKeyMap.<String>builder().valueBasedEquality(false).build();
  * typeMap.putMultiKey("int-key", 1, 2, 3);
  * String missing = typeMap.getMultiKey(1L, 2L, 3L); // null - different types don't match
+ * 
+ * // Case-insensitive string keys
+ * MultiKeyMap<String> caseInsensitive = MultiKeyMap.<String>builder().caseSensitive(false).build();
+ * caseInsensitive.putMultiKey("value", "USER", "Settings", "THEME");
+ * String found = caseInsensitive.getMultiKey("user", "settings", "theme"); // Found! Case doesn't matter
  * }</pre>
  *
  * <p>For comprehensive examples and advanced usage patterns, see the user guide documentation.</p>
@@ -297,6 +312,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final boolean flattenDimensions;
     private final boolean simpleKeysMode;
     private final boolean valueBasedEquality;
+    private final boolean caseSensitive;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
@@ -388,6 +404,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         this.flattenDimensions = builder.flattenDimensions;
         this.simpleKeysMode = builder.simpleKeysMode;
         this.valueBasedEquality = builder.valueBasedEquality;
+        this.caseSensitive = builder.caseSensitive;
 
         for (int i = 0; i < STRIPE_COUNT; i++) {
             stripeLocks[i] = new ReentrantLock();
@@ -448,6 +465,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      *   <li>{@code collectionKeyMode} - How Collections are treated as keys</li>
      *   <li>{@code flattenDimensions} - Whether to flatten nested structures</li>
      *   <li>{@code simpleKeysMode} - Performance optimization for non-nested keys</li>
+     *   <li>{@code valueBasedEquality} - Enable cross-type numeric matching (default true)</li>
+     *   <li>{@code caseSensitive} - Whether CharSequence comparisons are case-sensitive (default true)</li>
      * </ul>
      */
     public static class Builder<V> {
@@ -457,6 +476,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         private boolean flattenDimensions = false;
         private boolean simpleKeysMode = false;
         private boolean valueBasedEquality = true;  // Default: cross-type numeric matching
+        private boolean caseSensitive = true;  // Default: case-sensitive string comparison
 
         // Private constructor - instantiate via MultiKeyMap.builder()
         private Builder() {}
@@ -563,6 +583,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         /**
+         * Sets whether CharSequence comparisons should be case-sensitive.
+         * <p>When disabled (false), all CharSequence instances (String, StringBuilder, etc.) 
+         * are compared case-insensitively for both equality and hashing.</p>
+         * <p>Default is {@code true} (case-sensitive comparison).</p>
+         * 
+         * @param caseSensitive {@code true} for case-sensitive comparison, {@code false} for case-insensitive
+         * @return this builder instance for method chaining
+         * @since 3.6.0
+         */
+        public Builder<V> caseSensitive(boolean caseSensitive) {
+            this.caseSensitive = caseSensitive;
+            return this;
+        }
+
+        /**
          * Copies configuration from an existing MultiKeyMap.
          * <p>This copies all configuration settings including capacity, load factor,
          * collection key mode, and dimension flattening settings.</p>
@@ -577,6 +612,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.flattenDimensions = source.flattenDimensions;
             this.simpleKeysMode = source.simpleKeysMode;
             this.valueBasedEquality = source.valueBasedEquality;
+            this.caseSensitive = source.caseSensitive;
             return this;
         }
 
@@ -634,7 +670,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return simpleKeysMode;
     }
     
-    private static int computeElementHash(Object key) {
+    /**
+     * Returns the current case sensitivity setting for CharSequence comparisons.
+     * <p>This setting controls how CharSequence instances (String, StringBuilder, etc.) 
+     * are compared within keys.</p>
+     * 
+     * @return {@code true} if case-sensitive comparison is enabled (default),
+     *         {@code false} if case-insensitive comparison is used
+     * @since 3.6.0
+     */
+    public boolean getCaseSensitive() {
+        return caseSensitive;
+    }
+    
+    private static int computeElementHash(Object key, boolean caseSensitive) {
         if (key == null) return 0;
         
         // Use value-based numeric hashing for all Numbers and atomic types,
@@ -644,6 +693,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Byte(1) vs Integer(1), which is acceptable) and removes redundant instanceof checks.
         if (key instanceof Number || key instanceof Boolean || key instanceof AtomicBoolean) {
             return valueHashCode(key); // align whole floats with integrals
+        }
+        
+        // Handle CharSequences with case sensitivity
+        if (!caseSensitive && key instanceof CharSequence) {
+            // Convert to lowercase for case-insensitive hashing
+            return key.toString().toLowerCase().hashCode();
         }
         
         // Non-numeric, non-boolean, non-char types use their natural hashCode
@@ -896,7 +951,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // === FAST PATH: Simple objects (not arrays or collections) ===
         if (!isKeyArray && !(key instanceof Collection)) {
-            return new NormalizedKey(key, computeElementHash(key));
+            return new NormalizedKey(key, computeElementHash(key, caseSensitive));
         }
         
         // === FAST PATH: Object[] arrays with length-based optimization ===
@@ -1105,7 +1160,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Simple element - fast path
         if (!isArrayOrCollection(elem)) {
-            int hash = 31 + computeElementHash(elem);
+            int hash = 31 + computeElementHash(elem, caseSensitive);
             return new NormalizedKey(array, hash);
         }
         
@@ -1128,8 +1183,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return process1DObjectArray(array);
         }
         
-        int h = 31 + computeElementHash(elem0);
-        h = h * 31 + computeElementHash(elem1);
+        int h = 31 + computeElementHash(elem0, caseSensitive);
+        h = h * 31 + computeElementHash(elem1, caseSensitive);
         return new NormalizedKey(array, h);
     }
     
@@ -1144,9 +1199,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return process1DObjectArray(array);
         }
         
-        int h = 31 + computeElementHash(elem0);
-        h = h * 31 + computeElementHash(elem1);
-        h = h * 31 + computeElementHash(elem2);
+        int h = 31 + computeElementHash(elem0, caseSensitive);
+        h = h * 31 + computeElementHash(elem1, caseSensitive);
+        h = h * 31 + computeElementHash(elem2, caseSensitive);
         return new NormalizedKey(array, h);
     }
     
@@ -1156,7 +1211,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Simple element - fast path
         if (!isArrayOrCollection(elem)) {
-            int hash = 31 + computeElementHash(elem);
+            int hash = 31 + computeElementHash(elem, caseSensitive);
             // Always store Collection as-is
             return new NormalizedKey(coll, hash);
         }
@@ -1181,8 +1236,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return process1DCollection(coll);
         }
         
-        int h = 31 + computeElementHash(elem0);
-        h = h * 31 + computeElementHash(elem1);
+        int h = 31 + computeElementHash(elem0, caseSensitive);
+        h = h * 31 + computeElementHash(elem1, caseSensitive);
         // Always store Collection as-is
         return new NormalizedKey(coll, h);
     }
@@ -1199,9 +1254,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return process1DCollection(coll);
         }
         
-        int h = 31 + computeElementHash(elem0);
-        h = h * 31 + computeElementHash(elem1);
-        h = h * 31 + computeElementHash(elem2);
+        int h = 31 + computeElementHash(elem0, caseSensitive);
+        h = h * 31 + computeElementHash(elem1, caseSensitive);
+        h = h * 31 + computeElementHash(elem2, caseSensitive);
         // Always store Collection as-is
         return new NormalizedKey(coll, h);
     }
@@ -1216,7 +1271,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         if (simpleKeysMode) {
             for (int i = 0; i < size; i++) {
-                h = h * 31 + computeElementHash(array[i]);
+                h = h * 31 + computeElementHash(array[i], caseSensitive);
             }
         } else {
             for (int i = 0; i < size; i++) {
@@ -1227,7 +1282,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     if (flattenDimensions) return expandWithHash(array);
                     return process1DObjectArray(array);
                 }
-                h = h * 31 + computeElementHash(elem);
+                h = h * 31 + computeElementHash(elem, caseSensitive);
             }
         }
         
@@ -1248,7 +1303,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (simpleKeysMode) {
             // In simple keys mode, just compute hash
             for (int i = 0; i < size; i++) {
-                h = h * 31 + computeElementHash(iter.next());
+                h = h * 31 + computeElementHash(iter.next(), caseSensitive);
             }
         } else {
             // Check for nested structures
@@ -1262,7 +1317,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     if (flattenDimLocal) return expandWithHash(coll);
                     return process1DCollection(coll);
                 }
-                h = h * 31 + computeElementHash(elem);
+                h = h * 31 + computeElementHash(elem, caseSensitive);
             }
         }
 
@@ -1297,7 +1352,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 // Most common path - regular object, inline the common cases
                 // Always use computeElementHash to maintain value-mode hash alignment
-                h = h * 31 + computeElementHash(e);
+                h = h * 31 + computeElementHash(e, caseSensitive);
             }
         }
         
@@ -1325,7 +1380,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         while (iter.hasNext()) {
             Object e = iter.next();
             // Compute hash for all elements
-            h = h * 31 + computeElementHash(e);
+            h = h * 31 + computeElementHash(e, caseSensitive);
             if (e instanceof Collection || (e != null && e.getClass().isArray())) {
                 is1D = false;
                 break;
@@ -1362,7 +1417,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             int h = 1;
             for (int i = 0; i < len; i++) {
                 final Object o = objArray[i];
-                h = h * 31 + computeElementHash(o);
+                h = h * 31 + computeElementHash(o, caseSensitive);
             }
 
             // No collapse - arrays stay as arrays
@@ -1387,7 +1442,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Compute full hash for all elements
         for (int i = 0; i < len; i++) {
             Object e = Array.get(arr, i);
-            h = h * 31 + computeElementHash(e);
+            h = h * 31 + computeElementHash(e, caseSensitive);
             if (e instanceof Collection || (e != null && e.getClass().isArray())) {
                 is1D = false;
                 break;
@@ -1426,7 +1481,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         List<Object> expanded = new ArrayList<>(estimatedSize);
         IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
         
-        int hash = expandAndHash(key, expanded, visited, 1, flattenDimensions);
+        int hash = expandAndHash(key, expanded, visited, 1, flattenDimensions, caseSensitive);
         
         // NO COLLAPSE - expanded results stay as lists
         // Even single-element expanded results remain as lists to maintain consistency
@@ -1436,7 +1491,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private static int expandAndHash(Object current, List<Object> result, IdentityHashMap<Object, Boolean> visited, 
-                                      int runningHash, boolean useFlatten) {
+                                      int runningHash, boolean useFlatten, boolean caseSensitive) {
         if (current == null) {
             result.add(NULL_SENTINEL);
             return runningHash * 31 + NULL_SENTINEL.hashCode();
@@ -1457,7 +1512,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 int len = Array.getLength(current);
                 for (int i = 0; i < len; i++) {
-                    runningHash = expandAndHash(Array.get(current, i), result, visited, runningHash, useFlatten);
+                    runningHash = expandAndHash(Array.get(current, i), result, visited, runningHash, useFlatten, caseSensitive);
                 }
                 if (!useFlatten) {
                     result.add(CLOSE);
@@ -1475,7 +1530,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     runningHash = runningHash * 31 + OPEN.hashCode();
                 }
                 for (Object e : coll) {
-                    runningHash = expandAndHash(e, result, visited, runningHash, useFlatten);
+                    runningHash = expandAndHash(e, result, visited, runningHash, useFlatten, caseSensitive);
                 }
                 if (!useFlatten) {
                     result.add(CLOSE);
@@ -1486,7 +1541,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         } else {
             result.add(current);
-            runningHash = runningHash * 31 + computeElementHash(current);
+            runningHash = runningHash * 31 + computeElementHash(current, caseSensitive);
         }
         return runningHash;
     }
@@ -1527,7 +1582,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return false; // Collection/array not single element
             }
             // Use elementEquals to respect value-based equality for single keys
-            return elementEquals(stored.keys, lookup, valueBasedEquality);
+            return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);
         }
 
         // Check arity match first (early rejection)
@@ -1561,7 +1616,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final Class<?> storeKeysClass = stored.keys.getClass();
         
         // Delegate all container comparisons to unified method
-        return compareContainers(stored.keys, lookup, stored.arity, stored.kind, lookupKind, storeKeysClass, lookupClass, valueBasedEquality);
+        return compareContainers(stored.keys, lookup, stored.arity, stored.kind, lookupKind, storeKeysClass, lookupClass, valueBasedEquality, caseSensitive);
     }
     
     /**
@@ -1569,7 +1624,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Optimized fast paths for same-type comparisons, cross-type handling for others.
      */
     private boolean compareContainers(Object stored, Object lookup, int arity, byte storedKind, byte lookupKind, 
-                                      Class<?> storedClass, Class<?> lookupClass, boolean valueBasedEquality) {
+                                      Class<?> storedClass, Class<?> lookupClass, boolean valueBasedEquality, boolean caseSensitive) {
         // Fast path: same container types
         if (storedKind == lookupKind) {
             switch (storedKind) {
@@ -1577,7 +1632,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     return compareObjectArrays((Object[]) stored, (Object[]) lookup, arity);
                     
                 case MultiKey.KIND_COLLECTION:
-                    return compareCollections((Collection<?>) stored, (Collection<?>) lookup, arity, valueBasedEquality);
+                    return compareCollections((Collection<?>) stored, (Collection<?>) lookup, arity, valueBasedEquality, caseSensitive);
                     
                 case MultiKey.KIND_PRIMITIVE_ARRAY:
                     // Same primitive array type - use optimized comparison
@@ -1594,29 +1649,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Object[] vs Collection (or vice versa)
         if (storedKind == MultiKey.KIND_OBJECT_ARRAY && lookupKind == MultiKey.KIND_COLLECTION) {
-            return compareObjectArrayToCollection((Object[]) stored, (Collection<?>) lookup, arity, valueBasedEquality);
+            return compareObjectArrayToCollection((Object[]) stored, (Collection<?>) lookup, arity, valueBasedEquality, caseSensitive);
         }
         if (storedKind == MultiKey.KIND_COLLECTION && lookupKind == MultiKey.KIND_OBJECT_ARRAY) {
             // Just swap arguments
-            return compareObjectArrayToCollection((Object[]) lookup, (Collection<?>) stored, arity, valueBasedEquality);
+            return compareObjectArrayToCollection((Object[]) lookup, (Collection<?>) stored, arity, valueBasedEquality, caseSensitive);
         }
         
         // Primitive array vs Collection (or vice versa)
         if (storedKind == MultiKey.KIND_PRIMITIVE_ARRAY && lookupKind == MultiKey.KIND_COLLECTION) {
-            return comparePrimitiveArrayToCollection(stored, (Collection<?>) lookup, arity, valueBasedEquality);
+            return comparePrimitiveArrayToCollection(stored, (Collection<?>) lookup, arity, valueBasedEquality, caseSensitive);
         }
         if (storedKind == MultiKey.KIND_COLLECTION && lookupKind == MultiKey.KIND_PRIMITIVE_ARRAY) {
             // Just swap arguments
-            return comparePrimitiveArrayToCollection(lookup, (Collection<?>) stored, arity, valueBasedEquality);
+            return comparePrimitiveArrayToCollection(lookup, (Collection<?>) stored, arity, valueBasedEquality, caseSensitive);
         }
         
         // Primitive array vs Object array (or vice versa)
         if (storedKind == MultiKey.KIND_PRIMITIVE_ARRAY && lookupKind == MultiKey.KIND_OBJECT_ARRAY) {
-            return comparePrimitiveArrayToObjectArray(stored, (Object[]) lookup, arity, valueBasedEquality);
+            return comparePrimitiveArrayToObjectArray(stored, (Object[]) lookup, arity, valueBasedEquality, caseSensitive);
         }
         if (storedKind == MultiKey.KIND_OBJECT_ARRAY && lookupKind == MultiKey.KIND_PRIMITIVE_ARRAY) {
             // Just swap arguments
-            return comparePrimitiveArrayToObjectArray(lookup, (Object[]) stored, arity, valueBasedEquality);
+            return comparePrimitiveArrayToObjectArray(lookup, (Object[]) stored, arity, valueBasedEquality, caseSensitive);
         }
         
         // Fallback for any other cases (e.g., different primitive array types)
@@ -1629,7 +1684,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             : new ArrayIterator(lookup);
             
         for (int i = 0; i < arity; i++) {
-            if (!elementEquals(storedIter.next(), lookupIter.next(), valueBasedEquality)) {
+            if (!elementEquals(storedIter.next(), lookupIter.next(), valueBasedEquality, caseSensitive)) {
                 return false;
             }
         }
@@ -1724,7 +1779,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private boolean compareObjectArrays(Object[] array1, Object[] array2, int arity) {
         for (int i = 0; i < arity; i++) {
             // elementEquals handles identity check, NULL_SENTINEL, valueBasedEquality, and atomic types
-            if (!elementEquals(array1[i], array2[i], valueBasedEquality)) {
+            if (!elementEquals(array1[i], array2[i], valueBasedEquality, caseSensitive)) {
                 return false;
             }
         }
@@ -1734,10 +1789,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Compare Object[] to non-RandomAccess Collection using iterator.
      */
-    private static boolean compareObjectArrayToCollection(Object[] array, Collection<?> coll, int arity, boolean valueBasedEquality) {
+    private static boolean compareObjectArrayToCollection(Object[] array, Collection<?> coll, int arity, boolean valueBasedEquality, boolean caseSensitive) {
         Iterator<?> iter = coll.iterator();
         for (int i = 0; i < arity; i++) {
-            if (!elementEquals(array[i], iter.next(), valueBasedEquality)) {
+            if (!elementEquals(array[i], iter.next(), valueBasedEquality, caseSensitive)) {
                 return false;
             }
         }
@@ -1749,11 +1804,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Compare two Collections where at least one is non-RandomAccess.
      * Uses iterators for both.
      */
-    private static boolean compareCollections(Collection<?> coll1, Collection<?> coll2, int arity, boolean valueBasedEquality) {
+    private static boolean compareCollections(Collection<?> coll1, Collection<?> coll2, int arity, boolean valueBasedEquality, boolean caseSensitive) {
         Iterator<?> iter1 = coll1.iterator();
         Iterator<?> iter2 = coll2.iterator();
         for (int i = 0; i < arity; i++) {
-            if (!elementEquals(iter1.next(), iter2.next(), valueBasedEquality)) {
+            if (!elementEquals(iter1.next(), iter2.next(), valueBasedEquality, caseSensitive)) {
                 return false;
             }
         }
@@ -1774,13 +1829,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Unified implementation for both List and Object[] comparisons.
      * Optimized for each primitive type to avoid Array.get() overhead.
      */
-    private static boolean comparePrimitiveArrayToElements(Object primArray, ElementAccessor accessor, int arity, boolean valueBasedEquality) {
+    private static boolean comparePrimitiveArrayToElements(Object primArray, ElementAccessor accessor, int arity, boolean valueBasedEquality, boolean caseSensitive) {
         Class<?> arrayClass = primArray.getClass();
         
         if (arrayClass == int[].class) {
             int[] array = (int[]) primArray;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality)) {
+                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1788,7 +1843,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == long[].class) {
             long[] array = (long[]) primArray;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality)) {
+                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1796,7 +1851,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == double[].class) {
             double[] array = (double[]) primArray;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality)) {
+                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1804,7 +1859,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == float[].class) {
             float[] array = (float[]) primArray;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality)) {
+                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1812,7 +1867,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == boolean[].class) {
             boolean[] array = (boolean[]) primArray;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality)) {
+                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1820,7 +1875,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == byte[].class) {
             byte[] array = (byte[]) primArray;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality)) {
+                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1828,7 +1883,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == char[].class) {
             char[] array = (char[]) primArray;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality)) {
+                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1836,7 +1891,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == short[].class) {
             short[] array = (short[]) primArray;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality)) {
+                if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1851,22 +1906,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Compare primitive array to Object[].
      * Direct access on both sides.
      */
-    private static boolean comparePrimitiveArrayToObjectArray(Object primArray, Object[] objArray, int arity, boolean valueBasedEquality) {
-        return comparePrimitiveArrayToElements(primArray, i -> objArray[i], arity, valueBasedEquality);
+    private static boolean comparePrimitiveArrayToObjectArray(Object primArray, Object[] objArray, int arity, boolean valueBasedEquality, boolean caseSensitive) {
+        return comparePrimitiveArrayToElements(primArray, i -> objArray[i], arity, valueBasedEquality, caseSensitive);
     }
     
     /**
      * Compare primitive array to Collection.
      * For non-RandomAccess Collections, uses iterator.
      */
-    private static boolean comparePrimitiveArrayToCollection(Object array, Collection<?> coll, int arity, boolean valueBasedEquality) {
+    private static boolean comparePrimitiveArrayToCollection(Object array, Collection<?> coll, int arity, boolean valueBasedEquality, boolean caseSensitive) {
         Iterator<?> iter = coll.iterator();
         Class<?> arrayClass = array.getClass();
         
         if (arrayClass == int[].class) {
             int[] intArray = (int[]) array;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(intArray[i], iter.next(), valueBasedEquality)) {
+                if (!elementEquals(intArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1874,7 +1929,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == long[].class) {
             long[] longArray = (long[]) array;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(longArray[i], iter.next(), valueBasedEquality)) {
+                if (!elementEquals(longArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1882,7 +1937,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == double[].class) {
             double[] doubleArray = (double[]) array;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(doubleArray[i], iter.next(), valueBasedEquality)) {
+                if (!elementEquals(doubleArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1890,7 +1945,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == float[].class) {
             float[] floatArray = (float[]) array;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(floatArray[i], iter.next(), valueBasedEquality)) {
+                if (!elementEquals(floatArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1898,7 +1953,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == boolean[].class) {
             boolean[] boolArray = (boolean[]) array;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(boolArray[i], iter.next(), valueBasedEquality)) {
+                if (!elementEquals(boolArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1906,7 +1961,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == byte[].class) {
             byte[] byteArray = (byte[]) array;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(byteArray[i], iter.next(), valueBasedEquality)) {
+                if (!elementEquals(byteArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1914,7 +1969,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == char[].class) {
             char[] charArray = (char[]) array;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(charArray[i], iter.next(), valueBasedEquality)) {
+                if (!elementEquals(charArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1922,7 +1977,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         } else if (arrayClass == short[].class) {
             short[] shortArray = (short[]) array;
             for (int i = 0; i < arity; i++) {
-                if (!elementEquals(shortArray[i], iter.next(), valueBasedEquality)) {
+                if (!elementEquals(shortArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
             }
@@ -1938,15 +1993,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // These methods provide "semantic key matching" - focusing on logical value rather than exact type
     
     /**
-     * Element equality comparison that respects the valueBasedEquality configuration.
+     * Element equality comparison that respects the valueBasedEquality and caseSensitive configurations.
      */
-    private static boolean elementEquals(Object a, Object b, boolean valueBasedEquality) {
+    private static boolean elementEquals(Object a, Object b, boolean valueBasedEquality, boolean caseSensitive) {
         // Fast identity check - handles same object, both null, and NULL_SENTINEL cases
         if (a == b) return true;
         
         // Normalize internal null sentinel so comparisons treat stored sentinel and real null as equivalent
         if (a == NULL_SENTINEL) { a = null; }
         if (b == NULL_SENTINEL) { b = null; }
+        
+        // Handle case-insensitive CharSequence comparison
+        if (!caseSensitive && a instanceof CharSequence && b instanceof CharSequence) {
+            return a.toString().equalsIgnoreCase(b.toString());
+        }
+        
         if (valueBasedEquality) {
             return valueEquals(a, b);
         } else {
@@ -1996,8 +2057,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private static boolean valueEquals(Object a, Object b) {
-        // Fast path for exact matches
-        if (a == b) return true;
+        // Note: Identity check (a == b) already done in elementEquals() before calling this
         if (a == null || b == null) return false;
         
         // Booleans: only equal to other booleans (including AtomicBoolean)
@@ -3346,7 +3406,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         List<Object> expanded = new ArrayList<>();
         IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
         // We don't need the hash for debug output, but the method returns it
-        expandAndHash(key, expanded, visited, 1, false);  // For debug, always preserve structure (false for flatten)
+        expandAndHash(key, expanded, visited, 1, false, true);  // For debug, always preserve structure (false for flatten, true for caseSensitive)
 
         StringBuilder sb = new StringBuilder();
         sb.append(EMOJI_KEY);

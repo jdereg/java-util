@@ -65,6 +65,29 @@ import java.util.logging.Logger;
  *   <li><b>Simple Keys Mode:</b> Optional performance optimization that skips nested structure checks when keys are known to be flat</li>
  * </ul>
  *
+ * <h3>Value-Based vs Type-Based Equality:</h3>
+ * <p>MultiKeyMap provides two equality modes for key comparison, controlled via the {@code valueBasedEquality} parameter:</p>
+ * <ul>
+ *   <li><b>Value-Based Equality (default, valueBasedEquality = true):</b> Cross-type numeric comparisons work naturally.
+ *       Integer 1 equals Long 1L equals Double 1.0. This mode is ideal for configuration lookups and user-friendly APIs.</li>
+ *   <li><b>Type-Based Equality (valueBasedEquality = false):</b> Strict type checking - Integer 1 ≠ Long 1L.
+ *       This mode provides traditional Java Map semantics and maximum performance.</li>
+ * </ul>
+ *
+ * <h4>Value-Based Equality Edge Cases:</h4>
+ * <ul>
+ *   <li><b>NaN Behavior:</b> In value-based mode, {@code NaN == NaN} returns true (unlike Java's default).
+ *       This ensures consistent key lookups with floating-point values.</li>
+ *   <li><b>Zero Handling:</b> {@code +0.0 == -0.0} returns true in both modes (standard Java behavior).</li>
+ *   <li><b>BigDecimal Precision:</b> Doubles are converted via {@code new BigDecimal(number.toString())}.
+ *       This means {@code 0.1d} equals {@code BigDecimal("0.1")} but NOT {@code BigDecimal(0.1)} 
+ *       (the latter has binary rounding errors).</li>
+ *   <li><b>Infinity Handling:</b> Comparing {@code Double.POSITIVE_INFINITY} or {@code NEGATIVE_INFINITY} 
+ *       to BigDecimal returns false (BigDecimal cannot represent infinity).</li>
+ *   <li><b>Atomic Types:</b> In type-based mode, only identical atomic types match (AtomicInteger ≠ Integer).
+ *       In value-based mode, atomic types participate in numeric families (AtomicInteger(1) == Integer(1)).</li>
+ * </ul>
+ *
  * <h3>API Overview:</h3>
  * <p>MultiKeyMap provides two complementary APIs:</p>
  * <ul>
@@ -92,6 +115,15 @@ import java.util.logging.Logger;
  *     .simpleKeysMode(true)  // Skip nested structure checks for maximum performance
  *     .capacity(50000)       // Pre-size for known data volume
  *     .build();
+ * 
+ * // Value-based vs Type-based equality
+ * MultiKeyMap<String> valueMap = MultiKeyMap.<String>builder().valueBasedEquality(true).build();  // Default
+ * valueMap.putMultiKey("found", 1, 2L, 3.0);        // Mixed numeric types
+ * String result = valueMap.getMultiKey(1L, 2, 3);   // Found! Cross-type numeric matching
+ * 
+ * MultiKeyMap<String> typeMap = MultiKeyMap.<String>builder().valueBasedEquality(false).build();
+ * typeMap.putMultiKey("int-key", 1, 2, 3);
+ * String missing = typeMap.getMultiKey(1L, 2L, 3L); // null - different types don't match
  * }</pre>
  *
  * <p>For comprehensive examples and advanced usage patterns, see the user guide documentation.</p>
@@ -425,7 +457,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         private CollectionKeyMode collectionKeyMode = CollectionKeyMode.COLLECTIONS_EXPANDED;
         private boolean flattenDimensions = false;
         private boolean simpleKeysMode = false;
-        private boolean valueBasedEquality = false;
+        private boolean valueBasedEquality = true;  // Default: cross-type numeric matching
 
         // Private constructor - instantiate via MultiKeyMap.builder()
         private Builder() {}
@@ -606,12 +638,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static int computeElementHash(Object key) {
         if (key == null) return 0;
         
-        // Use value-based numeric hashing for all Numbers (includes AtomicInteger/AtomicLong),
-        // plus Boolean/AtomicBoolean/Character so that when valueBasedEquality is enabled the
+        // Use value-based numeric hashing for all Numbers and atomic types,
+        // plus Boolean/AtomicBoolean so that when valueBasedEquality is enabled the
         // hash codes are already aligned across numeric wrapper types. This introduces no
         // functional change for type-based equality (it may create extra collisions like
         // Byte(1) vs Integer(1), which is acceptable) and removes redundant instanceof checks.
-        if (key instanceof Number || key instanceof Boolean || key instanceof AtomicBoolean) {
+        if (key instanceof Number || key instanceof Boolean || key instanceof AtomicBoolean
+            || key instanceof AtomicInteger || key instanceof AtomicLong) {
             return valueHashCode(key); // align whole floats with integrals
         }
         
@@ -1325,7 +1358,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     break;
                 }
                 // Most common path - regular object, inline the common cases
-                h = h * 31 + (eClass == String.class || eClass == Integer.class || eClass == Long.class || eClass == Double.class || eClass == Boolean.class ? e.hashCode() : computeElementHash(e));
+                // Always use computeElementHash to maintain value-mode hash alignment
+                h = h * 31 + computeElementHash(e);
             }
         }
         
@@ -1576,8 +1610,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (lookupClass.isArray() || lookup instanceof Collection) {
                 return false; // Collection/array not single element
             }
-            return Objects.equals(stored.keys == NULL_SENTINEL ? null : stored.keys, 
-                                 lookup == NULL_SENTINEL ? null : lookup);
+            // Use elementEquals to respect value-based equality for single keys
+            return elementEquals(stored.keys, lookup, valueBasedEquality);
         }
 
         // Check arity match first (early rejection)
@@ -1600,6 +1634,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Early rejection on arity mismatch
         if (stored.arity != lookupArity) return false;
+        
+        // Handle COLLECTIONS_NOT_EXPANDED mode - Collections should use their own equals
+        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED
+            && stored.kind == MultiKey.KIND_COLLECTION) {
+            if (!(lookup instanceof Collection)) return false;
+            // Always use the collection's own equals; do NOT require same concrete class
+            return stored.keys.equals(lookup);
+        }
+        
         final Class<?> storeKeysClass = stored.keys.getClass();
         
         // Now use kind-based fast paths
@@ -1612,9 +1655,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 break;
                 
             case MultiKey.KIND_COLLECTION:
-                if (!valueBasedEquality && lookupKind == MultiKey.KIND_COLLECTION && storeKeysClass == lookupClass) {
-                    // Same collection type - use built-in equals() method only when not using value-based equality
+                if (!valueBasedEquality && lookupKind == MultiKey.KIND_COLLECTION) {
+                    // Use built-in equals() method only when not using value-based equality
                     // (value-based equality needs element-wise comparison for cross-type numeric equality)
+                    // No need to check same class - Collection.equals() handles different implementations
                     return stored.keys.equals(lookup);
                 }
                 // Fall through to cross-type comparison
@@ -2050,9 +2094,23 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return true;
             } else if (arrayClass == long[].class) {
                 long[] longArray = (long[]) array;
-                for (int i = 0; i < arity; i++) {
-                    if (!elementEquals(longArray[i], list.get(i), valueBasedEquality)) {
-                        return false;
+                if (!valueBasedEquality) {
+                    // Type-strict mode: avoid boxing, direct type check
+                    for (int i = 0; i < arity; i++) {
+                        Object v = list.get(i);
+                        if (v == NULL_SENTINEL) v = null;
+                        Long boxed = Long.valueOf(longArray[i]);
+                        if (v == boxed) continue;  // ref-equality guard
+                        if (!(v instanceof Long) || ((Long) v).longValue() != longArray[i]) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Value-based mode
+                    for (int i = 0; i < arity; i++) {
+                        if (!elementEquals(longArray[i], list.get(i), valueBasedEquality)) {
+                            return false;
+                        }
                     }
                 }
                 return true;
@@ -2066,25 +2124,67 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return true;
             } else if (arrayClass == boolean[].class) {
                 boolean[] boolArray = (boolean[]) array;
-                for (int i = 0; i < arity; i++) {
-                    if (!elementEquals(boolArray[i], list.get(i), valueBasedEquality)) {
-                        return false;
+                if (!valueBasedEquality) {
+                    // Type-strict mode: avoid boxing, direct type check
+                    for (int i = 0; i < arity; i++) {
+                        Object v = list.get(i);
+                        if (v == NULL_SENTINEL) v = null;
+                        Boolean boxed = Boolean.valueOf(boolArray[i]);
+                        if (v == boxed) continue;  // ref-equality guard
+                        if (!(v instanceof Boolean) || ((Boolean) v).booleanValue() != boolArray[i]) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Value-based mode
+                    for (int i = 0; i < arity; i++) {
+                        if (!elementEquals(boolArray[i], list.get(i), valueBasedEquality)) {
+                            return false;
+                        }
                     }
                 }
                 return true;
             } else if (arrayClass == byte[].class) {
                 byte[] byteArray = (byte[]) array;
-                for (int i = 0; i < arity; i++) {
-                    if (!elementEquals(byteArray[i], list.get(i), valueBasedEquality)) {
-                        return false;
+                if (!valueBasedEquality) {
+                    // Type-strict mode: avoid boxing, direct type check
+                    for (int i = 0; i < arity; i++) {
+                        Object v = list.get(i);
+                        if (v == NULL_SENTINEL) v = null;
+                        Byte boxed = Byte.valueOf(byteArray[i]);
+                        if (v == boxed) continue;  // ref-equality guard
+                        if (!(v instanceof Byte) || ((Byte) v).byteValue() != byteArray[i]) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Value-based mode
+                    for (int i = 0; i < arity; i++) {
+                        if (!elementEquals(byteArray[i], list.get(i), valueBasedEquality)) {
+                            return false;
+                        }
                     }
                 }
                 return true;
             } else if (arrayClass == char[].class) {
                 char[] charArray = (char[]) array;
-                for (int i = 0; i < arity; i++) {
-                    if (!elementEquals(charArray[i], list.get(i), valueBasedEquality)) {
-                        return false;
+                if (!valueBasedEquality) {
+                    // Type-strict mode: avoid boxing, direct type check
+                    for (int i = 0; i < arity; i++) {
+                        Object v = list.get(i);
+                        if (v == NULL_SENTINEL) v = null;
+                        Character boxed = Character.valueOf(charArray[i]);
+                        if (v == boxed) continue;  // ref-equality guard
+                        if (!(v instanceof Character) || ((Character) v).charValue() != charArray[i]) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Value-based mode
+                    for (int i = 0; i < arity; i++) {
+                        if (!elementEquals(charArray[i], list.get(i), valueBasedEquality)) {
+                            return false;
+                        }
                     }
                 }
                 return true;
@@ -2098,9 +2198,23 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return true;
             } else if (arrayClass == short[].class) {
                 short[] shortArray = (short[]) array;
-                for (int i = 0; i < arity; i++) {
-                    if (!elementEquals(shortArray[i], list.get(i), valueBasedEquality)) {
-                        return false;
+                if (!valueBasedEquality) {
+                    // Type-strict mode: avoid boxing, direct type check
+                    for (int i = 0; i < arity; i++) {
+                        Object v = list.get(i);
+                        if (v == NULL_SENTINEL) v = null;
+                        Short boxed = Short.valueOf(shortArray[i]);
+                        if (v == boxed) continue;  // ref-equality guard
+                        if (!(v instanceof Short) || ((Short) v).shortValue() != shortArray[i]) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Value-based mode
+                    for (int i = 0; i < arity; i++) {
+                        if (!elementEquals(shortArray[i], list.get(i), valueBasedEquality)) {
+                            return false;
+                        }
                     }
                 }
                 return true;
@@ -2268,10 +2382,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     Object v = objArray[i];
                     if (v == NULL_SENTINEL) v = null;
                     if (!(v instanceof Double)) return false;
-                    double d = ((Double) v).doubleValue();
-                    double a = doubleArray[i];
-                    // Handle NaN equality
-                    if (a != d && !(Double.isNaN(a) && Double.isNaN(d))) {
+                    // Use bit comparison for strict NaN handling (NaN != NaN in strict mode)
+                    if (Double.doubleToLongBits(((Double) v).doubleValue()) != Double.doubleToLongBits(doubleArray[i])) {
                         return false;
                     }
                 }
@@ -2378,10 +2490,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     Object v = objArray[i];
                     if (v == NULL_SENTINEL) v = null;
                     if (!(v instanceof Float)) return false;
-                    float f = ((Float) v).floatValue();
-                    float a = floatArray[i];
-                    // Handle NaN equality
-                    if (a != f && !(Float.isNaN(a) && Float.isNaN(f))) {
+                    // Use bit comparison for strict NaN handling (NaN != NaN in strict mode)
+                    if (Float.floatToIntBits(((Float) v).floatValue()) != Float.floatToIntBits(floatArray[i])) {
                         return false;
                     }
                 }
@@ -2540,10 +2650,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (ca == Byte.class)    return ((Byte) a).byteValue()     == ((Byte) b).byteValue();
             if (ca == Double.class)  { double x = (Double) a, y = (Double) b; return (x == y) || (Double.isNaN(x) && Double.isNaN(y)); }
             if (ca == Float.class)   { float  x = (Float)  a, y = (Float)  b; return (x == y) || (Float.isNaN(x)  && Float.isNaN(y)); }
-            if (ca == AtomicInteger.class) return ((AtomicInteger) a).get() == ((AtomicInteger) b).get();
-            if (ca == AtomicLong.class)    return ((AtomicLong) a).get()    == ((AtomicLong) b).get();
             if (ca == java.math.BigInteger.class) return ((java.math.BigInteger) a).compareTo((java.math.BigInteger) b) == 0;
             if (ca == java.math.BigDecimal.class) return ((java.math.BigDecimal) a).compareTo((java.math.BigDecimal) b) == 0;
+            if (ca == AtomicInteger.class) return ((AtomicInteger) a).get() == ((AtomicInteger) b).get();
+            if (ca == AtomicLong.class)    return ((AtomicLong) a).get()    == ((AtomicLong) b).get();
         }
 
         // 1) Integral-like ↔ integral-like (byte/short/int/long/atomics) as longs

@@ -95,7 +95,9 @@ public class MultiKeyMapGenericArrayProcessingTest {
     
     @Test
     void testMultiDimensionalGenericArrayExpansion() {
-        MultiKeyMap<String> map = new MultiKeyMap<>();
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+            .valueBasedEquality(false)  // Use type-strict mode for this test
+            .build();
         
         // Float[][] - 2D array should trigger expandWithHash path
         Float[][] float2D = {{1.0f, 2.0f}, {3.0f, 4.0f}};

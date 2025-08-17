@@ -174,7 +174,9 @@ public class MultiKeyMapAtomicTypesTest {
     void testAtomicTypeBasedEqualityWhenDisabled() {
         // Test that atomic types use value-based equality even when valueBasedEquality = false
         // This is intentional design - atomic types always compare by value for intuitive behavior
-        MultiKeyMap<String> map = new MultiKeyMap<>(); // valueBasedEquality = false (default)
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+            .valueBasedEquality(false)  // Explicitly set to false for this test
+            .build();
         
         // Put with AtomicInteger
         map.put(new Object[]{new AtomicInteger(42)}, "atomic-int-value");

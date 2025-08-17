@@ -156,7 +156,9 @@ public class MultiKeyMapTypedArrayProcessingTest {
     
     @Test
     void testNullElementsInTypedArrays() {
-        MultiKeyMap<String> map = new MultiKeyMap<>();
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+            .valueBasedEquality(false)  // Use type-strict mode for this test
+            .build();
         
         // String arrays can contain nulls
         String[] stringWithNull = {"before", null, "after"};
@@ -214,7 +216,9 @@ public class MultiKeyMapTypedArrayProcessingTest {
     
     @Test
     void testMixedTypedArrayTypes() {
-        MultiKeyMap<String> map = new MultiKeyMap<>();
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+            .valueBasedEquality(false)  // Use type-strict mode for this test
+            .build();
         
         // Different typed arrays with similar content should be different keys
         String[] stringArray = {"1", "2", "3"};
@@ -239,7 +243,9 @@ public class MultiKeyMapTypedArrayProcessingTest {
     
     @Test
     void testGenericArrayFallback() {
-        MultiKeyMap<String> map = new MultiKeyMap<>();
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+            .valueBasedEquality(false)  // Use type-strict mode for this test
+            .build();
         
         // Test with less common array types that should fall back to generic processing
         Float[] floatObjectArray = {1.0f, 2.0f, 3.0f};

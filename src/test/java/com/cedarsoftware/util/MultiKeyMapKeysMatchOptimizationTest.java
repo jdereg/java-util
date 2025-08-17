@@ -31,7 +31,9 @@ public class MultiKeyMapKeysMatchOptimizationTest {
     
     @Test
     void testPrimitiveArrayFastPaths() {
-        MultiKeyMap<String> map = new MultiKeyMap<>();
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+            .valueBasedEquality(false)  // Use type-strict mode for this test
+            .build();
         
         // Test int[] fast path
         int[] intKey1 = {1, 2, 3, 4, 5};

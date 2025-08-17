@@ -2409,6 +2409,74 @@ String val5 = flattenMap.get(new Object[]{"x", "y", "z"});        // "deep-neste
     > If your dedupe/enrichment cache keys on “dimensions attached to a record”, flatten so both hit the same enrichment result.
 
 
+### Value-Based vs Type-Based Equality
+
+`MultiKeyMap` provides two equality modes for key comparison, controlled via the `valueBasedEquality` parameter:
+
+#### Value-Based Equality (Default)
+**`valueBasedEquality = true` - Cross-type numeric comparisons work naturally:**
+
+```java
+// Default behavior - value-based equality enabled
+MultiKeyMap<String> map = new MultiKeyMap<>();  // or explicitly: builder().valueBasedEquality(true).build()
+
+// Mixed numeric types work as expected
+map.putMultiKey("found", 1, 2L, 3.0);           // Integer, Long, Double
+String result = map.getMultiKey(1L, 2, 3);      // Found! Different types match by value
+
+// All these keys are equivalent:
+map.put(Arrays.asList(1, 2, 3), "int-list");
+String v1 = map.get(Arrays.asList(1L, 2L, 3L)); // "int-list" - Long list matches
+String v2 = map.get(Arrays.asList(1.0, 2.0, 3.0)); // "int-list" - Double list matches
+
+// Atomic types participate in numeric families
+map.putMultiKey("atomic", new AtomicInteger(42));
+String v3 = map.getMultiKey(42);                // "atomic" - Integer matches AtomicInteger
+String v4 = map.getMultiKey(42L);               // "atomic" - Long matches too
+String v5 = map.getMultiKey(42.0);              // "atomic" - Double matches too
+```
+
+**Edge Cases in Value-Based Mode:**
+- **NaN Behavior:** `NaN == NaN` returns true (unlike Java's default), ensuring consistent key lookups
+- **Zero Handling:** `+0.0 == -0.0` returns true (standard Java behavior)
+- **BigDecimal Precision:** Doubles convert via `new BigDecimal(number.toString())`, so `0.1d` equals `BigDecimal("0.1")` but NOT `BigDecimal(0.1)` (which has binary rounding errors)
+- **Infinity:** Comparing `Double.POSITIVE_INFINITY` or `NEGATIVE_INFINITY` to BigDecimal returns false
+- **Atomic Types:** AtomicInteger(1) equals Integer(1), AtomicLong(1L) equals Long(1L), etc.
+
+#### Type-Based Equality
+**`valueBasedEquality = false` - Strict type checking for maximum performance:**
+
+```java
+// Type-based equality - traditional Java Map semantics
+MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+    .valueBasedEquality(false)
+    .build();
+
+// Different numeric types are different keys
+map.putMultiKey("int-key", 1, 2, 3);
+String v1 = map.getMultiKey(1, 2, 3);           // "int-key" - exact match
+String v2 = map.getMultiKey(1L, 2L, 3L);        // null - Long doesn't match Integer
+
+// Atomic types only match themselves
+map.putMultiKey("atomic", new AtomicInteger(42));
+String v3 = map.getMultiKey(new AtomicInteger(42)); // "atomic" - same type
+String v4 = map.getMultiKey(42);                    // null - Integer doesn't match AtomicInteger
+```
+
+#### When to Use Each Mode
+
+**Value-Based Equality (Default):**
+- **Configuration systems** where users might specify 1 or 1.0
+- **User-facing APIs** where numeric flexibility improves usability
+- **Data aggregation** across different numeric sources
+- **JSON/REST APIs** where numbers might arrive in different formats
+
+**Type-Based Equality:**
+- **Maximum performance** scenarios (no cross-type checking overhead)
+- **Type-critical systems** where Integer vs Long distinction matters
+- **Legacy compatibility** with traditional Java Map behavior
+- **Systems requiring exact type matching** for correctness
+
 ### CollectionKeyMode - Treating Collections as Keys
 
 By default, MultiKeyMap expands Collections and Arrays into their elements. However, sometimes you want to use a Collection itself as a single atomic key (a "berry"). The `CollectionKeyMode` parameter controls this behavior:
@@ -2474,6 +2542,30 @@ Object[][] jagged = {{"a", "b"}, {"c", "d", "e"}, {"f"}};
 MultiKeyMap<String> map = new MultiKeyMap<>();
 map.put(jagged, "jagged-value");  // Expands to flat sequence preserving structure
 ```
+
+### Configuration Summary
+
+MultiKeyMap provides several configuration options via the builder pattern:
+
+```java
+MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+    .valueBasedEquality(true)     // Default: true - Cross-type numeric matching
+    .flattenDimensions(false)     // Default: false - Preserve structural depth
+    .collectionKeyMode(            // Default: COLLECTIONS_EXPANDED
+        MultiKeyMap.CollectionKeyMode.COLLECTIONS_EXPANDED)
+    .simpleKeysMode(false)         // Default: false - Check for nested structures
+    .capacity(16)                  // Default: 16 - Initial capacity
+    .loadFactor(0.75f)             // Default: 0.75 - Load factor for resizing
+    .build();
+```
+
+**Key Configuration Options:**
+- **`valueBasedEquality`**: Controls numeric comparison behavior (Integer 1 == Long 1L in value mode)
+- **`flattenDimensions`**: Controls whether nested structures create different keys
+- **`collectionKeyMode`**: Whether collections expand into dimensions or act as atomic keys
+- **`simpleKeysMode`**: Performance optimization when keys are guaranteed to be flat
+- **`capacity`**: Initial size for pre-sizing with known data volumes
+- **`loadFactor`**: Controls when internal resizing occurs
 
 ### Performance Characteristics
 
@@ -2590,7 +2682,9 @@ Department same = flexOrg.getMultiKey("company", "engineering", "backend");   //
 
 ### O(1) Decision Table Pattern
 
-MultiKeyMap serves as an exceptionally powerful **O(1) decision table** for business rules, configuration management, and multi-dimensional lookups. When using Maps or complex objects as values, you gain unlimited structured output parameters while maintaining constant-time performance.
+MultiKeyMap serves as an exceptionally powerful **O(1) decision table** for business rules, configuration management, 
+and multi-dimensional lookups. When using Maps or complex objects as values, you gain unlimited structured output
+parameters while maintaining constant-time performance.
 
 **[📋 Complete Decision Table Guide →](decision-tree.md)**
 
@@ -2760,7 +2854,7 @@ fast.put(simpleList, "cache_metrics");
 
 ### Performance Benchmarks
 
-Cedar Software's `MultiKeyMap` delivers exceptional concurrent performance, significantly outperforming all alternatives in realistic multi-threaded workloads. The benchmarks below use 6-dimensional keys in a mixed workload scenario with 86.6% concurrent read operations and 13.3% concurrent write operations across 12 threads.
+Cedar's `MultiKeyMap` delivers exceptional concurrent performance, significantly outperforming all alternatives in realistic multi-threaded workloads. The benchmarks below use 6-dimensional keys in a mixed workload scenario with 86.6% concurrent read operations and 13.3% concurrent write operations across 12 threads.
 
 **Test Configuration:**
 - **6-dimensional keys** for comprehensive multi-key testing

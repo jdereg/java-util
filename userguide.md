@@ -2899,7 +2899,7 @@ fast.put(simpleList, "cache_metrics");
 - Unknown or dynamic key structures
 - Mixed flat and nested keys in same map
 
-**Important Note:** When `simpleKeysMode=true`, nested arrays and collections are still handled correctly but treated as atomic keys rather than being expanded into their elements.
+**Important Note:** When `simpleKeysMode=true`, nested arrays and collections are still handled correctly but treated as atomic keys ("berries") rather than being expanded into their elements.
 
 ### Performance Benchmarks
 

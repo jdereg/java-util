@@ -408,46 +408,7 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
      */
     public CaseInsensitiveMap(Map<K, V> source) {
         Objects.requireNonNull(source, "Source map cannot be null");
-        
-        // Check for IdentityHashMap first - this must throw an exception
-        if (source instanceof IdentityHashMap) {
-            throw new IllegalArgumentException(
-                    "Cannot create a CaseInsensitiveMap from an IdentityHashMap. " +
-                            "IdentityHashMap compares keys by reference (==) which is incompatible.");
-        }
-        
-        Map<K, V> newMap;
-        
-        // Special handling for CaseInsensitiveMap source - use its wrapped map type
-        if (source instanceof CaseInsensitiveMap) {
-            CaseInsensitiveMap<K, V> ciSource = (CaseInsensitiveMap<K, V>) source;
-            Map<K, V> wrappedMap = ciSource.getWrappedMap();
-            try {
-                // Use OSGi-correct class loading approach
-                Class<?> targetClass = Class.forName(wrappedMap.getClass().getName(), false, ClassUtilities.getClassLoader());
-                @SuppressWarnings("unchecked")
-                Map<K, V> tempMap = (Map<K, V>) ClassUtilities.newInstance(targetClass, source.size());
-                // Use the two-argument constructor recursively
-                CaseInsensitiveMap<K, V> tempCiMap = new CaseInsensitiveMap<>(source, tempMap);
-                newMap = tempCiMap.map;
-            } catch (Exception e) {
-                newMap = determineBackingMap(source);
-            }
-        } else {
-            // For non-CaseInsensitiveMap sources, try to create the same type
-            try {
-                // Use OSGi-correct class loading approach
-                Class<?> targetClass = Class.forName(source.getClass().getName(), false, ClassUtilities.getClassLoader());
-                @SuppressWarnings("unchecked")
-                Map<K, V> tempMap = (Map<K, V>) ClassUtilities.newInstance(targetClass, source.size());
-                // Use the two-argument constructor recursively
-                CaseInsensitiveMap<K, V> tempCiMap = new CaseInsensitiveMap<>(source, tempMap);
-                newMap = tempCiMap.map;
-            } catch (Exception e) {
-                newMap = determineBackingMap(source);
-            }
-        }
-        map = newMap;
+        map = determineBackingMap(source);
     }
 
     /**

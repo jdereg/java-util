@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -44,30 +45,33 @@ public class CaseInsensitiveMapVsMultiKeyMapPerformanceTest {
     
     @Test
     public void comparePerformance() {
-        System.out.println("\n" + "=".repeat(80));
+        System.out.println("\n" + repeat("=", 80));
         System.out.println("CaseInsensitiveMap vs MultiKeyMap Performance Comparison");
-        System.out.println("=".repeat(80));
+        System.out.println(repeat("=", 80));
         
         // Test with different sizes
         runComparison(SMALL_SIZE, "SMALL (100 entries)");
         runComparison(MEDIUM_SIZE, "MEDIUM (10,000 entries)");
         runComparison(LARGE_SIZE, "LARGE (100,000 entries)");
         
-        System.out.println("\n" + "=".repeat(80));
+        System.out.println("\n" + repeat("=", 80));
         System.out.println("Performance Analysis Summary");
-        System.out.println("=".repeat(80));
+        System.out.println(repeat("=", 80));
     }
     
     private void runComparison(int size, String sizeLabel) {
-        System.out.println("\n" + "-".repeat(80));
+        System.out.println("\n" + repeat("-", 80));
         System.out.println("Testing with " + sizeLabel);
-        System.out.println("-".repeat(80));
+        System.out.println(repeat("-", 80));
         
         // Generate test data
         generateTestData(size);
         
-        // Create maps
-        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>();
+        // Create maps - CaseInsensitiveMap backed by ConcurrentHashMap for fair comparison
+        CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(
+            Collections.emptyMap(), 
+            new ConcurrentHashMap<String, String>(size)
+        );
         MultiKeyMap<String> mkMapSingle = MultiKeyMap.<String>builder()
             .caseSensitive(false)
             .capacity(size)
@@ -90,7 +94,8 @@ public class CaseInsensitiveMapVsMultiKeyMapPerformanceTest {
         
         // Measure PUT performance
         System.out.println("\n📊 PUT Performance (nanoseconds per operation):");
-        long ciPutTime = measurePuts(new CaseInsensitiveMap<>(), "CaseInsensitiveMap");
+        long ciPutTime = measurePuts(new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentHashMap<String, String>(size)), 
+                                     "CaseInsensitiveMap");
         long mkSinglePutTime = measurePuts(MultiKeyMap.<String>builder().caseSensitive(false).capacity(size).build(), 
                                            "MultiKeyMap (single)", false);
         long mkArrayPutTime = measurePuts(MultiKeyMap.<String>builder().caseSensitive(false).capacity(size).build(), 
@@ -274,21 +279,24 @@ public class CaseInsensitiveMapVsMultiKeyMapPerformanceTest {
     
     @Test
     public void detailedMemoryAndCollisionAnalysis() {
-        System.out.println("\n" + "=".repeat(80));
+        System.out.println("\n" + repeat("=", 80));
         System.out.println("Memory and Collision Analysis");
-        System.out.println("=".repeat(80));
+        System.out.println(repeat("=", 80));
         
         int[] sizes = {100, 1000, 10_000, 100_000};
         
         for (int size : sizes) {
-            System.out.println("\n" + "-".repeat(80));
+            System.out.println("\n" + repeat("-", 80));
             System.out.println("Size: " + String.format("%,d", size) + " entries");
-            System.out.println("-".repeat(80));
+            System.out.println(repeat("-", 80));
             
             generateTestData(size);
             
-            // Create and populate maps
-            CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(size);
+            // Create and populate maps - CaseInsensitiveMap backed by ConcurrentHashMap
+            CaseInsensitiveMap<String, String> ciMap = new CaseInsensitiveMap<>(
+                Collections.emptyMap(),
+                new ConcurrentHashMap<String, String>(size)
+            );
             MultiKeyMap<String> mkMap = MultiKeyMap.<String>builder()
                 .caseSensitive(false)
                 .capacity(size)
@@ -323,5 +331,13 @@ public class CaseInsensitiveMapVsMultiKeyMapPerformanceTest {
     private long getUsedMemory() {
         Runtime runtime = Runtime.getRuntime();
         return runtime.totalMemory() - runtime.freeMemory();
+    }
+    
+    private static String repeat(String str, int count) {
+        StringBuilder sb = new StringBuilder(str.length() * count);
+        for (int i = 0; i < count; i++) {
+            sb.append(str);
+        }
+        return sb.toString();
     }
 }

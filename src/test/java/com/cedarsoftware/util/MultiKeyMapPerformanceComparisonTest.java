@@ -77,7 +77,6 @@ public class MultiKeyMapPerformanceComparisonTest {
         }
     }
 
-//    @Disabled
     @Test
     void comparePerformance() {
         LOG.info("=== Cedar vs Apache MultiKeyMap Performance Comparison ===");

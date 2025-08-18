@@ -4,16 +4,13 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.cedarsoftware.util.ByteUtilities.HEX_ARRAY;
-import static java.lang.Character.toLowerCase;
 
 /**
  * Comprehensive utility class for string operations providing enhanced manipulation, comparison,
@@ -225,7 +222,7 @@ public final class StringUtilities {
      * @see StringUtilities#equals(CharSequence, CharSequence)
      */
     public static boolean equals(String s1, String s2) {
-        return equals((CharSequence) s1, (CharSequence) s2);
+        return equals(s1, (CharSequence) s2);
     }
 
     /**
@@ -241,23 +238,23 @@ public final class StringUtilities {
      * @see #equals(CharSequence, CharSequence)
      */
     public static boolean equalsIgnoreCase(CharSequence cs1, CharSequence cs2) {
-        if (cs1 == cs2) {
-            return true;
+        if (cs1 == cs2) return true;
+        if (cs1 == null || cs2 == null) return false;
+        final int n = cs1.length();
+        if (n != cs2.length()) return false;
+
+        // Let HotSpot's heavily optimized code handle String/String
+        if (cs1 instanceof String && cs2 instanceof String) {
+            return ((String) cs1).equalsIgnoreCase((String) cs2);
         }
-        if (cs1 == null || cs2 == null) {
-            return false;
-        }
-        if (cs1.length() != cs2.length()) {
-            return false;
-        }
-        return regionMatches(cs1, true, 0, cs2, 0, cs1.length());
+        return regionEqualsIgnoreCase(cs1, 0, cs2, 0, n);
     }
 
     /**
      * @see StringUtilities#equalsIgnoreCase(CharSequence, CharSequence)
      */
     public static boolean equalsIgnoreCase(String s1, String s2) {
-        return equalsIgnoreCase((CharSequence) s1, (CharSequence) s2);
+        return equalsIgnoreCase(s1, (CharSequence) s2);
     }
 
     /**
@@ -295,63 +292,71 @@ public final class StringUtilities {
         return false;
     }
 
-    /**
-     * Green implementation of regionMatches.
-     *
-     * @param cs         the {@link CharSequence} to be processed
-     * @param ignoreCase whether to be case-insensitive
-     * @param thisStart  the index to start on the {@code cs} CharSequence
-     * @param substring  the {@link CharSequence} to be looked for
-     * @param start      the index to start on the {@code substring} CharSequence
-     * @param length     character length of the region
-     * @return whether the region matched
-     */
+    /** Fast, allocation-free case-insensitive region compare. */
     static boolean regionMatches(CharSequence cs, boolean ignoreCase, int thisStart,
                                  CharSequence substring, int start, int length) {
         Convention.throwIfNull(cs, "cs to be processed cannot be null");
         Convention.throwIfNull(substring, "substring cannot be null");
 
+        // Delegate to JDK for String/String — it knows about compact strings, etc.
         if (cs instanceof String && substring instanceof String) {
             return ((String) cs).regionMatches(ignoreCase, thisStart, (String) substring, start, length);
         }
-        int index1 = thisStart;
-        int index2 = start;
-        int tmpLen = length;
 
-        // Extract these first so we detect NPEs the same as the java.lang.String version
-        int srcLen = cs.length() - thisStart;
-        int otherLen = substring.length() - start;
+        // Bounds and trivial cases first
+        if (thisStart < 0 || start < 0 || length < 0) return false;
+        if (cs.length() - thisStart < length || substring.length() - start < length) return false;
+        if (length == 0) return true;
 
-        // Check for invalid parameters
-        if (thisStart < 0 || start < 0 || length < 0) {
-            return false;
+        if (!ignoreCase) {
+            for (int i = 0; i < length; i++) {
+                if (cs.charAt(thisStart + i) != substring.charAt(start + i)) return false;
+            }
+            return true;
         }
+        return regionEqualsIgnoreCase(cs, thisStart, substring, start, length);
+    }
 
-        // Check that the regions are long enough
-        if (srcLen < length || otherLen < length) {
-            return false;
-        }
+    /** ASCII-first path with Unicode fallback; matches String.regionMatches(ignoreCase=true). */
+    private static boolean regionEqualsIgnoreCase(CharSequence a, int aOff,
+                                                  CharSequence b, int bOff,
+                                                  int len) {
+        int i = 0;
+        // Fast path: ASCII only (no Character.* calls)
+        while (i < len) {
+            char c1 = a.charAt(aOff + i);
+            char c2 = b.charAt(bOff + i);
+            if (c1 == c2) { i++; continue; }
 
-        while (tmpLen-- > 0) {
-            char c1 = cs.charAt(index1++);
-            char c2 = substring.charAt(index2++);
-
-            if (c1 == c2) {
-                continue;
+            // If either is non-ASCII, fall back once
+            if ( (c1 | c2) >= 128 ) {
+                return regionEqualsIgnoreCaseSlow(a, aOff + i, b, bOff + i, len - i);
             }
 
-            if (!ignoreCase) {
-                return false;
-            }
+            // Fold ASCII A..Z → a..z via arithmetic (fast and branch-friendly)
+            if ((c1 - 'A') <= 25) c1 += 32;
+            if ((c2 - 'A') <= 25) c2 += 32;
+            if (c1 != c2) return false;
+            i++;
+        }
+        return true;
+    }
 
-            // The real same check as in String.regionMatches():
+    /** Slow path: exact String.regionMatches(ignoreCase=true) semantics (char-based). */
+    private static boolean regionEqualsIgnoreCaseSlow(CharSequence a, int aOff,
+                                                      CharSequence b, int bOff,
+                                                      int len) {
+        for (int i = 0; i < len; i++) {
+            char c1 = a.charAt(aOff + i);
+            char c2 = b.charAt(bOff + i);
+            if (c1 == c2) continue;
+
             char u1 = Character.toUpperCase(c1);
             char u2 = Character.toUpperCase(c2);
-            if (u1 != u2 && toLowerCase(u1) != toLowerCase(u2)) {
+            if (u1 != u2 && Character.toLowerCase(u1) != Character.toLowerCase(u2)) {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -868,6 +873,50 @@ public final class StringUtilities {
     }
 
     /**
+     * Computes a case-insensitive hash code for a CharSequence.
+     * This method produces the same hash as cs.toString().toLowerCase().hashCode()
+     * for compatibility with existing code.
+     *
+     * @param cs the CharSequence to hash (can be String, StringBuilder, etc.)
+     * @return the case-insensitive hash code, or 0 if cs is null
+     */
+    public static int hashCodeIgnoreCase(CharSequence cs) {
+        if (cs == null) return 0;
+        
+        // For String, delegate to the optimized String-specific version
+        if (cs instanceof String) {
+            return hashCodeIgnoreCase((String) cs);
+        }
+
+        // Check if CharSequence is pure ASCII for fast path
+        boolean isPureAscii = true;
+        final int n = cs.length();
+        for (int i = 0; i < n; i++) {
+            if (cs.charAt(i) >= 128) {
+                isPureAscii = false;
+                break;
+            }
+        }
+        
+        if (isPureAscii) {
+            // Fast path for pure ASCII: compute hash directly without allocation
+            int h = 0;
+            for (int i = 0; i < n; i++) {
+                char c = cs.charAt(i);
+                // Convert A-Z to a-z
+                if (c >= 'A' && c <= 'Z') {
+                    c = (char) (c + 32);
+                }
+                h = 31 * h + c;
+            }
+            return h;
+        } else {
+            // For non-ASCII, we must use toLowerCase() to maintain compatibility
+            return cs.toString().toLowerCase().hashCode();
+        }
+    }
+
+    /**
      * Get the hashCode of a String, insensitive to case, without any new Strings
      * being created on the heap.
      * <p>
@@ -876,53 +925,42 @@ public final class StringUtilities {
      * where simple ASCII case conversion does not work properly.
      */
     public static int hashCodeIgnoreCase(String s) {
-        if (s == null) {
-            return 0;
+        if (s == null) return 0;
+
+        // To maintain compatibility with existing code that relies on specific hash collisions,
+        // we need to produce the same hash as s.toLowerCase().hashCode()
+        // The optimized version below computes hash differently and breaks some tests
+        
+        // Check if string is pure ASCII for fast path
+        boolean isPureAscii = true;
+        final int n = s.length();
+        for (int i = 0; i < n; i++) {
+            if (s.charAt(i) >= 128) {
+                isPureAscii = false;
+                break;
+            }
         }
-
-        updateAsciiCompatibility();
-
-        final int len = s.length();
-        int hash = 0;
-
-        if (isAsciiCompatibleLocale) {
-            // Fast path: use ASCII shift for compatible locales
-            for (int i = 0; i < len; i++) {
+        
+        if (isPureAscii) {
+            // Fast path for pure ASCII: compute hash directly without allocation
+            int h = 0;
+            for (int i = 0; i < n; i++) {
                 char c = s.charAt(i);
-                // Simple ASCII uppercase to lowercase conversion: add 32 to uppercase letters
+                // Convert A-Z to a-z
                 if (c >= 'A' && c <= 'Z') {
-                    c += 32; // Convert to lowercase by adding 32 in the ASCII table
+                    c = (char) (c + 32);
                 }
-                hash = 31 * hash + c;
+                h = 31 * h + c;
             }
+            return h;
         } else {
-            // Slow path: use the proper locale-aware approach for non-ASCII languages
-            for (int i = 0; i < len; i++) {
-                hash = 31 * hash + toLowerCase(s.charAt(i));
-            }
-        }
-
-        return hash;
-    }
-
-    /**
-     * Static flag indicating whether the current default locale is compatible with
-     * fast ASCII case conversion. This is evaluated once at class load time and
-     * updated whenever the locale changes.
-     */
-    private static volatile boolean isAsciiCompatibleLocale = checkAsciiCompatibleLocale();
-    private static volatile Locale lastLocale = Locale.getDefault();
-
-    private static void updateAsciiCompatibility() {
-        Locale current = Locale.getDefault();
-        if (!current.equals(lastLocale)) {
-            lastLocale = current;
-            isAsciiCompatibleLocale = checkAsciiCompatibleLocale();
+            // For non-ASCII, we must use toLowerCase() to maintain compatibility
+            // This ensures we get the exact same hash codes as before
+            return s.toLowerCase().hashCode();
         }
     }
 
     /**
-     * Listener for locale changes, updates the isAsciiCompatibleLocale flag when needed.
      * Add when we support Java 18+
      */
 //    static {
@@ -931,40 +969,6 @@ public final class StringUtilities {
 //            isAsciiCompatibleLocale = checkAsciiCompatibleLocale();
 //        });
 //    }
-
-    /**
-     * Determines if the current default locale is compatible with
-     * simple ASCII case conversion.
-     *
-     * @return true if the locale can use the fast ASCII shift approach
-     */
-    private static boolean checkAsciiCompatibleLocale() {
-        Locale currentLocale = Locale.getDefault();
-
-        // List of locales that are compatible with the ASCII shift approach
-        // This includes most Latin-based languages where A-Z maps cleanly to a-z with a simple +32 shift
-        return currentLocale.equals(Locale.US) ||
-                currentLocale.equals(Locale.UK) ||
-                currentLocale.equals(Locale.ENGLISH) ||
-                currentLocale.equals(Locale.CANADA) ||
-                currentLocale.equals(Locale.GERMANY) ||
-                currentLocale.equals(Locale.FRANCE) ||
-                currentLocale.equals(Locale.ITALY) ||
-                currentLocale.equals(Locale.CANADA_FRENCH) ||
-                "ISO-8859-1".equalsIgnoreCase(System.getProperty("file.encoding")) ||
-                "UTF-8".equalsIgnoreCase(System.getProperty("file.encoding"));
-    }
-
-    /**
-     * Convert a character to lowercase without creating new objects.
-     * This method uses Character.toLowerCase() which is locale-sensitive.
-     *
-     * @param c the character to convert
-     * @return the lowercase version of the character
-     */
-    private static char toLowerCase(char c) {
-        return Character.toLowerCase(c);
-    }
 
     /**
      * Removes control characters (char &lt;= 32) from both

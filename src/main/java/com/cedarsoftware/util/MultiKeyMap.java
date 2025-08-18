@@ -894,24 +894,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the value to which the specified key is mapped, or {@code null} if no mapping exists
      */
     public V get(Object key) {
-        // Ultra-fast path for single, non-container keys (most common case)
-        if (key != null && !(key instanceof Collection) && !key.getClass().isArray()) {
-            final int h = computeElementHash(key, caseSensitive);
-            final AtomicReferenceArray<MultiKey<V>[]> table = buckets;
-            final MultiKey<V>[] chain = table.get(h & (table.length() - 1));
-            if (chain != null) {
-                for (int i = 0, len = chain.length; i < len; i++) {
-                    MultiKey<V> e = chain[i];
-                    if (e != null && e.hash == h && e.kind == MultiKey.KIND_SINGLE &&
-                        elementEquals(e.keys, key, valueBasedEquality, caseSensitive)) {
-                        return e.value;
-                    }
-                }
-            }
-            return null;
-        }
-        
-        // Fall back to zero-allocation lookup for complex keys
+        // Zero-allocation lookup using ThreadLocal Norm holder
         Norm n = normalizeForLookup(key);
         MultiKey<V> entry = findEntryWithPrecomputedHash(n.key, n.hash);
         return entry != null ? entry.value : null;

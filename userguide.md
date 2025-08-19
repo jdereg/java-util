@@ -2249,7 +2249,10 @@ This implementation provides a robust set of utilities for class manipulation an
 
 [View Source](/src/main/java/com/cedarsoftware/util/MultiKeyMap.java)
 
-`MultiKeyMap` is a concurrent, N-dimensional key-value map for Java. It accepts any number of keys (arrays, collections, or var-args) and implements the full `ConcurrentMap` API. Benchmarks in this repo show faster reads and writes than Apache Commons’ non-concurrent MultiKeyMap on our test matrix, while providing true thread safety. See `MultiKeyMapPerformanceComparisonTest` for how we measured.
+`MultiKeyMap` is a concurrent, N-dimensional key-value map for Java. It accepts any number of keys (arrays, collections, 
+or var-args) and implements the full `ConcurrentMap` API. Benchmarks in this repo show faster reads and writes than 
+Apache Commons’ non-concurrent MultiKeyMap on our test matrix, while providing true thread safety.
+See `MultiKeyMapPerformanceComparisonTest` for how we measured.
 
 ### Why MultiKeyMap is Best-in-Class
 
@@ -2261,7 +2264,7 @@ This implementation provides a robust set of utilities for class manipulation an
 
 **Ultimate Flexibility:**
 - **Any number of keys** (1, 2, 3, 4... unlimited keys)
-- **Any key types** (String, Integer, custom objects, mixed types)
+- **Any key types** (String, Integer, custom objects, mixed types, collections n-dimensional arrays, ...)
 - **Thread-safe ConcurrentMap** interface with full null support
 - **Type-safe façade ready** - wrap with strongly-typed interface for compile-time safety
 - **Revolutionary dimension handling** - choose between structure preservation or dimension flattening
@@ -2327,6 +2330,50 @@ mkMap.removeMultiKey("key1", "key2", "key3", "key4");
 var-args methods. This design choice provides Map compatibility AND elegant multi-argument APIs.
 
 **Key Point 2**: If you already have arrays or collections that you want to use as keys, then it is better to use the traditional `put/get/containsKey/remove` APIs.
+
+### Understanding Keys: Branches and Berries
+
+MultiKeyMap treats arrays and collections as interchangeable "branches" that hold your actual key values (the "berries"). This powerful abstraction means:
+
+**Core Concept:**
+- **Branches**: The arrays, collections, and nested structures that form the container hierarchy
+- **Berries**: The actual data values (Strings, Numbers, custom objects) that serve as the real keys
+
+**Key Equivalence:**
+- `[1, 2, 3]` array equals `List.of(1, 2, 3)` - same berries, different branch types
+- `Set.of("a", "b")` equals `["a", "b"]` array - containers are interchangeable
+- Even nested: `[List.of(1, 2), Set.of(3, 4)]` equals `[[1, 2], [3, 4]]`
+
+MultiKeyMap compares the berries for equality, not the specific branch types holding them.
+
+### Protecting Against External Modifications
+
+Since MultiKeyMap stores references to your arrays/collections, external modifications to these structures can break 
+the map's integrity. If you need to protect against this, `java-util` provides deep branch copying utilities:
+
+```java
+// Original array that might be modified externally
+String[][] userProvidedKeys = {{"dept", "eng"}, {"emp", "123"}};
+
+// Create a defensive copy of the structure (new arrays, same String references)
+Object safeKeys = ArrayUtilities.deepCopyContainers(userProvidedKeys);
+mkMap.put(safeKeys, "employee-data");
+
+// Now external modifications to userProvidedKeys won't affect the map
+userProvidedKeys[0][0] = "finance";  // Doesn't break mkMap
+
+// Similarly for collections
+List<List<String>> userList = getExternalList();
+List<List<String>> safeList = CollectionUtilities.deepCopyContainers(userList);
+mkMap.put(safeList, "list-data");
+```
+
+**Important Notes:**
+- `deepCopyContainers()` creates new containers (arrays/collections) but keeps the same object references ("berries")
+- This protects against structural changes (adding/removing elements, replacing sub-arrays)
+- It does NOT protect against mutations to the berries themselves (e.g., modifying a mutable object)
+- If a berry's hash code changes due to mutation, the entire MultiKeyMap instance becomes unstable
+- Properly handles circular references using iterative traversal (no stack overflow)
 
 ### Dimensional Behavior Control
 
@@ -2526,7 +2573,8 @@ String theme4 = map.getMultiKey(sb, buf, "theme");  // "dark-theme"
 
 ### CollectionKeyMode - Treating Collections as Keys
 
-By default, MultiKeyMap expands Collections and Arrays into their elements. However, sometimes you want to use a Collection itself as a single atomic key (a "berry"). The `CollectionKeyMode` parameter controls this behavior:
+By default, MultiKeyMap expands Collections and Arrays into their elements. However, sometimes you want to use a
+Collection itself as a single atomic key (a "berry"). The `CollectionKeyMode` parameter controls this behavior:
 
 #### COLLECTIONS_EXPANDED (Default)
 Collections are expanded into their elements to form multi-dimensional keys:

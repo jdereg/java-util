@@ -190,7 +190,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Object key; 
         int hash; 
     }
-    private static final ThreadLocal<Norm> NORM_HOLDER = ThreadLocal.withInitial(Norm::new);
 
     // Common strings
     private static final String THIS_MAP = "(this Map ♻️)"; // Recycle for cycles
@@ -261,12 +260,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         SIMPLE_ARRAY_TYPES.add(java.util.regex.Pattern[].class);
         
         // AWT/Swing basic types (immutable DTOs)
-        SIMPLE_ARRAY_TYPES.add(java.awt.Color[].class);
-        SIMPLE_ARRAY_TYPES.add(java.awt.Font[].class);
-        SIMPLE_ARRAY_TYPES.add(java.awt.Dimension[].class);
-        SIMPLE_ARRAY_TYPES.add(java.awt.Point[].class);
-        SIMPLE_ARRAY_TYPES.add(java.awt.Rectangle[].class);
-        SIMPLE_ARRAY_TYPES.add(java.awt.Insets[].class);
+//        SIMPLE_ARRAY_TYPES.add(java.awt.Color[].class);
+//        SIMPLE_ARRAY_TYPES.add(java.awt.Font[].class);
+//        SIMPLE_ARRAY_TYPES.add(java.awt.Dimension[].class);
+//        SIMPLE_ARRAY_TYPES.add(java.awt.Point[].class);
+//        SIMPLE_ARRAY_TYPES.add(java.awt.Rectangle[].class);
+//        SIMPLE_ARRAY_TYPES.add(java.awt.Insets[].class);
         
         // Enum arrays are also simple (enums can't contain collections/arrays)
         SIMPLE_ARRAY_TYPES.add(java.time.DayOfWeek[].class);
@@ -811,7 +810,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private ReentrantLock getStripeLock(int hash) {
-        return stripeLocks[hash & STRIPE_MASK];
+        // GPT5 optimization: Use bucket index for stripe selection to reduce false contention
+        // between independent buckets that happen to have same low-order hash bits
+        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
+        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        int bucketIndex = hash & mask;
+        return stripeLocks[bucketIndex & STRIPE_MASK];
     }
 
     private void lockAllStripes() {
@@ -857,7 +861,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return a Norm object containing the normalized key and hash
      */
     private Norm normalizeForLookup(Object key) {
-        Norm n = NORM_HOLDER.get();
+        Norm n = new Norm();  // Simple allocation - JIT escape analysis optimizes this away!
         
         // Fast path: null
         if (key == null) {
@@ -884,6 +888,45 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
+     * Finds an entry for the given key using the ultra-fast path for simple keys
+     * or the normal path for complex keys. This method is shared by get() and containsKey()
+     * to eliminate code duplication while maintaining maximum performance.
+     * 
+     * @param key the key to find - can be simple (non-collection, non-array) or complex
+     * @return the MultiKey entry if found, null otherwise
+     */
+    private MultiKey<V> findSimpleOrComplexKey(Object key) {
+        // Ultra-fast path: Simple single keys (non-collection, non-array)
+        // This optimization bypasses normalization entirely for the most common case
+        if (key != null && !(key instanceof Collection)) {
+            Class<?> keyClass = key.getClass();
+            if (!keyClass.isArray()) {
+                // Direct bucket access - no normalization needed for simple keys
+                int hash = computeElementHash(key, caseSensitive);
+                final AtomicReferenceArray<MultiKey<V>[]> table = buckets;
+                final int mask = table.length() - 1;
+                final int index = hash & mask;
+                final MultiKey<V>[] chain = table.get(index);
+                if (chain != null) {
+                    // Fast scan for single-key entries only
+                    for (MultiKey<V> entry : chain) {
+                        if (entry.hash == hash && entry.kind == MultiKey.KIND_SINGLE) {
+                            if (elementEquals(entry.keys, key, valueBasedEquality, caseSensitive)) {
+                                return entry;
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+        }
+        
+        // Complex keys: Use zero-allocation lookup with simple new Norm()
+        Norm n = normalizeForLookup(key);
+        return findEntryWithPrecomputedHash(n.key, n.hash);
+    }
+
+    /**
      * Returns the value to which the specified key is mapped, or {@code null} if this map
      * contains no mapping for the key.
      * <p>This method supports both single keys and multidimensional keys. Arrays and Collections
@@ -894,9 +937,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the value to which the specified key is mapped, or {@code null} if no mapping exists
      */
     public V get(Object key) {
-        // Zero-allocation lookup using ThreadLocal Norm holder
-        Norm n = normalizeForLookup(key);
-        MultiKey<V> entry = findEntryWithPrecomputedHash(n.key, n.hash);
+        MultiKey<V> entry = findSimpleOrComplexKey(key);
         return entry != null ? entry.value : null;
     }
 
@@ -1198,10 +1239,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // === FAST PATH: Collections with size-based optimization ===
         Collection<?> coll = (Collection<?>) key;
         
-        // Handle collections that should not be expanded
-        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-            return new MultiKey<>(coll, coll.hashCode(), null);
-        }
+        // Collections that reach this point need expansion (COLLECTIONS_NOT_EXPANDED handled earlier)
         
         // If flattening dimensions, always go through expansion
         if (flattenDimensions) {
@@ -1650,7 +1688,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private MultiKey<V> findEntryWithPrecomputedHash(final Object normalizedKey, final int hash) {
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int index = hash & (table.length() - 1);
+        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        final int index = hash & mask;
         final MultiKey<V>[] chain = table.get(index);
         if (chain == null) return null;
         final int chLen = chain.length;
@@ -2296,7 +2335,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V getNoLock(MultiKey<V> lookupKey) {
         int hash = lookupKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        int index = hash & (table.length() - 1);
+        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
         if (chain == null) return null;
@@ -2312,7 +2352,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V putNoLock(MultiKey<V> newKey) {
         int hash = newKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        int index = hash & (table.length() - 1);
+        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
         if (chain == null) {
@@ -2369,9 +2410,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return {@code true} if this map contains a mapping for the specified key
      */
     public boolean containsKey(Object key) {
-        // Zero-allocation lookup using ThreadLocal Norm holder
-        Norm n = normalizeForLookup(key);
-        return findEntryWithPrecomputedHash(n.key, n.hash) != null;
+        return findSimpleOrComplexKey(key) != null;
     }
 
     /**
@@ -2436,7 +2475,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private V removeNoLock(MultiKey<V> removeKey) {
         int hash = removeKey.hash;
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        int index = hash & (table.length() - 1);
+        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
         if (chain == null) return null;
@@ -3164,7 +3204,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         private void advance() {
-            while (bucketIdx < snapshot.length()) {
+            final int len = snapshot.length();  // Cache length locally to avoid repeated volatile reads
+            while (bucketIdx < len) {
                 MultiKey<V>[] chain = snapshot.get(bucketIdx);
                 if (chain != null && chainIdx < chain.length) {
                     MultiKey<V> e = chain[chainIdx++];

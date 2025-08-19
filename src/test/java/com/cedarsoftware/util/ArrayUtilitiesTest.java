@@ -3,7 +3,9 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -206,5 +208,175 @@ public class ArrayUtilitiesTest
         String[] data = {"x", "y"};
         assertThrows(ArrayIndexOutOfBoundsException.class, () -> ArrayUtilities.removeItem(data, -1));
         assertThrows(ArrayIndexOutOfBoundsException.class, () -> ArrayUtilities.removeItem(data, 2));
+    }
+
+    @Test
+    public void testDeepCopyContainers_SimpleArray()
+    {
+        String[] original = {"a", "b", "c"};
+        String[] copy = ArrayUtilities.deepCopyContainers(original);
+        
+        assertNotSame(original, copy);
+        assertArrayEquals(original, copy);
+        // Verify berries are same references
+        for (int i = 0; i < original.length; i++) {
+            assertSame(original[i], copy[i]);
+        }
+    }
+
+    @Test
+    public void testDeepCopyContainers_MultiDimensionalArray()
+    {
+        String[][] original = {{"a", "b"}, {"c", "d", "e"}};
+        String[][] copy = ArrayUtilities.deepCopyContainers(original);
+        
+        // All arrays should be different
+        assertNotSame(original, copy);
+        assertNotSame(original[0], copy[0]);
+        assertNotSame(original[1], copy[1]);
+        
+        // But berries (strings) should be same references
+        assertSame(original[0][0], copy[0][0]);
+        assertSame(original[0][1], copy[0][1]);
+        assertSame(original[1][0], copy[1][0]);
+    }
+
+    @Test
+    public void testDeepCopyContainers_ArrayWithCollections()
+    {
+        List<String> list1 = Arrays.asList("a", "b");
+        List<String> list2 = Arrays.asList("c", "d", "e");
+        Object[] original = {list1, list2, "standalone"};
+        
+        Object[] copy = ArrayUtilities.deepCopyContainers(original);
+        
+        // Array should be different
+        assertNotSame(original, copy);
+        
+        // Collections should ALSO be different (deep copy of containers)
+        assertNotSame(original[0], copy[0]);
+        assertNotSame(original[1], copy[1]);
+        
+        // But the standalone string should be the same reference
+        assertSame(original[2], copy[2]);
+        
+        // Collections should have same content
+        assertEquals(list1, copy[0]);
+        assertEquals(list2, copy[1]);
+    }
+
+    @Test
+    public void testDeepCopyContainers_PrimitiveArrays()
+    {
+        int[] original = {1, 2, 3, 4, 5};
+        int[] copy = ArrayUtilities.deepCopyContainers(original);
+        
+        assertNotSame(original, copy);
+        assertArrayEquals(original, copy);
+    }
+
+    @Test
+    public void testDeepCopyContainers_NestedArraysWithCollections()
+    {
+        // Test deeply nested mixed structures
+        List<String> innerList = Arrays.asList("x", "y");
+        Object[][] original = {
+            {innerList, "a"},
+            {new String[]{"p", "q"}, "b"}
+        };
+        
+        Object[][] copy = ArrayUtilities.deepCopyContainers(original);
+        
+        // All containers should be different
+        assertNotSame(original, copy);
+        assertNotSame(original[0], copy[0]);
+        assertNotSame(original[1], copy[1]);
+        assertNotSame(original[0][0], copy[0][0]); // List is also copied
+        assertNotSame(original[1][0], copy[1][0]); // Nested array is also copied
+        
+        // But berries are same
+        assertSame(original[0][1], copy[0][1]);
+        assertSame(original[1][1], copy[1][1]);
+        
+        // Content is equal
+        assertEquals(innerList, copy[0][0]);
+        assertArrayEquals((String[])original[1][0], (String[])copy[1][0]);
+    }
+
+    @Test
+    public void testDeepCopyContainers_NullHandling()
+    {
+        // Test null input
+        assertNull(ArrayUtilities.deepCopyContainers(null));
+        
+        // Test array with nulls
+        String[] original = {"a", null, "c"};
+        String[] copy = ArrayUtilities.deepCopyContainers(original);
+        
+        assertNotSame(original, copy);
+        assertArrayEquals(original, copy);
+        assertSame(original[0], copy[0]);
+        assertNull(copy[1]);
+        assertSame(original[2], copy[2]);
+    }
+
+    @Test
+    public void testDeepCopyContainers_NonContainerInput()
+    {
+        // Non-containers return same reference
+        String notAContainer = "hello";
+        Object result = ArrayUtilities.deepCopyContainers(notAContainer);
+        assertSame(notAContainer, result);
+        
+        // But collections ARE containers and get copied
+        List<String> list = Arrays.asList("a", "b");
+        List<String> listCopy = ArrayUtilities.deepCopyContainers(list);
+        assertNotSame(list, listCopy);
+        assertEquals(list, listCopy);
+    }
+
+    @Test
+    public void testDeepCopyContainers_EmptyArrays()
+    {
+        // Test empty array
+        String[] original = {};
+        String[] copy = ArrayUtilities.deepCopyContainers(original);
+        
+        assertNotSame(original, copy);
+        assertEquals(0, copy.length);
+        
+        // Test empty 2D array
+        String[][] original2D = {{}};
+        String[][] copy2D = ArrayUtilities.deepCopyContainers(original2D);
+        
+        assertNotSame(original2D, copy2D);
+        assertNotSame(original2D[0], copy2D[0]);
+        assertEquals(1, copy2D.length);
+        assertEquals(0, copy2D[0].length);
+    }
+
+    @Test
+    public void testDeepCopyContainers_CircularReference()
+    {
+        // Test circular reference handling
+        Object[] array1 = new Object[2];
+        Object[] array2 = new Object[2];
+        array1[0] = "a";
+        array1[1] = array2;
+        array2[0] = "b";
+        array2[1] = array1; // Circular reference
+        
+        Object[] copy = ArrayUtilities.deepCopyContainers(array1);
+        
+        // Should create new arrays
+        assertNotSame(array1, copy);
+        assertNotSame(array1[1], copy[1]);
+        
+        // But maintain the circular structure
+        assertSame(copy, ((Object[])copy[1])[1]);
+        
+        // Berries are same
+        assertSame("a", copy[0]);
+        assertSame("b", ((Object[])copy[1])[0]);
     }
 }

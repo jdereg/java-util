@@ -1,5 +1,5 @@
 ### Revision History
-#### 4.0.0 (unreleased)
+#### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")
 >   * **Iterative Implementation**: Uses heap-based traversal with work queue to avoid stack overflow on deeply nested structures

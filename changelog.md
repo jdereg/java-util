@@ -1,5 +1,10 @@
 ### Revision History
 #### 4.0.0 (unreleased)
+> * **FEATURE**: Added atomic array support to `MultiKeyMap`:
+>   * **Automatic Conversion**: AtomicIntegerArray, AtomicLongArray, and AtomicReferenceArray are automatically converted to regular arrays during key normalization
+>   * **Transparent Interoperability**: Atomic arrays and regular arrays with the same values are treated as equivalent keys
+>   * **Performance Optimized**: Conversion only happens during put/get operations, not affecting internal storage
+>   * **Test Coverage**: Comprehensive tests for all atomic array types including nulls, empty arrays, and performance validation
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")
 >   * **Iterative Implementation**: Uses heap-based traversal with work queue to avoid stack overflow on deeply nested structures

@@ -19,7 +19,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
@@ -870,8 +872,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return n;
         }
         
-        // Fast path: simple keys (not arrays or collections)
-        if (!(key instanceof Collection)) {
+        // Fast path: simple keys (not arrays or collections or atomic arrays)
+        if (!(key instanceof Collection) && 
+            !(key instanceof AtomicIntegerArray) &&
+            !(key instanceof AtomicLongArray) &&
+            !(key instanceof AtomicReferenceArray)) {
             Class<?> keyClass = key.getClass();
             if (!keyClass.isArray()) {
                 n.key = key;
@@ -896,9 +901,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the MultiKey entry if found, null otherwise
      */
     private MultiKey<V> findSimpleOrComplexKey(Object key) {
-        // Ultra-fast path: Simple single keys (non-collection, non-array)
+        // Ultra-fast path: Simple single keys (non-collection, non-array, non-atomic-array)
         // This optimization bypasses normalization entirely for the most common case
-        if (key != null && !(key instanceof Collection)) {
+        if (key != null && !(key instanceof Collection) &&
+            !(key instanceof AtomicIntegerArray) &&
+            !(key instanceof AtomicLongArray) &&
+            !(key instanceof AtomicReferenceArray)) {
             Class<?> keyClass = key.getClass();
             if (!keyClass.isArray()) {
                 // Direct bucket access - no normalization needed for simple keys
@@ -1001,17 +1009,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return new MultiKey<>(key, computeElementHash(key, caseSensitive), value);
             }
             // Collection needs expansion - fall through to handle below
-        } else {
-            // Not a Collection - now check if it's an array
+        } else if (!(key instanceof AtomicIntegerArray) &&
+                   !(key instanceof AtomicLongArray) &&
+                   !(key instanceof AtomicReferenceArray)) {
+            // Not a Collection and not an atomic array - now check if it's a regular array
             Class<?> keyClass = key.getClass();
             boolean isKeyArray = keyClass.isArray();
 
             if (!isKeyArray) {
-                // === FAST PATH: Simple objects (not arrays nor collections) ===
+                // === FAST PATH: Simple objects (not arrays nor collections nor atomic arrays) ===
                 return new MultiKey<>(key, computeElementHash(key, caseSensitive), value);
             }
             // Continue with array processing below
         }
+        // For atomic arrays, fall through to use flattenKey
 
         // For complex keys (arrays/collections), use the standard flattenKey path
         final MultiKey<V> normalizedKey = flattenKey(key);
@@ -1063,6 +1074,40 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Handle null case - use pre-created instance to avoid allocation
         if (key == null) {
             return NULL_NORMALIZED_KEY;
+        }
+
+        // === ATOMIC ARRAY CONVERSION ===
+        // Convert atomic arrays to regular arrays for normalization
+        // These are transport mechanisms for values, not stored directly
+        if (key instanceof AtomicIntegerArray) {
+            AtomicIntegerArray atomicArr = (AtomicIntegerArray) key;
+            int len = atomicArr.length();
+            int[] regularArr = new int[len];
+            for (int i = 0; i < len; i++) {
+                regularArr[i] = atomicArr.get(i);
+            }
+            // DEBUG: System.out.println("DEBUG: Converting AtomicIntegerArray to int[]");
+            return flattenKey(regularArr);
+        }
+        
+        if (key instanceof AtomicLongArray) {
+            AtomicLongArray atomicArr = (AtomicLongArray) key;
+            int len = atomicArr.length();
+            long[] regularArr = new long[len];
+            for (int i = 0; i < len; i++) {
+                regularArr[i] = atomicArr.get(i);
+            }
+            return flattenKey(regularArr);
+        }
+        
+        if (key instanceof AtomicReferenceArray) {
+            AtomicReferenceArray<?> atomicArr = (AtomicReferenceArray<?>) key;
+            int len = atomicArr.length();
+            Object[] regularArr = new Object[len];
+            for (int i = 0; i < len; i++) {
+                regularArr[i] = atomicArr.get(i);
+            }
+            return flattenKey(regularArr);
         }
 
         // === OPTIMIZATION: Check instanceof Collection first (faster than getClass().isArray()) ===

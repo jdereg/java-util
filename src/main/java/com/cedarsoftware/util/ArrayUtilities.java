@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
 
+
 /**
  * A utility class that provides various static methods for working with Java arrays.
  * <p>
@@ -578,4 +579,22 @@ public final class ArrayUtilities {
         T[] array = (T[]) Array.newInstance(classToCastTo, c.size());
         return c.toArray(array);
     }
+
+    /**
+     * Creates a deep copy of all container structures (arrays and collections) while preserving
+     * references to non-container objects. This method delegates to 
+     * {@link CollectionUtilities#deepCopyContainers(Object)} which performs iterative traversal.
+     * 
+     * <p>See {@link CollectionUtilities#deepCopyContainers(Object)} for full documentation.</p>
+     * 
+     * @param <T> the type of the input array
+     * @param array the array to deep copy (can contain nested arrays and collections)
+     * @return a deep copy of all containers with same references to non-containers,
+     *         or the same reference if array is not actually an array
+     * @see CollectionUtilities#deepCopyContainers(Object)
+     */
+    public static <T> T deepCopyContainers(T array) {
+        return CollectionUtilities.deepCopyContainers(array);
+    }
+
 }

@@ -1,15 +1,25 @@
 package com.cedarsoftware.util;
 
+import java.lang.reflect.Array;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.EnumSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeSet;
 
 import com.cedarsoftware.util.convert.CollectionsWrappers;
 
@@ -339,7 +349,7 @@ public class CollectionUtilities {
      *     <li>If the collection is a {@link SortedSet}, it returns {@link Collections#emptySortedSet()}.</li>
      *     <li>If the collection is a {@link Set}, it returns {@link Collections#emptySet()}.</li>
      *     <li>If the collection is a {@link List}, it returns {@link Collections#emptyList()}.</li>
-     *     <li>For all other collection types, it defaults to returning {@link Collections#emptyList()}.</li>
+     *     <li>For all other collection types, it defaults to returning {@link Collections#emptySet()}.</li>
      * </ul>
      *
      * <p>
@@ -414,7 +424,7 @@ public class CollectionUtilities {
      * will result in a {@link ClassCastException} at runtime. For example:
      * </p>
      * <pre>{@code
-     * List<Object> list = new ArrayList<>(List.of("one", "two"));
+     * List<Object> list = new ArrayList<>(Arrays.asList("one", "two"));
      * Collection<String> checkedCollection = getCheckedCollection(list, String.class);
      *
      * // Adding a String is allowed
@@ -489,7 +499,7 @@ public class CollectionUtilities {
      * The returned collection is thread-safe. However, iteration over the collection must be manually synchronized:
      * </p>
      * <pre>{@code
-     * List<String> list = new ArrayList<>(List.of("one", "two", "three"));
+     * List<String> list = new ArrayList<>(Arrays.asList("one", "two", "three"));
      * Collection<String> synchronizedList = getSynchronizedCollection(list);
      *
      * synchronized (synchronizedList) {
@@ -537,4 +547,307 @@ public class CollectionUtilities {
             return Collections.synchronizedCollection(collection);
         }
     }
+
+    /**
+     * Creates a deep copy of all container structures (arrays and collections) while preserving
+     * references to non-container objects. This method deep copies all arrays and collections
+     * to any depth (iterative traversal), but keeps the same references for all other objects (the "berries").
+     * 
+     * <p>Maps are treated as berries (non-containers) and are not deep copied.</p>
+     * 
+     * <p>This method handles:
+     * <ul>
+     *   <li>Arrays of any type (primitive and object arrays)</li>
+     *   <li>Collections (Lists, Sets, Queues, etc.)</li>
+     *   <li>Nested combinations of arrays and collections to any depth</li>
+     *   <li>Circular references (maintains the circular structure in the copy)</li>
+     * </ul>
+     * </p>
+     * 
+     * <p>Collection type preservation:
+     * <ul>
+     *   <li>EnumSet → EnumSet (preserves enum type)</li>
+     *   <li>Deque → LinkedList (preserves deque operations, supports nulls)</li>
+     *   <li>PriorityQueue → PriorityQueue (preserves comparator and heap semantics)</li>
+     *   <li>SortedSet → TreeSet (preserves comparator and sorting)</li>
+     *   <li>Set → LinkedHashSet (preserves insertion order)</li>
+     *   <li>List → ArrayList (optimized for random access)</li>
+     *   <li>Other Queue types → LinkedList (preserves queue operations)</li>
+     *   <li>Other Collections → ArrayList (fallback)</li>
+     * </ul>
+     * </p>
+     * 
+     * <p><strong>⚠️ Important Notes:</strong>
+     * <ul>
+     *   <li><strong>Maps containers are NOT copied:</strong> Maps are treated as leaf objects (berries) and the same
+     *       reference is maintained in the copy.</li>
+     *   <li><strong>Implementation classes may change:</strong> For example, ArrayDeque becomes LinkedList
+     *       (to support nulls), HashSet becomes LinkedHashSet (to preserve order). The semantic behavior
+     *       is preserved where possible.</li>
+     *   <li><strong>Concurrent/blocking queues:</strong> Special queue types (concurrent, blocking) become
+     *       LinkedList, losing their concurrency or blocking semantics but preserving queue operations.</li>
+     *   <li><strong>Thread Safety:</strong> This method is NOT thread-safe. The copy operation is not safe 
+     *       under concurrent mutation of the source containers during traversal. If the source containers
+     *       are being modified by other threads during the copy operation, the behavior is undefined and
+     *       may result in {@code ConcurrentModificationException}, incomplete copies, or other issues.
+     *       Ensure exclusive access to the source containers during the copy operation.</li>
+     * </ul>
+     * </p>
+     * 
+     * <p>Example:
+     * <pre>{@code
+     * Object[] array = {
+     *     Arrays.asList("a", "b"),           // Will be copied to new ArrayList
+     *     new String[]{"x", "y"},            // Will be copied to new String[]
+     *     new HashMap<>(),                   // Will NOT be copied (Map is a berry)
+     *     "standalone"                       // Will NOT be copied (String is a berry)
+     * };
+     * Object[] copy = deepCopyContainers(array);
+     * // array != copy (new array)
+     * // array[0] != copy[0] (new ArrayList)
+     * // array[1] != copy[1] (new String array)
+     * // array[2] == copy[2] (same HashMap reference)
+     * // array[3] == copy[3] (same String reference)
+     * }</pre>
+     * </p>
+     * 
+     * <p>Queue/Deque Example:
+     * <pre>{@code
+     * ArrayDeque<String> deque = new ArrayDeque<>();
+     * deque.addFirst("first");
+     * deque.addLast("last");
+     * 
+     * Deque<String> copy = deepCopyContainers(deque);
+     * // copy is a LinkedList that preserves deque operations!
+     * copy.removeFirst();  // Works! Returns "first"
+     * copy.removeLast();   // Works! Returns "last"
+     * 
+     * PriorityQueue<Integer> pq = new PriorityQueue<>(Comparator.reverseOrder());
+     * pq.addAll(Arrays.asList(3, 1, 2));
+     * 
+     * PriorityQueue<Integer> pqCopy = deepCopyContainers(pq);
+     * // Priority semantics preserved with comparator
+     * pqCopy.poll();  // Returns 3 (largest first due to reverse order)
+     * }</pre>
+     * </p>
+     * 
+     * @param <T> the type of the input object
+     * @param source the object to deep copy (can be array, collection, or any other object)
+     * @return a deep copy of all containers with same references to non-containers,
+     *         or the same reference if source is not a container
+     * 
+     * @apiNote This method uses generics for type safety. When type inference is problematic,
+     *          explicitly specify the return type or cast the parameter:
+     *          <ul>
+     *          <li>Type-safe: {@code String[][] copy = deepCopyContainers(stringArray);}</li>
+     *          <li>Explicit type: {@code Object copy = CollectionUtilities.<Object>deepCopyContainers(source);}</li>
+     *          <li>With cast: {@code Object copy = deepCopyContainers((Object) source);}</li>
+     *          </ul>
+     *          Note: For callers who prefer to avoid type inference issues, simply declare the
+     *          result as Object and cast as needed.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T deepCopyContainers(T source) {
+        if (!isContainer(source)) {
+            return source; // berry (includes Map) or null
+        }
+        
+        // Track visited objects to handle cycles
+        // Pre-size to avoid rehash thrash - we'll typically track every container
+        Map<Object, Object> visited = new IdentityHashMap<>(64);
+        
+        // Queue for iterative processing - only containers go here
+        Deque<ContainerPair> workQueue = new ArrayDeque<>();
+        
+        // Create the root copy and add to visited immediately
+        Object rootCopy = createContainerCopy(source);
+        visited.put(source, rootCopy);
+        
+        // Only queue the root if it needs processing
+        // Primitive arrays are already fully copied by createContainerCopy
+        boolean rootIsPrimitiveArray = 
+            source.getClass().isArray() && source.getClass().getComponentType().isPrimitive();
+        if (!rootIsPrimitiveArray) {
+            workQueue.add(new ContainerPair(source, rootCopy));
+        }
+        
+        // Process work queue
+        while (!workQueue.isEmpty()) {
+            ContainerPair pair = workQueue.poll();
+            
+            // Process this container's contents directly (no per-element allocations)
+            if (pair.source.getClass().isArray()) {
+                // Handle array contents
+                // Skip primitive arrays - already copied by System.arraycopy
+                if (!pair.source.getClass().getComponentType().isPrimitive()) {
+                    // Use direct array access for object arrays (avoids reflection overhead)
+                    // Casting once per container is safe for any reference array
+                    Object[] srcArr = (Object[]) pair.source;
+                    Object[] dstArr = (Object[]) pair.target;
+                    int length = srcArr.length;
+                    
+                    for (int i = 0; i < length; i++) {
+                        Object element = srcArr[i];
+                        
+                        if (isContainer(element)) {
+                            // Check if we've already processed this container
+                            Object existingCopy = visited.get(element);
+                            if (existingCopy != null) {
+                                // Use existing copy (handles cycles)
+                                dstArr[i] = existingCopy;
+                            } else {
+                                // Special case: primitive arrays are fully copied immediately
+                                if (element.getClass().isArray() && element.getClass().getComponentType().isPrimitive()) {
+                                    // Create and fully copy the primitive array
+                                    int elemLength = Array.getLength(element);
+                                    Class<?> componentType = element.getClass().getComponentType();
+                                    Object elementCopy = Array.newInstance(componentType, elemLength);
+                                    System.arraycopy(element, 0, elementCopy, 0, elemLength);
+                                    visited.put(element, elementCopy);
+                                    dstArr[i] = elementCopy;
+                                    // DO NOT enqueue - it's already fully copied
+                                } else {
+                                    // Create new container copy
+                                    Object elementCopy = createContainerCopy(element);
+                                    visited.put(element, elementCopy);
+                                    dstArr[i] = elementCopy;
+                                    // Queue the new container for processing
+                                    workQueue.add(new ContainerPair(element, elementCopy));
+                                }
+                            }
+                        } else {
+                            // Berry - use same reference
+                            dstArr[i] = element;
+                        }
+                    }
+                }
+            } else if (pair.source instanceof Collection) {
+                // Handle collection contents
+                Collection<?> sourceCollection = (Collection<?>) pair.source;
+                Collection<Object> targetCollection = (Collection<Object>) pair.target;
+                
+                for (Object element : sourceCollection) {
+                    if (isContainer(element)) {
+                        // Check if we've already processed this container
+                        Object existingCopy = visited.get(element);
+                        if (existingCopy != null) {
+                            // Use existing copy (handles cycles)
+                            targetCollection.add(existingCopy);
+                        } else {
+                            // Special case: primitive arrays are fully copied immediately
+                            if (element.getClass().isArray() && 
+                                element.getClass().getComponentType().isPrimitive()) {
+                                // Create and fully copy the primitive array
+                                int elemLength = Array.getLength(element);
+                                Class<?> componentType = element.getClass().getComponentType();
+                                Object elementCopy = Array.newInstance(componentType, elemLength);
+                                System.arraycopy(element, 0, elementCopy, 0, elemLength);
+                                visited.put(element, elementCopy);
+                                targetCollection.add(elementCopy);
+                                // DO NOT enqueue - it's already fully copied
+                            } else {
+                                // Create new container copy
+                                Object elementCopy = createContainerCopy(element);
+                                visited.put(element, elementCopy);
+                                targetCollection.add(elementCopy);
+                                // Queue the new container for processing
+                                workQueue.add(new ContainerPair(element, elementCopy));
+                            }
+                        }
+                    } else {
+                        // Berry - use same reference
+                        targetCollection.add(element);
+                    }
+                }
+            }
+        }
+        
+        return (T) rootCopy;
+    }
+    
+    /**
+     * Determines if an object is a container (array or Collection).
+     * Maps are NOT considered containers.
+     */
+    private static boolean isContainer(Object obj) {
+        return obj != null && (obj.getClass().isArray() || obj instanceof Collection);
+    }
+    
+    /**
+     * Creates an empty copy of a container with the same type characteristics.
+     * For primitive arrays, immediately copies the data since primitives can't be containers.
+     * Collections are pre-sized to avoid resize overhead during population.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static Object createContainerCopy(Object source) {
+        if (source.getClass().isArray()) {
+            int length = Array.getLength(source);
+            Class<?> componentType = source.getClass().getComponentType();
+            Object newArray = Array.newInstance(componentType, length);
+            
+            // For primitive arrays, copy immediately - no need to queue work
+            if (componentType.isPrimitive()) {
+                System.arraycopy(source, 0, newArray, 0, length);
+            }
+            return newArray;
+        } else if (source instanceof EnumSet) {
+            // EnumSet requires special handling
+            EnumSet<?> src = (EnumSet<?>) source;
+            if (src.isEmpty()) {
+                // Use clone().clear() to preserve enum type for empty sets
+                // This is bulletproof - works even when we can't access elements
+                EnumSet<?> peer = src.clone();
+                peer.clear();
+                return peer;  // empty EnumSet of same enum type
+            } else {
+                // For non-empty sets, get enum type from first element
+                return EnumSet.noneOf((Class) src.iterator().next().getDeclaringClass());
+            }
+        } else if (source instanceof Deque) {
+            // Preserve deque behavior and tolerate nulls (LinkedList allows nulls, ArrayDeque doesn't)
+            return new LinkedList<>();
+        } else if (source instanceof PriorityQueue) {
+            // Preserve priority queue with comparator and heap semantics
+            PriorityQueue<?> pq = (PriorityQueue<?>) source;
+            Comparator<?> cmp = pq.comparator();
+            // Use source size for reasonable initial capacity
+            return new PriorityQueue<>(Math.max(1, pq.size()), (Comparator) cmp);
+        } else if (source instanceof SortedSet) {
+            Comparator<?> cmp = ((SortedSet<?>) source).comparator();
+            // TreeSet doesn't have a capacity constructor, but that's ok as it's a tree structure
+            return cmp == null ? new TreeSet<>() : new TreeSet<>((Comparator) cmp);
+        } else if (source instanceof Set) {
+            Set<?> srcSet = (Set<?>) source;
+            // Pre-size with load factor consideration to avoid rehashing
+            int capacity = (int)(srcSet.size() / 0.75f) + 1;
+            return new LinkedHashSet<>(capacity);
+        } else if (source instanceof List) {
+            List<?> srcList = (List<?>) source;
+            // Pre-size to exact size to avoid resizing
+            return new ArrayList<>(srcList.size());
+        } else if (source instanceof Queue) {
+            // Catch-all for other Queue implementations (concurrent/blocking queues)
+            // Use LinkedList to preserve queue semantics and tolerate nulls
+            return new LinkedList<>();
+        } else if (source instanceof Collection) {
+            // Fallback for any other collection types
+            Collection<?> srcCollection = (Collection<?>) source;
+            return new ArrayList<>(srcCollection.size());
+        }
+        throw new IllegalArgumentException("Unknown container type: " + source.getClass());
+    }
+    
+    /**
+     * Pair of source and target containers for processing.
+     */
+    private static class ContainerPair {
+        final Object source;
+        final Object target;
+        
+        ContainerPair(Object source, Object target) {
+            this.source = source;
+            this.target = target;
+        }
+    }
+
 }

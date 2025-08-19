@@ -1,5 +1,27 @@
 ### Revision History
 #### 4.0.0 (unreleased)
+> * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
+>   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")
+>   * **Iterative Implementation**: Uses heap-based traversal with work queue to avoid stack overflow on deeply nested structures
+>   * **Circular Reference Support**: Properly handles circular references, maintaining the circular structure in the copy
+>   * **Enhanced Type Preservation**: 
+>     * EnumSet → EnumSet (preserves enum type)
+>     * Deque → LinkedList (preserves deque operations, supports nulls)
+>     * PriorityQueue → PriorityQueue (preserves comparator and heap semantics)
+>     * SortedSet → TreeSet (preserves comparator and sorting)
+>     * Set → LinkedHashSet (preserves insertion order)
+>     * List → ArrayList (optimized for random access)
+>     * Other Queue types → LinkedList (preserves queue operations)
+>   * **Performance Optimizations**: 
+>     * Primitive arrays use `System.arraycopy` for direct copying without boxing/unboxing overhead
+>     * Primitive arrays at root level are not queued (already fully copied)
+>     * Collections are pre-sized to avoid resize/rehash operations during population
+>     * Only containers are queued for processing, eliminating per-element allocations
+>     * Direct array access for object arrays instead of reflection in tight loops
+>     * Pre-sized IdentityHashMap (64) to avoid rehash thrashing
+>     * EnumSet uses efficient `clone().clear()` for empty sets
+>   * **Maps as Berries**: Maps are treated as non-containers and not deep copied
+>   * **Thread Safety Note**: Method is not thread-safe under concurrent source mutation
 > * **FEATURE**: Added `caseSensitive` configuration option to `MultiKeyMap`:
 >   * **Case-Sensitive Mode**: New constructor `MultiKeyMap(boolean caseSensitive)` allows case-sensitive String key comparisons (default remains case-insensitive)
 >   * **Performance Optimization**: Eliminated per-key branching by storing caseSensitive as final field, improving JIT optimization

@@ -2268,7 +2268,6 @@ See `MultiKeyMapPerformanceComparisonTest` for how we measured.
 - **Thread-safe ConcurrentMap** interface with full null support
 - **Type-safe façade ready** - wrap with strongly-typed interface for compile-time safety
 - **Revolutionary dimension handling** - choose between structure preservation or dimension flattening
-- **Atomic array support** - AtomicIntegerArray, AtomicLongArray, and AtomicReferenceArray automatically convert to regular arrays
 
 **Superior Architecture:**
 - **Foundational engine design** - provides untyped flexible core + user-defined type-safe façade
@@ -2375,44 +2374,6 @@ mkMap.put(safeList, "list-data");
 - It does NOT protect against mutations to the berries themselves (e.g., modifying a mutable object)
 - If a berry's hash code changes due to mutation, the entire MultiKeyMap instance becomes unstable
 - Properly handles circular references using iterative traversal (no stack overflow)
-
-### Atomic Array Support
-
-`MultiKeyMap` transparently handles Java's atomic array types by automatically converting them to regular arrays during normalization. This allows atomic arrays to be used interchangeably with regular arrays:
-
-```java
-MultiKeyMap<String> map = new MultiKeyMap<>();
-
-// Using AtomicIntegerArray as a key
-AtomicIntegerArray atomicIntKey = new AtomicIntegerArray(new int[]{1, 2, 3});
-map.put(atomicIntKey, "atomic-int-value");
-
-// Can retrieve with a regular int array (they're equivalent)
-int[] regularIntKey = new int[]{1, 2, 3};
-String value1 = map.get(regularIntKey);              // "atomic-int-value"
-
-// Or with another AtomicIntegerArray with same values
-AtomicIntegerArray atomicKey2 = new AtomicIntegerArray(new int[]{1, 2, 3});
-String value2 = map.get(atomicKey2);                 // "atomic-int-value"
-
-// Works with all atomic array types
-AtomicLongArray atomicLongKey = new AtomicLongArray(new long[]{100L, 200L});
-map.put(atomicLongKey, "atomic-long-value");
-long[] regularLongKey = new long[]{100L, 200L};
-String value3 = map.get(regularLongKey);             // "atomic-long-value"
-
-// AtomicReferenceArray converts to Object[]
-AtomicReferenceArray<String> atomicRefKey = new AtomicReferenceArray<>(new String[]{"a", "b"});
-map.put(atomicRefKey, "atomic-ref-value");
-Object[] regularObjKey = new Object[]{"a", "b"};
-String value4 = map.get(regularObjKey);              // "atomic-ref-value"
-```
-
-**Important Notes:**
-- Atomic arrays are converted to their regular array equivalents during key normalization
-- This conversion happens automatically and transparently
-- The conversion preserves all values including nulls (for AtomicReferenceArray)
-- Nested atomic arrays within containers are not deeply converted (only top-level conversion)
 
 ### Dimensional Behavior Control
 

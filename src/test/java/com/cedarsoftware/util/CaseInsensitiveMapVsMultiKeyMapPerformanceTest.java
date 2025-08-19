@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -44,6 +45,7 @@ public class CaseInsensitiveMapVsMultiKeyMapPerformanceTest {
     private static final String TEST_VALUE = "testValue";
     
     @Test
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     public void comparePerformance() {
         System.out.println("\n" + repeat("=", 80));
         System.out.println("CaseInsensitiveMap vs MultiKeyMap Performance Comparison");
@@ -278,6 +280,7 @@ public class CaseInsensitiveMapVsMultiKeyMapPerformanceTest {
     }
     
     @Test
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     public void detailedMemoryAndCollisionAnalysis() {
         System.out.println("\n" + repeat("=", 80));
         System.out.println("Memory and Collision Analysis");

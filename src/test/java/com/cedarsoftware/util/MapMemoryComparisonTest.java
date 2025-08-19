@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,6 +16,7 @@ public class MapMemoryComparisonTest {
     private static final int LARGE_SIZE = 100_000;
     
     @Test
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     public void compareMemoryUsage() {
         System.out.println("\n" + repeat("=", 80));
         System.out.println("CaseInsensitiveMap vs MultiKeyMap - Memory Usage Analysis");

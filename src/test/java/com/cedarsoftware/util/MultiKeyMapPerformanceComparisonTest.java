@@ -4,6 +4,7 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.collections4.keyvalue.MultiKey;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -77,6 +78,7 @@ public class MultiKeyMapPerformanceComparisonTest {
         }
     }
 
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     @Test
     void comparePerformance() {
         LOG.info("=== Cedar vs Apache MultiKeyMap Performance Comparison ===");

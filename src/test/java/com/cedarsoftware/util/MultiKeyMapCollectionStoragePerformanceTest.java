@@ -2,6 +2,7 @@ package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -57,6 +58,7 @@ public class MultiKeyMapCollectionStoragePerformanceTest {
     }
     
     @Test
+    @EnabledIfSystemProperty(named = "performRelease", matches = "true")
     void testCurrentImplementation() {
         System.out.println("\n=== CURRENT IMPLEMENTATION (Converts non-RandomAccess to Object[]) ===\n");
         

@@ -706,16 +706,14 @@ public class DeepEquals {
             return false;
         }
 
-        // Push elements in order
-        Iterator<?> i1 = col1.iterator();
-        Iterator<?> i2 = col2.iterator();
-        int index = 0;
-
-        while (i1.hasNext()) {
-            Object item1 = i1.next();
-            Object item2 = i2.next();
-
-            stack.addFirst(new ItemsToCompare(item1, item2, new int[]{index++}, currentItem, Difference.COLLECTION_ELEMENT_MISMATCH));
+        // Push elements in reverse order so element 0 is compared first
+        // Due to LIFO stack behavior, this means early termination on first mismatch
+        List<?> list1 = (col1 instanceof List) ? (List<?>) col1 : new ArrayList<>(col1);
+        List<?> list2 = (col2 instanceof List) ? (List<?>) col2 : new ArrayList<>(col2);
+        
+        for (int i = list1.size() - 1; i >= 0; i--) {
+            stack.addFirst(new ItemsToCompare(list1.get(i), list2.get(i), 
+                    new int[]{i}, currentItem, Difference.COLLECTION_ELEMENT_MISMATCH));
         }
 
         return true;
@@ -838,11 +836,93 @@ public class DeepEquals {
             return false;
         }
 
-        // 4. Push all elements onto stack (with their full dimensional indices)
-        for (int i = len1 - 1; i >= 0; i--) {
-            stack.addFirst(new ItemsToCompare(Array.get(array1, i), Array.get(array2, i),
-                    new int[]{i},    // For multidimensional arrays, this gets built up
-                    currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+        // 4. For primitive arrays, compare directly without pushing to stack
+        Class<?> componentType = array1.getClass().getComponentType();
+        
+        if (componentType.isPrimitive()) {
+            // Direct comparison for primitive arrays - avoids O(n) allocations
+            if (componentType == boolean.class) {
+                boolean[] a1 = (boolean[]) array1;
+                boolean[] a2 = (boolean[]) array2;
+                for (int i = 0; i < len1; i++) {
+                    if (a1[i] != a2[i]) {
+                        stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+                        return false;
+                    }
+                }
+            } else if (componentType == byte.class) {
+                byte[] a1 = (byte[]) array1;
+                byte[] a2 = (byte[]) array2;
+                for (int i = 0; i < len1; i++) {
+                    if (a1[i] != a2[i]) {
+                        stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+                        return false;
+                    }
+                }
+            } else if (componentType == char.class) {
+                char[] a1 = (char[]) array1;
+                char[] a2 = (char[]) array2;
+                for (int i = 0; i < len1; i++) {
+                    if (a1[i] != a2[i]) {
+                        stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+                        return false;
+                    }
+                }
+            } else if (componentType == short.class) {
+                short[] a1 = (short[]) array1;
+                short[] a2 = (short[]) array2;
+                for (int i = 0; i < len1; i++) {
+                    if (a1[i] != a2[i]) {
+                        stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+                        return false;
+                    }
+                }
+            } else if (componentType == int.class) {
+                int[] a1 = (int[]) array1;
+                int[] a2 = (int[]) array2;
+                for (int i = 0; i < len1; i++) {
+                    if (a1[i] != a2[i]) {
+                        stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+                        return false;
+                    }
+                }
+            } else if (componentType == long.class) {
+                long[] a1 = (long[]) array1;
+                long[] a2 = (long[]) array2;
+                for (int i = 0; i < len1; i++) {
+                    if (a1[i] != a2[i]) {
+                        stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+                        return false;
+                    }
+                }
+            } else if (componentType == float.class) {
+                float[] a1 = (float[]) array1;
+                float[] a2 = (float[]) array2;
+                for (int i = 0; i < len1; i++) {
+                    // Use Float.compare for NaN handling
+                    if (Float.compare(a1[i], a2[i]) != 0) {
+                        stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+                        return false;
+                    }
+                }
+            } else if (componentType == double.class) {
+                double[] a1 = (double[]) array1;
+                double[] a2 = (double[]) array2;
+                for (int i = 0; i < len1; i++) {
+                    // Use Double.compare for NaN handling
+                    if (Double.compare(a1[i], a2[i]) != 0) {
+                        stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+                        return false;
+                    }
+                }
+            }
+        } else {
+            // For object arrays, push elements in reverse order
+            // This ensures element 0 is compared first due to LIFO stack
+            for (int i = len1 - 1; i >= 0; i--) {
+                stack.addFirst(new ItemsToCompare(Array.get(array1, i), Array.get(array2, i),
+                        new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
+            }
         }
 
         return true;

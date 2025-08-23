@@ -10,6 +10,8 @@
 >   * **Pop-immediately optimization**: Implemented pop-immediately pattern in traversal loop, eliminating double iterations by removing from stack immediately and checking visited set in one operation
 >   * **Depth tracking optimization**: Added depth field to ItemsToCompare to avoid costly parent chain traversal for recursion depth checking
 >   * **Field iteration optimization**: Skip static and transient fields during comparison and hashing, as static fields are not part of instance state and transient fields are typically excluded from equality
+>   * **Early termination optimization**: Push collection/array elements in reverse order for LIFO comparison, ensuring first element is compared first and allowing early termination on mismatch
+>   * **Primitive array optimization**: Compare primitive arrays directly without pushing elements to stack, avoiding O(n) allocations for arrays that differ early
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

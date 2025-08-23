@@ -1,27 +1,34 @@
 <div align="center">
-  <table border="0">
-    <tr>
-      <td align="center" style="padding-right: 20px;">
-        <img src="./badge.svg" alt="java-util — Zero Dependencies" />
-      </td>
-      <td align="left">
+  <img src="path/to/your/badge.svg" alt="java-util logo" />
 
-[![Maven Central](https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util)](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware)
-[![Javadoc](https://javadoc.io/badge/com.cedarsoftware/java-util.svg)](http://www.javadoc.io/doc/com.cedarsoftware/java-util)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![JDK](https://img.shields.io/badge/JDK-8%20to%2024-blue.svg)](https://adoptium.net/)
+  <p align="center">
+    <a href="https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util">
+      <img src="https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util/badge.svg" alt="Maven Central">
+    </a>
+    <a href="https://javadoc.io/doc/com.cedarsoftware/java-util">
+      <img src="https://javadoc.io/badge2/com.cedarsoftware/java-util/javadoc.svg" alt="Javadoc">
+    </a>
+    <a href="https://github.com/jdereg/java-util/blob/master/LICENSE">
+      <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License">
+    </a>
+    <img src="https://img.shields.io/badge/JDK-8%20to%2024-orange" alt="JDK">
+  </p>
 
-[![Security](https://img.shields.io/badge/Security-70+%20Controls-green.svg)](#feature-options)
-[![Dependencies](https://img.shields.io/badge/Dependencies-None-brightgreen.svg)](#zero-dependencies)
-[![Thread Safety](https://img.shields.io/badge/Thread%20Safety-Concurrent%20Collections-orange.svg)](#null-safe-concurrency)
-[![Memory](https://img.shields.io/badge/Memory-Adaptive%20Collections-purple.svg)](#smart-memory-management)
+  <p align="center">
+    <img src="https://img.shields.io/badge/Security-70%2B%20Controls-green" alt="Security">
+    <img src="https://img.shields.io/badge/Dependencies-None-brightgreen" alt="Dependencies">
+    <img src="https://img.shields.io/badge/Thread%20Safety-Concurrent%20Collections-orange" alt="Thread Safety">
+    <img src="https://img.shields.io/badge/Memory-Adaptive%20Collections-purple" alt="Memory">
+  </p>
 
-[![GitHub stars](https://img.shields.io/github/stars/jdereg/java-util.svg?style=social&label=Star)](https://github.com/jdereg/java-util)
-[![GitHub forks](https://img.shields.io/github/forks/jdereg/java-util.svg?style=social&label=Fork)](https://github.com/jdereg/java-util/fork)
-
-  </td>
-    </tr>
-  </table>
+  <p align="center">
+    <a href="https://github.com/jdereg/java-util">
+      <img src="https://img.shields.io/github/stars/jdereg/java-util?style=social" alt="GitHub stars">
+    </a>
+    <a href="https://github.com/jdereg/java-util/fork">
+      <img src="https://img.shields.io/github/forks/jdereg/java-util?style=social" alt="GitHub forks">
+    </a>
+  </p>
 </div>
 
 A collection of high-performance Java utilities designed to enhance standard Java functionality. These utilities focus on:

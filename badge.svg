@@ -1,13 +1,26 @@
-<svg width="300" height="100" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-        <linearGradient id="horizGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#ff8800;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#ff6600;stop-opacity:1" />
-        </linearGradient>
-    </defs>
-    <g transform="translate(20, 25)">
-        <path d="M25 5 L45 15 L45 35 L25 45 L5 35 L5 15 Z" fill="none" stroke="url(#horizGrad)" stroke-width="2"/>
-        <circle cx="25" cy="25" r="10" fill="none" stroke="url(#horizGrad)" stroke-width="3"/>
-    </g>
-    <text x="80" y="55" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="32" font-weight="800" fill="#ff8800">java-util</text>
+<svg width="200" height="160" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+    <!-- IDE-style window -->
+    <rect x="25" y="10" width="150" height="100" fill="#2c2c2c" rx="8" ry="8"/>
+    <rect x="25" y="10" width="150" height="25" fill="#FF8C00" rx="8" ry="8"/>
+    <rect x="25" y="25" width="150" height="10" fill="#FF8C00"/>
+
+    <!-- Window controls -->
+    <circle cx="40" cy="22.5" r="3" fill="#ff5f56"/>
+    <circle cx="50" cy="22.5" r="3" fill="#ffbd2e"/>
+    <circle cx="60" cy="22.5" r="3" fill="#27c93f"/>
+
+    <!-- Code lines with coffee -->
+    <text x="35" y="55" font-family="Courier New, monospace" font-size="10" fill="#FF8C00">import java.util.*;</text>
+    <text x="35" y="67" font-family="Courier New, monospace" font-size="9" fill="#66BB6A">// Essential toolkit</text>
+
+    <!-- Coffee cup -->
+    <path d="M35 73 L38 85 L52 85 L55 73 Z" fill="none" stroke="#FF8C00" stroke-width="2"/>
+    <path d="M55 76 Q60 76 60 81 Q60 86 55 86" fill="none" stroke="#FF8C00" stroke-width="2"/>
+
+    <text x="65" y="82" font-family="Courier New, monospace" font-size="10" fill="#FF8C00">.brew(utils);</text>
+    <text x="35" y="98" font-family="Courier New, monospace" font-size="10" fill="#64B5F6">return efficiency;</text>
+
+    <!-- Logo text -->
+    <text x="100" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#FF8C00">java-util</text>
+    <text x="100" y="153" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#666666">Code Smarter, Not Harder</text>
 </svg>

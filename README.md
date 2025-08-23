@@ -2,9 +2,7 @@
   <img src="badge.svg" alt="java-util logo" />
 
   <p align="center">
-    <a href="https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util">
-      <img src="https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util/badge.svg" alt="Maven Central">
-    </a>
+    [![Maven Central](https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util)](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware)
     <a href="https://javadoc.io/doc/com.cedarsoftware/java-util">
       <img src="https://javadoc.io/badge2/com.cedarsoftware/java-util/javadoc.svg" alt="Javadoc">
     </a>
@@ -12,13 +10,6 @@
       <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License">
     </a>
     <img src="https://img.shields.io/badge/JDK-8%20to%2024-orange" alt="JDK">
-  </p>
-
-  <p align="center">
-    <img src="https://img.shields.io/badge/Security-70%2B%20Controls-green" alt="Security">
-    <img src="https://img.shields.io/badge/Dependencies-None-brightgreen" alt="Dependencies">
-    <img src="https://img.shields.io/badge/Thread%20Safety-Concurrent%20Collections-orange" alt="Thread Safety">
-    <img src="https://img.shields.io/badge/Memory-Adaptive%20Collections-purple" alt="Memory">
   </p>
 
   <p align="center">

@@ -153,8 +153,8 @@ public class DeepEquals {
     // Matches strings that are properly padded Base64 (groups of 4 chars with proper padding)
     private static final Pattern BASE64_PATTERN = Pattern.compile(
             "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
-    private static final double SCALE_DOUBLE = Math.pow(10, 11);      // Scale according to epsilon for double
-    private static final float SCALE_FLOAT = (float) Math.pow(10, 6); // Scale according to epsilon for float
+    private static final double SCALE_DOUBLE = 1e12;  // Aligned with DOUBLE_EPSILON (1/epsilon)
+    private static final float SCALE_FLOAT = 1e6f;     // Aligned with FLOAT_EPSILON (1/epsilon)
 
     private static final ThreadLocal<Set<Object>> formattingStack = ThreadLocal.withInitial(() ->
             Collections.newSetFromMap(new IdentityHashMap<>()));
@@ -1279,13 +1279,43 @@ public class DeepEquals {
     }
 
     private static int hashDouble(double value) {
+        // Handle special cases first
+        if (Double.isNaN(value)) {
+            return 0x7ff80000;  // Stable NaN bucket
+        }
+        if (Double.isInfinite(value)) {
+            return value > 0 ? 0x7ff00000 : 0xfff00000;  // Separate buckets for +∞ and -∞
+        }
+        
+        // Normalize the value according to epsilon
         double normalizedValue = Math.round(value * SCALE_DOUBLE) / SCALE_DOUBLE;
+        
+        // Normalize negative zero to positive zero
+        if (normalizedValue == 0.0) {
+            normalizedValue = 0.0;  // This ensures -0.0 becomes 0.0
+        }
+        
         long bits = Double.doubleToLongBits(normalizedValue);
         return (int) (bits ^ (bits >>> 32));
     }
 
     private static int hashFloat(float value) {
+        // Handle special cases first
+        if (Float.isNaN(value)) {
+            return 0x7fc00000;  // Stable NaN bucket
+        }
+        if (Float.isInfinite(value)) {
+            return value > 0 ? 0x7f800000 : 0xff800000;  // Separate buckets for +∞ and -∞
+        }
+        
+        // Normalize the value according to epsilon
         float normalizedValue = Math.round(value * SCALE_FLOAT) / SCALE_FLOAT;
+        
+        // Normalize negative zero to positive zero
+        if (normalizedValue == 0.0f) {
+            normalizedValue = 0.0f;  // This ensures -0.0f becomes 0.0f
+        }
+        
         return Float.floatToIntBits(normalizedValue);
     }
 

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="badge.svg" alt="java-util logo" width="120" height="120" />
+  <img src="badge.svg" alt="java-util logo" width="320" height="200" />
 
   <p>
     <a href="https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware">

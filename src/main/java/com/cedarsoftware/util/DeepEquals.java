@@ -2232,10 +2232,11 @@ public class DeepEquals {
     private static boolean isSensitiveField(String fieldName) {
         if (fieldName == null) return false;
         String lowerFieldName = fieldName.toLowerCase();
+        // Check against explicit list and specific patterns
+        // Note: Removed generic "key" check as it's too broad (matches "monkey", "keyboard", etc.)
         return SENSITIVE_FIELD_NAMES.contains(lowerFieldName) ||
                lowerFieldName.contains("password") ||
                lowerFieldName.contains("secret") ||
-               lowerFieldName.contains("token") ||
-               lowerFieldName.contains("key");
+               lowerFieldName.contains("token");
     }
 }

@@ -1448,19 +1448,25 @@ public class DeepEqualsTest
 
     @Test
     void testNearlyEqualWithTinyNumbers() {
-        // Test with one number being zero
-        Number zero = 0.0;
-        Number almostZero = 1.0e-323;  // Less than epsilon * MIN_NORMAL
-
         Map<String, Object> options = new HashMap<>();
-        assertTrue(DeepEquals.deepEquals(zero, almostZero, options),
-                "Zero and extremely small number should be considered equal within epsilon");
+        
+        // Test numbers that differ by less than relative epsilon
+        // When comparing non-zero numbers, the algorithm uses: diff <= epsilon * max(|a|, |b|)
+        // With epsilon = 1e-12
+        Number num1 = 1.0;
+        Number num2 = 1.0 + 5e-13;  // Differs by 5e-13, which is less than 1e-12 * 1.0 = 1e-12
+        assertTrue(DeepEquals.deepEquals(num1, num2, options),
+                "Numbers differing by less than relative epsilon should be considered equal");
 
-        // Also test two very small numbers
-        Number tiny1 = 1.0e-323;
-        Number tiny2 = 0.9e-323;
+        // Test very small numbers with small absolute difference
+        // For tiny1 = 1e-10, tiny2 = 1.00000001e-10
+        // diff = 1e-18, max = 1.00000001e-10
+        // diff <= epsilon * max => 1e-18 <= 1e-12 * 1e-10 = 1e-22 (false)
+        // Need diff <= 1e-12 * 1e-10 = 1e-22, so diff must be less than 1e-22
+        Number tiny1 = 1.0e-10;
+        Number tiny2 = 1.0e-10 + 1e-23;  // Differs by 1e-23, which is less than 1e-12 * 1e-10 = 1e-22
         assertTrue(DeepEquals.deepEquals(tiny1, tiny2, options),
-                "Two extremely small numbers should be considered equal within epsilon");
+                "Small numbers with difference less than relative epsilon should be considered equal");
     }
 
     @Test

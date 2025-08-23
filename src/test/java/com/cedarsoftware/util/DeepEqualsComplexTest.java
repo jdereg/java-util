@@ -510,10 +510,10 @@ public class DeepEqualsComplexTest {
         Set<String> set2 = new LinkedHashSet<>(Arrays.asList("b", "a")); // Same elements, different order
         assertTrue(DeepEquals.deepEquals(set1, set2));
 
-        // Different collection interfaces aren't equal
+        // Different collection interfaces aren't equal (List vs Set is a type mismatch)
         List<String> asList = Arrays.asList("a", "b");
         Set<String> asSet = new LinkedHashSet<>(Arrays.asList("a", "b"));
-        assertTrue(DeepEquals.deepEquals(asList, asSet));
+        assertFalse(DeepEquals.deepEquals(asList, asSet));
     }
 
     @Test

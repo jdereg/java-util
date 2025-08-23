@@ -1,5 +1,5 @@
 ### Revision History
-#### 4.0.0
+#### 4.1.0 (unreleased)
 > * **PERFORMANCE**: Optimized `DeepEquals` based on GPT-5 code review:
 >   * **Changed epsilon value**: Updated DOUBLE_EPSILON from 1e-15 to 1e-12 for more practical floating-point comparisons
 >   * **Adjusted hash scales**: Updated SCALE_DOUBLE from 10^10 to 10^11 and SCALE_FLOAT from 10^5 to 10^6 to maintain hash-equals contract with new epsilon
@@ -7,6 +7,9 @@
 >   * **Removed static initializer**: Eliminated static block that was mutating global system properties, following best practices
 >   * **Migrated to ArrayDeque**: Replaced LinkedList with ArrayDeque for stack operations, improving performance
 >   * **Added null handling**: Enhanced null handling in deepHashCode to prevent NPEs when using ArrayDeque
+>   * **Pop-immediately optimization**: Implemented pop-immediately pattern in traversal loop, eliminating double iterations by removing from stack immediately and checking visited set in one operation
+>   * **Depth tracking optimization**: Added depth field to ItemsToCompare to avoid costly parent chain traversal for recursion depth checking
+#### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")
 >   * **Iterative Implementation**: Uses heap-based traversal with work queue to avoid stack overflow on deeply nested structures

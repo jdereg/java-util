@@ -246,15 +246,6 @@ public class DeepEquals {
      * Calculate the depth of the current item in the object graph by counting
      * the number of parent links. This is used for heap-based depth tracking.
      */
-    private static int calculateDepth(ItemsToCompare item) {
-        int depth = 0;
-        ItemsToCompare current = item.parent;
-        while (current != null) {
-            depth++;
-            current = current.parent;
-        }
-        return depth;
-    }
     
     // Class to hold information about items being compared
     private final static class ItemsToCompare {
@@ -265,37 +256,38 @@ public class DeepEquals {
         private final int[] arrayIndices;
         private final Object mapKey;
         private final Difference difference;    // New field
+        private final int depth;    // Track depth for recursion limit
 
         // Modified constructors to include Difference
 
         // Constructor for root
         private ItemsToCompare(Object k1, Object k2) {
-            this(k1, k2, null, null, null, null, null);
+            this(k1, k2, null, null, null, null, null, 0);
         }
 
         // Constructor for differences where the Difference does not need additional information
         private ItemsToCompare(Object k1, Object k2, ItemsToCompare parent, Difference difference) {
-            this(k1, k2, parent, null, null, null, difference);
+            this(k1, k2, parent, null, null, null, difference, parent != null ? parent.depth + 1 : 0);
         }
 
         // Constructor for field access with difference
         private ItemsToCompare(Object k1, Object k2, String fieldName, ItemsToCompare parent, Difference difference) {
-            this(k1, k2, parent, fieldName, null, null, difference);
+            this(k1, k2, parent, fieldName, null, null, difference, parent != null ? parent.depth + 1 : 0);
         }
 
         // Constructor for array access with difference
         private ItemsToCompare(Object k1, Object k2, int[] indices, ItemsToCompare parent, Difference difference) {
-            this(k1, k2, parent, null, indices, null, difference);
+            this(k1, k2, parent, null, indices, null, difference, parent != null ? parent.depth + 1 : 0);
         }
 
         // Constructor for map access with difference
         private ItemsToCompare(Object k1, Object k2, Object mapKey, ItemsToCompare parent, boolean isMapKey, Difference difference) {
-            this(k1, k2, parent, null, null, mapKey, difference);
+            this(k1, k2, parent, null, null, mapKey, difference, parent != null ? parent.depth + 1 : 0);
         }
 
         // Base constructor
         private ItemsToCompare(Object k1, Object k2, ItemsToCompare parent,
-                               String fieldName, int[] arrayIndices, Object mapKey, Difference difference) {
+                               String fieldName, int[] arrayIndices, Object mapKey, Difference difference, int depth) {
             this._key1 = k1;
             this._key2 = k2;
             this.parent = parent;
@@ -303,6 +295,7 @@ public class DeepEquals {
             this.arrayIndices = arrayIndices;
             this.mapKey = mapKey;
             this.difference = difference;
+            this.depth = depth;
         }
 
         @Override
@@ -420,21 +413,17 @@ public class DeepEquals {
         final int maxRecursionDepth = getMaxRecursionDepth();
 
         while (!stack.isEmpty()) {
-            ItemsToCompare itemsToCompare = stack.peek();
+            ItemsToCompare itemsToCompare = stack.removeFirst();
             
-            // Security check: prevent excessive recursion depth (heap-based depth tracking)
-            if (maxRecursionDepth > 0) {
-                int currentDepth = calculateDepth(itemsToCompare);
-                if (currentDepth > maxRecursionDepth) {
-                    throw new SecurityException("Maximum recursion depth exceeded: " + currentDepth + " > " + maxRecursionDepth);
-                }
-            }
-
-            if (visited.contains(itemsToCompare)) {
-                stack.removeFirst();
+            // Skip if already visited
+            if (!visited.add(itemsToCompare)) {
                 continue;
             }
-            visited.add(itemsToCompare);
+            
+            // Security check: prevent excessive recursion depth (heap-based depth tracking)
+            if (maxRecursionDepth > 0 && itemsToCompare.depth > maxRecursionDepth) {
+                throw new SecurityException("Maximum recursion depth exceeded: " + itemsToCompare.depth + " > " + maxRecursionDepth);
+            }
 
             final Object key1 = itemsToCompare._key1;
             final Object key2 = itemsToCompare._key2;
@@ -446,14 +435,14 @@ public class DeepEquals {
 
             // If either one is null, they are not equal (key1 == key2 already checked)
             if (key1 == null || key2 == null) {
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                 return false;
             }
 
             // Handle all numeric comparisons first
             if (key1 instanceof Number && key2 instanceof Number) {
                 if (!compareNumbers((Number) key1, (Number) key2)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -474,13 +463,13 @@ public class DeepEquals {
                         }
                     }
                 } catch (Exception ignore) { }
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                 return false;
             }
 
             if (key1 instanceof AtomicBoolean && key2 instanceof AtomicBoolean) {
                 if (!compareAtomicBoolean((AtomicBoolean) key1, (AtomicBoolean) key2)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                     return false;
                 } else {
                     continue;
@@ -495,14 +484,14 @@ public class DeepEquals {
                 if (key1 instanceof Comparable && key2 instanceof Comparable) {
                     try {
                         if (((Comparable)key1).compareTo(key2) != 0) {
-                            stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
+                            stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                             return false;
                         }
                         continue;
                     } catch (Exception ignored) { }   // Fall back to equals() if compareTo() fails
                 }
                 if (!key1.equals(key2)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.VALUE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
                     return false;
                 }
                 continue;
@@ -511,14 +500,16 @@ public class DeepEquals {
             // List interface defines order as required as part of equality
             if (key1 instanceof List) {   // If List, the order must match
                 if (!(key2 instanceof List)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack)) {
+                if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, itemsToCompare)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
-                    stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
+                    if (prior != null) {
+                        stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
+                    }
                     return false;
                 }
                 continue;
@@ -527,64 +518,70 @@ public class DeepEquals {
             // Unordered Collection comparison
             if (key1 instanceof Collection) {
                 if (!(key2 instanceof Collection)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.COLLECTION_TYPE_MISMATCH));
                     return false;
                 }
                 if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2,
-                        stack, options, visited)) {
+                        stack, options, visited, itemsToCompare)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
-                    stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
+                    if (prior != null) {
+                        stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
+                    }
                     return false;
                 }
                 continue;
             } else if (key2 instanceof Collection) {
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.COLLECTION_TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.COLLECTION_TYPE_MISMATCH));
                 return false;
             }
 
             // Map comparison
             if (key1 instanceof Map) {
                 if (!(key2 instanceof Map)) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, options, visited)) {
+                if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, options, visited, itemsToCompare)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "map value mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
-                    stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
+                    if (prior != null) {
+                        stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
+                    }
                     return false;
                 }
                 continue;
             } else if (key2 instanceof Map) {
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                 return false;
             }
 
             // Array comparison
             if (key1Class.isArray()) {
                 if (!key2Class.isArray()) {
-                    stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeArray(key1, key2, stack)) {
+                if (!decomposeArray(key1, key2, stack, itemsToCompare)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "array element mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
-                    stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
+                    if (prior != null) {
+                        stack.addFirst(new ItemsToCompare(prior._key1, prior._key2, prior, Difference.VALUE_MISMATCH));
+                    }
                     return false;
                 }
                 continue;
             } else if (key2Class.isArray()) {
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                 return false;
             }
 
             // Must be same class if not a container type
             if (!key1Class.equals(key2Class)) {   // Must be same class
-                stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
+                stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                 return false;
             }
             
@@ -622,7 +619,7 @@ public class DeepEquals {
             }
             
             // Decompose object into its fields (not using custom equals)
-            decomposeObject(key1, key2, stack);
+            decomposeObject(key1, key2, stack, itemsToCompare);
         }
         return true;
     }
@@ -639,8 +636,7 @@ public class DeepEquals {
      */
     private static boolean decomposeUnorderedCollection(Collection<?> col1, Collection<?> col2,
                                                        Deque<ItemsToCompare> stack, Map<String, ?> options,
-                                                       Set<Object> visited) {
-        ItemsToCompare currentItem = stack.peek();
+                                                       Set<Object> visited, ItemsToCompare currentItem) {
 
         // Security check: validate collection sizes
         int maxCollectionSize = getMaxCollectionSize();
@@ -695,8 +691,7 @@ public class DeepEquals {
         return true;
     }
 
-    private static boolean decomposeOrderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack) {
-        ItemsToCompare currentItem = stack.peek();
+    private static boolean decomposeOrderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
 
         // Security check: validate collection sizes
         int maxCollectionSize = getMaxCollectionSize();
@@ -725,8 +720,7 @@ public class DeepEquals {
         return true;
     }
     
-    private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Map<String, ?> options, Set<Object> visited) {
-        ItemsToCompare currentItem = stack.peek();
+    private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Map<String, ?> options, Set<Object> visited, ItemsToCompare currentItem) {
 
         // Security check: validate map sizes
         int maxMapSize = getMaxMapSize();
@@ -802,8 +796,7 @@ public class DeepEquals {
      * @param stack         Comparison stack.
      * @return true if arrays are equal, false otherwise.
      */
-    private static boolean decomposeArray(Object array1, Object array2, Deque<ItemsToCompare> stack) {
-        ItemsToCompare currentItem = stack.peek();  // This will be the parent
+    private static boolean decomposeArray(Object array1, Object array2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
 
         // 1. Check dimensionality
         Class<?> type1 = array1.getClass();
@@ -854,8 +847,7 @@ public class DeepEquals {
         return true;
     }
 
-    private static boolean decomposeObject(Object obj1, Object obj2, Deque<ItemsToCompare> stack) {
-        ItemsToCompare currentItem = stack.peek();
+    private static boolean decomposeObject(Object obj1, Object obj2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
 
         // Get all fields from the object
         Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj1.getClass());

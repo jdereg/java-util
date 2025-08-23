@@ -13,6 +13,7 @@
 >   * **Early termination optimization**: Push collection/array elements in reverse order for LIFO comparison, ensuring first element is compared first and allowing early termination on mismatch
 >   * **Primitive array optimization**: Compare primitive arrays directly without pushing elements to stack, avoiding O(n) allocations for arrays that differ early
 >   * **Improved sensitive data detection**: Fixed overly broad Base64 pattern that matched normal strings; now requires 32+ character length and proper Base64 format. Removed "key" from sensitive field names as too generic
+>   * **Fixed floating-point comparison correctness**: Corrected near-zero comparison using absolute tolerance instead of relative; made NaN comparison consistent (NaN==NaN via bitwise equality); applied same tolerance to float/double arrays for consistency
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

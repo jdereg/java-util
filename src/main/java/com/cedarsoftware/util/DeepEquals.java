@@ -160,7 +160,8 @@ public class DeepEquals {
             Collections.newSetFromMap(new IdentityHashMap<>()));
     
     // Epsilon values for floating-point comparisons
-    private static final double doubleEpsilon = 1e-12;
+    private static final double DOUBLE_EPSILON = 1e-12;
+    private static final float FLOAT_EPSILON = 1e-6f;
     
     // Configuration for security-safe error messages - removed static final, now uses dynamic method
     
@@ -905,8 +906,8 @@ public class DeepEquals {
                 float[] a1 = (float[]) array1;
                 float[] a2 = (float[]) array2;
                 for (int i = 0; i < len1; i++) {
-                    // Use Float.compare for NaN handling
-                    if (Float.compare(a1[i], a2[i]) != 0) {
+                    // Use nearlyEqual for consistent floating-point comparison with tolerance
+                    if (!nearlyEqual(a1[i], a2[i], FLOAT_EPSILON)) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
                         return false;
                     }
@@ -915,8 +916,8 @@ public class DeepEquals {
                 double[] a1 = (double[]) array1;
                 double[] a2 = (double[]) array2;
                 for (int i = 0; i < len1; i++) {
-                    // Use Double.compare for NaN handling
-                    if (Double.compare(a1[i], a2[i]) != 0) {
+                    // Use nearlyEqual for consistent floating-point comparison with tolerance
+                    if (!nearlyEqual(a1[i], a2[i], DOUBLE_EPSILON)) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
                         return false;
                     }
@@ -1010,7 +1011,7 @@ public class DeepEquals {
             // Normal floating point comparison
             double d1 = a.doubleValue();
             double d2 = b.doubleValue();
-            return nearlyEqual(d1, d2, doubleEpsilon);
+            return nearlyEqual(d1, d2, DOUBLE_EPSILON);
         }
 
         // For non-floating point numbers, use exact comparison
@@ -1024,27 +1025,53 @@ public class DeepEquals {
     }
 
     /**
-     * Correctly handles floating point comparisons.
+     * Correctly handles floating point comparisons with proper NaN and near-zero handling.
      *
-     * @param a       First number.
-     * @param b       Second number.
-     * @param epsilon Tolerance value.
-     * @return true if numbers are nearly equal within the tolerance, false otherwise.
+     * @param a   First double.
+     * @param b   Second double.
+     * @param eps Precision for comparison.
+     * @return true if numbers are nearly equal within epsilon, false otherwise.
      */
-    private static boolean nearlyEqual(double a, double b, double epsilon) {
-        final double absA = Math.abs(a);
-        final double absB = Math.abs(b);
-        final double diff = Math.abs(a - b);
-
-        if (a == b) { // shortcut, handles infinities
+    private static boolean nearlyEqual(double a, double b, double eps) {
+        // Fast path: bitwise equality handles NaN==NaN, +0.0==-0.0
+        if (Double.doubleToLongBits(a) == Double.doubleToLongBits(b)) {
             return true;
-        } else if (a == 0 || b == 0 || diff < Double.MIN_NORMAL) {
-            // a or b is zero or both are extremely close to it
-            // relative error is less meaningful here
-            return diff < (epsilon * Double.MIN_NORMAL);
-        } else { // use relative error
-            return diff / (absA + absB) < epsilon;
         }
+        // NaN values that aren't the same bit pattern are not equal
+        if (Double.isNaN(a) || Double.isNaN(b)) {
+            return false;
+        }
+        
+        double diff = Math.abs(a - b);
+        double norm = Math.max(Math.abs(a), Math.abs(b));
+        
+        // Near zero: use absolute tolerance; elsewhere: use relative tolerance
+        return (norm == 0.0) ? diff <= eps : diff <= eps * norm;
+    }
+    
+    /**
+     * Correctly handles floating point comparisons for floats.
+     *
+     * @param a   First float.
+     * @param b   Second float.
+     * @param eps Precision for comparison.
+     * @return true if numbers are nearly equal within epsilon, false otherwise.
+     */
+    private static boolean nearlyEqual(float a, float b, float eps) {
+        // Fast path: bitwise equality handles NaN==NaN, +0.0f==-0.0f
+        if (Float.floatToIntBits(a) == Float.floatToIntBits(b)) {
+            return true;
+        }
+        // NaN values that aren't the same bit pattern are not equal
+        if (Float.isNaN(a) || Float.isNaN(b)) {
+            return false;
+        }
+        
+        float diff = Math.abs(a - b);
+        float norm = Math.max(Math.abs(a), Math.abs(b));
+        
+        // Near zero: use absolute tolerance; elsewhere: use relative tolerance
+        return (norm == 0.0f) ? diff <= eps : diff <= eps * norm;
     }
 
     /**

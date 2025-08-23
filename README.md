@@ -47,316 +47,149 @@ As of version 3.6.0 the library is built with the `-parameters`
 compiler flag. Parameter names are now retained for tasks such as
 constructor discovery (increased the jar size by about 10K.)
 
-## Quick Start
+## Featured Utilities
 
-Experience the power of java-util with these popular utilities that solve common development challenges:
+### 🚀 DeepEquals - Complete Object Comparison
 
-### 🔍 DeepEquals - Compare Complex Object Graphs
-Perfect for testing and validation - handles cycles, collections, and deep nesting automatically:
+**What**: Compare any two Java objects for complete equality, handling all data types including cyclic references.
 
+**Why use it**:
+- ✅ Works with any objects - no equals() method needed
+- ✅ Handles circular references and complex nested structures
+- ✅ Perfect for testing, debugging, and data validation
+
+**Quick example**:
 ```java
-// Compare complex test outputs without worrying about object cycles
-List<User> expected = loadExpectedUsers();
-List<User> actual = processUsers();
-
-// Standard equals() fails with nested objects and cycles
-// DeepEquals handles everything automatically
-if (DeepEquals.deepEquals(expected, actual)) {
-    System.out.println("Test passed!");
-} else {
-    // Get detailed diff for debugging
-    Map<String, Object> options = new HashMap<>();
-    DeepEquals.deepEquals(expected, actual, options);
-    System.out.println("Differences: " + options.get("diff"));
-}
+boolean same = DeepEquals.deepEquals(complexObject1, complexObject2);
 ```
 
-**Visual diff output makes debugging obvious:**
+📖 [Full documentation and options →](userguide.md#deepequals)
 
-<span style="color: #007acc">
+---
 
-```
-// Object field mismatch - pinpoints exactly what's different
-[field value mismatch] ▶ Person {name: "Jim Bob", age: 27} ▶ .age
-  Expected: 27
-  Found: 34
+### 🎯 Converter - Universal Type Conversion
 
-// Collection element differences with precise indexing  
-[collection element mismatch] ▶ Container {strings: List(0..2), numbers: List(0..2)} ▶ .strings(0)
-  Expected: "a"
-  Found: "x"
+**What**: Convert between many Java types with a single API - no more scattered conversion logic.
 
-// Complex nested structures with visual navigation
-[array element mismatch] ▶ University {name: "Test University", departmentsByCode: Map(0..1)} ▶ 
-  .departmentsByCode 《"CS" ⇨ Department {code: "CS", programs: List(0..2)}》.programs(0).requiredCourses
-  Expected length: 2
-  Found length: 3
+**Why use it**:
+- ✅ 1000+ type conversions out of the box (use `.allAllSupportedConversions()` to list them out)
+- ✅ Extensible - add your own custom conversions
+- ✅ Handles complex types including temporal, arrays, and collections
 
-// Map differences show key-value relationships clearly
-[map value mismatch] ▶ LinkedHashMap(0..0) ▶ 《"user.email" ⇨ "old@example.com"》
-  Expected: "old@example.com"  
-  Found: "new@example.com"
-```
-
-</span>
-
-### 🔄 Converter - Universal Type Conversion
-Convert between any meaningful types with mind-bending intelligence:
-
+**Quick example**:
 ```java
-// Multi-dimensional arrays ↔ nested collections (any depth, any size!)
-String[][][] jagged = {
-    {{"a", "b", "c"}, {"d"}},           // First sub-array: 3 elements, then 1 element  
-    {{"e", "f"}, {"g", "h", "i", "j"}}, // Second sub-array: 2 elements, then 4 elements
-    {{"k"}}                             // Third sub-array: just 1 element
-};
-List<List<List<String>>> nested = Converter.convert(jagged, List.class);  
-// Result: [[[a, b, c], [d]], [[e, f], [g, h, i, j]], [[k]]]
-
-char[][][] backToArray = Converter.convert(nested, char[][][].class);       // Preserves jagged structure perfectly!
-
-// EnumSet magic - detects collections and creates EnumSet automatically  
-String[] permissions = {"READ", "WRITE", "ADMIN"};  
-EnumSet<Permission> perms = Converter.convert(permissions, Permission.class);  // Array → EnumSet<Permission>
-
-List<String> statusList = Arrays.asList("ACTIVE", "PENDING", "COMPLETE");
-EnumSet<Status> statuses = Converter.convert(statusList, Status.class);       // Collection → EnumSet<Status>
-
-Map<String, Object> config = Map.of("DEBUG", true, "INFO", false, "WARN", true);
-EnumSet<LogLevel> levels = Converter.convert(config, LogLevel.class);         // Map keySet() → EnumSet<LogLevel>
-
-// UUID as 128-bit number - who even thinks of this?!
-UUID uuid = UUID.randomUUID();
-BigInteger bigInt = Converter.convert(uuid, BigInteger.class);
-// Result: 340282366920938463463374607431768211456 (UUID as massive integer!)
-UUID restored = Converter.convert(bigInt, UUID.class);                   // Back to UUID!
-
-// Base64 string directly to ByteBuffer 
-String base64Data = "SGVsbG8gV29ybGQ=";  // "Hello World" encoded
-ByteBuffer buffer = Converter.convert(base64Data, ByteBuffer.class);
-// Result: Ready-to-use ByteBuffer, no manual decoding!
-
-// Map to Color - understands RGB semantics
-Map<String, Object> colorMap = Map.of("red", 255, "green", 128, "blue", 0, "alpha", 200);
-Color orange = Converter.convert(colorMap, Color.class);
-// Result: java.awt.Color[r=255,g=128,b=0,a=200] - it even handles alpha!
-
-// Calendar to atomic types - extracts time AND makes it thread-safe
-Calendar cal = Calendar.getInstance(); 
-AtomicLong atomicTime = Converter.convert(cal, AtomicLong.class);        // Thread-safe epoch millis
-AtomicInteger atomicYear = Converter.convert(cal, AtomicInteger.class);  // Just the year, atomically
-
-// Add your own exotic conversions
-Converter converter = new Converter();
-converter.addConversion(MyClass.class, String.class, obj -> obj.toJson());
-
-// See ALL available conversions - the full power revealed!
-Map<String, Set<String>> supported = Converter.getSupportedConversions();
-// Result: {"String" -> ["Integer", "Long", "Date", "UUID", "BigInteger", ...], 
-//          "UUID" -> ["String", "BigInteger", "Map", ...], ...}
-
-Set<String> allConversions = Converter.allSupportedConversions();  
-// Result: ["String -> Integer", "String -> Long", "UUID -> BigInteger", 
-//          "Map -> Color", "Calendar -> AtomicLong", ...]
+Date date = Converter.convert("2024-01-15", Date.class);
+Long number = Converter.convert("42.7", Long.class);  // Returns 43
 ```
 
-**Beyond these 1000+ direct type conversions, Converter also handles:**
-- 📦 **Collection ↔ Collection** (List ↔ Set ↔ Queue, any combination)
-- 📦 **Collection ↔ Array** (any collection to any array type, preserving elements)  
-- 📦 **Collection → EnumSet** (any collection to EnumSet&lt;targetType&gt; one-dimensional)
-- 🧩 **Array ↔ Array** (int[] ↔ String[] ↔ Long[], automatic element conversion)
-- 🧩 **Array ↔ Collection** (jagged arrays to nested collections, preserving structure)
-- 🧩 **Array → EnumSet** (jagged arrays to nested collections, preserving structure)
-- 🗺️ **Map ↔ Map** (HashMap ↔ LinkedHashMap ↔ ConcurrentHashMap, comparator-aware)
-- 🗺️ **Map → EnumSet** (keySet() of Map to EnumSet&lt;targetType&gt;)
-- 🌟 **N-dimensional support** (jagged arrays, nested collections, any depth)
+📖 [Full documentation and conversion matrix →](userguide.md#converter)
 
-### 🗝️ CaseInsensitiveMap - Fast, Case-Preserving Maps
-High-performance maps that ignore case but preserve original key formatting:
+---
 
+### ⏰ TTLCache - Self-Cleaning Time-Based Cache
+
+**What**: A thread-safe cache that automatically expires entries after a time-to-live period, plus includes full LRU capability.
+
+**Why use it**:
+- ✅ Automatic memory management - no manual cleanup needed
+- ✅ Prevents memory leaks from forgotten cache entries
+- ✅ Perfect for session data, API responses, and temporary results
+
+**Quick example**:
 ```java
-// Default: acts like LinkedHashMap but case-insensitive
-CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
-headers.put("Content-Type", "application/json");
-headers.put("User-Agent", "MyApp/1.0");
-
-// Case-insensitive lookup, but keys retain original case
-String contentType = headers.get("content-type");  // "application/json"
-String userAgent = headers.get("USER-AGENT");      // "MyApp/1.0"
-
-// Walking keySet() returns original case
-for (String key : headers.keySet()) {
-    System.out.println(key);  // "Content-Type", "User-Agent"
-}
-
-// Supports heterogeneous keys (String + non-String)
-CaseInsensitiveMap<Object, String> mixed = new CaseInsensitiveMap<>();
-mixed.put("StringKey", "value1");
-mixed.put(42, "value2");           // Non-string keys work fine
-
-// Use ConcurrentHashMap as backing implementation for thread-safety
-Map<String, String> existingData = Map.of("Content-Type", "application/json");
-Map<String, String> concurrent = new CaseInsensitiveMap<>(existingData, new ConcurrentHashMap<>());
+TTLCache<String, User> userCache = new TTLCache<>(5, TimeUnit.MINUTES);
+userCache.put("user123", user);  // Auto-expires in 5 minutes
+User cached = userCache.get("user123");  // Returns user or null if expired
 ```
 
-### 🗝️ MultiKeyMap - N-Dimensional Key-Value Mapping
-The definitive solution for multi-dimensional lookups - outperforms all alternatives:
+📖 [Full documentation and configuration →](userguide.md#ttlcache)
 
+---
+
+### 🔄 CompactMap - Self-Optimizing Storage
+
+**What**: A Map implementation that automatically switches between compact and traditional storage based on size.
+
+**Why use it**:
+- ✅ Significant memory reduction for small maps (under ~60 elements)
+- ✅ Automatically scales up for larger datasets
+- ✅ Drop-in replacement for HashMap - no code changes needed
+
+**Quick example**:
 ```java
-// Create a high-performance N-dimensional map
-MultiKeyMap<String> productCatalog = new MultiKeyMap<>();
-
-// Standard Map interface - single keys work perfectly
-Map<Object, String> mapInterface = productCatalog;
-mapInterface.put("electronics", "Electronics Department");
-mapInterface.put(Arrays.asList("books", "fiction", "scifi"), "Sci-Fi Books");
-
-// MultiKeyMap varargs API - requires MultiKeyMap variable type
-MultiKeyMap<String> catalog = new MultiKeyMap<>();
-catalog.putMultiKey("Electronics Department", "electronics");                               // 1D
-catalog.putMultiKey("Science Fiction Books", "books", "fiction", "scifi");                  // 3D  
-catalog.putMultiKey("Gaming Keyboards", "electronics", "computers", "keyboards", "gaming"); // 4D
-
-// Flexible retrieval using matching dimensions
-String dept = catalog.getMultiKey("electronics");                               // Electronics Department
-String category = catalog.getMultiKey("books", "fiction", "scifi");            // Science Fiction Books
-String product = catalog.getMultiKey("electronics", "computers", "laptops");   // Laptop Computers
-
-// ConcurrentHashMap-level thread safety with lock-free reads
-catalog.putMultiKey("Updated Value", "electronics", "computers", "laptops");   // Enterprise-grade concurrency
-// Auto-tuned stripe locking: 8-32 stripes based on system cores for optimal write parallelism
-
-// Advanced collection handling with CollectionKeyMode (affects Collections only, not Arrays)
-MultiKeyMap<String> configMap = new MultiKeyMap<>(1024, CollectionKeyMode.COLLECTIONS_NOT_EXPANDED);
-List<String> configPath = Arrays.asList("database", "connection", "pool");
-configMap.put(configPath, "jdbc:mysql://localhost:3306/app");           // Collection tried as single key first
-String dbUrl = configMap.get(configPath);                               // Retrieved as single key
-
-// Arrays are ALWAYS expanded and elements are compared by equals(). This is a BIG feature for MultiKeyMap. 
-// This is because you can't override equals/hashCode on arrays, as they compare with == (identity).
-// Use another Map type if you want array to compare with identity. 
-String[] arrayPath = {"database", "connection", "pool"};
-configMap.put(arrayPath, "another-value");                                      // ALWAYS stored as 3D key
-String arrayValue = configMap.getMultiKey("database", "connection", "pool");    // Retrieved as 3D key
-
-// 🔥 N-DIMENSIONAL ARRAY EXPANSION - The Ultimate Power Feature
-// Arrays and Collections expand with structure preservation - no limits on depth!
-
-// ✅ EQUIVALENT (same flat structure, different containers - flattenDimensions = true):
-String[] flatArray = {"a", "b", "c"};                    // → ["a", "b", "c"]
-List<String> flatList = List.of("a", "b", "c");          // → ["a", "b", "c"]  
-Object[] flatObject = {"a", "b", "c"};                   // → ["a", "b", "c"]
-configMap.put(flatArray, "value");
-// ALL of these work - cross-container equivalence:
-String result1 = configMap.get(flatArray);               // ✅ Original String[]
-String result2 = configMap.get(flatList);                // ✅ Equivalent List  
-String result3 = configMap.get(flatObject);              // ✅ Equivalent Object[]
-String result4 = configMap.getMultiKey("a", "b", "c");   // ✅ Individual elements
-
-// ❌ NOT EQUIVALENT (different structures - flattenDimensions = false):
-String[][] nested2D = {{"a", "b"}, {"c", "d"}};         // → [["a", "b"],["c", "d"]]
-String[] flat1D = {"a", "b", "c", "d"};                 // → ["a", "b", "c", "d"]
-// These create SEPARATE entries - different structures preserved!
-configMap.put(nested2D, "2D_value");                    // Stored retaining structural info
-configMap.put(flat1D, "flat_value");                    // Stored retaining structural info
-
-// Perfect for complex lookups: user permissions, configuration trees, caches
-MultiKeyMap<Permission> permissions = new MultiKeyMap<>();
-permissions.putMultiKey(Permission.ADMIN, "user123", "project456", "resource789");
-Permission userPerm = permissions.getMultiKey("user123", "project456", "resource789");
+Map<String, Object> map = new CompactMap<>();  // Starts compact
+map.put("key", "value");  // Uses minimal memory
+// Automatically expands when needed - completely transparent
 ```
 
-**🔄 Cross-Container Equivalence (Ultimate Flexibility!):**
+📖 [Full documentation and benchmarks →](userguide.md#compactmap)
 
-MultiKeyMap treats **equivalent structures** as **identical keys**, regardless of container type:
+---
 
+### 🔑 MultiKeyMap - Composite Key Mapping
+
+**What**: Index objects with unlimited keys (decision variables). Useful for pricing tables, configuration trees, decision tables, arrays and collections as keys, matrix as key. 
+
+**Why use it**:
+- ✅ Composite keys without ceremony – Stop gluing keys into strings or writing boilerplate Pair/wrapper classes.
+- ✅ Real-world key shapes – Use arrays, collections, jagged multi-dimensional arrays, matrices/tensors, etc., as key components; deep equality & hashing mean “same contents” truly equals “same key.”
+- ✅ Cleaner, safer code – No more hand-rolled equals()/hashCode() on ad-hoc key objects. Fewer collision bugs, fewer “why doesn’t this look up?” moments.
+- ✅ Beats nested maps – One structure instead of Map<A, Map<B, V>>. Simpler reads/writes, simpler iteration, simpler mental model.
+- ✅ Follows same concurrency semantics as ConcurrentHashMap.
+- ✅ Map-like ergonomics – Familiar put/get/contains/remove semantics; drop-in friendly alongside the rest of java.util collections.
+- ✅ Fewer allocations – Avoid creating short-lived wrapper objects just to act as a key; reduce GC pressure versus “make-a-key-object-per-call.”
+- ✅ Better iteration & analytics – Iterate entries once; no nested loops to walk inner maps when you just need all (k1,k2,…,v) tuples.
+- ✅ Easier indexing patterns – Natural fit for multi-attribute lookups (e.g., (tenantId, userId), (type, region), (dateBucket, symbol)).
+- ✅ Configurable case-insensitivity (case-retaining) – opt in to case-insensitive matching where you want it, keep exact matching where you don’t—all while preserving original casing for display/logging.
+
+**Quick examples**:
+
+Example 1 — Composite key that includes a small jagged array
 ```java
+// Composite key: [[1, 2], "some key"]  -> value
 MultiKeyMap<String> map = new MultiKeyMap<>();
 
-// 🎯 ALL of these are equivalent (same flat structure):
-String[] stringArray = {"user", "profile", "settings"};
-Object[] objectArray = {"user", "profile", "settings"};  
-int[] intArray = {1, 2, 3};                              // Different elements, same structure
-List<String> stringList = List.of("user", "profile", "settings");
-List<Object> objectList = List.of("user", "profile", "settings");
-ArrayList<String> arrayList = new ArrayList<>(List.of("user", "profile", "settings"));
-Set<String> set = Set.of("user", "profile", "settings"); // Even Sets work!
+Object[] compositeKey = new Object[] { new int[]{1, 2}, "some key" };
+map.put(compositeKey, "payload-123");
 
-// Store with ANY container type:
-map.put(stringArray, "stored-value");
+// Retrieve using a *new* array with the same contents (deep equality)
+String v1 = map.get(compositeKey);  // v1 = "payload-123"
 
-// Retrieve with ANY equivalent container:
-map.get(stringArray);      // ✅ "stored-value"
-map.get(objectArray);      // ✅ "stored-value" 
-map.get(stringList);       // ✅ "stored-value"
-map.get(objectList);       // ✅ "stored-value"
-map.get(arrayList);        // ✅ "stored-value"
-// Only ONE entry exists in the map - they're all the same key!
-
-// 🎯 Nested structures are also equivalent across containers:
-List<List<String>> nestedList = List.of(List.of("a", "b"), List.of("c"));
-Object[] nestedArray = {new String[]{"a", "b"}, new String[]{"c"}};
-map.put(nestedList, "nested-value");
-map.get(nestedArray);      // ✅ "nested-value" - same nested structure!
+// Standard Map operations work with the composite array key
+boolean present = map.containsKey(compositeKey);   // true
+map.remove(compositeKey);
+map.containsKey(compositeKey); // false
 ```
-
-**Advanced Configuration Options:**
-
+Example 2 — Var-args style (no ambiguity with Map.put/get)
 ```java
-// Case-sensitive mode for String keys (default is case-insensitive)
-MultiKeyMap<String> caseMap = new MultiKeyMap<>(true);  // Case-sensitive mode
-caseMap.putMultiKey("Value1", "ABC", "def");
-caseMap.putMultiKey("Value2", "abc", "def");  // Different key from "ABC"
-String val1 = caseMap.getMultiKey("ABC", "def");  // "Value1"
-String val2 = caseMap.getMultiKey("abc", "def");  // "Value2" 
+// Var-args API: putMultiKey(value, k1, k2, k3) and getMultiKey(k1, k2, k3)
+// Use this when you already have the distinct keys in hand.
+MultiKeyMap<String> map = new MultiKeyMap<>();
 
-// Value-based equality mode for cross-type numeric comparisons
-MultiKeyMap<String> valueMap = new MultiKeyMap<>(1024, true);  // Value-based equality
-valueMap.putMultiKey("NumericValue", 42L, 3.14);
-// All these retrieve the same entry (cross-type numeric equality):
-String result1 = valueMap.getMultiKey(42, 3.14);     // Integer and Double
-String result2 = valueMap.getMultiKey(42L, 3.14f);   // Long and Float  
-String result3 = valueMap.getMultiKey(42.0, 3.14);   // Double and Double
+String tenantId = "acme";
+long userId = 42L;
+String scope = "read:invoices";
+
+// Value first by design (var-args must be last)
+map.putMultiKey("granted", tenantId, userId, scope);
+
+String perm = map.getMultiKey(tenantId, userId, scope);
+System.out.println(perm); // prints: granted
+
+boolean ok = map.containsMultiKey(tenantId, userId, scope);
+System.out.println(ok); // true
+
+map.removeMultiKey(tenantId, userId, scope);
+System.out.println(map.containsMultiKey(tenantId, userId, scope)); // false
 ```
 
-**Why MultiKeyMap is an industry-leading solution:**
+📖 [Full documentation and use cases →](userguide.md#multikeymap)
 
-| Feature | Guava Table | Apache Commons MultiKeyMap | DIY Record+HashMap | **java-util MultiKeyMap**                                 |
-|---------|-------------|----------------------------|-------------------|-----------------------------------------------------------|
-| **Performance** | ⚠️ Good (map-of-maps overhead) | ⚠️ Good (single-threaded) | ❌ Poor (key object creation) | ✅ **Excellent** (Thread-safe + competitive performance) |
-| **Key Dimensions** | ❌ Limited to 2D only | ✅ Unlimited N-D | ✅ Unlimited N-D | ✅ **Unlimited N-D**                                       |
-| **Thread Safety** | ❌ None built-in | ❌ Not thread-safe | ❌ None (manual synchronization) | ✅ **Full ConcurrentMap** (nulls allowed)                  |
-| **Type Safety** | ✅ Built-in compile-time | ❌ Untyped Object keys | ✅ Built-in compile-time | ✅ **Façade-ready** (flexible core + typed wrapper)        |
-| **Case Handling** | ❌ No built-in support | ❌ No built-in support | ❌ Manual implementation | ✅ **Configurable** (case-sensitive/insensitive)           |
-| **Numeric Equality** | ❌ Type-strict only | ❌ Type-strict only | ❌ Type-strict only | ✅ **Value-based option** (42 == 42L == 42.0)             |
+---
 
-### ⏰ TTLCache - Time-Based Caching with LRU
-Automatic expiration with optional size limits - supports null keys and values:
+### 🎁 Plus 28 More Utilities
 
-```java
-// Cache with 30-second TTL
-TTLCache<String, User> userCache = new TTLCache<>(TimeUnit.SECONDS.toMillis(30));
-
-// Add items - they auto-expire after TTL
-userCache.put("user123", loadUser("123"));
-userCache.put(null, defaultUser);  // Null keys supported
-
-// Optional: Add LRU eviction with max size
-TTLCache<String, String> sessionCache = new TTLCache<>(
-    TimeUnit.MINUTES.toMillis(15),  // 15-minute TTL
-    1000                            // Max 1000 items (LRU eviction)
-);
-
-// Use like any Map - items auto-expire
-sessionCache.put("session-abc", "user-data");
-String userData = sessionCache.get("session-abc");  // null if expired
-
-// Perfect for caching expensive operations
-TTLCache<String, Result> resultCache = new TTLCache<>(TimeUnit.MINUTES.toMillis(5));
-public Result getExpensiveResult(String key) {
-    return resultCache.computeIfAbsent(key, k -> performExpensiveOperation(k));
-}
-```
+From reflection helpers to graph traversal, concurrent collections to date utilities - java-util has you covered. [Browse all utilities →](#utilities-overview)
 
 **Why developers love these utilities:**
 - **Zero dependencies** - No classpath conflicts

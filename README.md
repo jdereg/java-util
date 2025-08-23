@@ -183,7 +183,7 @@ System.out.println(map.containsMultiKey(tenantId, userId, scope)); // false
 
 ### 🎁 Plus 28 More Utilities
 
-From reflection helpers to graph traversal, concurrent collections to date utilities - java-util has you covered. [Browse all utilities →](#utilities-overview)
+From reflection helpers to graph traversal, concurrent collections to date utilities - java-util has you covered. [Browse all utilities →](#core-components)
 
 **Why developers love these utilities:**
 - **Zero dependencies** - No classpath conflicts

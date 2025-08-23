@@ -1300,4 +1300,4 @@ See [changelog.md](/changelog.md) for revision history.
 
 ---
 
-By: John DeRegnaucourt and Kenny Partlow
+By: John DeRegnaucourt

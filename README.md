@@ -1,26 +1,29 @@
 <div align="center">
-  <img src="badge.svg" alt="java-util logo" />
+  <img src="badge.svg" alt="java-util logo" width="120" height="120" />
 
-  <p align="center">
-    [![Maven Central](https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util)](https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware)
-    <a href="https://javadoc.io/doc/com.cedarsoftware/java-util">
-      <img src="https://javadoc.io/badge2/com.cedarsoftware/java-util/javadoc.svg" alt="Javadoc">
+  <p>
+    <a href="https://central.sonatype.com/search?q=java-util&namespace=com.cedarsoftware">
+      <img src="https://badgen.net/maven/v/maven-central/com.cedarsoftware/java-util" alt="Maven Central" height="20" />
+    </a>
+    <a href="http://www.javadoc.io/doc/com.cedarsoftware/java-util">
+      <img src="https://javadoc.io/badge/com.cedarsoftware/java-util.svg" alt="Javadoc" height="20" />
     </a>
     <a href="https://github.com/jdereg/java-util/blob/master/LICENSE">
-      <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License">
+      <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" height="20" />
     </a>
-    <img src="https://img.shields.io/badge/JDK-8%20to%2024-orange" alt="JDK">
+    <img src="https://img.shields.io/badge/JDK-8%20to%2024-orange" alt="JDK 8–24" height="20" />
   </p>
 
-  <p align="center">
+  <p>
     <a href="https://github.com/jdereg/java-util">
-      <img src="https://img.shields.io/github/stars/jdereg/java-util?style=social" alt="GitHub stars">
+      <img src="https://img.shields.io/github/stars/jdereg/java-util?style=social" alt="GitHub stars" />
     </a>
     <a href="https://github.com/jdereg/java-util/fork">
-      <img src="https://img.shields.io/github/forks/jdereg/java-util?style=social" alt="GitHub forks">
+      <img src="https://img.shields.io/github/forks/jdereg/java-util?style=social" alt="GitHub forks" />
     </a>
   </p>
 </div>
+
 
 A collection of high-performance Java utilities designed to enhance standard Java functionality. These utilities focus on:
 - Memory efficiency and performance optimization

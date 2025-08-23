@@ -5,9 +5,9 @@
     <rect x="25" y="25" width="150" height="10" fill="#FF8C00"/>
 
     <!-- Window controls -->
-    <circle cx="40" cy="22.5" r="3" fill="#ff5f56"/>
-    <circle cx="50" cy="22.5" r="3" fill="#ffbd2e"/>
-    <circle cx="60" cy="22.5" r="3" fill="#27c93f"/>
+    <circle cx="40" cy="22.5" r="3" fill="#2c2c2c"/>
+    <circle cx="50" cy="22.5" r="3" fill="#2c2c2c"/>
+    <circle cx="60" cy="22.5" r="3" fill="#2c2c2c"/>
 
     <!-- Code lines with coffee -->
     <text x="35" y="55" font-family="Courier New, monospace" font-size="10" fill="#FF8C00">import java.util.*;</text>

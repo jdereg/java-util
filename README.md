@@ -1,4 +1,4 @@
-java-util
+![java-util — Zero Dependencies](./badge.svg)
 =========
 
 <!-- Badge Section -->

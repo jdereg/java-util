@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -146,14 +146,14 @@ public class DeepEquals {
     private static final String ARROW = "⇨";
     private static final String ANGLE_LEFT = "《";
     private static final String ANGLE_RIGHT = "》";
-    private static final double SCALE_DOUBLE = Math.pow(10, 10);      // Scale according to epsilon for double
-    private static final float SCALE_FLOAT = (float) Math.pow(10, 5); // Scale according to epsilon for float
+    private static final double SCALE_DOUBLE = Math.pow(10, 11);      // Scale according to epsilon for double
+    private static final float SCALE_FLOAT = (float) Math.pow(10, 6); // Scale according to epsilon for float
 
     private static final ThreadLocal<Set<Object>> formattingStack = ThreadLocal.withInitial(() ->
             Collections.newSetFromMap(new IdentityHashMap<>()));
     
     // Epsilon values for floating-point comparisons
-    private static final double doubleEpsilon = 1e-15;
+    private static final double doubleEpsilon = 1e-12;
     
     // Configuration for security-safe error messages - removed static final, now uses dynamic method
     
@@ -170,29 +170,6 @@ public class DeepEquals {
     private static final int DEFAULT_MAX_OBJECT_FIELDS = 1000;
     private static final int DEFAULT_MAX_RECURSION_DEPTH = 1000000;  // 1M depth for heap-based traversal
     
-    static {
-        // Initialize system properties with defaults if not already set (backward compatibility)
-        initializeSystemPropertyDefaults();
-    }
-    
-    private static void initializeSystemPropertyDefaults() {
-        // Set default values if not explicitly configured
-        if (System.getProperty("deepequals.max.collection.size") == null) {
-            System.setProperty("deepequals.max.collection.size", "0"); // Disabled by default
-        }
-        if (System.getProperty("deepequals.max.array.size") == null) {
-            System.setProperty("deepequals.max.array.size", "0"); // Disabled by default
-        }
-        if (System.getProperty("deepequals.max.map.size") == null) {
-            System.setProperty("deepequals.max.map.size", "0"); // Disabled by default
-        }
-        if (System.getProperty("deepequals.max.object.fields") == null) {
-            System.setProperty("deepequals.max.object.fields", "0"); // Disabled by default
-        }
-        if (System.getProperty("deepequals.max.recursion.depth") == null) {
-            System.setProperty("deepequals.max.recursion.depth", "0"); // Disabled by default
-        }
-    }
     
     // Security configuration methods
     
@@ -414,7 +391,7 @@ public class DeepEquals {
     }
 
     private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<Object> visited) {
-        Deque<ItemsToCompare> stack = new LinkedList<>();
+        Deque<ItemsToCompare> stack = new ArrayDeque<>();
         boolean result = deepEquals(a, b, stack, options, visited);
 
         boolean isRecurive = Objects.equals(true, options.get("recursive_call"));
@@ -533,7 +510,7 @@ public class DeepEquals {
 
             // List interface defines order as required as part of equality
             if (key1 instanceof List) {   // If List, the order must match
-                if (!(key2 instanceof Collection)) {
+                if (!(key2 instanceof List)) {
                     stack.addFirst(new ItemsToCompare(key1, key2, stack.peek(), Difference.TYPE_MISMATCH));
                     return false;
                 }
@@ -1074,8 +1051,10 @@ public class DeepEquals {
     }
 
     private static int deepHashCode(Object obj, Set<Object> visited) {
-        Deque<Object> stack = new LinkedList<>();
-        stack.addFirst(obj);
+        Deque<Object> stack = new ArrayDeque<>();
+        if (obj != null) {
+            stack.addFirst(obj);
+        }
         int hash = 0;
 
         while (!stack.isEmpty()) {
@@ -1142,7 +1121,10 @@ public class DeepEquals {
                     if (field.isSynthetic()) {
                         continue;
                     }
-                    stack.addFirst(field.get(obj));
+                    Object fieldValue = field.get(obj);
+                    if (fieldValue != null) {
+                        stack.addFirst(fieldValue);
+                    }
                 } catch (Exception ignored) {
                 }
             }
@@ -1178,7 +1160,10 @@ public class DeepEquals {
     private static void addCollectionToStack(Deque<Object> stack, Collection<?> collection) {
         List<?> items = (collection instanceof List) ? (List<?>) collection : new ArrayList<>(collection);
         for (int i = items.size() - 1; i >= 0; i--) {
-            stack.addFirst(items.get(i));
+            Object item = items.get(i);
+            if (item != null) {
+                stack.addFirst(item);
+            }
         }
     }
 

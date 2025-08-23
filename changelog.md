@@ -9,6 +9,7 @@
 >   * **Added null handling**: Enhanced null handling in deepHashCode to prevent NPEs when using ArrayDeque
 >   * **Pop-immediately optimization**: Implemented pop-immediately pattern in traversal loop, eliminating double iterations by removing from stack immediately and checking visited set in one operation
 >   * **Depth tracking optimization**: Added depth field to ItemsToCompare to avoid costly parent chain traversal for recursion depth checking
+>   * **Field iteration optimization**: Skip static and transient fields during comparison and hashing, as static fields are not part of instance state and transient fields are typically excluded from equality
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

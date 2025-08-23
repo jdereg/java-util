@@ -3,6 +3,7 @@ package com.cedarsoftware.util;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
@@ -481,7 +482,7 @@ public class DeepEquals {
 
             // Handle primitive wrappers, String, Date, Class, UUID, URL, URI, Temporal classes, etc.
             if (Converter.isSimpleTypeConversionSupported(key1Class)) {
-                if (key1 instanceof Comparable && key2 instanceof Comparable) {
+                if (key1 instanceof Comparable<?> && key2 instanceof Comparable<?>) {
                     try {
                         if (((Comparable)key1).compareTo(key2) != 0) {
                             stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
@@ -861,9 +862,22 @@ public class DeepEquals {
         // Push each field for comparison
         for (Field field : fields) {
             try {
+                // Skip synthetic fields
                 if (field.isSynthetic()) {
                     continue;
                 }
+                
+                // Skip static fields - they're not part of instance state
+                int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers)) {
+                    continue;
+                }
+                
+                // Skip transient fields - they're typically not part of equality
+                if (Modifier.isTransient(modifiers)) {
+                    continue;
+                }
+                
                 Object value1 = field.get(obj1);
                 Object value2 = field.get(obj2);
 
@@ -1110,9 +1124,22 @@ public class DeepEquals {
             Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj.getClass());
             for (Field field : fields) {
                 try {
+                    // Skip synthetic fields
                     if (field.isSynthetic()) {
                         continue;
                     }
+                    
+                    // Skip static fields - they're not part of instance state
+                    int modifiers = field.getModifiers();
+                    if (Modifier.isStatic(modifiers)) {
+                        continue;
+                    }
+                    
+                    // Skip transient fields - they're typically not part of equality
+                    if (Modifier.isTransient(modifiers)) {
+                        continue;
+                    }
+                    
                     Object fieldValue = field.get(obj);
                     if (fieldValue != null) {
                         stack.addFirst(fieldValue);

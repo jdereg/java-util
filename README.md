@@ -1297,7 +1297,3 @@ these logs to SLF4J or Log4j&nbsp;2.
 [View detailed documentation on all utilities.](userguide.md)
 
 See [changelog.md](/changelog.md) for revision history.
-
----
-
-By: John DeRegnaucourt

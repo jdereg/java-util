@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="path/to/your/badge.svg" alt="java-util logo" />
+  <img src="badge.svg" alt="java-util logo" />
 
   <p align="center">
     <a href="https://maven-badges.herokuapp.com/maven-central/com.cedarsoftware/java-util">

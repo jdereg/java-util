@@ -312,7 +312,7 @@ String result2 = valueMap.getMultiKey(42L, 3.14f);   // Long and Float
 String result3 = valueMap.getMultiKey(42.0, 3.14);   // Double and Double
 ```
 
-**Why MultiKeyMap is the industry-leading solution:**
+**Why MultiKeyMap is an industry-leading solution:**
 
 | Feature | Guava Table | Apache Commons MultiKeyMap | DIY Record+HashMap | **java-util MultiKeyMap**                                 |
 |---------|-------------|----------------------------|-------------------|-----------------------------------------------------------|

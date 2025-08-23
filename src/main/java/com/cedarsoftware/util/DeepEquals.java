@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -147,6 +148,11 @@ public class DeepEquals {
     private static final String ARROW = "⇨";
     private static final String ANGLE_LEFT = "《";
     private static final String ANGLE_RIGHT = "》";
+    
+    // Strict Base64 pattern that properly validates Base64 encoding
+    // Matches strings that are properly padded Base64 (groups of 4 chars with proper padding)
+    private static final Pattern BASE64_PATTERN = Pattern.compile(
+            "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
     private static final double SCALE_DOUBLE = Math.pow(10, 11);      // Scale according to epsilon for double
     private static final float SCALE_FLOAT = (float) Math.pow(10, 6); // Scale according to epsilon for float
 
@@ -160,8 +166,8 @@ public class DeepEquals {
     
     // Fields that should be redacted in error messages for security
     private static final Set<String> SENSITIVE_FIELD_NAMES = CollectionUtilities.setOf(
-            "password", "pwd", "passwd", "secret", "key", "token", "credential", 
-            "auth", "authorization", "authentication", "api_key", "apikey"
+            "password", "pwd", "passwd", "secret", "token", "credential", 
+            "auth", "authorization", "authentication", "api_key", "apikey", "secretkey"
     );
     
     // Default security limits
@@ -2142,17 +2148,23 @@ public class DeepEquals {
 
     private static boolean looksLikeSensitiveData(String lowerStr) {
         // Check for patterns that look like sensitive data
-        if (lowerStr.matches(".*\\b(password|pwd|secret|token|key|credential|auth)\\b.*")) {
+        // Note: "key" alone is too broad, we look for more specific patterns like "apikey", "secretkey", etc.
+        if (lowerStr.matches(".*\\b(password|pwd|secret|token|credential|auth|apikey|api_key|secretkey|secret_key|privatekey|private_key)\\b.*")) {
             return true;
         }
         
-        // Check for patterns that look like encoded data (base64, hex)
-        if (lowerStr.matches("^[a-f0-9]{32,}$") || // Hex patterns 32+ chars
-            lowerStr.matches("^[a-zA-Z0-9+/]+=*$")) { // Base64 patterns
+        // Check for long hex strings (32+ chars) - likely hashes or keys
+        if (lowerStr.matches("^[a-f0-9]{32,}$")) {
             return true;
         }
         
-        // Check for UUID patterns
+        // Check for Base64 encoded data - only flag if length >= 32 to avoid false positives
+        // The strict pattern ensures it's actually valid Base64, not just random text
+        if (lowerStr.length() >= 32 && BASE64_PATTERN.matcher(lowerStr).matches()) {
+            return true;
+        }
+        
+        // Check for UUID patterns - these are generally safe to display
         if (lowerStr.matches("^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$")) {
             return false; // UUIDs are generally safe to display
         }

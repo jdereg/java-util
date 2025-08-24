@@ -754,7 +754,8 @@ public class DeepEquals {
 
             // Key not found in map2
             if (otherEntries == null || otherEntries.isEmpty()) {
-                stack.addFirst(new ItemsToCompare(entry.getKey(), null, currentItem, Difference.MAP_MISSING_KEY));
+                // Pass the key as mapKey for proper breadcrumb rendering
+                stack.addFirst(new ItemsToCompare(null, null, entry.getKey(), currentItem, true, Difference.MAP_MISSING_KEY));
                 return false;
             }
 
@@ -786,7 +787,8 @@ public class DeepEquals {
             }
 
             if (!foundMatch) {
-                stack.addFirst(new ItemsToCompare(entry.getKey(), null, currentItem, Difference.MAP_MISSING_KEY));
+                // Pass the key as mapKey for proper breadcrumb rendering
+                stack.addFirst(new ItemsToCompare(null, null, entry.getKey(), currentItem, true, Difference.MAP_MISSING_KEY));
                 return false;
             }
         }
@@ -1528,6 +1530,13 @@ public class DeepEquals {
 
     private static void formatDifference(StringBuilder result, ItemsToCompare item) {
         if (item.difference == null) {
+            return;
+        }
+
+        // Special handling for MAP_MISSING_KEY
+        if (item.difference == Difference.MAP_MISSING_KEY) {
+            result.append(String.format("  Expected: key '%s' present%n  Found: (missing)",
+                    formatDifferenceValue(item.mapKey)));
             return;
         }
 

@@ -16,6 +16,7 @@
 >   * **Fixed floating-point comparison correctness**: Corrected near-zero comparison using absolute tolerance instead of relative; made NaN comparison consistent (NaN==NaN via bitwise equality); applied same tolerance to float/double arrays for consistency
 >   * **Fixed hash-equals contract for floating-point**: Aligned hash scales with epsilon values (SCALE_DOUBLE=1e12 for EPSILON=1e-12); added proper NaN/infinity handling in hash functions; normalized negative zero to maintain hash consistency
 >   * **Refined sensitive field detection**: Removed overly broad contains("key") check from isSensitiveField that would redact fields like "monkey" or "keyboard"; now relies on explicit patterns like "apikey", "secretkey"
+>   * **Improved MAP_MISSING_KEY error messages**: Enhanced formatDifference to show clearer messages for missing map keys (e.g., "Expected: key 'foo' present" vs "Found: (missing)") for better debugging
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

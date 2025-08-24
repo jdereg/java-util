@@ -395,7 +395,6 @@ public class DeepEquals {
         Deque<ItemsToCompare> stack = new ArrayDeque<>();
         boolean result = deepEquals(a, b, stack, options, visited);
 
-        boolean isRecurive = Objects.equals(true, options.get("recursive_call"));
         if (!result && !stack.isEmpty()) {
             // Store both the breadcrumb and the difference ItemsToCompare
             ItemsToCompare top = stack.peek();
@@ -410,15 +409,19 @@ public class DeepEquals {
     // Heap-based deepEquals implementation
     private static boolean deepEquals(Object a, Object b, Deque<ItemsToCompare> stack,
                                       Map<String, ?> options, Set<Object> visited) {
-        Collection<Class<?>> ignoreCustomEquals = (Collection<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
-        boolean allowAllCustomEquals = ignoreCustomEquals == null;
-        boolean hasNonEmptyIgnoreSet = (ignoreCustomEquals != null && !ignoreCustomEquals.isEmpty());
+        final Collection<Class<?>> ignoreCustomEquals = (Collection<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
+        final boolean allowAllCustomEquals = ignoreCustomEquals == null;
+        final boolean hasNonEmptyIgnoreSet = (ignoreCustomEquals != null && !ignoreCustomEquals.isEmpty());
         final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
         
         stack.addFirst(new ItemsToCompare(a, b));
 
-        // Hoist loop invariant: maxRecursionDepth doesn't change during execution
+        // Hoist size limits once at the start to avoid repeated system property reads
         final int maxRecursionDepth = getMaxRecursionDepth();
+        final int maxCollectionSize = getMaxCollectionSize();
+        final int maxArraySize = getMaxArraySize();
+        final int maxMapSize = getMaxMapSize();
+        final int maxObjectFields = getMaxObjectFields();
 
         while (!stack.isEmpty()) {
             ItemsToCompare itemsToCompare = stack.removeFirst();
@@ -484,8 +487,8 @@ public class DeepEquals {
                 }
             }
 
-            Class<?> key1Class = key1.getClass();
-            Class<?> key2Class = key2.getClass();
+            final Class<?> key1Class = key1.getClass();
+            final Class<?> key2Class = key2.getClass();
 
             // Handle primitive wrappers, String, Date, Class, UUID, URL, URI, Temporal classes, etc.
             if (Converter.isSimpleTypeConversionSupported(key1Class)) {
@@ -511,7 +514,7 @@ public class DeepEquals {
                     stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, itemsToCompare)) {
+                if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, itemsToCompare, maxCollectionSize)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
@@ -530,7 +533,7 @@ public class DeepEquals {
                     return false;
                 }
                 if (!decomposeUnorderedCollection((Collection<?>) key1, (Collection<?>) key2,
-                        stack, options, visited, itemsToCompare)) {
+                        stack, options, visited, itemsToCompare, maxCollectionSize)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
@@ -551,7 +554,7 @@ public class DeepEquals {
                     stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, options, visited, itemsToCompare)) {
+                if (!decomposeMap((Map<?, ?>) key1, (Map<?, ?>) key2, stack, options, visited, itemsToCompare, maxMapSize)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "map value mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
@@ -572,7 +575,7 @@ public class DeepEquals {
                     stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                     return false;
                 }
-                if (!decomposeArray(key1, key2, stack, itemsToCompare)) {
+                if (!decomposeArray(key1, key2, stack, itemsToCompare, maxArraySize)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "array element mismatch")
                     // takes precedence over element-level differences
                     ItemsToCompare prior = stack.peek();
@@ -627,7 +630,7 @@ public class DeepEquals {
             }
             
             // Decompose object into its fields (not using custom equals)
-            decomposeObject(key1, key2, stack, itemsToCompare);
+            decomposeObject(key1, key2, stack, itemsToCompare, maxObjectFields);
         }
         return true;
     }
@@ -644,10 +647,9 @@ public class DeepEquals {
      */
     private static boolean decomposeUnorderedCollection(Collection<?> col1, Collection<?> col2,
                                                        Deque<ItemsToCompare> stack, Map<String, ?> options,
-                                                       Set<Object> visited, ItemsToCompare currentItem) {
+                                                       Set<Object> visited, ItemsToCompare currentItem, int maxCollectionSize) {
 
         // Security check: validate collection sizes
-        int maxCollectionSize = getMaxCollectionSize();
         if (maxCollectionSize > 0 && (col1.size() > maxCollectionSize || col2.size() > maxCollectionSize)) {
             throw new SecurityException("Collection size exceeds maximum allowed: " + maxCollectionSize);
         }
@@ -699,10 +701,9 @@ public class DeepEquals {
         return true;
     }
 
-    private static boolean decomposeOrderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
+    private static boolean decomposeOrderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem, int maxCollectionSize) {
 
         // Security check: validate collection sizes
-        int maxCollectionSize = getMaxCollectionSize();
         if (maxCollectionSize > 0 && (col1.size() > maxCollectionSize || col2.size() > maxCollectionSize)) {
             throw new SecurityException("Collection size exceeds maximum allowed: " + maxCollectionSize);
         }
@@ -726,10 +727,9 @@ public class DeepEquals {
         return true;
     }
     
-    private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Map<String, ?> options, Set<Object> visited, ItemsToCompare currentItem) {
+    private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Map<String, ?> options, Set<Object> visited, ItemsToCompare currentItem, int maxMapSize) {
 
         // Security check: validate map sizes
-        int maxMapSize = getMaxMapSize();
         if (maxMapSize > 0 && (map1.size() > maxMapSize || map2.size() > maxMapSize)) {
             throw new SecurityException("Map size exceeds maximum allowed: " + maxMapSize);
         }
@@ -804,7 +804,7 @@ public class DeepEquals {
      * @param stack         Comparison stack.
      * @return true if arrays are equal, false otherwise.
      */
-    private static boolean decomposeArray(Object array1, Object array2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
+    private static boolean decomposeArray(Object array1, Object array2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem, int maxArraySize) {
 
         // 1. Check dimensionality
         Class<?> type1 = array1.getClass();
@@ -835,7 +835,6 @@ public class DeepEquals {
         int len2 = Array.getLength(array2);
         
         // Security check: validate array sizes
-        int maxArraySize = getMaxArraySize();
         if (maxArraySize > 0 && (len1 > maxArraySize || len2 > maxArraySize)) {
             throw new SecurityException("Array size exceeds maximum allowed: " + maxArraySize);
         }
@@ -937,13 +936,12 @@ public class DeepEquals {
         return true;
     }
 
-    private static boolean decomposeObject(Object obj1, Object obj2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
+    private static boolean decomposeObject(Object obj1, Object obj2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem, int maxObjectFields) {
 
         // Get all fields from the object
         Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj1.getClass());
 
         // Security check: validate field count
-        int maxObjectFields = getMaxObjectFields();
         if (maxObjectFields > 0 && fields.size() > maxObjectFields) {
             throw new SecurityException("Object field count exceeds maximum allowed: " + maxObjectFields);
         }

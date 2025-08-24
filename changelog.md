@@ -27,6 +27,11 @@
 >   * **Improved MAP_MISSING_KEY error messages**: Enhanced formatDifference to show clearer messages for missing map keys (e.g., "Expected: key 'foo' present" vs "Found: (missing)") for better debugging
 >   * **Performance micro-optimizations**: Hoisted size limit reads to avoid repeated system property lookups in hot paths; removed unused isRecursive variable; added final modifiers to locals for potential JIT optimizations
 >   * **Added Java Record support**: DeepEquals and deepHashCode now properly handle Java Records (Java 14+) using record components instead of fields, providing cleaner diffs while maintaining Java 8 compatibility via reflection
+>   * **Fixed critical edge cases in DeepEquals**:
+>     * **Fixed infinity comparison**: Added explicit checks to prevent infinities from comparing equal to finite numbers in nearlyEqual()
+>     * **Fixed options pollution**: Use scratch maps for exploratory comparisons to prevent stale diff entries when overall comparison succeeds
+>     * **Improved MAP_MISSING_KEY breadcrumb**: Shows ∅ symbol for missing keys in breadcrumb for clearer visualization
+>     * **Added null-safety**: Added parent null check in formatDifference to prevent potential NPE
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

@@ -710,7 +710,7 @@ public class DeepEquals {
             // Check candidates with matching hash
             boolean foundMatch = false;
             for (Object item2 : candidates) {
-                if (deepEquals(item1, item2, options, visited)) {
+                if (deepEquals(item1, item2, new HashMap<>(), visited)) {  // use scratch options
                     foundMatch = true;
                     candidates.remove(item2);
                     if (candidates.isEmpty()) {
@@ -796,7 +796,7 @@ public class DeepEquals {
                 Map.Entry<?, ?> otherEntry = iterator.next();
 
                 // Check if keys are equal
-                if (deepEquals(entry.getKey(), otherEntry.getKey(), options, visited)) {
+                if (deepEquals(entry.getKey(), otherEntry.getKey(), new HashMap<>(), visited)) {  // use scratch options
                     // Push value comparison only - keys are known to be equal
                     stack.addFirst(new ItemsToCompare(
                             entry.getValue(),                // map1 value
@@ -1070,6 +1070,10 @@ public class DeepEquals {
         if (Double.isNaN(a) || Double.isNaN(b)) {
             return false;
         }
+        // Treat any infinity as unequal to finite numbers
+        if (Double.isInfinite(a) || Double.isInfinite(b)) {
+            return false;
+        }
         
         double diff = Math.abs(a - b);
         double norm = Math.max(Math.abs(a), Math.abs(b));
@@ -1093,6 +1097,10 @@ public class DeepEquals {
         }
         // NaN values that aren't the same bit pattern are not equal
         if (Float.isNaN(a) || Float.isNaN(b)) {
+            return false;
+        }
+        // Treat any infinity as unequal to finite numbers
+        if (Float.isInfinite(a) || Float.isInfinite(b)) {
             return false;
         }
         
@@ -1459,12 +1467,16 @@ public class DeepEquals {
             // If it's a mapKey, we do the " 《 key ⇨ value  》
             if (cur.mapKey != null) {
                 appendSpaceIfNeeded(sb2);
+                // For a missing map key, show ∅ on the RHS in the breadcrumb
+                String rhs = (cur.difference == Difference.MAP_MISSING_KEY)
+                        ? EMPTY
+                        : formatValueConcise(cur._key1);
                 sb2.append(ANGLE_LEFT)
                         .append(formatMapKey(cur.mapKey))
                         .append(" ")
                         .append(ARROW)
                         .append(" ")
-                        .append(formatValueConcise(cur._key1))
+                        .append(rhs)
                         .append(ANGLE_RIGHT);
             }
             // If it's a normal field name
@@ -1583,8 +1595,8 @@ public class DeepEquals {
         }
 
         DiffCategory category = item.difference.getCategory();
-        if (item.parent.difference != null) {
-            category = item.parent.difference.category;
+        if (item.parent != null && item.parent.difference != null) {
+            category = item.parent.difference.getCategory();
         }
         switch (category) {
             case SIZE:

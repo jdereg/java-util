@@ -664,6 +664,25 @@ public class DeepEquals {
         return true;
     }
 
+    // Create a child options map that preserves comparison semantics
+    // without carrying diff/diagnostic state down into sub-comparisons.
+    private static Map<String, Object> sanitizedChildOptions(Map<String, ?> options) {
+        Map<String, Object> child = new HashMap<>();
+        if (options == null) {
+            return child;
+        }
+        Object allow = options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS);
+        if (allow != null) {
+            child.put(ALLOW_STRINGS_TO_MATCH_NUMBERS, allow);
+        }
+        Object ignore = options.get(IGNORE_CUSTOM_EQUALS);
+        if (ignore != null) {
+            child.put(IGNORE_CUSTOM_EQUALS, ignore);
+        }
+        // Intentionally do NOT copy DIFF, "diff_item", "recursive_call", etc.
+        return child;
+    }
+
     /**
      * Compares two unordered collections (e.g., Sets) deeply.
      *
@@ -689,12 +708,13 @@ public class DeepEquals {
             return false;
         }
 
-        // Group col2 items by hash for efficient lookup
+        // Group col2 items by hash for efficient lookup (with slow-path fallback)
         Map<Integer, List<Object>> hashGroups = new HashMap<>();
         for (Object o : col2) {
             int hash = deepHashCode(o);
             hashGroups.computeIfAbsent(hash, k -> new ArrayList<>()).add(o);
         }
+        final Map<String, Object> childOptions = sanitizedChildOptions(options);
 
         // Find first item in col1 not found in col2
         for (Object item1 : col1) {
@@ -702,15 +722,18 @@ public class DeepEquals {
             List<Object> candidates = hashGroups.get(hash1);
 
             if (candidates == null || candidates.isEmpty()) {
-                // No hash matches - first difference found
-                stack.addFirst(new ItemsToCompare(item1, null, currentItem, Difference.COLLECTION_MISSING_ELEMENT));
-                return false;
+                // Slow-path: scan all remaining buckets to preserve correctness
+                if (!tryMatchAcrossBuckets(item1, hashGroups, childOptions, visited)) {
+                    stack.addFirst(new ItemsToCompare(item1, null, currentItem, Difference.COLLECTION_MISSING_ELEMENT));
+                    return false;
+                }
+                continue;
             }
 
             // Check candidates with matching hash
             boolean foundMatch = false;
             for (Object item2 : candidates) {
-                if (deepEquals(item1, item2, new HashMap<>(), visited)) {  // use scratch options
+                if (deepEquals(item1, item2, childOptions, visited)) {  // Use existing visited set for cycle detection
                     foundMatch = true;
                     candidates.remove(item2);
                     if (candidates.isEmpty()) {
@@ -721,13 +744,70 @@ public class DeepEquals {
             }
 
             if (!foundMatch) {
-                // No matching element found - first difference found
-                stack.addFirst(new ItemsToCompare(item1, null, currentItem, Difference.COLLECTION_MISSING_ELEMENT));
+                // Slow-path: scan other buckets (excluding this one) before declaring a miss
+                boolean foundInOtherBucket = tryMatchAcrossBucketsExcluding(item1, hashGroups, hash1, childOptions, visited);
+                if (!foundInOtherBucket) {
+                    stack.addFirst(new ItemsToCompare(item1, null, currentItem, Difference.COLLECTION_MISSING_ELEMENT));
+                    return false;
+                }
+                // If found in another bucket, the item was already removed by tryMatchAcrossBucketsExcluding
+            }
+        }
+
+        // Check if any elements remain in col2 (they would be unmatched)
+        for (List<Object> remainingItems : hashGroups.values()) {
+            if (!remainingItems.isEmpty()) {
+                // col2 has elements not in col1
+                stack.addFirst(new ItemsToCompare(null, remainingItems.get(0), currentItem, Difference.COLLECTION_MISSING_ELEMENT));
                 return false;
             }
         }
 
         return true;
+    }
+
+    // Slow-path for unordered collections: search all buckets for a deep-equal match.
+    private static boolean tryMatchAcrossBuckets(Object probe,
+                                                 Map<Integer, List<Object>> buckets,
+                                                 Map<String, ?> options,
+                                                 Set<Object> visited) {
+        for (Iterator<Map.Entry<Integer, List<Object>>> it = buckets.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<Integer, List<Object>> bucket = it.next();
+            List<Object> list = bucket.getValue();
+            for (Iterator<Object> li = list.iterator(); li.hasNext();) {
+                Object cand = li.next();
+                if (deepEquals(probe, cand, options, visited)) { // Use existing visited set for cycle detection
+                    li.remove();
+                    if (list.isEmpty()) it.remove();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Slow-path for unordered collections: search buckets excluding a specific hash.
+    private static boolean tryMatchAcrossBucketsExcluding(Object probe,
+                                                          Map<Integer, List<Object>> buckets,
+                                                          int excludeHash,
+                                                          Map<String, ?> options,
+                                                          Set<Object> visited) {
+        for (Iterator<Map.Entry<Integer, List<Object>>> it = buckets.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<Integer, List<Object>> bucket = it.next();
+            if (bucket.getKey() == excludeHash) {
+                continue; // Skip the already-checked bucket
+            }
+            List<Object> list = bucket.getValue();
+            for (Iterator<Object> li = list.iterator(); li.hasNext();) {
+                Object cand = li.next();
+                if (deepEquals(probe, cand, options, visited)) { // Use existing visited set for cycle detection
+                    li.remove();
+                    if (list.isEmpty()) it.remove();
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static boolean decomposeOrderedCollection(Collection<?> col1, Collection<?> col2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem, int maxCollectionSize) {
@@ -769,13 +849,14 @@ public class DeepEquals {
             return false;
         }
 
-        // Build lookup of map2 entries for efficient matching
+        // Build lookup of map2 entries for efficient matching (with slow-path fallback)
         Map<Integer, Collection<Map.Entry<?, ?>>> fastLookup = new HashMap<>();
         for (Map.Entry<?, ?> entry : map2.entrySet()) {
             int hash = deepHashCode(entry.getKey());
             fastLookup.computeIfAbsent(hash, k -> new ArrayList<>())
                     .add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()));
         }
+        final Map<String, Object> childOptions = sanitizedChildOptions(options);
 
         // Process map1 entries
         for (Map.Entry<?, ?> entry : map1.entrySet()) {
@@ -783,9 +864,17 @@ public class DeepEquals {
 
             // Key not found in map2
             if (otherEntries == null || otherEntries.isEmpty()) {
-                // Pass the key as mapKey for proper breadcrumb rendering
-                stack.addFirst(new ItemsToCompare(null, null, entry.getKey(), currentItem, true, Difference.MAP_MISSING_KEY));
-                return false;
+                // Slow-path: scan all buckets for an equal key before declaring a miss
+                Map.Entry<?, ?> match = findAndRemoveMatchingKey(entry.getKey(), fastLookup, childOptions, visited);
+                if (match == null) {
+                    stack.addFirst(new ItemsToCompare(null, null, entry.getKey(), currentItem, true, Difference.MAP_MISSING_KEY));
+                    return false;
+                }
+                // Found a matching key in another bucket; compare values
+                stack.addFirst(new ItemsToCompare(
+                        entry.getValue(), match.getValue(),
+                        entry.getKey(), currentItem, true, Difference.MAP_VALUE_MISMATCH));
+                continue;
             }
 
             // Find matching key in otherEntries
@@ -796,7 +885,7 @@ public class DeepEquals {
                 Map.Entry<?, ?> otherEntry = iterator.next();
 
                 // Check if keys are equal
-                if (deepEquals(entry.getKey(), otherEntry.getKey(), new HashMap<>(), visited)) {  // use scratch options
+                if (deepEquals(entry.getKey(), otherEntry.getKey(), childOptions, visited)) { // Use existing visited set for cycle detection
                     // Push value comparison only - keys are known to be equal
                     stack.addFirst(new ItemsToCompare(
                             entry.getValue(),                // map1 value
@@ -816,13 +905,73 @@ public class DeepEquals {
             }
 
             if (!foundMatch) {
-                // Pass the key as mapKey for proper breadcrumb rendering
-                stack.addFirst(new ItemsToCompare(null, null, entry.getKey(), currentItem, true, Difference.MAP_MISSING_KEY));
+                // Slow-path: scan other buckets (excluding this one) for an equal key
+                Map.Entry<?, ?> match = findAndRemoveMatchingKeyExcluding(entry.getKey(), fastLookup, deepHashCode(entry.getKey()), childOptions, visited);
+                if (match == null) {
+                    stack.addFirst(new ItemsToCompare(null, null, entry.getKey(), currentItem, true, Difference.MAP_MISSING_KEY));
+                    return false;
+                }
+                stack.addFirst(new ItemsToCompare(
+                        entry.getValue(), match.getValue(),
+                        entry.getKey(), currentItem, true, Difference.MAP_VALUE_MISMATCH));
+            }
+        }
+
+        // Check if any keys remain in map2 (they would be unmatched)
+        for (Collection<Map.Entry<?, ?>> remainingEntries : fastLookup.values()) {
+            if (!remainingEntries.isEmpty()) {
+                // map2 has keys not in map1
+                Map.Entry<?, ?> firstEntry = remainingEntries.iterator().next();
+                stack.addFirst(new ItemsToCompare(null, null, firstEntry.getKey(), currentItem, true, Difference.MAP_MISSING_KEY));
                 return false;
             }
         }
 
         return true;
+    }
+
+    // Slow-path for maps: search all buckets for a key deep-equal to 'key'.
+    private static Map.Entry<?, ?> findAndRemoveMatchingKey(Object key,
+                                                            Map<Integer, Collection<Map.Entry<?, ?>>> buckets,
+                                                            Map<String, ?> options,
+                                                            Set<Object> visited) {
+        for (Iterator<Map.Entry<Integer, Collection<Map.Entry<?, ?>>>> it = buckets.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<Integer, Collection<Map.Entry<?, ?>>> b = it.next();
+            Collection<Map.Entry<?, ?>> c = b.getValue();
+            for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
+                Map.Entry<?, ?> e = ci.next();
+                if (deepEquals(key, e.getKey(), options, visited)) { // Use existing visited set for cycle detection
+                    ci.remove();
+                    if (c.isEmpty()) it.remove();
+                    return e;
+                }
+            }
+        }
+        return null;
+    }
+
+    // Slow-path for maps: search buckets (excluding specific hash) for a key deep-equal to 'key'.
+    private static Map.Entry<?, ?> findAndRemoveMatchingKeyExcluding(Object key,
+                                                                     Map<Integer, Collection<Map.Entry<?, ?>>> buckets,
+                                                                     int excludeHash,
+                                                                     Map<String, ?> options,
+                                                                     Set<Object> visited) {
+        for (Iterator<Map.Entry<Integer, Collection<Map.Entry<?, ?>>>> it = buckets.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<Integer, Collection<Map.Entry<?, ?>>> b = it.next();
+            if (b.getKey() == excludeHash) {
+                continue; // Skip the already-checked bucket
+            }
+            Collection<Map.Entry<?, ?>> c = b.getValue();
+            for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
+                Map.Entry<?, ?> e = ci.next();
+                if (deepEquals(key, e.getKey(), options, visited)) { // Use existing visited set for cycle detection
+                    ci.remove();
+                    if (c.isEmpty()) it.remove();
+                    return e;
+                }
+            }
+        }
+        return null;
     }
     
     /**
@@ -2015,7 +2164,12 @@ public class DeepEquals {
                 }
                 first = false;
 
-                sb.append(field.getName()).append(": ");
+                final String fieldName = field.getName();
+                sb.append(fieldName).append(": ");
+                if (isSecureErrorsEnabled() && isSensitiveField(fieldName)) {
+                    sb.append("[REDACTED]");
+                    continue;
+                }
                 Object value = field.get(obj);
 
                 if (value == obj) {

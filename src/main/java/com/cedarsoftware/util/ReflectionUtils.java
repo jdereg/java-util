@@ -1942,7 +1942,7 @@ public final class ReflectionUtils {
      * Uses reflection to maintain compatibility with Java 8.
      * 
      * @param clazz The class to check
-     * @return true if the class is a Record, false otherwise or if running on Java < 14
+     * @return true if the class is a Record, false otherwise or if running on Java &lt; 14
      */
     public static boolean isRecord(Class<?> clazz) {
         if (clazz == null) {
@@ -1976,7 +1976,7 @@ public final class ReflectionUtils {
      * Uses reflection to maintain compatibility with Java 8.
      * 
      * @param clazz The Record class
-     * @return Array of RecordComponent objects, or null if not a Record or running on Java < 14
+     * @return Array of RecordComponent objects, or null if not a Record or running on Java &lt; 14
      */
     public static Object[] getRecordComponents(Class<?> clazz) {
         if (!isRecord(clazz)) {

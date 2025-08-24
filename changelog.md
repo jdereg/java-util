@@ -1,5 +1,5 @@
 ### Revision History
-#### 4.1.0 (unreleased)
+#### 4.0.1 (unreleased)
 > * **FIXED**: `SafeSimpleDateFormat` thread-safety and lenient mode issues:
 >   * **Fixed NPE in setters**: Initialize parent DateFormat fields (calendar, numberFormat) in constructor to prevent NPEs when setters are called
 >   * **Fixed lenient propagation**: Ensure lenient setting is properly applied to both Calendar and SimpleDateFormat in State.build()
@@ -38,6 +38,13 @@
 >     * **Fixed options pollution**: Use scratch maps for exploratory comparisons to prevent stale diff entries when overall comparison succeeds
 >     * **Improved MAP_MISSING_KEY breadcrumb**: Shows ∅ symbol for missing keys in breadcrumb for clearer visualization
 >     * **Added null-safety**: Added parent null check in formatDifference to prevent potential NPE
+>   * **Fixed deepHashCode bucket misalignment with slow-path fallback**:
+>     * **Added sanitizedChildOptions**: Preserves comparison semantics (stringsCanMatchNumbers, ignoreCustomEquals) without polluting caller's options with diff state
+>     * **Implemented slow-path fallback for unordered collections**: When deepHashCode doesn't align with deepEquals, searches other buckets to preserve correctness
+>     * **Implemented slow-path fallback for maps**: Similar fallback for map key comparisons when hash buckets don't align
+>     * **Fixed leftover detection**: Added checks to ensure unmatched elements in col2/map2 are properly detected and reported
+>     * **Exclude already-checked buckets**: Slow-path excludes the primary bucket to avoid redundant comparisons
+>     * **Added security check in formatComplexObject**: Redacts sensitive fields when secure errors are enabled
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

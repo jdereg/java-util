@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -143,6 +144,7 @@ public class DeepEquals {
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
     public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
     public static final String DIFF = "diff";
+    private static final String DEPTH_BUDGET = "__depthBudget";
     private static final String EMPTY = "∅";
     private static final String TRIANGLE_ARROW = "▶";
     private static final String ARROW = "⇨";
@@ -417,7 +419,11 @@ public class DeepEquals {
         stack.addFirst(new ItemsToCompare(a, b));
 
         // Hoist size limits once at the start to avoid repeated system property reads
-        final int maxRecursionDepth = getMaxRecursionDepth();
+        final int configured = getMaxRecursionDepth();
+        final Object budget = options.get(DEPTH_BUDGET);
+        final int maxRecursionDepth = (budget instanceof Integer && (int)budget > 0)
+            ? Math.min(configured > 0 ? configured : Integer.MAX_VALUE, (int)budget)
+            : configured;
         final int maxCollectionSize = getMaxCollectionSize();
         final int maxArraySize = getMaxArraySize();
         final int maxMapSize = getMaxMapSize();
@@ -622,6 +628,12 @@ public class DeepEquals {
                         }
                         ignoreSet.add(key1Class);
                         newOptions.put(IGNORE_CUSTOM_EQUALS, ignoreSet);
+                        
+                        // Compute depth budget for recursive call
+                        if (maxRecursionDepth > 0) {
+                            int depthBudget = Math.max(0, maxRecursionDepth - itemsToCompare.depth);
+                            newOptions.put(DEPTH_BUDGET, depthBudget);
+                        }
 
                         // Make recursive call to find the actual difference
                         deepEquals(key1, key2, newOptions);
@@ -666,7 +678,7 @@ public class DeepEquals {
 
     // Create a child options map that preserves comparison semantics
     // without carrying diff/diagnostic state down into sub-comparisons.
-    private static Map<String, Object> sanitizedChildOptions(Map<String, ?> options) {
+    private static Map<String, Object> sanitizedChildOptions(Map<String, ?> options, ItemsToCompare currentItem) {
         Map<String, Object> child = new HashMap<>();
         if (options == null) {
             return child;
@@ -678,6 +690,12 @@ public class DeepEquals {
         Object ignore = options.get(IGNORE_CUSTOM_EQUALS);
         if (ignore != null) {
             child.put(IGNORE_CUSTOM_EQUALS, ignore);
+        }
+        // Compute depth budget for child calls
+        int globalMax = getMaxRecursionDepth();
+        if (globalMax > 0 && currentItem != null) {
+            int budget = Math.max(0, globalMax - currentItem.depth);
+            child.put(DEPTH_BUDGET, budget);
         }
         // Intentionally do NOT copy DIFF, "diff_item", "recursive_call", etc.
         return child;
@@ -714,7 +732,7 @@ public class DeepEquals {
             int hash = deepHashCode(o);
             hashGroups.computeIfAbsent(hash, k -> new ArrayList<>()).add(o);
         }
-        final Map<String, Object> childOptions = sanitizedChildOptions(options);
+        final Map<String, Object> childOptions = sanitizedChildOptions(options, currentItem);
 
         // Find first item in col1 not found in col2
         for (Object item1 : col1) {
@@ -732,10 +750,11 @@ public class DeepEquals {
 
             // Check candidates with matching hash
             boolean foundMatch = false;
-            for (Object item2 : candidates) {
+            for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
+                Object item2 = it.next();
                 if (deepEquals(item1, item2, childOptions, visited)) {  // Use existing visited set for cycle detection
                     foundMatch = true;
-                    candidates.remove(item2);
+                    it.remove();                  // safe removal during iteration
                     if (candidates.isEmpty()) {
                         hashGroups.remove(hash1);
                     }
@@ -856,7 +875,7 @@ public class DeepEquals {
             fastLookup.computeIfAbsent(hash, k -> new ArrayList<>())
                     .add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()));
         }
-        final Map<String, Object> childOptions = sanitizedChildOptions(options);
+        final Map<String, Object> childOptions = sanitizedChildOptions(options, currentItem);
 
         // Process map1 entries
         for (Map.Entry<?, ?> entry : map1.entrySet()) {
@@ -1030,6 +1049,7 @@ public class DeepEquals {
             if (componentType == boolean.class) {
                 boolean[] a1 = (boolean[]) array1;
                 boolean[] a2 = (boolean[]) array2;
+                if (Arrays.equals(a1, a2)) { return true; }
                 for (int i = 0; i < len1; i++) {
                     if (a1[i] != a2[i]) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
@@ -1039,6 +1059,7 @@ public class DeepEquals {
             } else if (componentType == byte.class) {
                 byte[] a1 = (byte[]) array1;
                 byte[] a2 = (byte[]) array2;
+                if (Arrays.equals(a1, a2)) { return true; }
                 for (int i = 0; i < len1; i++) {
                     if (a1[i] != a2[i]) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
@@ -1048,6 +1069,7 @@ public class DeepEquals {
             } else if (componentType == char.class) {
                 char[] a1 = (char[]) array1;
                 char[] a2 = (char[]) array2;
+                if (Arrays.equals(a1, a2)) { return true; }
                 for (int i = 0; i < len1; i++) {
                     if (a1[i] != a2[i]) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
@@ -1057,6 +1079,7 @@ public class DeepEquals {
             } else if (componentType == short.class) {
                 short[] a1 = (short[]) array1;
                 short[] a2 = (short[]) array2;
+                if (Arrays.equals(a1, a2)) { return true; }
                 for (int i = 0; i < len1; i++) {
                     if (a1[i] != a2[i]) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
@@ -1066,6 +1089,7 @@ public class DeepEquals {
             } else if (componentType == int.class) {
                 int[] a1 = (int[]) array1;
                 int[] a2 = (int[]) array2;
+                if (Arrays.equals(a1, a2)) { return true; }
                 for (int i = 0; i < len1; i++) {
                     if (a1[i] != a2[i]) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
@@ -1075,6 +1099,7 @@ public class DeepEquals {
             } else if (componentType == long.class) {
                 long[] a1 = (long[]) array1;
                 long[] a2 = (long[]) array2;
+                if (Arrays.equals(a1, a2)) { return true; }
                 for (int i = 0; i < len1; i++) {
                     if (a1[i] != a2[i]) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
@@ -1084,6 +1109,7 @@ public class DeepEquals {
             } else if (componentType == float.class) {
                 float[] a1 = (float[]) array1;
                 float[] a2 = (float[]) array2;
+                if (Arrays.equals(a1, a2)) { return true; }  // exact fast-path
                 for (int i = 0; i < len1; i++) {
                     // Use nearlyEqual for consistent floating-point comparison with tolerance
                     if (!nearlyEqual(a1[i], a2[i], FLOAT_EPSILON)) {
@@ -1094,6 +1120,7 @@ public class DeepEquals {
             } else if (componentType == double.class) {
                 double[] a1 = (double[]) array1;
                 double[] a2 = (double[]) array2;
+                if (Arrays.equals(a1, a2)) { return true; }  // exact fast-path
                 for (int i = 0; i < len1; i++) {
                     // Use nearlyEqual for consistent floating-point comparison with tolerance
                     if (!nearlyEqual(a1[i], a2[i], DOUBLE_EPSILON)) {
@@ -1743,40 +1770,48 @@ public class DeepEquals {
             return;
         }
 
+        // Choose the node that provided the phrase/details.
+        // If the parent's category is a container-level one (non-VALUE),
+        // use the parent for both the category and the concrete objects.
+        ItemsToCompare detailNode = item;
         DiffCategory category = item.difference.getCategory();
         if (item.parent != null && item.parent.difference != null) {
-            category = item.parent.difference.getCategory();
+            DiffCategory parentCat = item.parent.difference.getCategory();
+            if (parentCat != DiffCategory.VALUE) {
+                category = parentCat;
+                detailNode = item.parent;
+            }
         }
         switch (category) {
             case SIZE:
                 result.append(String.format("  Expected size: %d%n  Found size: %d",
-                        getContainerSize(item._key1),
-                        getContainerSize(item._key2)));
+                        getContainerSize(detailNode._key1),
+                        getContainerSize(detailNode._key2)));
                 break;
 
             case TYPE:
                 result.append(String.format("  Expected type: %s%n  Found type: %s",
-                        getTypeDescription(item._key1 != null ? item._key1.getClass() : null),
-                        getTypeDescription(item._key2 != null ? item._key2.getClass() : null)));
+                        getTypeDescription(detailNode._key1 != null ? detailNode._key1.getClass() : null),
+                        getTypeDescription(detailNode._key2 != null ? detailNode._key2.getClass() : null)));
                 break;
 
             case LENGTH:
                 result.append(String.format("  Expected length: %d%n  Found length: %d",
-                        Array.getLength(item._key1),
-                        Array.getLength(item._key2)));
+                        Array.getLength(detailNode._key1),
+                        Array.getLength(detailNode._key2)));
                 break;
 
             case DIMENSION:
                 result.append(String.format("  Expected dimensions: %d%n  Found dimensions: %d",
-                        getDimensions(item._key1),
-                        getDimensions(item._key2)));
+                        getDimensions(detailNode._key1),
+                        getDimensions(detailNode._key2)));
                 break;
 
             case VALUE:
             default:
                 result.append(String.format("  Expected: %s%n  Found: %s",
-                        formatDifferenceValue(item._key1),
-                        formatDifferenceValue(item._key2)));
+                        formatDifferenceValue(detailNode._key1),
+                        formatDifferenceValue(detailNode._key2)));
                 break;
         }
     }
@@ -1851,6 +1886,10 @@ public class DeepEquals {
             for (Field field : fields) {
                 if (field.isSynthetic()) {
                     continue;
+                }
+                int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) {
+                    continue; // align formatting with equality semantics
                 }
                 if (!first) sb.append(", ");
                 first = false;
@@ -2158,6 +2197,10 @@ public class DeepEquals {
             try {
                 if (field.isSynthetic()) {
                     continue;
+                }
+                int modifiers = field.getModifiers();
+                if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) {
+                    continue; // align formatting with equality semantics
                 }
                 if (!first) {
                     sb.append(", ");

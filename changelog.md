@@ -45,6 +45,12 @@
 >     * **Fixed leftover detection**: Added checks to ensure unmatched elements in col2/map2 are properly detected and reported
 >     * **Exclude already-checked buckets**: Slow-path excludes the primary bucket to avoid redundant comparisons
 >     * **Added security check in formatComplexObject**: Redacts sensitive fields when secure errors are enabled
+>   * **Fixed critical correctness issues identified by GPT-5 code review**:
+>     * **Fixed ConcurrentModificationException**: Replaced enhanced-for loops with iterator.remove() in decomposeUnorderedCollection to avoid structural modifications during iteration
+>     * **Fixed formatDifference crash**: Use detailNode approach to properly access parent's objects when rendering container category differences, preventing crashes when accessing child objects with parent's category
+>     * **Added Arrays.equals fast-path**: Use native Arrays.equals for primitive arrays as optimization before element-by-element comparison with diff tracking
+>     * **Skip static/transient fields in formatting**: Aligned formatComplexObject and formatValueConcise with equality semantics by skipping static and transient fields
+>     * **Implemented global depth budget**: Pass remaining depth budget through child calls to ensure security limits are truly global across all recursive paths, preventing excessive recursion
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

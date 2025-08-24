@@ -1,5 +1,13 @@
 ### Revision History
 #### 4.1.0 (unreleased)
+> * **IMPROVED**: `SafeSimpleDateFormat` completely redesigned with copy-on-write semantics:
+>   * **Copy-on-write mutations**: All setter methods now create a new immutable state snapshot, eliminating shared mutable state between threads
+>   * **Thread-local LRU caching**: Per-thread LRU cache (size-bounded) for SimpleDateFormat instances, preventing unbounded memory growth
+>   * **Hot-path optimization**: No locks on the hot path - format/parse operations use thread-local cached instances
+>   * **Immutable state tracking**: All configuration (pattern, locale, timezone, symbols, etc.) captured in immutable State objects
+>   * **Smart cache invalidation**: Automatic cache pruning when configuration changes
+>   * **Backward compatibility**: Maintains source/binary compatibility with existing code
+>   * **Legacy static accessor preserved**: `getDateFormat(pattern)` still available for backward compatibility
 > * **PERFORMANCE**: Optimized `DeepEquals` based on GPT-5 code review:
 >   * **Changed epsilon value**: Updated DOUBLE_EPSILON from 1e-15 to 1e-12 for more practical floating-point comparisons
 >   * **Adjusted hash scales**: Updated SCALE_DOUBLE from 10^10 to 10^11 and SCALE_FLOAT from 10^5 to 10^6 to maintain hash-equals contract with new epsilon

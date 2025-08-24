@@ -4,60 +4,62 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Date;
-import java.util.concurrent.locks.Lock;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
-import com.cedarsoftware.util.LoggingConfig;
 
 import static java.lang.Integer.parseInt;
-import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
 
 /**
- * Generates guaranteed unique, time-based, monotonically increasing IDs within a distributed environment.
- * Each ID encodes three pieces of information:
+ * Generates guaranteed unique, time-based, strictly monotonically increasing IDs for distributed systems.
+ * Each ID encodes:
  * <ul>
- *   <li>Timestamp - milliseconds since epoch (1970)</li>
- *   <li>Sequence number - counter for multiple IDs within same millisecond</li>
- *   <li>Server ID - unique identifier (0-99) for machine/instance in cluster</li>
+ *   <li><b>Timestamp</b> - milliseconds since epoch</li>
+ *   <li><b>Sequence number</b> - counter for multiple IDs within the same millisecond</li>
+ *   <li><b>Server ID</b> - a 2-digit node identifier (00–99) appended to the ID</li>
  * </ul>
  *
  * <h2>Cluster Support</h2>
- * Server IDs are determined in the following priority order:
+ * Server IDs are determined in the following priority order (0–99):
  * <ol>
- *   <li>Environment variable JAVA_UTIL_CLUSTERID (0-99)</li>
- *   <li>Kubernetes Pod ID (extracted from metadata)</li>
- *   <li>VMware Tanzu instance ID</li>
- *   <li>Cloud Foundry instance index (CF_INSTANCE_INDEX)</li>
- *   <li>Hash of hostname modulo 100</li>
- *   <li>Random number (0-99) if all else fails</li>
+ *   <li>Environment variable {@code JAVA_UTIL_CLUSTERID}</li>
+ *   <li>Indirect environment variable via {@code SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID)} (value is another env var name)</li>
+ *   <li>Kubernetes pod ordinal (last dash-separated token of {@code HOSTNAME})</li>
+ *   <li>VMware Tanzu instance ID ({@code VMWARE_TANZU_INSTANCE_ID})</li>
+ *   <li>Cloud Foundry instance index ({@code CF_INSTANCE_INDEX})</li>
+ *   <li>Hash of {@code HOSTNAME} modulo 100</li>
+ *   <li>Secure random (fallback)</li>
  * </ol>
- * 
+ *
  * <h2>Available APIs</h2>
- * Two ID generation methods are provided with different characteristics:
+ * Two ID generation methods are provided:
  * <pre>
  * getUniqueId()
- * - Format: timestampMs(13-14 digits).sequence(3 digits).serverId(2 digits)
- * - Rate: Up to 1,000 IDs per millisecond
- * - Range: Until year 5138
- * - Example: 1234567890123456.789.99
+ * - Layout: [timestampMs][sequence-3-digits][serverId-2-digits]
+ * - Capacity: up to 1,000 IDs per millisecond
+ * - Positive range: until 4892-10-07T21:52:48.547Z
  *
  * getUniqueId19()
- * - Format: timestampMs(13 digits).sequence(4 digits).serverId(2 digits)
- * - Rate: Up to 10,000 IDs per millisecond
- * - Range: Until year 2286 (positive values)
- * - Example: 1234567890123.9999.99
+ * - Layout: [timestampMs][sequence-4-digits][serverId-2-digits]
+ * - Capacity: up to 10,000 IDs per millisecond
+ * - Positive range: until 2262-04-11T23:47:16.854Z
  * </pre>
  *
  * <h2>Guarantees</h2>
- * The generator provides the following guarantees:
  * <ul>
- *   <li>IDs are unique across JVM restarts on the same machine</li>
- *   <li>IDs are unique across machines when proper server IDs are configured</li>
- *   <li>IDs are strictly monotonically increasing (each ID > previous ID)</li>
- *   <li>System clock regression is handled gracefully</li>
- *   <li>High sequence numbers cause waiting for next millisecond</li>
+ *   <li>IDs are strictly monotonically increasing within a process.</li>
+ *   <li>Clock regressions are handled by not allowing time to go backwards in the ID stream.</li>
+ *   <li>When per-millisecond capacity is exhausted, generation waits for the next millisecond (no “future” timestamps).</li>
+ *   <li>Server ID is preserved in the last two digits of every ID; no arithmetic “+1” leaks into serverId.</li>
+ *   <li><b>Note:</b> Strict uniqueness across JVM restarts on the same machine is best-effort unless you persist the last
+ *       seen millisecond and restart from {@code max(persistedMs, now)}.</li>
+ * </ul>
+ *
+ * <h2>Extraction</h2>
+ * <ul>
+ *   <li>{@link #getDate(long)} / {@link #getInstant(long)} operate on {@link #getUniqueId()} IDs.</li>
+ *   <li>{@link #getDate19(long)} / {@link #getInstant19(long)} operate on {@link #getUniqueId19()} IDs.</li>
  * </ul>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -76,293 +78,280 @@ import static java.lang.System.currentTimeMillis;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-@SuppressWarnings("unchecked")
 public final class UniqueIdGenerator {
+    // ---- Public environment variable names ----
     public static final String JAVA_UTIL_CLUSTERID = "JAVA_UTIL_CLUSTERID";
-    public static final String KUBERNETES_POD_NAME = "HOSTNAME";
-    public static final String TANZU_INSTANCE_ID = "VMWARE_TANZU_INSTANCE_ID";
-    public static final String CF_INSTANCE_INDEX = "CF_INSTANCE_INDEX";
+    public static final String KUBERNETES_POD_NAME = "HOSTNAME";                 // K8s commonly injects pod name into HOSTNAME
+    public static final String TANZU_INSTANCE_ID   = "VMWARE_TANZU_INSTANCE_ID";
+    public static final String CF_INSTANCE_INDEX   = "CF_INSTANCE_INDEX";
 
-    private UniqueIdGenerator() {
-    }
-
-    private static final Lock lock = new ReentrantLock();
-    private static final Lock lock19 = new ReentrantLock();
+    // ---- Logging ----
     private static final Logger LOG = Logger.getLogger(UniqueIdGenerator.class.getName());
     static { LoggingConfig.init(); }
-    private static int count = 0;
-    private static int count2 = 0;
-    private static long lastTimeMillis = 0;
-    private static long lastTimeMillis19 = 0;
-    private static long lastGeneratedId = 0;
-    private static long lastGeneratedId19 = 0;
+
+    // ---- Encoding constants ----
+    // IDs end with two digits reserved for serverId; increment step = 100 to preserve that suffix.
+    private static final long SEQUENCE_STEP     = 100L;
+
+    private static final long FACTOR_16         = 100_000L;     // [timestampMs]*100_000 + [seq]*100 + [serverId]
+    private static final int  SEQ_LIMIT_16      = 1_000;        // 000–999 per millisecond
+
+    private static final long FACTOR_19         = 1_000_000L;   // [timestampMs]*1_000_000 + [seq]*100 + [serverId]
+    private static final int  SEQ_LIMIT_19      = 10_000;       // 0000–9999 per millisecond
+
+    // ---- State (lock-free) ----
+    private static final AtomicLong LAST_ID_16 = new AtomicLong(0L);
+    private static final AtomicLong LAST_ID_19 = new AtomicLong(0L);
+
+    // ---- Server ID (00–99) ----
     private static final int serverId;
+
+    private UniqueIdGenerator() { }
 
     static {
         String setVia;
 
-        // Try JAVA_UTIL_CLUSTERID first (maintain backward compatibility)
-        int id = getServerId(JAVA_UTIL_CLUSTERID);
+        int id = getServerIdFromVarName(JAVA_UTIL_CLUSTERID);
         setVia = "environment variable: " + JAVA_UTIL_CLUSTERID;
 
         if (id == -1) {
-            // Try indirect environment variable
-            String envName = SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID);
-            if (StringUtilities.hasContent(envName)) {
-                String envValue = SystemUtilities.getExternalVariable(envName);
-                id = getServerId(envValue);
-                setVia = "environment variable: " + envName;
+            // Indirect: JAVA_UTIL_CLUSTERID contains the *name* of another env var
+            String indirection = SystemUtilities.getExternalVariable(JAVA_UTIL_CLUSTERID);
+            if (StringUtilities.hasContent(indirection)) {
+                id = getServerIdFromVarName(indirection);
+                if (id != -1) {
+                    setVia = "indirect environment variable: " + indirection;
+                }
             }
         }
 
         if (id == -1) {
-            // Try Kubernetes Pod ID
+            // K8s pod ordinal from HOSTNAME (e.g., service-abc-0 -> 0)
             String podName = SystemUtilities.getExternalVariable(KUBERNETES_POD_NAME);
             if (StringUtilities.hasContent(podName)) {
-                // Extract ordinal from pod name (typically ends with -0, -1, etc.)
                 try {
-                    if (podName.contains("-")) {
-                        String ordinal = podName.substring(podName.lastIndexOf('-') + 1);
-                        id = abs(parseInt(ordinal)) % 100;
-                        setVia = "Kubernetes pod name: " + podName;
+                    int dash = podName.lastIndexOf('-');
+                    if (dash >= 0 && dash + 1 < podName.length()) {
+                        String ordinal = podName.substring(dash + 1);
+                        id = Math.floorMod(parseInt(ordinal), 100);
+                        setVia = "Kubernetes pod ordinal from HOSTNAME: " + podName;
                     }
                 } catch (Exception ignored) {
-                    // Fall through to next strategy if pod name parsing fails
+                    // fall through
                 }
             }
         }
 
         if (id == -1) {
-            // Try Tanzu instance ID
-            id = getServerId(TANZU_INSTANCE_ID);
-            if (id != -1) {
-                setVia = "VMware Tanzu instance ID";
-            }
+            id = getServerIdFromVarName(TANZU_INSTANCE_ID);
+            if (id != -1) setVia = "VMware Tanzu instance ID";
         }
 
         if (id == -1) {
-            // Try Cloud Foundry instance index
-            id = getServerId(CF_INSTANCE_INDEX);
-            if (id != -1) {
-                setVia = "Cloud Foundry instance index";
-            }
+            id = getServerIdFromVarName(CF_INSTANCE_INDEX);
+            if (id != -1) setVia = "Cloud Foundry instance index";
         }
 
         if (id == -1) {
-            // Try hostname hash
+            // Hostname hash -> 0..99 (print abbreviated hash only)
             String hostName = SystemUtilities.getExternalVariable("HOSTNAME");
             if (StringUtilities.hasContent(hostName)) {
-                String hostnameSha256 = EncryptionUtilities.calculateSHA256Hash(hostName.getBytes(StandardCharsets.UTF_8));
-                // Convert first 8 characters of the hash to an integer
                 try {
-                    String hashSegment = hostnameSha256.substring(0, 8);
-                    int hashInt = Integer.parseUnsignedInt(hashSegment, 16);
-                    id = hashInt % 100;
-                    setVia = "hostname hash: " + hostName + " (" + hostnameSha256 + ")";
+                    String sha256 = EncryptionUtilities.calculateSHA256Hash(hostName.getBytes(StandardCharsets.UTF_8));
+                    String head8  = sha256.substring(0, 8);
+                    int hashInt   = Integer.parseUnsignedInt(head8, 16);
+                    id = Math.floorMod(hashInt, 100);
+                    setVia = "hostname hash: " + hostName + " (sha256[0..8]=" + head8 + ")";
                 } catch (Exception ignored) {
-                    // Fall through to next strategy if pod name parsing fails
+                    // fall through
                 }
             }
         }
 
         if (id == -1) {
-            // Final fallback - use secure random
+            // Final fallback: secure random (runs once at startup)
             SecureRandom random = new SecureRandom();
-            id = abs(random.nextInt()) % 100;
+            id = Math.floorMod(random.nextInt(), 100);
             setVia = "SecureRandom";
         }
 
-        LOG.info("java-util using node id=" + id + " for last two digits of generated unique IDs. Set using " + setVia);
         serverId = id;
+        LOG.info("java-util using node id=" + id + " (last two digits of UniqueId). Set via " + setVia);
     }
 
     /**
-     * Generates a unique, monotonically increasing ID with millisecond precision that's cluster-safe.
+     * Generates a unique, strictly monotonically increasing ID with millisecond precision.
+     * <p>
+     * Layout: {@code [timestampMs][sequence-3-digits][serverId-2-digits]}.
+     * Supports up to 1,000 IDs per millisecond. When capacity is exhausted, waits for the next millisecond.
+     * <p>
+     * Positive range until {@code 4892-10-07T21:52:48.547Z}.
      *
-     * <h2>ID Format</h2>
-     * The returned long value contains three components:
-     * <pre>
-     * [timestamp: 13-14 digits][sequence: 3 digits][serverId: 2 digits]
-     * Example: 12345678901234.999.99 (dots for clarity, actual value has no dots)
-     * </pre>
-     *
-     * <h2>Characteristics</h2>
-     * <ul>
-     *   <li>Supports up to 1,000 unique IDs per millisecond (sequence 000-999)</li>
-     *   <li>Generates positive values until year 5138</li>
-     *   <li>Guaranteed monotonically increasing even across millisecond boundaries</li>
-     *   <li>Thread-safe through internal locking</li>
-     *   <li>Handles system clock regression gracefully</li>
-     *   <li>Blocks when sequence number exhausted within a millisecond</li>
-     * </ul>
-     *
-     * @return A unique, time-based ID encoded as a long value
-     * @see #getDate(long) To extract the timestamp from the generated ID
+     * @return unique time-based ID as a {@code long}
      */
     public static long getUniqueId() {
-        lock.lock();
-        try {
-            long currentTime = currentTimeMillis();
-            if (currentTime < lastTimeMillis) {
-                // Clock went backwards - use last time
-                currentTime = lastTimeMillis;
-            }
-
-            if (currentTime == lastTimeMillis) {
-                count++;
-                if (count >= 1000) {
-                    // Wait for next millisecond
-                    currentTime = waitForNextMillis(lastTimeMillis);
-                    count = 0;
-                }
-            } else {
-                count = 0;
-                lastTimeMillis = currentTime;
-            }
-
-            long newId = currentTime * 100_000 + count * 100L + serverId;
-            if (newId <= lastGeneratedId) {
-                newId = lastGeneratedId + 1;
-            }
-
-            lastGeneratedId = newId;
-            return newId;
-        } finally {
-            lock.unlock();
-        }
+        return nextId(LAST_ID_16, FACTOR_16, SEQ_LIMIT_16);
     }
 
     /**
-     * Generates a unique, monotonically increasing 19-digit ID optimized for higher throughput.
+     * Generates a unique, strictly monotonically increasing 19-digit ID optimized for higher throughput.
+     * <p>
+     * Layout: {@code [timestampMs][sequence-4-digits][serverId-2-digits]}.
+     * Supports up to 10,000 IDs per millisecond. When capacity is exhausted, waits for the next millisecond.
+     * <p>
+     * Positive range until {@code 2262-04-11T23:47:16.854Z}.
      *
-     * <h2>ID Format</h2>
-     * The returned long value contains three components:
-     * <pre>
-     * [timestamp: 13 digits][sequence: 4 digits][serverId: 2 digits]
-     * Example: 1234567890123.9999.99 (dots for clarity, actual value has no dots)
-     * </pre>
-     *
-     * <h2>Characteristics</h2>
-     * <ul>
-     *   <li>Supports up to 10,000 unique IDs per millisecond (sequence 0000-9999)</li>
-     *   <li>Generates positive values until year 2286 (after which values may be negative)</li>
-     *   <li>Guaranteed monotonically increasing even across millisecond boundaries</li>
-     *   <li>Thread-safe through internal locking</li>
-     *   <li>Handles system clock regression gracefully</li>
-     *   <li>Blocks when sequence number exhausted within a millisecond</li>
-     * </ul>
-     *
-     * <h2>Performance Comparison</h2>
-     * This method is optimized for higher throughput compared to {@link #getUniqueId()}:
-     * <ul>
-     *   <li>Supports 10x more IDs per millisecond (10,000 vs 1,000)</li>
-     *   <li>Trades timestamp range for increased sequence capacity</li>
-     *   <li>Recommended for high-throughput scenarios through year 2286</li>
-     * </ul>
-     *
-     * @return A unique, time-based ID encoded as a long value
-     * @see #getDate19(long) To extract the timestamp from the generated ID
+     * @return unique time-based ID as a {@code long}
      */
     public static long getUniqueId19() {
-        lock19.lock();
-        try {
-            long currentTime = currentTimeMillis();
-            if (currentTime < lastTimeMillis19) {
-                // Clock went backwards - use last time
-                currentTime = lastTimeMillis19;
-            }
-
-            if (currentTime == lastTimeMillis19) {
-                count2++;
-                if (count2 >= 10_000) {
-                    // Wait for next millisecond
-                    currentTime = waitForNextMillis(lastTimeMillis19);
-                    count2 = 0;
-                }
-            } else {
-                count2 = 0;
-                lastTimeMillis19 = currentTime;
-            }
-
-            long newId = currentTime * 1_000_000 + count2 * 100L + serverId;
-            if (newId <= lastGeneratedId19) {
-                newId = lastGeneratedId19 + 1;
-            }
-
-            lastGeneratedId19 = newId;
-            return newId;
-        } finally {
-            lock19.unlock();
-        }
+        return nextId(LAST_ID_19, FACTOR_19, SEQ_LIMIT_19);
     }
 
     /**
-     * Extracts the date-time from an ID generated by {@link #getUniqueId()}.
-     *
-     * @param uniqueId A unique ID previously generated by {@link #getUniqueId()}
-     * @return The Date representing when the ID was generated, accurate to the millisecond
-     * @throws IllegalArgumentException if the ID was not generated by {@link #getUniqueId()}
+     * Extract timestamp as {@link Date} from {@link #getUniqueId()} values.
      */
     public static Date getDate(long uniqueId) {
-        return new Date(uniqueId / 100_000);
+        return new Date(uniqueId / FACTOR_16);
     }
 
     /**
-     * Extracts the date-time from an ID generated by {@link #getUniqueId19()}.
-     *
-     * @param uniqueId19 A unique ID previously generated by {@link #getUniqueId19()}
-     * @return The Date representing when the ID was generated, accurate to the millisecond
-     * @throws IllegalArgumentException if the ID was not generated by {@link #getUniqueId19()}
+     * Extract timestamp as {@link Date} from {@link #getUniqueId19()} values.
      */
     public static Date getDate19(long uniqueId19) {
-        return new Date(uniqueId19 / 1_000_000);
+        return new Date(uniqueId19 / FACTOR_19);
     }
 
     /**
-     * Extracts the date-time from an ID generated by {@link #getUniqueId()}.
-     *
-     * @param uniqueId A unique ID previously generated by {@link #getUniqueId()}
-     * @return The Instant representing when the ID was generated, accurate to the millisecond
-     * @throws IllegalArgumentException if the ID was not generated by {@link #getUniqueId()}
+     * Extract timestamp as {@link Instant} from {@link #getUniqueId()} values.
+     * @throws IllegalArgumentException if {@code uniqueId} is negative (out of supported range)
      */
     public static Instant getInstant(long uniqueId) {
         if (uniqueId < 0) {
-            throw new IllegalArgumentException("Invalid uniqueId: must be positive");
+            throw new IllegalArgumentException("Invalid uniqueId: must be non-negative");
         }
-        return Instant.ofEpochMilli(uniqueId / 100_000);
+        return Instant.ofEpochMilli(uniqueId / FACTOR_16);
     }
 
     /**
-     * Extracts the date-time from an ID generated by {@link #getUniqueId19()}.
-     *
-     * @param uniqueId19 A unique ID previously generated by {@link #getUniqueId19()}
-     * @return The Instant representing when the ID was generated, accurate to the millisecond
-     * @throws IllegalArgumentException if the ID was not generated by {@link #getUniqueId19()}
+     * Extract timestamp as {@link Instant} from {@link #getUniqueId19()} values.
+     * @throws IllegalArgumentException if {@code uniqueId19} is negative (out of supported range)
      */
     public static Instant getInstant19(long uniqueId19) {
         if (uniqueId19 < 0) {
-            throw new IllegalArgumentException("Invalid uniqueId19: must be positive");
+            throw new IllegalArgumentException("Invalid uniqueId19: must be non-negative");
         }
-        return Instant.ofEpochMilli(uniqueId19 / 1_000_000);
+        return Instant.ofEpochMilli(uniqueId19 / FACTOR_19);
     }
 
-    private static long waitForNextMillis(long lastTimestamp) {
-        long timestamp = currentTimeMillis();
-        while (timestamp <= lastTimestamp) {
-            LockSupport.parkNanos(1000); // small pause to reduce CPU usage
-            timestamp = currentTimeMillis();
-        }
-        return timestamp;
+    /**
+     * Returns the configured server ID (00–99).
+     */
+    public static int getServerIdConfigured() {
+        return serverId;
     }
 
-    private static int getServerId(String externalVarName) {
+    // -------------------- Internals --------------------
+
+    /**
+     * Lock-free generator that preserves the decimal structure and the serverId suffix.
+     * It also never advances the timestamp into the future: if a millisecond's sequence is exhausted, we wait.
+     */
+    private static long nextId(AtomicLong lastId, long factor, int perMsLimit) {
+        long now = currentTimeMillis();
+        for (;;) {
+            final long prev = lastId.get();
+
+            // Compute the millisecond to use: never go backwards relative to last issued ID
+            final long prevMs = prev / factor;
+            final long baseMs = Math.max(now, prevMs);
+
+            final long base = baseMs * factor + serverId;
+
+            // If previous ID was in this same ms, bump sequence by +1 step; else start at sequence=0
+            long cand = base;
+            if (prev >= base) {
+                long seqIndex = ((prev - base) / SEQUENCE_STEP) + 1; // next sequence slot
+                cand = base + (seqIndex * SEQUENCE_STEP);
+
+                // Sequence capacity exhausted for this millisecond? Wait for next ms and retry.
+                if (seqIndex >= perMsLimit) {
+                    // Block outside of any locks; we will recalc after the clock ticks.
+                    final long nextMs = waitForNextMillis(baseMs);
+                    now = nextMs; // update now and loop
+                    continue;
+                }
+            }
+
+            if (lastId.compareAndSet(prev, cand)) {
+                return cand;
+            }
+
+            // Mild backoff on contention
+            onSpinWait();
+        }
+    }
+
+    /**
+     * Wait until the system clock advances beyond the given millisecond.
+     * Uses short spin with occasional nanosleep to reduce CPU.
+     */
+    private static long waitForNextMillis(long lastMs) {
+        long ts = currentTimeMillis();
+        int spins = 0;
+
+        while (ts <= lastMs) {
+            // Short spin phases interleaved with a tiny park to avoid burning CPU
+            for (int i = 0; i < 64; i++) {
+                onSpinWait();
+                ts = currentTimeMillis();
+                if (ts > lastMs) {
+                    return ts;
+                }
+            }
+            // ~100 microseconds backoff
+            LockSupport.parkNanos(100_000L);
+            ts = currentTimeMillis();
+            spins++;
+            if (spins > 64) {
+                // Safety valve: if the clock is stuck (virtualized env), back off a bit more
+                LockSupport.parkNanos(1_000_000L);
+            }
+        }
+        return ts;
+    }
+
+    private static final java.lang.reflect.Method ON_SPIN_WAIT_METHOD;
+    static {
+        java.lang.reflect.Method method = null;
+        try {
+            method = Thread.class.getMethod("onSpinWait");
+        } catch (NoSuchMethodException e) {
+            // Java 8 or older
+        }
+        ON_SPIN_WAIT_METHOD = method;
+    }
+    
+    private static void onSpinWait() {
+        // Java 9+ hint; safe no-op if older runtime
+        if (ON_SPIN_WAIT_METHOD != null) {
+            try {
+                ON_SPIN_WAIT_METHOD.invoke(null);
+            } catch (Exception ignored) {
+                // no-op
+            }
+        }
+    }
+
+    private static int getServerIdFromVarName(String externalVarName) {
         try {
             String id = SystemUtilities.getExternalVariable(externalVarName);
             if (StringUtilities.isEmpty(id)) {
                 return -1;
             }
-            int parsedId = parseInt(id);
-            return (int) (Math.abs((long) parsedId) % 100);
+            int parsedId = parseInt(id.trim());
+            // Safe abs for Integer.MIN_VALUE
+            int normalized = (int) Math.abs((long) parsedId);
+            return Math.floorMod(normalized, 100);
         } catch (NumberFormatException | SecurityException e) {
             LOG.fine("Unable to retrieve server id from " + externalVarName + ": " + e.getMessage());
             return -1;

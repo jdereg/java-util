@@ -1,5 +1,11 @@
 ### Revision History
 #### 4.1.0 (unreleased)
+> * **FIXED**: `SafeSimpleDateFormat` thread-safety and lenient mode issues:
+>   * **Fixed NPE in setters**: Initialize parent DateFormat fields (calendar, numberFormat) in constructor to prevent NPEs when setters are called
+>   * **Fixed lenient propagation**: Ensure lenient setting is properly applied to both Calendar and SimpleDateFormat in State.build()
+>   * **Keep parent fields in sync**: Update parent DateFormat fields when setters are called to maintain consistency
+> * **FIXED**: `UniqueIdGenerator` Java 8 compatibility:
+>   * **Fixed Thread.onSpinWait()**: Use reflection to call Thread.onSpinWait() only when available (Java 9+), providing no-op fallback for Java 8
 > * **IMPROVED**: `SafeSimpleDateFormat` completely redesigned with copy-on-write semantics:
 >   * **Copy-on-write mutations**: All setter methods now create a new immutable state snapshot, eliminating shared mutable state between threads
 >   * **Thread-local LRU caching**: Per-thread LRU cache (size-bounded) for SimpleDateFormat instances, preventing unbounded memory growth

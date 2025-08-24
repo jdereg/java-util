@@ -142,14 +142,16 @@ public class SafeSimpleDateFormat extends DateFormat {
         SimpleDateFormat build() {
             SimpleDateFormat sdf = new SimpleDateFormat(pattern, symbols);
             sdf.setTimeZone(tz);
-            sdf.setLenient(lenient);
             sdf.setNumberFormat((NumberFormat) nf.clone()); // per-SDF copy
             if (twoDigitYearStartEpochMs != null) {
                 sdf.set2DigitYearStart(new Date(twoDigitYearStartEpochMs));
             }
             Calendar cal = Calendar.getInstance(tz, locale);
             cal.clear();
+            cal.setLenient(lenient);  // Set lenient on the calendar
             sdf.setCalendar(cal);
+            // Set lenient after setCalendar to ensure it takes effect
+            sdf.setLenient(lenient);
             return sdf;
         }
 
@@ -246,12 +248,18 @@ public class SafeSimpleDateFormat extends DateFormat {
 
     public SafeSimpleDateFormat(String format) {
         Locale locale = Locale.getDefault();
+        TimeZone tz = TimeZone.getDefault();
+        
+        // Initialize parent DateFormat fields to prevent NPEs
+        this.calendar = Calendar.getInstance(tz, locale);
+        this.numberFormat = defaultNumberFormat();
+        
         this.stateRef = new AtomicReference<>(
                 new State(format,
                         locale,
-                        TimeZone.getDefault(),
+                        tz,
                         /* lenient */ true,
-                        defaultNumberFormat(),
+                        this.numberFormat,
                         DateFormatSymbols.getInstance(locale),
                         /* twoDigitYearStart */ null)
         );
@@ -289,7 +297,10 @@ public class SafeSimpleDateFormat extends DateFormat {
         update(s -> new State(s.pattern, s.locale, Objects.requireNonNull(tz, "tz"),
                 s.lenient, s.nf, s.symbols,
                 s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
-        super.setTimeZone(tz);
+        // Keep parent DateFormat fields in sync
+        if (this.calendar != null) {
+            this.calendar.setTimeZone(tz);
+        }
     }
 
     @Override
@@ -297,7 +308,10 @@ public class SafeSimpleDateFormat extends DateFormat {
         update(s -> new State(s.pattern, s.locale, s.tz,
                 lenient, s.nf, s.symbols,
                 s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
-        super.setLenient(lenient);
+        // Keep parent DateFormat fields in sync
+        if (this.calendar != null) {
+            this.calendar.setLenient(lenient);
+        }
     }
 
     @Override
@@ -308,9 +322,10 @@ public class SafeSimpleDateFormat extends DateFormat {
         update(s -> new State(s.pattern, s.locale, tz,
                 len, s.nf, s.symbols,
                 s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
-        // For legacy expectations, apply provided Calendar to current thread’s SDF:
+        // For legacy expectations, apply provided Calendar to current thread's SDF:
         getSdf().setCalendar(cal);
-        super.setCalendar(cal);
+        // Keep parent DateFormat field in sync
+        this.calendar = cal;
     }
 
     @Override
@@ -319,7 +334,8 @@ public class SafeSimpleDateFormat extends DateFormat {
         update(s -> new State(s.pattern, s.locale, s.tz,
                 s.lenient, format, s.symbols,
                 s.twoDigitYearStartEpochMs == null ? null : new Date(s.twoDigitYearStartEpochMs)));
-        super.setNumberFormat(format);
+        // Keep parent DateFormat field in sync
+        this.numberFormat = format;
     }
 
     public void setDateFormatSymbols(DateFormatSymbols symbols) {

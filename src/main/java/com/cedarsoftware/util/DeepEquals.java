@@ -596,6 +596,14 @@ public class DeepEquals {
                 return false;
             }
             
+            // Special handling for Records (Java 14+) - use record components instead of fields
+            if (ReflectionUtils.isRecord(key1Class)) {
+                if (!decomposeRecord(key1, key2, stack, itemsToCompare)) {
+                    return false;
+                }
+                continue;
+            }
+            
             // If there is a custom equals and not ignored, compare using custom equals
             if (hasCustomEquals(key1Class)) {
                 boolean useCustomEqualsForThisClass = hasNonEmptyIgnoreSet && !ignoreCustomEquals.contains(key1Class);
@@ -632,6 +640,27 @@ public class DeepEquals {
             // Decompose object into its fields (not using custom equals)
             decomposeObject(key1, key2, stack, itemsToCompare, maxObjectFields);
         }
+        return true;
+    }
+
+    private static boolean decomposeRecord(Object rec1, Object rec2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
+        // Get record components using reflection (Java 14+ feature)
+        Object[] components = ReflectionUtils.getRecordComponents(rec1.getClass());
+        if (components == null) {
+            // Fallback to regular object decomposition if record components unavailable
+            return decomposeObject(rec1, rec2, stack, currentItem, Integer.MAX_VALUE);
+        }
+        
+        // Compare each record component
+        for (Object component : components) {
+            String componentName = ReflectionUtils.getRecordComponentName(component);
+            Object value1 = ReflectionUtils.getRecordComponentValue(component, rec1);
+            Object value2 = ReflectionUtils.getRecordComponentValue(component, rec2);
+            
+            // Push component values for comparison with proper naming
+            stack.addFirst(new ItemsToCompare(value1, value2, componentName, currentItem, Difference.FIELD_VALUE_MISMATCH));
+        }
+        
         return true;
     }
 
@@ -1232,6 +1261,21 @@ public class DeepEquals {
             if (hasCustomHashCode(obj.getClass())) {   // A real hashCode() method exists, call it.
                 hash += obj.hashCode();
                 continue;
+            }
+
+            // Special handling for Records (Java 14+) - use record components for hashing
+            if (ReflectionUtils.isRecord(obj.getClass())) {
+                Object[] components = ReflectionUtils.getRecordComponents(obj.getClass());
+                if (components != null) {
+                    for (Object component : components) {
+                        Object value = ReflectionUtils.getRecordComponentValue(component, obj);
+                        if (value != null) {
+                            stack.addFirst(value);
+                        }
+                    }
+                    continue;
+                }
+                // Fallback to field-based hashing if record components unavailable
             }
 
             Collection<Field> fields = ReflectionUtils.getAllDeclaredFields(obj.getClass());

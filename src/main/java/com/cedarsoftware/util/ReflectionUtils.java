@@ -1931,4 +1931,114 @@ public final class ReflectionUtils {
         // Example: "org.example.MyLoader@1a2b3c4"
         return loader.getClass().getName() + '@' + Integer.toHexString(System.identityHashCode(loader));
     }
+    
+    // Record support (Java 14+) - using reflection to maintain Java 8 compatibility
+    private static Method isRecordMethod = null;
+    private static Method getRecordComponentsMethod = null;
+    private static boolean recordSupportChecked = false;
+    
+    /**
+     * Check if a class is a Record (Java 14+).
+     * Uses reflection to maintain compatibility with Java 8.
+     * 
+     * @param clazz The class to check
+     * @return true if the class is a Record, false otherwise or if running on Java < 14
+     */
+    public static boolean isRecord(Class<?> clazz) {
+        if (clazz == null) {
+            return false;
+        }
+        
+        if (!recordSupportChecked) {
+            try {
+                isRecordMethod = Class.class.getMethod("isRecord");
+                recordSupportChecked = true;
+            } catch (NoSuchMethodException e) {
+                // Running on Java < 14
+                recordSupportChecked = true;
+                return false;
+            }
+        }
+        
+        if (isRecordMethod == null) {
+            return false;
+        }
+        
+        try {
+            return (Boolean) isRecordMethod.invoke(clazz);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Get the record components of a Record class (Java 14+).
+     * Uses reflection to maintain compatibility with Java 8.
+     * 
+     * @param clazz The Record class
+     * @return Array of RecordComponent objects, or null if not a Record or running on Java < 14
+     */
+    public static Object[] getRecordComponents(Class<?> clazz) {
+        if (!isRecord(clazz)) {
+            return null;
+        }
+        
+        if (getRecordComponentsMethod == null) {
+            try {
+                getRecordComponentsMethod = Class.class.getMethod("getRecordComponents");
+            } catch (NoSuchMethodException e) {
+                // Running on Java < 14
+                return null;
+            }
+        }
+        
+        try {
+            return (Object[]) getRecordComponentsMethod.invoke(clazz);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Get the name of a RecordComponent (Java 14+).
+     * Uses reflection to maintain compatibility with Java 8.
+     * 
+     * @param recordComponent The RecordComponent object
+     * @return The name of the component, or null if error
+     */
+    public static String getRecordComponentName(Object recordComponent) {
+        if (recordComponent == null) {
+            return null;
+        }
+        
+        try {
+            Method getNameMethod = recordComponent.getClass().getMethod("getName");
+            return (String) getNameMethod.invoke(recordComponent);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Get the value of a RecordComponent from a Record instance (Java 14+).
+     * Uses reflection to maintain compatibility with Java 8.
+     * 
+     * @param recordComponent The RecordComponent object
+     * @param recordInstance The Record instance
+     * @return The value of the component in the instance
+     */
+    public static Object getRecordComponentValue(Object recordComponent, Object recordInstance) {
+        if (recordComponent == null || recordInstance == null) {
+            return null;
+        }
+        
+        try {
+            // RecordComponent has an accessor() method that returns the Method to get the value
+            Method getAccessorMethod = recordComponent.getClass().getMethod("getAccessor");
+            Method accessor = (Method) getAccessorMethod.invoke(recordComponent);
+            return accessor.invoke(recordInstance);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

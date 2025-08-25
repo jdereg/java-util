@@ -108,14 +108,14 @@ import static com.cedarsoftware.util.Converter.convert2boolean;
  *
  * <p><strong>Security and Performance Configuration:</strong></p>
  * <p>DeepEquals provides configurable security and performance options through system properties.
- * All security features are <strong>disabled by default</strong> for backward compatibility:</p>
+ * Default safeguards are enabled to prevent excessive resource consumption:</p>
  * <ul>
- *   <li><code>deepequals.secure.errors=false</code> &mdash; Enable error message sanitization</li>
- *   <li><code>deepequals.max.collection.size=0</code> &mdash; Collection size limit (0=disabled)</li>
- *   <li><code>deepequals.max.array.size=0</code> &mdash; Array size limit (0=disabled)</li>
- *   <li><code>deepequals.max.map.size=0</code> &mdash; Map size limit (0=disabled)</li>
- *   <li><code>deepequals.max.object.fields=0</code> &mdash; Object field count limit (0=disabled)</li>
- *   <li><code>deepequals.max.recursion.depth=0</code> &mdash; Recursion depth limit (0=disabled)</li>
+ *   <li><code>deepequals.secure.errors=false</code> &mdash; Enable error message sanitization (default: false)</li>
+ *   <li><code>deepequals.max.collection.size=100000</code> &mdash; Collection size limit (default: 100,000, 0=disabled)</li>
+ *   <li><code>deepequals.max.array.size=100000</code> &mdash; Array size limit (default: 100,000, 0=disabled)</li>
+ *   <li><code>deepequals.max.map.size=100000</code> &mdash; Map size limit (default: 100,000, 0=disabled)</li>
+ *   <li><code>deepequals.max.object.fields=1000</code> &mdash; Object field count limit (default: 1,000, 0=disabled)</li>
+ *   <li><code>deepequals.max.recursion.depth=1000000</code> &mdash; Recursion depth limit (default: 1,000,000, 0=disabled)</li>
  * </ul>
  *
  * @see #deepEquals(Object, Object)

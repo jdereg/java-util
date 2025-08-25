@@ -58,6 +58,7 @@
 >     * **Fixed deepHashCode Map collisions**: Hash key-value pairs together using XOR for order-independent hashing that reduces collisions
 >     * **Added Locale.ROOT for numeric formatting**: Ensure consistent decimal formatting across all locales
 >     * **Added Deque support with List compatibility**: List and Deque now compare as equal when containing the same ordered elements, treating both as ordered sequences that allow duplicates (berries over branches philosophy)
+>     * **Fixed visited set leakage in candidate matching**: Use copies of visited set for exploratory candidate comparisons in unordered collections and maps to prevent pollution with failed comparison state
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

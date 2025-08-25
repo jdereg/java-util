@@ -769,7 +769,9 @@ public class DeepEquals {
             boolean foundMatch = false;
             for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
                 Object item2 = it.next();
-                if (deepEquals(item1, item2, childOptions, visited)) {  // Use existing visited set for cycle detection
+                // Use a copy of visited set to avoid polluting it with failed comparisons
+                Set<Object> visitedCopy = new HashSet<>(visited);
+                if (deepEquals(item1, item2, childOptions, visitedCopy)) {
                     foundMatch = true;
                     it.remove();                  // safe removal during iteration
                     if (candidates.isEmpty()) {
@@ -812,7 +814,9 @@ public class DeepEquals {
             List<Object> list = bucket.getValue();
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
-                if (deepEquals(probe, cand, options, visited)) { // Use existing visited set for cycle detection
+                // Use a copy of visited set to avoid polluting it with failed comparisons
+                Set<Object> visitedCopy = new HashSet<>(visited);
+                if (deepEquals(probe, cand, options, visitedCopy)) {
                     li.remove();
                     if (list.isEmpty()) it.remove();
                     return true;
@@ -836,7 +840,9 @@ public class DeepEquals {
             List<Object> list = bucket.getValue();
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
-                if (deepEquals(probe, cand, options, visited)) { // Use existing visited set for cycle detection
+                // Use a copy of visited set to avoid polluting it with failed comparisons
+                Set<Object> visitedCopy = new HashSet<>(visited);
+                if (deepEquals(probe, cand, options, visitedCopy)) {
                     li.remove();
                     if (list.isEmpty()) it.remove();
                     return true;
@@ -922,7 +928,9 @@ public class DeepEquals {
                 Map.Entry<?, ?> otherEntry = iterator.next();
 
                 // Check if keys are equal
-                if (deepEquals(entry.getKey(), otherEntry.getKey(), childOptions, visited)) { // Use existing visited set for cycle detection
+                // Use a copy of visited set to avoid polluting it with failed comparisons
+                Set<Object> visitedCopy = new HashSet<>(visited);
+                if (deepEquals(entry.getKey(), otherEntry.getKey(), childOptions, visitedCopy)) {
                     // Push value comparison only - keys are known to be equal
                     stack.addFirst(new ItemsToCompare(
                             entry.getValue(),                // map1 value
@@ -977,7 +985,9 @@ public class DeepEquals {
             Collection<Map.Entry<?, ?>> c = b.getValue();
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
-                if (deepEquals(key, e.getKey(), options, visited)) { // Use existing visited set for cycle detection
+                // Use a copy of visited set to avoid polluting it with failed comparisons
+                Set<Object> visitedCopy = new HashSet<>(visited);
+                if (deepEquals(key, e.getKey(), options, visitedCopy)) {
                     ci.remove();
                     if (c.isEmpty()) it.remove();
                     return e;
@@ -1001,7 +1011,9 @@ public class DeepEquals {
             Collection<Map.Entry<?, ?>> c = b.getValue();
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
-                if (deepEquals(key, e.getKey(), options, visited)) { // Use existing visited set for cycle detection
+                // Use a copy of visited set to avoid polluting it with failed comparisons
+                Set<Object> visitedCopy = new HashSet<>(visited);
+                if (deepEquals(key, e.getKey(), options, visitedCopy)) {
                     ci.remove();
                     if (c.isEmpty()) it.remove();
                     return e;

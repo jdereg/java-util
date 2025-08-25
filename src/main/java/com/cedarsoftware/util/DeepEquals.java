@@ -24,6 +24,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -149,6 +150,14 @@ public class DeepEquals {
     private static final String ARROW = "⇨";
     private static final String ANGLE_LEFT = "《";
     private static final String ANGLE_RIGHT = "》";
+    
+    // Thread-safe UTC date formatter for consistent formatting across locales
+    private static final ThreadLocal<SimpleDateFormat> TS_FMT = 
+        ThreadLocal.withInitial(() -> {
+            SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
+            f.setTimeZone(TimeZone.getTimeZone("UTC"));
+            return f;
+        });
     
     // Strict Base64 pattern that properly validates Base64 encoding
     // Matches strings that are properly padded Base64 (groups of 4 chars with proper padding)
@@ -2041,7 +2050,7 @@ public class DeepEquals {
         }
         if (value instanceof Boolean) return value.toString();
         if (value instanceof Date) {
-            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
+            return TS_FMT.get().format((Date)value) + " UTC";
         }
         if (value instanceof TimeZone) {
             TimeZone timeZone = (TimeZone) value;
@@ -2085,7 +2094,7 @@ public class DeepEquals {
             if (value instanceof Character) return "'" + value + "'";
 
             if (value instanceof Date) {
-                return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
+                return TS_FMT.get().format((Date)value) + " UTC";
             }
 
             // Handle Enums - format as EnumType.NAME
@@ -2468,7 +2477,7 @@ public class DeepEquals {
         if (str.isEmpty()) return "\"\"";
         
         // Check if string looks like sensitive data
-        String lowerStr = str.toLowerCase();
+        String lowerStr = str.toLowerCase(Locale.ROOT);
         if (looksLikeSensitiveData(lowerStr)) {
             return "\"[REDACTED:" + str.length() + " chars]\"";
         }
@@ -2571,7 +2580,7 @@ public class DeepEquals {
 
     private static boolean isSensitiveField(String fieldName) {
         if (fieldName == null) return false;
-        String lowerFieldName = fieldName.toLowerCase();
+        String lowerFieldName = fieldName.toLowerCase(Locale.ROOT);
         // Check against explicit list and specific patterns
         // Note: Removed generic "key" check as it's too broad (matches "monkey", "keyboard", etc.)
         return SENSITIVE_FIELD_NAMES.contains(lowerFieldName) ||

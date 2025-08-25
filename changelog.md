@@ -61,6 +61,7 @@
 >     * **Added DIFF_ITEM constant**: Exposed public constant for "diff_item" key to avoid stringly-typed usage
 >     * **Fixed Javadoc typo**: Corrected "instants hashCode()" to "instance's hashCode()" in deepHashCode documentation
 >     * **Added regex pattern commentary**: Clarified that HEX_32_PLUS and UUID_PATTERN use lowercase patterns since strings are lowercased before matching
+>     * **Type-safe visited set**: Changed visited set type from Set<Object> to Set<ItemsToCompare> for compile-time type safety and to prevent accidental misuse
 >     * **Added Arrays.equals fast-path**: Use native Arrays.equals for primitive arrays as optimization before element-by-element comparison with diff tracking
 >     * **Skip static/transient fields in formatting**: Aligned formatComplexObject and formatValueConcise with equality semantics by skipping static and transient fields
 >     * **Implemented global depth budget**: Pass remaining depth budget through child calls to ensure security limits are truly global across all recursive paths, preventing excessive recursion

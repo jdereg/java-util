@@ -406,14 +406,14 @@ public class DeepEquals {
      */
     public static boolean deepEquals(Object a, Object b, Map<String, ?> options) {
         try {
-            Set<Object> visited = new HashSet<>();
+            Set<ItemsToCompare> visited = new HashSet<>();
             return deepEquals(a, b, options, visited);
         } finally {
             formattingStack.remove();   // Always remove.  When needed next time, initialValue() will be called.
         }
     }
 
-    private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<Object> visited) {
+    private static boolean deepEquals(Object a, Object b, Map<String, ?> options, Set<ItemsToCompare> visited) {
         Deque<ItemsToCompare> stack = new ArrayDeque<>();
         boolean result = deepEquals(a, b, stack, options, visited);
 
@@ -436,7 +436,7 @@ public class DeepEquals {
 
     // Heap-based deepEquals implementation
     private static boolean deepEquals(Object a, Object b, Deque<ItemsToCompare> stack,
-                                      Map<String, ?> options, Set<Object> visited) {
+                                      Map<String, ?> options, Set<ItemsToCompare> visited) {
         final Collection<Class<?>> ignoreCustomEquals = (Collection<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
         final boolean allowAllCustomEquals = ignoreCustomEquals == null;
         final boolean hasNonEmptyIgnoreSet = (ignoreCustomEquals != null && !ignoreCustomEquals.isEmpty());
@@ -767,7 +767,7 @@ public class DeepEquals {
      */
     private static boolean decomposeUnorderedCollection(Collection<?> col1, Collection<?> col2,
                                                        Deque<ItemsToCompare> stack, Map<String, ?> options,
-                                                       Set<Object> visited, ItemsToCompare currentItem, int maxCollectionSize) {
+                                                       Set<ItemsToCompare> visited, ItemsToCompare currentItem, int maxCollectionSize) {
 
         // Security check: validate collection sizes
         if (maxCollectionSize > 0 && (col1.size() > maxCollectionSize || col2.size() > maxCollectionSize)) {
@@ -808,7 +808,7 @@ public class DeepEquals {
             for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
                 Object item2 = it.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<Object> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(item1, item2, probeStack, childOptions, visitedCopy)) {
@@ -848,14 +848,14 @@ public class DeepEquals {
     private static boolean tryMatchAcrossBuckets(Object probe,
                                                  Map<Integer, List<Object>> buckets,
                                                  Map<String, ?> options,
-                                                 Set<Object> visited) {
+                                                 Set<ItemsToCompare> visited) {
         for (Iterator<Map.Entry<Integer, List<Object>>> it = buckets.entrySet().iterator(); it.hasNext();) {
             Map.Entry<Integer, List<Object>> bucket = it.next();
             List<Object> list = bucket.getValue();
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<Object> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(probe, cand, probeStack, options, visitedCopy)) {
@@ -873,7 +873,7 @@ public class DeepEquals {
                                                           Map<Integer, List<Object>> buckets,
                                                           int excludeHash,
                                                           Map<String, ?> options,
-                                                          Set<Object> visited) {
+                                                          Set<ItemsToCompare> visited) {
         for (Iterator<Map.Entry<Integer, List<Object>>> it = buckets.entrySet().iterator(); it.hasNext();) {
             Map.Entry<Integer, List<Object>> bucket = it.next();
             if (bucket.getKey() == excludeHash) {
@@ -883,7 +883,7 @@ public class DeepEquals {
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<Object> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(probe, cand, probeStack, options, visitedCopy)) {
@@ -922,7 +922,7 @@ public class DeepEquals {
         return true;
     }
     
-    private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Map<String, ?> options, Set<Object> visited, ItemsToCompare currentItem, int maxMapSize) {
+    private static boolean decomposeMap(Map<?, ?> map1, Map<?, ?> map2, Deque<ItemsToCompare> stack, Map<String, ?> options, Set<ItemsToCompare> visited, ItemsToCompare currentItem, int maxMapSize) {
 
         // Security check: validate map sizes
         if (maxMapSize > 0 && (map1.size() > maxMapSize || map2.size() > maxMapSize)) {
@@ -974,7 +974,7 @@ public class DeepEquals {
 
                 // Check if keys are equal
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<Object> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(entry.getKey(), otherEntry.getKey(), probeStack, childOptions, visitedCopy)) {
@@ -1026,14 +1026,14 @@ public class DeepEquals {
     private static Map.Entry<?, ?> findAndRemoveMatchingKey(Object key,
                                                             Map<Integer, Collection<Map.Entry<?, ?>>> buckets,
                                                             Map<String, ?> options,
-                                                            Set<Object> visited) {
+                                                            Set<ItemsToCompare> visited) {
         for (Iterator<Map.Entry<Integer, Collection<Map.Entry<?, ?>>>> it = buckets.entrySet().iterator(); it.hasNext();) {
             Map.Entry<Integer, Collection<Map.Entry<?, ?>>> b = it.next();
             Collection<Map.Entry<?, ?>> c = b.getValue();
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<Object> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {
@@ -1051,7 +1051,7 @@ public class DeepEquals {
                                                                      Map<Integer, Collection<Map.Entry<?, ?>>> buckets,
                                                                      int excludeHash,
                                                                      Map<String, ?> options,
-                                                                     Set<Object> visited) {
+                                                                     Set<ItemsToCompare> visited) {
         for (Iterator<Map.Entry<Integer, Collection<Map.Entry<?, ?>>>> it = buckets.entrySet().iterator(); it.hasNext();) {
             Map.Entry<Integer, Collection<Map.Entry<?, ?>>> b = it.next();
             if (b.getKey() == excludeHash) {
@@ -1061,7 +1061,7 @@ public class DeepEquals {
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<Object> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {

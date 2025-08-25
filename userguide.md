@@ -3645,11 +3645,16 @@ A sophisticated utility for performing deep equality comparisons between objects
 ### Key Features
 - Deep object graph comparison
 - Circular reference detection
-- Detailed difference reporting
+- Detailed difference reporting with path to mismatch
 - Configurable precision for numeric comparisons
 - Custom equals() method handling
 - String-to-number comparison support
 - Thread-safe implementation
+- Secure error messages with automatic sensitive data redaction
+- Performance optimizations with fast paths for common types
+- Support for Deque comparisons (compatible with List)
+- Optimized unordered collection and map comparisons
+- Global depth budget for security limits
 
 ### Usage Examples
 
@@ -3726,6 +3731,17 @@ options.put(DeepEquals.IGNORE_CUSTOM_EQUALS,
 
 // Allow string-to-number comparisons
 options.put(DeepEquals.ALLOW_STRINGS_TO_MATCH_NUMBERS, true);
+
+// Include detailed ItemsToCompare object (disabled by default for memory efficiency)
+options.put(DeepEquals.INCLUDE_DIFF_ITEM, true);
+
+// After comparison, retrieve results
+if (!DeepEquals.deepEquals(obj1, obj2, options)) {
+    String diff = (String) options.get(DeepEquals.DIFF);  // Always available
+    
+    // Only available if INCLUDE_DIFF_ITEM was set to true
+    Object diffItem = options.get(DeepEquals.DIFF_ITEM);
+}
 ```
 
 **Deep Hash Code Generation:**
@@ -3765,6 +3781,11 @@ DeepEquals.deepEquals(new int[]{1,2}, new int[]{1,2});
 // Lists (order matters)
 DeepEquals.deepEquals(Arrays.asList(1,2), Arrays.asList(1,2));
 
+// Deques (order matters, compatible with Lists)
+Deque<Integer> deque = new ArrayDeque<>(Arrays.asList(1,2));
+List<Integer> list = Arrays.asList(1,2);
+DeepEquals.deepEquals(deque, list);  // true - same ordered elements
+
 // Sets (order doesn't matter)
 DeepEquals.deepEquals(new HashSet<>(list1), new HashSet<>(list2));
 
@@ -3775,6 +3796,23 @@ DeepEquals.deepEquals(map1, map2);
 ### Feature Options
 
 DeepEquals provides configurable security and performance options through system properties. All security features are **disabled by default** for backward compatibility.
+
+#### Programmatic Options (via options Map)
+
+These options can be passed in the `options` Map parameter:
+
+| Option Key | Type | Default | Description |
+|------------|------|---------|-------------|
+| `DeepEquals.IGNORE_CUSTOM_EQUALS` | Set<Class> or Boolean | false | Ignore custom equals() methods for specified classes or all classes |
+| `DeepEquals.ALLOW_STRINGS_TO_MATCH_NUMBERS` | Boolean | false | Allow string "10" to match numeric 10 |
+| `DeepEquals.INCLUDE_DIFF_ITEM` | Boolean | false | Include ItemsToCompare object in output (memory intensive) |
+
+**Output Keys (written to options Map):**
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `DeepEquals.DIFF` | String | Human-readable difference path (always available on mismatch) |
+| `DeepEquals.DIFF_ITEM` | Object | Detailed ItemsToCompare object (only when INCLUDE_DIFF_ITEM=true) |
 
 #### Security Options
 
@@ -3840,13 +3878,17 @@ DeepEquals provides configurable security and performance options through system
 ```
 
 ### Implementation Notes
-- Thread-safe design
-- Efficient circular reference detection
-- Precise floating-point comparison
-- Detailed difference reporting
-- Collection order awareness
-- Map entry comparison support
+- Thread-safe design with ThreadLocal date formatting
+- Efficient circular reference detection with visited set tracking
+- Precise floating-point comparison with configurable epsilon
+- Detailed difference reporting with sanitized sensitive data
+- Collection order awareness (Lists/Deques ordered, Sets unordered)
+- Map entry comparison support with key deep equality
 - Array dimension validation
+- Locale.ROOT for consistent string operations
+- Global depth budget propagation for security limits
+- Static and transient fields properly skipped
+- AtomicBoolean/AtomicInteger/AtomicLong value comparisons
 
 ### Best Practices
 ```groovy
@@ -3870,11 +3912,17 @@ public int hashCode() {
 
 ### Performance Considerations
 - Caches reflection data
-- Optimized collection comparison
+- Optimized collection comparison with hash-based matching
 - Efficient circular reference detection
-- Smart difference reporting
+- Smart difference reporting with lazy evaluation
 - Minimal object creation
-- Thread-local formatting
+- Thread-local formatting for date/time values
+- Fast paths for primitive arrays using Arrays.equals()
+- Fast paths for integral number comparisons
+- Enum reference equality optimization
+- Pre-sized hash buckets to avoid rehashing
+- O(n) path building for difference reporting (not O(n²))
+- Bypasses diff generation for exploratory comparisons
 
 This implementation provides robust deep comparison capabilities with detailed difference reporting and configurable behavior.
 

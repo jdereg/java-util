@@ -49,6 +49,7 @@
 >     * **Fixed ConcurrentModificationException**: Replaced enhanced-for loops with iterator.remove() in decomposeUnorderedCollection to avoid structural modifications during iteration
 >     * **Fixed formatDifference crash**: Use detailNode approach to properly access parent's objects when rendering container category differences, preventing crashes when accessing child objects with parent's category
 >     * **Performance optimization for candidate matching**: Skip diff assembly during exploratory comparisons in unordered collections by passing 'deepequals.skip.diff' flag, avoiding expensive string/reflective work for failed matches
+>     * **Removed unreachable AtomicInteger/AtomicLong branches**: Deleted redundant special-case comparisons for AtomicInteger and AtomicLong that were unreachable after generic Number handling; these types are correctly handled by the integral fast path in compareNumbers()
 >     * **Added Arrays.equals fast-path**: Use native Arrays.equals for primitive arrays as optimization before element-by-element comparison with diff tracking
 >     * **Skip static/transient fields in formatting**: Aligned formatComplexObject and formatValueConcise with equality semantics by skipping static and transient fields
 >     * **Implemented global depth budget**: Pass remaining depth budget through child calls to ensure security limits are truly global across all recursive paths, preventing excessive recursion

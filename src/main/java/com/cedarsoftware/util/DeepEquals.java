@@ -144,6 +144,7 @@ public class DeepEquals {
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
     public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
     public static final String DIFF = "diff";
+    public static final String INCLUDE_DIFF_ITEM = "deepequals.include.diff_item";
     private static final String DEPTH_BUDGET = "__depthBudget";
     private static final String EMPTY = "∅";
     private static final String TRIANGLE_ARROW = "▶";
@@ -184,9 +185,10 @@ public class DeepEquals {
     // Configuration for security-safe error messages - removed static final, now uses dynamic method
     
     // Fields that should be redacted in error messages for security
+    // Note: "auth" removed to avoid false positives like "author" - it's caught by SENSITIVE_WORDS regex
     private static final Set<String> SENSITIVE_FIELD_NAMES = CollectionUtilities.setOf(
             "password", "pwd", "passwd", "secret", "token", "credential", 
-            "auth", "authorization", "authentication", "api_key", "apikey", "secretkey"
+            "authorization", "authentication", "api_key", "apikey", "secretkey"
     );
     
     // Default security limits
@@ -391,8 +393,8 @@ public class DeepEquals {
      * </ul>
      *
      * <p>If the objects differ, a difference description string is stored in {@code options}
-     * under the key {@code "diff"}. The key {@code "diff_item"} can provide additional context
-     * regarding the specific location of the mismatch.</p>
+     * under the key {@code "diff"}. To avoid retaining large object graphs, the {@code "diff_item"}
+     * object is only stored if {@code "deepequals.include.diff_item"} is set to {@code true} in options.</p>
      *
      * @param a       the first object to compare, may be {@code null}
      * @param b       the second object to compare, may be {@code null}
@@ -414,11 +416,17 @@ public class DeepEquals {
         boolean result = deepEquals(a, b, stack, options, visited);
 
         if (!result && !stack.isEmpty()) {
-            // Store both the breadcrumb and the difference ItemsToCompare
+            // Store the breadcrumb difference string
             ItemsToCompare top = stack.peek();
             String breadcrumb = generateBreadcrumb(stack);
             ((Map<String, Object>) options).put(DIFF, breadcrumb);
-            ((Map<String, Object>) options).put("diff_item", top);
+            
+            // Optionally store the ItemsToCompare object (can retain large graphs)
+            // Only include if explicitly requested to avoid memory retention
+            Boolean includeDiffItem = (Boolean) options.get(INCLUDE_DIFF_ITEM);
+            if (includeDiffItem != null && includeDiffItem) {
+                ((Map<String, Object>) options).put("diff_item", top);
+            }
         }
 
         return result;
@@ -667,6 +675,7 @@ public class DeepEquals {
                         }
 
                         // Make recursive call to find the actual difference
+                        newOptions.put(INCLUDE_DIFF_ITEM, true);  // Need diff_item for internal use
                         deepEquals(key1, key2, newOptions);
 
                         // Get the difference and add it to our stack

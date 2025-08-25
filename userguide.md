@@ -3649,12 +3649,7 @@ A sophisticated utility for performing deep equality comparisons between objects
 - Configurable precision for numeric comparisons
 - Custom equals() method handling
 - String-to-number comparison support
-- Thread-safe implementation
 - Secure error messages with automatic sensitive data redaction
-- Performance optimizations with fast paths for common types
-- Support for Deque comparisons (compatible with List)
-- Optimized unordered collection and map comparisons
-- Global depth budget for security limits
 
 ### Usage Examples
 
@@ -3885,8 +3880,6 @@ These options can be passed in the `options` Map parameter:
 - Collection order awareness (Lists/Deques ordered, Sets unordered)
 - Map entry comparison support with key deep equality
 - Array dimension validation
-- Locale.ROOT for consistent string operations
-- Global depth budget propagation for security limits
 - Static and transient fields properly skipped
 - AtomicBoolean/AtomicInteger/AtomicLong value comparisons
 
@@ -3921,8 +3914,6 @@ public int hashCode() {
 - Fast paths for integral number comparisons
 - Enum reference equality optimization
 - Pre-sized hash buckets to avoid rehashing
-- O(n) path building for difference reporting (not O(n²))
-- Bypasses diff generation for exploratory comparisons
 
 This implementation provides robust deep comparison capabilities with detailed difference reporting and configurable behavior.
 

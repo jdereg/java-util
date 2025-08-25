@@ -53,7 +53,6 @@ constructor discovery (increased the jar size by about 10K.)
 - ✅ Perfect for testing, debugging, and data validation
 - ✅ Secure error messages with automatic sensitive data redaction
 - ✅ Detailed difference reporting with path to mismatch
-- ✅ Optimized for performance with fast paths for common types
 
 **Quick example**:
 ```java

@@ -51,10 +51,21 @@ constructor discovery (increased the jar size by about 10K.)
 - ✅ Works with any objects - no equals() method needed
 - ✅ Handles circular references and complex nested structures
 - ✅ Perfect for testing, debugging, and data validation
+- ✅ Secure error messages with automatic sensitive data redaction
+- ✅ Detailed difference reporting with path to mismatch
+- ✅ Optimized for performance with fast paths for common types
 
 **Quick example**:
 ```java
 boolean same = DeepEquals.deepEquals(complexObject1, complexObject2);
+
+// With difference reporting
+Map<String, Object> options = new HashMap<>();
+boolean same = DeepEquals.deepEquals(obj1, obj2, options);
+if (!same) {
+    String diff = (String) options.get(DeepEquals.DIFF);
+    System.out.println("Difference: " + diff);
+}
 ```
 
 📖 [Full documentation and options →](userguide.md#deepequals)
@@ -702,6 +713,17 @@ All security features are **disabled by default** to ensure seamless upgrades, w
 <td>Integer</td>
 <td><span style="color: #007acc">0</span> (disabled)</td>
 <td>Recursion depth limit</td>
+</tr>
+<tr>
+<td colspan="4" style="padding: 8px; font-style: italic;">
+<strong>Programmatic Options (via options Map):</strong><br>
+• <code>ignoreCustomEquals</code> (Boolean): Ignore custom equals() methods<br>
+• <code>stringsCanMatchNumbers</code> (Boolean): Allow "10" to match numeric 10<br>
+• <code>deepequals.include.diff_item</code> (Boolean): Include ItemsToCompare object (for memory efficiency, default false)<br>
+<strong>Output Keys:</strong><br>
+• <code>diff</code> (String): Human-readable difference path<br>
+• <code>diff_item</code> (ItemsToCompare): Detailed difference object (when include.diff_item=true)
+</td>
 </tr>
 <tr style="background-color: #f0f4f8;">
 <td colspan="4" style="color: #334155; font-weight: bold; padding: 8px;"><strong>EncryptionUtilities</strong></td>

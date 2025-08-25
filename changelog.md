@@ -63,6 +63,7 @@
 >     * **Added fast path for integral number comparison**: Avoid expensive BigDecimal conversion for Byte, Short, Integer, Long, AtomicInteger, and AtomicLong comparisons
 >     * **Added special case handling for AtomicInteger and AtomicLong**: Use get() methods directly like AtomicBoolean, avoiding reflective field access for better performance and consistency
 >     * **Precompiled sensitive data regex patterns**: Avoid regex compilation overhead on every call to looksLikeSensitiveData() by using precompiled Pattern objects
+>     * **Added Enum handling as simple type**: Use reference equality (==) for enum comparisons and format as EnumType.NAME, avoiding unnecessary reflective field walking
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

@@ -521,6 +521,15 @@ public class DeepEquals {
             final Class<?> key1Class = key1.getClass();
             final Class<?> key2Class = key2.getClass();
 
+            // Handle Enums - they are singletons, use reference equality
+            if (key1Class.isEnum() && key2Class.isEnum()) {
+                if (key1 != key2) {  // Enum comparison is always == (same as Enum.equals)
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
+                    return false;
+                }
+                continue;
+            }
+
             // Handle primitive wrappers, String, Date, Class, UUID, URL, URI, Temporal classes, etc.
             if (Converter.isSimpleTypeConversionSupported(key1Class)) {
                 if (key1 instanceof Comparable<?> && key2 instanceof Comparable<?>) {
@@ -1168,7 +1177,7 @@ public class DeepEquals {
                 if (Arrays.equals(a1, a2)) { return true; }  // exact fast-path
                 for (int i = 0; i < len1; i++) {
                     // Use nearlyEqual for consistent floating-point comparison with tolerance
-                    if (!nearlyEqual(a1[i], a2[i], FLOAT_EPSILON)) {
+                    if (!nearlyEqual(a1[i], a2[i])) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
                         return false;
                     }
@@ -1179,7 +1188,7 @@ public class DeepEquals {
                 if (Arrays.equals(a1, a2)) { return true; }  // exact fast-path
                 for (int i = 0; i < len1; i++) {
                     // Use nearlyEqual for consistent floating-point comparison with tolerance
-                    if (!nearlyEqual(a1[i], a2[i], DOUBLE_EPSILON)) {
+                    if (!nearlyEqual(a1[i], a2[i])) {
                         stack.addFirst(new ItemsToCompare(a1[i], a2[i], new int[]{i}, currentItem, Difference.ARRAY_ELEMENT_MISMATCH));
                         return false;
                     }
@@ -1237,6 +1246,12 @@ public class DeepEquals {
         return true;
     }
     
+    private static boolean isIntegralNumber(Number n) {
+        return n instanceof Byte || n instanceof Short || 
+               n instanceof Integer || n instanceof Long ||
+               n instanceof AtomicInteger || n instanceof AtomicLong;
+    }
+
     /**
      * Compares two numbers deeply, handling floating point precision.
      *
@@ -1244,12 +1259,6 @@ public class DeepEquals {
      * @param b Second number.
      * @return true if numbers are equal within the defined precision, false otherwise.
      */
-    private static boolean isIntegralNumber(Number n) {
-        return n instanceof Byte || n instanceof Short || 
-               n instanceof Integer || n instanceof Long ||
-               n instanceof AtomicInteger || n instanceof AtomicLong;
-    }
-    
     private static boolean compareNumbers(Number a, Number b) {
         // Handle floating point comparisons
         if (a instanceof Float || a instanceof Double ||
@@ -1278,7 +1287,7 @@ public class DeepEquals {
             // Normal floating point comparison
             double d1 = a.doubleValue();
             double d2 = b.doubleValue();
-            return nearlyEqual(d1, d2, DOUBLE_EPSILON);
+            return nearlyEqual(d1, d2);
         }
 
         // Fast path for integral numbers (avoids BigDecimal conversion)
@@ -1299,12 +1308,11 @@ public class DeepEquals {
     /**
      * Correctly handles floating point comparisons with proper NaN and near-zero handling.
      *
-     * @param a   First double.
-     * @param b   Second double.
-     * @param eps Precision for comparison.
+     * @param a First double.
+     * @param b Second double.
      * @return true if numbers are nearly equal within epsilon, false otherwise.
      */
-    private static boolean nearlyEqual(double a, double b, double eps) {
+    private static boolean nearlyEqual(double a, double b) {
         // Fast path: bitwise equality handles NaN==NaN, +0.0==-0.0
         if (Double.doubleToLongBits(a) == Double.doubleToLongBits(b)) {
             return true;
@@ -1322,18 +1330,17 @@ public class DeepEquals {
         double norm = Math.max(Math.abs(a), Math.abs(b));
         
         // Near zero: use absolute tolerance; elsewhere: use relative tolerance
-        return (norm == 0.0) ? diff <= eps : diff <= eps * norm;
+        return (norm == 0.0) ? diff <= DeepEquals.DOUBLE_EPSILON : diff <= DeepEquals.DOUBLE_EPSILON * norm;
     }
     
     /**
      * Correctly handles floating point comparisons for floats.
      *
-     * @param a   First float.
-     * @param b   Second float.
-     * @param eps Precision for comparison.
+     * @param a First float.
+     * @param b Second float.
      * @return true if numbers are nearly equal within epsilon, false otherwise.
      */
-    private static boolean nearlyEqual(float a, float b, float eps) {
+    private static boolean nearlyEqual(float a, float b) {
         // Fast path: bitwise equality handles NaN==NaN, +0.0f==-0.0f
         if (Float.floatToIntBits(a) == Float.floatToIntBits(b)) {
             return true;
@@ -1351,7 +1358,7 @@ public class DeepEquals {
         float norm = Math.max(Math.abs(a), Math.abs(b));
         
         // Near zero: use absolute tolerance; elsewhere: use relative tolerance
-        return (norm == 0.0f) ? diff <= eps : diff <= eps * norm;
+        return (norm == 0.0f) ? diff <= DeepEquals.FLOAT_EPSILON : diff <= DeepEquals.FLOAT_EPSILON * norm;
     }
 
     /**
@@ -2100,6 +2107,11 @@ public class DeepEquals {
                 return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)value);
             }
 
+            // Handle Enums - format as EnumType.NAME
+            if (value.getClass().isEnum()) {
+                return value.getClass().getSimpleName() + "." + ((Enum<?>) value).name();
+            }
+
             // If it's a simple type, use toString()
             if (Converter.isSimpleTypeConversionSupported(value.getClass())) {
                 return String.valueOf(value);
@@ -2133,7 +2145,7 @@ public class DeepEquals {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append(componentType.getSimpleName());  // Base type (int, String, etc)
+        sb.append(componentType.getSimpleName());  // Base type (int, String, etc.)
 
         // Only show outer dimensions
         int outerLength = Array.getLength(array);
@@ -2472,7 +2484,7 @@ public class DeepEquals {
 
     private static String sanitizeStringValue(String str) {
         if (str == null) return "null";
-        if (str.length() == 0) return "\"\"";
+        if (str.isEmpty()) return "\"\"";
         
         // Check if string looks like sensitive data
         String lowerStr = str.toLowerCase();

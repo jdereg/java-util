@@ -56,6 +56,11 @@
 >     * **Fixed O(n²) path building**: Changed getPath() from repeatedly adding to front of ArrayList (O(n²)) to building forward and reversing once (O(n)), improving performance for deep difference reporting
 >     * **Improved sensitive field detection**: Removed 'auth' from SENSITIVE_FIELD_NAMES to avoid false positives like 'author'; authentication fields are still caught by word-boundary regex
 >     * **Gated diff_item storage behind option**: The ItemsToCompare object is now only stored when 'deepequals.include.diff_item' is true, preventing retention of large object graphs when only the string diff is needed
+>   * **Additional GPT-5 review fixes (round 2)**:
+>     * **Fixed map key probe diff generation**: Map key comparisons now use 5-arg deepEquals overload to bypass diff generation, avoiding unnecessary work and options pollution
+>     * **Added DIFF_ITEM constant**: Exposed public constant for "diff_item" key to avoid stringly-typed usage
+>     * **Fixed Javadoc typo**: Corrected "instants hashCode()" to "instance's hashCode()" in deepHashCode documentation
+>     * **Added regex pattern commentary**: Clarified that HEX_32_PLUS and UUID_PATTERN use lowercase patterns since strings are lowercased before matching
 >     * **Added Arrays.equals fast-path**: Use native Arrays.equals for primitive arrays as optimization before element-by-element comparison with diff tracking
 >     * **Skip static/transient fields in formatting**: Aligned formatComplexObject and formatValueConcise with equality semantics by skipping static and transient fields
 >     * **Implemented global depth budget**: Pass remaining depth budget through child calls to ensure security limits are truly global across all recursive paths, preventing excessive recursion

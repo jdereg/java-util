@@ -144,6 +144,7 @@ public class DeepEquals {
     public static final String IGNORE_CUSTOM_EQUALS = "ignoreCustomEquals";
     public static final String ALLOW_STRINGS_TO_MATCH_NUMBERS = "stringsCanMatchNumbers";
     public static final String DIFF = "diff";
+    public static final String DIFF_ITEM = "diff_item";
     public static final String INCLUDE_DIFF_ITEM = "deepequals.include.diff_item";
     private static final String DEPTH_BUDGET = "__depthBudget";
     private static final String EMPTY = "∅";
@@ -166,6 +167,7 @@ public class DeepEquals {
             "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
     
     // Precompiled patterns for sensitive data detection
+    // Note: HEX_32_PLUS and UUID_PATTERN use lowercase patterns since strings are lowercased before matching
     private static final Pattern HEX_32_PLUS = Pattern.compile("^[a-f0-9]{32,}$");
     private static final Pattern SENSITIVE_WORDS = Pattern.compile(
             ".*\\b(password|pwd|secret|token|credential|auth|apikey|api_key|secretkey|secret_key|privatekey|private_key)\\b.*");
@@ -425,7 +427,7 @@ public class DeepEquals {
             // Only include if explicitly requested to avoid memory retention
             Boolean includeDiffItem = (Boolean) options.get(INCLUDE_DIFF_ITEM);
             if (includeDiffItem != null && includeDiffItem) {
-                ((Map<String, Object>) options).put("diff_item", top);
+                ((Map<String, Object>) options).put(DIFF_ITEM, top);
             }
         }
 
@@ -679,7 +681,7 @@ public class DeepEquals {
                         deepEquals(key1, key2, newOptions);
 
                         // Get the difference and add it to our stack
-                        ItemsToCompare diff = (ItemsToCompare) newOptions.get("diff_item");
+                        ItemsToCompare diff = (ItemsToCompare) newOptions.get(DIFF_ITEM);
                         if (diff != null) {
                             stack.addFirst(diff);
                         }
@@ -973,7 +975,9 @@ public class DeepEquals {
                 // Check if keys are equal
                 // Use a copy of visited set to avoid polluting it with failed comparisons
                 Set<Object> visitedCopy = new HashSet<>(visited);
-                if (deepEquals(entry.getKey(), otherEntry.getKey(), childOptions, visitedCopy)) {
+                // Call 5-arg overload directly to bypass diff generation for key probes
+                Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
+                if (deepEquals(entry.getKey(), otherEntry.getKey(), probeStack, childOptions, visitedCopy)) {
                     // Push value comparison only - keys are known to be equal
                     stack.addFirst(new ItemsToCompare(
                             entry.getValue(),                // map1 value
@@ -1030,7 +1034,9 @@ public class DeepEquals {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
                 Set<Object> visitedCopy = new HashSet<>(visited);
-                if (deepEquals(key, e.getKey(), options, visitedCopy)) {
+                // Call 5-arg overload directly to bypass diff generation for key probes
+                Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
+                if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {
                     ci.remove();
                     if (c.isEmpty()) it.remove();
                     return e;
@@ -1056,7 +1062,9 @@ public class DeepEquals {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
                 Set<Object> visitedCopy = new HashSet<>(visited);
-                if (deepEquals(key, e.getKey(), options, visitedCopy)) {
+                // Call 5-arg overload directly to bypass diff generation for key probes
+                Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
+                if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {
                     ci.remove();
                     if (c.isEmpty()) it.remove();
                     return e;
@@ -1454,7 +1462,7 @@ public class DeepEquals {
      * </p>
      * <p>
      * You can use it for generating your own hashCodes() on complex items, but understand that
-     * it *always* calls an instants hashCode() method if it has one that override's the
+     * it *always* calls an instance's hashCode() method if it has one that override's the
      * hashCode() method defined on Object.class.
      * </p>
      * @param obj the object to hash, may be {@code null}

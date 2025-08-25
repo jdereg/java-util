@@ -1218,6 +1218,12 @@ public class DeepEquals {
      * @param b Second number.
      * @return true if numbers are equal within the defined precision, false otherwise.
      */
+    private static boolean isIntegralNumber(Number n) {
+        return n instanceof Byte || n instanceof Short || 
+               n instanceof Integer || n instanceof Long ||
+               n instanceof AtomicInteger || n instanceof AtomicLong;
+    }
+    
     private static boolean compareNumbers(Number a, Number b) {
         // Handle floating point comparisons
         if (a instanceof Float || a instanceof Double ||
@@ -1249,7 +1255,12 @@ public class DeepEquals {
             return nearlyEqual(d1, d2, DOUBLE_EPSILON);
         }
 
-        // For non-floating point numbers, use exact comparison
+        // Fast path for integral numbers (avoids BigDecimal conversion)
+        if (isIntegralNumber(a) && isIntegralNumber(b)) {
+            return a.longValue() == b.longValue();
+        }
+        
+        // For other non-floating point numbers (e.g., BigDecimal, BigInteger), use exact comparison
         try {
             BigDecimal x = convert2BigDecimal(a);
             BigDecimal y = convert2BigDecimal(b);

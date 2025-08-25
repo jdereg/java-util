@@ -405,11 +405,15 @@ public class DeepEquals {
         boolean result = deepEquals(a, b, stack, options, visited);
 
         if (!result && !stack.isEmpty()) {
-            // Store both the breadcrumb and the difference ItemsToCompare
-            ItemsToCompare top = stack.peek();
-            String breadcrumb = generateBreadcrumb(stack);
-            ((Map<String, Object>) options).put(DIFF, breadcrumb);
-            ((Map<String, Object>) options).put("diff_item", top);
+            // Skip diff generation if we're in exploratory mode (candidate matching)
+            Boolean skipDiff = (Boolean) options.get("deepequals.skip.diff");
+            if (skipDiff == null || !skipDiff) {
+                // Store both the breadcrumb and the difference ItemsToCompare
+                ItemsToCompare top = stack.peek();
+                String breadcrumb = generateBreadcrumb(stack);
+                ((Map<String, Object>) options).put(DIFF, breadcrumb);
+                ((Map<String, Object>) options).put("diff_item", top);
+            }
         }
 
         return result;
@@ -802,11 +806,15 @@ public class DeepEquals {
 
             // Check candidates with matching hash
             boolean foundMatch = false;
+            // Create noDiff options for exploratory matching (avoids string/reflective work)
+            Map<String, Object> noDiffOptions = new HashMap<>(childOptions);
+            noDiffOptions.put("deepequals.skip.diff", true);
+            
             for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
                 Object item2 = it.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
                 Set<Object> visitedCopy = new HashSet<>(visited);
-                if (deepEquals(item1, item2, childOptions, visitedCopy)) {
+                if (deepEquals(item1, item2, noDiffOptions, visitedCopy)) {
                     foundMatch = true;
                     it.remove();                  // safe removal during iteration
                     if (candidates.isEmpty()) {
@@ -844,6 +852,10 @@ public class DeepEquals {
                                                  Map<Integer, List<Object>> buckets,
                                                  Map<String, ?> options,
                                                  Set<Object> visited) {
+        // Create noDiff options for exploratory matching (avoids string/reflective work)
+        Map<String, Object> noDiffOptions = new HashMap<>(options);
+        noDiffOptions.put("deepequals.skip.diff", true);
+        
         for (Iterator<Map.Entry<Integer, List<Object>>> it = buckets.entrySet().iterator(); it.hasNext();) {
             Map.Entry<Integer, List<Object>> bucket = it.next();
             List<Object> list = bucket.getValue();
@@ -851,7 +863,7 @@ public class DeepEquals {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
                 Set<Object> visitedCopy = new HashSet<>(visited);
-                if (deepEquals(probe, cand, options, visitedCopy)) {
+                if (deepEquals(probe, cand, noDiffOptions, visitedCopy)) {
                     li.remove();
                     if (list.isEmpty()) it.remove();
                     return true;
@@ -867,6 +879,10 @@ public class DeepEquals {
                                                           int excludeHash,
                                                           Map<String, ?> options,
                                                           Set<Object> visited) {
+        // Create noDiff options for exploratory matching (avoids string/reflective work)
+        Map<String, Object> noDiffOptions = new HashMap<>(options);
+        noDiffOptions.put("deepequals.skip.diff", true);
+        
         for (Iterator<Map.Entry<Integer, List<Object>>> it = buckets.entrySet().iterator(); it.hasNext();) {
             Map.Entry<Integer, List<Object>> bucket = it.next();
             if (bucket.getKey() == excludeHash) {
@@ -877,7 +893,7 @@ public class DeepEquals {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
                 Set<Object> visitedCopy = new HashSet<>(visited);
-                if (deepEquals(probe, cand, options, visitedCopy)) {
+                if (deepEquals(probe, cand, noDiffOptions, visitedCopy)) {
                     li.remove();
                     if (list.isEmpty()) it.remove();
                     return true;

@@ -676,8 +676,8 @@ public class DeepEquals {
         return true;
     }
 
-    // Create a child options map that preserves comparison semantics
-    // without carrying diff/diagnostic state down into sub-comparisons.
+    // Create child options for nested comparisons, preserving semantics and
+    // strictly *narrowing* any inherited depth budget.
     private static Map<String, Object> sanitizedChildOptions(Map<String, ?> options, ItemsToCompare currentItem) {
         Map<String, Object> child = new HashMap<>();
         if (options == null) {
@@ -691,11 +691,23 @@ public class DeepEquals {
         if (ignore != null) {
             child.put(IGNORE_CUSTOM_EQUALS, ignore);
         }
-        // Compute depth budget for child calls
-        int globalMax = getMaxRecursionDepth();
-        if (globalMax > 0 && currentItem != null) {
-            int budget = Math.max(0, globalMax - currentItem.depth);
-            child.put(DEPTH_BUDGET, budget);
+        // Depth budget: clamp to the tighter of (a) inherited budget (if any)
+        // and (b) remaining configured budget based on current depth.
+        Integer inherited = (options.get(DEPTH_BUDGET) instanceof Integer)
+                ? (Integer) options.get(DEPTH_BUDGET) : null;
+        int configured = getMaxRecursionDepth();
+        Integer remainingFromConfigured = (configured > 0 && currentItem != null)
+                ? Math.max(0, configured - currentItem.depth) : null;
+        Integer childBudget = null;
+        if (inherited != null && inherited > 0) {
+            childBudget = inherited;
+        }
+        if (remainingFromConfigured != null) {
+            childBudget = (childBudget == null) ? remainingFromConfigured
+                    : Math.min(childBudget, remainingFromConfigured);
+        }
+        if (childBudget != null && childBudget > 0) {
+            child.put(DEPTH_BUDGET, childBudget);
         }
         // Intentionally do NOT copy DIFF, "diff_item", "recursive_call", etc.
         return child;
@@ -879,7 +891,8 @@ public class DeepEquals {
 
         // Process map1 entries
         for (Map.Entry<?, ?> entry : map1.entrySet()) {
-            Collection<Map.Entry<?, ?>> otherEntries = fastLookup.get(deepHashCode(entry.getKey()));
+            int keyHash = deepHashCode(entry.getKey());
+            Collection<Map.Entry<?, ?>> otherEntries = fastLookup.get(keyHash);
 
             // Key not found in map2
             if (otherEntries == null || otherEntries.isEmpty()) {
@@ -916,7 +929,7 @@ public class DeepEquals {
 
                     iterator.remove();
                     if (otherEntries.isEmpty()) {
-                        fastLookup.remove(deepHashCode(entry.getKey()));
+                        fastLookup.remove(keyHash);
                     }
                     foundMatch = true;
                     break;
@@ -925,7 +938,7 @@ public class DeepEquals {
 
             if (!foundMatch) {
                 // Slow-path: scan other buckets (excluding this one) for an equal key
-                Map.Entry<?, ?> match = findAndRemoveMatchingKeyExcluding(entry.getKey(), fastLookup, deepHashCode(entry.getKey()), childOptions, visited);
+                Map.Entry<?, ?> match = findAndRemoveMatchingKeyExcluding(entry.getKey(), fastLookup, keyHash, childOptions, visited);
                 if (match == null) {
                     stack.addFirst(new ItemsToCompare(null, null, entry.getKey(), currentItem, true, Difference.MAP_MISSING_KEY));
                     return false;
@@ -1429,8 +1442,16 @@ public class DeepEquals {
             }
 
             if (obj instanceof Map) {
-                addCollectionToStack(stack, ((Map<?, ?>) obj).keySet());
-                addCollectionToStack(stack, ((Map<?, ?>) obj).values());
+                Map<?, ?> m = (Map<?, ?>) obj;
+                int mapHash = 0;
+                for (Map.Entry<?, ?> e : m.entrySet()) {
+                    int kh = hashElement(visited, e.getKey());
+                    int vh = hashElement(visited, e.getValue());
+                    // XOR ensures order independence (a^b == b^a)
+                    // But combine key and value first to prevent collision when swapping values
+                    mapHash ^= (31 * kh + vh);
+                }
+                hash += mapHash;
                 continue;
             }
 
@@ -2007,7 +2028,10 @@ public class DeepEquals {
                 return formatNumber((Number) value);
             }
 
-            if (value instanceof String) return "\"" + value + "\"";
+            if (value instanceof String) {
+                String s = (String) value;
+                return isSecureErrorsEnabled() ? sanitizeStringValue(s) : ("\"" + s + "\"");
+            }
             if (value instanceof Character) return "'" + value + "'";
 
             if (value instanceof Date) {
@@ -2281,7 +2305,8 @@ public class DeepEquals {
 
         // If the key is truly a String, keep quotes
         if (key instanceof String) {
-            return "\"" + key + "\"";
+            String s = (String) key;
+            return isSecureErrorsEnabled() ? sanitizeStringValue(s) : ("\"" + s + "\"");
         }
 
         // Otherwise, format the key in a "concise" way,
@@ -2300,7 +2325,7 @@ public class DeepEquals {
 
             // Use scientific notation only for very large or very small values
             if (Math.abs(doubleValue) >= 1e16 || (Math.abs(doubleValue) < 1e-6 && doubleValue != 0)) {
-                return String.format("%.6e", doubleValue);
+                return String.format(java.util.Locale.ROOT, "%.6e", doubleValue);
             }
 
             // For values between -1 and 1, ensure we don't use scientific notation
@@ -2315,14 +2340,14 @@ public class DeepEquals {
         if (value instanceof Double || value instanceof Float) {
             double d = value.doubleValue();
             if (Math.abs(d) >= 1e16 || (Math.abs(d) < 1e-6 && d != 0)) {
-                return String.format("%.6e", d);
+                return String.format(java.util.Locale.ROOT, "%.6e", d);
             }
             // For doubles, up to 15 decimal places
             if (value instanceof Double) {
-                return String.format("%.15g", d).replaceAll("\\.?0+$", "");
+                return String.format(java.util.Locale.ROOT, "%.15g", d).replaceAll("\\.?0+$", "");
             }
             // For floats, up to 7 decimal places
-            return String.format("%.7g", d).replaceAll("\\.?0+$", "");
+            return String.format(java.util.Locale.ROOT, "%.7g", d).replaceAll("\\.?0+$", "");
         }
 
         // For other number types (Integer, Long, etc.), use toString

@@ -51,6 +51,12 @@
 >     * **Added Arrays.equals fast-path**: Use native Arrays.equals for primitive arrays as optimization before element-by-element comparison with diff tracking
 >     * **Skip static/transient fields in formatting**: Aligned formatComplexObject and formatValueConcise with equality semantics by skipping static and transient fields
 >     * **Implemented global depth budget**: Pass remaining depth budget through child calls to ensure security limits are truly global across all recursive paths, preventing excessive recursion
+>   * **Additional nuanced fixes from GPT-5 review**:
+>     * **Fixed non-monotonic depth budget**: Clamp child budget to tighter of inherited budget and remaining configured budget to prevent depth limit bypass
+>     * **Added string sanitization for secure errors**: Sanitize map keys and string values when secure errors are enabled to prevent sensitive data leakage
+>     * **Optimized decomposeMap**: Avoid rehashing keys multiple times by computing hash once per iteration
+>     * **Fixed deepHashCode Map collisions**: Hash key-value pairs together using XOR for order-independent hashing that reduces collisions
+>     * **Added Locale.ROOT for numeric formatting**: Ensure consistent decimal formatting across all locales
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

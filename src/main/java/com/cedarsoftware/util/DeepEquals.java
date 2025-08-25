@@ -1462,7 +1462,7 @@ public class DeepEquals {
      * </p>
      * <p>
      * You can use it for generating your own hashCodes() on complex items, but understand that
-     * it *always* calls an instance's hashCode() method if it has one that override's the
+     * it *always* calls an instance's hashCode() method if it has one that overrides the
      * hashCode() method defined on Object.class.
      * </p>
      * @param obj the object to hash, may be {@code null}
@@ -2396,7 +2396,7 @@ public class DeepEquals {
         // Otherwise, format the key in a "concise" way,
         // but remove any leading/trailing quotes that come
         // from 'formatValueConcise()' if it decides it's a String.
-        String text = formatValue(key);
+        String text = formatValueConcise(key);
         return StringUtilities.removeLeadingAndTrailingQuotes(text);
     }
 

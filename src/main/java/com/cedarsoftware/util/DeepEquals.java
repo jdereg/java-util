@@ -154,6 +154,14 @@ public class DeepEquals {
     // Matches strings that are properly padded Base64 (groups of 4 chars with proper padding)
     private static final Pattern BASE64_PATTERN = Pattern.compile(
             "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$");
+    
+    // Precompiled patterns for sensitive data detection
+    private static final Pattern HEX_32_PLUS = Pattern.compile("^[a-f0-9]{32,}$");
+    private static final Pattern SENSITIVE_WORDS = Pattern.compile(
+            ".*\\b(password|pwd|secret|token|credential|auth|apikey|api_key|secretkey|secret_key|privatekey|private_key)\\b.*");
+    private static final Pattern UUID_PATTERN = Pattern.compile(
+            "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$");
+    
     private static final double SCALE_DOUBLE = 1e12;  // Aligned with DOUBLE_EPSILON (1/epsilon)
     private static final float SCALE_FLOAT = 1e6f;     // Aligned with FLOAT_EPSILON (1/epsilon)
 
@@ -2545,12 +2553,12 @@ public class DeepEquals {
     private static boolean looksLikeSensitiveData(String lowerStr) {
         // Check for patterns that look like sensitive data
         // Note: "key" alone is too broad, we look for more specific patterns like "apikey", "secretkey", etc.
-        if (lowerStr.matches(".*\\b(password|pwd|secret|token|credential|auth|apikey|api_key|secretkey|secret_key|privatekey|private_key)\\b.*")) {
+        if (SENSITIVE_WORDS.matcher(lowerStr).matches()) {
             return true;
         }
         
         // Check for long hex strings (32+ chars) - likely hashes or keys
-        if (lowerStr.matches("^[a-f0-9]{32,}$")) {
+        if (HEX_32_PLUS.matcher(lowerStr).matches()) {
             return true;
         }
         
@@ -2561,7 +2569,7 @@ public class DeepEquals {
         }
         
         // Check for UUID patterns - these are generally safe to display
-        if (lowerStr.matches("^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$")) {
+        if (UUID_PATTERN.matcher(lowerStr).matches()) {
             return false; // UUIDs are generally safe to display
         }
         

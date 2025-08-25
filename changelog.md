@@ -62,6 +62,7 @@
 >     * **Fixed documentation to match default security settings**: Updated Javadoc to correctly state that default safeguards are enabled (100k limits for collections/arrays/maps, 1k for object fields, 1M for recursion depth)
 >     * **Added fast path for integral number comparison**: Avoid expensive BigDecimal conversion for Byte, Short, Integer, Long, AtomicInteger, and AtomicLong comparisons
 >     * **Added special case handling for AtomicInteger and AtomicLong**: Use get() methods directly like AtomicBoolean, avoiding reflective field access for better performance and consistency
+>     * **Precompiled sensitive data regex patterns**: Avoid regex compilation overhead on every call to looksLikeSensitiveData() by using precompiled Pattern objects
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

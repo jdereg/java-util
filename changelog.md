@@ -57,6 +57,7 @@
 >     * **Optimized decomposeMap**: Avoid rehashing keys multiple times by computing hash once per iteration
 >     * **Fixed deepHashCode Map collisions**: Hash key-value pairs together using XOR for order-independent hashing that reduces collisions
 >     * **Added Locale.ROOT for numeric formatting**: Ensure consistent decimal formatting across all locales
+>     * **Added Deque support with List compatibility**: List and Deque now compare as equal when containing the same ordered elements, treating both as ordered sequences that allow duplicates (berries over branches philosophy)
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

@@ -11,7 +11,9 @@ import java.net.URI;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -20,19 +22,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import static com.cedarsoftware.util.Converter.convert2BigDecimal;
 import static com.cedarsoftware.util.Converter.convert2boolean;
@@ -514,12 +513,18 @@ public class DeepEquals {
                 continue;
             }
 
-            // List interface defines order as required as part of equality
-            if (key1 instanceof List) {   // If List, the order must match
-                if (!(key2 instanceof List)) {
+            // List and Deque interfaces define order as required as part of equality
+            // Both represent ordered sequences that allow duplicates, so they can be compared
+            boolean key1Ordered = key1 instanceof List || key1 instanceof Deque;
+            boolean key2Ordered = key2 instanceof List || key2 instanceof Deque;
+            
+            if (key1Ordered || key2Ordered) {
+                if (!(key1Ordered && key2Ordered)) {
+                    // One is ordered, the other is not (or not a collection)
                     stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
                     return false;
                 }
+                // Both are ordered collections - compare with order
                 if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, itemsToCompare, maxCollectionSize)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
                     // takes precedence over element-level differences
@@ -530,7 +535,7 @@ public class DeepEquals {
                     return false;
                 }
                 continue;
-            } 
+            }
 
             // Unordered Collection comparison
             if (key1 instanceof Collection) {
@@ -1423,9 +1428,9 @@ public class DeepEquals {
                 continue;
             }
 
-            // Order matters for List - it is defined as part of equality
-            if (obj instanceof List) {
-                List<?> col = (List<?>) obj;
+            // Order matters for List and Deque - it is defined as part of equality
+            if (obj instanceof List || obj instanceof Deque) {
+                Collection<?> col = (Collection<?>) obj;
                 long result = 1;
 
                 for (Object element : col) {
@@ -1435,7 +1440,7 @@ public class DeepEquals {
                 continue;
             }
 
-            // Ignore order for non-List Collections (not part of definition of equality)
+            // Ignore order for non-List/non-Deque Collections (not part of definition of equality)
             if (obj instanceof Collection) {
                 addCollectionToStack(stack, (Collection<?>) obj);
                 continue;

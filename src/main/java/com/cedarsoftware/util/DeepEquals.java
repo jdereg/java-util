@@ -1834,9 +1834,10 @@ public class DeepEquals {
         List<ItemsToCompare> path = new ArrayList<>();
         ItemsToCompare current = diffItem;
         while (current != null) {
-            path.add(0, current);  // Add to front to maintain root→diff order
+            path.add(current);  // Build forward for O(n) time
             current = current.parent;
         }
+        Collections.reverse(path);  // Reverse once to get root→diff order
         return path;
     }
 

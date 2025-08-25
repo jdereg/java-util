@@ -53,6 +53,7 @@
 >     * **Optimized probe comparisons to bypass diff generation**: Call 5-arg deepEquals overload directly for exploratory matching in unordered collections, completely avoiding diff generation overhead (no string formatting or reflection) for N× probe comparisons
 >     * **Fixed Locale hygiene**: Use Locale.ROOT for all toLowerCase() calls to avoid Turkish-i surprises; added ThreadLocal UTC SimpleDateFormat for consistent date formatting across locales
 >     * **Pre-size hash buckets for performance**: HashMap instances for unordered collection and map matching are now pre-sized with capacity = size * 4/3 to avoid rehashing on large inputs
+>     * **Fixed O(n²) path building**: Changed getPath() from repeatedly adding to front of ArrayList (O(n²)) to building forward and reversing once (O(n)), improving performance for deep difference reporting
 >     * **Added Arrays.equals fast-path**: Use native Arrays.equals for primitive arrays as optimization before element-by-element comparison with diff tracking
 >     * **Skip static/transient fields in formatting**: Aligned formatComplexObject and formatValueConcise with equality semantics by skipping static and transient fields
 >     * **Implemented global depth budget**: Pass remaining depth budget through child calls to ensure security limits are truly global across all recursive paths, preventing excessive recursion

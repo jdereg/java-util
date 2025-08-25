@@ -770,7 +770,8 @@ public class DeepEquals {
         }
 
         // Group col2 items by hash for efficient lookup (with slow-path fallback)
-        Map<Integer, List<Object>> hashGroups = new HashMap<>();
+        // Pre-size to avoid rehashing: capacity = size * 4/3 to account for 0.75 load factor
+        Map<Integer, List<Object>> hashGroups = new HashMap<>(Math.max(16, col2.size() * 4 / 3));
         for (Object o : col2) {
             int hash = deepHashCode(o);
             hashGroups.computeIfAbsent(hash, k -> new ArrayList<>()).add(o);
@@ -924,7 +925,8 @@ public class DeepEquals {
         }
 
         // Build lookup of map2 entries for efficient matching (with slow-path fallback)
-        Map<Integer, Collection<Map.Entry<?, ?>>> fastLookup = new HashMap<>();
+        // Pre-size to avoid rehashing: capacity = size * 4/3 to account for 0.75 load factor
+        Map<Integer, Collection<Map.Entry<?, ?>>> fastLookup = new HashMap<>(Math.max(16, map2.size() * 4 / 3));
         for (Map.Entry<?, ?> entry : map2.entrySet()) {
             int hash = deepHashCode(entry.getKey());
             fastLookup.computeIfAbsent(hash, k -> new ArrayList<>())

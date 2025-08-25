@@ -492,6 +492,24 @@ public class DeepEquals {
                 }
             }
 
+            if (key1 instanceof AtomicInteger && key2 instanceof AtomicInteger) {
+                if (!compareAtomicInteger((AtomicInteger) key1, (AtomicInteger) key2)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
+                    return false;
+                } else {
+                    continue;
+                }
+            }
+
+            if (key1 instanceof AtomicLong && key2 instanceof AtomicLong) {
+                if (!compareAtomicLong((AtomicLong) key1, (AtomicLong) key2)) {
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.VALUE_MISMATCH));
+                    return false;
+                } else {
+                    continue;
+                }
+            }
+
             final Class<?> key1Class = key1.getClass();
             final Class<?> key2Class = key2.getClass();
 
@@ -1336,6 +1354,14 @@ public class DeepEquals {
      * @return true if both have the same value, false otherwise.
      */
     private static boolean compareAtomicBoolean(AtomicBoolean a, AtomicBoolean b) {
+        return a.get() == b.get();
+    }
+
+    private static boolean compareAtomicInteger(AtomicInteger a, AtomicInteger b) {
+        return a.get() == b.get();
+    }
+
+    private static boolean compareAtomicLong(AtomicLong a, AtomicLong b) {
         return a.get() == b.get();
     }
 

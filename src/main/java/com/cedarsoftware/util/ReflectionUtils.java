@@ -1503,59 +1503,54 @@ public final class ReflectionUtils {
         Arrays.fill(types, Object.class);
         MethodCacheKey key = new MethodCacheKey(beanClass, methodName, types);
 
-        // Check cache first
-        Method cached = METHOD_CACHE.get().get(key);
-        if (cached != null || METHOD_CACHE.get().containsKey(key)) {
-            return cached;
-        }
-
-        // Collect all matching methods from class hierarchy and interfaces
-        List<Method> candidates = new ArrayList<>();
-        Set<Class<?>> visited = new HashSet<>();
-        Deque<Class<?>> toVisit = new ArrayDeque<>();
-        toVisit.add(beanClass);
-        
-        while (!toVisit.isEmpty()) {
-            Class<?> current = toVisit.poll();
-            if (!visited.add(current)) {
-                continue; // Already processed this class/interface
-            }
+        // Use computeIfAbsent for atomic cache access
+        return METHOD_CACHE.get().computeIfAbsent(key, k -> {
+            // Collect all matching methods from class hierarchy and interfaces
+            List<Method> candidates = new ArrayList<>();
+            Set<Class<?>> visited = new HashSet<>();
+            Deque<Class<?>> toVisit = new ArrayDeque<>();
+            toVisit.add(beanClass);
             
-            // Check declared methods in current class/interface
-            for (Method method : current.getDeclaredMethods()) {
-                if (method.getName().equals(methodName) && method.getParameterCount() == argCount) {
-                    candidates.add(method);
+            while (!toVisit.isEmpty()) {
+                Class<?> current = toVisit.poll();
+                if (!visited.add(current)) {
+                    continue; // Already processed this class/interface
+                }
+                
+                // Check declared methods in current class/interface
+                for (Method method : current.getDeclaredMethods()) {
+                    if (method.getName().equals(methodName) && method.getParameterCount() == argCount) {
+                        candidates.add(method);
+                    }
+                }
+                
+                // Add superclass to visit (if exists)
+                Class<?> superclass = current.getSuperclass();
+                if (superclass != null) {
+                    toVisit.add(superclass);
+                }
+                
+                // Add interfaces to visit
+                for (Class<?> iface : current.getInterfaces()) {
+                    toVisit.add(iface);
                 }
             }
-            
-            // Add superclass to visit (if exists)
-            Class<?> superclass = current.getSuperclass();
-            if (superclass != null) {
-                toVisit.add(superclass);
+
+            if (candidates.isEmpty()) {
+                throw new IllegalArgumentException(
+                        String.format("Method '%s' with %d parameters not found in %s, its superclasses, or interfaces",
+                                methodName, argCount, beanClass.getName())
+                );
             }
-            
-            // Add interfaces to visit
-            for (Class<?> iface : current.getInterfaces()) {
-                toVisit.add(iface);
-            }
-        }
 
-        if (candidates.isEmpty()) {
-            throw new IllegalArgumentException(
-                    String.format("Method '%s' with %d parameters not found in %s, its superclasses, or interfaces",
-                            methodName, argCount, beanClass.getName())
-            );
-        }
+            // Select the best matching method using our composite strategy
+            Method selected = selectMethod(candidates);
 
-        // Select the best matching method using our composite strategy
-        Method selected = selectMethod(candidates);
+            // Attempt to make the method accessible
+            secureSetAccessible(selected);
 
-        // Attempt to make the method accessible
-        secureSetAccessible(selected);
-
-        // Cache the result
-        METHOD_CACHE.get().put(key, selected);
-        return selected;
+            return selected;
+        });
     }
 
     /**
@@ -1697,9 +1692,6 @@ public final class ReflectionUtils {
 
         // Sort the constructors in optimal order if there's more than one
         if (result.length > 1) {
-            boolean isFinal = Modifier.isFinal(clazz.getModifiers());
-            boolean isException = Throwable.class.isAssignableFrom(clazz);
-
             Arrays.sort(result, (c1, c2) -> {
                 // First, sort by accessibility (public > protected > package > private)
                 int mod1 = c1.getModifiers();
@@ -1724,15 +1716,8 @@ public final class ReflectionUtils {
                 }
 
                 // Within same accessibility level, sort by parameter count
-                int paramDiff = c1.getParameterCount() - c2.getParameterCount();
-
-                // For exceptions/final classes: prefer more parameters
-                // For regular classes: also prefer more parameters (more specific first)
-                if (isFinal || isException) {
-                    return -paramDiff;  // More parameters first
-                } else {
-                    return -paramDiff;  // More parameters first (more specific)
-                }
+                // Always prefer more parameters (more specific constructors first)
+                return c2.getParameterCount() - c1.getParameterCount();
             });
         }
 

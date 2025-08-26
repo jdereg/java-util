@@ -61,6 +61,8 @@
 >   * **Fixed enum field filter logic**: Corrected Enum.class.isAssignableFrom() direction (was backwards)
 >   * **Removed arbitrary field filtering**: Eliminated special-case filtering of 'internal' enum fields
 >   * **Made log obfuscation configurable**: Added isLogObfuscationEnabled() method for runtime control
+>   * **Fixed null caching in computeIfAbsent**: Changed getMethod(instance, methodName, argCount) to use computeIfAbsent atomically instead of error-prone check-then-compute pattern
+>   * **Removed redundant comparator logic**: Simplified constructor sorting by removing identical if-else branches and unused variables
 >     * **Optimized probe comparisons to bypass diff generation**: Call 5-arg deepEquals overload directly for exploratory matching in unordered collections, completely avoiding diff generation overhead (no string formatting or reflection) for N× probe comparisons
 >     * **Fixed Locale hygiene**: Use Locale.ROOT for all toLowerCase() calls to avoid Turkish-i surprises; added ThreadLocal UTC SimpleDateFormat for consistent date formatting across locales
 >     * **Pre-size hash buckets for performance**: HashMap instances for unordered collection and map matching are now pre-sized with capacity = size * 4/3 to avoid rehashing on large inputs

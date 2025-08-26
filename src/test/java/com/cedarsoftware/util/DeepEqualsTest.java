@@ -1907,4 +1907,61 @@ public class DeepEqualsTest
     String getDiff(Map<String, Object> options) {
         return (String) options.get(DeepEquals.DIFF);
     }
+
+    @Test
+    public void testUnmodifiableCollectionsWithDifferentImplementations() {
+        // Test that DeepEquals compares collection contents, not exact implementation classes
+        // This simulates what happens when collections are serialized/deserialized to different types
+        
+        // Test with Collections.unmodifiableCollection vs ArrayList (simulating deserialized SealableList)
+        Collection<String> unmodCollection = Collections.unmodifiableCollection(Arrays.asList("foo", "bar"));
+        Collection<String> regularList = new ArrayList<>(Arrays.asList("foo", "bar"));
+        
+        Map<String, Object> options = new HashMap<>();
+        // Collections with same content should be equal regardless of implementation class
+        assert DeepEquals.deepEquals(unmodCollection, regularList, options) : 
+            "Collections with same content should be equal: " + getDiff(options);
+        
+        // Test with unmodifiable list vs regular list
+        List<String> unmodList = Collections.unmodifiableList(Arrays.asList("a", "b", "c"));
+        List<String> arrayList = new ArrayList<>(Arrays.asList("a", "b", "c"));
+        options.clear();
+        assert DeepEquals.deepEquals(unmodList, arrayList, options) :
+            "Lists with same content should be equal: " + getDiff(options);
+        
+        // Test with unmodifiable set vs regular set
+        Set<String> unmodSet = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("x", "y", "z")));
+        Set<String> hashSet = new HashSet<>(Arrays.asList("x", "y", "z"));
+        options.clear();
+        assert DeepEquals.deepEquals(unmodSet, hashSet, options) :
+            "Sets with same content should be equal: " + getDiff(options);
+        
+        // Test with unmodifiable map vs regular map
+        Map<String, String> map = new HashMap<>();
+        map.put("key1", "value1");
+        map.put("key2", "value2");
+        Map<String, String> unmodMap = Collections.unmodifiableMap(map);
+        Map<String, String> regularMap = new HashMap<>(map);
+        options.clear();
+        assert DeepEquals.deepEquals(unmodMap, regularMap, options) :
+            "Maps with same content should be equal: " + getDiff(options);
+            
+        // Test sorted collections
+        SortedSet<String> sortedSet = new TreeSet<>(Arrays.asList("m", "n", "o"));
+        SortedSet<String> unmodSortedSet = Collections.unmodifiableSortedSet(sortedSet);
+        SortedSet<String> otherTreeSet = new TreeSet<>(Arrays.asList("m", "n", "o"));
+        options.clear();
+        assert DeepEquals.deepEquals(unmodSortedSet, otherTreeSet, options) :
+            "Sorted sets with same content should be equal: " + getDiff(options);
+            
+        // Test sorted maps
+        SortedMap<String, Integer> sortedMap = new TreeMap<>();
+        sortedMap.put("a", 1);
+        sortedMap.put("b", 2);
+        SortedMap<String, Integer> unmodSortedMap = Collections.unmodifiableSortedMap(sortedMap);
+        SortedMap<String, Integer> otherTreeMap = new TreeMap<>(sortedMap);
+        options.clear();
+        assert DeepEquals.deepEquals(unmodSortedMap, otherTreeMap, options) :
+            "Sorted maps with same content should be equal: " + getDiff(options);
+    }
 }

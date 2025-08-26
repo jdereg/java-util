@@ -554,12 +554,7 @@ public class DeepEquals {
             boolean key1Ordered = key1 instanceof List || key1 instanceof Deque;
             boolean key2Ordered = key2 instanceof List || key2 instanceof Deque;
             
-            if (key1Ordered || key2Ordered) {
-                if (!(key1Ordered && key2Ordered)) {
-                    // One is ordered, the other is not (or not a collection)
-                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
-                    return false;
-                }
+            if (key1Ordered && key2Ordered) {
                 // Both are ordered collections - compare with order
                 if (!decomposeOrderedCollection((Collection<?>) key1, (Collection<?>) key2, stack, itemsToCompare, maxCollectionSize)) {
                     // Push VALUE_MISMATCH so parent's container-level description (e.g. "collection size mismatch")
@@ -571,6 +566,28 @@ public class DeepEquals {
                     return false;
                 }
                 continue;
+            } else if (key1Ordered || key2Ordered) {
+                // One is ordered (List/Deque), the other is not
+                // Check if the non-ordered one is still a Collection
+                if (key1 instanceof Collection && key2 instanceof Collection) {
+                    // Both are collections but different categories
+                    // Check if the non-ordered one is a Set (which has specific equality semantics)
+                    boolean key1IsSet = key1 instanceof Set;
+                    boolean key2IsSet = key2 instanceof Set;
+                    
+                    if (key1IsSet || key2IsSet) {
+                        // Set vs List/Deque is a type mismatch - they have incompatible equality semantics
+                        stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
+                        return false;
+                    }
+                    // Neither is a Set, so we have a plain Collection vs List/Deque
+                    // This can happen with Collections.unmodifiableCollection() wrapping a List
+                    // Compare as unordered collections (fall through)
+                } else {
+                    // One is an ordered collection, the other is not a collection at all
+                    stack.addFirst(new ItemsToCompare(key1, key2, itemsToCompare, Difference.TYPE_MISMATCH));
+                    return false;
+                }
             }
 
             // Unordered Collection comparison

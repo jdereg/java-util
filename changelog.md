@@ -1,5 +1,10 @@
 ### Revision History
 #### 4.0.1 (unreleased)
+> * **FIXED**: `DeepEquals` collection comparison was too strict when comparing different Collection implementations:
+>   * **Fixed UnmodifiableCollection comparison**: Collections.unmodifiableCollection() results can now be compared with Lists/ArrayLists based on content
+>   * **Relaxed plain Collection vs List comparison**: Plain Collection implementations (not Set) are now compared as unordered collections with Lists
+>   * **Preserved Set vs List distinction**: Sets and Lists still correctly report type mismatch due to incompatible equality semantics
+>   * **Added comprehensive test coverage**: New test ensures various unmodifiable collection types compare correctly with their mutable counterparts
 > * **FIXED**: `SafeSimpleDateFormat` thread-safety and lenient mode issues:
 >   * **Fixed NPE in setters**: Initialize parent DateFormat fields (calendar, numberFormat) in constructor to prevent NPEs when setters are called
 >   * **Fixed lenient propagation**: Ensure lenient setting is properly applied to both Calendar and SimpleDateFormat in State.build()
@@ -91,6 +96,11 @@
 >     * **Added special case handling for AtomicInteger and AtomicLong**: Use get() methods directly like AtomicBoolean, avoiding reflective field access for better performance and consistency
 >     * **Precompiled sensitive data regex patterns**: Avoid regex compilation overhead on every call to looksLikeSensitiveData() by using precompiled Pattern objects
 >     * **Added Enum handling as simple type**: Use reference equality (==) for enum comparisons and format as EnumType.NAME, avoiding unnecessary reflective field walking
+> * **IMPROVED**: `ReflectionUtils` enhancements based on GPT-5 review:
+>   * **Fixed getMethod interface search**: Now properly searches entire interface hierarchy using BFS traversal to find default methods
+>   * **Removed pre-emptive SecurityManager checks**: Removed unnecessary SecurityManager checks from call() methods since setAccessible is already wrapped
+>   * **Documented null-caching requirement**: Added clear documentation to all cache setter methods that custom Map implementations must support null values
+>   * **Fixed getClassAnnotation javadoc**: Corrected @throws documentation to accurately reflect that only annoClass=null throws, classToCheck=null returns null
 #### 4.0.0
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")

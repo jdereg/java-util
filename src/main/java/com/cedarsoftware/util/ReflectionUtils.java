@@ -187,9 +187,15 @@ public final class ReflectionUtils {
      * cache implementation. The provided cache must be thread-safe and should implement
      * the Map interface. This method is typically called once during application initialization.
      * </p>
+     * <p>
+     * <b>Important:</b> The provided cache implementation must support storing null values,
+     * as the caching logic uses null to represent "not found" results to avoid repeated
+     * expensive lookups. If using a standard ConcurrentHashMap, consider using
+     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * </p>
      *
      * @param cache The custom cache implementation to use for storing method lookups.
-     *             Must be thread-safe and implement Map interface.
+     *             Must be thread-safe, implement Map interface, and support null values.
      */
     public static void setMethodCache(Map<Object, Method> cache) {
         swap(METHOD_CACHE, ensureThreadSafe(cache));
@@ -202,9 +208,15 @@ public final class ReflectionUtils {
      * cache implementation. The provided cache must be thread-safe and should implement
      * the Map interface. This method is typically called once during application initialization.
      * </p>
+     * <p>
+     * <b>Important:</b> The provided cache implementation must support storing null values,
+     * as the caching logic uses null to represent "not found" results to avoid repeated
+     * expensive lookups. If using a standard ConcurrentHashMap, consider using
+     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * </p>
      *
      * @param cache The custom cache implementation to use for storing field lookups.
-     *             Must be thread-safe and implement Map interface.
+     *             Must be thread-safe, implement Map interface, and support null values.
      */
     public static void setClassFieldsCache(Map<Object, Collection<Field>> cache) {
         swap(FIELDS_CACHE, ensureThreadSafe(cache));
@@ -217,9 +229,15 @@ public final class ReflectionUtils {
      * cache implementation. The provided cache must be thread-safe and should implement
      * the Map interface. This method is typically called once during application initialization.
      * </p>
+     * <p>
+     * <b>Important:</b> The provided cache implementation must support storing null values,
+     * as the caching logic uses null to represent "not found" results to avoid repeated
+     * expensive lookups. If using a standard ConcurrentHashMap, consider using
+     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * </p>
      *
      * @param cache The custom cache implementation to use for storing field lookups.
-     *             Must be thread-safe and implement Map interface.
+     *             Must be thread-safe, implement Map interface, and support null values.
      */
     public static void setFieldCache(Map<Object, Field> cache) {
         swap(FIELD_NAME_CACHE, ensureThreadSafe(cache));
@@ -232,9 +250,15 @@ public final class ReflectionUtils {
      * cache implementation. The provided cache must be thread-safe and should implement
      * the Map interface. This method is typically called once during application initialization.
      * </p>
+     * <p>
+     * <b>Important:</b> The provided cache implementation must support storing null values,
+     * as the caching logic uses null to represent "not found" results to avoid repeated
+     * expensive lookups. If using a standard ConcurrentHashMap, consider using
+     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * </p>
      *
      * @param cache The custom cache implementation to use for storing class annotation lookups.
-     *             Must be thread-safe and implement Map interface.
+     *             Must be thread-safe, implement Map interface, and support null values.
      */
     public static void setClassAnnotationCache(Map<Object, Annotation> cache) {
         swap(CLASS_ANNOTATION_CACHE, ensureThreadSafe(cache));
@@ -247,9 +271,15 @@ public final class ReflectionUtils {
      * cache implementation. The provided cache must be thread-safe and should implement
      * the Map interface. This method is typically called once during application initialization.
      * </p>
+     * <p>
+     * <b>Important:</b> The provided cache implementation must support storing null values,
+     * as the caching logic uses null to represent "not found" results to avoid repeated
+     * expensive lookups. If using a standard ConcurrentHashMap, consider using
+     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * </p>
      *
      * @param cache The custom cache implementation to use for storing method annotation lookups.
-     *             Must be thread-safe and implement Map interface.
+     *             Must be thread-safe, implement Map interface, and support null values.
      */
     public static void setMethodAnnotationCache(Map<Object, Annotation> cache) {
         swap(METHOD_ANNOTATION_CACHE, ensureThreadSafe(cache));
@@ -262,9 +292,15 @@ public final class ReflectionUtils {
      * cache implementation. The provided cache must be thread-safe and should implement
      * the Map interface. This method is typically called once during application initialization.
      * </p>
+     * <p>
+     * <b>Important:</b> The provided cache implementation must support storing null values,
+     * as the caching logic uses null to represent "not found" results to avoid repeated
+     * expensive lookups. If using a standard ConcurrentHashMap, consider using
+     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * </p>
      *
      * @param cache The custom cache implementation to use for storing constructor lookups.
-     *             Must be thread-safe and implement Map interface.
+     *             Must be thread-safe, implement Map interface, and support null values.
      */
     public static void setConstructorCache(Map<Object, Constructor<?>> cache) {
         swap(CONSTRUCTOR_CACHE, ensureThreadSafe(cache));
@@ -277,9 +313,15 @@ public final class ReflectionUtils {
      * cache implementation. The provided cache must be thread-safe and should implement
      * the Map interface. This method is typically called once during application initialization.
      * </p>
+     * <p>
+     * <b>Important:</b> The provided cache implementation must support storing null values,
+     * as the caching logic uses null to represent "not found" results to avoid repeated
+     * expensive lookups. If using a standard ConcurrentHashMap, consider using
+     * ConcurrentHashMapNullSafe from java-util or another implementation that supports null values.
+     * </p>
      *
      * @param cache The custom cache implementation to use for storing constructor lookups.
-     *             Must be thread-safe and implement Map interface.
+     *             Must be thread-safe, implement Map interface, and support null values.
      */
     public static void setSortedConstructorsCache(Map<Object, Constructor<?>[]> cache) {
         swap(SORTED_CONSTRUCTORS_CACHE, ensureThreadSafe(cache));
@@ -724,11 +766,11 @@ public final class ReflectionUtils {
      * }
      * </pre>
      *
-     * @param classToCheck The class to search for the annotation
+     * @param classToCheck The class to search for the annotation (may be null)
      * @param annoClass The annotation class to search for
      * @param <T> The type of the annotation
-     * @return The annotation if found, null otherwise
-     * @throws IllegalArgumentException if either classToCheck or annoClass is null
+     * @return The annotation if found, null if not found or if classToCheck is null
+     * @throws IllegalArgumentException if annoClass is null
      */
     public static <T extends Annotation> T getClassAnnotation(final Class<?> classToCheck, final Class<T> annoClass) {
         if (classToCheck == null) {
@@ -1308,15 +1350,6 @@ public final class ReflectionUtils {
         }
         
         // Security check: Verify permission for reflection access
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            try {
-                sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
-            } catch (SecurityException e) {
-                throw new SecurityException("Access denied: ReflectionUtils.call() requires suppressAccessChecks permission for method: " + method.getName(), e);
-            }
-        }
-        
         try {
             return method.invoke(instance, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -1376,15 +1409,6 @@ public final class ReflectionUtils {
      */
     public static Object call(Object instance, String methodName, Object... args) {
         // Security check: Verify permission for reflection access
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            try {
-                sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
-            } catch (SecurityException e) {
-                throw new SecurityException("Access denied: ReflectionUtils.call() requires suppressAccessChecks permission for method: " + methodName, e);
-            }
-        }
-        
         Method method = getMethod(instance, methodName, args.length);
         try {
             return method.invoke(instance, args);
@@ -1431,20 +1455,58 @@ public final class ReflectionUtils {
 
         // Atomically retrieve (or compute) the method
         return METHOD_CACHE.get().computeIfAbsent(key, k -> {
-            Method method = null;
+            // 1) Walk class chain first
             Class<?> current = c;
-
-            while (current != null && method == null) {
+            while (current != null) {
                 try {
-                    method = current.getDeclaredMethod(methodName, types);
+                    Method method = current.getDeclaredMethod(methodName, types);
                     secureSetAccessible(method);
-                } catch (Exception ignored) {
-                    // Move on up the superclass chain
+                    return method;
+                } catch (NoSuchMethodException ignored) {
+                    // Not in this class, try superclass
                 }
                 current = current.getSuperclass();
             }
+            
+            // 2) Walk interface graph (BFS) for default methods
+            Set<Class<?>> seen = new HashSet<>();
+            Deque<Class<?>> toVisit = new ArrayDeque<>();
+            toVisit.add(c);
+            
+            while (!toVisit.isEmpty()) {
+                Class<?> x = toVisit.poll();
+                if (!seen.add(x)) continue;
+                
+                for (Class<?> iface : x.getInterfaces()) {
+                    try {
+                        Method method = iface.getDeclaredMethod(methodName, types);
+                        // Default/public interface methods don't always need elevation, but safe to call
+                        secureSetAccessible(method);
+                        return method;
+                    } catch (NoSuchMethodException ignored) {
+                        // Not in this interface
+                    }
+                    toVisit.add(iface);
+                }
+                
+                // Also check superclass interfaces
+                Class<?> superclass = x.getSuperclass();
+                if (superclass != null) {
+                    toVisit.add(superclass);
+                }
+            }
+            
+            // 3) Fallback to JDK resolution for public methods across interfaces
+            try {
+                Method method = c.getMethod(methodName, types);
+                secureSetAccessible(method);
+                return method;
+            } catch (NoSuchMethodException ignored) {
+                // Method not found anywhere
+            }
+            
             // Will be null if not found
-            return method;
+            return null;
         });
     }
 

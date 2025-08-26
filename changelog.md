@@ -50,6 +50,17 @@
 >     * **Fixed formatDifference crash**: Use detailNode approach to properly access parent's objects when rendering container category differences, preventing crashes when accessing child objects with parent's category
 >     * **Performance optimization for candidate matching**: Skip diff assembly during exploratory comparisons in unordered collections by passing 'deepequals.skip.diff' flag, avoiding expensive string/reflective work for failed matches
 >     * **Removed unreachable AtomicInteger/AtomicLong branches**: Deleted redundant special-case comparisons for AtomicInteger and AtomicLong that were unreachable after generic Number handling; these types are correctly handled by the integral fast path in compareNumbers()
+> * **SECURITY & CORRECTNESS**: `ReflectionUtils` comprehensive fixes based on GPT-5 security audit:
+>   * **Fixed over-eager setAccessible()**: Now only elevates access for non-public members, avoiding unnecessary security manager checks for public members
+>   * **Fixed getNonOverloadedMethod enforcement**: Now properly throws exception if method name exists with ANY parameter count, not just for 0-arg methods
+>   * **Added interface hierarchy search**: getMethod() now searches entire interface hierarchy using breadth-first traversal, not just superclasses
+>   * **Fixed method annotation search**: getMethodAnnotation() now properly traverses super-interfaces to find inherited annotations
+>   * **Fixed trusted-caller bypass**: ReflectionUtils no longer excludes itself from security checks, closing potential security hole
+>   * **Removed static System.setProperty calls**: Eliminated global state modification during class initialization
+>   * **Made record support fields volatile**: Proper thread-safe lazy initialization for JDK 14+ features
+>   * **Fixed enum field filter logic**: Corrected Enum.class.isAssignableFrom() direction (was backwards)
+>   * **Removed arbitrary field filtering**: Eliminated special-case filtering of 'internal' enum fields
+>   * **Made log obfuscation configurable**: Added isLogObfuscationEnabled() method for runtime control
 >     * **Optimized probe comparisons to bypass diff generation**: Call 5-arg deepEquals overload directly for exploratory matching in unordered collections, completely avoiding diff generation overhead (no string formatting or reflection) for N× probe comparisons
 >     * **Fixed Locale hygiene**: Use Locale.ROOT for all toLowerCase() calls to avoid Turkish-i surprises; added ThreadLocal UTC SimpleDateFormat for consistent date formatting across locales
 >     * **Pre-size hash buckets for performance**: HashMap instances for unordered collection and map matching are now pre-sized with capacity = size * 4/3 to avoid rehashing on large inputs

@@ -11,10 +11,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ReflectPermission;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -101,27 +103,8 @@ public final class ReflectionUtils {
     private static final String DEFAULT_SENSITIVE_FIELD_PATTERNS = 
         "password,passwd,secret,secretkey,apikey,api_key,authtoken,accesstoken,credential,confidential,adminkey,private";
     
-    static {
-        // Initialize system properties with defaults if not already set (backward compatibility)
-        initializeSystemPropertyDefaults();
-    }
-    
-    private static void initializeSystemPropertyDefaults() {
-        // Set dangerous class patterns if not explicitly configured
-        if (System.getProperty("reflectionutils.dangerous.class.patterns") == null) {
-            System.setProperty("reflectionutils.dangerous.class.patterns", DEFAULT_DANGEROUS_CLASS_PATTERNS);
-        }
-        
-        // Set sensitive field patterns if not explicitly configured  
-        if (System.getProperty("reflectionutils.sensitive.field.patterns") == null) {
-            System.setProperty("reflectionutils.sensitive.field.patterns", DEFAULT_SENSITIVE_FIELD_PATTERNS);
-        }
-        
-        // Set max cache size if not explicitly configured
-        if (System.getProperty("reflectionutils.max.cache.size") == null) {
-            System.setProperty("reflectionutils.max.cache.size", String.valueOf(DEFAULT_MAX_CACHE_SIZE));
-        }
-    }
+    // Removed static initializer that was mutating System properties
+    // Properties are now only read, not set
     
     // Security configuration methods
     
@@ -314,13 +297,29 @@ public final class ReflectionUtils {
      * @throws SecurityException if the caller lacks suppressAccessChecks permission
      */
     private static void secureSetAccessible(java.lang.reflect.AccessibleObject obj) {
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            try {
-                sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
-            } catch (SecurityException e) {
-                throw new SecurityException("Access denied: Insufficient permissions to bypass access controls for " + obj.getClass().getSimpleName(), e);
-            }
+        // Check if we actually need to set accessible
+        boolean needsAccessible = false;
+        
+        if (obj instanceof Method) {
+            Method method = (Method) obj;
+            int modifiers = method.getModifiers();
+            int classModifiers = method.getDeclaringClass().getModifiers();
+            needsAccessible = !Modifier.isPublic(modifiers) || !Modifier.isPublic(classModifiers);
+        } else if (obj instanceof Field) {
+            Field field = (Field) obj;
+            int modifiers = field.getModifiers();
+            int classModifiers = field.getDeclaringClass().getModifiers();
+            needsAccessible = !Modifier.isPublic(modifiers) || !Modifier.isPublic(classModifiers);
+        } else if (obj instanceof Constructor) {
+            Constructor<?> constructor = (Constructor<?>) obj;
+            int modifiers = constructor.getModifiers();
+            int classModifiers = constructor.getDeclaringClass().getModifiers();
+            needsAccessible = !Modifier.isPublic(modifiers) || !Modifier.isPublic(classModifiers);
+        }
+        
+        // Only attempt to set accessible if needed
+        if (!needsAccessible) {
+            return; // Already accessible, no need to elevate
         }
         
         // Additional security validation for fields
@@ -364,10 +363,7 @@ public final class ReflectionUtils {
             return; // Allow access to JDK classes
         }
         
-        // Allow access to normal fields that start with "normal"
-        if (fieldName.startsWith("normal")) {
-            return;
-        }
+        // Removed special case for "normal" prefix - all fields follow same validation rules
         
         // Check if the field name suggests sensitive content (only for user classes)
         Set<String> sensitivePatterns = getSensitiveFieldPatterns();
@@ -433,12 +429,9 @@ public final class ReflectionUtils {
         for (StackTraceElement element : stack) {
             String className = element.getClassName();
             
-            // Allow calls from java-util library itself
+            // Allow calls from java-util library itself, including ReflectionUtils
             if (className.startsWith("com.cedarsoftware.util.")) {
-                // Skip ReflectionUtils itself to avoid infinite recursion
-                if (!className.equals("com.cedarsoftware.util.ReflectionUtils")) {
-                    return true;
-                }
+                return true;
             }
         }
         
@@ -456,11 +449,20 @@ public final class ReflectionUtils {
             return "[null]";
         }
         
+        // Check if log obfuscation is enabled
+        if (!isLogObfuscationEnabled()) {
+            return className; // Return full class name when obfuscation disabled
+        }
+        
         if (className.length() <= 10) {
             return "[class:" + className.length() + "-chars]";
         }
         
         return className.substring(0, 5) + "***" + className.substring(className.length() - 5);
+    }
+    
+    private static boolean isLogObfuscationEnabled() {
+        return Boolean.parseBoolean(System.getProperty("reflectionutils.log.obfuscation.enabled", "false"));
     }
 
     private ReflectionUtils() { }
@@ -676,17 +678,19 @@ public final class ReflectionUtils {
         String fieldName = field.getName();
         Class<?> declaringClass = field.getDeclaringClass();
 
-        if (declaringClass.isEnum() &&
-                ("internal".equals(fieldName) || "ENUM$VALUES".equals(fieldName))) {
+        // Filter out synthetic enum fields
+        if (declaringClass.isEnum() && "ENUM$VALUES".equals(fieldName)) {
             return false;
         }
 
+        // Filter out Groovy metaclass fields
         if ("metaClass".equals(fieldName) &&
                 "groovy.lang.MetaClass".equals(field.getType().getName())) {
             return false;
         }
 
-        return !(declaringClass.isAssignableFrom(Enum.class) &&
+        // Filter out internal enum fields that should not be modified
+        return !(Enum.class.isAssignableFrom(declaringClass) &&
                 (fieldName.equals("hash") || fieldName.equals("ordinal")));
     };
 
@@ -817,9 +821,18 @@ public final class ReflectionUtils {
 
         // Atomically retrieve or compute the annotation from the cache
         Annotation annotation = METHOD_ANNOTATION_CACHE.get().computeIfAbsent(key, k -> {
-            // Search the class hierarchy
-            Class<?> currentClass = method.getDeclaringClass();
-            while (currentClass != null) {
+            // Search the entire class and interface hierarchy
+            Set<Class<?>> visited = new HashSet<>();
+            Deque<Class<?>> toVisit = new ArrayDeque<>();
+            toVisit.add(method.getDeclaringClass());
+            
+            while (!toVisit.isEmpty()) {
+                Class<?> currentClass = toVisit.poll();
+                if (!visited.add(currentClass)) {
+                    continue; // Already processed this class/interface
+                }
+                
+                // Try to find the method in the current class/interface
                 try {
                     Method currentMethod = currentClass.getDeclaredMethod(
                             method.getName(),
@@ -830,21 +843,18 @@ public final class ReflectionUtils {
                         return found;  // store in cache
                     }
                 } catch (Exception ignored) {
-                    // Not found in currentClass, go to superclass
+                    // Method not found in this class/interface
                 }
-                currentClass = currentClass.getSuperclass();
-            }
-
-            // Check interfaces
-            for (Class<?> iface : method.getDeclaringClass().getInterfaces()) {
-                try {
-                    Method ifaceMethod = iface.getMethod(method.getName(), method.getParameterTypes());
-                    T found = ifaceMethod.getAnnotation(annoClass);
-                    if (found != null) {
-                        return found;  // store in cache
-                    }
-                } catch (Exception ignored) {
-                    // Not found in this interface, move on
+                
+                // Add superclass to visit (if exists)
+                Class<?> superclass = currentClass.getSuperclass();
+                if (superclass != null) {
+                    toVisit.add(superclass);
+                }
+                
+                // Add all interfaces to visit
+                for (Class<?> iface : currentClass.getInterfaces()) {
+                    toVisit.add(iface);
                 }
             }
 
@@ -1499,22 +1509,40 @@ public final class ReflectionUtils {
             return cached;
         }
 
-        // Collect all matching methods
+        // Collect all matching methods from class hierarchy and interfaces
         List<Method> candidates = new ArrayList<>();
-        Class<?> current = beanClass;
-
-        while (current != null) {
+        Set<Class<?>> visited = new HashSet<>();
+        Deque<Class<?>> toVisit = new ArrayDeque<>();
+        toVisit.add(beanClass);
+        
+        while (!toVisit.isEmpty()) {
+            Class<?> current = toVisit.poll();
+            if (!visited.add(current)) {
+                continue; // Already processed this class/interface
+            }
+            
+            // Check declared methods in current class/interface
             for (Method method : current.getDeclaredMethods()) {
                 if (method.getName().equals(methodName) && method.getParameterCount() == argCount) {
                     candidates.add(method);
                 }
             }
-            current = current.getSuperclass();
+            
+            // Add superclass to visit (if exists)
+            Class<?> superclass = current.getSuperclass();
+            if (superclass != null) {
+                toVisit.add(superclass);
+            }
+            
+            // Add interfaces to visit
+            for (Class<?> iface : current.getInterfaces()) {
+                toVisit.add(iface);
+            }
         }
 
         if (candidates.isEmpty()) {
             throw new IllegalArgumentException(
-                    String.format("Method '%s' with %d parameters not found in %s or its superclasses",
+                    String.format("Method '%s' with %d parameters not found in %s, its superclasses, or interfaces",
                             methodName, argCount, beanClass.getName())
             );
         }
@@ -1754,22 +1782,32 @@ public final class ReflectionUtils {
         MethodCacheKey key = new MethodCacheKey(clazz, methodName);
 
         return METHOD_CACHE.get().computeIfAbsent(key, k -> {
+            // First, check if method name exists at all and count occurrences
+            int methodCount = 0;
             Method foundMethod = null;
+            
             for (Method m : clazz.getMethods()) {
                 if (methodName.equals(m.getName())) {
-                    if (foundMethod != null) {
-                        throw new IllegalArgumentException("Method: " + methodName + "() called on a class with overloaded methods "
-                                + "- ambiguous as to which one to return. Use getMethod() with argument types or argument count.");
+                    methodCount++;
+                    if (m.getParameterCount() == 0) {
+                        foundMethod = m;
                     }
-                    foundMethod = m;
                 }
             }
-
+            
+            // If multiple methods exist with same name (overloaded), throw exception
+            if (methodCount > 1) {
+                throw new IllegalArgumentException("Method: " + methodName + "() called on a class with overloaded methods "
+                        + "- ambiguous as to which one to return. Use getMethod() with argument types or argument count.");
+            }
+            
+            // If no 0-arg method found
             if (foundMethod == null) {
                 throw new IllegalArgumentException("Method: " + methodName + "() is not found on class: " + clazz.getName()
                         + ". Perhaps the method is protected, private, or misspelled?");
             }
 
+            secureSetAccessible(foundMethod);
             return foundMethod;
         });
     }
@@ -1933,9 +1971,9 @@ public final class ReflectionUtils {
     }
     
     // Record support (Java 14+) - using reflection to maintain Java 8 compatibility
-    private static Method isRecordMethod = null;
-    private static Method getRecordComponentsMethod = null;
-    private static boolean recordSupportChecked = false;
+    private static volatile Method isRecordMethod = null;
+    private static volatile Method getRecordComponentsMethod = null;
+    private static volatile boolean recordSupportChecked = false;
     
     /**
      * Check if a class is a Record (Java 14+).

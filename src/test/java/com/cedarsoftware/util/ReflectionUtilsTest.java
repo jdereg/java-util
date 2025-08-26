@@ -749,4 +749,84 @@ public class ReflectionUtilsTest
         assertNotNull(method);
         assertEquals("toString", method.getName());
     }
+    
+    // Test interface and class for verifying interface hierarchy search
+    interface TestInterface {
+        default void interfaceMethod(String param) {
+            // Default implementation
+        }
+    }
+    
+    interface ExtendedInterface extends TestInterface {
+        default void extendedMethod() {
+            // Another method
+        }
+    }
+    
+    static class InterfaceImplementor implements ExtendedInterface {
+        public void classMethod(int value) {
+            // Class-specific method
+        }
+    }
+    
+    @Test
+    void testGetMethodFindsInterfaceMethods() {
+        // Test finding interface method with 1 parameter
+        Method interfaceMethod = ReflectionUtils.getMethod(new InterfaceImplementor(), "interfaceMethod", 1);
+        assertNotNull(interfaceMethod, "Should find interface method");
+        assertEquals("interfaceMethod", interfaceMethod.getName());
+        assertEquals(TestInterface.class, interfaceMethod.getDeclaringClass());
+        
+        // Test finding extended interface method with 0 parameters
+        Method extendedMethod = ReflectionUtils.getMethod(new InterfaceImplementor(), "extendedMethod", 0);
+        assertNotNull(extendedMethod, "Should find extended interface method");
+        assertEquals("extendedMethod", extendedMethod.getName());
+        assertEquals(ExtendedInterface.class, extendedMethod.getDeclaringClass());
+        
+        // Test finding class method with 1 parameter
+        Method classMethod = ReflectionUtils.getMethod(new InterfaceImplementor(), "classMethod", 1);
+        assertNotNull(classMethod, "Should find class method");
+        assertEquals("classMethod", classMethod.getName());
+        assertEquals(InterfaceImplementor.class, classMethod.getDeclaringClass());
+    }
+    
+    // Test annotations on interfaces for method annotation search
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface MethodTestAnnotation {}
+    
+    interface AnnotatedInterface {
+        @MethodTestAnnotation
+        void annotatedMethod();
+    }
+    
+    interface ExtendedAnnotatedInterface extends AnnotatedInterface {
+        void otherMethod();
+    }
+    
+    static class AnnotatedImplementor implements ExtendedAnnotatedInterface {
+        @Override
+        public void annotatedMethod() {
+            // Implementation without annotation
+        }
+        
+        @Override
+        public void otherMethod() {
+            // Implementation
+        }
+    }
+    
+    @Test
+    void testGetMethodAnnotationFindsOnSuperInterfaces() throws NoSuchMethodException {
+        // Get the implemented method from the class
+        Method implMethod = AnnotatedImplementor.class.getMethod("annotatedMethod");
+        
+        // The annotation should be found on the super-interface
+        MethodTestAnnotation annotation = ReflectionUtils.getMethodAnnotation(implMethod, MethodTestAnnotation.class);
+        assertNotNull(annotation, "Should find annotation from super-interface");
+        
+        // Verify it doesn't find annotations that don't exist
+        Method otherMethod = AnnotatedImplementor.class.getMethod("otherMethod");
+        MethodTestAnnotation notFound = ReflectionUtils.getMethodAnnotation(otherMethod, MethodTestAnnotation.class);
+        assertNull(notFound, "Should not find annotation that doesn't exist");
+    }
 }

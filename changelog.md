@@ -1,5 +1,11 @@
 ### Revision History
 #### 4.0.1 (unreleased)
+> * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
+>   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
+>   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods
+>   * **Fixed removeAll behavior**: Overridden `removeAll()` to ensure proper case-insensitive removal when passed non-CaseInsensitive collections
+>   * **Maintained full API compatibility**: All existing constructors, methods, and deprecated operations preserved
+>   * **Improved maintainability**: Cleaner delegation pattern consistent with CaseInsensitiveMap's approach
 > * **FIXED**: `DeepEquals` collection comparison was too strict when comparing different Collection implementations:
 >   * **Fixed UnmodifiableCollection comparison**: Collections.unmodifiableCollection() results can now be compared with Lists/ArrayLists based on content
 >   * **Relaxed plain Collection vs List comparison**: Plain Collection implementations (not Set) are now compared as unordered collections with Lists

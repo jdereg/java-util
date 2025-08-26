@@ -1,17 +1,22 @@
 package com.cedarsoftware.util;
 
+import java.io.Serializable;
+import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.Spliterator;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * A {@link java.util.Set} implementation that performs case-insensitive comparisons for {@link String} elements,
@@ -28,6 +33,8 @@ import java.util.function.Function;
  *       providing flexibility for use cases requiring custom performance or ordering guarantees.</li>
  *   <li><b>Compatibility with Java Collections Framework:</b> Fully implements the {@link Set} interface,
  *       supporting standard operations like {@code add()}, {@code remove()}, and {@code retainAll()}.</li>
+ *   <li><b>Thread Safety:</b> Thread safety depends on the backing map implementation. When backed by
+ *       concurrent maps (e.g., {@link ConcurrentHashMap}), the set is thread-safe.</li>
  * </ul>
  *
  * <h2>Usage Examples</h2>
@@ -57,6 +64,24 @@ import java.util.function.Function;
  *       another collection.</li>
  * </ul>
  *
+ * <h2>Thread Safety</h2>
+ * <p>
+ * Thread safety depends entirely on the thread safety of the chosen backing map:
+ * </p>
+ * <ul>
+ *   <li><b>Thread-Safe:</b> When backed by concurrent maps ({@link ConcurrentHashMap}, {@link ConcurrentSkipListMap},
+ *       {@link ConcurrentHashMapNullSafe}, {@link ConcurrentNavigableMapNullSafe}), all operations are thread-safe.</li>
+ *   <li><b>Not Thread-Safe:</b> When backed by non-concurrent maps ({@link java.util.LinkedHashMap}, 
+ *       {@link java.util.HashMap}, {@link TreeMap}), external synchronization is required for thread safety.</li>
+ * </ul>
+ *
+ * <h2>Implementation Note</h2>
+ * <p>
+ * This implementation uses {@link Collections#newSetFromMap(Map)} internally to create a Set view over 
+ * a {@link CaseInsensitiveMap}. This provides a clean, efficient implementation that leverages the
+ * proven JDK Collections framework while maintaining case-insensitive semantics for String elements.
+ * </p>
+ *
  * <h2>Deprecated Methods</h2>
  * <p>
  * The following methods are deprecated and retained for backward compatibility:
@@ -66,20 +91,10 @@ import java.util.function.Function;
  *   <li>{@code minus()}: Use {@link #removeAll(Collection)} instead.</li>
  * </ul>
  *
- * <h2>Additional Notes</h2>
- * <ul>
- *   <li>String comparisons are case-insensitive but preserve original case for iteration and output.</li>
- *   <li>Thread safety depends on the thread safety of the chosen backing map.</li>
- *   <li>Set operations like {@code contains()}, {@code add()}, and {@code remove()} rely on the
- *       behavior of the underlying {@link CaseInsensitiveMap}.</li>
- * </ul>
- *
  * @param <E> the type of elements maintained by this set
  * @see java.util.Set
  * @see CaseInsensitiveMap
- * @see java.util.LinkedHashMap
- * @see java.util.TreeMap
- * @see java.util.concurrent.ConcurrentSkipListSet
+ * @see Collections#newSetFromMap(Map)
  * 
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>
@@ -97,9 +112,10 @@ import java.util.function.Function;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class CaseInsensitiveSet<E> implements Set<E> {
-    private final Map<E, Object> map;
-    private static final Object PRESENT = new Object();
+public class CaseInsensitiveSet<E> extends AbstractSet<E> implements Set<E>, Serializable {
+    private static final long serialVersionUID = 1L;
+    private final CaseInsensitiveMap<E, Boolean> backingMap;
+    private final Set<E> delegate;
 
     /**
      * Constructs an empty {@code CaseInsensitiveSet} backed by a {@link CaseInsensitiveMap} with a default
@@ -110,7 +126,8 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * </p>
      */
     public CaseInsensitiveSet() {
-        map = new CaseInsensitiveMap<>();
+        this.backingMap = new CaseInsensitiveMap<>();
+        this.delegate = Collections.newSetFromMap(backingMap);
     }
 
     /**
@@ -130,8 +147,11 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @throws NullPointerException if the specified collection is {@code null}
      */
     public CaseInsensitiveSet(Collection<? extends E> collection) {
-        map = determineBackingMap(collection);
-        addAll(collection);
+        this.backingMap = determineBackingMap(collection);
+        this.delegate = Collections.newSetFromMap(backingMap);
+        if (collection != null) {
+            addAll(collection);
+        }
     }
 
     /**
@@ -148,8 +168,11 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public CaseInsensitiveSet(Collection<? extends E> source, Map backingMap) {
-        map = backingMap;
-        addAll(source);
+        this.backingMap = new CaseInsensitiveMap<>(Collections.emptyMap(), backingMap);
+        this.delegate = Collections.newSetFromMap(this.backingMap);
+        if (source != null) {
+            addAll(source);
+        }
     }
 
     /**
@@ -163,7 +186,8 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @throws IllegalArgumentException if the specified initial capacity is negative
      */
     public CaseInsensitiveSet(int initialCapacity) {
-        map = new CaseInsensitiveMap<>(initialCapacity);
+        this.backingMap = new CaseInsensitiveMap<>(initialCapacity);
+        this.delegate = Collections.newSetFromMap(backingMap);
     }
 
     /**
@@ -178,7 +202,8 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      *         non-positive
      */
     public CaseInsensitiveSet(int initialCapacity, float loadFactor) {
-        map = new CaseInsensitiveMap<>(initialCapacity, loadFactor);
+        this.backingMap = new CaseInsensitiveMap<>(initialCapacity, loadFactor);
+        this.delegate = Collections.newSetFromMap(backingMap);
     }
 
     /**
@@ -190,7 +215,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public int hashCode() {
-        return map.keySet().hashCode();
+        return delegate.hashCode();
     }
 
     /**
@@ -204,7 +229,6 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @return {@code true} if the specified object is equal to this set
      * @see Object#equals(Object)
      */
-    @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object other) {
         if (other == this) {
@@ -213,8 +237,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
         if (!(other instanceof Set)) {
             return false;
         }
-
-        Set<E> that = (Set<E>) other;
+        Set<?> that = (Set<?>) other;
         return that.size() == size() && containsAll(that);
     }
 
@@ -230,7 +253,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public int size() {
-        return map.size();
+        return delegate.size();
     }
 
     /**
@@ -245,7 +268,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public boolean isEmpty() {
-        return map.isEmpty();
+        return delegate.isEmpty();
     }
 
     /**
@@ -261,7 +284,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public boolean contains(Object o) {
-        return map.containsKey(o);
+        return delegate.contains(o);
     }
 
     /**
@@ -281,7 +304,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public Iterator<E> iterator() {
-        return map.keySet().iterator();
+        return delegate.iterator();
     }
 
     /**
@@ -296,7 +319,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public Object[] toArray() {
-        return map.keySet().toArray();
+        return delegate.toArray();
     }
 
     /**
@@ -316,7 +339,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public <T> T[] toArray(T[] a) {
-        return map.keySet().toArray(a);
+        return delegate.toArray(a);
     }
 
     /**
@@ -332,7 +355,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public boolean add(E e) {
-        return map.putIfAbsent(e, PRESENT) == null;
+        return delegate.add(e);
     }
 
     /**
@@ -348,7 +371,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public boolean remove(Object o) {
-        return map.remove(o) != null;
+        return delegate.remove(o);
     }
 
     /**
@@ -365,12 +388,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public boolean containsAll(Collection<?> c) {
-        for (Object o : c) {
-            if (!map.containsKey(o)) {
-                return false;
-            }
-        }
-        return true;
+        return delegate.containsAll(c);
     }
 
     /**
@@ -388,13 +406,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public boolean addAll(Collection<? extends E> c) {
-        boolean modified = false;
-        for (E elem : c) {
-            if (add(elem)) {  // Reuse the efficient add() method
-                modified = true;
-            }
-        }
-        return modified;
+        return delegate.addAll(c);
     }
 
     /**
@@ -411,23 +423,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public boolean retainAll(Collection<?> c) {
-        Map<E, Object> other = new CaseInsensitiveMap<>();
-        for (Object o : c) {
-            @SuppressWarnings("unchecked")
-            E element = (E) o; // Safe cast because Map allows adding any type
-            other.put(element, PRESENT);
-        }
-
-        Iterator<E> iterator = map.keySet().iterator();
-        boolean modified = false;
-        while (iterator.hasNext()) {
-            E elem = iterator.next();
-            if (!other.containsKey(elem)) {
-                iterator.remove();
-                modified = true;
-            }
-        }
-        return modified;
+        return delegate.retainAll(c);
     }
     
     /**
@@ -445,11 +441,11 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public boolean removeAll(Collection<?> c) {
+        // We need to handle this specially because the default implementation
+        // may use c.contains() which would be case-sensitive if c is not a CaseInsensitiveSet
         boolean modified = false;
         for (Object elem : c) {
-            @SuppressWarnings("unchecked")
-            E element = (E) elem; // Cast to E since map keys match the generic type
-            if (map.remove(element) != null) {
+            if (remove(elem)) {
                 modified = true;
             }
         }
@@ -466,7 +462,57 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public void clear() {
-        map.clear();
+        delegate.clear();
+    }
+
+    /**
+     * Creates a {@link Spliterator} over the elements in this set.
+     * <p>
+     * The spliterator reports {@link Spliterator#DISTINCT}. The spliterator's comparator
+     * is {@code null} if the set's comparator is {@code null}. Otherwise, the spliterator's
+     * comparator is the same as or imposes the same total ordering as the set's comparator.
+     * </p>
+     *
+     * @return a {@code Spliterator} over the elements in this set
+     * @since 1.8
+     */
+    @Override
+    public Spliterator<E> spliterator() {
+        return delegate.spliterator();
+    }
+
+    /**
+     * Removes all of the elements of this collection that satisfy the given predicate.
+     * <p>
+     * Errors or runtime exceptions thrown during iteration or by the predicate are relayed
+     * to the caller. For {@link String} elements, the removal is case-insensitive.
+     * </p>
+     *
+     * @param filter a predicate which returns {@code true} for elements to be removed
+     * @return {@code true} if any elements were removed
+     * @throws NullPointerException if the specified filter is null
+     * @since 1.8
+     */
+    @Override
+    public boolean removeIf(Predicate<? super E> filter) {
+        return delegate.removeIf(filter);
+    }
+
+    /**
+     * Performs the given action for each element of the set until all elements have been
+     * processed or the action throws an exception.
+     * <p>
+     * Actions are performed in the order of iteration (if an iteration order is specified).
+     * Exceptions thrown by the action are relayed to the caller.
+     * </p>
+     *
+     * @param action The action to be performed for each element
+     * @throws NullPointerException if the specified action is null
+     * @since 1.8
+     */
+    @Override
+    public void forEach(Consumer<? super E> action) {
+        delegate.forEach(action);
     }
 
     /* ----------------------------------------------------------------- */
@@ -485,10 +531,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @since 3.6.0
      */
     public long elementCount() {
-        if (map instanceof CaseInsensitiveMap) {
-            return ((CaseInsensitiveMap<E, Object>) map).mappingCount();
-        }
-        return size();
+        return backingMap.mappingCount();
     }
 
     /**
@@ -508,16 +551,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @since 3.6.0
      */
     public void forEach(long parallelismThreshold, Consumer<? super E> action) {
-        if (map instanceof CaseInsensitiveMap) {
-            ((CaseInsensitiveMap<E, Object>) map).forEachKey(parallelismThreshold, action);
-        } else {
-            // Fallback for non-CaseInsensitiveMap backing
-            if (parallelismThreshold <= 1 && size() >= parallelismThreshold) {
-                map.keySet().parallelStream().forEach(action);
-            } else {
-                map.keySet().forEach(action);
-            }
-        }
+        backingMap.forEachKey(parallelismThreshold, action);
     }
 
     /**
@@ -538,26 +572,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @since 3.6.0
      */
     public <U> U searchElements(long parallelismThreshold, Function<? super E, ? extends U> searchFunction) {
-        if (map instanceof CaseInsensitiveMap) {
-            return ((CaseInsensitiveMap<E, Object>) map).searchKeys(parallelismThreshold, searchFunction);
-        } else {
-            // Fallback for non-CaseInsensitiveMap backing
-            if (parallelismThreshold <= 1 && size() >= parallelismThreshold) {
-                return map.keySet().parallelStream()
-                    .map(searchFunction)
-                    .filter(result -> result != null)
-                    .findFirst()
-                    .orElse(null);
-            } else {
-                for (E element : map.keySet()) {
-                    U result = searchFunction.apply(element);
-                    if (result != null) {
-                        return result;
-                    }
-                }
-                return null;
-            }
-        }
+        return backingMap.searchKeys(parallelismThreshold, searchFunction);
     }
 
     /**
@@ -581,17 +596,7 @@ public class CaseInsensitiveSet<E> implements Set<E> {
     public <U> U reduceElements(long parallelismThreshold, 
                                Function<? super E, ? extends U> transformer,
                                BiFunction<? super U, ? super U, ? extends U> reducer) {
-        if (map instanceof CaseInsensitiveMap) {
-            return ((CaseInsensitiveMap<E, Object>) map).reduceKeys(parallelismThreshold, transformer, reducer);
-        } else {
-            // Fallback for non-CaseInsensitiveMap backing - use manual iteration
-            U result = null;
-            for (E element : map.keySet()) {
-                U transformed = transformer.apply(element);
-                result = (result == null) ? transformed : reducer.apply(result, transformed);
-            }
-            return result;
-        }
+        return backingMap.reduceKeys(parallelismThreshold, transformer, reducer);
     }
 
     /**
@@ -609,8 +614,10 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @return the backing map implementation
      * @since 3.6.0
      */
+    @SuppressWarnings("unchecked")
     public Map<E, Object> getBackingMap() {
-        return map;
+        // Cast is safe because Boolean extends Object
+        return (Map<E, Object>) (Map<?, ?>) backingMap;
     }
 
     /**
@@ -621,12 +628,12 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      * @param source the source collection to copy from
      * @return a new CaseInsensitiveMap instance with appropriate backing map
      */
-    private Map<E, Object> determineBackingMap(Collection<? extends E> source) {
+    private CaseInsensitiveMap<E, Boolean> determineBackingMap(Collection<? extends E> source) {
         if (source == null) {
             return new CaseInsensitiveMap<>();
         }
         
-        // Create the appropriate backing map based on a source type
+        // Create the appropriate backing map based on source type
         if (source instanceof ConcurrentNavigableSetNullSafe) {
             return new CaseInsensitiveMap<>(Collections.emptyMap(), new ConcurrentNavigableMapNullSafe<>());
         } else if (source instanceof ConcurrentSkipListSet) {
@@ -642,6 +649,20 @@ public class CaseInsensitiveSet<E> implements Set<E> {
         }
     }
 
+    /* ----------------------------------------------------------------- */
+    /*                      Deprecated Methods                           */
+    /* ----------------------------------------------------------------- */
+
+    /**
+     * Removes all elements in the specified collection from this set.
+     * <p>
+     * This method is deprecated. Use {@link #removeAll(Collection)} instead.
+     * </p>
+     *
+     * @param removeMe the collection of elements to remove
+     * @return this set (for method chaining)
+     * @deprecated Use {@link #removeAll(Collection)} instead
+     */
     @Deprecated
     public Set<E> minus(Iterable<E> removeMe) {
         for (Object me : removeMe) {
@@ -650,12 +671,32 @@ public class CaseInsensitiveSet<E> implements Set<E> {
         return this;
     }
 
+    /**
+     * Removes the specified element from this set.
+     * <p>
+     * This method is deprecated. Use {@link #remove(Object)} instead.
+     * </p>
+     *
+     * @param removeMe the element to remove
+     * @return this set (for method chaining)
+     * @deprecated Use {@link #remove(Object)} instead
+     */
     @Deprecated
     public Set<E> minus(E removeMe) {
         remove(removeMe);
         return this;
     }
 
+    /**
+     * Adds all elements in the specified collection to this set.
+     * <p>
+     * This method is deprecated. Use {@link #addAll(Collection)} instead.
+     * </p>
+     *
+     * @param right the collection of elements to add
+     * @return this set (for method chaining)
+     * @deprecated Use {@link #addAll(Collection)} instead
+     */
     @Deprecated
     public Set<E> plus(Iterable<E> right) {
         for (E item : right) {
@@ -664,7 +705,18 @@ public class CaseInsensitiveSet<E> implements Set<E> {
         return this;
     }
 
+    /**
+     * Adds the specified element to this set.
+     * <p>
+     * This method is deprecated. Use {@link #add(Object)} instead.
+     * </p>
+     *
+     * @param right the element to add
+     * @return this set (for method chaining)
+     * @deprecated Use {@link #add(Object)} instead
+     */
     @Deprecated
+    @SuppressWarnings("unchecked")
     public Set<E> plus(Object right) {
         add((E) right);
         return this;
@@ -687,6 +739,6 @@ public class CaseInsensitiveSet<E> implements Set<E> {
      */
     @Override
     public String toString() {
-        return map.keySet().toString();
+        return delegate.toString();
     }
 }

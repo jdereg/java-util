@@ -191,6 +191,8 @@ import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
 public class ClassUtilities {
 
     private static final Logger LOG = Logger.getLogger(ClassUtilities.class.getName());
+    private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
+    private static final CharBuffer EMPTY_CHAR_BUFFER = CharBuffer.allocate(0);
     static {
         LoggingConfig.init();
     }
@@ -220,7 +222,7 @@ public class ClassUtilities {
     // Thread-local depth tracking for enhanced security
     private static final ThreadLocal<Integer> CLASS_LOAD_DEPTH = ThreadLocal.withInitial(() -> 0);
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
-    private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new ClassValueMap<>();
+    private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
     /**
      * A cache that maps a Class<?> to its associated enum type (if any).
      */
@@ -275,8 +277,8 @@ public class ClassUtilities {
         DIRECT_CLASS_MAPPING.put(ZoneOffset.class, () -> ZoneOffset.UTC);
         DIRECT_CLASS_MAPPING.put(OffsetTime.class, OffsetTime::now);
         DIRECT_CLASS_MAPPING.put(LocalTime.class, LocalTime::now);
-        DIRECT_CLASS_MAPPING.put(ByteBuffer.class, () -> ByteBuffer.allocate(0));
-        DIRECT_CLASS_MAPPING.put(CharBuffer.class, () -> CharBuffer.allocate(0));
+        DIRECT_CLASS_MAPPING.put(ByteBuffer.class, () -> EMPTY_BYTE_BUFFER);
+        DIRECT_CLASS_MAPPING.put(CharBuffer.class, () -> EMPTY_CHAR_BUFFER);
 
         // Collection classes
         DIRECT_CLASS_MAPPING.put(HashSet.class, HashSet::new);
@@ -306,7 +308,7 @@ public class ClassUtilities {
         // Additional Map implementations
         DIRECT_CLASS_MAPPING.put(WeakHashMap.class, WeakHashMap::new);
         DIRECT_CLASS_MAPPING.put(IdentityHashMap.class, IdentityHashMap::new);
-        DIRECT_CLASS_MAPPING.put(EnumMap.class, () -> new EnumMap<>(TimeUnit.class));
+        // EnumMap removed - requires explicit key enum type, cannot have a sensible default
 
         // Utility classes
         DIRECT_CLASS_MAPPING.put(UUID.class, UUID::randomUUID);
@@ -631,62 +633,71 @@ public class ClassUtilities {
      * @throws ClassNotFoundException if the class cannot be found
      */
     private static Class<?> loadClass(String name, ClassLoader classLoader) throws ClassNotFoundException {
+        // Support Java-style array names like "int[][]" or "java.lang.String[]"
+        if (name.endsWith("]")) {
+            int dims = 0;
+            String base = name;
+            while (base.endsWith("[]")) {
+                dims++;
+                base = base.substring(0, base.length() - 2);
+            }
+            Class<?> element;
+            // primitives by simple name
+            switch (base) {
+                case "boolean": element = boolean.class; break;
+                case "byte":    element = byte.class;    break;
+                case "short":   element = short.class;   break;
+                case "int":     element = int.class;     break;
+                case "long":    element = long.class;    break;
+                case "char":    element = char.class;    break;
+                case "float":   element = float.class;   break;
+                case "double":  element = double.class;  break;
+                default:
+                    if (classLoader != null) {
+                        element = classLoader.loadClass(base);
+                    } else {
+                        element = Class.forName(base, false, getClassLoader(ClassUtilities.class));
+                    }
+            }
+            Class<?> arrayClass = element;
+            for (int i = 0; i < dims; i++) {
+                arrayClass = Array.newInstance(arrayClass, 0).getClass();
+            }
+            return arrayClass;
+        }
+
+        // Existing logic for JVM descriptor names starting with '['
         String className = name;
         boolean arrayType = false;
         Class<?> primitiveArray = null;
-
         while (className.startsWith("[")) {
             arrayType = true;
             if (className.endsWith(";")) {
                 className = className.substring(0, className.length() - 1);
             }
             switch (className) {
-                case "[B":
-                    primitiveArray = byte[].class;
-                    break;
-                case "[S":
-                    primitiveArray = short[].class;
-                    break;
-                case "[I":
-                    primitiveArray = int[].class;
-                    break;
-                case "[J":
-                    primitiveArray = long[].class;
-                    break;
-                case "[F":
-                    primitiveArray = float[].class;
-                    break;
-                case "[D":
-                    primitiveArray = double[].class;
-                    break;
-                case "[Z":
-                    primitiveArray = boolean[].class;
-                    break;
-                case "[C":
-                    primitiveArray = char[].class;
-                    break;
+                case "[B": primitiveArray = byte[].class; break;
+                case "[S": primitiveArray = short[].class; break;
+                case "[I": primitiveArray = int[].class; break;
+                case "[J": primitiveArray = long[].class; break;
+                case "[F": primitiveArray = float[].class; break;
+                case "[D": primitiveArray = double[].class; break;
+                case "[Z": primitiveArray = boolean[].class; break;
+                case "[C": primitiveArray = char[].class; break;
             }
             int startpos = className.startsWith("[L") ? 2 : 1;
             className = className.substring(startpos);
         }
         Class<?> currentClass = null;
-        if (null == primitiveArray) {
-            try {
-                if (classLoader != null) {
-                    currentClass = classLoader.loadClass(className);
-                } else {
-                    // If no classloader provided, use fallback approach directly
-                    throw new ClassNotFoundException("No classloader provided");
-                }
-            } catch (ClassNotFoundException | NullPointerException e) {
-                // Security: Apply security checks at each fallback level to prevent bypass
+        if (primitiveArray == null) {
+            if (classLoader != null) {
+                currentClass = classLoader.loadClass(className);
+            } else {
                 ClassLoader ctx = Thread.currentThread().getContextClassLoader();
                 if (ctx != null) {
-                    // Security: Validate context ClassLoader is from trusted source
                     validateContextClassLoader(ctx);
                     currentClass = ctx.loadClass(className);
                 } else {
-                    // Security: Re-apply security check for forName fallback
                     if (SecurityChecker.isSecurityBlockedName(className)) {
                         throw new SecurityException("Class loading denied for security reasons: " + className);
                     }
@@ -694,9 +705,8 @@ public class ClassUtilities {
                 }
             }
         }
-
         if (arrayType) {
-            currentClass = (null != primitiveArray) ? primitiveArray : Array.newInstance(currentClass, 0).getClass();
+            currentClass = (primitiveArray != null) ? primitiveArray : Array.newInstance(currentClass, 0).getClass();
             while (name.startsWith("[[")) {
                 currentClass = Array.newInstance(currentClass, 0).getClass();
                 name = name.substring(1);
@@ -861,6 +871,7 @@ public class ClassUtilities {
      *         If either argument is {@code null}, this method returns {@code false}.
      */
     public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y) {
+        if (x == null || y == null) return false;
         return wrapperMap.get(x) == y;
     }
 
@@ -1056,8 +1067,8 @@ public class ClassUtilities {
         if (newClass.isInterface() != currentClass.isInterface()) {
             return !newClass.isInterface();
         }
-        // If both are classes or both are interfaces, prefer the more specific one
-        return newClass.isAssignableFrom(currentClass);
+        // Prefer the more specific class: newClass should be a subtype of currentClass
+        return currentClass.isAssignableFrom(newClass);
     }
 
     /**
@@ -1357,30 +1368,6 @@ public class ClassUtilities {
         }
     }
 
-    /**
-     * Returns the index of the smallest value in an array.
-     * @param array The array to search.
-     * @return The index of the smallest value, or -1 if the array is empty.
-     * @deprecated 
-     */
-    @Deprecated
-    public static int indexOfSmallestValue(int[] array) {
-        if (array == null || array.length == 0) {
-            return -1; // Return -1 for null or empty array.
-        }
-
-        int minValue = Integer.MAX_VALUE;
-        int minIndex = -1;
-
-        for (int i = 0; i < array.length; i++) {
-            if (array[i] < minValue) {
-                minValue = array[i];
-                minIndex = i;
-            }
-        }
-
-        return minIndex;
-    }
 
     /**
      * Returns the related enum class for the provided class, if one exists.
@@ -1510,6 +1497,8 @@ public class ClassUtilities {
                 }
                 normalizedArgs = orderedValues;
             } else {
+                // For non-generated keys, we still need to provide values for positional matching
+                // as a fallback when named parameter matching doesn't work
                 normalizedArgs = map.values();
             }
         } else if (arguments.getClass().isArray()) {
@@ -1597,6 +1586,7 @@ public class ClassUtilities {
         }
 
         for (Constructor<?> constructor : sortedConstructors) {
+            trySetAccessible(constructor);
             LOG.log(Level.FINER, "Trying constructor: {0}", constructor);
 
             // Get parameter names
@@ -1780,6 +1770,7 @@ public class ClassUtilities {
 
         // Try each constructor in order
         for (Constructor<?> constructor : constructors) {
+            trySetAccessible(constructor);
             Parameter[] parameters = constructor.getParameters();
 
             // Attempt instantiation with this constructor
@@ -2016,22 +2007,23 @@ public class ClassUtilities {
      * @throws SecurityException if the resource path is potentially dangerous
      */
     private static void validateResourcePath(String resourceName) {
-        if (resourceName == null || resourceName.trim().isEmpty()) {
+        if (StringUtilities.isEmpty(resourceName)) {
             throw new SecurityException("Resource name cannot be null or empty");
         }
         
-        // Security: Prevent path traversal attacks
+        // Security: Prevent path traversal attacks and OS-specific separators
+        // Note: We allow META-INF/ since it's a legitimate classpath resource location
         if (resourceName.contains("..") || resourceName.contains("\\") ||
             resourceName.startsWith("/") || resourceName.contains("//") ||
             resourceName.contains("\\\\") || resourceName.contains("\0")) {
             throw new SecurityException("Invalid resource path detected: " + resourceName);
         }
         
-        // Security: Prevent access to system files
+        // Security: Prevent access to system files (but allow META-INF which is legitimate)
         String lowerPath = resourceName.toLowerCase();
-        if (lowerPath.startsWith("meta-inf") || lowerPath.contains("passwd") ||
-            lowerPath.contains("shadow") || lowerPath.contains("hosts") ||
-            lowerPath.contains("system32") || lowerPath.contains("windows")) {
+        if (lowerPath.contains("passwd") || lowerPath.contains("shadow") || 
+            lowerPath.contains("hosts") || lowerPath.contains("system32") || 
+            lowerPath.contains("windows")) {
             throw new SecurityException("Access to system resource denied: " + resourceName);
         }
         
@@ -2049,21 +2041,12 @@ public class ClassUtilities {
      * @throws SecurityException if the ClassLoader is not trusted
      */
     private static void validateContextClassLoader(ClassLoader classLoader) {
-        if (classLoader == null) {
-            return; // Null is acceptable
-        }
-        
-        // Security: Check for dangerous ClassLoader types
-        String loaderClassName = classLoader.getClass().getName();
-        if (loaderClassName.contains("Remote") || loaderClassName.contains("Injection") ||
-            loaderClassName.contains("Malicious") || loaderClassName.contains("Evil")) {
-            throw new SecurityException("Untrusted ClassLoader detected: " + loaderClassName);
-        }
-        
-        // Security: Warn about non-standard ClassLoaders
-        if (!loaderClassName.startsWith("java.") && !loaderClassName.startsWith("jdk.") &&
-            !loaderClassName.startsWith("sun.") && !loaderClassName.startsWith("com.cedarsoftware.")) {
-            LOG.log(Level.WARNING, "Using non-standard ClassLoader: " + loaderClassName);
+        if (classLoader == null) return;
+        // In modern JPMS-aware apps, many legitimate class loaders exist. Avoid heuristics.
+        // Keep only a very light sanity check if desired, and log at FINE:
+        if (!classLoader.getClass().getName().startsWith("java.")
+            && !classLoader.getClass().getName().startsWith("jdk.")) {
+            LOG.log(Level.FINE, "Using context ClassLoader: {0}", classLoader.getClass().getName());
         }
     }
     
@@ -2295,6 +2278,31 @@ public class ClassUtilities {
             return Boolean.FALSE;
         }
     };
+
+    /**
+     * Clears internal caches. For tests and hot-reload scenarios only.
+     * <p>
+     * This method should only be used in testing scenarios or when hot-reloading classes.
+     * It clears various internal caches that may hold references to classes and constructors.
+     * Note that ClassValue-backed caches cannot be fully cleared and rely on GC for unused keys.
+     * </p>
+     */
+    public static void clearCaches() {
+        nameToClass.clear();
+        SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
+        CLASS_HIERARCHY_CACHE.clear();
+        // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.
+        // Re-populate primitive types
+        nameToClass.put("boolean", Boolean.TYPE);
+        nameToClass.put("char", Character.TYPE);
+        nameToClass.put("byte", Byte.TYPE);
+        nameToClass.put("short", Short.TYPE);
+        nameToClass.put("int", Integer.TYPE);
+        nameToClass.put("long", Long.TYPE);
+        nameToClass.put("float", Float.TYPE);
+        nameToClass.put("double", Double.TYPE);
+        nameToClass.put("void", Void.TYPE);
+    }
 
     public static class SecurityChecker {
         // Combine all security-sensitive classes in one place

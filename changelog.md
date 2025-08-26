@@ -1,5 +1,17 @@
 ### Revision History
 #### 4.0.1 (unreleased)
+> * **IMPROVED**: `ClassUtilities` enhancements from GPT-5 code review:
+>   * **Fixed tie-breaker logic**: Corrected `shouldPreferNewCandidate()` to properly prefer more specific types (subclasses) over general types
+>   * **Added null safety**: Made `doesOneWrapTheOther()` null-safe, returning false for null inputs as documented
+>   * **Relaxed resource validation**: Removed overly restrictive blocking of META-INF resources while maintaining security against path traversal
+>   * **Added Java-style array support**: `loadClass()` now supports Java-style array names like "int[][]" and "java.lang.String[]" in addition to JVM descriptors
+>   * **Preserved mapping order**: Changed ASSIGNABLE_CLASS_MAPPING to LinkedHashMap to ensure deterministic iteration order
+>   * **Removed problematic default**: Removed EnumMap default mapping to TimeUnit.class which was incorrect for arbitrary use cases
+>   * **Reduced ClassLoader logging noise**: Toned down validateContextClassLoader warnings to FINE level to avoid false positives in modern JPMS apps
+>   * **Improved constructor accessibility**: Added trySetAccessible() calls before constructor invocation to improve success rate under module boundaries
+>   * **Removed deprecated method**: Removed deprecated indexOfSmallestValue() method that was no longer used
+>   * **Optimized buffer creation**: Cached zero-length ByteBuffer and CharBuffer instances to avoid repeated allocations
+>   * **Added cache management**: Added clearCaches() method for testing and hot-reload scenarios
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

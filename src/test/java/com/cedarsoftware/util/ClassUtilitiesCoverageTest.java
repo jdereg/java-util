@@ -64,12 +64,6 @@ class ClassUtilitiesCoverageTest {
         assertThrows(IllegalArgumentException.class, () -> ClassUtilities.getPrimitiveFromWrapper(null));
     }
 
-    @Test
-    void testIndexOfSmallestValue() {
-        assertEquals(1, ClassUtilities.indexOfSmallestValue(new int[]{5, 1, 3}));
-        assertEquals(-1, ClassUtilities.indexOfSmallestValue(new int[]{}));
-        assertEquals(-1, ClassUtilities.indexOfSmallestValue(null));
-    }
 
     @Test
     void testGetClassIfEnum() {

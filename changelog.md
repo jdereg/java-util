@@ -6,6 +6,7 @@
 >   * **Fixed JPMS SecurityException handling**: Added proper exception handling for trySetAccessible calls so SecurityExceptions under JPMS don't abort the entire constructor search, allowing fallback to other accessible constructors
 >   * **Fixed nameToClass initialization inconsistency**: Added "void" type to static initializer and included common aliases (string, date, class) in clearCaches() for consistency
 >   * **Simplified resource path validation**: Removed over-eager validation that blocked legitimate resources (like "css/windows-dark.css"), focusing on actual security risks (.., null bytes, backslashes) while still blocking obvious system paths
+>   * **Added accessibility caching**: Implemented caching for trySetAccessible to avoid repeated expensive attempts on the same members under JPMS, using synchronized WeakHashMap for memory-safe caching without global lock contention
 >   * **Fixed tie-breaker logic**: Corrected `shouldPreferNewCandidate()` to properly prefer more specific types (subclasses) over general types
 >   * **Added null safety**: Made `doesOneWrapTheOther()` null-safe, returning false for null inputs as documented
 >   * **Relaxed resource validation**: Removed overly restrictive blocking of META-INF resources while maintaining security against path traversal

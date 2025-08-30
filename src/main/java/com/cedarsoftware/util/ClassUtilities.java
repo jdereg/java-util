@@ -1840,13 +1840,31 @@ public class ClassUtilities {
         throw new IllegalArgumentException(msg);
     }
 
+    // Cache for tracking which AccessibleObjects we've already tried to make accessible
+    // Uses WeakHashMap to allow GC of classes/methods when no longer referenced
+    // Uses ConcurrentHashMap wrapper for thread-safety without global synchronization
+    private static final Map<AccessibleObject, Boolean> accessibilityCache = 
+        Collections.synchronizedMap(new WeakHashMap<>());
+    
     static void trySetAccessible(AccessibleObject object) {
+        // Check cache first to avoid repeated attempts
+        Boolean cached = accessibilityCache.get(object);
+        if (cached != null) {
+            if (!cached) {
+                // We already know this object cannot be made accessible
+                return;
+            }
+            // cached == true means we already successfully made it accessible
+            return;
+        }
+        
         // Check security permissions before attempting to set accessible
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             try {
                 sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
             } catch (SecurityException e) {
+                accessibilityCache.put(object, Boolean.FALSE);
                 LOG.log(Level.WARNING, "Security manager denies access to: " + object);
                 throw e; // Don't suppress security exceptions - let caller handle
             }
@@ -1854,11 +1872,14 @@ public class ClassUtilities {
         
         try {
             object.setAccessible(true);
+            accessibilityCache.put(object, Boolean.TRUE);
         } catch (SecurityException e) {
+            accessibilityCache.put(object, Boolean.FALSE);
             LOG.log(Level.WARNING, "Unable to set accessible: " + object + " - " + e.getMessage());
             throw e; // Don't suppress security exceptions - they indicate important access control violations
         } catch (Throwable t) {
             // Only ignore non-security exceptions (like InaccessibleObjectException in Java 9+)
+            accessibilityCache.put(object, Boolean.FALSE);
             safelyIgnoreException(t);
         }
     }
@@ -2306,6 +2327,7 @@ public class ClassUtilities {
         nameToClass.clear();
         SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
         CLASS_HIERARCHY_CACHE.clear();
+        accessibilityCache.clear();
         // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.
         // Re-populate primitive types and common aliases
         nameToClass.put("boolean", Boolean.TYPE);

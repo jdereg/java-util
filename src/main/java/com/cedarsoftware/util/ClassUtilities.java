@@ -2105,12 +2105,15 @@ public class ClassUtilities {
             return Collections.emptySet();
         }
 
-        // 3) Sort by descending depth
+        // 3) Sort by sum of distances from both input classes
+        // The most specific common type minimizes the total distance
         List<Class<?>> candidates = new ArrayList<>(common);
+        ClassHierarchyInfo infoA = getClassHierarchyInfo(classA);
+        ClassHierarchyInfo infoB = getClassHierarchyInfo(classB);
         candidates.sort((x, y) -> {
-            int dx = getClassHierarchyInfo(x).getDepth();
-            int dy = getClassHierarchyInfo(y).getDepth();
-            return Integer.compare(dy, dx); // descending
+            int dx = infoA.getDistance(x) + infoB.getDistance(x);
+            int dy = infoA.getDistance(y) + infoB.getDistance(y);
+            return Integer.compare(dx, dy); // lowest sum first
         });
 
         // 4) Identify "lowest" types

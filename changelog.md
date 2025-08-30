@@ -1,5 +1,8 @@
 ### Revision History
 #### 4.0.1 (unreleased)
+> * **IMPROVED**: `ClassUtilities` correctness fixes from GPT-5 review (Round 2):
+>   * **Fixed interface depth calculation**: Changed ClassHierarchyInfo to use max BFS distance instead of superclass chain walking, correctly handling interfaces
+>   * **Improved tie-breaking for common supertypes**: Changed findLowestCommonSupertypesExcluding to sort by sum of distances from both classes rather than absolute depth, ensuring truly most specific types are preferred
 > * **IMPROVED**: `ClassUtilities` enhancements from GPT-5 code review:
 >   * **Fixed tie-breaker logic**: Corrected `shouldPreferNewCandidate()` to properly prefer more specific types (subclasses) over general types
 >   * **Added null safety**: Made `doesOneWrapTheOther()` null-safe, returning false for null inputs as documented

@@ -676,53 +676,79 @@ public class ClassUtilities {
             return arrayClass;
         }
 
-        // Existing logic for JVM descriptor names starting with '['
-        String className = name;
-        boolean arrayType = false;
-        Class<?> primitiveArray = null;
-        while (className.startsWith("[")) {
-            arrayType = true;
-            if (className.endsWith(";")) {
-                className = className.substring(0, className.length() - 1);
+        // Optimized JVM descriptor handling - count brackets once to avoid re-string-bashing
+        if (name.startsWith("[")) {
+            int dims = 0;
+            while (dims < name.length() && name.charAt(dims) == '[') {
+                dims++;
             }
-            switch (className) {
-                case "[B": primitiveArray = byte[].class; break;
-                case "[S": primitiveArray = short[].class; break;
-                case "[I": primitiveArray = int[].class; break;
-                case "[J": primitiveArray = long[].class; break;
-                case "[F": primitiveArray = float[].class; break;
-                case "[D": primitiveArray = double[].class; break;
-                case "[Z": primitiveArray = boolean[].class; break;
-                case "[C": primitiveArray = char[].class; break;
+            
+            if (dims >= name.length()) {
+                throw new ClassNotFoundException("Bad descriptor: " + name);
             }
-            int startpos = className.startsWith("[L") ? 2 : 1;
-            className = className.substring(startpos);
-        }
-        Class<?> currentClass = null;
-        if (primitiveArray == null) {
-            if (classLoader != null) {
-                currentClass = classLoader.loadClass(className);
-            } else {
-                ClassLoader ctx = Thread.currentThread().getContextClassLoader();
-                if (ctx != null) {
-                    validateContextClassLoader(ctx);
-                    currentClass = ctx.loadClass(className);
-                } else {
-                    if (SecurityChecker.isSecurityBlockedName(className)) {
-                        throw new SecurityException("Class loading denied for security reasons: " + className);
+            
+            Class<?> element;
+            char typeChar = name.charAt(dims);
+            
+            // Java 8 compatible switch - handle primitive types
+            switch (typeChar) {
+                case 'B': element = byte.class; break;
+                case 'S': element = short.class; break;
+                case 'I': element = int.class; break;
+                case 'J': element = long.class; break;
+                case 'F': element = float.class; break;
+                case 'D': element = double.class; break;
+                case 'Z': element = boolean.class; break;
+                case 'C': element = char.class; break;
+                case 'L':
+                    // Object type: extract class name from Lcom/example/Class;
+                    if (!name.endsWith(";") || name.length() <= dims + 2) {
+                        throw new ClassNotFoundException("Bad descriptor: " + name);
                     }
-                    currentClass = Class.forName(className, false, getClassLoader(ClassUtilities.class));
+                    // Convert JVM descriptor format (java/lang/String) to Java format (java.lang.String)
+                    String className = name.substring(dims + 1, name.length() - 1).replace('/', '.');
+                    if (classLoader != null) {
+                        element = classLoader.loadClass(className);
+                    } else {
+                        ClassLoader ctx = Thread.currentThread().getContextClassLoader();
+                        if (ctx != null) {
+                            validateContextClassLoader(ctx);
+                            element = ctx.loadClass(className);
+                        } else {
+                            if (SecurityChecker.isSecurityBlockedName(className)) {
+                                throw new SecurityException("Class loading denied for security reasons: " + className);
+                            }
+                            element = Class.forName(className, false, getClassLoader(ClassUtilities.class));
+                        }
+                    }
+                    break;
+                default:
+                    throw new ClassNotFoundException("Bad descriptor: " + name);
+            }
+            
+            // Build array class with the right number of dimensions
+            Class<?> arrayClass = element;
+            for (int i = 0; i < dims; i++) {
+                arrayClass = Array.newInstance(arrayClass, 0).getClass();
+            }
+            return arrayClass;
+        }
+        
+        // Regular class name (not an array)
+        if (classLoader != null) {
+            return classLoader.loadClass(name);
+        } else {
+            ClassLoader ctx = Thread.currentThread().getContextClassLoader();
+            if (ctx != null) {
+                validateContextClassLoader(ctx);
+                return ctx.loadClass(name);
+            } else {
+                if (SecurityChecker.isSecurityBlockedName(name)) {
+                    throw new SecurityException("Class loading denied for security reasons: " + name);
                 }
+                return Class.forName(name, false, getClassLoader(ClassUtilities.class));
             }
         }
-        if (arrayType) {
-            currentClass = (primitiveArray != null) ? primitiveArray : Array.newInstance(currentClass, 0).getClass();
-            while (name.startsWith("[[")) {
-                currentClass = Array.newInstance(currentClass, 0).getClass();
-                name = name.substring(1);
-            }
-        }
-        return currentClass;
     }
 
     /**

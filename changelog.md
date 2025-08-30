@@ -27,6 +27,7 @@
 >     * URL/URI mappings commented out to return null instead of potentially connectable localhost URLs
 >     * Removed Comparable→empty string mapping to avoid surprising string for generic interface
 >   * **Optimized findInheritanceMatches hot path**: Pre-cache ClassHierarchyInfo lookups for unique value classes to avoid repeated map lookups in parameter matching loops
+>   * **Optimized loadClass() string operations**: Refactored JVM descriptor parsing to count brackets once upfront, reducing string churn and branching in array type handling
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

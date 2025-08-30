@@ -1,9 +1,9 @@
 ### Revision History
 #### 4.0.1 (unreleased)
-> * **IMPROVED**: `ClassUtilities` correctness fixes from GPT-5 review (Round 2):
+> * **IMPROVED**: `ClassUtilities` correctness fixes from GPT-5 review:
 >   * **Fixed interface depth calculation**: Changed ClassHierarchyInfo to use max BFS distance instead of superclass chain walking, correctly handling interfaces
 >   * **Improved tie-breaking for common supertypes**: Changed findLowestCommonSupertypesExcluding to sort by sum of distances from both classes rather than absolute depth, ensuring truly most specific types are preferred
-> * **IMPROVED**: `ClassUtilities` enhancements from GPT-5 code review:
+>   * **Fixed JPMS SecurityException handling**: Added proper exception handling for trySetAccessible calls so SecurityExceptions under JPMS don't abort the entire constructor search, allowing fallback to other accessible constructors
 >   * **Fixed tie-breaker logic**: Corrected `shouldPreferNewCandidate()` to properly prefer more specific types (subclasses) over general types
 >   * **Added null safety**: Made `doesOneWrapTheOther()` null-safe, returning false for null inputs as documented
 >   * **Relaxed resource validation**: Removed overly restrictive blocking of META-INF resources while maintaining security against path traversal

@@ -1582,7 +1582,14 @@ public class ClassUtilities {
         }
 
         for (Constructor<?> constructor : sortedConstructors) {
-            trySetAccessible(constructor);
+            try {
+                trySetAccessible(constructor);
+            } catch (SecurityException se) {
+                // Can't make this constructor accessible under JPMS; try the next one
+                LOG.log(Level.FINER, "Cannot access constructor {0} due to security restrictions: {1}", 
+                        new Object[]{constructor, se.getMessage()});
+                continue;
+            }
             LOG.log(Level.FINER, "Trying constructor: {0}", constructor);
 
             // Get parameter names
@@ -1766,7 +1773,14 @@ public class ClassUtilities {
 
         // Try each constructor in order
         for (Constructor<?> constructor : constructors) {
-            trySetAccessible(constructor);
+            try {
+                trySetAccessible(constructor);
+            } catch (SecurityException se) {
+                // Can't make this constructor accessible under JPMS; try the next one
+                LOG.log(Level.FINER, "Cannot access constructor {0} due to security restrictions: {1}", 
+                        new Object[]{constructor, se.getMessage()});
+                continue;
+            }
             Parameter[] parameters = constructor.getParameters();
 
             // Attempt instantiation with this constructor

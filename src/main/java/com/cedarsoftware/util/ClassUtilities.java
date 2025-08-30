@@ -2022,23 +2022,24 @@ public class ClassUtilities {
             throw new SecurityException("Resource name cannot be null or empty");
         }
         
-        // Security: Prevent path traversal attacks and OS-specific separators
-        // Note: We allow META-INF/ since it's a legitimate classpath resource location
-        if (resourceName.contains("..") || resourceName.contains("\\") ||
-            resourceName.startsWith("/") || resourceName.contains("//") ||
-            resourceName.contains("\\\\") || resourceName.contains("\0")) {
-            throw new SecurityException("Invalid resource path detected: " + resourceName);
+        // Security: ClassLoader resource lookup is sandboxed; main risks are:
+        // 1. Path traversal via ".." segments
+        // 2. Null bytes which can truncate paths in some contexts
+        // 3. Backslashes which are not valid in resource names (resources always use /)
+        if (resourceName.contains("..") || resourceName.contains("\0") || resourceName.contains("\\")) {
+            throw new SecurityException("Invalid resource path: " + resourceName);
         }
         
-        // Security: Prevent access to system files (but allow META-INF which is legitimate)
+        // Security: Block obvious system file paths (even though ClassLoader wouldn't find them anyway)
+        // This helps catch programmer errors and makes security scanners happy
         String lowerPath = resourceName.toLowerCase();
-        if (lowerPath.contains("passwd") || lowerPath.contains("shadow") || 
-            lowerPath.contains("hosts") || lowerPath.contains("system32") || 
-            lowerPath.contains("windows")) {
-            throw new SecurityException("Access to system resource denied: " + resourceName);
+        if (lowerPath.startsWith("/etc/") || lowerPath.startsWith("/dev/") || 
+            lowerPath.startsWith("/proc/") || lowerPath.startsWith("/sys/") ||
+            lowerPath.equals("/etc/passwd") || lowerPath.equals("/etc/shadow")) {
+            throw new SecurityException("Invalid resource path: " + resourceName);
         }
         
-        // Security: Limit resource name length to prevent buffer overflow
+        // Security: Limit resource name length to prevent DoS
         int maxLength = getMaxResourceNameLength();
         if (resourceName.length() > maxLength) {
             throw new SecurityException("Resource name too long (max " + maxLength + "): " + resourceName.length());

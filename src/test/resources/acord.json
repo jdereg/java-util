@@ -1,0 +1,48 @@
+{
+  "ACORD": {
+    "Version": "2.32",
+    "InsuranceSvcRq": {
+      "SpecialtySubmissionRq": {
+        "Submission": {
+          "SubmissionId": "SUB-0001",
+          "Insured": {
+            "Name": "Acme Widgets LLC",
+            "FEIN": "12-3456789",
+            "Address": "100 Main St, Cincinnati, OH 45202"
+          },
+          "Policy": {
+            "LineOfBusiness": "Property",
+            "EffectiveDate": "2025-10-01",
+            "ExpirationDate": "2026-10-01",
+            "Carrier": "GAIG",
+            "Program": "SpecProp"
+          },
+          "Locations": [
+            {
+              "Id": "LOC-1",
+              "Address": "200 Market St, Cincinnati, OH 45202",
+              "Buildings": [
+                {
+                  "Id": "BLD-1",
+                  "TSI": 5000000.0,
+                  "Coverages": [
+                    {"Code": "BPP", "Limit": 1000000.0, "Deductible": 10000.0},
+                    {"Code": "BI",  "Limit": 2500000.0, "Deductible": 0.0}
+                  ]
+                }
+              ]
+            }
+          ],
+          "Quote": {"QuoteId": "Q-123", "Status": "Proposed", "Premium": 125000.0, "Fees": 2500.0},
+          "AttachedSchedule": {
+            "Type": "BuildingCoverage",
+            "Items": [
+              {"LocationId": "LOC-1", "BuildingId": "BLD-1", "CoverageCode": "BPP", "Limit": 1000000.0, "Rate": 0.0125},
+              {"LocationId": "LOC-1", "BuildingId": "BLD-1", "CoverageCode": "BI",  "Limit": 2500000.0, "Rate": 0.0071}
+            ]
+          }
+        }
+      }
+    }
+  }
+}

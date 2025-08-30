@@ -46,7 +46,6 @@ import java.util.Collections;
 import java.util.Currency;
 import java.util.Date;
 import java.util.Deque;
-import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -93,7 +92,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -455,14 +453,12 @@ public class ClassUtilities {
             this.allSupertypes = Collections.unmodifiableSet(supertypes);
             this.distanceMap = Collections.unmodifiableMap(distances);
 
-            // Calculate the depth during construction
-            int maxDepth = 0;
-            Class<?> current = sourceClass;
-            while (current != null) {
-                current = current.getSuperclass();
-                maxDepth++;
+            // Calculate depth as max BFS distance (works for both classes and interfaces)
+            int max = 0;
+            for (int d : distances.values()) {
+                if (d > max) max = d;
             }
-            this.depth = maxDepth - 1; // -1 because we counted steps, not classes
+            this.depth = max;
         }
 
         public Map<Class<?>, Integer> getDistanceMap() {

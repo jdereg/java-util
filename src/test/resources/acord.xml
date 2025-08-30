@@ -1,0 +1,56 @@
+<ACORD Version="2.32">
+    <InsuranceSvcRq>
+        <SpecialtySubmissionRq>
+            <Submission SubmissionId="SUB-0001">
+                <Insured>
+                    <Name>Acme Widgets LLC</Name>
+                    <FEIN>12-3456789</FEIN>
+                    <Address>100 Main St, Cincinnati, OH 45202</Address>
+                </Insured>
+                <Policy>
+                    <LineOfBusiness>Property</LineOfBusiness>
+                    <EffectiveDate>2025-10-01</EffectiveDate>
+                    <ExpirationDate>2026-10-01</ExpirationDate>
+                    <Carrier>GAIG</Carrier>
+                    <Program>SpecProp</Program>
+                </Policy>
+                <Locations>
+                    <Location Id="LOC-1">
+                        <Address>200 Market St, Cincinnati, OH 45202</Address>
+                        <Buildings>
+                            <Building Id="BLD-1">
+                                <TSI>5000000</TSI>
+                                <Coverages>
+                                    <Coverage Code="BPP">
+                                        <Limit>1000000</Limit>
+                                        <Deductible>10000</Deductible>
+                                    </Coverage>
+                                    <Coverage Code="BI">
+                                        <Limit>2500000</Limit>
+                                        <Deductible>0</Deductible>
+                                    </Coverage>
+                                </Coverages>
+                            </Building>
+                        </Buildings>
+                    </Location>
+                </Locations>
+                <Quote QuoteId="Q-123" Status="Proposed">
+                    <Premium>125000</Premium>
+                    <Fees>2500</Fees>
+                </Quote>
+                <AttachedSchedule Type="BuildingCoverage">
+                    <Items>
+                        <Item LocationId="LOC-1" BuildingId="BLD-1" CoverageCode="BPP">
+                            <Limit>1000000</Limit>
+                            <Rate>0.0125</Rate>
+                        </Item>
+                        <Item LocationId="LOC-1" BuildingId="BLD-1" CoverageCode="BI">
+                            <Limit>2500000</Limit>
+                            <Rate>0.0071</Rate>
+                        </Item>
+                    </Items>
+                </AttachedSchedule>
+            </Submission>
+        </SpecialtySubmissionRq>
+    </InsuranceSvcRq>
+</ACORD>

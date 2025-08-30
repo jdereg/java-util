@@ -1902,8 +1902,8 @@ public class ClassUtilities {
 
     /**
      * Globally turn on (or off) the 'unsafe' option of Class construction. The
-     * unsafe option relies on {@code sun.misc.Unsafe} and should be used with
-     * extreme caution as it may break on future JDKs or under strict security managers.
+     * unsafe option uses internal JVM mechanisms to bypass constructors and should be 
+     * used with extreme caution as it may break on future JDKs or under strict security managers.
      * 
      * <p><strong>SECURITY WARNING:</strong> Enabling unsafe instantiation bypasses normal Java
      * security mechanisms, constructor validations, and initialization logic. This can lead to
@@ -1920,9 +1920,9 @@ public class ClassUtilities {
         // Add security check for unsafe instantiation access
         SecurityManager sm = System.getSecurityManager();
         if (sm != null && state) {
-            // Require RuntimePermission to enable unsafe operations
-            sm.checkPermission(new RuntimePermission("accessClassInPackage.sun.misc"));
-            sm.checkPermission(new RuntimePermission("setFactory"));
+            // Use a custom permission for enabling unsafe operations in java-util
+            // The old "accessClassInPackage.sun.misc" check is outdated for modern JDKs
+            sm.checkPermission(new RuntimePermission("com.cedarsoftware.util.enableUnsafe"));
         }
         
         useUnsafe = state;

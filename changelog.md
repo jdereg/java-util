@@ -32,6 +32,7 @@
 >   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully() method
 >   * **Added comprehensive edge case test coverage**: Created ClassUtilitiesEdgeCaseTest with tests for deep interface hierarchies, diamond inheritance patterns, primitive/wrapper relationships, array descriptor parsing, and JPMS/named parameter fallback scenarios as suggested by GPT-5 review
 >   * **Added varargs constructor support**: Implemented proper handling for varargs constructors, automatically packing trailing arguments into arrays, supporting both individual arguments and pre-packed arrays
+>   * **Fixed generated-key Map ordering**: Fixed bug where Maps with generated keys (arg0, arg1, etc.) could inject nulls when keys had gaps; now properly sorts by numeric value to handle non-sequential keys
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

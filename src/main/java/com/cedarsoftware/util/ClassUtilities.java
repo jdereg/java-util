@@ -44,6 +44,7 @@ import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Currency;
 import java.util.Date;
 import java.util.Deque;
@@ -1647,9 +1648,19 @@ public class ClassUtilities {
             // Convert map values to collection for fallback
             if (generatedKeys) {
                 // Preserve order for generated keys (arg0, arg1, etc.)
-                List<Object> orderedValues = new ArrayList<>();
-                for (int i = 0; i < map.size(); i++) {
-                    orderedValues.add(map.get("arg" + i));
+                // Sort entries by the numeric part of the key to handle gaps (e.g., arg0, arg2 without arg1)
+                List<Map.Entry<String, Object>> entries = new ArrayList<>(map.entrySet());
+                Collections.sort(entries, new Comparator<Map.Entry<String, Object>>() {
+                    @Override
+                    public int compare(Map.Entry<String, Object> e1, Map.Entry<String, Object> e2) {
+                        int num1 = Integer.parseInt(e1.getKey().substring(3));
+                        int num2 = Integer.parseInt(e2.getKey().substring(3));
+                        return Integer.compare(num1, num2);
+                    }
+                });
+                List<Object> orderedValues = new ArrayList<>(entries.size());
+                for (Map.Entry<String, Object> entry : entries) {
+                    orderedValues.add(entry.getValue());
                 }
                 normalizedArgs = orderedValues;
             } else {

@@ -1146,7 +1146,9 @@ public class ClassUtilities {
     }
 
     private static Object getArgForType(com.cedarsoftware.util.convert.Converter converter, Class<?> argType) {
-        if (isPrimitive(argType)) {
+        // Only provide default values for actual primitives, not wrapper types
+        // This avoids masking bugs where null wrapper values are silently converted to 0/false
+        if (argType.isPrimitive()) {
             return converter.convert(null, argType);  // Get the defaults (false, 0, 0.0d, etc.)
         }
 

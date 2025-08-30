@@ -8,6 +8,7 @@
 >   * **Simplified resource path validation**: Removed over-eager validation that blocked legitimate resources (like "css/windows-dark.css"), focusing on actual security risks (.., null bytes, backslashes) while still blocking obvious system paths
 >   * **Added accessibility caching**: Implemented caching for trySetAccessible to avoid repeated expensive attempts on the same members under JPMS, using synchronized WeakHashMap for memory-safe caching without global lock contention
 >   * **Updated Unsafe permission check**: Replaced outdated "accessClassInPackage.sun.misc" permission with custom "com.cedarsoftware.util.enableUnsafe" permission appropriate for modern JDKs
+>   * **Improved API clarity for wrapper types**: Changed getArgForType to only provide default values for actual primitives, not wrapper types, preventing silent conversion of null Integer/Boolean to 0/false which could mask bugs
 >   * **Fixed tie-breaker logic**: Corrected `shouldPreferNewCandidate()` to properly prefer more specific types (subclasses) over general types
 >   * **Added null safety**: Made `doesOneWrapTheOther()` null-safe, returning false for null inputs as documented
 >   * **Relaxed resource validation**: Removed overly restrictive blocking of META-INF resources while maintaining security against path traversal

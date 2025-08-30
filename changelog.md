@@ -29,6 +29,7 @@
 >   * **Optimized findInheritanceMatches hot path**: Pre-cache ClassHierarchyInfo lookups for unique value classes to avoid repeated map lookups in parameter matching loops
 >   * **Optimized loadClass() string operations**: Refactored JVM descriptor parsing to count brackets once upfront, reducing string churn and branching in array type handling
 >   * **Fixed OSGi/JPMS classloader resolution**: Simplified loadClass() to consistently use getClassLoader() method which properly handles OSGi bundle classloaders and JPMS module boundaries
+>   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully() method
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

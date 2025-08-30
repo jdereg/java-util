@@ -1172,7 +1172,7 @@ public class ClassUtilities {
         while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
             buffer.write(data, 0, nRead);
         }
-        buffer.flush();
+        // ByteArrayOutputStream.flush() is a no-op, removed unnecessary call
         return buffer.toByteArray();
     }
 

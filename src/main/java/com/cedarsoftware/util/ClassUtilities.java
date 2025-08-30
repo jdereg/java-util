@@ -710,16 +710,12 @@ public class ClassUtilities {
                     if (classLoader != null) {
                         element = classLoader.loadClass(className);
                     } else {
-                        ClassLoader ctx = Thread.currentThread().getContextClassLoader();
-                        if (ctx != null) {
-                            validateContextClassLoader(ctx);
-                            element = ctx.loadClass(className);
-                        } else {
-                            if (SecurityChecker.isSecurityBlockedName(className)) {
-                                throw new SecurityException("Class loading denied for security reasons: " + className);
-                            }
-                            element = Class.forName(className, false, getClassLoader(ClassUtilities.class));
+                        // Use the standard classloader resolution which handles OSGi/JPMS properly
+                        ClassLoader cl = getClassLoader(ClassUtilities.class);
+                        if (SecurityChecker.isSecurityBlockedName(className)) {
+                            throw new SecurityException("Class loading denied for security reasons: " + className);
                         }
+                        element = Class.forName(className, false, cl);
                     }
                     break;
                 default:
@@ -738,16 +734,12 @@ public class ClassUtilities {
         if (classLoader != null) {
             return classLoader.loadClass(name);
         } else {
-            ClassLoader ctx = Thread.currentThread().getContextClassLoader();
-            if (ctx != null) {
-                validateContextClassLoader(ctx);
-                return ctx.loadClass(name);
-            } else {
-                if (SecurityChecker.isSecurityBlockedName(name)) {
-                    throw new SecurityException("Class loading denied for security reasons: " + name);
-                }
-                return Class.forName(name, false, getClassLoader(ClassUtilities.class));
+            // Use the standard classloader resolution which handles OSGi/JPMS properly
+            ClassLoader cl = getClassLoader(ClassUtilities.class);
+            if (SecurityChecker.isSecurityBlockedName(name)) {
+                throw new SecurityException("Class loading denied for security reasons: " + name);
             }
+            return Class.forName(name, false, cl);
         }
     }
 

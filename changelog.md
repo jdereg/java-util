@@ -20,6 +20,12 @@
 >   * **Removed deprecated method**: Removed deprecated indexOfSmallestValue() method that was no longer used
 >   * **Optimized buffer creation**: Cached zero-length ByteBuffer and CharBuffer instances to avoid repeated allocations
 >   * **Added cache management**: Added clearCaches() method for testing and hot-reload scenarios
+>   * **Fixed surprising default values**: Changed default instance creation to use predictable, stable values instead of current time/random values:
+>     * Date/time types now default to epoch (1970-01-01) instead of current time
+>     * UUID defaults to nil UUID (all zeros) instead of random UUID
+>     * Pattern defaults to empty pattern instead of match-all ".*"
+>     * URL/URI mappings commented out to return null instead of potentially connectable localhost URLs
+>     * Removed Comparable→empty string mapping to avoid surprising string for generic interface
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

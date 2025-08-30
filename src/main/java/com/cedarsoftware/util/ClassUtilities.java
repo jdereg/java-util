@@ -248,33 +248,43 @@ public class ClassUtilities {
         DIRECT_CLASS_MAPPING.put(StringBuffer.class, StringBuffer::new);
         DIRECT_CLASS_MAPPING.put(Locale.class, Locale::getDefault);
         DIRECT_CLASS_MAPPING.put(TimeZone.class, TimeZone::getDefault);
-        DIRECT_CLASS_MAPPING.put(Timestamp.class, () -> new Timestamp(System.currentTimeMillis()));
-        DIRECT_CLASS_MAPPING.put(java.sql.Date.class, () -> new java.sql.Date(System.currentTimeMillis()));
-        DIRECT_CLASS_MAPPING.put(LocalDate.class, LocalDate::now);
-        DIRECT_CLASS_MAPPING.put(LocalDateTime.class, LocalDateTime::now);
-        DIRECT_CLASS_MAPPING.put(OffsetDateTime.class, OffsetDateTime::now);
-        DIRECT_CLASS_MAPPING.put(ZonedDateTime.class, ZonedDateTime::now);
+        // Use epoch (0) for SQL date/time types instead of current time
+        DIRECT_CLASS_MAPPING.put(Timestamp.class, () -> new Timestamp(0));
+        DIRECT_CLASS_MAPPING.put(java.sql.Date.class, () -> new java.sql.Date(0));
+        // Use epoch dates instead of now() for predictable, stable defaults
+        DIRECT_CLASS_MAPPING.put(LocalDate.class, () -> LocalDate.of(1970, 1, 1));  // 1970-01-01
+        DIRECT_CLASS_MAPPING.put(LocalDateTime.class, () -> LocalDateTime.of(1970, 1, 1, 0, 0, 0));
+        DIRECT_CLASS_MAPPING.put(OffsetDateTime.class, () -> OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
+        DIRECT_CLASS_MAPPING.put(ZonedDateTime.class, () -> ZonedDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
         DIRECT_CLASS_MAPPING.put(ZoneId.class, ZoneId::systemDefault);
         DIRECT_CLASS_MAPPING.put(AtomicBoolean.class, AtomicBoolean::new);
         DIRECT_CLASS_MAPPING.put(AtomicInteger.class, AtomicInteger::new);
         DIRECT_CLASS_MAPPING.put(AtomicLong.class, AtomicLong::new);
-        DIRECT_CLASS_MAPPING.put(URL.class, () -> ExceptionUtilities.safelyIgnoreException(() -> new URL("http://localhost"), null));
-        DIRECT_CLASS_MAPPING.put(URI.class, () -> ExceptionUtilities.safelyIgnoreException(() -> new URI("http://localhost"), null));
+        // URL and URI: Return null instead of potentially connectable URLs
+        // Let the second pass handle these if needed
+        // DIRECT_CLASS_MAPPING.put(URL.class, () -> null);
+        // DIRECT_CLASS_MAPPING.put(URI.class, () -> null);
         DIRECT_CLASS_MAPPING.put(Object.class, Object::new);
         DIRECT_CLASS_MAPPING.put(String.class, () -> "");
         DIRECT_CLASS_MAPPING.put(BigInteger.class, () -> BigInteger.ZERO);
         DIRECT_CLASS_MAPPING.put(BigDecimal.class, () -> BigDecimal.ZERO);
         DIRECT_CLASS_MAPPING.put(Class.class, () -> String.class);
-        DIRECT_CLASS_MAPPING.put(Calendar.class, Calendar::getInstance);
-        DIRECT_CLASS_MAPPING.put(Instant.class, Instant::now);
+        // Use a calendar set to epoch instead of current time
+        DIRECT_CLASS_MAPPING.put(Calendar.class, () -> {
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(0);
+            return cal;
+        });
+        DIRECT_CLASS_MAPPING.put(Instant.class, () -> Instant.EPOCH);  // 1970-01-01T00:00:00Z
         DIRECT_CLASS_MAPPING.put(Duration.class, () -> Duration.ofSeconds(10));
         DIRECT_CLASS_MAPPING.put(Period.class, () -> Period.ofDays(0));
-        DIRECT_CLASS_MAPPING.put(Year.class, Year::now);
-        DIRECT_CLASS_MAPPING.put(YearMonth.class, YearMonth::now);
-        DIRECT_CLASS_MAPPING.put(MonthDay.class, MonthDay::now);
+        // Use epoch year (1970) instead of current year
+        DIRECT_CLASS_MAPPING.put(Year.class, () -> Year.of(1970));
+        DIRECT_CLASS_MAPPING.put(YearMonth.class, () -> YearMonth.of(1970, 1));
+        DIRECT_CLASS_MAPPING.put(MonthDay.class, () -> MonthDay.of(1, 1));
         DIRECT_CLASS_MAPPING.put(ZoneOffset.class, () -> ZoneOffset.UTC);
-        DIRECT_CLASS_MAPPING.put(OffsetTime.class, OffsetTime::now);
-        DIRECT_CLASS_MAPPING.put(LocalTime.class, LocalTime::now);
+        DIRECT_CLASS_MAPPING.put(OffsetTime.class, () -> OffsetTime.of(0, 0, 0, 0, ZoneOffset.UTC));
+        DIRECT_CLASS_MAPPING.put(LocalTime.class, () -> LocalTime.MIDNIGHT);
         DIRECT_CLASS_MAPPING.put(ByteBuffer.class, () -> EMPTY_BYTE_BUFFER);
         DIRECT_CLASS_MAPPING.put(CharBuffer.class, () -> EMPTY_CHAR_BUFFER);
 
@@ -309,9 +319,11 @@ public class ClassUtilities {
         // EnumMap removed - requires explicit key enum type, cannot have a sensible default
 
         // Utility classes
-        DIRECT_CLASS_MAPPING.put(UUID.class, UUID::randomUUID);
+        // Use a fixed nil UUID instead of random for predictability
+        DIRECT_CLASS_MAPPING.put(UUID.class, () -> new UUID(0L, 0L));  // Nil UUID
         DIRECT_CLASS_MAPPING.put(Currency.class, () -> Currency.getInstance(Locale.getDefault()));
-        DIRECT_CLASS_MAPPING.put(Pattern.class, () -> Pattern.compile(".*"));
+        // Use empty pattern instead of match-all pattern
+        DIRECT_CLASS_MAPPING.put(Pattern.class, () -> Pattern.compile(""));
         DIRECT_CLASS_MAPPING.put(BitSet.class, BitSet::new);
         DIRECT_CLASS_MAPPING.put(StringJoiner.class, () -> new StringJoiner(","));
 
@@ -381,7 +393,8 @@ public class ClassUtilities {
         // Other interfaces
         ASSIGNABLE_CLASS_MAPPING.put(RandomAccess.class, ArrayList::new);
         ASSIGNABLE_CLASS_MAPPING.put(CharSequence.class, StringBuilder::new);
-        ASSIGNABLE_CLASS_MAPPING.put(Comparable.class, () -> "");  // String implements Comparable
+        // Remove Comparable mapping - let it return null and be handled in second pass
+        // This avoids surprising empty string for a generic interface
         ASSIGNABLE_CLASS_MAPPING.put(Cloneable.class, ArrayList::new);  // ArrayList implements Cloneable
         ASSIGNABLE_CLASS_MAPPING.put(AutoCloseable.class, () -> new ByteArrayInputStream(new byte[0]));
 

@@ -1,6 +1,6 @@
 ### Revision History
 #### 4.0.1 (unreleased)
-> * **IMPROVED**: `ClassUtilities` correctness and security fixes from GPT-5 review:
+> * **IMPROVED**: `ClassUtilities` correctness, security fixes, and performance optimizations from GPT-5 review:
 >   * **Fixed interface depth calculation**: Changed ClassHierarchyInfo to use max BFS distance instead of superclass chain walking, correctly handling interfaces
 >   * **Improved tie-breaking for common supertypes**: Changed findLowestCommonSupertypesExcluding to sort by sum of distances from both classes rather than absolute depth, ensuring truly most specific types are preferred
 >   * **Fixed JPMS SecurityException handling**: Added proper exception handling for trySetAccessible calls so SecurityExceptions under JPMS don't abort the entire constructor search, allowing fallback to other accessible constructors
@@ -26,6 +26,7 @@
 >     * Pattern defaults to empty pattern instead of match-all ".*"
 >     * URL/URI mappings commented out to return null instead of potentially connectable localhost URLs
 >     * Removed Comparable→empty string mapping to avoid surprising string for generic interface
+>   * **Optimized findInheritanceMatches hot path**: Pre-cache ClassHierarchyInfo lookups for unique value classes to avoid repeated map lookups in parameter matching loops
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

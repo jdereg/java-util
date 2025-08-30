@@ -1258,6 +1258,18 @@ public class ClassUtilities {
     private static void findInheritanceMatches(Object[] values, boolean[] valueUsed,
                                                Parameter[] parameters, boolean[] parameterMatched,
                                                Object[] result) {
+        // Cache ClassHierarchyInfo lookups for unique value classes to avoid repeated map lookups
+        // This optimization is beneficial when the same value class appears multiple times
+        Map<Class<?>, ClassHierarchyInfo> valueClassCache = new HashMap<>();
+        
+        // Pre-cache hierarchy info for all non-null, unused values
+        for (int j = 0; j < values.length; j++) {
+            if (!valueUsed[j] && values[j] != null) {
+                Class<?> valueClass = values[j].getClass();
+                valueClassCache.computeIfAbsent(valueClass, ClassUtilities::getClassHierarchyInfo);
+            }
+        }
+        
         // For each unmatched parameter, find the best inheritance match
         for (int i = 0; i < parameters.length; i++) {
             if (parameterMatched[i]) continue;
@@ -1273,7 +1285,9 @@ public class ClassUtilities {
                 if (value == null) continue;
 
                 Class<?> valueClass = value.getClass();
-                int distance = ClassUtilities.computeInheritanceDistance(valueClass, paramType);
+                // Use cached hierarchy info for better performance
+                ClassHierarchyInfo hierarchyInfo = valueClassCache.get(valueClass);
+                int distance = hierarchyInfo.getDistance(paramType);
 
                 if (distance >= 0 && distance < bestDistance) {
                     bestDistance = distance;

@@ -396,6 +396,7 @@ public class ClassUtilities {
         nameToClass.put("long", Long.TYPE);
         nameToClass.put("float", Float.TYPE);
         nameToClass.put("double", Double.TYPE);
+        nameToClass.put("void", Void.TYPE);
         nameToClass.put("string", String.class);
         nameToClass.put("date", Date.class);
         nameToClass.put("class", Class.class);
@@ -2305,7 +2306,7 @@ public class ClassUtilities {
         SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
         CLASS_HIERARCHY_CACHE.clear();
         // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.
-        // Re-populate primitive types
+        // Re-populate primitive types and common aliases
         nameToClass.put("boolean", Boolean.TYPE);
         nameToClass.put("char", Character.TYPE);
         nameToClass.put("byte", Byte.TYPE);
@@ -2315,6 +2316,9 @@ public class ClassUtilities {
         nameToClass.put("float", Float.TYPE);
         nameToClass.put("double", Double.TYPE);
         nameToClass.put("void", Void.TYPE);
+        nameToClass.put("string", String.class);
+        nameToClass.put("date", Date.class);
+        nameToClass.put("class", Class.class);
     }
 
     public static class SecurityChecker {

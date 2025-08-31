@@ -380,11 +380,11 @@ class ClassUtilitiesTest {
         assert 0 == ClassUtilities.computeInheritanceDistance(int.class, Integer.class);
         assert 0 == ClassUtilities.computeInheritanceDistance(Integer.class, int.class);
 
-        assert -1 == ClassUtilities.computeInheritanceDistance(Byte.class, int.class);
-        assert -1 == ClassUtilities.computeInheritanceDistance(int.class, Byte.class);
+        assert 2 == ClassUtilities.computeInheritanceDistance(Byte.class, int.class);  // byte widens to int
+        assert -1 == ClassUtilities.computeInheritanceDistance(int.class, Byte.class); // int doesn't narrow to byte
         assert -1 == ClassUtilities.computeInheritanceDistance(int.class, String.class);
         assert -1 == ClassUtilities.computeInheritanceDistance(int.class, String.class);
-        assert -1 == ClassUtilities.computeInheritanceDistance(Short.TYPE, Integer.TYPE);
+        assert 1 == ClassUtilities.computeInheritanceDistance(Short.TYPE, Integer.TYPE); // short widens to int
         assert -1 == ClassUtilities.computeInheritanceDistance(String.class, Integer.TYPE);
 
         assert -1 == ClassUtilities.computeInheritanceDistance(Date.class, java.sql.Date.class);

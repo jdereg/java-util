@@ -107,14 +107,14 @@ class ClassUtilitiesEdgeCaseTest {
         assertEquals(1, ClassUtilities.computeInheritanceDistance(Double.class, Number.class));
         assertEquals(1, ClassUtilities.computeInheritanceDistance(Long.class, Number.class));
         
-        // Different primitives = -1 (no widening support currently)
-        assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, long.class));
-        assertEquals(-1, ClassUtilities.computeInheritanceDistance(byte.class, int.class));
-        assertEquals(-1, ClassUtilities.computeInheritanceDistance(float.class, double.class));
+        // Different primitives now support widening conversions
+        assertEquals(1, ClassUtilities.computeInheritanceDistance(int.class, long.class));
+        assertEquals(2, ClassUtilities.computeInheritanceDistance(byte.class, int.class));
+        assertEquals(1, ClassUtilities.computeInheritanceDistance(float.class, double.class));
         
-        // Cross primitive/wrapper of different types = -1
-        assertEquals(-1, ClassUtilities.computeInheritanceDistance(Integer.class, long.class));
-        assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, Double.class));
+        // Cross primitive/wrapper of different types now support widening
+        assertEquals(1, ClassUtilities.computeInheritanceDistance(Integer.class, long.class));
+        assertEquals(3, ClassUtilities.computeInheritanceDistance(int.class, Double.class));
     }
     
     // ===== loadClass() Array Descriptor Tests =====

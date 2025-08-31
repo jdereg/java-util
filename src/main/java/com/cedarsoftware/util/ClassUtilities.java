@@ -205,6 +205,10 @@ public class ClassUtilities {
     private static final Map<Class<?>, Class<?>> wrapperMap;
     private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER = new ClassValueMap<>();
     private static final Map<Class<?>, Class<?>> WRAPPER_TO_PRIMITIVE = new ClassValueMap<>();
+    
+    // Primitive widening conversion distances (JLS 5.1.2)
+    // Maps from source primitive to Map<destination primitive, distance>
+    private static final Map<Class<?>, Map<Class<?>, Integer>> PRIMITIVE_WIDENING_DISTANCES = new HashMap<>();
 
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
     private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ClassValueMap<>();
@@ -435,6 +439,55 @@ public class ClassUtilities {
         WRAPPER_TO_PRIMITIVE.put(Float.class, float.class);
         WRAPPER_TO_PRIMITIVE.put(Double.class, double.class);
         WRAPPER_TO_PRIMITIVE.put(Void.class, void.class);
+        
+        // Initialize primitive widening conversion distances (JLS 5.1.2)
+        // byte → short → int → long → float → double
+        // char → int → long → float → double
+        
+        // byte can widen to...
+        Map<Class<?>, Integer> byteWidening = new HashMap<>();
+        byteWidening.put(short.class, 1);
+        byteWidening.put(int.class, 2);
+        byteWidening.put(long.class, 3);
+        byteWidening.put(float.class, 4);
+        byteWidening.put(double.class, 5);
+        PRIMITIVE_WIDENING_DISTANCES.put(byte.class, byteWidening);
+        
+        // short can widen to...
+        Map<Class<?>, Integer> shortWidening = new HashMap<>();
+        shortWidening.put(int.class, 1);
+        shortWidening.put(long.class, 2);
+        shortWidening.put(float.class, 3);
+        shortWidening.put(double.class, 4);
+        PRIMITIVE_WIDENING_DISTANCES.put(short.class, shortWidening);
+        
+        // char can widen to...
+        Map<Class<?>, Integer> charWidening = new HashMap<>();
+        charWidening.put(int.class, 1);
+        charWidening.put(long.class, 2);
+        charWidening.put(float.class, 3);
+        charWidening.put(double.class, 4);
+        PRIMITIVE_WIDENING_DISTANCES.put(char.class, charWidening);
+        
+        // int can widen to...
+        Map<Class<?>, Integer> intWidening = new HashMap<>();
+        intWidening.put(long.class, 1);
+        intWidening.put(float.class, 2);
+        intWidening.put(double.class, 3);
+        PRIMITIVE_WIDENING_DISTANCES.put(int.class, intWidening);
+        
+        // long can widen to...
+        Map<Class<?>, Integer> longWidening = new HashMap<>();
+        longWidening.put(float.class, 1);
+        longWidening.put(double.class, 2);
+        PRIMITIVE_WIDENING_DISTANCES.put(long.class, longWidening);
+        
+        // float can widen to...
+        Map<Class<?>, Integer> floatWidening = new HashMap<>();
+        floatWidening.put(double.class, 1);
+        PRIMITIVE_WIDENING_DISTANCES.put(float.class, floatWidening);
+        
+        // Note: boolean and double don't widen to anything
 
         Map<Class<?>, Class<?>> map = new ClassValueMap<>();
         map.putAll(PRIMITIVE_TO_WRAPPER);
@@ -528,17 +581,67 @@ public class ClassUtilities {
             return 0;
         }
 
-        // Handle primitives specially - simplified logic
+        // Handle primitives specially - now with widening support
         boolean sp = source.isPrimitive() || isPrimitive(source);
         boolean dp = destination.isPrimitive() || isPrimitive(destination);
         if (sp && dp) {
-            return areSamePrimitiveType(source, destination) ? 0 : -1;
+            // Get the actual primitive types (unwrap if needed)
+            Class<?> sourcePrim = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE.get(source);
+            Class<?> destPrim = destination.isPrimitive() ? destination : WRAPPER_TO_PRIMITIVE.get(destination);
+            
+            if (sourcePrim != null && destPrim != null) {
+                // Calculate widening distance (includes same type check)
+                return getPrimitiveWideningDistance(sourcePrim, destPrim);
+            }
+            return -1; // Shouldn't happen if isPrimitive() is correct
+        }
+        
+        // Special case: wrapper to its superclass (e.g., Integer to Number)
+        // This allows Integer → Number (distance 1) to work correctly
+        if (sp && !dp) {
+            // Source is primitive/wrapper, destination is not
+            // Let the hierarchy distance handle wrapper → superclass relationships
+            // (e.g., Integer → Number, Integer → Object)
+            if (isPrimitive(source) && !source.isPrimitive()) {
+                // source is a wrapper class, use normal hierarchy
+                return getClassHierarchyInfo(source).getDistance(destination);
+            }
+            // source is actual primitive, no inheritance possible
+            return -1;
         }
 
         // Use the cached hierarchy info for non-primitive cases
         return getClassHierarchyInfo(source).getDistance(destination);
     }
 
+    /**
+     * Calculates the widening distance between two primitive types.
+     * Returns 0 if they are the same type, positive distance for valid widening,
+     * or -1 if no widening conversion exists.
+     * 
+     * @param sourcePrimitive The source primitive type (must be primitive)
+     * @param destPrimitive The destination primitive type (must be primitive)
+     * @return The widening distance, or -1 if no widening path exists
+     */
+    private static int getPrimitiveWideningDistance(Class<?> sourcePrimitive, Class<?> destPrimitive) {
+        // Same type = distance 0
+        if (sourcePrimitive.equals(destPrimitive)) {
+            return 0;
+        }
+        
+        // Check if there's a widening path
+        Map<Class<?>, Integer> wideningMap = PRIMITIVE_WIDENING_DISTANCES.get(sourcePrimitive);
+        if (wideningMap != null) {
+            Integer distance = wideningMap.get(destPrimitive);
+            if (distance != null) {
+                return distance;
+            }
+        }
+        
+        // No widening path exists
+        return -1;
+    }
+    
     /**
      * Determines if two primitive or wrapper types represent the same primitive type.
      *

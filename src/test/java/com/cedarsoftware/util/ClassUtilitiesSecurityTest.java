@@ -49,8 +49,8 @@ public class ClassUtilitiesSecurityTest {
             ClassUtilities.loadResourceAsBytes("..\\..\\windows\\system32\\config\\sam");
         });
         
-        assertTrue(exception.getMessage().contains("backslash"),
-                  "Should block Windows-style paths with backslashes");
+        assertTrue(exception.getMessage().contains("traversal"),
+                  "Should block path traversal even with normalized backslashes");
     }
     
     @Test

@@ -360,7 +360,14 @@ public class ClassUtilities {
         // Utility classes
         // Use a fixed nil UUID instead of random for predictability
         DIRECT_CLASS_MAPPING.put(UUID.class, () -> new UUID(0L, 0L));  // Nil UUID
-        DIRECT_CLASS_MAPPING.put(Currency.class, () -> Currency.getInstance(Locale.getDefault()));
+        DIRECT_CLASS_MAPPING.put(Currency.class, () -> {
+            try {
+                return Currency.getInstance(Locale.getDefault());
+            } catch (Exception e) {
+                // Fall back to USD for locales that don't have a currency (e.g., Locale.ROOT)
+                return Currency.getInstance(Locale.US);
+            }
+        });
         // Use empty pattern instead of match-all pattern
         DIRECT_CLASS_MAPPING.put(Pattern.class, () -> Pattern.compile(""));
         DIRECT_CLASS_MAPPING.put(BitSet.class, BitSet::new);
@@ -1260,8 +1267,8 @@ public class ClassUtilities {
     public static byte[] loadResourceAsBytes(String resourceName) {
         Objects.requireNonNull(resourceName, "resourceName cannot be null");
         
-        // Security: Validate resource path to prevent path traversal attacks
-        validateResourcePath(resourceName);
+        // Security: Validate and normalize resource path to prevent path traversal attacks
+        resourceName = validateAndNormalizeResourcePath(resourceName);
 
         InputStream inputStream = null;
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
@@ -2442,25 +2449,29 @@ public class ClassUtilities {
     }
     
     /**
-     * Security: Validate resource path to prevent path traversal attacks.
+     * Security: Validate and normalize resource path to prevent path traversal attacks.
      * 
      * @param resourceName The resource name to validate
+     * @return The normalized resource path (with backslashes converted to forward slashes)
      * @throws SecurityException if the resource path is potentially dangerous
      */
-    private static void validateResourcePath(String resourceName) {
+    private static String validateAndNormalizeResourcePath(String resourceName) {
         if (StringUtilities.isEmpty(resourceName)) {
             throw new SecurityException("Resource name cannot be null or empty");
         }
         
-        // Security: Block null bytes and backslashes which are invalid in resource names
-        // Resources always use forward slashes, and null bytes can truncate paths
-        if (resourceName.indexOf('\0') >= 0 || resourceName.indexOf('\\') >= 0) {
-            throw new SecurityException("Invalid resource path contains null byte or backslash: " + resourceName);
+        // Security: Block null bytes which can truncate paths
+        if (resourceName.indexOf('\0') >= 0) {
+            throw new SecurityException("Invalid resource path contains null byte: " + resourceName);
         }
+        
+        // Normalize backslashes to forward slashes for Windows developers
+        // This is safe because JAR resources always use forward slashes
+        String normalizedPath = resourceName.replace('\\', '/');
         
         // Security: Block ".." path segments (not just the substring) to prevent traversal
         // This allows legitimate filenames like "my..proto" or "file..txt"
-        for (String segment : resourceName.split("/")) {
+        for (String segment : normalizedPath.split("/")) {
             if (segment.equals("..")) {
                 throw new SecurityException("Invalid resource path contains directory traversal: " + resourceName);
             }
@@ -2471,6 +2482,8 @@ public class ClassUtilities {
         if (resourceName.length() > maxLength) {
             throw new SecurityException("Resource name too long (max " + maxLength + "): " + resourceName.length());
         }
+        
+        return normalizedPath;
     }
 
     /**

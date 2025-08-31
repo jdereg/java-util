@@ -36,6 +36,8 @@
 >   * **Fixed varargs ArrayStoreException vulnerability**: Added proper guards when packing values into varargs arrays to prevent ArrayStoreException, with graceful fallback to converter or default values
 >   * **Fixed named-parameter gating**: Constructor parameter name detection now checks ALL parameters have real names (not just the first) before enabling named-parameter matching
 >   * **Fixed API/docs consistency for null handling**: All primitive/wrapper conversion methods (toPrimitiveWrapperClass, getPrimitiveFromWrapper, toPrimitiveClass) now consistently throw IllegalArgumentException with descriptive messages for null inputs
+>   * **Improved resource path handling for Windows developers**: Backslashes in resource paths are now normalized to forward slashes for better ergonomics, while still maintaining security against path traversal attacks
+>   * **Fixed Currency default creation**: Currency.getInstance(Locale.getDefault()) now gracefully falls back to USD when the default locale doesn't have a currency (e.g., Locale.ROOT, synthetic regions)
 >   * **Fixed OSGi/JPMS classloader resolution**: Simplified loadClass() to consistently use getClassLoader() method which properly handles OSGi bundle classloaders and JPMS module boundaries
 >   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully() method
 >   * **Added comprehensive edge case test coverage**: Created ClassUtilitiesEdgeCaseTest with tests for deep interface hierarchies, diamond inheritance patterns, primitive/wrapper relationships, array descriptor parsing, and JPMS/named parameter fallback scenarios as suggested by GPT-5 review

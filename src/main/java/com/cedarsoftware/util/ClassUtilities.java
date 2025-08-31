@@ -528,11 +528,11 @@ public class ClassUtilities {
             return 0;
         }
 
-        // Handle primitives specially
-        if (source.isPrimitive() || isPrimitive(source)) {
-            if (destination.isPrimitive() || isPrimitive(destination)) {
-                return areSamePrimitiveType(source, destination) ? 0 : -1;
-            }
+        // Handle primitives specially - simplified logic
+        boolean sp = source.isPrimitive() || isPrimitive(source);
+        boolean dp = destination.isPrimitive() || isPrimitive(destination);
+        if (sp && dp) {
+            return areSamePrimitiveType(source, destination) ? 0 : -1;
         }
 
         // Use the cached hierarchy info for non-primitive cases

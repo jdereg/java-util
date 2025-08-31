@@ -609,8 +609,10 @@ public class ClassUtilities {
      *
      * @param clazz the class to alias
      * @param alias the alternative name for the class
+     * @throws SecurityException if the class is blocked by SecurityChecker
      */
     public static void addPermanentClassAlias(Class<?> clazz, String alias) {
+        SecurityChecker.verifyClass(clazz);
         GLOBAL_ALIASES.put(alias, clazz);
     }
 

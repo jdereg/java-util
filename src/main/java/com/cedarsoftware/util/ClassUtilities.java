@@ -988,8 +988,16 @@ public class ClassUtilities {
      */
     private static ClassLoader getOSGiClassLoader0(final Class<?> classFromBundle) {
         try {
-            // Load the FrameworkUtil class from OSGi
-            Class<?> frameworkUtilClass = Class.forName("org.osgi.framework.FrameworkUtil");
+            // Use ClassUtilities' own classloader for consistent linkage
+            // This ensures OSGi framework classes are loaded from the same source
+            ClassLoader baseLoader = ClassUtilities.class.getClassLoader();
+            if (baseLoader == null) {
+                // Bootstrap classloader - use system classloader instead
+                baseLoader = ClassLoader.getSystemClassLoader();
+            }
+            
+            // Load the FrameworkUtil class from OSGi using explicit classloader
+            Class<?> frameworkUtilClass = Class.forName("org.osgi.framework.FrameworkUtil", false, baseLoader);
 
             // Get the getBundle(Class<?>) method
             Method getBundleMethod = frameworkUtilClass.getMethod("getBundle", Class.class);
@@ -998,8 +1006,8 @@ public class ClassUtilities {
             Object bundle = getBundleMethod.invoke(null, classFromBundle);
 
             if (bundle != null) {
-                // Get BundleWiring class
-                Class<?> bundleWiringClass = Class.forName("org.osgi.framework.wiring.BundleWiring");
+                // Get BundleWiring class using the same classloader for consistency
+                Class<?> bundleWiringClass = Class.forName("org.osgi.framework.wiring.BundleWiring", false, baseLoader);
 
                 // Get the adapt(Class) method
                 Method adaptMethod = bundle.getClass().getMethod("adapt", Class.class);

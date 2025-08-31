@@ -1746,10 +1746,15 @@ public class ClassUtilities {
         LOG.log(Level.FINER, "Trying {0} constructors for {1}",
                 new Object[]{sortedConstructors.length, c.getName()});
 
+        // Cache parameters for each constructor to avoid repeated allocations
+        Map<Constructor<?>, Parameter[]> constructorParametersCache = new IdentityHashMap<>();
+        
         // First check if ANY constructor has real parameter names
         boolean anyConstructorHasRealNames = false;
         for (Constructor<?> constructor : sortedConstructors) {
             Parameter[] parameters = constructor.getParameters();
+            constructorParametersCache.put(constructor, parameters);  // Cache for later use
+            
             if (parameters.length > 0) {
                 String firstParamName = parameters[0].getName();
                 if (!ARG_PATTERN.matcher(firstParamName).matches()) {
@@ -1786,8 +1791,13 @@ public class ClassUtilities {
             }
             LOG.log(Level.FINER, "Trying constructor: {0}", constructor);
 
-            // Get parameter names
-            Parameter[] parameters = constructor.getParameters();
+            // Get cached parameters (avoid repeated allocation)
+            Parameter[] parameters = constructorParametersCache.get(constructor);
+            if (parameters == null) {
+                // Not in cache (e.g., if we broke early from first loop)
+                parameters = constructor.getParameters();
+                constructorParametersCache.put(constructor, parameters);
+            }
             String[] paramNames = new String[parameters.length];
             boolean hasRealNames = true;
 

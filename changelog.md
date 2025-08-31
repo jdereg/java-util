@@ -42,6 +42,7 @@
 >   * **Clarified Converter usage**: Added comment explaining why ClassUtilities uses legacy Converter.getInstance() for default instance - only basic conversions needed, no special options required
 >   * **Removed unused private method**: Removed getMaxReflectionOperations() and associated constant that were never called
 >   * **Added tests for public utility methods**: Added tests for logMethodAccessIssue(), logConstructorAccessIssue(), and clearCaches() public methods
+>   * **Optimized getParameters() calls**: Cached constructor.getParameters() results to avoid repeated allocations in newInstanceWithNamedParameters()
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

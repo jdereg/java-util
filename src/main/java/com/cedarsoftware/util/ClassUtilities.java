@@ -364,7 +364,7 @@ public class ClassUtilities {
 
         // ASSIGNABLE_CLASS_MAPPING for interfaces and abstract classes
         // Order from most specific to most general
-        ASSIGNABLE_CLASS_MAPPING.put(EnumSet.class, () -> null);
+        // Note: EnumSet cannot be instantiated without knowing the element type, so it's not included
 
         // Specific collection types
         ASSIGNABLE_CLASS_MAPPING.put(BlockingDeque.class, LinkedBlockingDeque::new);

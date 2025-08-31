@@ -34,6 +34,7 @@
 >   * **Added varargs constructor support**: Implemented proper handling for varargs constructors, automatically packing trailing arguments into arrays, supporting both individual arguments and pre-packed arrays
 >   * **Fixed generated-key Map ordering**: Fixed bug where Maps with generated keys (arg0, arg1, etc.) could inject nulls when keys had gaps; now properly sorts by numeric value to handle non-sequential keys
 >   * **Reduced logging noise**: Changed trySetAccessible() warnings from WARNING to FINE level for expected JPMS module boundary violations, reducing log spam in modular applications
+>   * **Removed problematic EnumSet mapping**: Removed EnumSet.class null supplier from ASSIGNABLE_CLASS_MAPPING as EnumSet cannot be instantiated without element type, letting fallback naturally return null
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

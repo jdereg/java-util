@@ -1072,20 +1072,20 @@ public class ClassUtilities {
 
         checkSecurityAccess();
 
-        // Try OSGi first
-        ClassLoader cl = getOSGiClassLoader(anchorClass);
-        if (cl != null) {
-            return cl;
-        }
-
-        // Try context class loader
-        cl = Thread.currentThread().getContextClassLoader();
+        // Try context class loader first (may have OSGi classes in some containers)
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
         if (cl != null) {
             return cl;
         }
 
         // Try anchor class loader
         cl = anchorClass.getClassLoader();
+        if (cl != null) {
+            return cl;
+        }
+
+        // Try OSGi if available
+        cl = getOSGiClassLoader(anchorClass);
         if (cl != null) {
             return cl;
         }
@@ -2550,10 +2550,14 @@ public class ClassUtilities {
         Set<Class<?>> allA = getClassHierarchyInfo(classA).getAllSupertypes();
         Set<Class<?>> allB = getClassHierarchyInfo(classB).getAllSupertypes();
 
-        // 2) Create a modifiable copy of the intersection, filtering excluded items
+        // 2) Iterate the smaller set for better performance
+        Set<Class<?>> smaller = allA.size() <= allB.size() ? allA : allB;
+        Set<Class<?>> larger = allA.size() <= allB.size() ? allB : allA;
+        
+        // 3) Create a modifiable copy of the intersection, filtering excluded items
         Set<Class<?>> common = new LinkedHashSet<>();
-        for (Class<?> type : allA) {
-            if (allB.contains(type) && !excluded.contains(type)) {
+        for (Class<?> type : smaller) {
+            if (larger.contains(type) && !excluded.contains(type)) {
                 common.add(type);
             }
         }

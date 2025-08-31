@@ -51,6 +51,8 @@
 >   * **Optimized findClosest() performance**: Pull distance map once from ClassHierarchyInfo to avoid repeated computeInheritanceDistance() calls in candidate evaluation loop
 >   * **Confirmed matchArgumentsWithVarargs optimization**: Verified early return optimization for zero-arg constructors is already in place as noted by GPT-5
 >   * **Added belt-and-suspenders alias security**: addPermanentClassAlias() now validates classes through SecurityChecker.verifyClass() to prevent aliasing to blocked classes
+>   * **Optimized findLowestCommonSupertypesExcluding performance**: Now iterates the smaller set when finding intersection for better performance with large class hierarchies
+>   * **Improved OSGi loader discovery order**: Changed getClassLoader() to try context loader first, then anchor, then OSGi, as context loader may have OSGi classes in some containers
 >   * **Fixed generated-key Map ordering**: Fixed bug where Maps with generated keys (arg0, arg1, etc.) could inject nulls when keys had gaps; now properly sorts by numeric value to handle non-sequential keys
 >   * **Reduced logging noise**: Changed trySetAccessible() warnings from WARNING to FINE level for expected JPMS module boundary violations, reducing log spam in modular applications
 >   * **Removed problematic EnumSet mapping**: Removed EnumSet.class null supplier from ASSIGNABLE_CLASS_MAPPING as EnumSet cannot be instantiated without element type, letting fallback naturally return null

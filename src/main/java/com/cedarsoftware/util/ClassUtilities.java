@@ -270,7 +270,7 @@ public class ClassUtilities {
         DIRECT_CLASS_MAPPING.put(String.class, () -> "");
         DIRECT_CLASS_MAPPING.put(BigInteger.class, () -> BigInteger.ZERO);
         DIRECT_CLASS_MAPPING.put(BigDecimal.class, () -> BigDecimal.ZERO);
-        DIRECT_CLASS_MAPPING.put(Class.class, () -> String.class);
+        // Note: Class.class has no sensible default - returns null
         // Use a calendar set to epoch instead of current time
         DIRECT_CLASS_MAPPING.put(Calendar.class, () -> {
             Calendar cal = Calendar.getInstance();

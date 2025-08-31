@@ -1146,6 +1146,19 @@ public class ClassUtilities {
             cl = ClassUtilities.getClassLoader(ClassUtilities.class);
             inputStream = cl.getResourceAsStream(resourceName);
         }
+        
+        // ClassLoader.getResourceAsStream() doesn't handle leading slashes,
+        // but Class.getResourceAsStream() does. Try without leading slash.
+        if (inputStream == null && resourceName.startsWith("/")) {
+            String noSlash = resourceName.substring(1);
+            cl = Thread.currentThread().getContextClassLoader();
+            if (cl != null) {
+                inputStream = cl.getResourceAsStream(noSlash);
+            }
+            if (inputStream == null) {
+                inputStream = ClassUtilities.getClassLoader(ClassUtilities.class).getResourceAsStream(noSlash);
+            }
+        }
 
         if (inputStream == null) {
             throw new IllegalArgumentException("Resource not found: " + resourceName);

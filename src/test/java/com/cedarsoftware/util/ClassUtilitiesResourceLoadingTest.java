@@ -54,4 +54,29 @@ class ClassUtilitiesResourceLoadingTest {
             Thread.currentThread().setContextClassLoader(prev);
         }
     }
+    
+    @Test
+    void shouldHandleLeadingSlashInResourceName() {
+        // ClassLoader.getResourceAsStream() doesn't handle leading slashes,
+        // but our implementation should strip them and retry
+        String resNameWithoutSlash = "test-resource.txt";
+        String resNameWithSlash = "/" + resNameWithoutSlash;
+        byte[] expected = "test content".getBytes(StandardCharsets.UTF_8);
+        
+        // Create a classloader that only responds to the name without slash
+        ClassLoader testLoader = new MapClassLoader(resNameWithoutSlash, expected);
+        ClassLoader prev = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(testLoader);
+            
+            // Should work with or without leading slash
+            byte[] resultWithoutSlash = ClassUtilities.loadResourceAsBytes(resNameWithoutSlash);
+            assertArrayEquals(expected, resultWithoutSlash, "Should load resource without leading slash");
+            
+            byte[] resultWithSlash = ClassUtilities.loadResourceAsBytes(resNameWithSlash);
+            assertArrayEquals(expected, resultWithSlash, "Should load resource with leading slash by stripping it");
+        } finally {
+            Thread.currentThread().setContextClassLoader(prev);
+        }
+    }
 }

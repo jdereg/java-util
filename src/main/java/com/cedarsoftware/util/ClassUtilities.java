@@ -2069,12 +2069,49 @@ public class ClassUtilities {
                 // For inner classes, try to get the enclosing instance
                 Class<?> enclosingClass = c.getEnclosingClass();
                 if (!visitedClasses.contains(enclosingClass)) {
-                    Object enclosingInstance = newInstance(converter, enclosingClass, Collections.emptyList(), visitedClasses);
-                    Constructor<?> constructor = ReflectionUtils.getConstructor(c, enclosingClass);
-                    if (constructor != null) {
-                        // Cache this successful constructor
-                        SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
-                        return constructor.newInstance(enclosingInstance);
+                    // Try to create enclosing instance with proper constructor initialization
+                    Object enclosingInstance = null;
+                    try {
+                        // First try default constructor if available
+                        Constructor<?> defaultCtor = enclosingClass.getDeclaredConstructor();
+                        trySetAccessible(defaultCtor);
+                        enclosingInstance = defaultCtor.newInstance();
+                    } catch (Exception e) {
+                        // Fall back to creating with empty args (may use Unsafe)
+                        enclosingInstance = newInstance(converter, enclosingClass, Collections.emptyList(), visitedClasses);
+                    }
+                    
+                    // Try all constructors where the first parameter is the enclosing class
+                    Constructor<?>[] constructors = ReflectionUtils.getAllConstructors(c);
+                    for (Constructor<?> constructor : constructors) {
+                        Parameter[] params = constructor.getParameters();
+                        if (params.length > 0 && params[0].getType().equals(enclosingClass)) {
+                            try {
+                                trySetAccessible(constructor);
+                                
+                                if (params.length == 1) {
+                                    // Simple case: only takes enclosing instance
+                                    Object instance = constructor.newInstance(enclosingInstance);
+                                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                                    return instance;
+                                } else {
+                                    // Complex case: takes enclosing instance plus more arguments
+                                    // Create arguments array with enclosing instance first
+                                    Parameter[] restParams = Arrays.copyOfRange(params, 1, params.length);
+                                    Object[] restArgs = matchArgumentsToParameters(converter, normalizedArgs, restParams, false);
+                                    Object[] allArgs = new Object[params.length];
+                                    allArgs[0] = enclosingInstance;
+                                    System.arraycopy(restArgs, 0, allArgs, 1, restArgs.length);
+                                    
+                                    Object instance = constructor.newInstance(allArgs);
+                                    SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, constructor);
+                                    return instance;
+                                }
+                            } catch (Exception e) {
+                                // Try next constructor
+                                continue;
+                            }
+                        }
                     }
                 }
             } catch (Exception ignored) {

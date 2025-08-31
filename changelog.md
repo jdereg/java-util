@@ -28,6 +28,11 @@
 >     * Removed Comparable→empty string mapping to avoid surprising string for generic interface
 >   * **Optimized findInheritanceMatches hot path**: Pre-cache ClassHierarchyInfo lookups for unique value classes to avoid repeated map lookups in parameter matching loops
 >   * **Optimized loadClass() string operations**: Refactored JVM descriptor parsing to count brackets once upfront, reducing string churn and branching in array type handling
+>   * **Implemented ClassLoader-scoped caching**: Added WeakHashMap-based caching with ClassLoader keys and WeakReference values to prevent cross-loader collisions and memory leaks in multi-classloader environments
+>   * **Fixed areAllConstructorsPrivate() for implicit constructors**: Method now correctly returns false for classes with no declared constructors (which get implicit public no-arg constructor from Java)
+>   * **Fixed mutable buffer sharing**: `getArgForType()` now returns fresh ByteBuffer/CharBuffer instances per call to prevent data corruption in multi-threaded scenarios
+>   * **Added boxing support in computeInheritanceDistance()**: Primitives can now reach reference types through boxing (e.g., int→Integer→Number), enabling proper type conversion paths
+>   * **Fixed inner class construction**: Inner class constructors with additional parameters beyond enclosing instance are now properly matched and invoked
 >   * **Fixed OSGi/JPMS classloader resolution**: Simplified loadClass() to consistently use getClassLoader() method which properly handles OSGi bundle classloaders and JPMS module boundaries
 >   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully() method
 >   * **Added comprehensive edge case test coverage**: Created ClassUtilitiesEdgeCaseTest with tests for deep interface hierarchies, diamond inheritance patterns, primitive/wrapper relationships, array descriptor parsing, and JPMS/named parameter fallback scenarios as suggested by GPT-5 review

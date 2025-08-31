@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -203,9 +204,44 @@ public class ClassUtilities {
 
     private ClassUtilities() {
     }
+    
+    // Helper methods for ClassLoader-scoped caching
+    private static Class<?> fromCache(String name, ClassLoader cl) {
+        // Check global aliases first (primitive types and user-defined aliases)
+        Class<?> globalAlias = GLOBAL_ALIASES.get(name);
+        if (globalAlias != null) {
+            return globalAlias;
+        }
+        
+        // Then check classloader-specific cache
+        final ClassLoader key = (cl != null) ? cl : SYSTEM_LOADER;
+        LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache = 
+                NAME_CACHE.get(key);
+        if (cache == null) {
+            return null;
+        }
+        java.lang.ref.WeakReference<Class<?>> ref = cache.get(name);
+        Class<?> cls = (ref == null) ? null : ref.get();
+        if (ref != null && cls == null) {
+            cache.remove(name);  // Clean up cleared entry
+        }
+        return cls;
+    }
+    
+    private static void toCache(String name, ClassLoader cl, Class<?> c) {
+        final ClassLoader key = (cl != null) ? cl : SYSTEM_LOADER;
+        NAME_CACHE
+            .computeIfAbsent(key, k -> new LRUCache<>(1024))
+            .put(name, new java.lang.ref.WeakReference<>(c));
+    }
 
-    // Security: Use size-limited cache to prevent memory exhaustion attacks
-    private static final Map<String, Class<?>> nameToClass = new LRUCache<>(5000);
+    // ClassLoader-scoped cache with weak references to prevent classloader leaks
+    // and ensure correctness in multi-classloader environments (OSGi, app servers, etc.)
+    private static final Map<ClassLoader, LRUCache<String, java.lang.ref.WeakReference<Class<?>>>> NAME_CACHE =
+            Collections.synchronizedMap(new WeakHashMap<>());
+    
+    // Global aliases for primitive types and common names (not classloader-specific)
+    private static final Map<String, Class<?>> GLOBAL_ALIASES = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap;
     private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER = new ClassValueMap<>();
     private static final Map<Class<?>, Class<?>> WRAPPER_TO_PRIMITIVE = new ClassValueMap<>();
@@ -410,18 +446,18 @@ public class ClassUtilities {
         // Most general
         ASSIGNABLE_CLASS_MAPPING.put(Iterable.class, ArrayList::new);
 
-        nameToClass.put("boolean", Boolean.TYPE);
-        nameToClass.put("char", Character.TYPE);
-        nameToClass.put("byte", Byte.TYPE);
-        nameToClass.put("short", Short.TYPE);
-        nameToClass.put("int", Integer.TYPE);
-        nameToClass.put("long", Long.TYPE);
-        nameToClass.put("float", Float.TYPE);
-        nameToClass.put("double", Double.TYPE);
-        nameToClass.put("void", Void.TYPE);
-        nameToClass.put("string", String.class);
-        nameToClass.put("date", Date.class);
-        nameToClass.put("class", Class.class);
+        GLOBAL_ALIASES.put("boolean", Boolean.TYPE);
+        GLOBAL_ALIASES.put("char", Character.TYPE);
+        GLOBAL_ALIASES.put("byte", Byte.TYPE);
+        GLOBAL_ALIASES.put("short", Short.TYPE);
+        GLOBAL_ALIASES.put("int", Integer.TYPE);
+        GLOBAL_ALIASES.put("long", Long.TYPE);
+        GLOBAL_ALIASES.put("float", Float.TYPE);
+        GLOBAL_ALIASES.put("double", Double.TYPE);
+        GLOBAL_ALIASES.put("void", Void.TYPE);
+        GLOBAL_ALIASES.put("string", String.class);
+        GLOBAL_ALIASES.put("date", Date.class);
+        GLOBAL_ALIASES.put("class", Class.class);
 
         PRIMITIVE_TO_WRAPPER.put(int.class, Integer.class);
         PRIMITIVE_TO_WRAPPER.put(long.class, Long.class);
@@ -557,7 +593,7 @@ public class ClassUtilities {
      * @param alias the alternative name for the class
      */
     public static void addPermanentClassAlias(Class<?> clazz, String alias) {
-        nameToClass.put(alias, clazz);
+        GLOBAL_ALIASES.put(alias, clazz);
     }
 
     /**
@@ -566,7 +602,7 @@ public class ClassUtilities {
      * @param alias the alias name to remove
      */
     public static void removePermanentClassAlias(String alias) {
-        nameToClass.remove(alias);
+        GLOBAL_ALIASES.remove(alias);
     }
 
     /**
@@ -711,7 +747,7 @@ public class ClassUtilities {
      * @return Class instance of the named JVM class
      */
     private static Class<?> internalClassForName(String name, ClassLoader classLoader) throws ClassNotFoundException {
-        Class<?> c = nameToClass.get(name);
+        Class<?> c = fromCache(name, classLoader);
         if (c != null) {
             return c;
         }
@@ -735,7 +771,7 @@ public class ClassUtilities {
         // Perform full security check on loaded class
         SecurityChecker.verifyClass(c);
 
-        nameToClass.put(name, c);
+        toCache(name, classLoader, c);
         return c;
     }
 
@@ -2615,24 +2651,25 @@ public class ClassUtilities {
      * </p>
      */
     public static void clearCaches() {
-        nameToClass.clear();
+        NAME_CACHE.clear();
+        GLOBAL_ALIASES.clear();
         SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
         CLASS_HIERARCHY_CACHE.clear();
         accessibilityCache.clear();
         // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.
         // Re-populate primitive types and common aliases
-        nameToClass.put("boolean", Boolean.TYPE);
-        nameToClass.put("char", Character.TYPE);
-        nameToClass.put("byte", Byte.TYPE);
-        nameToClass.put("short", Short.TYPE);
-        nameToClass.put("int", Integer.TYPE);
-        nameToClass.put("long", Long.TYPE);
-        nameToClass.put("float", Float.TYPE);
-        nameToClass.put("double", Double.TYPE);
-        nameToClass.put("void", Void.TYPE);
-        nameToClass.put("string", String.class);
-        nameToClass.put("date", Date.class);
-        nameToClass.put("class", Class.class);
+        GLOBAL_ALIASES.put("boolean", Boolean.TYPE);
+        GLOBAL_ALIASES.put("char", Character.TYPE);
+        GLOBAL_ALIASES.put("byte", Byte.TYPE);
+        GLOBAL_ALIASES.put("short", Short.TYPE);
+        GLOBAL_ALIASES.put("int", Integer.TYPE);
+        GLOBAL_ALIASES.put("long", Long.TYPE);
+        GLOBAL_ALIASES.put("float", Float.TYPE);
+        GLOBAL_ALIASES.put("double", Double.TYPE);
+        GLOBAL_ALIASES.put("void", Void.TYPE);
+        GLOBAL_ALIASES.put("string", String.class);
+        GLOBAL_ALIASES.put("date", Date.class);
+        GLOBAL_ALIASES.put("class", Class.class);
     }
 
     public static class SecurityChecker {

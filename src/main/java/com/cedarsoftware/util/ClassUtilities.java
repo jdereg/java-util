@@ -2035,7 +2035,7 @@ public class ClassUtilities {
                 sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
             } catch (SecurityException e) {
                 accessibilityCache.put(object, Boolean.FALSE);
-                LOG.log(Level.WARNING, "Security manager denies access to: " + object);
+                LOG.log(Level.FINE, "Security manager denies access to: " + object);
                 throw e; // Don't suppress security exceptions - let caller handle
             }
         }
@@ -2045,7 +2045,7 @@ public class ClassUtilities {
             accessibilityCache.put(object, Boolean.TRUE);
         } catch (SecurityException e) {
             accessibilityCache.put(object, Boolean.FALSE);
-            LOG.log(Level.WARNING, "Unable to set accessible: " + object + " - " + e.getMessage());
+            LOG.log(Level.FINE, "Unable to set accessible: " + object + " - " + e.getMessage());
             throw e; // Don't suppress security exceptions - they indicate important access control violations
         } catch (Throwable t) {
             // Only ignore non-security exceptions (like InaccessibleObjectException in Java 9+)
@@ -2101,7 +2101,7 @@ public class ClassUtilities {
                 unsafe = new Unsafe();
             } catch (Exception e) {
                 useUnsafe = false;
-                LOG.log(Level.WARNING, "Failed to initialize unsafe instantiation: " + e.getMessage());
+                LOG.log(Level.FINE, "Failed to initialize unsafe instantiation: " + e.getMessage());
             }
         } else {
             unsafe = null; // Clear reference when disabled

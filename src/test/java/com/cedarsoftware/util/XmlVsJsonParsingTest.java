@@ -27,8 +27,8 @@ public class XmlVsJsonParsingTest {
     static final int LOCATIONS = Integer.getInteger("locs", 200);
     static final int BUILDINGS_PER_LOC = Integer.getInteger("blds", 10);
     static final int COV_PER_BLDG = Integer.getInteger("covs", 20);
-    static final int WARMUP = Integer.getInteger("warmup", 50);
-    static final int RUNS = Integer.getInteger("runs", 100);
+    static final int WARMUP = Integer.getInteger("warmup", 5);
+    static final int RUNS = Integer.getInteger("runs", 10);
 
     @FunctionalInterface
     interface CheckedSupplier<T> { T get() throws Exception; }   // <-- lets lambdas throw

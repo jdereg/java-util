@@ -538,7 +538,9 @@ public class ClassUtilities {
      * @throws IllegalArgumentException If toType is null
      */
     public static Class<?> getPrimitiveFromWrapper(Class<?> toType) {
-        Convention.throwIfNull(toType, "toType cannot be null");
+        if (toType == null) {
+            throw new IllegalArgumentException("toType cannot be null");
+        }
         return WRAPPER_TO_PRIMITIVE.get(toType);
     }
 
@@ -941,10 +943,13 @@ public class ClassUtilities {
      *
      * @param primitiveClass the class to convert, must not be null
      * @return the wrapper class if the input is primitive, otherwise the input class itself
-     * @throws NullPointerException if the input class is null
-     * @throws IllegalArgumentException if the input class is not a recognized primitive type
+     * @throws IllegalArgumentException if the input class is null or not a recognized primitive type
      */
     public static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass) {
+        if (primitiveClass == null) {
+            throw new IllegalArgumentException("primitiveClass cannot be null");
+        }
+        
         if (!primitiveClass.isPrimitive()) {
             return primitiveClass;
         }
@@ -1458,7 +1463,30 @@ public class ClassUtilities {
                         try {
                             value = converter.convert(value, componentType);
                         } catch (Exception e) {
-                            // Use original value if conversion fails
+                            // Conversion failed, keep original value
+                        }
+                    }
+                    // Guard against ArrayStoreException
+                    if (value != null && !componentType.isInstance(value)) {
+                        // For primitives, we can't use isInstance check, so just try to set
+                        if (componentType.isPrimitive()) {
+                            try {
+                                // Convert to primitive type if needed
+                                value = converter.convert(value, componentType);
+                            } catch (Exception e) {
+                                // Conversion failed - for primitives, we can't store null
+                                // Use default value for primitive
+                                value = getArgForType(converter, componentType);
+                            }
+                        } else {
+                            // For reference types, if still incompatible after conversion attempt,
+                            // try one more conversion or set to null
+                            try {
+                                value = converter.convert(value, componentType);
+                            } catch (Exception e) {
+                                // Can't convert - for varargs, we'll be lenient and use null
+                                value = null;
+                            }
                         }
                     }
                     Array.set(varargsArray, i, value);
@@ -1478,7 +1506,30 @@ public class ClassUtilities {
                         try {
                             value = converter.convert(value, componentType);
                         } catch (Exception e) {
-                            // Use original value if conversion fails
+                            // Conversion failed, keep original value
+                        }
+                    }
+                    // Guard against ArrayStoreException
+                    if (value != null && !componentType.isInstance(value)) {
+                        // For primitives, we can't use isInstance check, so just try to set
+                        if (componentType.isPrimitive()) {
+                            try {
+                                // Convert to primitive type if needed
+                                value = converter.convert(value, componentType);
+                            } catch (Exception e) {
+                                // Conversion failed - for primitives, we can't store null
+                                // Use default value for primitive
+                                value = getArgForType(converter, componentType);
+                            }
+                        } else {
+                            // For reference types, if still incompatible after conversion attempt,
+                            // try one more conversion or set to null
+                            try {
+                                value = converter.convert(value, componentType);
+                            } catch (Exception e) {
+                                // Can't convert - for varargs, we'll be lenient and use null
+                                value = null;
+                            }
                         }
                     }
                     Array.set(varargsArray, i, value);
@@ -1860,15 +1911,22 @@ public class ClassUtilities {
         // Cache parameters for each constructor to avoid repeated allocations
         Map<Constructor<?>, Parameter[]> constructorParametersCache = new IdentityHashMap<>();
         
-        // First check if ANY constructor has real parameter names
+        // First check if ANY constructor has ALL real parameter names
         boolean anyConstructorHasRealNames = false;
         for (Constructor<?> constructor : sortedConstructors) {
             Parameter[] parameters = constructor.getParameters();
             constructorParametersCache.put(constructor, parameters);  // Cache for later use
             
             if (parameters.length > 0) {
-                String firstParamName = parameters[0].getName();
-                if (!ARG_PATTERN.matcher(firstParamName).matches()) {
+                // Check that ALL parameters have real names (not just the first)
+                boolean allParamsHaveRealNames = true;
+                for (Parameter param : parameters) {
+                    if (ARG_PATTERN.matcher(param.getName()).matches()) {
+                        allParamsHaveRealNames = false;
+                        break;
+                    }
+                }
+                if (allParamsHaveRealNames) {
                     anyConstructorHasRealNames = true;
                     break;
                 }

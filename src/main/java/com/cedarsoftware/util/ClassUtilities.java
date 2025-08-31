@@ -216,7 +216,6 @@ public class ClassUtilities {
     // Note: Core class blocking security is ALWAYS enabled for safety
     private static final int DEFAULT_MAX_CLASS_LOAD_DEPTH = 100;
     private static final int DEFAULT_MAX_CONSTRUCTOR_ARGS = 50;
-    private static final int DEFAULT_MAX_REFLECTION_OPERATIONS_PER_CALL = 1000;
     private static final int DEFAULT_MAX_RESOURCE_NAME_LENGTH = 1000;
 
     // Thread-local depth tracking for enhanced security
@@ -2616,22 +2615,6 @@ public class ClassUtilities {
             }
         }
         return DEFAULT_MAX_CONSTRUCTOR_ARGS;
-    }
-
-    private static int getMaxReflectionOperations() {
-        if (!isEnhancedSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String maxOpsProp = System.getProperty("classutilities.max.reflection.operations");
-        if (maxOpsProp != null) {
-            try {
-                int value = Integer.parseInt(maxOpsProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_REFLECTION_OPERATIONS_PER_CALL;
     }
 
     private static int getMaxResourceNameLength() {

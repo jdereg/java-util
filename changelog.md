@@ -40,6 +40,10 @@
 >   * **Fixed Currency default creation**: Currency.getInstance(Locale.getDefault()) now gracefully falls back to USD when the default locale doesn't have a currency (e.g., Locale.ROOT, synthetic regions)
 >   * **Simplified SecurityManager checks**: Removed redundant ReflectPermission check in trySetAccessible() since setAccessible() throws the same SecurityException - the cache already prevents repeated attempts
 >   * **Optimized logging volume**: Added isLoggable() guards for FINEST level logging in constructor matching loops to avoid unnecessary string construction when logging is disabled
+>   * **Fixed security bypass in cache hits**: Alias and cache hits now properly go through SecurityChecker.verifyClass() to prevent bypassing security checks
+>   * **Fixed ClassLoader key mismatch**: Consistently resolve null ClassLoader to same instance to prevent cross-loader cache pollution
+>   * **Fixed computeIfAbsent synchronization**: Replaced non-synchronized computeIfAbsent with properly synchronized getLoaderCache() helper to prevent race conditions
+>   * **Fixed off-by-one in class load depth**: Now validates nextDepth instead of currentDepth to prevent allowing maxDepth + 1 recursive loads
 >   * **Fixed OSGi/JPMS classloader resolution**: Simplified loadClass() to consistently use getClassLoader() method which properly handles OSGi bundle classloaders and JPMS module boundaries
 >   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully() method
 >   * **Added comprehensive edge case test coverage**: Created ClassUtilitiesEdgeCaseTest with tests for deep interface hierarchies, diamond inheritance patterns, primitive/wrapper relationships, array descriptor parsing, and JPMS/named parameter fallback scenarios as suggested by GPT-5 review

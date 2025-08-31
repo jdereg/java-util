@@ -198,6 +198,12 @@ public class ClassUtilities {
     }
     
     // Helper methods for ClassLoader-scoped caching
+    
+    // Consistently resolve the ClassLoader to use as cache key
+    private static ClassLoader resolveLoader(ClassLoader cl) {
+        return (cl != null) ? cl : getClassLoader(ClassUtilities.class);
+    }
+    
     private static Class<?> fromCache(String name, ClassLoader cl) {
         // Check global aliases first (primitive types and user-defined aliases)
         Class<?> globalAlias = GLOBAL_ALIASES.get(name);
@@ -205,8 +211,8 @@ public class ClassUtilities {
             return globalAlias;
         }
         
-        // Then check classloader-specific cache
-        final ClassLoader key = (cl != null) ? cl : SYSTEM_LOADER;
+        // Then check classloader-specific cache using consistent resolution
+        final ClassLoader key = resolveLoader(cl);
         LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache = 
                 NAME_CACHE.get(key);
         if (cache == null) {
@@ -220,11 +226,21 @@ public class ClassUtilities {
         return cls;
     }
     
+    // Helper to get or create loader cache with proper synchronization
+    private static LRUCache<String, java.lang.ref.WeakReference<Class<?>>> getLoaderCache(ClassLoader key) {
+        synchronized (NAME_CACHE) {
+            LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache = NAME_CACHE.get(key);
+            if (cache == null) {
+                cache = new LRUCache<>(1024);
+                NAME_CACHE.put(key, cache);
+            }
+            return cache;
+        }
+    }
+    
     private static void toCache(String name, ClassLoader cl, Class<?> c) {
-        final ClassLoader key = (cl != null) ? cl : SYSTEM_LOADER;
-        NAME_CACHE
-            .computeIfAbsent(key, k -> new LRUCache<>(1024))
-            .put(name, new java.lang.ref.WeakReference<>(c));
+        final ClassLoader key = resolveLoader(cl);
+        getLoaderCache(key).put(name, new java.lang.ref.WeakReference<>(c));
     }
 
     // ClassLoader-scoped cache with weak references to prevent classloader leaks
@@ -723,6 +739,8 @@ public class ClassUtilities {
     private static Class<?> internalClassForName(String name, ClassLoader classLoader) throws ClassNotFoundException {
         Class<?> c = fromCache(name, classLoader);
         if (c != null) {
+            // Ensure alias/cache hits are verified too (they could bypass security)
+            SecurityChecker.verifyClass(c);
             return c;
         }
 
@@ -733,10 +751,11 @@ public class ClassUtilities {
 
         // Enhanced security: Validate class loading depth
         int currentDepth = CLASS_LOAD_DEPTH.get();
-        validateEnhancedSecurity("Class loading depth", currentDepth, getMaxClassLoadDepth());
+        int nextDepth = currentDepth + 1;
+        validateEnhancedSecurity("Class loading depth", nextDepth, getMaxClassLoadDepth());
         
         try {
-            CLASS_LOAD_DEPTH.set(currentDepth + 1);
+            CLASS_LOAD_DEPTH.set(nextDepth);
             c = loadClass(name, classLoader);
         } finally {
             CLASS_LOAD_DEPTH.set(currentDepth);
@@ -1815,7 +1834,7 @@ public class ClassUtilities {
      * @return A new instance of the specified class
      * @throws IllegalArgumentException if the class cannot be instantiated or arguments are invalid
      */
-    public static Object newYInstance(Converter converter, Class<?> c, Object arguments) {
+    public static Object newInstance(Converter converter, Class<?> c, Object arguments) {
         Convention.throwIfNull(c, "Class cannot be null");
         Convention.throwIfNull(converter, "Converter cannot be null");
 
@@ -2177,7 +2196,6 @@ public class ClassUtilities {
                                 }
                             } catch (Exception e) {
                                 // Try next constructor
-                                continue;
                             }
                         }
                     }

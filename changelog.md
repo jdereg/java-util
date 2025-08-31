@@ -43,6 +43,7 @@
 >   * **Removed unused private method**: Removed getMaxReflectionOperations() and associated constant that were never called
 >   * **Added tests for public utility methods**: Added tests for logMethodAccessIssue(), logConstructorAccessIssue(), and clearCaches() public methods
 >   * **Optimized getParameters() calls**: Cached constructor.getParameters() results to avoid repeated allocations in newInstanceWithNamedParameters()
+>   * **Fixed incorrect comment**: Updated accessibilityCache comment to correctly state it uses Collections.synchronizedMap, not ConcurrentHashMap
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

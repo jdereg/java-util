@@ -2045,7 +2045,7 @@ public class ClassUtilities {
 
     // Cache for tracking which AccessibleObjects we've already tried to make accessible
     // Uses WeakHashMap to allow GC of classes/methods when no longer referenced
-    // Uses ConcurrentHashMap wrapper for thread-safety without global synchronization
+    // Uses Collections.synchronizedMap wrapper for thread-safety
     private static final Map<AccessibleObject, Boolean> accessibilityCache = 
         Collections.synchronizedMap(new WeakHashMap<>());
     

@@ -166,9 +166,10 @@ class ClassUtilitiesPrimitiveWideningTest {
         // Wrapper to Object
         assertEquals(2, ClassUtilities.computeInheritanceDistance(Integer.class, Object.class));
         
-        // But primitives can't inherit from Number
-        assertEquals(-1, ClassUtilities.computeInheritanceDistance(int.class, Number.class));
-        assertEquals(-1, ClassUtilities.computeInheritanceDistance(double.class, Number.class));
+        // With boxing support, primitives CAN now reach Number through their wrapper
+        // int → Integer (boxing) → Number
+        assertEquals(1, ClassUtilities.computeInheritanceDistance(int.class, Number.class));
+        assertEquals(1, ClassUtilities.computeInheritanceDistance(double.class, Number.class));
     }
     
     @Test

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -18,8 +17,6 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ReflectPermission;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.URI;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
@@ -45,11 +42,9 @@ import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Currency;
 import java.util.Date;
 import java.util.Deque;
-import java.util.EnumSet;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -556,7 +551,7 @@ public class ClassUtilities {
         private final Map<Class<?>, Integer> distanceMap;
         private final int depth; // Store depth as a field
         
-        ClassHierarchyInfo(Set<Class<?>> supertypes, Map<Class<?>, Integer> distances, Class<?> sourceClass) {
+        ClassHierarchyInfo(Set<Class<?>> supertypes, Map<Class<?>, Integer> distances) {
             this.allSupertypes = Collections.unmodifiableSet(supertypes);
             this.distanceMap = Collections.unmodifiableMap(distances);
 
@@ -635,17 +630,15 @@ public class ClassUtilities {
             return -1; // Shouldn't happen if isPrimitive() is correct
         }
         
-        // Special case: wrapper to its superclass (e.g., Integer to Number)
-        // This allows Integer → Number (distance 1) to work correctly
+        // Special case: primitive/wrapper to reference type (e.g., int/Integer to Number)
+        // This allows both int → Number and Integer → Number to work correctly
         if (sp && !dp) {
-            // Source is primitive/wrapper, destination is not
-            // Let the hierarchy distance handle wrapper → superclass relationships
-            // (e.g., Integer → Number, Integer → Object)
-            if (isPrimitive(source) && !source.isPrimitive()) {
-                // source is a wrapper class, use normal hierarchy
-                return getClassHierarchyInfo(source).getDistance(destination);
+            // Source is primitive/wrapper, destination is reference type
+            // Box the primitive if needed, then check hierarchy distance
+            Class<?> src = source.isPrimitive() ? PRIMITIVE_TO_WRAPPER.get(source) : source;
+            if (src != null) {
+                return getClassHierarchyInfo(src).getDistance(destination);
             }
-            // source is actual primitive, no inheritance possible
             return -1;
         }
 
@@ -1361,7 +1354,7 @@ public class ClassUtilities {
         }
 
         // Check if the last parameter is varargs and handle specially
-        boolean isVarargs = parameters.length > 0 && parameters[parameters.length - 1].isVarArgs();
+        boolean isVarargs = parameters[parameters.length - 1].isVarArgs();
         if (isVarargs) {
             return matchArgumentsWithVarargs(converter, values, parameters, allowNulls);
         }
@@ -1794,13 +1787,10 @@ public class ClassUtilities {
                 // Preserve order for generated keys (arg0, arg1, etc.)
                 // Sort entries by the numeric part of the key to handle gaps (e.g., arg0, arg2 without arg1)
                 List<Map.Entry<String, Object>> entries = new ArrayList<>(map.entrySet());
-                Collections.sort(entries, new Comparator<Map.Entry<String, Object>>() {
-                    @Override
-                    public int compare(Map.Entry<String, Object> e1, Map.Entry<String, Object> e2) {
-                        int num1 = Integer.parseInt(e1.getKey().substring(3));
-                        int num2 = Integer.parseInt(e2.getKey().substring(3));
-                        return Integer.compare(num1, num2);
-                    }
+                entries.sort((e1, e2) -> {
+                    int num1 = Integer.parseInt(e1.getKey().substring(3));
+                    int num2 = Integer.parseInt(e2.getKey().substring(3));
+                    return Integer.compare(num1, num2);
                 });
                 List<Object> orderedValues = new ArrayList<>(entries.size());
                 for (Map.Entry<String, Object> entry : entries) {
@@ -2557,7 +2547,7 @@ public class ClassUtilities {
             }
 
             return new ClassHierarchyInfo(Collections.unmodifiableSet(allSupertypes),
-                    Collections.unmodifiableMap(distanceMap), key);
+                    Collections.unmodifiableMap(distanceMap));
         });
     }
     

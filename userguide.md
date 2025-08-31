@@ -2023,28 +2023,28 @@ A comprehensive utility class for Java class operations, providing methods for c
 See [Redirecting java.util.logging](#redirecting-javautillogging) if you use a different logging framework.
 
 ### Key Features
-- Inheritance distance calculation
-- Primitive type handling
-- Class loading and instantiation
-- Resource loading utilities
+- Inheritance distance calculation with primitive widening support (JLS 5.1.2)
+- Primitive type handling and conversions
+- Class loading and instantiation with varargs constructor support
+- Resource loading utilities with enhanced path validation
 - Class alias management
-- OSGi/JPMS support
-- Constructor caching
+- OSGi/JPMS support with proper module boundary handling
+- Constructor caching and parameter caching for performance
 - Unsafe instantiation support
 - Map argument instantiation uses parameter names when available
+- Common supertype finding with tie-breaking for most specific types
+- Interface depth calculation using BFS for correctness
 
 ### Public API
 ```java
-// Install your own cache
-public static void setSuperTypesCache(Map<Class<?>, Set<Class<?>>> cache)
-public static void setClassDistanceCache(Map<Map.Entry<Class<?>, Class<?>>, Integer> cache)
-
-// Class locating
+// Class locating and loading
 public static Class<?> forName(String name, ClassLoader classLoader)
 public static void addPermanentClassAlias(Class<?> clazz, String alias)
 public static void removePermanentClassAlias(String alias)
 
-// Class instantiation
+// Class instantiation (supports varargs constructors)
+public static Object newInstance(Class<?> c, Object arguments)
+public static Object newInstance(Converter converter, Class<?> c, Object arguments)
 public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues)
 public static void setUseUnsafe(boolean state)
 
@@ -2053,8 +2053,10 @@ public static boolean isClassFinal(Class<?> c)
 public static boolean areAllConstructorsPrivate(Class<?> c)
 public static Class<?> getClassIfEnum(Class<?> c)
 
-// Primitive wrappers
+// Primitive types and wrappers
 public static Class<?> toPrimitiveWrapperClass(Class<?> primitiveClass)
+public static Class<?> toPrimitiveClass(Class<?> wrapperClass)
+public static Class<?> getPrimitiveFromWrapper(Class<?> toType)
 public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y)
 public static boolean isPrimitive(Class<?> c) // true for primitive and primitive wrapper
 
@@ -2062,13 +2064,25 @@ public static boolean isPrimitive(Class<?> c) // true for primitive and primitiv
 public static ClassLoader getClassLoader()
 public static ClassLoader getClassLoader(final Class<?> anchorClass)
 
-// Class relationships
+// Class relationships and inheritance (supports primitive widening)
 public static int computeInheritanceDistance(Class<?> source, Class<?> destination)
 public static boolean haveCommonAncestor(Class<?> a, Class<?> b)
-public static Set<Class<?>> getAllSupertypes(Class<?> clazz)
 public static Set<Class<?>> findLowestCommonSupertypesExcluding(Class<?> classA, Class<?> classB, Set<Class<?>> excluded)
 public static Set<Class<?>> findLowestCommonSupertypes(Class<?> classA, Class<?> classB)
 public static Class<?> findLowestCommonSupertype(Class<?> classA, Class<?> classB)
+public static <T> T findClosest(Class<?> clazz, Map<Class<?>, T> candidateClasses, T defaultClass)
+
+// Resource loading
+public static String loadResourceAsString(String resourceName)
+public static byte[] loadResourceAsBytes(String resourceName)
+
+// Logging utilities
+public static void logFieldAccessIssue(Field field, Exception e)
+public static void logMethodAccessIssue(Method method, Exception e)
+public static void logConstructorAccessIssue(Constructor<?> constructor, Exception e)
+
+// Cache management
+public static void clearCaches()
 ```
 ### Usage Examples
 
@@ -2077,6 +2091,10 @@ public static Class<?> findLowestCommonSupertype(Class<?> classA, Class<?> class
 // Check inheritance distance
 int distance = ClassUtilities.computeInheritanceDistance(ArrayList.class, List.class);
 // Result: 1
+
+// Primitive widening distance (JLS 5.1.2)
+int wideningDistance = ClassUtilities.computeInheritanceDistance(byte.class, int.class);
+// Result: 2 (byte → short → int)
 
 // Check primitive types
 boolean isPrim = ClassUtilities.isPrimitive(Integer.class);
@@ -2110,6 +2128,11 @@ Object instance3 = ClassUtilities.newInstance(MyClass.class, "single-arg");
 
 // 4. No-arg constructor
 Object instance4 = ClassUtilities.newInstance(MyClass.class, null);
+
+// 5. Varargs constructor support - automatically packs trailing args into array
+List<Object> varargsParams = Arrays.asList("format", "arg1", "arg2", "arg3");
+Object formatted = ClassUtilities.newInstance(converter, String.class, varargsParams);
+// Calls String(String format, Object... args) constructor
 
 // Convert primitive types to wrappers
 Class<?> wrapper = ClassUtilities.toPrimitiveWrapperClass(int.class);

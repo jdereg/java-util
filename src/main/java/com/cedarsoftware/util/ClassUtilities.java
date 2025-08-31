@@ -123,12 +123,16 @@ import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
  *     <li>Providing custom mappings for class aliases ({@link #addPermanentClassAlias} and {@link #removePermanentClassAlias}).</li>
  *     <li>Identifying whether all constructors in a class are private ({@link #areAllConstructorsPrivate}).</li>
  *     <li>Finding the most specific matching class in an inheritance hierarchy ({@link #findClosest}).</li>
+ *     <li>Finding common supertypes and ancestors between classes ({@link #findLowestCommonSupertypes}).</li>
+ *     <li>Instantiating objects with varargs constructor support ({@link #newInstance}).</li>
  * </ul>
  *
  * <h2>Inheritance Distance</h2>
  * <p>
  * The {@link #computeInheritanceDistance(Class, Class)} method calculates the number of inheritance steps
- * between two classes or interfaces. If there is no relationship, it returns {@code -1}.
+ * between two classes or interfaces. If there is no relationship, it returns {@code -1}. This method also
+ * supports primitive widening conversions as defined in JLS 5.1.2, treating widening paths like
+ * byte→short→int→long→float→double as inheritance relationships.
  * </p>
  *
  * <h2>Primitive and Wrapper Handling</h2>

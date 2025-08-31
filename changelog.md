@@ -39,6 +39,7 @@
 >   * **Fixed loadResourceAsBytes() leading slash handling**: Added fallback to strip leading slash when ClassLoader.getResourceAsStream() fails, as ClassLoader API doesn't handle leading slashes like Class.getResourceAsStream() does
 >   * **Improved validateResourcePath() precision**: Made validation more precise and less restrictive - now only blocks null bytes, backslashes, and ".." path segments (not substrings), allowing legitimate filenames like "my..proto"
 >   * **Fixed OSGi class loading consistency**: OSGi framework classes now loaded using consistent classloader to avoid potential linkage issues in complex OSGi environments
+>   * **Clarified Converter usage**: Added comment explaining why ClassUtilities uses legacy Converter.getInstance() for default instance - only basic conversions needed, no special options required
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

@@ -1616,6 +1616,9 @@ public class ClassUtilities {
      * @throws IllegalArgumentException if the class cannot be instantiated or arguments are invalid
      */
     public static Object newInstance(Class<?> c, Object arguments) {
+        // Use the legacy Converter's getInstance() which provides a shared instance
+        // of the new Converter with default options. This is fine since ClassUtilities
+        // only needs basic conversions that don't require special options.
         return newInstance(com.cedarsoftware.util.Converter.getInstance(), c, arguments);
     }
 
@@ -2254,23 +2257,7 @@ public class ClassUtilities {
             throw new SecurityException("Resource name too long (max " + maxLength + "): " + resourceName.length());
         }
     }
-    
-    /**
-     * Security: Validate context ClassLoader to ensure it's from a trusted source.
-     * 
-     * @param classLoader The ClassLoader to validate
-     * @throws SecurityException if the ClassLoader is not trusted
-     */
-    private static void validateContextClassLoader(ClassLoader classLoader) {
-        if (classLoader == null) return;
-        // In modern JPMS-aware apps, many legitimate class loaders exist. Avoid heuristics.
-        // Keep only a very light sanity check if desired, and log at FINE:
-        if (!classLoader.getClass().getName().startsWith("java.")
-            && !classLoader.getClass().getName().startsWith("jdk.")) {
-            LOG.log(Level.FINE, "Using context ClassLoader: {0}", classLoader.getClass().getName());
-        }
-    }
-    
+
     /**
      * Convenience method for field access issues
      */

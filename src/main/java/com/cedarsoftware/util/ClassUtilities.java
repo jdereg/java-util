@@ -14,7 +14,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.ReflectPermission;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -1816,7 +1815,7 @@ public class ClassUtilities {
      * @return A new instance of the specified class
      * @throws IllegalArgumentException if the class cannot be instantiated or arguments are invalid
      */
-    public static Object newInstance(Converter converter, Class<?> c, Object arguments) {
+    public static Object newYInstance(Converter converter, Class<?> c, Object arguments) {
         Convention.throwIfNull(c, "Class cannot be null");
         Convention.throwIfNull(converter, "Converter cannot be null");
 
@@ -1980,8 +1979,10 @@ public class ClassUtilities {
             for (int i = 0; i < parameters.length; i++) {
                 paramNames[i] = parameters[i].getName();
 
-                LOG.log(Level.FINEST, "  Parameter {0}: name=''{1}'', type={2}",
-                        new Object[]{i, paramNames[i], parameters[i].getType().getSimpleName()});
+                if (LOG.isLoggable(Level.FINEST)) {
+                    LOG.log(Level.FINEST, "  Parameter {0}: name=''{1}'', type={2}",
+                            new Object[]{i, paramNames[i], parameters[i].getType().getSimpleName()});
+                }
 
                 // Check if we have real parameter names or just arg0, arg1, etc.
                 if (ARG_PATTERN.matcher(paramNames[i]).matches()) {
@@ -2021,8 +2022,10 @@ public class ClassUtilities {
                             args[i] = converter.convert(value, parameters[i].getType());
                         }
 
-                        LOG.log(Level.FINEST, "  Matched parameter ''{0}'' with value: {1}",
-                                new Object[]{paramNames[i], value});
+                        if (LOG.isLoggable(Level.FINEST)) {
+                            LOG.log(Level.FINEST, "  Matched parameter ''{0}'' with value: {1}",
+                                    new Object[]{paramNames[i], value});
+                        }
                     } catch (Exception conversionException) {
                         allMatched = false;
                         break;
@@ -2274,18 +2277,8 @@ public class ClassUtilities {
             return;
         }
         
-        // Check security permissions before attempting to set accessible
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            try {
-                sm.checkPermission(new ReflectPermission("suppressAccessChecks"));
-            } catch (SecurityException e) {
-                accessibilityCache.put(object, Boolean.FALSE);
-                LOG.log(Level.FINE, "Security manager denies access to: " + object);
-                throw e; // Don't suppress security exceptions - let caller handle
-            }
-        }
-        
+        // The setAccessible() call will throw SecurityException if there's a SecurityManager
+        // and it denies ReflectPermission("suppressAccessChecks"). No need to check explicitly.
         try {
             object.setAccessible(true);
             accessibilityCache.put(object, Boolean.TRUE);
@@ -2439,12 +2432,14 @@ public class ClassUtilities {
         }
 
         // Log the concise message
-        if (operation != null && !operation.isEmpty()) {
-            LOG.log(Level.FINEST, "Cannot {0} {1} {2} ''{3}'' on {4} ({5})",
-                    new Object[]{operation, modifiers, elementType, elementName, declaringClass, reason});
-        } else {
-            LOG.log(Level.FINEST, "Cannot access {0} {1} ''{2}'' on {3} ({4})",
-                    new Object[]{modifiers, elementType, elementName, declaringClass, reason});
+        if (LOG.isLoggable(Level.FINEST)) {
+            if (operation != null && !operation.isEmpty()) {
+                LOG.log(Level.FINEST, "Cannot {0} {1} {2} ''{3}'' on {4} ({5})",
+                        new Object[]{operation, modifiers, elementType, elementName, declaringClass, reason});
+            } else {
+                LOG.log(Level.FINEST, "Cannot access {0} {1} ''{2}'' on {3} ({4})",
+                        new Object[]{modifiers, elementType, elementName, declaringClass, reason});
+            }
         }
     }
     

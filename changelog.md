@@ -38,6 +38,8 @@
 >   * **Fixed API/docs consistency for null handling**: All primitive/wrapper conversion methods (toPrimitiveWrapperClass, getPrimitiveFromWrapper, toPrimitiveClass) now consistently throw IllegalArgumentException with descriptive messages for null inputs
 >   * **Improved resource path handling for Windows developers**: Backslashes in resource paths are now normalized to forward slashes for better ergonomics, while still maintaining security against path traversal attacks
 >   * **Fixed Currency default creation**: Currency.getInstance(Locale.getDefault()) now gracefully falls back to USD when the default locale doesn't have a currency (e.g., Locale.ROOT, synthetic regions)
+>   * **Simplified SecurityManager checks**: Removed redundant ReflectPermission check in trySetAccessible() since setAccessible() throws the same SecurityException - the cache already prevents repeated attempts
+>   * **Optimized logging volume**: Added isLoggable() guards for FINEST level logging in constructor matching loops to avoid unnecessary string construction when logging is disabled
 >   * **Fixed OSGi/JPMS classloader resolution**: Simplified loadClass() to consistently use getClassLoader() method which properly handles OSGi bundle classloaders and JPMS module boundaries
 >   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully() method
 >   * **Added comprehensive edge case test coverage**: Created ClassUtilitiesEdgeCaseTest with tests for deep interface hierarchies, diamond inheritance patterns, primitive/wrapper relationships, array descriptor parsing, and JPMS/named parameter fallback scenarios as suggested by GPT-5 review

@@ -39,7 +39,7 @@ public class ClassUtilitiesSecurityTest {
             ClassUtilities.loadResourceAsBytes("../../../etc/passwd");
         });
         
-        assertTrue(exception.getMessage().contains("Invalid resource path"),
+        assertTrue(exception.getMessage().contains("directory traversal"),
                   "Should block path traversal attempts");
     }
     
@@ -49,18 +49,18 @@ public class ClassUtilitiesSecurityTest {
             ClassUtilities.loadResourceAsBytes("..\\..\\windows\\system32\\config\\sam");
         });
         
-        assertTrue(exception.getMessage().contains("Invalid resource path"),
-                  "Should block Windows path traversal attempts");
+        assertTrue(exception.getMessage().contains("backslash"),
+                  "Should block Windows-style paths with backslashes");
     }
     
     @Test
-    public void testLoadResourceAsBytes_absolutePath_throwsException() {
+    public void testLoadResourceAsBytes_nullByte_throwsException() {
         Exception exception = assertThrows(SecurityException.class, () -> {
-            ClassUtilities.loadResourceAsBytes("/etc/passwd");
+            ClassUtilities.loadResourceAsBytes("file\0.txt");
         });
         
-        assertTrue(exception.getMessage().contains("Invalid resource path"),
-                  "Should block absolute path access");
+        assertTrue(exception.getMessage().contains("null byte"),
+                  "Should block paths with null bytes");
     }
     
     @Test
@@ -69,8 +69,31 @@ public class ClassUtilitiesSecurityTest {
             ClassUtilities.loadResourceAsBytes("META-INF/../etc/passwd");
         });
         
-        assertTrue(exception.getMessage().contains("Invalid resource path") || exception.getMessage().contains("Access to system resource denied"),
-                  "Should block access to system resources");
+        assertTrue(exception.getMessage().contains("directory traversal"),
+                  "Should block paths with .. segments");
+    }
+    
+    @Test
+    public void testLoadResourceAsBytes_legitimateDoubleDot_allowed() {
+        // These should NOT throw because ".." is part of the filename, not a path segment
+        try {
+            // These will fail to find the resource (FileNotFound), but shouldn't throw SecurityException
+            ClassUtilities.loadResourceAsBytes("my..proto");
+        } catch (IllegalArgumentException e) {
+            // Expected - resource not found
+            assertTrue(e.getMessage().contains("Resource not found"));
+        } catch (SecurityException e) {
+            fail("Should not block filenames containing .. that aren't path segments: " + e.getMessage());
+        }
+        
+        try {
+            ClassUtilities.loadResourceAsBytes("file..txt");
+        } catch (IllegalArgumentException e) {
+            // Expected - resource not found
+            assertTrue(e.getMessage().contains("Resource not found"));
+        } catch (SecurityException e) {
+            fail("Should not block filenames containing .. that aren't path segments: " + e.getMessage());
+        }
     }
     
     @Test
@@ -88,16 +111,6 @@ public class ClassUtilitiesSecurityTest {
         
         assertTrue(exception.getMessage().contains("too long"),
                   "Should block overly long resource names");
-    }
-    
-    @Test
-    public void testLoadResourceAsBytes_nullByte_throwsException() {
-        Exception exception = assertThrows(SecurityException.class, () -> {
-            ClassUtilities.loadResourceAsBytes("test\0.txt");
-        });
-        
-        assertTrue(exception.getMessage().contains("Invalid resource path"),
-                  "Should block null byte injection");
     }
     
     @Test

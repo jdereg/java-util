@@ -2226,21 +2226,18 @@ public class ClassUtilities {
             throw new SecurityException("Resource name cannot be null or empty");
         }
         
-        // Security: ClassLoader resource lookup is sandboxed; main risks are:
-        // 1. Path traversal via ".." segments
-        // 2. Null bytes which can truncate paths in some contexts
-        // 3. Backslashes which are not valid in resource names (resources always use /)
-        if (resourceName.contains("..") || resourceName.contains("\0") || resourceName.contains("\\")) {
-            throw new SecurityException("Invalid resource path: " + resourceName);
+        // Security: Block null bytes and backslashes which are invalid in resource names
+        // Resources always use forward slashes, and null bytes can truncate paths
+        if (resourceName.indexOf('\0') >= 0 || resourceName.indexOf('\\') >= 0) {
+            throw new SecurityException("Invalid resource path contains null byte or backslash: " + resourceName);
         }
         
-        // Security: Block obvious system file paths (even though ClassLoader wouldn't find them anyway)
-        // This helps catch programmer errors and makes security scanners happy
-        String lowerPath = resourceName.toLowerCase();
-        if (lowerPath.startsWith("/etc/") || lowerPath.startsWith("/dev/") || 
-            lowerPath.startsWith("/proc/") || lowerPath.startsWith("/sys/") ||
-            lowerPath.equals("/etc/passwd") || lowerPath.equals("/etc/shadow")) {
-            throw new SecurityException("Invalid resource path: " + resourceName);
+        // Security: Block ".." path segments (not just the substring) to prevent traversal
+        // This allows legitimate filenames like "my..proto" or "file..txt"
+        for (String segment : resourceName.split("/")) {
+            if (segment.equals("..")) {
+                throw new SecurityException("Invalid resource path contains directory traversal: " + resourceName);
+            }
         }
         
         // Security: Limit resource name length to prevent DoS

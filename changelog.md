@@ -48,6 +48,8 @@
 >   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully() method
 >   * **Added comprehensive edge case test coverage**: Created ClassUtilitiesEdgeCaseTest with tests for deep interface hierarchies, diamond inheritance patterns, primitive/wrapper relationships, array descriptor parsing, and JPMS/named parameter fallback scenarios as suggested by GPT-5 review
 >   * **Added varargs constructor support**: Implemented proper handling for varargs constructors, automatically packing trailing arguments into arrays, supporting both individual arguments and pre-packed arrays
+>   * **Optimized findClosest() performance**: Pull distance map once from ClassHierarchyInfo to avoid repeated computeInheritanceDistance() calls in candidate evaluation loop
+>   * **Confirmed matchArgumentsWithVarargs optimization**: Verified early return optimization for zero-arg constructors is already in place as noted by GPT-5
 >   * **Fixed generated-key Map ordering**: Fixed bug where Maps with generated keys (arg0, arg1, etc.) could inject nulls when keys had gaps; now properly sorts by numeric value to handle non-sequential keys
 >   * **Reduced logging noise**: Changed trySetAccessible() warnings from WARNING to FINE level for expected JPMS module boundary violations, reducing log spam in modular applications
 >   * **Removed problematic EnumSet mapping**: Removed EnumSet.class null supplier from ASSIGNABLE_CLASS_MAPPING as EnumSet cannot be instantiated without element type, letting fallback naturally return null

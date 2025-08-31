@@ -1210,14 +1210,16 @@ public class ClassUtilities {
         }
 
         // If no exact match, then look for closest inheritance match
+        // Pull the distance map once to avoid repeated lookups
+        Map<Class<?>, Integer> distanceMap = getClassHierarchyInfo(clazz).getDistanceMap();
         T closest = defaultClass;
         int minDistance = Integer.MAX_VALUE;
         Class<?> closestClass = null;
 
         for (Map.Entry<Class<?>, T> entry : candidateClasses.entrySet()) {
             Class<?> candidateClass = entry.getKey();
-            int distance = ClassUtilities.computeInheritanceDistance(clazz, candidateClass);
-            if (distance != -1 && (distance < minDistance ||
+            Integer distance = distanceMap.get(candidateClass);
+            if (distance != null && (distance < minDistance ||
                     (distance == minDistance && shouldPreferNewCandidate(candidateClass, closestClass)))) {
                 minDistance = distance;
                 closest = entry.getValue();

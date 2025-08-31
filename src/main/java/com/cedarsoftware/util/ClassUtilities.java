@@ -196,8 +196,6 @@ import static com.cedarsoftware.util.ExceptionUtilities.safelyIgnoreException;
 public class ClassUtilities {
 
     private static final Logger LOG = Logger.getLogger(ClassUtilities.class.getName());
-    private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
-    private static final CharBuffer EMPTY_CHAR_BUFFER = CharBuffer.allocate(0);
     static {
         LoggingConfig.init();
     }
@@ -330,8 +328,9 @@ public class ClassUtilities {
         DIRECT_CLASS_MAPPING.put(ZoneOffset.class, () -> ZoneOffset.UTC);
         DIRECT_CLASS_MAPPING.put(OffsetTime.class, () -> OffsetTime.of(0, 0, 0, 0, ZoneOffset.UTC));
         DIRECT_CLASS_MAPPING.put(LocalTime.class, () -> LocalTime.MIDNIGHT);
-        DIRECT_CLASS_MAPPING.put(ByteBuffer.class, () -> EMPTY_BYTE_BUFFER);
-        DIRECT_CLASS_MAPPING.put(CharBuffer.class, () -> EMPTY_CHAR_BUFFER);
+        // Return fresh instances to prevent mutation issues
+        DIRECT_CLASS_MAPPING.put(ByteBuffer.class, () -> ByteBuffer.allocate(0));
+        DIRECT_CLASS_MAPPING.put(CharBuffer.class, () -> CharBuffer.allocate(0));
 
         // Collection classes
         DIRECT_CLASS_MAPPING.put(HashSet.class, HashSet::new);
@@ -393,7 +392,7 @@ public class ClassUtilities {
         DIRECT_CLASS_MAPPING.put(float[].class, () -> new float[0]);
         DIRECT_CLASS_MAPPING.put(double[].class, () -> new double[0]);
         DIRECT_CLASS_MAPPING.put(char[].class, () -> new char[0]);
-        DIRECT_CLASS_MAPPING.put(Object[].class, () -> ArrayUtilities.EMPTY_OBJECT_ARRAY);
+        DIRECT_CLASS_MAPPING.put(Object[].class, () -> new Object[0]);
 
         // Boxed primitive arrays
         DIRECT_CLASS_MAPPING.put(Boolean[].class, () -> new Boolean[0]);
@@ -683,32 +682,6 @@ public class ClassUtilities {
     }
     
     /**
-     * Determines if two primitive or wrapper types represent the same primitive type.
-     *
-     * @param source The source type to compare
-     * @param destination The destination type to compare
-     * @return true if both types represent the same primitive type, false otherwise
-     */
-    private static boolean areSamePrimitiveType(Class<?> source, Class<?> destination) {
-        // If both are primitive, they must be exactly the same type
-        if (source.isPrimitive() && destination.isPrimitive()) {
-            return source.equals(destination);
-        }
-
-        // Get normalized primitive types (if they are wrappers, get the primitive equivalent)
-        Class<?> sourcePrimitive = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE.get(source);
-        Class<?> destPrimitive = destination.isPrimitive() ? destination : WRAPPER_TO_PRIMITIVE.get(destination);
-
-        // If either conversion failed, they're not compatible
-        if (sourcePrimitive == null || destPrimitive == null) {
-            return false;
-        }
-
-        // Check if they represent the same primitive type (e.g., int.class and Integer.class)
-        return sourcePrimitive.equals(destPrimitive);
-    }
-    
-    /**
      * @param c Class to test
      * @return boolean true if the passed in class is a Java primitive, false otherwise.  The Wrapper classes
      * Integer, Long, Boolean, etc. are considered primitives by this method.
@@ -931,6 +904,11 @@ public class ClassUtilities {
      */
     public static boolean areAllConstructorsPrivate(Class<?> c) {
         Constructor<?>[] constructors = ReflectionUtils.getAllConstructors(c);
+        
+        // If no constructors declared, Java provides implicit public no-arg constructor
+        if (constructors.length == 0) {
+            return false;
+        }
 
         for (Constructor<?> constructor : constructors) {
             if ((constructor.getModifiers() & Modifier.PRIVATE) == 0) {

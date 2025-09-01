@@ -2598,6 +2598,12 @@ public class ClassUtilities {
         // This is safe because JAR resources always use forward slashes
         String normalizedPath = resourceName.replace('\\', '/');
         
+        // Security: Block absolute Windows drive paths (e.g., "C:/...", "D:/...")
+        // These should never appear in classpath resource lookups
+        if (normalizedPath.matches("^[A-Za-z]:/.*")) {
+            throw new SecurityException("Absolute file paths not allowed: " + resourceName);
+        }
+        
         // Security: Block ".." path segments (not just the substring) to prevent traversal
         // This allows legitimate filenames like "my..proto" or "file..txt"
         for (String segment : normalizedPath.split("/")) {

@@ -614,6 +614,12 @@ public class ClassUtilities {
     public static void addPermanentClassAlias(Class<?> clazz, String alias) {
         SecurityChecker.verifyClass(clazz);
         GLOBAL_ALIASES.put(alias, clazz);
+        // prevent stale per-loader mappings for this alias
+        synchronized (NAME_CACHE) {
+            for (LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache : NAME_CACHE.values()) {
+                cache.remove(alias);
+            }
+        }
     }
 
     /**
@@ -623,6 +629,11 @@ public class ClassUtilities {
      */
     public static void removePermanentClassAlias(String alias) {
         GLOBAL_ALIASES.remove(alias);
+        synchronized (NAME_CACHE) {
+            for (LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache : NAME_CACHE.values()) {
+                cache.remove(alias);
+            }
+        }
     }
 
     /**
@@ -2288,16 +2299,12 @@ public class ClassUtilities {
         Collections.synchronizedMap(new WeakHashMap<>());
     
     static void trySetAccessible(AccessibleObject object) {
-        // Check cache first to avoid repeated attempts
-        Boolean cached = accessibilityCache.get(object);
-        if (cached != null) {
-            if (!cached) {
-                // We already know this object cannot be made accessible
-                return;
-            }
-            // cached == true means we already successfully made it accessible
-            return;
-        }
+        // For json-io compatibility, ALWAYS attempt to set accessible
+        // even if we think it's already accessible. This is critical for:
+        // 1. Module system boundaries (Java 9+) - accessibility can change
+        // 2. Different security contexts - what was accessible before might not be now
+        // 3. Performance - setAccessible(true) enables fast field/method access
+        // 4. json-io's harsh access requirements - needs most direct access possible
         
         // The setAccessible() call will throw SecurityException if there's a SecurityManager
         // and it denies ReflectPermission("suppressAccessChecks"). No need to check explicitly.
@@ -2537,6 +2544,7 @@ public class ClassUtilities {
             Class<?> classA, Class<?> classB,
             Set<Class<?>> excluded)
     {
+        excluded = (excluded == null) ? Collections.emptySet() : excluded;
         if (classA == null || classB == null) {
             return Collections.emptySet();
         }

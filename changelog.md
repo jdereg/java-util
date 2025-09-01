@@ -72,6 +72,8 @@
 >   * **Fixed areAllConstructorsPrivate() for implicit constructors**: Method now correctly returns false for classes with no declared constructors (which have implicit public no-arg constructor), instead of incorrectly returning true
 >   * **Fixed mutable buffer/array sharing**: ByteBuffer, CharBuffer, and array default instances are now created fresh on each call to prevent mutation issues across threads or calls; removed shared singleton instances that could be corrupted
 >   * **Added boxing support in computeInheritanceDistance()**: Primitive types can now reach reference types through boxing to their wrapper classes; for example, int → Number now returns distance 1 (int boxes to Integer which extends Number), improving overload resolution and type matching
+>   * **Fixed removePermanentClassAlias loader cache invalidation**: Both `addPermanentClassAlias()` and `removePermanentClassAlias()` now properly clear per-loader cache entries to prevent stale alias mappings from being used after an alias is added or removed
+>   * **Fixed findLowestCommonSupertypesExcluding NPE**: Added null-check for excluded parameter, treating null as empty set to prevent NullPointerException
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

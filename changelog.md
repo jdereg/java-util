@@ -76,6 +76,8 @@
 >   * **Fixed findLowestCommonSupertypesExcluding NPE**: Added null-check for excluded parameter, treating null as empty set to prevent NullPointerException
 >   * **Enhanced varargs support with named parameters**: `newInstanceWithNamedParameters()` now properly handles varargs parameters, automatically packing collections or single values into arrays, with proper type conversion and fallback to defaults on conversion failure
 >   * **Fixed ArrayStoreException in matchArgumentsWithVarargs**: Added final try-catch guard when setting array elements to handle exotic conversion edge cases, falling back to safe default values to prevent ArrayStoreException
+>   * **Fixed OSGi loader cache cleanup**: `clearCaches()` now properly clears the `osgiClassLoaders` cache to prevent stale ClassLoader references from being retained during hot-reload and testing scenarios
+>   * **Improved API clarity**: Renamed `defaultClass` parameter to `defaultValue` in `findClosest()` method for better clarity, as it represents a default value rather than a class
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

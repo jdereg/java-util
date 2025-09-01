@@ -1206,13 +1206,13 @@ public class ClassUtilities {
      * @param <T> The type of value stored in the candidateClasses map
      * @param clazz The class to find a match for (must not be null)
      * @param candidateClasses Map of candidate classes and their associated values (must not be null)
-     * @param defaultClass Default value to return if no suitable match is found
-     * @return The value associated with the closest matching class, or defaultClass if no match found
+     * @param defaultValue Default value to return if no suitable match is found
+     * @return The value associated with the closest matching class, or defaultValue if no match found
      * @throws IllegalArgumentException if {@code clazz} or {@code candidateClasses} is null
      *
      * @see ClassUtilities#computeInheritanceDistance(Class, Class)
      */
-    public static <T> T findClosest(Class<?> clazz, Map<Class<?>, T> candidateClasses, T defaultClass) {
+    public static <T> T findClosest(Class<?> clazz, Map<Class<?>, T> candidateClasses, T defaultValue) {
         Convention.throwIfNull(clazz, "Source class cannot be null");
         Convention.throwIfNull(candidateClasses, "Candidate classes Map cannot be null");
 
@@ -1225,7 +1225,7 @@ public class ClassUtilities {
         // If no exact match, then look for closest inheritance match
         // Pull the distance map once to avoid repeated lookups
         Map<Class<?>, Integer> distanceMap = getClassHierarchyInfo(clazz).getDistanceMap();
-        T closest = defaultClass;
+        T closest = defaultValue;
         int minDistance = Integer.MAX_VALUE;
         Class<?> closestClass = null;
 
@@ -2804,6 +2804,7 @@ public class ClassUtilities {
         SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
         CLASS_HIERARCHY_CACHE.clear();
         accessibilityCache.clear();
+        osgiClassLoaders.clear();
         // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.
         // Re-populate primitive types and common aliases
         GLOBAL_ALIASES.put("boolean", Boolean.TYPE);

@@ -1878,6 +1878,7 @@ public class ClassUtilities {
      * @param arguments Can be:
      *                  - null or empty (no-arg constructor)
      *                  - Map&lt;String, Object&gt; to match by parameter name (when available) or type
+     *                    Note: Use LinkedHashMap or other ordered Map for deterministic positional fallback
      *                  - Collection&lt;?&gt; of values to match by type
      *                  - Object[] of values to match by type
      *                  - Single value for single-argument constructors
@@ -1908,6 +1909,7 @@ public class ClassUtilities {
      * @param arguments Can be:
      *                  - null or empty (no-arg constructor)
      *                  - Map&lt;String, Object&gt; to match by parameter name (when available) or type
+     *                    Note: Use LinkedHashMap or other ordered Map for deterministic positional fallback
      *                  - Collection&lt;?&gt; of values to match by type
      *                  - Object[] of values to match by type
      *                  - Single value for single-argument constructors

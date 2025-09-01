@@ -86,6 +86,7 @@
 >   * **Fixed OSGi cache NPE**: Fixed potential NullPointerException in `getOSGiClassLoader()` when using `computeIfAbsent()` with a function that returns null in non-OSGi environments; now properly handles null values by checking before caching
 >   * **Prevented zombie cache entries**: Implemented `NamedWeakRef` with `ReferenceQueue` to automatically clean up dead WeakReference entries from NAME_CACHE, preventing memory leaks from accumulated dead references that could never be removed; the cache now opportunistically drains dead references on every access
 >   * **Optimized trySetAccessible caching**: Fixed `trySetAccessible()` to actually use its accessibility cache, preventing repeated failed `setAccessible()` attempts on the same objects; reduces noisy exceptions on hot paths (constructor/method selection loops) in JPMS-sealed modules by short-circuiting known failing attempts
+>   * **Documented Map ordering requirement**: Added documentation to `newInstance()` methods clarifying that LinkedHashMap or other ordered Map implementations should be used for deterministic positional parameter fallback when named parameter matching fails
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

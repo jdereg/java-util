@@ -140,4 +140,25 @@ class ClassUtilitiesAliasSecurityTest {
             assertEquals(Integer.class, clazz);
         });
     }
+    
+    @Test
+    @DisplayName("Removing an alias stops resolution even after it has been used once")
+    void testAliasRemovalInvalidatesCache() {
+        // Add an alias
+        ClassUtilities.addPermanentClassAlias(String.class, "cacheTestAlias");
+        
+        // Use the alias once (this will cache it)
+        Class<?> firstLookup = ClassUtilities.forName("cacheTestAlias", null);
+        assertEquals(String.class, firstLookup, "First lookup should return String.class");
+        
+        // Remove the alias
+        ClassUtilities.removePermanentClassAlias("cacheTestAlias");
+        
+        // Try to use the alias again - should return null even though it was cached
+        Class<?> secondLookup = ClassUtilities.forName("cacheTestAlias", null);
+        assertNull(secondLookup, "Removed alias should return null even if it was previously cached");
+        
+        // Clean up just in case
+        ClassUtilities.removePermanentClassAlias("cacheTestAlias");
+    }
 }

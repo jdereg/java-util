@@ -78,6 +78,11 @@
 >   * **Fixed ArrayStoreException in matchArgumentsWithVarargs**: Added final try-catch guard when setting array elements to handle exotic conversion edge cases, falling back to safe default values to prevent ArrayStoreException
 >   * **Fixed OSGi loader cache cleanup**: `clearCaches()` now properly clears the `osgiClassLoaders` cache to prevent stale ClassLoader references from being retained during hot-reload and testing scenarios
 >   * **Improved API clarity**: Renamed `defaultClass` parameter to `defaultValue` in `findClosest()` method for better clarity, as it represents a default value rather than a class
+>   * **Improved documentation clarity**: Updated `computeInheritanceDistance()` documentation to clarify that caching comes from ClassHierarchyInfo (for reference types) and primitive widening maps
+>   * **Simplified primitive checks**: Removed redundant `isPrimitive()` OR checks since the method already handles both primitives and wrapper classes
+>   * **Enhanced security blocking**: Added package-level blocking for `javax.script.*` to prevent loading of any class in that package, not just specific class names
+>   * **Improved immutability**: Made `PRIMITIVE_WIDENING_DISTANCES` and all inner maps unmodifiable to prevent accidental mutation and enable safe sharing
+>   * **Added comprehensive test coverage**: Added tests for alias removal cache invalidation, null handling in `findLowestCommonSupertypesExcluding()`, varargs parameter handling, and conversion fallback behavior
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

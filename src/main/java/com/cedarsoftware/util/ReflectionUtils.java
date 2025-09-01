@@ -5,6 +5,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -339,36 +340,16 @@ public final class ReflectionUtils {
      * @throws SecurityException if the caller lacks suppressAccessChecks permission
      */
     private static void secureSetAccessible(java.lang.reflect.AccessibleObject obj) {
-        // Check if we actually need to set accessible
-        boolean needsAccessible = false;
-        
-        if (obj instanceof Method) {
-            Method method = (Method) obj;
-            int modifiers = method.getModifiers();
-            int classModifiers = method.getDeclaringClass().getModifiers();
-            needsAccessible = !Modifier.isPublic(modifiers) || !Modifier.isPublic(classModifiers);
-        } else if (obj instanceof Field) {
-            Field field = (Field) obj;
-            int modifiers = field.getModifiers();
-            int classModifiers = field.getDeclaringClass().getModifiers();
-            needsAccessible = !Modifier.isPublic(modifiers) || !Modifier.isPublic(classModifiers);
-        } else if (obj instanceof Constructor) {
-            Constructor<?> constructor = (Constructor<?>) obj;
-            int modifiers = constructor.getModifiers();
-            int classModifiers = constructor.getDeclaringClass().getModifiers();
-            needsAccessible = !Modifier.isPublic(modifiers) || !Modifier.isPublic(classModifiers);
-        }
-        
-        // Only attempt to set accessible if needed
-        if (!needsAccessible) {
-            return; // Already accessible, no need to elevate
-        }
-        
         // Additional security validation for fields
         if (obj instanceof Field) {
             validateFieldAccess((Field) obj);
         }
-        
+
+        // ALWAYS attempt to set accessible for json-io compatibility
+        // This is required for:
+        // - Module system boundaries (Java 9+)
+        // - Security manager environments
+        // - Performance optimizations
         ClassUtilities.trySetAccessible(obj);
     }
     

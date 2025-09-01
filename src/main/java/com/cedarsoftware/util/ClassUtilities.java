@@ -256,7 +256,7 @@ public class ClassUtilities {
     
     // Primitive widening conversion distances (JLS 5.1.2)
     // Maps from source primitive to Map<destination primitive, distance>
-    private static final Map<Class<?>, Map<Class<?>, Integer>> PRIMITIVE_WIDENING_DISTANCES = new HashMap<>();
+    private static final Map<Class<?>, Map<Class<?>, Integer>> PRIMITIVE_WIDENING_DISTANCES;
 
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
     private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ClassValueMap<>();
@@ -500,6 +500,9 @@ public class ClassUtilities {
         // byte → short → int → long → float → double
         // char → int → long → float → double
         
+        // Create a temporary map to build the widening distances
+        Map<Class<?>, Map<Class<?>, Integer>> tempPrimitiveWidening = new HashMap<>();
+        
         // byte can widen to...
         Map<Class<?>, Integer> byteWidening = new HashMap<>();
         byteWidening.put(short.class, 1);
@@ -507,7 +510,7 @@ public class ClassUtilities {
         byteWidening.put(long.class, 3);
         byteWidening.put(float.class, 4);
         byteWidening.put(double.class, 5);
-        PRIMITIVE_WIDENING_DISTANCES.put(byte.class, byteWidening);
+        tempPrimitiveWidening.put(byte.class, Collections.unmodifiableMap(byteWidening));
         
         // short can widen to...
         Map<Class<?>, Integer> shortWidening = new HashMap<>();
@@ -515,7 +518,7 @@ public class ClassUtilities {
         shortWidening.put(long.class, 2);
         shortWidening.put(float.class, 3);
         shortWidening.put(double.class, 4);
-        PRIMITIVE_WIDENING_DISTANCES.put(short.class, shortWidening);
+        tempPrimitiveWidening.put(short.class, Collections.unmodifiableMap(shortWidening));
         
         // char can widen to...
         Map<Class<?>, Integer> charWidening = new HashMap<>();
@@ -523,27 +526,30 @@ public class ClassUtilities {
         charWidening.put(long.class, 2);
         charWidening.put(float.class, 3);
         charWidening.put(double.class, 4);
-        PRIMITIVE_WIDENING_DISTANCES.put(char.class, charWidening);
+        tempPrimitiveWidening.put(char.class, Collections.unmodifiableMap(charWidening));
         
         // int can widen to...
         Map<Class<?>, Integer> intWidening = new HashMap<>();
         intWidening.put(long.class, 1);
         intWidening.put(float.class, 2);
         intWidening.put(double.class, 3);
-        PRIMITIVE_WIDENING_DISTANCES.put(int.class, intWidening);
+        tempPrimitiveWidening.put(int.class, Collections.unmodifiableMap(intWidening));
         
         // long can widen to...
         Map<Class<?>, Integer> longWidening = new HashMap<>();
         longWidening.put(float.class, 1);
         longWidening.put(double.class, 2);
-        PRIMITIVE_WIDENING_DISTANCES.put(long.class, longWidening);
+        tempPrimitiveWidening.put(long.class, Collections.unmodifiableMap(longWidening));
         
         // float can widen to...
         Map<Class<?>, Integer> floatWidening = new HashMap<>();
         floatWidening.put(double.class, 1);
-        PRIMITIVE_WIDENING_DISTANCES.put(float.class, floatWidening);
+        tempPrimitiveWidening.put(float.class, Collections.unmodifiableMap(floatWidening));
         
         // Note: boolean and double don't widen to anything
+        
+        // Make the outer map unmodifiable too
+        PRIMITIVE_WIDENING_DISTANCES = Collections.unmodifiableMap(tempPrimitiveWidening);
 
         Map<Class<?>, Class<?>> map = new ClassValueMap<>();
         map.putAll(PRIMITIVE_TO_WRAPPER);
@@ -638,7 +644,8 @@ public class ClassUtilities {
 
     /**
      * Computes the inheritance distance between two classes/interfaces/primitive types.
-     * Results are cached for performance.
+     * For reference types, distances are cached via ClassHierarchyInfo. For primitive types,
+     * widening conversions are pre-computed in static maps.
      *
      * @param source      The source class, interface, or primitive type.
      * @param destination The destination class, interface, or primitive type.
@@ -653,8 +660,8 @@ public class ClassUtilities {
         }
 
         // Handle primitives specially - now with widening support
-        boolean sp = source.isPrimitive() || isPrimitive(source);
-        boolean dp = destination.isPrimitive() || isPrimitive(destination);
+        boolean sp = isPrimitive(source);
+        boolean dp = isPrimitive(destination);
         if (sp && dp) {
             // Get the actual primitive types (unwrap if needed)
             Class<?> sourcePrim = source.isPrimitive() ? source : WRAPPER_TO_PRIMITIVE.get(source);
@@ -2856,14 +2863,22 @@ public class ClassUtilities {
         }
 
         /**
-         * Checks if a class name is directly in the blocked list.
+         * Checks if a class name is directly in the blocked list or belongs to a blocked package.
          * Used before class loading.
          *
          * @param className The class name to check
          * @return true if the class name is blocked, false otherwise
          */
         public static boolean isSecurityBlockedName(String className) {
-            return BLOCKED_CLASS_NAMES_SET.contains(className);
+            // Check exact class name match
+            if (BLOCKED_CLASS_NAMES_SET.contains(className)) {
+                return true;
+            }
+            // Check package-level blocking (e.g., javax.script.*)
+            if (className.startsWith("javax.script.")) {
+                return true;
+            }
+            return false;
         }
 
         /**

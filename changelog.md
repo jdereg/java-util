@@ -74,6 +74,8 @@
 >   * **Added boxing support in computeInheritanceDistance()**: Primitive types can now reach reference types through boxing to their wrapper classes; for example, int → Number now returns distance 1 (int boxes to Integer which extends Number), improving overload resolution and type matching
 >   * **Fixed removePermanentClassAlias loader cache invalidation**: Both `addPermanentClassAlias()` and `removePermanentClassAlias()` now properly clear per-loader cache entries to prevent stale alias mappings from being used after an alias is added or removed
 >   * **Fixed findLowestCommonSupertypesExcluding NPE**: Added null-check for excluded parameter, treating null as empty set to prevent NullPointerException
+>   * **Enhanced varargs support with named parameters**: `newInstanceWithNamedParameters()` now properly handles varargs parameters, automatically packing collections or single values into arrays, with proper type conversion and fallback to defaults on conversion failure
+>   * **Fixed ArrayStoreException in matchArgumentsWithVarargs**: Added final try-catch guard when setting array elements to handle exotic conversion edge cases, falling back to safe default values to prevent ArrayStoreException
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

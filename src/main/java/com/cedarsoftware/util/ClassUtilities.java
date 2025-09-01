@@ -1529,7 +1529,12 @@ public class ClassUtilities {
                             }
                         }
                     }
-                    Array.set(varargsArray, i, value);
+                    try {
+                        Array.set(varargsArray, i, value);
+                    } catch (ArrayStoreException ex) {
+                        // Last-chance guard for exotic conversions - use default safely
+                        Array.set(varargsArray, i, getArgForType(converter, componentType));
+                    }
                 }
                 result[fixedParamCount] = varargsArray;
             }
@@ -1572,7 +1577,12 @@ public class ClassUtilities {
                             }
                         }
                     }
-                    Array.set(varargsArray, i, value);
+                    try {
+                        Array.set(varargsArray, i, value);
+                    } catch (ArrayStoreException ex) {
+                        // Last-chance guard for exotic conversions - use default safely
+                        Array.set(varargsArray, i, getArgForType(converter, componentType));
+                    }
                 }
                 result[0] = varargsArray;
             }
@@ -2034,6 +2044,39 @@ public class ClassUtilities {
             boolean allMatched = true;
 
             for (int i = 0; i < parameters.length; i++) {
+                if (parameters[i].isVarArgs()) {
+                    // Handle varargs parameter specially
+                    Class<?> arrayType = parameters[i].getType();
+                    Class<?> componentType = arrayType.getComponentType();
+                    Object v = namedParams.get(paramNames[i]);
+                    Object array;
+                    
+                    if (v != null && arrayType.isInstance(v)) {
+                        // Already the right array type
+                        array = v;
+                    } else {
+                        // Convert single value or collection to array
+                        Collection<?> src = (v instanceof Collection) ? (Collection<?>) v : Collections.singletonList(v);
+                        array = Array.newInstance(componentType, src.size());
+                        int k = 0;
+                        for (Object item : src) {
+                            try {
+                                Array.set(array, k++, converter.convert(item, componentType));
+                            } catch (Exception e) {
+                                // Use default value if conversion fails
+                                Array.set(array, k++, getArgForType(converter, componentType));
+                            }
+                        }
+                    }
+                    args[i] = array;
+                    
+                    if (LOG.isLoggable(Level.FINEST)) {
+                        LOG.log(Level.FINEST, "  Matched varargs parameter ''{0}'' with array of length: {1}",
+                                new Object[]{paramNames[i], Array.getLength(array)});
+                    }
+                    continue;
+                }
+                
                 if (namedParams.containsKey(paramNames[i])) {
                     Object value = namedParams.get(paramNames[i]);
 

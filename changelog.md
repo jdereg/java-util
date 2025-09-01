@@ -83,6 +83,7 @@
 >   * **Enhanced security blocking**: Added package-level blocking for `javax.script.*` to prevent loading of any class in that package, not just specific class names
 >   * **Improved immutability**: Made `PRIMITIVE_WIDENING_DISTANCES` and all inner maps unmodifiable to prevent accidental mutation and enable safe sharing
 >   * **Added comprehensive test coverage**: Added tests for alias removal cache invalidation, null handling in `findLowestCommonSupertypesExcluding()`, varargs parameter handling, and conversion fallback behavior
+>   * **Fixed OSGi cache NPE**: Fixed potential NullPointerException in `getOSGiClassLoader()` when using `computeIfAbsent()` with a function that returns null in non-OSGi environments; now properly handles null values by checking before caching
 > * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
 >   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
 >   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods

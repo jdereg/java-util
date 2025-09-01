@@ -1140,7 +1140,15 @@ public class ClassUtilities {
      * @return the OSGi Bundle's ClassLoader if in an OSGi environment; otherwise, null
      */
     private static ClassLoader getOSGiClassLoader(final Class<?> classFromBundle) {
-        return osgiClassLoaders.computeIfAbsent(classFromBundle, ClassUtilities::getOSGiClassLoader0);
+        ClassLoader cl = osgiClassLoaders.get(classFromBundle);
+        if (cl != null) {
+            return cl;
+        }
+        ClassLoader computed = getOSGiClassLoader0(classFromBundle);
+        if (computed != null) {
+            osgiClassLoaders.put(classFromBundle, computed);
+        }
+        return computed;
     }
 
     /**
@@ -2222,7 +2230,7 @@ public class ClassUtilities {
                 Class<?> enclosingClass = c.getEnclosingClass();
                 if (!visitedClasses.contains(enclosingClass)) {
                     // Try to create enclosing instance with proper constructor initialization
-                    Object enclosingInstance = null;
+                    Object enclosingInstance;
                     try {
                         // First try default constructor if available
                         Constructor<?> defaultCtor = enclosingClass.getDeclaredConstructor();
@@ -2754,9 +2762,7 @@ public class ClassUtilities {
 
     static {
         // Pre-populate with all blocked classes
-        for (Class<?> blockedClass : SecurityChecker.SECURITY_BLOCKED_CLASSES.toSet()) {
-            BLOCKED_CLASSES.add(blockedClass);
-        }
+        BLOCKED_CLASSES.addAll(SecurityChecker.SECURITY_BLOCKED_CLASSES.toSet());
     }
 
     private static final ClassValue<Boolean> SECURITY_CHECK_CACHE = new ClassValue<Boolean>() {

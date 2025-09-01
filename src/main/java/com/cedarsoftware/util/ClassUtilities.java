@@ -2397,15 +2397,20 @@ public class ClassUtilities {
         Collections.synchronizedMap(new WeakHashMap<>());
     
     static void trySetAccessible(AccessibleObject object) {
-        // For json-io compatibility, ALWAYS attempt to set accessible
-        // even if we think it's already accessible. This is critical for:
-        // 1. Module system boundaries (Java 9+) - accessibility can change
-        // 2. Different security contexts - what was accessible before might not be now
-        // 3. Performance - setAccessible(true) enables fast field/method access
-        // 4. json-io's harsh access requirements - needs most direct access possible
+        // Check cache first to avoid repeated failed attempts
+        Boolean prev = accessibilityCache.get(object);
+        if (Boolean.FALSE.equals(prev)) {
+            // Known to fail under current VM/module setup – skip the throwing call
+            // This reduces noisy exceptions on hot paths (constructor/method selection loops) 
+            // in JPMS-sealed modules
+            return;
+        }
+        if (Boolean.TRUE.equals(prev)) {
+            // Already accessible, no need to set again
+            return;
+        }
         
-        // The setAccessible() call will throw SecurityException if there's a SecurityManager
-        // and it denies ReflectPermission("suppressAccessChecks"). No need to check explicitly.
+        // Not in cache, attempt to set accessible
         try {
             object.setAccessible(true);
             accessibilityCache.put(object, Boolean.TRUE);

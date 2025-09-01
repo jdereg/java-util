@@ -193,6 +193,26 @@ public class ClassUtilities {
     static {
         LoggingConfig.init();
     }
+    
+    /**
+     * Custom WeakReference that remembers its key name for cleanup via ReferenceQueue
+     */
+    private static final class NamedWeakRef extends java.lang.ref.WeakReference<Class<?>> {
+        final String name;
+        
+        NamedWeakRef(String name, Class<?> referent, java.lang.ref.ReferenceQueue<Class<?>> q) {
+            super(referent, q);
+            this.name = name;
+        }
+    }
+    
+    /**
+     * Holder for per-ClassLoader cache and its associated ReferenceQueue
+     */
+    private static final class LoaderCache {
+        final LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache = new LRUCache<>(1024);
+        final java.lang.ref.ReferenceQueue<Class<?>> queue = new java.lang.ref.ReferenceQueue<>();
+    }
 
     private ClassUtilities() {
     }
@@ -213,39 +233,59 @@ public class ClassUtilities {
         
         // Then check classloader-specific cache using consistent resolution
         final ClassLoader key = resolveLoader(cl);
-        LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache = 
-                NAME_CACHE.get(key);
-        if (cache == null) {
+        LoaderCache holder = NAME_CACHE.get(key);
+        if (holder == null) {
             return null;
         }
-        java.lang.ref.WeakReference<Class<?>> ref = cache.get(name);
+        
+        // Opportunistically drain dead references before lookup
+        drainQueue(holder);
+        
+        java.lang.ref.WeakReference<Class<?>> ref = holder.cache.get(name);
         Class<?> cls = (ref == null) ? null : ref.get();
         if (ref != null && cls == null) {
-            cache.remove(name);  // Clean up cleared entry
+            holder.cache.remove(name);  // Clean up cleared entry
         }
         return cls;
     }
     
-    // Helper to get or create loader cache with proper synchronization
-    private static LRUCache<String, java.lang.ref.WeakReference<Class<?>>> getLoaderCache(ClassLoader key) {
+    // Helper to get or create loader cache holder with proper synchronization
+    private static LoaderCache getLoaderCacheHolder(ClassLoader key) {
         synchronized (NAME_CACHE) {
-            LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache = NAME_CACHE.get(key);
-            if (cache == null) {
-                cache = new LRUCache<>(1024);
-                NAME_CACHE.put(key, cache);
+            LoaderCache holder = NAME_CACHE.get(key);
+            if (holder == null) {
+                holder = new LoaderCache();
+                NAME_CACHE.put(key, holder);
             }
-            return cache;
+            return holder;
         }
     }
     
     private static void toCache(String name, ClassLoader cl, Class<?> c) {
         final ClassLoader key = resolveLoader(cl);
-        getLoaderCache(key).put(name, new java.lang.ref.WeakReference<>(c));
+        final LoaderCache holder = getLoaderCacheHolder(key);
+        
+        // Opportunistically drain dead references before adding new one
+        drainQueue(holder);
+        
+        holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
+    }
+    
+    /**
+     * Drains the ReferenceQueue, removing dead entries from the cache
+     */
+    private static void drainQueue(LoaderCache holder) {
+        java.lang.ref.Reference<? extends Class<?>> ref;
+        while ((ref = holder.queue.poll()) != null) {
+            if (ref instanceof NamedWeakRef) {
+                holder.cache.remove(((NamedWeakRef) ref).name);
+            }
+        }
     }
 
     // ClassLoader-scoped cache with weak references to prevent classloader leaks
     // and ensure correctness in multi-classloader environments (OSGi, app servers, etc.)
-    private static final Map<ClassLoader, LRUCache<String, java.lang.ref.WeakReference<Class<?>>>> NAME_CACHE =
+    private static final Map<ClassLoader, LoaderCache> NAME_CACHE =
             Collections.synchronizedMap(new WeakHashMap<>());
     
     // Global aliases for primitive types and common names (not classloader-specific)
@@ -622,8 +662,8 @@ public class ClassUtilities {
         GLOBAL_ALIASES.put(alias, clazz);
         // prevent stale per-loader mappings for this alias
         synchronized (NAME_CACHE) {
-            for (LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache : NAME_CACHE.values()) {
-                cache.remove(alias);
+            for (LoaderCache holder : NAME_CACHE.values()) {
+                holder.cache.remove(alias);
             }
         }
     }
@@ -636,8 +676,8 @@ public class ClassUtilities {
     public static void removePermanentClassAlias(String alias) {
         GLOBAL_ALIASES.remove(alias);
         synchronized (NAME_CACHE) {
-            for (LRUCache<String, java.lang.ref.WeakReference<Class<?>>> cache : NAME_CACHE.values()) {
-                cache.remove(alias);
+            for (LoaderCache holder : NAME_CACHE.values()) {
+                holder.cache.remove(alias);
             }
         }
     }

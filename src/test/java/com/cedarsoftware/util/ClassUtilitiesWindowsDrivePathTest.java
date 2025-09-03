@@ -28,7 +28,7 @@ class ClassUtilitiesWindowsDrivePathTest {
             SecurityException exception = assertThrows(SecurityException.class, 
                 () -> ClassUtilities.loadResourceAsBytes(path),
                 "Should block Windows absolute path: " + path);
-            assertTrue(exception.getMessage().contains("Absolute file paths not allowed"),
+            assertTrue(exception.getMessage().contains("Absolute/UNC paths not allowed"),
                 "Exception message should indicate absolute paths are blocked");
         }
     }
@@ -53,7 +53,7 @@ class ClassUtilitiesWindowsDrivePathTest {
                 ClassUtilities.loadResourceAsBytes(path);
                 // If we get here, the resource was actually found (unlikely in test)
             } catch (SecurityException e) {
-                if (e.getMessage().contains("Absolute file paths not allowed")) {
+                if (e.getMessage().contains("Absolute/UNC paths not allowed")) {
                     fail("Should not block legitimate path as Windows drive path: " + path);
                 }
                 // Other security exceptions are fine
@@ -70,6 +70,6 @@ class ClassUtilitiesWindowsDrivePathTest {
     void testLoadResourceAsStringBlocksWindowsPaths() {
         SecurityException exception = assertThrows(SecurityException.class, 
             () -> ClassUtilities.loadResourceAsString("C:/windows/system.ini"));
-        assertTrue(exception.getMessage().contains("Absolute file paths not allowed"));
+        assertTrue(exception.getMessage().contains("Absolute/UNC paths not allowed"));
     }
 }

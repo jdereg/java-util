@@ -238,15 +238,18 @@ public class ClassUtilities {
             return null;
         }
         
-        // Opportunistically drain dead references before lookup
-        drainQueue(holder);
-        
-        java.lang.ref.WeakReference<Class<?>> ref = holder.cache.get(name);
-        Class<?> cls = (ref == null) ? null : ref.get();
-        if (ref != null && cls == null) {
-            holder.cache.remove(name);  // Clean up cleared entry
+        // Synchronize access to prevent race conditions during queue draining and cache access
+        synchronized (holder) {
+            // Opportunistically drain dead references before lookup
+            drainQueue(holder);
+            
+            java.lang.ref.WeakReference<Class<?>> ref = holder.cache.get(name);
+            Class<?> cls = (ref == null) ? null : ref.get();
+            if (ref != null && cls == null) {
+                holder.cache.remove(name);  // Clean up cleared entry
+            }
+            return cls;
         }
-        return cls;
     }
     
     // Helper to get or create loader cache holder with proper synchronization
@@ -265,10 +268,13 @@ public class ClassUtilities {
         final ClassLoader key = resolveLoader(cl);
         final LoaderCache holder = getLoaderCacheHolder(key);
         
-        // Opportunistically drain dead references before adding new one
-        drainQueue(holder);
-        
-        holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
+        // Synchronize access to prevent race conditions during queue draining and cache update
+        synchronized (holder) {
+            // Opportunistically drain dead references before adding new one
+            drainQueue(holder);
+            
+            holder.cache.put(name, new NamedWeakRef(name, c, holder.queue));
+        }
     }
     
     /**
@@ -340,7 +346,7 @@ public class ClassUtilities {
         DIRECT_CLASS_MAPPING.put(StringBuilder.class, StringBuilder::new);
         DIRECT_CLASS_MAPPING.put(StringBuffer.class, StringBuffer::new);
         DIRECT_CLASS_MAPPING.put(Locale.class, Locale::getDefault);
-        DIRECT_CLASS_MAPPING.put(TimeZone.class, TimeZone::getDefault);
+        DIRECT_CLASS_MAPPING.put(TimeZone.class, () -> (TimeZone) TimeZone.getDefault().clone());
         // Use epoch (0) for SQL date/time types instead of current time
         DIRECT_CLASS_MAPPING.put(Timestamp.class, () -> new Timestamp(0));
         DIRECT_CLASS_MAPPING.put(java.sql.Date.class, () -> new java.sql.Date(0));
@@ -369,7 +375,7 @@ public class ClassUtilities {
             return cal;
         });
         DIRECT_CLASS_MAPPING.put(Instant.class, () -> Instant.EPOCH);  // 1970-01-01T00:00:00Z
-        DIRECT_CLASS_MAPPING.put(Duration.class, () -> Duration.ofSeconds(10));
+        DIRECT_CLASS_MAPPING.put(Duration.class, () -> Duration.ZERO);
         DIRECT_CLASS_MAPPING.put(Period.class, () -> Period.ofDays(0));
         // Use epoch year (1970) instead of current year
         DIRECT_CLASS_MAPPING.put(Year.class, () -> Year.of(1970));
@@ -663,7 +669,9 @@ public class ClassUtilities {
         // prevent stale per-loader mappings for this alias
         synchronized (NAME_CACHE) {
             for (LoaderCache holder : NAME_CACHE.values()) {
-                holder.cache.remove(alias);
+                synchronized (holder) {
+                    holder.cache.remove(alias);
+                }
             }
         }
     }
@@ -677,7 +685,9 @@ public class ClassUtilities {
         GLOBAL_ALIASES.remove(alias);
         synchronized (NAME_CACHE) {
             for (LoaderCache holder : NAME_CACHE.values()) {
-                holder.cache.remove(alias);
+                synchronized (holder) {
+                    holder.cache.remove(alias);
+                }
             }
         }
     }
@@ -1105,7 +1115,7 @@ public class ClassUtilities {
      */
     public static boolean doesOneWrapTheOther(Class<?> x, Class<?> y) {
         if (x == null || y == null) return false;
-        return wrapperMap.get(x) == y;
+        return wrapperMap.get(x) == y || wrapperMap.get(y) == x;
     }
 
     /**
@@ -2599,9 +2609,10 @@ public class ClassUtilities {
         String normalizedPath = resourceName.replace('\\', '/');
         
         // Security: Block absolute Windows drive paths (e.g., "C:/...", "D:/...")
+        // and UNC paths (e.g., "//server/share/...")
         // These should never appear in classpath resource lookups
-        if (normalizedPath.matches("^[A-Za-z]:/.*")) {
-            throw new SecurityException("Absolute file paths not allowed: " + resourceName);
+        if (normalizedPath.matches("^[A-Za-z]:/.*") || normalizedPath.startsWith("//")) {
+            throw new SecurityException("Absolute/UNC paths not allowed: " + resourceName);
         }
         
         // Security: Block ".." path segments (not just the substring) to prevent traversal
@@ -2613,9 +2624,10 @@ public class ClassUtilities {
         }
         
         // Security: Limit resource name length to prevent DoS
+        // Check the normalized path length to ensure validation happens after normalization
         int maxLength = getMaxResourceNameLength();
-        if (resourceName.length() > maxLength) {
-            throw new SecurityException("Resource name too long (max " + maxLength + "): " + resourceName.length());
+        if (normalizedPath.length() > maxLength) {
+            throw new SecurityException("Resource name too long (max " + maxLength + "): " + normalizedPath.length());
         }
         
         return normalizedPath;

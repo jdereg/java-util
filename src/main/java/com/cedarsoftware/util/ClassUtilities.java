@@ -1900,7 +1900,10 @@ public class ClassUtilities {
      * @param arguments Can be:
      *                  - null or empty (no-arg constructor)
      *                  - Map&lt;String, Object&gt; to match by parameter name (when available) or type
-     *                    Note: Use LinkedHashMap or other ordered Map for deterministic positional fallback
+     *                    Note: When named parameter matching fails, falls back to positional matching.
+     *                    For deterministic behavior, values are ordered by:
+     *                    • LinkedHashMap/SortedMap: preserves existing order
+     *                    • HashMap: sorts keys alphabetically
      *                  - Collection&lt;?&gt; of values to match by type
      *                  - Object[] of values to match by type
      *                  - Single value for single-argument constructors
@@ -1931,7 +1934,10 @@ public class ClassUtilities {
      * @param arguments Can be:
      *                  - null or empty (no-arg constructor)
      *                  - Map&lt;String, Object&gt; to match by parameter name (when available) or type
-     *                    Note: Use LinkedHashMap or other ordered Map for deterministic positional fallback
+     *                    Note: When named parameter matching fails, falls back to positional matching.
+     *                    For deterministic behavior, values are ordered by:
+     *                    • LinkedHashMap/SortedMap: preserves existing order
+     *                    • HashMap: sorts keys alphabetically
      *                  - Collection&lt;?&gt; of values to match by type
      *                  - Object[] of values to match by type
      *                  - Single value for single-argument constructors
@@ -1978,9 +1984,22 @@ public class ClassUtilities {
                 }
                 normalizedArgs = orderedValues;
             } else {
-                // For non-generated keys, we still need to provide values for positional matching
-                // as a fallback when named parameter matching doesn't work
-                normalizedArgs = map.values();
+                // For non-generated keys, we need deterministic ordering for positional fallback
+                // Sort by key name alphabetically to ensure consistent behavior across JVM runs
+                // This is important when HashMap is used (which has non-deterministic iteration order)
+                if (map instanceof LinkedHashMap || map instanceof SortedMap) {
+                    // Already has deterministic order (insertion order or sorted)
+                    normalizedArgs = map.values();
+                } else {
+                    // Sort keys alphabetically for deterministic order
+                    List<String> sortedKeys = new ArrayList<>(map.keySet());
+                    Collections.sort(sortedKeys);
+                    List<Object> orderedValues = new ArrayList<>(sortedKeys.size());
+                    for (String key : sortedKeys) {
+                        orderedValues.add(map.get(key));
+                    }
+                    normalizedArgs = orderedValues;
+                }
             }
         } else if (arguments.getClass().isArray()) {
             normalizedArgs = converter.convert(arguments, Collection.class);

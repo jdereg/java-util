@@ -1471,7 +1471,7 @@ public class ClassUtilities {
      * @param allowNulls Whether to allow null values for non-primitive parameters
      * @return Array of values matched to the parameters in the correct order
      */
-    private static Object[] matchArgumentsToParameters(Converter converter, Collection<?> values,
+    private static Object[] matchArgumentsToParameters(Converter converter, Object[] valueArray,
                                                        Parameter[] parameters, boolean allowNulls) {
         if (parameters == null || parameters.length == 0) {
             return ArrayUtilities.EMPTY_OBJECT_ARRAY; // Reuse a static empty array
@@ -1480,7 +1480,7 @@ public class ClassUtilities {
         // Check if the last parameter is varargs and handle specially
         boolean isVarargs = parameters[parameters.length - 1].isVarArgs();
         if (isVarargs) {
-            return matchArgumentsWithVarargs(converter, values, parameters, allowNulls);
+            return matchArgumentsWithVarargs(converter, valueArray, parameters, allowNulls);
         }
 
         // Create result array and tracking arrays
@@ -1488,7 +1488,6 @@ public class ClassUtilities {
         boolean[] parameterMatched = new boolean[parameters.length];
 
         // For tracking available values (more efficient than repeated removal from list)
-        Object[] valueArray = values.toArray();
         boolean[] valueUsed = new boolean[valueArray.length];
 
         // PHASE 1: Find exact type matches - highest priority
@@ -1513,10 +1512,9 @@ public class ClassUtilities {
      * Special handling for varargs parameters. Matches fixed parameters first,
      * then packs remaining arguments into the varargs array.
      */
-    private static Object[] matchArgumentsWithVarargs(Converter converter, Collection<?> values,
+    private static Object[] matchArgumentsWithVarargs(Converter converter, Object[] valueArray,
                                                       Parameter[] parameters, boolean allowNulls) {
         int fixedParamCount = parameters.length - 1;
-        Object[] valueArray = values.toArray();
         Object[] result = new Object[parameters.length];
         
         // Get the varargs component type
@@ -2297,6 +2295,8 @@ public class ClassUtilities {
         
         // First attempt: Check if we have a previously successful constructor for this class
         List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
+        // Convert to array once to avoid repeated toArray() calls
+        Object[] suppliedArgs = normalizedArgs.isEmpty() ? ArrayUtilities.EMPTY_OBJECT_ARRAY : normalizedArgs.toArray();
         Constructor<?> cachedConstructor = SUCCESSFUL_CONSTRUCTOR_CACHE.get(c);
 
         if (cachedConstructor != null) {
@@ -2305,10 +2305,10 @@ public class ClassUtilities {
 
                 // Try both approaches with the cached constructor
                 try {
-                    Object[] argsNonNull = matchArgumentsToParameters(converter, normalizedArgs, parameters, false);
+                    Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
                     return cachedConstructor.newInstance(argsNonNull);
                 } catch (Exception e) {
-                    Object[] argsNull = matchArgumentsToParameters(converter, normalizedArgs, parameters, true);
+                    Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
                     return cachedConstructor.newInstance(argsNull);
                 }
             } catch (Exception ignored) {
@@ -2354,7 +2354,7 @@ public class ClassUtilities {
                                     // Complex case: takes enclosing instance plus more arguments
                                     // Create arguments array with enclosing instance first
                                     Parameter[] restParams = Arrays.copyOfRange(params, 1, params.length);
-                                    Object[] restArgs = matchArgumentsToParameters(converter, normalizedArgs, restParams, false);
+                                    Object[] restArgs = matchArgumentsToParameters(converter, suppliedArgs, restParams, false);
                                     Object[] allArgs = new Object[params.length];
                                     allArgs[0] = enclosingInstance;
                                     System.arraycopy(restArgs, 0, allArgs, 1, restArgs.length);
@@ -2395,7 +2395,7 @@ public class ClassUtilities {
             // Attempt instantiation with this constructor
             try {
                 // Try with non-null arguments first (more precise matching)
-                Object[] argsNonNull = matchArgumentsToParameters(converter, normalizedArgs, parameters, false);
+                Object[] argsNonNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, false);
                 Object instance = constructor.newInstance(argsNonNull);
 
                 // Cache this successful constructor for future use
@@ -2406,7 +2406,7 @@ public class ClassUtilities {
 
                 // If that fails, try with nulls allowed for unmatched parameters
                 try {
-                    Object[] argsNull = matchArgumentsToParameters(converter, normalizedArgs, parameters, true);
+                    Object[] argsNull = matchArgumentsToParameters(converter, suppliedArgs, parameters, true);
                     Object instance = constructor.newInstance(argsNull);
 
                     // Cache this successful constructor for future use

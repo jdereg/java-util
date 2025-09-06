@@ -50,6 +50,7 @@
 >   * **Added varargs constructor support**: Implemented proper handling for varargs constructors, automatically packing trailing arguments into arrays, supporting both individual arguments and pre-packed arrays
 >   * **Fixed permanent alias preservation**: Split aliases into built-in and user maps so clearCaches() preserves user-added permanent aliases while refreshing built-in ones, and removePermanentClassAlias() restores built-in aliases when user overrides are removed
 >   * **Optimized hot-path logging performance**: Added isLoggable() guards to all varargs logging calls to prevent unnecessary array allocations when log levels are disabled, providing measurable performance improvement in reflective code paths at scale
+>   * **Optimized constructor matching performance**: Eliminated redundant toArray() calls per constructor attempt by converting collection to array once in newInstance() and passing the array through to matchArgumentsToParameters(), reducing allocations for classes with many constructors
 >   * **Optimized findClosest() performance**: Pull distance map once from ClassHierarchyInfo to avoid repeated computeInheritanceDistance() calls in candidate evaluation loop
 >   * **Confirmed matchArgumentsWithVarargs optimization**: Verified early return optimization for zero-arg constructors is already in place as noted by GPT-5
 >   * **Added belt-and-suspenders alias security**: addPermanentClassAlias() now validates classes through SecurityChecker.verifyClass() to prevent aliasing to blocked classes

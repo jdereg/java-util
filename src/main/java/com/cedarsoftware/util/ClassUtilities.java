@@ -1993,23 +1993,35 @@ public class ClassUtilities {
 
         // Try parameter name matching first if we have named parameters
         if (hasNamedParameters && namedParameters != null) {
-            LOG.log(Level.FINE, "Attempting parameter name matching for class: {0}", c.getName());
-            LOG.log(Level.FINER, "Provided parameter names: {0}", namedParameters.keySet());
+            if (LOG.isLoggable(Level.FINE)) {
+                LOG.log(Level.FINE, "Attempting parameter name matching for class: {0}", c.getName());
+            }
+            if (LOG.isLoggable(Level.FINER)) {
+                LOG.log(Level.FINER, "Provided parameter names: {0}", namedParameters.keySet());
+            }
 
             try {
                 Object result = newInstanceWithNamedParameters(converter, c, namedParameters);
                 if (result != null) {
-                    LOG.log(Level.FINE, "Successfully created instance of {0} using parameter names", c.getName());
+                    if (LOG.isLoggable(Level.FINE)) {
+                        LOG.log(Level.FINE, "Successfully created instance of {0} using parameter names", c.getName());
+                    }
                     return result;
                 }
             } catch (Exception e) {
-                LOG.log(Level.FINE, "Parameter name matching failed for {0}: {1}", new Object[]{c.getName(), e.getMessage()});
-                LOG.log(Level.FINER, "Falling back to positional argument matching");
+                if (LOG.isLoggable(Level.FINE)) {
+                    LOG.log(Level.FINE, "Parameter name matching failed for {0}: {1}", new Object[]{c.getName(), e.getMessage()});
+                }
+                if (LOG.isLoggable(Level.FINER)) {
+                    LOG.log(Level.FINER, "Falling back to positional argument matching");
+                }
             }
         }
 
         // Call existing implementation
-        LOG.log(Level.FINER, "Using positional argument matching for {0}", c.getName());
+        if (LOG.isLoggable(Level.FINER)) {
+            LOG.log(Level.FINER, "Using positional argument matching for {0}", c.getName());
+        }
         Set<Class<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
 
         try {
@@ -2017,7 +2029,9 @@ public class ClassUtilities {
         } catch (Exception e) {
             // If we were trying with map values and it failed, try with null (no-arg constructor)
             if (arguments instanceof Map && normalizedArgs != null && !normalizedArgs.isEmpty()) {
-                LOG.log(Level.FINER, "Positional matching with map values failed for {0}, trying no-arg constructor", c.getName());
+                if (LOG.isLoggable(Level.FINER)) {
+                    LOG.log(Level.FINER, "Positional matching with map values failed for {0}, trying no-arg constructor", c.getName());
+                }
                 return newInstance(converter, c, null, visited);
             }
             throw e;
@@ -2031,13 +2045,15 @@ public class ClassUtilities {
         boolean isFinal = Modifier.isFinal(c.getModifiers());
         boolean isException = Throwable.class.isAssignableFrom(c);
 
-        LOG.log(Level.FINER, "Class {0} is {1}{2}",
-                new Object[]{c.getName(),
-                        isFinal ? "final" : "non-final",
-                        isException ? " (Exception type)" : ""});
+        if (LOG.isLoggable(Level.FINER)) {
+            LOG.log(Level.FINER, "Class {0} is {1}{2}",
+                    new Object[]{c.getName(),
+                            isFinal ? "final" : "non-final",
+                            isException ? " (Exception type)" : ""});
 
-        LOG.log(Level.FINER, "Trying {0} constructors for {1}",
-                new Object[]{sortedConstructors.length, c.getName()});
+            LOG.log(Level.FINER, "Trying {0} constructors for {1}",
+                    new Object[]{sortedConstructors.length, c.getName()});
+        }
 
         // Cache parameters for each constructor to avoid repeated allocations
         Map<Constructor<?>, Parameter[]> constructorParametersCache = new IdentityHashMap<>();
@@ -2075,7 +2091,9 @@ public class ClassUtilities {
             }
 
             if (hasParameterizedConstructor) {
-                LOG.log(Level.FINE, "No constructors for {0} have real parameter names - cannot use parameter matching", c.getName());
+                if (LOG.isLoggable(Level.FINE)) {
+                    LOG.log(Level.FINE, "No constructors for {0} have real parameter names - cannot use parameter matching", c.getName());
+                }
                 return null; // This will trigger fallback to positional matching
             }
         }
@@ -2085,11 +2103,15 @@ public class ClassUtilities {
                 trySetAccessible(constructor);
             } catch (SecurityException se) {
                 // Can't make this constructor accessible under JPMS; try the next one
-                LOG.log(Level.FINER, "Cannot access constructor {0} due to security restrictions: {1}", 
-                        new Object[]{constructor, se.getMessage()});
+                if (LOG.isLoggable(Level.FINER)) {
+                    LOG.log(Level.FINER, "Cannot access constructor {0} due to security restrictions: {1}", 
+                            new Object[]{constructor, se.getMessage()});
+                }
                 continue;
             }
-            LOG.log(Level.FINER, "Trying constructor: {0}", constructor);
+            if (LOG.isLoggable(Level.FINER)) {
+                LOG.log(Level.FINER, "Trying constructor: {0}", constructor);
+            }
 
             // Get cached parameters (avoid repeated allocation)
             Parameter[] parameters = constructorParametersCache.get(constructor);
@@ -2116,7 +2138,9 @@ public class ClassUtilities {
             }
 
             if (!hasRealNames && parameters.length > 0) {
-                LOG.log(Level.FINER, "  Skipping constructor - parameter names not available");
+                if (LOG.isLoggable(Level.FINER)) {
+                    LOG.log(Level.FINER, "  Skipping constructor - parameter names not available");
+                }
                 continue; // Skip this constructor for parameter matching
             }
 
@@ -2189,7 +2213,9 @@ public class ClassUtilities {
                         break;
                     }
                 } else {
-                    LOG.log(Level.FINER, "  Missing parameter: {0}", paramNames[i]);
+                    if (LOG.isLoggable(Level.FINER)) {
+                        LOG.log(Level.FINER, "  Missing parameter: {0}", paramNames[i]);
+                    }
                     allMatched = false;
                     break;
                 }
@@ -2198,10 +2224,14 @@ public class ClassUtilities {
             if (allMatched) {
                 try {
                     Object instance = constructor.newInstance(args);
-                    LOG.log(Level.FINE, "  Successfully created instance of {0}", c.getName());
+                    if (LOG.isLoggable(Level.FINE)) {
+                        LOG.log(Level.FINE, "  Successfully created instance of {0}", c.getName());
+                    }
                     return instance;
                 } catch (Exception e) {
-                    LOG.log(Level.FINER, "  Failed to invoke constructor: {0}", e.getMessage());
+                    if (LOG.isLoggable(Level.FINER)) {
+                        LOG.log(Level.FINER, "  Failed to invoke constructor: {0}", e.getMessage());
+                    }
                 }
             }
         }
@@ -2354,8 +2384,10 @@ public class ClassUtilities {
                 trySetAccessible(constructor);
             } catch (SecurityException se) {
                 // Can't make this constructor accessible under JPMS; try the next one
-                LOG.log(Level.FINER, "Cannot access constructor {0} due to security restrictions: {1}", 
-                        new Object[]{constructor, se.getMessage()});
+                if (LOG.isLoggable(Level.FINER)) {
+                    LOG.log(Level.FINER, "Cannot access constructor {0} due to security restrictions: {1}", 
+                            new Object[]{constructor, se.getMessage()});
+                }
                 continue;
             }
             Parameter[] parameters = constructor.getParameters();
@@ -2442,7 +2474,9 @@ public class ClassUtilities {
             accessibilityCache.put(object, Boolean.TRUE);
         } catch (SecurityException e) {
             accessibilityCache.put(object, Boolean.FALSE);
-            LOG.log(Level.FINE, "Unable to set accessible: " + object + " - " + e.getMessage());
+            if (LOG.isLoggable(Level.FINE)) {
+                LOG.log(Level.FINE, "Unable to set accessible: " + object + " - " + e.getMessage());
+            }
             throw e; // Don't suppress security exceptions - they indicate important access control violations
         } catch (Throwable t) {
             // Only ignore non-security exceptions (like InaccessibleObjectException in Java 9+)
@@ -2498,7 +2532,9 @@ public class ClassUtilities {
                 unsafe = new Unsafe();
             } catch (Exception e) {
                 useUnsafe = false;
-                LOG.log(Level.FINE, "Failed to initialize unsafe instantiation: " + e.getMessage());
+                if (LOG.isLoggable(Level.FINE)) {
+                    LOG.log(Level.FINE, "Failed to initialize unsafe instantiation: " + e.getMessage());
+                }
             }
         } else {
             unsafe = null; // Clear reference when disabled

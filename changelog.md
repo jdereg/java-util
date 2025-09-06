@@ -52,6 +52,7 @@
 >   * **Optimized hot-path logging performance**: Added isLoggable() guards to all varargs logging calls to prevent unnecessary array allocations when log levels are disabled, providing measurable performance improvement in reflective code paths at scale
 >   * **Optimized constructor matching performance**: Eliminated redundant toArray() calls per constructor attempt by converting collection to array once in newInstance() and passing the array through to matchArgumentsToParameters(), reducing allocations for classes with many constructors
 >   * **Added zero-arg constructor fast-path**: When no arguments are provided, directly attempt no-arg constructor before entering the matching pipeline, optimizing the common case while maintaining fallback to other constructors if instantiation fails
+>   * **Optimized resource path validation**: Replaced regex pattern matching with simple character checks in validateAndNormalizeResourcePath(), eliminating regex engine overhead for Windows drive path detection in resource loading hot path
 >   * **Optimized findClosest() performance**: Pull distance map once from ClassHierarchyInfo to avoid repeated computeInheritanceDistance() calls in candidate evaluation loop
 >   * **Confirmed matchArgumentsWithVarargs optimization**: Verified early return optimization for zero-arg constructors is already in place as noted by GPT-5
 >   * **Added belt-and-suspenders alias security**: addPermanentClassAlias() now validates classes through SecurityChecker.verifyClass() to prevent aliasing to blocked classes

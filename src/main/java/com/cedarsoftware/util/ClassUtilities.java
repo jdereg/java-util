@@ -2681,7 +2681,16 @@ public class ClassUtilities {
         // Security: Block absolute Windows drive paths (e.g., "C:/...", "D:/...")
         // and UNC paths (e.g., "//server/share/...")
         // These should never appear in classpath resource lookups
-        if (normalizedPath.matches("^[A-Za-z]:/.*") || normalizedPath.startsWith("//")) {
+        final int pathLength = normalizedPath.length();
+        
+        // Check for Windows absolute path (e.g., "C:/...")
+        if (pathLength >= 3 && Character.isLetter(normalizedPath.charAt(0)) 
+                && normalizedPath.charAt(1) == ':' && normalizedPath.charAt(2) == '/') {
+            throw new SecurityException("Absolute/UNC paths not allowed: " + resourceName);
+        }
+        
+        // Check for UNC path (e.g., "//server/share/...")
+        if (pathLength >= 2 && normalizedPath.charAt(0) == '/' && normalizedPath.charAt(1) == '/') {
             throw new SecurityException("Absolute/UNC paths not allowed: " + resourceName);
         }
         

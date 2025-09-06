@@ -2693,6 +2693,14 @@ public class ClassUtilities {
             throw new SecurityException("Invalid resource path contains null byte: " + resourceName);
         }
         
+        // Security: Block percent-encoded traversal sequences before normalization
+        // Check for %2e%2e (percent-encoded ..) and %2e%2E and other case variations
+        String lowerPath = resourceName.toLowerCase();
+        if (lowerPath.contains("%2e%2e") || lowerPath.contains("%252e") || 
+            lowerPath.contains("%2e.") || lowerPath.contains(".%2e")) {
+            throw new SecurityException("Invalid resource path contains encoded traversal sequence: " + resourceName);
+        }
+        
         // Normalize backslashes to forward slashes for Windows developers
         // This is safe because JAR resources always use forward slashes
         String normalizedPath = resourceName.replace('\\', '/');
@@ -3007,7 +3015,8 @@ public class ClassUtilities {
                 "java.lang.ProcessBuilder",
                 "java.lang.System",
                 "javax.script.ScriptEngineManager",
-                "javax.script.ScriptEngine"
+                "javax.script.ScriptEngine",
+                "java.lang.invoke.MethodHandles$Lookup"  // Can open modules reflectively
                 // Add any other specific class names as needed
         ));
 
@@ -3033,8 +3042,9 @@ public class ClassUtilities {
             if (BLOCKED_CLASS_NAMES_SET.contains(className)) {
                 return true;
             }
-            // Check package-level blocking (e.g., javax.script.*)
-            if (className.startsWith("javax.script.")) {
+            // Check package-level blocking
+            if (className.startsWith("javax.script.") ||  // Script engines
+                className.startsWith("jdk.nashorn.")) {     // Nashorn JavaScript engine
                 return true;
             }
             return false;

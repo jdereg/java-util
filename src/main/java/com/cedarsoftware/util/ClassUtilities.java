@@ -296,6 +296,9 @@ public class ClassUtilities {
     
     // Global aliases for primitive types and common names (not classloader-specific)
     private static final Map<String, Class<?>> GLOBAL_ALIASES = new ConcurrentHashMap<>();
+    // Separate built-in aliases from user-added aliases to preserve user aliases during clearCaches()
+    private static final Map<String, Class<?>> BUILTIN_ALIASES = new ConcurrentHashMap<>();
+    private static final Map<String, Class<?>> USER_ALIASES = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Class<?>> wrapperMap;
     private static final Map<Class<?>, Class<?>> PRIMITIVE_TO_WRAPPER = new ClassValueMap<>();
     private static final Map<Class<?>, Class<?>> WRAPPER_TO_PRIMITIVE = new ClassValueMap<>();
@@ -508,18 +511,22 @@ public class ClassUtilities {
         // Most general
         ASSIGNABLE_CLASS_MAPPING.put(Iterable.class, ArrayList::new);
 
-        GLOBAL_ALIASES.put("boolean", Boolean.TYPE);
-        GLOBAL_ALIASES.put("char", Character.TYPE);
-        GLOBAL_ALIASES.put("byte", Byte.TYPE);
-        GLOBAL_ALIASES.put("short", Short.TYPE);
-        GLOBAL_ALIASES.put("int", Integer.TYPE);
-        GLOBAL_ALIASES.put("long", Long.TYPE);
-        GLOBAL_ALIASES.put("float", Float.TYPE);
-        GLOBAL_ALIASES.put("double", Double.TYPE);
-        GLOBAL_ALIASES.put("void", Void.TYPE);
-        GLOBAL_ALIASES.put("string", String.class);
-        GLOBAL_ALIASES.put("date", Date.class);
-        GLOBAL_ALIASES.put("class", Class.class);
+        // Initialize built-in aliases
+        BUILTIN_ALIASES.put("boolean", Boolean.TYPE);
+        BUILTIN_ALIASES.put("char", Character.TYPE);
+        BUILTIN_ALIASES.put("byte", Byte.TYPE);
+        BUILTIN_ALIASES.put("short", Short.TYPE);
+        BUILTIN_ALIASES.put("int", Integer.TYPE);
+        BUILTIN_ALIASES.put("long", Long.TYPE);
+        BUILTIN_ALIASES.put("float", Float.TYPE);
+        BUILTIN_ALIASES.put("double", Double.TYPE);
+        BUILTIN_ALIASES.put("void", Void.TYPE);
+        BUILTIN_ALIASES.put("string", String.class);
+        BUILTIN_ALIASES.put("date", Date.class);
+        BUILTIN_ALIASES.put("class", Class.class);
+        
+        // Populate GLOBAL_ALIASES with built-in aliases
+        GLOBAL_ALIASES.putAll(BUILTIN_ALIASES);
 
         PRIMITIVE_TO_WRAPPER.put(int.class, Integer.class);
         PRIMITIVE_TO_WRAPPER.put(long.class, Long.class);
@@ -665,6 +672,7 @@ public class ClassUtilities {
      */
     public static void addPermanentClassAlias(Class<?> clazz, String alias) {
         SecurityChecker.verifyClass(clazz);
+        USER_ALIASES.put(alias, clazz);
         GLOBAL_ALIASES.put(alias, clazz);
         // prevent stale per-loader mappings for this alias
         synchronized (NAME_CACHE) {
@@ -682,7 +690,13 @@ public class ClassUtilities {
      * @param alias the alias name to remove
      */
     public static void removePermanentClassAlias(String alias) {
-        GLOBAL_ALIASES.remove(alias);
+        USER_ALIASES.remove(alias);
+        // If removing a user alias, check if there's a built-in alias to restore
+        if (BUILTIN_ALIASES.containsKey(alias)) {
+            GLOBAL_ALIASES.put(alias, BUILTIN_ALIASES.get(alias));
+        } else {
+            GLOBAL_ALIASES.remove(alias);
+        }
         synchronized (NAME_CACHE) {
             for (LoaderCache holder : NAME_CACHE.values()) {
                 synchronized (holder) {
@@ -2878,25 +2892,15 @@ public class ClassUtilities {
      */
     public static void clearCaches() {
         NAME_CACHE.clear();
+        // Preserve user-added aliases while clearing and re-adding built-in aliases
         GLOBAL_ALIASES.clear();
+        GLOBAL_ALIASES.putAll(BUILTIN_ALIASES);
+        GLOBAL_ALIASES.putAll(USER_ALIASES);
         SUCCESSFUL_CONSTRUCTOR_CACHE.clear();
         CLASS_HIERARCHY_CACHE.clear();
         accessibilityCache.clear();
         osgiClassLoaders.clear();
         // ClassValue-backed caches cannot be fully cleared; rely on GC for unused keys.
-        // Re-populate primitive types and common aliases
-        GLOBAL_ALIASES.put("boolean", Boolean.TYPE);
-        GLOBAL_ALIASES.put("char", Character.TYPE);
-        GLOBAL_ALIASES.put("byte", Byte.TYPE);
-        GLOBAL_ALIASES.put("short", Short.TYPE);
-        GLOBAL_ALIASES.put("int", Integer.TYPE);
-        GLOBAL_ALIASES.put("long", Long.TYPE);
-        GLOBAL_ALIASES.put("float", Float.TYPE);
-        GLOBAL_ALIASES.put("double", Double.TYPE);
-        GLOBAL_ALIASES.put("void", Void.TYPE);
-        GLOBAL_ALIASES.put("string", String.class);
-        GLOBAL_ALIASES.put("date", Date.class);
-        GLOBAL_ALIASES.put("class", Class.class);
     }
 
     public static class SecurityChecker {

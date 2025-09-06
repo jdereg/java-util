@@ -2293,10 +2293,30 @@ public class ClassUtilities {
             throw new IllegalArgumentException("Cannot instantiate abstract class: " + c.getName());
         }
         
-        // First attempt: Check if we have a previously successful constructor for this class
+        // Prepare arguments
         List<Object> normalizedArgs = argumentValues == null ? new ArrayList<>() : new ArrayList<>(argumentValues);
+        
+        // Fast-path: zero-arg constructor - common case that avoids the whole matching pipeline
+        if (normalizedArgs.isEmpty()) {
+            try {
+                Constructor<?> noArg = c.getDeclaredConstructor();
+                trySetAccessible(noArg);
+                Object instance = noArg.newInstance();
+                SUCCESSFUL_CONSTRUCTOR_CACHE.put(c, noArg);
+                return instance;
+            } catch (NoSuchMethodException ignored) {
+                // No no-arg constructor, fall through to normal logic
+            } catch (SecurityException se) {
+                // Can't access no-arg constructor under JPMS, fall through
+            } catch (Exception e) {
+                // No-arg constructor failed, fall through to try other constructors
+            }
+        }
+        
         // Convert to array once to avoid repeated toArray() calls
         Object[] suppliedArgs = normalizedArgs.isEmpty() ? ArrayUtilities.EMPTY_OBJECT_ARRAY : normalizedArgs.toArray();
+        
+        // Check if we have a previously successful constructor for this class
         Constructor<?> cachedConstructor = SUCCESSFUL_CONSTRUCTOR_CACHE.get(c);
 
         if (cachedConstructor != null) {

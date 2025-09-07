@@ -354,6 +354,10 @@ public class GraphComparator
                 Object fieldValue;
                 try
                 {
+                    // Always try to make field accessible
+                    if (!field.isAccessible()) {
+                        field.setAccessible(true);
+                    }
                     fieldValue = field.get(source);
                 }
                 catch (Exception e)
@@ -978,12 +982,13 @@ public class GraphComparator
     {
         // Index all objects in source graph
         final Map<Object, Object> srcMap = new HashMap<>();
-        Traverser.traverse(source, o -> {
+        Traverser.traverse(source, visit -> {
+            Object o = visit.getNode();
             if (isIdObject(o, idFetcher))
             {
                 srcMap.put(idFetcher.getId(o), o);
             }
-        });
+        }, null);
 
         List<DeltaError> errors = new ArrayList<>();
         boolean failQuick = failFast != null && failFast.length == 1 && failFast[0];
@@ -1008,6 +1013,16 @@ public class GraphComparator
             {
                 errors.add(new DeltaError(delta.cmd + " failed, field name missing: " + delta.fieldName + ", obj id: " + delta.id, delta));
                 continue;
+            }
+            
+            // Always try to make field accessible
+            if (field != null && !field.isAccessible()) {
+                try {
+                    field.setAccessible(true);
+                } catch (Exception e) {
+                    // Field cannot be made accessible - JVM/SecurityManager is in control
+                    // The delta processor will handle any access errors
+                }
             }
 
 //            if (LOG.isDebugEnabled())
@@ -1132,12 +1147,17 @@ public class GraphComparator
 
             int newSize = Helper.getResizeValue(delta);
             Object sourceArray = Helper.getFieldValueAs(source, field, field.getType(), delta);
-            int maxKeepLen = Math.min(newSize, Array.getLength(sourceArray));
+            int oldSize = Array.getLength(sourceArray);
+            int maxKeepLen = Math.min(newSize, oldSize);
             Object newArray = Array.newInstance(field.getType().getComponentType(), newSize);
             System.arraycopy(sourceArray, 0, newArray, 0, maxKeepLen);
 
             try
             {
+                // Always try to make field accessible
+                if (!field.isAccessible()) {
+                    field.setAccessible(true);
+                }
                 field.set(source, newArray);
             }
             catch (Exception e)
@@ -1151,6 +1171,10 @@ public class GraphComparator
         {
             try
             {
+                // Always try to make field accessible
+                if (!field.isAccessible()) {
+                    field.setAccessible(true);
+                }
                 field.set(source, delta.targetValue);
             }
             catch (Exception e)

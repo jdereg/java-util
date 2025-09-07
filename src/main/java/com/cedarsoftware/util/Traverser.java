@@ -449,9 +449,14 @@ public class Traverser {
 
         for (Field field : allFields) {
             try {
+                // Always try to make field accessible
+                if (!field.isAccessible()) {
+                    field.setAccessible(true);
+                }
                 fields.put(field, field.get(obj));
-            } catch (IllegalAccessException e) {
-                ClassUtilities.logFieldAccessIssue(field, e);
+            } catch (Exception e) {
+                // Field cannot be accessed - JVM/SecurityManager is in control
+                // This is ok, continue gracefully
                 fields.put(field, "<inaccessible>");
             }
         }
@@ -506,11 +511,17 @@ public class Traverser {
         for (Field field : fields) {
             if (!field.getType().isPrimitive()) {
                 try {
+                    // Always try to make field accessible
+                    if (!field.isAccessible()) {
+                        field.setAccessible(true);
+                    }
                     Object value = field.get(object);
                     if (value != null && !shouldSkipClass(value.getClass(), classesToSkip)) {
                         stack.addFirst(new TraversalNode(value, depth + 1));
                     }
-                } catch (IllegalAccessException ignored) {
+                } catch (Exception e) {
+                    // Field cannot be accessed - JVM/SecurityManager is in control
+                    // This is ok, continue gracefully (just don't traverse into this field)
                 }
             }
         }

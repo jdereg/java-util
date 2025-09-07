@@ -2046,7 +2046,7 @@ public static void removePermanentClassAlias(String alias)
 public static Object newInstance(Class<?> c, Object arguments)
 public static Object newInstance(Converter converter, Class<?> c, Object arguments)
 public static Object newInstance(Converter converter, Class<?> c, Collection<?> argumentValues)
-public static void setUseUnsafe(boolean state)
+public static void setUseUnsafe(boolean state)  // Thread-local setting
 
 // Class information
 public static boolean isClassFinal(Class<?> c)
@@ -2244,8 +2244,14 @@ try {
 
 ### Advanced Features
 ```java
-// Enable unsafe instantiation (use with caution)
+// Enable unsafe instantiation for current thread only (use with caution)
+// This is thread-local and doesn't affect other threads
 ClassUtilities.setUseUnsafe(true);
+try {
+    // Your code that needs unsafe instantiation
+} finally {
+    ClassUtilities.setUseUnsafe(false);  // Always restore to default
+}
 
 // Find closest matching class
 Map<Class<?>, Handler> handlers = new HashMap<>();

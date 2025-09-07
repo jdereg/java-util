@@ -310,7 +310,7 @@ public class ClassUtilities {
     // Cache for OSGi ClassLoader to avoid repeated reflection calls
     private static final Map<Class<?>, ClassLoader> osgiClassLoaders = new ClassValueMap<>();
     private static final ClassLoader SYSTEM_LOADER = ClassLoader.getSystemClassLoader();
-    private static volatile boolean useUnsafe = false;
+    private static final ThreadLocal<Boolean> useUnsafe = ThreadLocal.withInitial(() -> false);
     private static volatile Unsafe unsafe;
 
     // Configurable Security Controls
@@ -2529,7 +2529,7 @@ public class ClassUtilities {
     // for e.g. ConcurrentHashMap or can cause problems when the class is not initialized,
     // that's why we try ordinary constructors first.
     private static Object tryUnsafeInstantiation(Class<?> c) {
-        if (useUnsafe) {
+        if (useUnsafe.get()) {
             try {
                 // Security: Apply security checks even in unsafe mode to prevent bypassing security controls
                 SecurityChecker.verifyClass(c);
@@ -2541,9 +2541,15 @@ public class ClassUtilities {
     }
 
     /**
-     * Globally turn on (or off) the 'unsafe' option of Class construction. The
-     * unsafe option uses internal JVM mechanisms to bypass constructors and should be 
-     * used with extreme caution as it may break on future JDKs or under strict security managers.
+     * Turn on (or off) the 'unsafe' option of Class construction for the current thread only.
+     * This setting is thread-local and does not affect other threads. The unsafe option uses 
+     * internal JVM mechanisms to bypass constructors and should be used with extreme caution 
+     * as it may break on future JDKs or under strict security managers.
+     * 
+     * <p><strong>THREAD SAFETY:</strong> This setting uses ThreadLocal storage, so each thread
+     * maintains its own independent unsafe mode state. Enabling unsafe mode in one thread does
+     * not affect other threads. This is critical for multi-threaded environments like web servers
+     * where concurrent requests must not interfere with each other.</p>
      * 
      * <p><strong>SECURITY WARNING:</strong> Enabling unsafe instantiation bypasses normal Java
      * security mechanisms, constructor validations, and initialization logic. This can lead to
@@ -2551,9 +2557,10 @@ public class ClassUtilities {
      * where you have full control over the codebase and understand the security implications.</p>
      * 
      * <p>It is used when all constructors have been tried and the Java class could
-     * not be instantiated.</p>
+     * not be instantiated. Remember to disable unsafe mode when done (typically in a finally block)
+     * to avoid leaving the thread in an altered state.</p>
      *
-     * @param state boolean true = on, false = off
+     * @param state boolean true = on, false = off (for the current thread only)
      * @throws SecurityException if a security manager exists and denies the required permissions
      */
     public static void setUseUnsafe(boolean state) {
@@ -2565,18 +2572,20 @@ public class ClassUtilities {
             sm.checkPermission(new RuntimePermission("com.cedarsoftware.util.enableUnsafe"));
         }
         
-        useUnsafe = state;
-        if (state) {
-            try {
-                unsafe = new Unsafe();
-            } catch (Exception e) {
-                useUnsafe = false;
-                if (LOG.isLoggable(Level.FINE)) {
-                    LOG.log(Level.FINE, "Failed to initialize unsafe instantiation: " + e.getMessage());
+        useUnsafe.set(state);
+        if (state && unsafe == null) {
+            synchronized (ClassUtilities.class) {
+                if (unsafe == null) {
+                    try {
+                        unsafe = new Unsafe();
+                    } catch (Exception e) {
+                        useUnsafe.set(false);
+                        if (LOG.isLoggable(Level.FINE)) {
+                            LOG.log(Level.FINE, "Failed to initialize unsafe instantiation: " + e.getMessage());
+                        }
+                    }
                 }
             }
-        } else {
-            unsafe = null; // Clear reference when disabled
         }
     }
 

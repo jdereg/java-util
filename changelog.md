@@ -1,5 +1,6 @@
 ### Revision History
 #### 4.0.1 (unreleased)
+> * **FIXED**: `ClassUtilities.setUseUnsafe()` is now thread-local instead of global, preventing race conditions in multi-threaded environments where concurrent threads need different unsafe mode settings
 > * **IMPROVED**: `ClassUtilities` correctness, security fixes, and performance optimizations from GPT-5 review:
 >   * **Fixed interface depth calculation**: Changed ClassHierarchyInfo to use max BFS distance instead of superclass chain walking, correctly handling interfaces
 >   * **Improved tie-breaking for common supertypes**: Changed findLowestCommonSupertypesExcluding to sort by sum of distances from both classes rather than absolute depth, ensuring truly most specific types are preferred

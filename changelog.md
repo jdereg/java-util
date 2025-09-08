@@ -1,185 +1,193 @@
 ### Revision History
-#### 4.0.1 (unreleased)
+#### 4.2.0 (unreleased)
+
+#### 4.1.0
 > * **FIXED**: `ClassUtilities.setUseUnsafe()` is now thread-local instead of global, preventing race conditions in multi-threaded environments where concurrent threads need different unsafe mode settings
-> * **IMPROVED**: `ClassUtilities` correctness, security fixes, and performance optimizations from GPT-5 review:
->   * **Fixed interface depth calculation**: Changed ClassHierarchyInfo to use max BFS distance instead of superclass chain walking, correctly handling interfaces
->   * **Improved tie-breaking for common supertypes**: Changed findLowestCommonSupertypesExcluding to sort by sum of distances from both classes rather than absolute depth, ensuring truly most specific types are preferred
->   * **Fixed JPMS SecurityException handling**: Added proper exception handling for trySetAccessible calls so SecurityExceptions under JPMS don't abort the entire constructor search, allowing fallback to other accessible constructors
->   * **Fixed nameToClass initialization inconsistency**: Added "void" type to static initializer and included common aliases (string, date, class) in clearCaches() for consistency
->   * **Simplified resource path validation**: Removed over-eager validation that blocked legitimate resources (like "css/windows-dark.css"), focusing on actual security risks (.., null bytes, backslashes) while still blocking obvious system paths
->   * **Added accessibility caching**: Implemented caching for trySetAccessible to avoid repeated expensive attempts on the same members under JPMS, using synchronized WeakHashMap for memory-safe caching without global lock contention
+> 
+> * **IMPROVED**: `ClassUtilities` comprehensive improvements from GPT-5 review:
+>
+>   **🔒 SECURITY FIXES:**
+>   * **Enhanced class loading security with additional blocked prefixes**: Added blocking for `jdk.nashorn.` package to prevent Nashorn JavaScript engine exploitation; added blocking for `java.lang.invoke.MethodHandles$Lookup` class which can open modules reflectively and bypass security boundaries
+>   * **Added percent-encoded path traversal blocking**: Enhanced resource path validation to block percent-encoded traversal sequences (%2e%2e, %2E%2E, etc.) before normalization; prevents bypass attempts using URL encoding
+>   * **Enhanced resource path security**: Added blocking of absolute Windows drive paths (e.g., "C:/...", "D:/...") in resource loading to prevent potential security issues
+>   * **Enhanced security blocking**: Added package-level blocking for `javax.script.*` to prevent loading of any class in that package
+>   * **Added belt-and-suspenders alias security**: addPermanentClassAlias() now validates classes through SecurityChecker.verifyClass() to prevent aliasing to blocked classes
+>   * **Fixed security bypass in cache hits**: Alias and cache hits now properly go through SecurityChecker.verifyClass() to prevent bypassing security checks
 >   * **Updated Unsafe permission check**: Replaced outdated "accessClassInPackage.sun.misc" permission with custom "com.cedarsoftware.util.enableUnsafe" permission appropriate for modern JDKs
->   * **Improved API clarity for wrapper types**: Changed getArgForType to only provide default values for actual primitives, not wrapper types, preventing silent conversion of null Integer/Boolean to 0/false which could mask bugs
->   * **Fixed tie-breaker logic**: Corrected `shouldPreferNewCandidate()` to properly prefer more specific types (subclasses) over general types
->   * **Added null safety**: Made `doesOneWrapTheOther()` null-safe, returning false for null inputs as documented
->   * **Relaxed resource validation**: Removed overly restrictive blocking of META-INF resources while maintaining security against path traversal
->   * **Added Java-style array support**: `loadClass()` now supports Java-style array names like "int[][]" and "java.lang.String[]" in addition to JVM descriptors
->   * **Preserved mapping order**: Changed ASSIGNABLE_CLASS_MAPPING to LinkedHashMap to ensure deterministic iteration order
->   * **Removed problematic default**: Removed EnumMap default mapping to TimeUnit.class which was incorrect for arbitrary use cases
->   * **Reduced ClassLoader logging noise**: Toned down validateContextClassLoader warnings to FINE level to avoid false positives in modern JPMS apps
->   * **Improved constructor accessibility**: Added trySetAccessible() calls before constructor invocation to improve success rate under module boundaries
->   * **Removed deprecated method**: Removed deprecated indexOfSmallestValue() method that was no longer used
+>   * **Simplified resource path validation**: Removed over-eager validation that blocked legitimate resources, focusing on actual security risks (.., null bytes, backslashes)
+>   * **Improved validateResourcePath() precision**: Made validation more precise - now only blocks null bytes, backslashes, and ".." path segments (not substrings), allowing legitimate filenames like "my..proto"
+>
+>   **⚡ PERFORMANCE OPTIMIZATIONS:**
+>   * **Optimized constructor matching performance**: Eliminated redundant toArray() calls per constructor attempt by converting collection to array once
+>   * **Optimized resource path validation**: Replaced regex pattern matching with simple character checks, eliminating regex engine overhead
+>   * **Optimized findClosest() performance**: Pull distance map once from ClassHierarchyInfo to avoid repeated computeInheritanceDistance() calls
+>   * **Optimized findLowestCommonSupertypesExcluding performance**: Now iterates the smaller set when finding intersection
+>   * **Optimized findInheritanceMatches hot path**: Pre-cache ClassHierarchyInfo lookups for unique value classes
+>   * **Optimized loadClass() string operations**: Refactored JVM descriptor parsing to count brackets once upfront, reducing string churn
+>   * **Optimized hot-path logging performance**: Added isLoggable() guards to all varargs logging calls to prevent unnecessary array allocations
+>   * **Optimized getParameters() calls**: Cached constructor.getParameters() results to avoid repeated allocations
 >   * **Optimized buffer creation**: Cached zero-length ByteBuffer and CharBuffer instances to avoid repeated allocations
+>   * **Optimized trySetAccessible caching**: Fixed to actually use its accessibility cache, preventing repeated failed setAccessible() attempts
+>   * **Added accessibility caching**: Implemented caching for trySetAccessible using synchronized WeakHashMap for memory-safe caching
+>   * **Prevented zombie cache entries**: Implemented NamedWeakRef with ReferenceQueue to automatically clean up dead WeakReference entries
+>
+>   **🐛 BUG FIXES:**
+>   * **Fixed interface depth calculation**: Changed ClassHierarchyInfo to use max BFS distance instead of superclass chain walking
+>   * **Fixed tie-breaking for common supertypes**: Changed findLowestCommonSupertypesExcluding to sort by sum of distances from both classes
+>   * **Fixed JPMS SecurityException handling**: Added proper exception handling for trySetAccessible calls under JPMS
+>   * **Fixed nameToClass initialization inconsistency**: Added "void" type to static initializer and included common aliases in clearCaches()
+>   * **Fixed tie-breaker logic**: Corrected shouldPreferNewCandidate() to properly prefer more specific types
+>   * **Fixed areAllConstructorsPrivate() for implicit constructors**: Method now correctly returns false for classes with no declared constructors
+>   * **Fixed mutable buffer sharing**: ByteBuffer, CharBuffer, and array default instances are now created fresh on each call
+>   * **Fixed inner class construction**: Inner class constructors with additional parameters beyond enclosing instance are now properly matched
+>   * **Fixed varargs ArrayStoreException vulnerability**: Added proper guards when packing values into varargs arrays
+>   * **Fixed named-parameter gating**: Constructor parameter name detection now checks ALL parameters have real names
+>   * **Fixed Currency default creation**: Currency.getInstance(Locale.getDefault()) now gracefully falls back to USD
+>   * **Fixed generated-key Map ordering**: Fixed bug where Maps with generated keys could inject nulls when keys had gaps
+>   * **Fixed loadResourceAsBytes() leading slash handling**: Added fallback to strip leading slash when ClassLoader.getResourceAsStream() fails
+>   * **Fixed OSGi class loading consistency**: OSGi framework classes now loaded using consistent classloader
+>   * **Fixed ClassLoader key mismatch**: Consistently resolve null ClassLoader to same instance
+>   * **Fixed computeIfAbsent synchronization**: Replaced non-synchronized computeIfAbsent with properly synchronized getLoaderCache()
+>   * **Fixed off-by-one in class load depth**: Now validates nextDepth instead of currentDepth
+>   * **Fixed OSGi/JPMS classloader resolution**: Simplified loadClass() to consistently use getClassLoader() method
+>   * **Fixed permanent alias preservation**: Split aliases into built-in and user maps so clearCaches() preserves user-added permanent aliases
+>   * **Fixed removePermanentClassAlias loader cache invalidation**: Both add and remove methods now properly clear per-loader cache entries
+>   * **Fixed findLowestCommonSupertypesExcluding NPE**: Added null-check for excluded parameter
+>   * **Fixed ArrayStoreException in matchArgumentsWithVarargs**: Added final try-catch guard for exotic conversion edge cases
+>   * **Fixed OSGi loader cache cleanup**: clearCaches() now properly clears the osgiClassLoaders cache
+>   * **Fixed OSGi cache NPE**: Fixed potential NullPointerException in getOSGiClassLoader() when using computeIfAbsent()
+>   * **Fixed incorrect comment**: Updated accessibilityCache comment to correctly state it uses Collections.synchronizedMap
+>
+>   **🎯 API IMPROVEMENTS:**
+>   * **Added boxing support in computeInheritanceDistance()**: Primitive types can now reach reference types through boxing
+>   * **Added primitive widening support**: Implemented JLS 5.1.2 primitive widening conversions (byte→short→int→long→float→double)
+>   * **Added Java-style array support**: loadClass() now supports Java-style array names like "int[][]" and "java.lang.String[]"
+>   * **Added varargs constructor support**: Implemented proper handling for varargs constructors
+>   * **Enhanced varargs support with named parameters**: newInstanceWithNamedParameters() now properly handles varargs parameters
+>   * **Improved API clarity for wrapper types**: Changed getArgForType to only provide default values for actual primitives
+>   * **Improved API clarity**: Renamed defaultClass parameter to defaultValue in findClosest() method
+>   * **Fixed API/docs consistency for null handling**: All primitive/wrapper conversion methods now consistently throw IllegalArgumentException
+>   * **Added null safety**: Made doesOneWrapTheOther() null-safe, returning false for null inputs
 >   * **Added cache management**: Added clearCaches() method for testing and hot-reload scenarios
->   * **Fixed surprising default values**: Changed default instance creation to use predictable, stable values instead of current time/random values:
+>   * **Added deterministic Map fallback ordering**: When constructor parameter matching falls back to Map.values() and Map is HashMap, values are sorted alphabetically
+>   * **Implemented ClassLoader-scoped caching**: Added WeakHashMap-based caching with ClassLoader keys and WeakReference values
+>
+>   **📚 DOCUMENTATION & CLEANUP:**
+>   * **Updated documentation**: Enhanced class-level Javadoc and userguide.md to accurately reflect all public methods
+>   * **Documented Map ordering requirement**: Added documentation to newInstance() methods clarifying LinkedHashMap usage
+>   * **Improved documentation clarity**: Updated computeInheritanceDistance() documentation to clarify caching
+>   * **Added comprehensive edge case test coverage**: Created ClassUtilitiesEdgeCaseTest with tests for deep interface hierarchies
+>   * **Added tests for public utility methods**: Added tests for logMethodAccessIssue(), logConstructorAccessIssue(), and clearCaches()
+>   * **Removed deprecated method**: Removed deprecated indexOfSmallestValue() method
+>   * **Removed unused private method**: Removed getMaxReflectionOperations() and associated constant
+>   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully()
+>   * **Clarified Converter usage**: Added comment explaining why ClassUtilities uses legacy Converter.getInstance()
+>
+>   **🔧 CONFIGURATION & DEFAULTS:**
+>   * **Fixed surprising default values**: Changed default instance creation to use predictable, stable values:
 >     * Date/time types now default to epoch (1970-01-01) instead of current time
 >     * UUID defaults to nil UUID (all zeros) instead of random UUID
 >     * Pattern defaults to empty pattern instead of match-all ".*"
 >     * URL/URI mappings commented out to return null instead of potentially connectable localhost URLs
->     * Removed Comparable→empty string mapping to avoid surprising string for generic interface
->   * **Optimized findInheritanceMatches hot path**: Pre-cache ClassHierarchyInfo lookups for unique value classes to avoid repeated map lookups in parameter matching loops
->   * **Optimized loadClass() string operations**: Refactored JVM descriptor parsing to count brackets once upfront, reducing string churn and branching in array type handling
->   * **Implemented ClassLoader-scoped caching**: Added WeakHashMap-based caching with ClassLoader keys and WeakReference values to prevent cross-loader collisions and memory leaks in multi-classloader environments
->   * **Fixed areAllConstructorsPrivate() for implicit constructors**: Method now correctly returns false for classes with no declared constructors (which get implicit public no-arg constructor from Java)
->   * **Fixed mutable buffer sharing**: `getArgForType()` now returns fresh ByteBuffer/CharBuffer instances per call to prevent data corruption in multi-threaded scenarios
->   * **Added boxing support in computeInheritanceDistance()**: Primitives can now reach reference types through boxing (e.g., int→Integer→Number), enabling proper type conversion paths
->   * **Fixed inner class construction**: Inner class constructors with additional parameters beyond enclosing instance are now properly matched and invoked
->   * **Fixed varargs ArrayStoreException vulnerability**: Added proper guards when packing values into varargs arrays to prevent ArrayStoreException, with graceful fallback to converter or default values
->   * **Fixed named-parameter gating**: Constructor parameter name detection now checks ALL parameters have real names (not just the first) before enabling named-parameter matching
->   * **Fixed API/docs consistency for null handling**: All primitive/wrapper conversion methods (toPrimitiveWrapperClass, getPrimitiveFromWrapper, toPrimitiveClass) now consistently throw IllegalArgumentException with descriptive messages for null inputs
->   * **Improved resource path handling for Windows developers**: Backslashes in resource paths are now normalized to forward slashes for better ergonomics, while still maintaining security against path traversal attacks
->   * **Fixed Currency default creation**: Currency.getInstance(Locale.getDefault()) now gracefully falls back to USD when the default locale doesn't have a currency (e.g., Locale.ROOT, synthetic regions)
->   * **Simplified SecurityManager checks**: Removed redundant ReflectPermission check in trySetAccessible() since setAccessible() throws the same SecurityException - the cache already prevents repeated attempts
->   * **Optimized logging volume**: Added isLoggable() guards for FINEST level logging in constructor matching loops to avoid unnecessary string construction when logging is disabled
->   * **Fixed security bypass in cache hits**: Alias and cache hits now properly go through SecurityChecker.verifyClass() to prevent bypassing security checks
->   * **Fixed ClassLoader key mismatch**: Consistently resolve null ClassLoader to same instance to prevent cross-loader cache pollution
->   * **Fixed computeIfAbsent synchronization**: Replaced non-synchronized computeIfAbsent with properly synchronized getLoaderCache() helper to prevent race conditions
->   * **Fixed off-by-one in class load depth**: Now validates nextDepth instead of currentDepth to prevent allowing maxDepth + 1 recursive loads
->   * **Fixed OSGi/JPMS classloader resolution**: Simplified loadClass() to consistently use getClassLoader() method which properly handles OSGi bundle classloaders and JPMS module boundaries
->   * **Removed unnecessary flush() call**: Eliminated no-op ByteArrayOutputStream.flush() in readInputStreamFully() method
->   * **Added comprehensive edge case test coverage**: Created ClassUtilitiesEdgeCaseTest with tests for deep interface hierarchies, diamond inheritance patterns, primitive/wrapper relationships, array descriptor parsing, and JPMS/named parameter fallback scenarios as suggested by GPT-5 review
->   * **Added varargs constructor support**: Implemented proper handling for varargs constructors, automatically packing trailing arguments into arrays, supporting both individual arguments and pre-packed arrays
->   * **Fixed permanent alias preservation**: Split aliases into built-in and user maps so clearCaches() preserves user-added permanent aliases while refreshing built-in ones, and removePermanentClassAlias() restores built-in aliases when user overrides are removed
->   * **Optimized hot-path logging performance**: Added isLoggable() guards to all varargs logging calls to prevent unnecessary array allocations when log levels are disabled, providing measurable performance improvement in reflective code paths at scale
->   * **Optimized constructor matching performance**: Eliminated redundant toArray() calls per constructor attempt by converting collection to array once in newInstance() and passing the array through to matchArgumentsToParameters(), reducing allocations for classes with many constructors
->   * **Added zero-arg constructor fast-path**: When no arguments are provided, directly attempt no-arg constructor before entering the matching pipeline, optimizing the common case while maintaining fallback to other constructors if instantiation fails
->   * **Optimized resource path validation**: Replaced regex pattern matching with simple character checks in validateAndNormalizeResourcePath(), eliminating regex engine overhead for Windows drive path detection in resource loading hot path
->   * **Optimized findClosest() performance**: Pull distance map once from ClassHierarchyInfo to avoid repeated computeInheritanceDistance() calls in candidate evaluation loop
->   * **Confirmed matchArgumentsWithVarargs optimization**: Verified early return optimization for zero-arg constructors is already in place as noted by GPT-5
->   * **Added belt-and-suspenders alias security**: addPermanentClassAlias() now validates classes through SecurityChecker.verifyClass() to prevent aliasing to blocked classes
->   * **Optimized findLowestCommonSupertypesExcluding performance**: Now iterates the smaller set when finding intersection for better performance with large class hierarchies
->   * **Improved OSGi loader discovery order**: Changed getClassLoader() to try context loader first, then anchor, then OSGi, as context loader may have OSGi classes in some containers
->   * **Fixed generated-key Map ordering**: Fixed bug where Maps with generated keys (arg0, arg1, etc.) could inject nulls when keys had gaps; now properly sorts by numeric value to handle non-sequential keys
->   * **Reduced logging noise**: Changed trySetAccessible() warnings from WARNING to FINE level for expected JPMS module boundary violations, reducing log spam in modular applications
->   * **Removed problematic EnumSet mapping**: Removed EnumSet.class null supplier from ASSIGNABLE_CLASS_MAPPING as EnumSet cannot be instantiated without element type, letting fallback naturally return null
->   * **Removed surprising Class.class default**: Removed Class.class -> String.class mapping as it was arbitrary and could cause subtle bugs; now returns null like other types without sensible defaults
->   * **Fixed loadResourceAsBytes() leading slash handling**: Added fallback to strip leading slash when ClassLoader.getResourceAsStream() fails, as ClassLoader API doesn't handle leading slashes like Class.getResourceAsStream() does
->   * **Improved validateResourcePath() precision**: Made validation more precise and less restrictive - now only blocks null bytes, backslashes, and ".." path segments (not substrings), allowing legitimate filenames like "my..proto"
->   * **Fixed OSGi class loading consistency**: OSGi framework classes now loaded using consistent classloader to avoid potential linkage issues in complex OSGi environments
->   * **Clarified Converter usage**: Added comment explaining why ClassUtilities uses legacy Converter.getInstance() for default instance - only basic conversions needed, no special options required
->   * **Removed unused private method**: Removed getMaxReflectionOperations() and associated constant that were never called
->   * **Added tests for public utility methods**: Added tests for logMethodAccessIssue(), logConstructorAccessIssue(), and clearCaches() public methods
->   * **Optimized getParameters() calls**: Cached constructor.getParameters() results to avoid repeated allocations in newInstanceWithNamedParameters()
->   * **Fixed incorrect comment**: Updated accessibilityCache comment to correctly state it uses Collections.synchronizedMap, not ConcurrentHashMap
->   * **Simplified primitive handling**: Simplified logic in computeInheritanceDistance() for checking primitive/wrapper types, making code clearer
->   * **Added primitive widening support**: Implemented JLS 5.1.2 primitive widening conversions in computeInheritanceDistance(), allowing proper distance calculation for byte→short→int→long→float→double and char→int→long→float→double chains, improving constructor selection for numeric types
->   * **Updated documentation**: Enhanced class-level Javadoc and userguide.md to accurately reflect all public methods including getPrimitiveFromWrapper(), toPrimitiveClass(), findClosest(), clearCaches(), and logging utilities; documented primitive widening support, varargs constructor support, and other recent improvements
->   * **Fixed ClassLoader-scoped caching**: Implemented per-ClassLoader caching with weak references to prevent cross-loader collisions in multi-classloader environments (OSGi, app servers, plugins) and avoid classloader memory leaks; cache keys now include ClassLoader to ensure correct class resolution when same class name exists in different loaders
->   * **Fixed areAllConstructorsPrivate() for implicit constructors**: Method now correctly returns false for classes with no declared constructors (which have implicit public no-arg constructor), instead of incorrectly returning true
->   * **Fixed mutable buffer/array sharing**: ByteBuffer, CharBuffer, and array default instances are now created fresh on each call to prevent mutation issues across threads or calls; removed shared singleton instances that could be corrupted
->   * **Added boxing support in computeInheritanceDistance()**: Primitive types can now reach reference types through boxing to their wrapper classes; for example, int → Number now returns distance 1 (int boxes to Integer which extends Number), improving overload resolution and type matching
->   * **Fixed removePermanentClassAlias loader cache invalidation**: Both `addPermanentClassAlias()` and `removePermanentClassAlias()` now properly clear per-loader cache entries to prevent stale alias mappings from being used after an alias is added or removed
->   * **Fixed findLowestCommonSupertypesExcluding NPE**: Added null-check for excluded parameter, treating null as empty set to prevent NullPointerException
->   * **Enhanced varargs support with named parameters**: `newInstanceWithNamedParameters()` now properly handles varargs parameters, automatically packing collections or single values into arrays, with proper type conversion and fallback to defaults on conversion failure
->   * **Fixed ArrayStoreException in matchArgumentsWithVarargs**: Added final try-catch guard when setting array elements to handle exotic conversion edge cases, falling back to safe default values to prevent ArrayStoreException
->   * **Fixed OSGi loader cache cleanup**: `clearCaches()` now properly clears the `osgiClassLoaders` cache to prevent stale ClassLoader references from being retained during hot-reload and testing scenarios
->   * **Improved API clarity**: Renamed `defaultClass` parameter to `defaultValue` in `findClosest()` method for better clarity, as it represents a default value rather than a class
->   * **Improved documentation clarity**: Updated `computeInheritanceDistance()` documentation to clarify that caching comes from ClassHierarchyInfo (for reference types) and primitive widening maps
->   * **Simplified primitive checks**: Removed redundant `isPrimitive()` OR checks since the method already handles both primitives and wrapper classes
->   * **Enhanced security blocking**: Added package-level blocking for `javax.script.*` to prevent loading of any class in that package, not just specific class names
->   * **Improved immutability**: Made `PRIMITIVE_WIDENING_DISTANCES` and all inner maps unmodifiable to prevent accidental mutation and enable safe sharing
->   * **Added comprehensive test coverage**: Added tests for alias removal cache invalidation, null handling in `findLowestCommonSupertypesExcluding()`, varargs parameter handling, and conversion fallback behavior
->   * **Fixed OSGi cache NPE**: Fixed potential NullPointerException in `getOSGiClassLoader()` when using `computeIfAbsent()` with a function that returns null in non-OSGi environments; now properly handles null values by checking before caching
->   * **Prevented zombie cache entries**: Implemented `NamedWeakRef` with `ReferenceQueue` to automatically clean up dead WeakReference entries from NAME_CACHE, preventing memory leaks from accumulated dead references that could never be removed; the cache now opportunistically drains dead references on every access
->   * **Optimized trySetAccessible caching**: Fixed `trySetAccessible()` to actually use its accessibility cache, preventing repeated failed `setAccessible()` attempts on the same objects; reduces noisy exceptions on hot paths (constructor/method selection loops) in JPMS-sealed modules by short-circuiting known failing attempts
->   * **Documented Map ordering requirement**: Added documentation to `newInstance()` methods clarifying that LinkedHashMap or other ordered Map implementations should be used for deterministic positional parameter fallback when named parameter matching fails
->   * **Enhanced resource path security**: Added blocking of absolute Windows drive paths (e.g., "C:/...", "D:/...") in resource loading to prevent potential security issues where Windows absolute paths could slip into classpath lookups; classpath resources should never use absolute file system paths
->   * **Added deterministic Map fallback ordering**: When constructor parameter matching falls back to Map.values() and the Map is a HashMap, values are now sorted alphabetically by key to ensure consistent constructor matching behavior across different JVM runs; addresses non-deterministic iteration order that could cause different constructors to be selected in different environments
->   * **Enhanced class loading security with additional blocked prefixes**: Added blocking for `jdk.nashorn.` package to prevent Nashorn JavaScript engine exploitation; added blocking for `java.lang.invoke.MethodHandles$Lookup` class which can open modules reflectively and bypass security boundaries; comprehensive test coverage added for all security blocks
->   * **Added percent-encoded path traversal blocking**: Enhanced resource path validation to block percent-encoded traversal sequences (%2e%2e, %2E%2E, etc.) before normalization; prevents bypass attempts using URL encoding to hide directory traversal patterns; includes checks for mixed encoded/literal patterns and double-encoding
-> * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
->   * **Simplified implementation**: Now uses `Collections.newSetFromMap(CaseInsensitiveMap)` internally, eliminating duplicate Set-over-Map logic
->   * **Added Java 8+ support**: Added `spliterator()`, `removeIf(Predicate)`, and enhanced `forEach()` methods
->   * **Fixed removeAll behavior**: Overridden `removeAll()` to ensure proper case-insensitive removal when passed non-CaseInsensitive collections
->   * **Maintained full API compatibility**: All existing constructors, methods, and deprecated operations preserved
->   * **Improved maintainability**: Cleaner delegation pattern consistent with CaseInsensitiveMap's approach
-> * **FIXED**: `DeepEquals` collection comparison was too strict when comparing different Collection implementations:
->   * **Fixed UnmodifiableCollection comparison**: Collections.unmodifiableCollection() results can now be compared with Lists/ArrayLists based on content
->   * **Relaxed plain Collection vs List comparison**: Plain Collection implementations (not Set) are now compared as unordered collections with Lists
->   * **Preserved Set vs List distinction**: Sets and Lists still correctly report type mismatch due to incompatible equality semantics
->   * **Added comprehensive test coverage**: New test ensures various unmodifiable collection types compare correctly with their mutable counterparts
-> * **FIXED**: `SafeSimpleDateFormat` thread-safety and lenient mode issues:
->   * **Fixed NPE in setters**: Initialize parent DateFormat fields (calendar, numberFormat) in constructor to prevent NPEs when setters are called
->   * **Fixed lenient propagation**: Ensure lenient setting is properly applied to both Calendar and SimpleDateFormat in State.build()
->   * **Keep parent fields in sync**: Update parent DateFormat fields when setters are called to maintain consistency
-> * **FIXED**: `UniqueIdGenerator` Java 8 compatibility:
->   * **Fixed Thread.onSpinWait()**: Use reflection to call Thread.onSpinWait() only when available (Java 9+), providing no-op fallback for Java 8
-> * **IMPROVED**: `SafeSimpleDateFormat` completely redesigned with copy-on-write semantics:
->   * **Copy-on-write mutations**: All setter methods now create a new immutable state snapshot, eliminating shared mutable state between threads
->   * **Thread-local LRU caching**: Per-thread LRU cache (size-bounded) for SimpleDateFormat instances, preventing unbounded memory growth
->   * **Hot-path optimization**: No locks on the hot path - format/parse operations use thread-local cached instances
->   * **Immutable state tracking**: All configuration (pattern, locale, timezone, symbols, etc.) captured in immutable State objects
->   * **Smart cache invalidation**: Automatic cache pruning when configuration changes
->   * **Backward compatibility**: Maintains source/binary compatibility with existing code
->   * **Legacy static accessor preserved**: `getDateFormat(pattern)` still available for backward compatibility
-> * **PERFORMANCE**: Optimized `DeepEquals` based on GPT-5 code review:
->   * **Changed epsilon value**: Updated DOUBLE_EPSILON from 1e-15 to 1e-12 for more practical floating-point comparisons
->   * **Adjusted hash scales**: Updated SCALE_DOUBLE from 10^10 to 10^11 and SCALE_FLOAT from 10^5 to 10^6 to maintain hash-equals contract with new epsilon
->   * **Fixed List comparison semantics**: Lists now only compare equal to other Lists, not to any Collection, respecting ordered semantics
->   * **Removed static initializer**: Eliminated static block that was mutating global system properties, following best practices
->   * **Migrated to ArrayDeque**: Replaced LinkedList with ArrayDeque for stack operations, improving performance
->   * **Added null handling**: Enhanced null handling in deepHashCode to prevent NPEs when using ArrayDeque
->   * **Pop-immediately optimization**: Implemented pop-immediately pattern in traversal loop, eliminating double iterations by removing from stack immediately and checking visited set in one operation
->   * **Depth tracking optimization**: Added depth field to ItemsToCompare to avoid costly parent chain traversal for recursion depth checking
->   * **Field iteration optimization**: Skip static and transient fields during comparison and hashing, as static fields are not part of instance state and transient fields are typically excluded from equality
->   * **Early termination optimization**: Push collection/array elements in reverse order for LIFO comparison, ensuring first element is compared first and allowing early termination on mismatch
->   * **Primitive array optimization**: Compare primitive arrays directly without pushing elements to stack, avoiding O(n) allocations for arrays that differ early
->   * **Improved sensitive data detection**: Fixed overly broad Base64 pattern that matched normal strings; now requires 32+ character length and proper Base64 format. Removed "key" from sensitive field names as too generic
->   * **Fixed floating-point comparison correctness**: Corrected near-zero comparison using absolute tolerance instead of relative; made NaN comparison consistent (NaN==NaN via bitwise equality); applied same tolerance to float/double arrays for consistency
->   * **Fixed hash-equals contract for floating-point**: Aligned hash scales with epsilon values (SCALE_DOUBLE=1e12 for EPSILON=1e-12); added proper NaN/infinity handling in hash functions; normalized negative zero to maintain hash consistency
->   * **Refined sensitive field detection**: Removed overly broad contains("key") check from isSensitiveField that would redact fields like "monkey" or "keyboard"; now relies on explicit patterns like "apikey", "secretkey"
->   * **Improved MAP_MISSING_KEY error messages**: Enhanced formatDifference to show clearer messages for missing map keys (e.g., "Expected: key 'foo' present" vs "Found: (missing)") for better debugging
->   * **Performance micro-optimizations**: Hoisted size limit reads to avoid repeated system property lookups in hot paths; removed unused isRecursive variable; added final modifiers to locals for potential JIT optimizations
->   * **Added Java Record support**: DeepEquals and deepHashCode now properly handle Java Records (Java 14+) using record components instead of fields, providing cleaner diffs while maintaining Java 8 compatibility via reflection
->   * **Fixed critical edge cases in DeepEquals**:
->     * **Fixed infinity comparison**: Added explicit checks to prevent infinities from comparing equal to finite numbers in nearlyEqual()
->     * **Fixed options pollution**: Use scratch maps for exploratory comparisons to prevent stale diff entries when overall comparison succeeds
->     * **Improved MAP_MISSING_KEY breadcrumb**: Shows ∅ symbol for missing keys in breadcrumb for clearer visualization
->     * **Added null-safety**: Added parent null check in formatDifference to prevent potential NPE
->   * **Fixed deepHashCode bucket misalignment with slow-path fallback**:
->     * **Added sanitizedChildOptions**: Preserves comparison semantics (stringsCanMatchNumbers, ignoreCustomEquals) without polluting caller's options with diff state
->     * **Implemented slow-path fallback for unordered collections**: When deepHashCode doesn't align with deepEquals, searches other buckets to preserve correctness
->     * **Implemented slow-path fallback for maps**: Similar fallback for map key comparisons when hash buckets don't align
->     * **Fixed leftover detection**: Added checks to ensure unmatched elements in col2/map2 are properly detected and reported
->     * **Exclude already-checked buckets**: Slow-path excludes the primary bucket to avoid redundant comparisons
->     * **Added security check in formatComplexObject**: Redacts sensitive fields when secure errors are enabled
->   * **Fixed critical correctness issues identified by GPT-5 code review**:
->     * **Fixed ConcurrentModificationException**: Replaced enhanced-for loops with iterator.remove() in decomposeUnorderedCollection to avoid structural modifications during iteration
->     * **Fixed formatDifference crash**: Use detailNode approach to properly access parent's objects when rendering container category differences, preventing crashes when accessing child objects with parent's category
->     * **Performance optimization for candidate matching**: Skip diff assembly during exploratory comparisons in unordered collections by passing 'deepequals.skip.diff' flag, avoiding expensive string/reflective work for failed matches
->     * **Removed unreachable AtomicInteger/AtomicLong branches**: Deleted redundant special-case comparisons for AtomicInteger and AtomicLong that were unreachable after generic Number handling; these types are correctly handled by the integral fast path in compareNumbers()
-> * **SECURITY & CORRECTNESS**: `ReflectionUtils` comprehensive fixes based on GPT-5 security audit:
->   * **Fixed over-eager setAccessible()**: Now only elevates access for non-public members, avoiding unnecessary security manager checks for public members
->   * **Fixed getNonOverloadedMethod enforcement**: Now properly throws exception if method name exists with ANY parameter count, not just for 0-arg methods
->   * **Added interface hierarchy search**: getMethod() now searches entire interface hierarchy using breadth-first traversal, not just superclasses
->   * **Fixed method annotation search**: getMethodAnnotation() now properly traverses super-interfaces to find inherited annotations
->   * **Fixed trusted-caller bypass**: ReflectionUtils no longer excludes itself from security checks, closing potential security hole
->   * **Removed static System.setProperty calls**: Eliminated global state modification during class initialization
+>   * **Removed problematic defaults**: 
+>     * Removed EnumMap default mapping to TimeUnit.class
+>     * Removed EnumSet.class null supplier from ASSIGNABLE_CLASS_MAPPING
+>     * Removed Class.class → String.class mapping
+>     * Removed Comparable→empty string mapping
+>   * **Preserved mapping order**: Changed ASSIGNABLE_CLASS_MAPPING to LinkedHashMap for deterministic iteration
+>   * **Improved immutability**: Made PRIMITIVE_WIDENING_DISTANCES and all inner maps unmodifiable
+>   * **Reduced logging noise**: Changed various warnings from WARNING to FINE level for expected JPMS violations
+>   * **Improved OSGi loader discovery order**: Changed getClassLoader() to try context loader first, then anchor, then OSGi
+>   * **Improved resource path handling for Windows developers**: Backslashes in resource paths are now normalized to forward slashes
+>   * **Simplified primitive checks**: Removed redundant isPrimitive() OR checks since methods handle both primitives and wrappers
+>   * **Simplified SecurityManager checks**: Removed redundant ReflectPermission check in trySetAccessible()
 >   * **Made record support fields volatile**: Proper thread-safe lazy initialization for JDK 14+ features
->   * **Fixed enum field filter logic**: Corrected Enum.class.isAssignableFrom() direction (was backwards)
->   * **Removed arbitrary field filtering**: Eliminated special-case filtering of 'internal' enum fields
->   * **Made log obfuscation configurable**: Added isLogObfuscationEnabled() method for runtime control
->   * **Fixed null caching in computeIfAbsent**: Changed getMethod(instance, methodName, argCount) to use computeIfAbsent atomically instead of error-prone check-then-compute pattern
->   * **Removed redundant comparator logic**: Simplified constructor sorting by removing identical if-else branches and unused variables
->     * **Optimized probe comparisons to bypass diff generation**: Call 5-arg deepEquals overload directly for exploratory matching in unordered collections, completely avoiding diff generation overhead (no string formatting or reflection) for N× probe comparisons
->     * **Fixed Locale hygiene**: Use Locale.ROOT for all toLowerCase() calls to avoid Turkish-i surprises; added ThreadLocal UTC SimpleDateFormat for consistent date formatting across locales
->     * **Pre-size hash buckets for performance**: HashMap instances for unordered collection and map matching are now pre-sized with capacity = size * 4/3 to avoid rehashing on large inputs
->     * **Fixed O(n²) path building**: Changed getPath() from repeatedly adding to front of ArrayList (O(n²)) to building forward and reversing once (O(n)), improving performance for deep difference reporting
->     * **Improved sensitive field detection**: Removed 'auth' from SENSITIVE_FIELD_NAMES to avoid false positives like 'author'; authentication fields are still caught by word-boundary regex
->     * **Gated diff_item storage behind option**: The ItemsToCompare object is now only stored when 'deepequals.include.diff_item' is true, preventing retention of large object graphs when only the string diff is needed
->   * **Additional GPT-5 review fixes (round 2)**:
->     * **Fixed map key probe diff generation**: Map key comparisons now use 5-arg deepEquals overload to bypass diff generation, avoiding unnecessary work and options pollution
->     * **Added DIFF_ITEM constant**: Exposed public constant for "diff_item" key to avoid stringly-typed usage
+> 
+> * **IMPROVED**: `CaseInsensitiveSet` refactored to use `Collections.newSetFromMap()` for cleaner implementation:
+>   * Simplified implementation using Collections.newSetFromMap(CaseInsensitiveMap) internally
+>   * Added Java 8+ support: spliterator(), removeIf(Predicate), and enhanced forEach() methods
+>   * Fixed removeAll behavior for proper case-insensitive removal with non-CaseInsensitive collections
+>   * Maintained full API compatibility
+> 
+> * **FIXED**: `DeepEquals` collection comparison was too strict when comparing different Collection implementations:
+>   * Fixed UnmodifiableCollection comparison with Lists/ArrayLists based on content
+>   * Relaxed plain Collection vs List comparison as unordered collections
+>   * Preserved Set vs List distinction due to incompatible equality semantics
+> 
+> * **FIXED**: `SafeSimpleDateFormat` thread-safety and lenient mode issues:
+>   * Fixed NPE in setters by initializing parent DateFormat fields
+>   * Fixed lenient propagation to both Calendar and SimpleDateFormat
+>   * Keep parent fields in sync when setters are called
+> 
+> * **IMPROVED**: `SafeSimpleDateFormat` completely redesigned with copy-on-write semantics:
+>   * Copy-on-write mutations create new immutable state snapshots
+>   * Thread-local LRU caching for SimpleDateFormat instances
+>   * No locks on hot path - format/parse use thread-local cached instances
+>   * Immutable state tracking for all configuration
+>   * Smart cache invalidation on configuration changes
+>   * Backward compatibility maintained
+> 
+> * **FIXED**: `UniqueIdGenerator` Java 8 compatibility:
+>   * Fixed Thread.onSpinWait() using reflection for Java 9+, no-op fallback for Java 8
+> 
+> * **PERFORMANCE**: Optimized `DeepEquals` based on GPT-5 code review:
+>   * **Algorithm & Data Structure Improvements:**
+>     * Migrated from LinkedList to ArrayDeque for stack operations
+>     * Pop-immediately optimization eliminating double iterations
+>     * Depth tracking optimization avoiding costly parent chain traversal
+>     * Early termination optimization using LIFO comparison order
+>     * Primitive array optimization comparing directly without stack allocations
+>     * Pre-size hash buckets to avoid rehashing on large inputs
+>     * Fixed O(n²) path building using forward build and single reverse
+>     * Optimized probe comparisons to bypass diff generation completely
+>     * Added Arrays.equals fast-path for primitive arrays
+>     * Optimized decomposeMap to compute hash once per iteration
+>     * Added fast path for integral number comparison avoiding BigDecimal
+>   
+>   * **Correctness Fixes:**
+>     * Changed epsilon value from 1e-15 to 1e-12 for practical floating-point comparisons
+>     * Adjusted hash scales to maintain hash-equals contract with new epsilon
+>     * Fixed List comparison semantics - Lists only compare equal to other Lists
+>     * Fixed floating-point comparison using absolute tolerance for near-zero
+>     * Made NaN comparison consistent via bitwise equality
+>     * Fixed hash-equals contract for floating-point with proper NaN/infinity handling
+>     * Fixed infinity comparison preventing infinities from comparing equal to finite numbers
+>     * Fixed ConcurrentModificationException using iterator.remove()
+>     * Fixed formatDifference crash using detailNode approach
+>     * Fixed deepHashCode bucket misalignment with slow-path fallback
+>     * Fixed leftover detection for unmatched elements
+>     * Fixed visited set leakage in candidate matching
+>     * Fixed non-monotonic depth budget clamping
+>     * Fixed deepHashCode Map collisions using XOR for key-value pairs
+>   
+>   * **Features & Improvements:**
+>     * Added Java Record support using record components instead of fields
+>     * Added Deque support with List compatibility
+>     * Improved sensitive data detection with refined patterns
+>     * Improved MAP_MISSING_KEY error messages with clearer formatting
+>     * Added security check in formatComplexObject for sensitive fields
+>     * Added string sanitization for secure errors
+>     * Type-safe visited set using Set<ItemsToCompare>
+>     * Skip static/transient fields in formatting
+>     * Implemented global depth budget across recursive paths
+>     * Added Locale.ROOT for consistent formatting
+>     * Gated diff_item storage behind option to prevent retention
+>     * Added DIFF_ITEM constant for type-safe usage
+>   
+>   * **Code Quality:**
+>     * Removed static initializer mutating global system properties
+>     * Removed unreachable AtomicInteger/AtomicLong branches
+>     * Fixed Javadoc typos and added regex pattern commentary
+>     * Fixed documentation to match default security settings
+>     * Performance micro-optimizations hoisting repeated lookups
+> 
+> * **SECURITY & CORRECTNESS**: `ReflectionUtils` comprehensive fixes based on GPT-5 security audit:
+>   * Fixed over-eager setAccessible() only for non-public members
+>   * Fixed getNonOverloadedMethod enforcement for ANY parameter count
+>   * Added interface hierarchy search using breadth-first traversal
+>   * Fixed method annotation search traversing super-interfaces
+>   * Fixed trusted-caller bypass - ReflectionUtils no longer excludes itself
+>   * Removed static System.setProperty calls during initialization
 >     * **Fixed Javadoc typo**: Corrected "instants hashCode()" to "instance's hashCode()" in deepHashCode documentation
 >     * **Added regex pattern commentary**: Clarified that HEX_32_PLUS and UUID_PATTERN use lowercase patterns since strings are lowercased before matching
 >     * **Type-safe visited set**: Changed visited set type from Set<Object> to Set<ItemsToCompare> for compile-time type safety and to prevent accidental misuse

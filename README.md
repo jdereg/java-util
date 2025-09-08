@@ -191,7 +191,7 @@ System.out.println(map.containsMultiKey(tenantId, userId, scope)); // false
 
 ---
 
-### 🎁 Plus 28 More Utilities
+### 🎁 Plus Many More Utilities
 
 From reflection helpers to graph traversal, concurrent collections to date utilities - java-util has you covered. [Browse all utilities →](#core-components)
 
@@ -523,7 +523,7 @@ The jar already ships with all necessary OSGi headers and a `module-info.class`.
 To add the bundle to an Eclipse feature or any OSGi runtime simply reference it:
 
 ```xml
-<plugin id="com.cedarsoftware.java-util" version="4.0.0"/>
+<plugin id="com.cedarsoftware.java-util" version="4.1.0"/>
 ```
 
 Both of these features ensure that our library can be seamlessly integrated into modular Java applications, providing robust dependency management and encapsulation.
@@ -534,7 +534,7 @@ To include in your project:
 
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:4.0.0'
+implementation 'com.cedarsoftware:java-util:4.1.0'
 ```
 
 ##### Maven
@@ -542,7 +542,7 @@ implementation 'com.cedarsoftware:java-util:4.0.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>4.0.0</version>
+  <version>4.1.0</version>
 </dependency>
 ```
 

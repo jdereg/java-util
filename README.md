@@ -202,21 +202,6 @@ From reflection helpers to graph traversal, concurrent collections to date utili
 - **JDK 8+ compatible** - Works everywhere
 - **Production proven** - Used in high-scale applications
 
-## Performance Benchmarks
-
-java-util is engineered for performance-critical applications with optimizations that deliver measurable improvements:
-
-
-### 📊 Memory Efficiency
-
-**CompactMap Dynamic Adaptation (it has one field):**
-- **map.size() == 0** → _Object field_ = null (Sentinel value)
-- **map.size() == 1** → _Object field_ = Map.Entry<Key, Value>
-- **map.size() == 2 ... compactSize()** → _Object field_ = Object[2*size] containing keys (even) values (odd)
-- **map.size() > compactSize()**: → _Object field_ = map // delegates to wrapped map
-- Great for applications with millions of small Maps
-
-
 ## How java-util Compares
 
 | Feature | JDK Collections | Google Guava | Eclipse Collections | Apache Commons | **java-util**    |

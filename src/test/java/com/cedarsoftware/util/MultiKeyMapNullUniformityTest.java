@@ -59,28 +59,30 @@ public class MultiKeyMapNullUniformityTest {
     @Test
     void testNullEquivalenceAcrossContainerTypes() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
-        
-        // Different container types, all with single null element
+
+        // Different ordered container types, all with single null element
         Object[] objectArray = {null};
         String[] stringArray = {null};
         List<Object> list = Arrays.asList((Object) null);
-        Set<Object> set = new HashSet<>(Arrays.asList((Object) null));
-        
+
         // Store using one type
         map.put(objectArray, "stored_value");
-        
-        // All containers with same content should be equivalent (berries not branches)
+
+        // All ordered containers (Arrays/Lists) with same content are equivalent
         assertEquals(1, map.size());
         assertEquals("stored_value", map.get(objectArray));
         assertEquals("stored_value", map.get(stringArray));
         assertEquals("stored_value", map.get(list));
-        assertEquals("stored_value", map.get(set));
-        
+
         // All should be recognized as containing the key
         assertTrue(map.containsKey(objectArray));
         assertTrue(map.containsKey(stringArray));
         assertTrue(map.containsKey(list));
-        assertTrue(map.containsKey(set));
+
+        // Sets are semantically distinct - they don't match Arrays/Lists
+        Set<Object> set = new HashSet<>(Arrays.asList((Object) null));
+        assertNull(map.get(set));
+        assertFalse(map.containsKey(set));
     }
     
     @Test

@@ -152,21 +152,21 @@ public class MultiKeyMapCollectionHashTest {
     
     @Test
     void testCollectionHashEquivalenceInExpandedMode() {
-        // Test the opposite - in normal expanded mode, List and Set with same elements should be equivalent
+        // Test that Sets and Lists are distinct keys (Sets only match Sets)
         MultiKeyMap<String> map = MultiKeyMap.<String>builder().flattenDimensions(true).build(); // Default expanded mode
-        
+
         List<String> list = Arrays.asList("x", "y", "z");
         Set<String> set = new LinkedHashSet<>(Arrays.asList("x", "y", "z")); // Maintain order
-        
+
         map.put(list, "xyz_list");
-        map.put(set, "xyz_set_overwrites"); // Should overwrite because they expand to same representation
-        
-        // In expanded mode, both should resolve to the same key
-        assertEquals("xyz_set_overwrites", map.get(list));
-        assertEquals("xyz_set_overwrites", map.get(set));
-        
-        // Should have only one entry (they're equivalent when expanded)
-        assertEquals(1, map.size());
+        map.put(set, "xyz_set"); // Sets and Lists are distinct keys - no overwrite
+
+        // In expanded mode, Sets and Lists are semantically different - each maintains its own value
+        assertEquals("xyz_list", map.get(list));
+        assertEquals("xyz_set", map.get(set));
+
+        // Should have two entries (Sets and Lists are distinct)
+        assertEquals(2, map.size());
     }
     
     @Test

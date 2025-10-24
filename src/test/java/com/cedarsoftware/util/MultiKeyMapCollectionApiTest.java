@@ -18,18 +18,19 @@ class MultiKeyMapCollectionApiTest {
     @Test
     void testCollectionBasedGetMultiKey() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
-        
+
         // Store using Object[] varargs API
         map.putMultiKey("test1", String.class, Integer.class, 42L);
         map.putMultiKey("test2", "key1", "key2", "key3");
-        
+
         // Retrieve using Collection API - zero heap allocation
         List<Object> keys1 = Arrays.asList(String.class, Integer.class, 42L);
         assertEquals("test1", map.get(keys1));
-        
-        Set<Object> keys2 = new LinkedHashSet<>(Arrays.asList("key1", "key2", "key3"));
+
+        // Lists match Lists (but not Sets - Sets are semantically distinct)
+        List<Object> keys2 = Arrays.asList("key1", "key2", "key3");
         assertEquals("test2", map.get(keys2));
-        
+
         // Non-existent key
         List<Object> keys3 = Arrays.asList(String.class, Long.class, 99L);
         assertNull(map.get(keys3));
@@ -62,27 +63,28 @@ class MultiKeyMapCollectionApiTest {
     @Test
     void testCollectionKeyOrdering() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
-        
-        // Order matters for key equality
+
+        // Order matters for Lists/Arrays (order-dependent)
         map.putMultiKey("ordered", "a", "b", "c");
-        
+
         List<Object> correctOrder = Arrays.asList("a", "b", "c");
         assertEquals("ordered", map.get(correctOrder));
-        
+
         List<Object> wrongOrder = Arrays.asList("c", "b", "a");
         assertNull(map.get(wrongOrder));
-        
-        // LinkedHashSet preserves insertion order
-        Set<Object> orderedSet = new LinkedHashSet<>();
-        orderedSet.add("a");
-        orderedSet.add("b");
-        orderedSet.add("c");
-        assertEquals("ordered", map.get(orderedSet));
-        
-        // Regular HashSet does NOT guarantee order
-        Set<Object> unorderedSet = new HashSet<>(Arrays.asList("a", "b", "c"));
-        // Note: This test might be flaky due to HashSet's unpredictable ordering
-        // In practice, developers should use ordered Collections for keys
+
+        // Sets are order-agnostic but semantically distinct from Lists
+        // Store with Set
+        Set<Object> setKey = new HashSet<>(Arrays.asList("x", "y", "z"));
+        map.put(setKey, "set_value");
+
+        // Different Set types with same elements match (order-agnostic)
+        Set<Object> linkedHashSetKey = new LinkedHashSet<>(Arrays.asList("z", "x", "y"));
+        assertEquals("set_value", map.get(linkedHashSetKey));
+
+        // But Sets don't match Lists even with same elements
+        List<Object> listKey = Arrays.asList("x", "y", "z");
+        assertNull(map.get(listKey)); // List doesn't match Set key
     }
     
     @Test
@@ -117,22 +119,23 @@ class MultiKeyMapCollectionApiTest {
     @Test
     void testCollectionTypeVariations() {
         MultiKeyMap<String> map = new MultiKeyMap<>(16);
-        
-        // Store once
+
+        // Store once using array (via varargs)
         map.putMultiKey("value", "x", "y", "z");
-        
-        // Retrieve with different Collection types - all should work
+
+        // Retrieve with different ordered Collection types - all match Arrays/Lists
         List<Object> list = Arrays.asList("x", "y", "z");
         assertEquals("value", map.get(list));
-        
-        Set<Object> linkedHashSet = new LinkedHashSet<>(Arrays.asList("x", "y", "z"));
-        assertEquals("value", map.get(linkedHashSet));
-        
+
         Vector<Object> vector = new Vector<>(Arrays.asList("x", "y", "z"));
         assertEquals("value", map.get(vector));
-        
+
         LinkedList<Object> linkedList = new LinkedList<>(Arrays.asList("x", "y", "z"));
         assertEquals("value", map.get(linkedList));
+
+        // Sets are semantically distinct - they don't match Lists/Arrays
+        Set<Object> linkedHashSet = new LinkedHashSet<>(Arrays.asList("x", "y", "z"));
+        assertNull(map.get(linkedHashSet)); // Set doesn't match Array/List key
     }
     
     

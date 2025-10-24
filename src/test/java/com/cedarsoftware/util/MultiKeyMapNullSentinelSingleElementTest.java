@@ -79,29 +79,33 @@ public class MultiKeyMapNullSentinelSingleElementTest {
     @Test
     void testMixedSingleElementNullContainers() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
-        
-        // Different single-element containers with null - all map to same key (content-based)
+
+        // Different single-element ordered containers with null - all map to same key
         Object[] nullArray = {null};
         List<Object> nullList = Arrays.asList((Object) null);  // Non-RandomAccess, becomes array
-        Set<Object> nullSet = new HashSet<>();
-        nullSet.add(null);
         Vector<Object> nullVector = new Vector<>();  // RandomAccess
         nullVector.add(null);
-        
+
         map.put(nullArray, "first_null");
         map.put(nullList, "second_null");    // Same key - OVERWRITES
-        map.put(nullSet, "third_null");      // Same key - OVERWRITES  
-        map.put(nullVector, "fourth_null");  // Same key - OVERWRITES
-        
-        // All resolve to same key (same content)
+        map.put(nullVector, "third_null");  // Same key - OVERWRITES
+
+        // All Lists/Arrays resolve to same key (same content)
         assertNull(map.get((Object) null)); // Direct null is different
-        assertEquals("fourth_null", map.get(nullArray));
-        assertEquals("fourth_null", map.get(nullList));
-        assertEquals("fourth_null", map.get(nullSet));
-        assertEquals("fourth_null", map.get(nullVector));
-        
-        // Should have only 1 entry (all same content)
-        assertEquals(1, map.size());
+        assertEquals("third_null", map.get(nullArray));
+        assertEquals("third_null", map.get(nullList));
+        assertEquals("third_null", map.get(nullVector));
+
+        // Sets are semantically distinct - they don't match Lists/Arrays
+        Set<Object> nullSet = new HashSet<>();
+        nullSet.add(null);
+        map.put(nullSet, "set_null");  // Different key - doesn't overwrite
+
+        assertEquals("set_null", map.get(nullSet));
+        assertEquals("third_null", map.get(nullArray));  // Still has List/Array value
+
+        // Should have 2 entries (List/Array key + Set key)
+        assertEquals(2, map.size());
     }
     
     @Test

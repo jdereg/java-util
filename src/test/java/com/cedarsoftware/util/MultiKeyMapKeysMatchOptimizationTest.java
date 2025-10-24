@@ -309,36 +309,37 @@ public class MultiKeyMapKeysMatchOptimizationTest {
     @Test
     void testMixedCollectionTypes() {
         MultiKeyMap<String> map = new MultiKeyMap<>();
-        
-        // Test that different collection types with same content are equivalent
+
+        // Test that different ordered collection types with same content are equivalent
         ArrayList<String> arrayList = new ArrayList<>();
         arrayList.add("a");
         arrayList.add("b");
         arrayList.add("c");
-        
+
         Vector<String> vector = new Vector<>();
         vector.add("a");
         vector.add("b");
         vector.add("c");
-        
+
         LinkedList<String> linkedList = new LinkedList<>();
         linkedList.add("a");
         linkedList.add("b");
         linkedList.add("c");
-        
+
+        map.put(arrayList, "collection_value");
+
+        // Lists match Lists despite using different optimization paths
+        assertEquals("collection_value", map.get(vector));      // Vector fast path
+        assertEquals("collection_value", map.get(linkedList));  // Iterator path
+
+        // Sets are semantically distinct from Lists - they don't match
         HashSet<String> hashSet = new HashSet<>();
         hashSet.add("a");
         hashSet.add("b");
         hashSet.add("c");
-        
-        map.put(arrayList, "collection_value");
-        
-        // All should be equivalent despite using different optimization paths
-        assertEquals("collection_value", map.get(vector));      // Vector fast path
-        assertEquals("collection_value", map.get(linkedList));  // Iterator path
-        assertEquals("collection_value", map.get(hashSet));     // Iterator path
-        
-        // Should all be the same key due to cross-type matching
-        assertEquals(1, map.size(), "All collections with same content should be equivalent");
+        assertNull(map.get(hashSet));     // Set doesn't match List key
+
+        // Should have just one key (the List variants all match)
+        assertEquals(1, map.size(), "All Lists with same content should be equivalent");
     }
 }

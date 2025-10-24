@@ -2368,12 +2368,14 @@ MultiKeyMap treats arrays and collections as interchangeable "branches" that hol
 - **Branches**: The arrays, collections, and nested structures that form the container hierarchy
 - **Berries**: The actual data values (Strings, Numbers, custom objects) that serve as the real keys
 
-**Key Equivalence:**
-- `[1, 2, 3]` array equals `List.of(1, 2, 3)` - same berries, different branch types
-- `Set.of("a", "b")` equals `["a", "b"]` array - containers are interchangeable
-- Even nested: `[List.of(1, 2), Set.of(3, 4)]` equals `[[1, 2], [3, 4]]`
+**Key Equivalence for Ordered Collections:**
+- `[1, 2, 3]` array equals `List.of(1, 2, 3)` - same berries, different ordered branch types
+- `Vector.of("a", "b")` equals `["a", "b"]` array - all ordered containers are interchangeable
+- Even nested: `[List.of(1, 2), [3, 4]]` equals `[[1, 2], [3, 4]]`
 
-MultiKeyMap compares the berries for equality, not the specific branch types holding them.
+**Important**: Sets are treated differently - see the "Set Support" section below for details on Set semantics.
+
+MultiKeyMap compares the berries for equality, with container type mattering only for Sets vs ordered collections.
 
 ### Protecting Against External Modifications
 
@@ -2482,8 +2484,116 @@ String val5 = flattenMap.get(new Object[]{"x", "y", "z"});        // "deep-neste
 
 - **ETL normalization from heterogeneous producers**
   - Some producers emit arrays-of-arrays (e.g., JSON [["lob","property"],["state","OH"],"cat:wind"]) while others emit flat arrays.
-    > If your dedupe/enrichment cache keys on “dimensions attached to a record”, flatten so both hit the same enrichment result.
+    > If your dedupe/enrichment cache keys on "dimensions attached to a record", flatten so both hit the same enrichment result.
 
+### Set Support - Order-Agnostic Matching
+
+MultiKeyMap provides special support for `java.util.Set` with order-agnostic semantics. Sets are treated as semantically distinct from Lists and Arrays:
+
+**Core Set Behavior:**
+- **Order-Agnostic:** Sets match other Sets regardless of element order
+- **Type-Independent:** All Set types (HashSet, TreeSet, LinkedHashSet) are treated equivalently
+- **Semantic Distinction:** Sets only match Sets - they do NOT match Lists or Arrays
+- **Nested Support:** Sets within arrays, lists, or other sets work correctly
+
+```java
+MultiKeyMap<String> map = new MultiKeyMap<>();
+
+// Store a value with a Set key
+Set<String> coordinates = new HashSet<>(Arrays.asList("x", "y", "z"));
+map.put(coordinates, "value");
+
+// Sets match other Sets regardless of order
+Set<String> lookup1 = new LinkedHashSet<>(Arrays.asList("z", "x", "y"));  // Different order
+assertEquals("value", map.get(lookup1));  // Found! Order doesn't matter
+
+Set<String> lookup2 = new TreeSet<>(Arrays.asList("y", "z", "x"));  // Different Set type + order
+assertEquals("value", map.get(lookup2));  // Found! Set type doesn't matter
+
+// Sets do NOT match Lists/Arrays (semantic distinction)
+List<String> listLookup = Arrays.asList("x", "y", "z");
+assertNull(map.get(listLookup));  // Not found - Lists don't match Sets
+
+Object[] arrayLookup = {"x", "y", "z"};
+assertNull(map.get(arrayLookup));  // Not found - Arrays don't match Sets
+```
+
+**Why Sets Are Distinct:**
+
+MultiKeyMap treats Sets as semantically different from ordered collections because:
+1. **Semantics Matter:** Sets represent unordered collections, Lists/Arrays represent ordered sequences
+2. **No Non-Determinism:** Allowing Sets to match Lists would create non-deterministic behavior with HashSet
+3. **Clear Intent:** Explicit Set usage signals order-agnostic matching intent
+4. **Type Safety:** Prevents accidental cross-matches between different collection types
+
+**Nested Sets:**
+
+Sets work correctly when nested within other structures:
+
+```java
+// Set nested in array
+Set<String> innerSet = new HashSet<>(Arrays.asList("a", "b", "c"));
+Object[] key = {innerSet, "extra"};
+map.put(key, "nested-value");
+
+// Retrieve with Set in different order
+Set<String> innerSet2 = new LinkedHashSet<>(Arrays.asList("c", "b", "a"));
+Object[] key2 = {innerSet2, "extra"};
+assertEquals("nested-value", map.get(key2));  // Found! Inner Set matches
+
+// Set of Sets
+Set<Integer> inner1 = new HashSet<>(Arrays.asList(1, 2));
+Set<Integer> inner2 = new HashSet<>(Arrays.asList(3, 4));
+Set<Set<Integer>> outer = new HashSet<>(Arrays.asList(inner1, inner2));
+map.put(outer, "set-of-sets");
+
+// Retrieve with different ordering at both levels
+Set<Integer> inner1Rev = new HashSet<>(Arrays.asList(2, 1));
+Set<Integer> inner2Rev = new HashSet<>(Arrays.asList(4, 3));
+Set<Set<Integer>> outerRev = new HashSet<>(Arrays.asList(inner2Rev, inner1Rev));
+assertEquals("set-of-sets", map.get(outerRev));  // Found!
+```
+
+**Empty Sets:**
+
+Empty Sets are distinct from empty Lists/Arrays:
+
+```java
+Set<Object> emptySet = Collections.emptySet();
+List<Object> emptyList = Collections.emptyList();
+
+map.put(emptySet, "empty-set-value");
+map.put(emptyList, "empty-list-value");
+
+assertEquals("empty-set-value", map.get(emptySet));
+assertEquals("empty-list-value", map.get(emptyList));
+assertEquals(2, map.size());  // Two distinct keys
+```
+
+**Performance Considerations:**
+
+Set operations have slightly higher overhead compared to Lists/Arrays:
+- **Insertion:** ~3.8x slower (order-agnostic hash computation)
+- **Lookup:** ~2.9x slower (temporary HashSet creation for comparison)
+- **Still Fast:** Acceptable for most use cases (10,000 Set insertions in ~9.5ms)
+
+**Best Practices:**
+
+1. **Use Sets when order doesn't matter:** Perfect for tag collections, permission sets, feature flags
+2. **Use Lists for ordered sequences:** Better performance when order is significant
+3. **Be explicit about intent:** Choose Set vs List based on semantic meaning, not just performance
+4. **Consider CollectionKeyMode:** Sets work with both EXPANDED and NOT_EXPANDED modes
+
+```java
+// Good use cases for Set keys
+MultiKeyMap<UserPermissions> permissions = new MultiKeyMap<>();
+Set<String> roles = new HashSet<>(Arrays.asList("admin", "editor", "viewer"));
+permissions.put(roles, userPerms);  // Order of roles doesn't matter
+
+MultiKeyMap<Product> products = new MultiKeyMap<>();
+Set<String> tags = new HashSet<>(Arrays.asList("sale", "featured", "new"));
+products.put(tags, product);  // Order of tags doesn't matter
+```
 
 ### Value-Based vs Type-Based Equality
 

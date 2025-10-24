@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -45,7 +46,8 @@ import java.util.logging.Logger;
  *   <li><b>Flexible API:</b> Var-args methods for convenient multi-key operations (getMultiKey()/putMultiKey() with many keys).</li>
  *   <li><b>Smart Collection Handling:</b> Configurable behavior for Collections via {@link CollectionKeyMode} — change the default automatic unpacking capability as needed.</li>
  *   <li><b>N-Dimensional Array Expansion:</b> Nested arrays of any depth are automatically flattened recursively into multi-keys.</li>
- *   <li><b>Cross-Container Equivalence:</b> Arrays and Collections with equivalent structure are treated as identical keys, regardless of container type.</li>
+ *   <li><b>Cross-Container Equivalence:</b> Arrays and ordered Collections (Lists) with equivalent structure are treated as identical keys.</li>
+ *   <li><b>Set Support:</b> Sets are treated as order-agnostic containers. Sets only match other Sets (not Lists/Arrays), and matching is independent of element order.</li>
  * </ul>
  *
  * <h3>Dimensional Behavior Control:</h3>
@@ -140,9 +142,36 @@ import java.util.logging.Logger;
  * MultiKeyMap<String> caseInsensitive = MultiKeyMap.<String>builder().caseSensitive(false).build();
  * caseInsensitive.putMultiKey("value", "USER", "Settings", "THEME");
  * String found = caseInsensitive.getMultiKey("user", "settings", "theme"); // Found! Case doesn't matter
+ *
+ * // Set support - order-agnostic matching
+ * MultiKeyMap<String> map = new MultiKeyMap<>();
+ * Set<String> coordinates = new HashSet<>(Arrays.asList("x", "y", "z"));
+ * map.put(coordinates, "value");
+ *
+ * // Sets match other Sets regardless of order or Set type
+ * Set<String> lookup1 = new LinkedHashSet<>(Arrays.asList("z", "x", "y"));  // Different order
+ * assertEquals("value", map.get(lookup1));  // Found! Order doesn't matter
+ *
+ * Set<String> lookup2 = new TreeSet<>(Arrays.asList("y", "z", "x"));  // Different Set type
+ * assertEquals("value", map.get(lookup2));  // Found! Set type doesn't matter
+ *
+ * // Sets don't match Lists/Arrays (semantic distinction)
+ * List<String> listLookup = Arrays.asList("x", "y", "z");
+ * assertNull(map.get(listLookup));  // Not found - Lists don't match Sets
  * }</pre>
  *
  * <p>For comprehensive examples and advanced usage patterns, see the user guide documentation.</p>
+ *
+ * <h3>Set Semantics:</h3>
+ * <p>Sets are treated as order-agnostic containers with the following behavior:</p>
+ * <ul>
+ *   <li><b>Order-Agnostic Matching:</b> Sets match other Sets regardless of element order. {@code Set.of(1,2,3)} equals {@code Set.of(3,2,1)}.</li>
+ *   <li><b>Type Independence:</b> All Set types (HashSet, TreeSet, LinkedHashSet) are treated equivalently based on their elements.</li>
+ *   <li><b>Semantic Distinction:</b> Sets only match other Sets - they do not match Lists or Arrays even with identical elements.</li>
+ *   <li><b>Nested Sets:</b> Sets within arrays, lists, or other sets are properly handled with order-agnostic semantics.</li>
+ *   <li><b>Performance:</b> Set operations are approximately 3-4x slower than List operations due to order-agnostic hash computation.</li>
+ *   <li><b>Empty Sets:</b> Empty Sets are distinct from empty Lists/Arrays.</li>
+ * </ul>
  *
  * @param <V> the type of values stored in the map
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -177,6 +206,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final Object CLOSE = new Object() {
         @Override public String toString() { return "]"; }
         @Override public int hashCode() { return "]".hashCode(); }
+    };
+    private static final Object SET_OPEN = new Object() {
+        @Override public String toString() { return "{"; }
+        @Override public int hashCode() { return "{".hashCode(); }
+    };
+    private static final Object SET_CLOSE = new Object() {
+        @Override public String toString() { return "}"; }
+        @Override public int hashCode() { return "}".hashCode(); }
     };
     private static final Object NULL_SENTINEL = new Object() {
         @Override public String toString() { return "∅"; }
@@ -1285,7 +1322,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Collection<?> coll = (Collection<?>) key;
         
         // Collections that reach this point need expansion (COLLECTIONS_NOT_EXPANDED handled earlier)
-        
+
+        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
+        if (coll instanceof Set) {
+            return expandWithHash(coll);
+        }
+
         // If flattening dimensions, always go through expansion
         if (flattenDimensions) {
             return expandWithHash(coll);
@@ -1416,6 +1458,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private <T> MultiKey<T> flattenCollection1(Collection<?> coll) {
+        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
+        if (coll instanceof Set) {
+            return expandWithHash(coll);
+        }
+
         Iterator<?> iter = coll.iterator();
         Object elem = iter.next();
         
@@ -1436,6 +1483,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private <T> MultiKey<T> flattenCollection2(Collection<?> coll) {
+        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
+        if (coll instanceof Set) {
+            return expandWithHash(coll);
+        }
+
         // Simplified: always store Collections as-is
         Iterator<?> iter = coll.iterator();
         Object elem0 = iter.next();
@@ -1453,6 +1505,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private <T> MultiKey<T> flattenCollection3(Collection<?> coll) {
+        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
+        if (coll instanceof Set) {
+            return expandWithHash(coll);
+        }
+
         // Simplified: always store Collections as-is
         Iterator<?> iter = coll.iterator();
         Object elem0 = iter.next();
@@ -1476,6 +1533,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Simplified to always store Collections as-is.
      */
     private <T> MultiKey<T> flattenCollectionN(Collection<?> coll, int size) {
+        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
+        if (coll instanceof Set) {
+            return expandWithHash(coll);
+        }
+
         // Simplified: always use iterator and store Collection as-is
         Iterator<?> iter = coll.iterator();
         int h = 1;
@@ -1547,6 +1609,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private <T> MultiKey<T> process1DCollection(final Collection<?> coll) {
+        // Sets always need expansion to get SET_OPEN/SET_CLOSE markers and order-agnostic hash
+        if (coll instanceof Set) {
+            return expandWithHash(coll);
+        }
+
         if (coll.isEmpty()) {
             // Normalize empty collections to empty array for cross-container equivalence
             return new MultiKey<>(ArrayUtilities.EMPTY_OBJECT_ARRAY, 0, null);
@@ -1704,18 +1771,40 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         } else if (current instanceof Collection) {
             Collection<?> coll = (Collection<?>) current;
+            boolean isSet = current instanceof Set;
             visited.put(current, true);
             try {
-                if (!useFlatten) {
-                    result.add(OPEN);
-                    runningHash = runningHash * 31 + OPEN.hashCode();
-                }
-                for (Object e : coll) {
-                    runningHash = expandAndHash(e, result, visited, runningHash, useFlatten, caseSensitive);
-                }
-                if (!useFlatten) {
-                    result.add(CLOSE);
-                    runningHash = runningHash * 31 + CLOSE.hashCode();
+                if (isSet) {
+                    // Sets always use SET_OPEN/SET_CLOSE markers (even in flatten mode)
+                    // to preserve order-agnostic semantics
+                    result.add(SET_OPEN);
+                    runningHash = runningHash * 31 + SET_OPEN.hashCode();
+
+                    // Order-agnostic hash for Set elements (XOR with rotation for better distribution)
+                    int setHash = 0;
+                    for (Object e : coll) {
+                        List<Object> tempResult = new ArrayList<>();
+                        int elemHash = expandAndHash(e, tempResult, visited, 1, useFlatten, caseSensitive);
+                        result.addAll(tempResult);
+                        setHash ^= Integer.rotateLeft(elemHash, 1);  // XOR with rotation for order-agnostic and better distribution
+                    }
+                    runningHash = runningHash * 31 + setHash;
+
+                    result.add(SET_CLOSE);
+                    runningHash = runningHash * 31 + SET_CLOSE.hashCode();
+                } else {
+                    // Non-Set Collections use order-dependent polynomial hash
+                    if (!useFlatten) {
+                        result.add(OPEN);
+                        runningHash = runningHash * 31 + OPEN.hashCode();
+                    }
+                    for (Object e : coll) {
+                        runningHash = expandAndHash(e, result, visited, runningHash, useFlatten, caseSensitive);
+                    }
+                    if (!useFlatten) {
+                        result.add(CLOSE);
+                        runningHash = runningHash * 31 + CLOSE.hashCode();
+                    }
                 }
             } finally {
                 visited.remove(current);
@@ -1959,10 +2048,132 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Compare two Object[] arrays using configured equality semantics.
      */
     private boolean compareObjectArrays(Object[] array1, Object[] array2, int arity) {
-        for (int i = 0; i < arity; i++) {
-            // elementEquals handles identity check, NULL_SENTINEL, valueBasedEquality, and atomic types
-            if (!elementEquals(array1[i], array2[i], valueBasedEquality, caseSensitive)) {
+        int i = 0;
+        while (i < arity) {
+            Object elem1 = array1[i];
+            Object elem2 = array2[i];
+
+            // Check if we're entering a Set portion
+            if (elem1 == SET_OPEN && elem2 == SET_OPEN) {
+                // Count set elements first (to check size and allocation strategy)
+                i++; // Move past SET_OPEN
+                int startIdx = i;
+                int setSize = 0;
+
+                // Count elements in both sets and verify size match
+                while (i < arity) {
+                    Object next1 = array1[i];
+                    Object next2 = array2[i];
+
+                    if (next1 == SET_CLOSE && next2 == SET_CLOSE) {
+                        break; // Both sets ended
+                    } else if (next1 == SET_CLOSE || next2 == SET_CLOSE) {
+                        return false; // One set ended before the other - size mismatch
+                    }
+                    setSize++;
+                    i++;
+                }
+
+                // Compare using size-appropriate strategy
+                if (setSize == 0) {
+                    // Empty sets - equal, nothing to compare
+                    // No action needed - continue to next element
+                } else if (setSize <= 3) {
+                    // Optimization: For small Sets (≤3 elements), nested loop is faster than allocation
+                    // O(n²) comparison but avoids all allocations
+                    for (int s1 = startIdx; s1 < startIdx + setSize; s1++) {
+                        boolean found = false;
+                        for (int s2 = startIdx; s2 < startIdx + setSize; s2++) {
+                            if (elementEquals(array1[s1], array2[s2], valueBasedEquality, caseSensitive)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // For larger Sets (>3 elements), use hash-bucketing approach inspired by DeepEquals
+                    // This is much more efficient than creating two ArrayLists + two HashSets
+                    // We only allocate ONE Map<Integer, List<Object>> for array2's elements
+
+                    // Build hash buckets for array2 elements
+                    // Pre-size to avoid rehashing: capacity = size * 4/3 to account for 0.75 load factor
+                    Map<Integer, List<Object>> hashBuckets = new java.util.HashMap<>(Math.max(16, setSize * 4 / 3));
+                    for (int idx = startIdx; idx < startIdx + setSize; idx++) {
+                        Object elem = array2[idx];
+                        int hash = computeElementHash(elem, caseSensitive);
+                        List<Object> bucket = hashBuckets.get(hash);
+                        if (bucket == null) {
+                            bucket = new ArrayList<>(2);
+                            hashBuckets.put(hash, bucket);
+                        }
+                        bucket.add(elem);
+                    }
+
+                    // Match each array1 element against bucketed array2 elements
+                    for (int idx = startIdx; idx < startIdx + setSize; idx++) {
+                        Object setElem1 = array1[idx];
+                        int hash1 = computeElementHash(setElem1, caseSensitive);
+                        List<Object> candidates = hashBuckets.get(hash1);
+
+                        boolean matched = false;
+                        if (candidates != null && !candidates.isEmpty()) {
+                            // Try to find a match in the same hash bucket
+                            for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
+                                Object candidate = it.next();
+                                if (elementEquals(setElem1, candidate, valueBasedEquality, caseSensitive)) {
+                                    it.remove(); // Remove matched element to prevent double-matching
+                                    if (candidates.isEmpty()) {
+                                        hashBuckets.remove(hash1); // Clean up empty bucket
+                                    }
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Slow path: element not found in expected bucket, scan all other buckets
+                        // This handles hash collisions and ensures correctness
+                        if (!matched) {
+                            for (Iterator<Map.Entry<Integer, List<Object>>> bucketIter = hashBuckets.entrySet().iterator();
+                                 bucketIter.hasNext();) {
+                                Map.Entry<Integer, List<Object>> bucket = bucketIter.next();
+                                if (bucket.getKey() == hash1) continue; // Already checked this bucket
+
+                                List<Object> otherCandidates = bucket.getValue();
+                                for (Iterator<Object> it = otherCandidates.iterator(); it.hasNext();) {
+                                    Object candidate = it.next();
+                                    if (elementEquals(elem1, candidate, valueBasedEquality, caseSensitive)) {
+                                        it.remove();
+                                        if (otherCandidates.isEmpty()) {
+                                            bucketIter.remove();
+                                        }
+                                        matched = true;
+                                        break;
+                                    }
+                                }
+                                if (matched) break;
+                            }
+                        }
+
+                        if (!matched) {
+                            return false; // Element from array1 not found in array2
+                        }
+                    }
+                }
+
+                i++; // Move past SET_CLOSE
+            } else if (elem1 == SET_OPEN || elem2 == SET_OPEN) {
+                // One is SET_OPEN but not the other - mismatch
                 return false;
+            } else {
+                // elementEquals handles identity check, NULL_SENTINEL, valueBasedEquality, and atomic types
+                if (!elementEquals(elem1, elem2, valueBasedEquality, caseSensitive)) {
+                    return false;
+                }
+                i++;
             }
         }
         return true;
@@ -1973,9 +2184,130 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     private static boolean compareObjectArrayToCollection(Object[] array, Collection<?> coll, int arity, boolean valueBasedEquality, boolean caseSensitive) {
         Iterator<?> iter = coll.iterator();
-        for (int i = 0; i < arity; i++) {
-            if (!elementEquals(array[i], iter.next(), valueBasedEquality, caseSensitive)) {
+        int i = 0;
+        while (i < arity) {
+            Object elem1 = array[i];
+            Object elem2 = iter.next();
+
+            // Check if we're entering a Set portion
+            if (elem1 == SET_OPEN && elem2 == SET_OPEN) {
+                // Count array set elements and collect iterator elements
+                i++; // Move past SET_OPEN
+                int arrayStartIdx = i;
+
+                // Count array set elements
+                int arraySetSize = 0;
+                while (i < arity && array[i] != SET_CLOSE) {
+                    arraySetSize++;
+                    i++;
+                }
+
+                // Collect iterator set elements into a temporary list (unavoidable for iterator)
+                List<Object> iterElements = new ArrayList<>();
+                while (iter.hasNext()) {
+                    Object next = iter.next();
+                    if (next == SET_CLOSE) break;
+                    iterElements.add(next);
+                }
+
+                // Size check first (fast rejection)
+                int setSize = arraySetSize;
+                if (iterElements.size() != setSize) {
+                    return false;
+                }
+
+                // Compare using size-appropriate strategy
+                if (setSize == 0) {
+                    // Empty sets - equal, nothing to compare
+                    // No action needed - continue to next element
+                } else if (setSize <= 3) {
+                    // Optimization: For small Sets (≤3 elements), nested loop is faster than allocation
+                    // O(n²) comparison - we only allocate the iterator list
+                    for (int s1 = arrayStartIdx; s1 < arrayStartIdx + arraySetSize; s1++) {
+                        boolean found = false;
+                        for (Object iterElem : iterElements) {
+                            if (elementEquals(array[s1], iterElem, valueBasedEquality, caseSensitive)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // For larger Sets (>3 elements), use hash-bucketing approach
+                    // Build hash buckets for iterator elements (unavoidable since we already collected them)
+                    Map<Integer, List<Object>> hashBuckets = new java.util.HashMap<>(Math.max(16, setSize * 4 / 3));
+                    for (Object elem : iterElements) {
+                        int hash = computeElementHash(elem, caseSensitive);
+                        List<Object> bucket = hashBuckets.get(hash);
+                        if (bucket == null) {
+                            bucket = new ArrayList<>(2);
+                            hashBuckets.put(hash, bucket);
+                        }
+                        bucket.add(elem);
+                    }
+
+                    // Match each array element against bucketed iterator elements
+                    for (int idx = arrayStartIdx; idx < arrayStartIdx + arraySetSize; idx++) {
+                        Object arrayElem = array[idx];
+                        int hash1 = computeElementHash(arrayElem, caseSensitive);
+                        List<Object> candidates = hashBuckets.get(hash1);
+
+                        boolean matched = false;
+                        if (candidates != null && !candidates.isEmpty()) {
+                            for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
+                                Object candidate = it.next();
+                                if (elementEquals(arrayElem, candidate, valueBasedEquality, caseSensitive)) {
+                                    it.remove();
+                                    if (candidates.isEmpty()) {
+                                        hashBuckets.remove(hash1);
+                                    }
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Slow path: scan all other buckets
+                        if (!matched) {
+                            for (Iterator<Map.Entry<Integer, List<Object>>> bucketIter = hashBuckets.entrySet().iterator();
+                                 bucketIter.hasNext();) {
+                                Map.Entry<Integer, List<Object>> bucket = bucketIter.next();
+                                if (bucket.getKey() == hash1) continue;
+
+                                List<Object> otherCandidates = bucket.getValue();
+                                for (Iterator<Object> it = otherCandidates.iterator(); it.hasNext();) {
+                                    Object candidate = it.next();
+                                    if (elementEquals(arrayElem, candidate, valueBasedEquality, caseSensitive)) {
+                                        it.remove();
+                                        if (otherCandidates.isEmpty()) {
+                                            bucketIter.remove();
+                                        }
+                                        matched = true;
+                                        break;
+                                    }
+                                }
+                                if (matched) break;
+                            }
+                        }
+
+                        if (!matched) {
+                            return false;
+                        }
+                    }
+                }
+
+                i++; // Move past SET_CLOSE
+            } else if (elem1 == SET_OPEN || elem2 == SET_OPEN) {
+                // One is SET_OPEN but not the other - mismatch
                 return false;
+            } else {
+                if (!elementEquals(elem1, elem2, valueBasedEquality, caseSensitive)) {
+                    return false;
+                }
+                i++;
             }
         }
         return true;
@@ -1989,10 +2321,131 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static boolean compareCollections(Collection<?> coll1, Collection<?> coll2, int arity, boolean valueBasedEquality, boolean caseSensitive) {
         Iterator<?> iter1 = coll1.iterator();
         Iterator<?> iter2 = coll2.iterator();
-        for (int i = 0; i < arity; i++) {
-            if (!elementEquals(iter1.next(), iter2.next(), valueBasedEquality, caseSensitive)) {
+        int i = 0;
+        while (i < arity) {
+            Object elem1 = iter1.next();
+            Object elem2 = iter2.next();
+
+            // Check if we're entering a Set portion
+            if (elem1 == SET_OPEN && elem2 == SET_OPEN) {
+                // Collect elements from both iterators (unavoidable since we're using iterators)
+                List<Object> set1Elements = new ArrayList<>();
+                List<Object> set2Elements = new ArrayList<>();
+
+                // Extract from first set
+                while (iter1.hasNext()) {
+                    Object next1 = iter1.next();
+                    i++;
+                    if (next1 == SET_CLOSE) break;
+                    set1Elements.add(next1);
+                }
+
+                // Extract from second set
+                while (iter2.hasNext()) {
+                    Object next2 = iter2.next();
+                    if (next2 == SET_CLOSE) break;
+                    set2Elements.add(next2);
+                }
+
+                // Size check first (fast rejection)
+                int setSize = set1Elements.size();
+                if (set2Elements.size() != setSize) {
+                    return false;
+                }
+
+                // Compare using size-appropriate strategy
+                if (setSize == 0) {
+                    // Empty sets - equal, nothing to compare
+                    // No action needed - continue to next element
+                } else if (setSize <= 3) {
+                    // Optimization: For small Sets (≤3 elements), nested loop is faster than additional allocation
+                    // O(n²) comparison - we already have the two lists
+                    for (Object setElem1 : set1Elements) {
+                        boolean found = false;
+                        for (Object setElem2 : set2Elements) {
+                            if (elementEquals(setElem1, setElem2, valueBasedEquality, caseSensitive)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // For larger Sets (>3 elements), use hash-bucketing approach instead of creating HashSets
+                    // Build hash buckets for set2 elements (we already have them in a list)
+                    Map<Integer, List<Object>> hashBuckets = new java.util.HashMap<>(Math.max(16, setSize * 4 / 3));
+                    for (Object elem : set2Elements) {
+                        int hash = computeElementHash(elem, caseSensitive);
+                        List<Object> bucket = hashBuckets.get(hash);
+                        if (bucket == null) {
+                            bucket = new ArrayList<>(2);
+                            hashBuckets.put(hash, bucket);
+                        }
+                        bucket.add(elem);
+                    }
+
+                    // Match each set1 element against bucketed set2 elements
+                    for (Object setElem1 : set1Elements) {
+                        int hash1 = computeElementHash(setElem1, caseSensitive);
+                        List<Object> candidates = hashBuckets.get(hash1);
+
+                        boolean matched = false;
+                        if (candidates != null && !candidates.isEmpty()) {
+                            for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
+                                Object candidate = it.next();
+                                if (elementEquals(setElem1, candidate, valueBasedEquality, caseSensitive)) {
+                                    it.remove();
+                                    if (candidates.isEmpty()) {
+                                        hashBuckets.remove(hash1);
+                                    }
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Slow path: scan all other buckets
+                        if (!matched) {
+                            for (Iterator<Map.Entry<Integer, List<Object>>> bucketIter = hashBuckets.entrySet().iterator();
+                                 bucketIter.hasNext();) {
+                                Map.Entry<Integer, List<Object>> bucket = bucketIter.next();
+                                if (bucket.getKey() == hash1) continue;
+
+                                List<Object> otherCandidates = bucket.getValue();
+                                for (Iterator<Object> it = otherCandidates.iterator(); it.hasNext();) {
+                                    Object candidate = it.next();
+                                    if (elementEquals(setElem1, candidate, valueBasedEquality, caseSensitive)) {
+                                        it.remove();
+                                        if (otherCandidates.isEmpty()) {
+                                            bucketIter.remove();
+                                        }
+                                        matched = true;
+                                        break;
+                                    }
+                                }
+                                if (matched) break;
+                            }
+                        }
+
+                        if (!matched) {
+                            return false;
+                        }
+                    }
+                }
+
+                i++; // Count the SET_CLOSE marker
+            } else if (elem1 == SET_OPEN || elem2 == SET_OPEN) {
+                // One is SET_OPEN but not the other - mismatch
                 return false;
+            } else {
+                // Regular element-by-element comparison
+                if (!elementEquals(elem1, elem2, valueBasedEquality, caseSensitive)) {
+                    return false;
+                }
             }
+            i++;
         }
         return true;
     }
@@ -2662,7 +3115,38 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static List<Object> keyView(Object[] keys) {
         return Collections.unmodifiableList(Arrays.asList(keys));
     }
-    
+
+    /**
+     * Externalizes a raw key and wraps it in the appropriate container type (Set or List)
+     * based on the markers present in the raw key. This preserves the original container
+     * type that was used when the key was stored.
+     *
+     * @param rawKeys the raw internal key array with markers (SET_OPEN/CLOSE, OPEN/CLOSE, etc.)
+     * @return Set if SET_OPEN/SET_CLOSE markers are present, List otherwise
+     */
+    private static Object externalizeAndWrapKey(Object[] rawKeys) {
+        // Check if this was originally a Set by looking for SET_OPEN marker
+        boolean isSet = false;
+        for (Object elem : rawKeys) {
+            if (elem == SET_OPEN) {
+                isSet = true;
+                break;
+            }
+        }
+
+        // Externalize (strip markers and convert NULL_SENTINEL)
+        Object[] externalizedKeys = externalizeKey(rawKeys);
+
+        // Wrap in appropriate container type
+        if (isSet) {
+            // Return as unmodifiable LinkedHashSet to preserve insertion order
+            return Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(externalizedKeys)));
+        } else {
+            // Return as unmodifiable List (original behavior)
+            return Collections.unmodifiableList(Arrays.asList(externalizedKeys));
+        }
+    }
+
     /**
      * Returns a {@link Set} view of the keys contained in this map.
      * <p>Multidimensional keys are represented as immutable List<Object>, while single keys
@@ -2678,9 +3162,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // Single key case
                 set.add(e.keys[0] == NULL_SENTINEL ? null : e.keys[0]);
             } else {
-                // Multi-key case: externalize NULL_SENTINEL to null
-                // and expose as immutable List for proper equals/hashCode behavior
-                set.add(keyView(externalizeNulls(e.keys)));
+                // Multi-key case: externalize and wrap in original container type (Set or List)
+                set.add(externalizeAndWrapKey(e.keys));
             }
         }
         return set;
@@ -2709,9 +3192,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public Set<Map.Entry<Object, V>> entrySet() {
         Set<Map.Entry<Object, V>> set = new HashSet<>();
         for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 
-                ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) 
-                : keyView(externalizeNulls(e.keys));
+            Object k = e.keys.length == 1
+                ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0])
+                : externalizeAndWrapKey(e.keys);
             set.add(new AbstractMap.SimpleEntry<>(k, e.value));
         }
         return set;
@@ -3197,6 +3680,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
         return out;
+    }
+
+    /**
+     * Externalize a key by stripping all markers (OPEN, CLOSE, SET_OPEN, SET_CLOSE)
+     * and converting NULL_SENTINEL to null. Returns an array with just the actual key values.
+     */
+    private static Object[] externalizeKey(Object[] in) {
+        List<Object> result = new ArrayList<>(in.length);
+        for (Object elem : in) {
+            // Skip all markers
+            if (elem == OPEN || elem == CLOSE || elem == SET_OPEN || elem == SET_CLOSE) {
+                continue;
+            }
+            // Convert NULL_SENTINEL to null
+            if (elem == NULL_SENTINEL) {
+                result.add(null);
+            } else {
+                result.add(elem);
+            }
+        }
+        return result.toArray();
     }
     
     public static class MultiKeyEntry<V> {

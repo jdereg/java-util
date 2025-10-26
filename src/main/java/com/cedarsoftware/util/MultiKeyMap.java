@@ -234,8 +234,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static final String THIS_MAP = "(this Map ♻️)"; // Recycle for cycles
 
     // Emojis for debug output (professional yet intuitive)
-    private static final String EMOJI_OPEN = "[";   // Opening bracket for stepping into dimension  
-    private static final String EMOJI_CLOSE = "]"; // Closing bracket for stepping back out of dimension
+    private static final String EMOJI_OPEN = "[";   // Opening bracket for Lists
+    private static final String EMOJI_CLOSE = "]"; // Closing bracket for Lists
+    private static final String EMOJI_SET_OPEN = "{";   // Opening brace for Sets
+    private static final String EMOJI_SET_CLOSE = "}"; // Closing brace for Sets
     private static final String EMOJI_CYCLE = "♻️"; // Recycle for cycles
     private static final String EMOJI_EMPTY = "∅";  // Empty set for null/empty
     private static final String EMOJI_KEY = "🆔 ";   // ID for keys (with space)
@@ -363,6 +365,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private final boolean valueBasedEquality;
     private final boolean caseSensitive;
     private static final float DEFAULT_LOAD_FACTOR = 0.75f;
+
+    // Cached hashCode for performance (invalidated on mutations)
+    private transient volatile Integer cachedHashCode;
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
     private static final int STRIPE_MASK = STRIPE_COUNT - 1;
@@ -2104,11 +2109,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     for (int idx = startIdx; idx < startIdx + setSize; idx++) {
                         Object elem = array2[idx];
                         int hash = computeElementHash(elem, caseSensitive);
-                        List<Object> bucket = hashBuckets.get(hash);
-                        if (bucket == null) {
-                            bucket = new ArrayList<>(2);
-                            hashBuckets.put(hash, bucket);
-                        }
+                        List<Object> bucket = hashBuckets.computeIfAbsent(hash, k -> new ArrayList<>(2));
                         bucket.add(elem);
                     }
 
@@ -2241,11 +2242,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     Map<Integer, List<Object>> hashBuckets = new java.util.HashMap<>(Math.max(16, setSize * 4 / 3));
                     for (Object elem : iterElements) {
                         int hash = computeElementHash(elem, caseSensitive);
-                        List<Object> bucket = hashBuckets.get(hash);
-                        if (bucket == null) {
-                            bucket = new ArrayList<>(2);
-                            hashBuckets.put(hash, bucket);
-                        }
+                        List<Object> bucket = hashBuckets.computeIfAbsent(hash, k -> new ArrayList<>(2));
                         bucket.add(elem);
                     }
 
@@ -2378,11 +2375,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     Map<Integer, List<Object>> hashBuckets = new java.util.HashMap<>(Math.max(16, setSize * 4 / 3));
                     for (Object elem : set2Elements) {
                         int hash = computeElementHash(elem, caseSensitive);
-                        List<Object> bucket = hashBuckets.get(hash);
-                        if (bucket == null) {
-                            bucket = new ArrayList<>(2);
-                            hashBuckets.put(hash, bucket);
-                        }
+                        List<Object> bucket = hashBuckets.computeIfAbsent(hash, k -> new ArrayList<>(2));
                         bucket.add(elem);
                     }
 
@@ -2800,6 +2793,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private V putInternal(MultiKey<V> newKey) {
+        // Invalidate hashCode cache on mutation
+        cachedHashCode = null;
+
         int hash = newKey.hash;
         ReentrantLock lock = getStripeLock(hash);
         int stripe = hash & STRIPE_MASK;
@@ -2944,6 +2940,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private V removeInternal(final MultiKey<V> removeKey) {
+        // Invalidate hashCode cache on mutation
+        cachedHashCode = null;
+
         int hash = removeKey.hash;
         ReentrantLock lock = getStripeLock(hash);
         int stripe = hash & STRIPE_MASK;
@@ -3080,6 +3079,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * The map will be empty after this call returns.
      */
     public void clear() {
+        // Invalidate hashCode cache on mutation
+        cachedHashCode = null;
+
         withAllStripeLocks(() -> {
             final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
             for (int i = 0; i < table.length(); i++) {
@@ -3158,13 +3160,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public Set<Object> keySet() {
         Set<Object> set = new HashSet<>();
         for (MultiKeyEntry<V> e : entries()) {
-            if (e.keys.length == 1) {
-                // Single key case
-                set.add(e.keys[0] == NULL_SENTINEL ? null : e.keys[0]);
-            } else {
-                // Multi-key case: externalize and wrap in original container type (Set or List)
-                set.add(externalizeAndWrapKey(e.keys));
-            }
+            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : reconstructKey(e.keys);
+            set.add(k);
         }
         return set;
     }
@@ -3192,9 +3189,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public Set<Map.Entry<Object, V>> entrySet() {
         Set<Map.Entry<Object, V>> set = new HashSet<>();
         for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1
-                ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0])
-                : externalizeAndWrapKey(e.keys);
+            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : reconstructKey(e.keys);
             set.add(new AbstractMap.SimpleEntry<>(k, e.value));
         }
         return set;
@@ -3586,11 +3581,23 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the hash code value for this map
      */
     public int hashCode() {
+        // Check cache first - hashCode is expensive due to reconstruction
+        Integer cached = cachedHashCode;
+        if (cached != null) {
+            return cached;
+        }
+
+        // Compute hashCode (requires reconstruction for HashMap compatibility)
         int h = 0;
         for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : keyView(externalizeNulls(e.keys));
-            h += Objects.hashCode(k) ^ Objects.hashCode(e.value);
+            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : reconstructKey(e.keys);
+            // Use Arrays.hashCode() for Object[] keys (content-based), Objects.hashCode() for others
+            int keyHash = (k instanceof Object[]) ? Arrays.hashCode((Object[]) k) : Objects.hashCode(k);
+            h += keyHash ^ Objects.hashCode(e.value);
         }
+
+        // Cache the result
+        cachedHashCode = h;
         return h;
     }
 
@@ -3608,11 +3615,22 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (!(o instanceof Map)) return false;
         Map<?, ?> m = (Map<?, ?>) o;
         if (m.size() != size()) return false;
-        for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : keyView(externalizeNulls(e.keys));
-            V v = e.value;
-            Object mv = m.get(k);
-            if (!Objects.equals(v, mv) || (v == null && !m.containsKey(k))) return false;
+
+        // OPTIMIZATION: Walk the OTHER map and query THIS map
+        // This leverages get()'s matching logic and avoids reconstructing OUR keys
+        // When other map is also a MultiKeyMap, its entrySet() does the reconstruction
+        // and we just use get() which already handles all the matching semantics
+        for (Map.Entry<?, ?> entry : m.entrySet()) {
+            Object key = entry.getKey();
+            Object theirValue = entry.getValue();
+
+            // Use get() which handles all matching logic (Sets, Lists, etc.)
+            Object myValue = this.get(key);
+
+            // Check if values match, handling null correctly
+            if (!Objects.equals(theirValue, myValue) || (theirValue == null && !this.containsKey(key))) {
+                return false;
+            }
         }
         return true;
     }
@@ -3702,7 +3720,147 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         return result.toArray();
     }
-    
+
+    /**
+     * Helper method to collect elements between open and close markers.
+     * Handles nested structures recursively.
+     *
+     * @param in the flattened key array
+     * @param index current position (mutated as elements are collected)
+     * @param closeMarker the marker that ends this collection (CLOSE or SET_CLOSE)
+     * @return list of collected elements
+     */
+    private static List<Object> collectElements(Object[] in, int[] index, Object closeMarker) {
+        List<Object> elements = new ArrayList<>();
+
+        while (index[0] < in.length && in[index[0]] != closeMarker) {
+            Object current = in[index[0]];
+
+            if (current == SET_OPEN || current == OPEN) {
+                // Nested structure - find matching close and recurse
+                Object matchingClose = (current == SET_OPEN) ? SET_CLOSE : CLOSE;
+                int closeIdx = findMatchingClose(in, index[0], current, matchingClose);
+                Object[] nested = Arrays.copyOfRange(in, index[0], closeIdx + 1);
+                elements.add(reconstructKey(nested));
+                index[0] = closeIdx + 1;
+            } else {
+                elements.add(current == NULL_SENTINEL ? null : current);
+                index[0]++;
+            }
+        }
+
+        return elements;
+    }
+
+    /**
+     * Reconstructs the original key structure from a flattened internal representation.
+     * This method properly handles composite keys with mixed Lists and Sets.
+     *
+     * For example, the internal representation:
+     *   [OPEN, 1, 2, 3, CLOSE, SET_OPEN, 4, 5, 6, SET_CLOSE]
+     * is reconstructed as:
+     *   Object[]{List(1,2,3), Set(4,5,6)}
+     *
+     * @param in the flattened internal key array with markers
+     * @return the reconstructed key as an Object or Object[] that matches the original structure
+     */
+    private static Object reconstructKey(Object[] in) {
+        // Check if there are any markers in the array
+        boolean hasMarkers = false;
+        boolean hasSetMarker = false;
+        for (Object elem : in) {
+            if (elem == OPEN || elem == CLOSE) {
+                hasMarkers = true;
+            } else if (elem == SET_OPEN || elem == SET_CLOSE) {
+                hasMarkers = true;
+                hasSetMarker = true;
+            }
+        }
+
+        // If no markers, this is a simple flattened Collection
+        // Wrap as Set if SET markers present, otherwise as List
+        if (!hasMarkers) {
+            List<Object> elements = new ArrayList<>(in.length);
+            for (Object elem : in) {
+                elements.add(elem == NULL_SENTINEL ? null : elem);
+            }
+            return Collections.unmodifiableList(elements);
+        }
+
+        // If only Set markers and no List markers, wrap entire content as Set
+        if (hasSetMarker && !hasNonSetMarkers(in)) {
+            List<Object> elements = new ArrayList<>();
+            for (Object elem : in) {
+                if (elem != SET_OPEN && elem != SET_CLOSE) {
+                    elements.add(elem == NULL_SENTINEL ? null : elem);
+                }
+            }
+            return Collections.unmodifiableSet(new LinkedHashSet<>(elements));
+        }
+
+        // Has markers - reconstruct composite structure
+        List<Object> components = new ArrayList<>();
+        int[] index = {0};  // Use array for mutability (like processNestedStructure)
+
+        while (index[0] < in.length) {
+            Object elem = in[index[0]];
+
+            if (elem == OPEN) {
+                index[0]++;  // Skip OPEN
+                List<Object> elements = collectElements(in, index, CLOSE);
+                components.add(Collections.unmodifiableList(elements));
+                index[0]++;  // Skip CLOSE
+            } else if (elem == SET_OPEN) {
+                index[0]++;  // Skip SET_OPEN
+                List<Object> elements = collectElements(in, index, SET_CLOSE);
+                components.add(Collections.unmodifiableSet(new LinkedHashSet<>(elements)));
+                index[0]++;  // Skip SET_CLOSE
+            } else {
+                // Regular element (not inside a collection marker)
+                components.add(elem == NULL_SENTINEL ? null : elem);
+                index[0]++;
+            }
+        }
+
+        // Return single element if only one component, otherwise return as Object[]
+        if (components.size() == 1) {
+            return components.get(0);
+        } else {
+            return components.toArray();
+        }
+    }
+
+    /**
+     * Helper method to check if array has non-Set markers (OPEN/CLOSE).
+     */
+    private static boolean hasNonSetMarkers(Object[] arr) {
+        for (Object elem : arr) {
+            if (elem == OPEN || elem == CLOSE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Helper method to find the matching closing marker for an opening marker.
+     * Handles nested structures correctly by counting open/close pairs.
+     */
+    private static int findMatchingClose(Object[] arr, int openIdx, Object openMarker, Object closeMarker) {
+        int depth = 1;
+        for (int i = openIdx + 1; i < arr.length; i++) {
+            if (arr[i] == openMarker) {
+                depth++;
+            } else if (arr[i] == closeMarker) {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        throw new IllegalStateException("No matching close marker found");
+    }
+
     public static class MultiKeyEntry<V> {
         public final Object[] keys;
         public final V value;
@@ -3865,11 +4023,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private static void processNestedStructure(StringBuilder sb, List<Object> list, int[] index, MultiKeyMap<?> selfMap) {
         if (index[0] >= list.size()) return;
-        
+
         Object element = list.get(index[0]);
         index[0]++;
-        
+
         if (element == OPEN) {
+            // List - use square brackets
             sb.append(EMOJI_OPEN);
             boolean first = true;
             while (index[0] < list.size()) {
@@ -3877,6 +4036,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (next == CLOSE) {
                     index[0]++;
                     sb.append(EMOJI_CLOSE);
+                    break;
+                }
+                if (!first) sb.append(", ");
+                first = false;
+                processNestedStructure(sb, list, index, selfMap);
+            }
+        } else if (element == SET_OPEN) {
+            // Set - use curly braces
+            sb.append(EMOJI_SET_OPEN);
+            boolean first = true;
+            while (index[0] < list.size()) {
+                Object next = list.get(index[0]);
+                if (next == SET_CLOSE) {
+                    index[0]++;
+                    sb.append(EMOJI_SET_CLOSE);
                     break;
                 }
                 if (!first) sb.append(", ");
@@ -3972,6 +4146,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         return EMOJI_KEY + EMOJI_OPEN;
                     } else if (element == CLOSE) {
                         return EMOJI_KEY + EMOJI_CLOSE;
+                    } else if (element == SET_OPEN) {
+                        return EMOJI_KEY + EMOJI_SET_OPEN;
+                    } else if (element == SET_CLOSE) {
+                        return EMOJI_KEY + EMOJI_SET_CLOSE;
                     } else {
                         return EMOJI_KEY + (element != null ? element.toString() : EMOJI_EMPTY);
                     }
@@ -3992,6 +4170,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         } else if (element == CLOSE) {
                             sb.append(EMOJI_CLOSE);
                             needsComma = true;
+                        } else if (element == SET_OPEN) {
+                            sb.append(EMOJI_SET_OPEN);
+                            needsComma = false;
+                        } else if (element == SET_CLOSE) {
+                            sb.append(EMOJI_SET_CLOSE);
+                            needsComma = true;
                         } else if (selfMap != null && element == selfMap) {
                             if (needsComma) sb.append(", ");
                             sb.append(THIS_MAP);
@@ -4008,6 +4192,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                                 sb.append(EMOJI_OPEN);
                             } else if (element == CLOSE) {
                                 sb.append(EMOJI_CLOSE);
+                            } else if (element == SET_OPEN) {
+                                sb.append(EMOJI_SET_OPEN);
+                            } else if (element == SET_CLOSE) {
+                                sb.append(EMOJI_SET_CLOSE);
                             } else {
                                 sb.append(element != null ? element.toString() : EMOJI_EMPTY);
                             }
@@ -4030,6 +4218,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         return EMOJI_KEY + EMOJI_OPEN;
                     } else if (element == CLOSE) {
                         return EMOJI_KEY + EMOJI_CLOSE;
+                    } else if (element == SET_OPEN) {
+                        return EMOJI_KEY + EMOJI_SET_OPEN;
+                    } else if (element == SET_CLOSE) {
+                        return EMOJI_KEY + EMOJI_SET_CLOSE;
                     } else {
                         return EMOJI_KEY + (element != null ? element.toString() : EMOJI_EMPTY);
                     }
@@ -4049,6 +4241,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         } else if (element == CLOSE) {
                             sb.append(EMOJI_CLOSE);
                             needsComma = true;
+                        } else if (element == SET_OPEN) {
+                            sb.append(EMOJI_SET_OPEN);
+                            needsComma = false;
+                        } else if (element == SET_CLOSE) {
+                            sb.append(EMOJI_SET_CLOSE);
+                            needsComma = true;
                         } else if (selfMap != null && element == selfMap) {
                             if (needsComma) sb.append(", ");
                             sb.append(THIS_MAP);
@@ -4065,6 +4263,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                                 sb.append(EMOJI_OPEN);
                             } else if (element == CLOSE) {
                                 sb.append(EMOJI_CLOSE);
+                            } else if (element == SET_OPEN) {
+                                sb.append(EMOJI_SET_OPEN);
+                            } else if (element == SET_CLOSE) {
+                                sb.append(EMOJI_SET_CLOSE);
                             } else {
                                 sb.append(element != null ? element.toString() : EMOJI_EMPTY);
                             }

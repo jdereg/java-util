@@ -2595,6 +2595,169 @@ Set<String> tags = new HashSet<>(Arrays.asList("sale", "featured", "new"));
 products.put(tags, product);  // Order of tags doesn't matter
 ```
 
+### Mixed List and Set Keys - Combining Order-Sensitive and Order-Agnostic Matching
+
+MultiKeyMap supports powerful combinations of Lists and Sets within the same key, where each component maintains its distinct semantics:
+- **Lists remain order-sensitive** - must match exactly in sequence
+- **Sets remain order-agnostic** - can match in any order
+
+This capability enables sophisticated key patterns where some dimensions require strict ordering while others don't care about order.
+
+**Example: List + Set Combination**
+
+```java
+MultiKeyMap<String> map = new MultiKeyMap<>();
+
+// Store a key with List (ordered) + Set (unordered)
+List<Integer> orderedPart = Arrays.asList(1, 2, 3);      // Must match exactly
+Set<Integer> unorderedPart = new HashSet<>(Arrays.asList(4, 5, 6));  // Any order OK
+map.put(new Object[]{orderedPart, unorderedPart}, "halfAndHalf");
+
+// ✅ MATCHES: List order exact, Set order varies
+assertEquals("halfAndHalf", map.get(new Object[]{
+    Arrays.asList(1, 2, 3),
+    new HashSet<>(Arrays.asList(4, 5, 6))
+}));
+
+assertEquals("halfAndHalf", map.get(new Object[]{
+    Arrays.asList(1, 2, 3),
+    new HashSet<>(Arrays.asList(6, 5, 4))  // Set order different - still matches!
+}));
+
+assertEquals("halfAndHalf", map.get(new Object[]{
+    Arrays.asList(1, 2, 3),
+    new HashSet<>(Arrays.asList(5, 4, 6))  // Another Set order - still matches!
+}));
+
+// ❌ DOES NOT MATCH: List order wrong
+assertNull(map.get(new Object[]{
+    Arrays.asList(2, 1, 3),              // Wrong order
+    new HashSet<>(Arrays.asList(4, 5, 6))
+}));
+
+assertNull(map.get(new Object[]{
+    Arrays.asList(3, 2, 1),              // Wrong order
+    new HashSet<>(Arrays.asList(6, 5, 4))
+}));
+
+// ❌ DOES NOT MATCH: Missing elements
+assertNull(map.get(new Object[]{
+    Arrays.asList(1, 2, 3),
+    new HashSet<>(Arrays.asList(4, 5))   // Missing 6
+}));
+```
+
+**Example: Set + List Combination (Reversed Order)**
+
+```java
+// Store a key with Set first, then List
+Set<String> unordered = new HashSet<>(Arrays.asList("a", "b", "c"));
+List<String> ordered = Arrays.asList("x", "y", "z");
+map.put(new Object[]{unordered, ordered}, "setFirst");
+
+// ✅ MATCHES: Set order varies, List order exact
+assertEquals("setFirst", map.get(new Object[]{
+    new HashSet<>(Arrays.asList("c", "a", "b")),  // Set order varies - OK
+    Arrays.asList("x", "y", "z")                   // List order exact - required
+}));
+
+// ❌ DOES NOT MATCH: List order wrong
+assertNull(map.get(new Object[]{
+    new HashSet<>(Arrays.asList("a", "b", "c")),
+    Arrays.asList("x", "z", "y")                   // Wrong order
+}));
+```
+
+**Example: Multiple Lists and Sets Interleaved**
+
+```java
+// Complex pattern: List + Set + List + Set
+map.put(new Object[]{
+    Arrays.asList(1, 2),                    // Ordered
+    new HashSet<>(Arrays.asList(3, 4)),     // Unordered
+    Arrays.asList(5, 6),                    // Ordered
+    new HashSet<>(Arrays.asList(7, 8))      // Unordered
+}, "complex");
+
+// ✅ MATCHES: All Lists exact, all Sets flexible
+assertEquals("complex", map.get(new Object[]{
+    Arrays.asList(1, 2),                    // Must match exactly
+    new HashSet<>(Arrays.asList(4, 3)),     // Any order OK
+    Arrays.asList(5, 6),                    // Must match exactly
+    new HashSet<>(Arrays.asList(8, 7))      // Any order OK
+}));
+```
+
+**Example: Nested Structures**
+
+```java
+// List containing a Set
+List<Object> listWithSet = Arrays.asList(
+    "prefix",
+    new HashSet<>(Arrays.asList("a", "b", "c"))
+);
+map.put(listWithSet, "nested");
+
+// Set elements can be in any order
+assertEquals("nested", map.get(Arrays.asList(
+    "prefix",
+    new HashSet<>(Arrays.asList("c", "a", "b"))  // Set order varies
+)));
+
+// But List must maintain exact position
+assertNull(map.get(Arrays.asList(
+    new HashSet<>(Arrays.asList("a", "b", "c")),
+    "prefix"  // Wrong position
+)));
+```
+
+**Real-World Use Cases:**
+
+```java
+// Use case 1: User permissions - ordered path + unordered roles
+MultiKeyMap<Boolean> permissions = new MultiKeyMap<>();
+List<String> resourcePath = Arrays.asList("api", "users", "profile");  // Path is ordered
+Set<String> roles = new HashSet<>(Arrays.asList("admin", "editor"));   // Roles are unordered
+permissions.put(new Object[]{resourcePath, roles}, true);
+
+// Can check with roles in any order
+boolean hasAccess = permissions.get(new Object[]{
+    Arrays.asList("api", "users", "profile"),
+    new HashSet<>(Arrays.asList("editor", "admin"))  // Order doesn't matter
+}) != null;
+
+// Use case 2: Product catalog - ordered categories + unordered tags
+MultiKeyMap<Product> catalog = new MultiKeyMap<>();
+List<String> categoryPath = Arrays.asList("Electronics", "Computers", "Laptops");
+Set<String> tags = new HashSet<>(Arrays.asList("sale", "featured", "bestseller"));
+catalog.put(new Object[]{categoryPath, tags}, product);
+
+// Tags can be queried in any order
+Product found = catalog.get(new Object[]{
+    Arrays.asList("Electronics", "Computers", "Laptops"),
+    new HashSet<>(Arrays.asList("bestseller", "sale", "featured"))
+});
+
+// Use case 3: Time series + feature flags - ordered timestamps + unordered flags
+MultiKeyMap<Metric> metrics = new MultiKeyMap<>();
+List<Long> timePoints = Arrays.asList(1000L, 2000L, 3000L);  // Time series is ordered
+Set<String> flags = new HashSet<>(Arrays.asList("peak", "anomaly"));  // Flags are unordered
+metrics.put(new Object[]{timePoints, flags}, metric);
+```
+
+**Key Rules:**
+1. **List semantics preserved** - All Lists match only when elements appear in exact order
+2. **Set semantics preserved** - All Sets match regardless of element order
+3. **Type distinction maintained** - Lists never match Sets, even with identical elements
+4. **Nesting works** - Sets within Lists, Lists within Sets, all maintain their semantics
+5. **Empty collections work** - Empty List ≠ Empty Set (different types)
+
+**Performance Notes:**
+- Mixed List/Set keys have the same performance characteristics as pure keys
+- List portions: Fast comparison (sequential element checks)
+- Set portions: Slightly slower (order-agnostic hash bucketing, ~2-3x overhead)
+- Overall: Excellent performance for most real-world use cases
+
 ### Value-Based vs Type-Based Equality
 
 `MultiKeyMap` provides two equality modes for key comparison, controlled via the `valueBasedEquality` parameter:

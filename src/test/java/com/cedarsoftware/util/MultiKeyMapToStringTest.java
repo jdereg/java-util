@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
 import org.junit.jupiter.api.Test;
-import java.util.Map;
+import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -131,5 +131,171 @@ class MultiKeyMapToStringTest {
         // Should contain self-reference markers
         assertTrue(result.contains("(this Map ♻️)"));
         assertTrue(result.contains("🆔 normal → 🟣 value"));
+    }
+
+    // ====================================================================================
+    // Tests for List and Set notation: Lists use [], Sets use {}
+    // ====================================================================================
+
+    @Test
+    void testListKeyUsesSquareBrackets() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        List<Integer> listKey = Arrays.asList(1, 2, 3);
+        map.put(listKey, "listValue");
+
+        String result = map.toString();
+        assertTrue(result.contains("[1, 2, 3]"), "Lists should use square brackets [ ]");
+        assertTrue(result.contains("🟣 listValue"));
+    }
+
+    @Test
+    void testSetKeyUsesCurlyBraces() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        Set<Integer> setKey = new HashSet<>(Arrays.asList(4, 5, 6));
+        map.put(setKey, "setValue");
+
+        String result = map.toString();
+        assertTrue(result.contains("{"), "Sets should use opening curly brace {");
+        assertTrue(result.contains("}"), "Sets should use closing curly brace }");
+        assertTrue(result.contains("4") && result.contains("5") && result.contains("6"));
+        assertTrue(result.contains("🟣 setValue"));
+    }
+
+    @Test
+    void testMixedListAndSetKey() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        List<Integer> list = Arrays.asList(1, 2, 3);
+        Set<Integer> set = new HashSet<>(Arrays.asList(4, 5, 6));
+        map.put(new Object[]{list, set}, "mixedValue");
+
+        String result = map.toString();
+        assertTrue(result.contains("[1, 2, 3]"), "List portion should use square brackets");
+        assertTrue(result.contains("{") && result.contains("}"), "Set portion should use curly braces");
+        assertTrue(result.contains("🟣 mixedValue"));
+    }
+
+    @Test
+    void testListWithNullElement() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        List<Object> listWithNull = Arrays.asList(1, null, 3);
+        map.put(listWithNull, "nullInList");
+
+        String result = map.toString();
+        assertTrue(result.contains("["));
+        assertTrue(result.contains("∅"), "Null should be represented as ∅");
+        assertTrue(result.contains("🟣 nullInList"));
+    }
+
+    @Test
+    void testNestedSetInList() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        Set<Integer> innerSet = new HashSet<>(Arrays.asList(10, 20));
+        List<Object> outerList = Arrays.asList(1, innerSet, 3);
+        map.put(outerList, "setInList");
+
+        String result = map.toString();
+        assertTrue(result.contains("["), "Outer List should use square brackets");
+        assertTrue(result.contains("]"));
+        assertTrue(result.contains("{"), "Inner Set should use curly braces");
+        assertTrue(result.contains("}"));
+        assertTrue(result.contains("10") && result.contains("20"));
+        assertTrue(result.contains("🟣 setInList"));
+    }
+
+    @Test
+    void testNestedListInSet() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        List<Integer> innerList = Arrays.asList(10, 20);
+        Set<Object> outerSet = new LinkedHashSet<>(Arrays.asList(1, innerList, 3));
+        map.put(outerSet, "listInSet");
+
+        String result = map.toString();
+        assertTrue(result.contains("{"), "Outer Set should use curly braces");
+        assertTrue(result.contains("}"));
+        assertTrue(result.contains("["), "Inner List should use square brackets");
+        assertTrue(result.contains("]"));
+        assertTrue(result.contains("10") && result.contains("20"));
+        assertTrue(result.contains("🟣 listInSet"));
+    }
+
+    @Test
+    void testComplexMixedStructure() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        List<Integer> list1 = Arrays.asList(1, 2);
+        Set<Integer> set1 = new HashSet<>(Arrays.asList(3, 4));
+        List<Integer> list2 = Arrays.asList(5, 6);
+        map.put(new Object[]{list1, set1, list2}, "complex");
+
+        String result = map.toString();
+
+        // Count brackets and braces
+        int openBrackets = countChar(result, '[');
+        int closeBrackets = countChar(result, ']');
+        int openBraces = countChar(result, '{');
+        int closeBraces = countChar(result, '}');
+
+        // Should have balanced brackets and braces
+        assertEquals(openBrackets, closeBrackets, "Square brackets should be balanced");
+        assertEquals(openBraces, closeBraces, "Curly braces should be balanced");
+
+        // All elements should be present
+        assertTrue(result.contains("1") && result.contains("2"));
+        assertTrue(result.contains("3") && result.contains("4"));
+        assertTrue(result.contains("5") && result.contains("6"));
+        assertTrue(result.contains("🟣 complex"));
+    }
+
+    @Test
+    void testEmptyListAndSet() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        List<Integer> emptyList = new ArrayList<>();
+        Set<Integer> emptySet = new HashSet<>();
+        map.put(new Object[]{emptyList, emptySet}, "emptyCollections");
+
+        String result = map.toString();
+        assertTrue(result.contains("[") && result.contains("]"), "Empty List should show brackets");
+        assertTrue(result.contains("{") && result.contains("}"), "Empty Set should show braces");
+        assertTrue(result.contains("🟣 emptyCollections"));
+    }
+
+    @Test
+    void testSingleElementSet() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        Set<Integer> singleSet = Collections.singleton(99);
+        map.put(singleSet, "singleSet");
+
+        String result = map.toString();
+        assertTrue(result.contains("{"), "Single-element Set should use curly braces");
+        assertTrue(result.contains("99"));
+        assertTrue(result.contains("}"));
+        assertTrue(result.contains("🟣 singleSet"));
+    }
+
+    @Test
+    void testMultipleEntriesWithListsAndSets() {
+        MultiKeyMap<String> map = new MultiKeyMap<>();
+        map.put(Arrays.asList(1, 2), "list12");
+        map.put(new HashSet<>(Arrays.asList(3, 4)), "set34");
+        map.put("simple", "simpleValue");
+
+        String result = map.toString();
+        assertTrue(result.contains("[1, 2]"), "Should show List with brackets");
+        assertTrue(result.contains("list12"));
+        assertTrue(result.contains("{") && result.contains("}"), "Should show Set with braces");
+        assertTrue(result.contains("3") && result.contains("4"));
+        assertTrue(result.contains("set34"));
+        assertTrue(result.contains("simple"));
+        assertTrue(result.contains("simpleValue"));
+    }
+
+    // Helper method to count character occurrences
+    private int countChar(String str, char ch) {
+        int count = 0;
+        for (int i = 0; i < str.length(); i++) {
+            if (str.charAt(i) == ch) {
+                count++;
+            }
+        }
+        return count;
     }
 }

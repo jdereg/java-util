@@ -1,5 +1,20 @@
 ### Revision History
 #### 4.2.0 (unreleased)
+> * **IMPROVED**: `MultiKeyMap` performance optimizations for `equals()` and `hashCode()`:
+>   * **Optimized equals() implementation**: Refactored to walk the OTHER map and query THIS map using `get()`, eliminating unnecessary key reconstruction on our side. Reduces work by 50% and eliminates all extra memory allocations during equality checks
+>   * **Added hashCode() caching**: Implemented cached hashCode with invalidation on mutations (put, remove, clear). First call computes O(n*k), subsequent calls are O(1). Provides massive speedup for maps used in HashSets or as keys in other maps
+>   * **Refactored reconstructKey() to eliminate code duplication**: Extracted common collection-building logic into `collectElements()` helper method, eliminating 50+ lines of duplicated code between OPEN and SET_OPEN handling. Adopted cleaner `int[]` index pattern for state management
+>
+> * **IMPROVED**: `MultiKeyMap` toString() now uses distinct notation for Lists vs Sets:
+>   * Lists use square brackets `[1, 2, 3]` (order-sensitive)
+>   * Sets use curly braces `{4, 5, 6}` (order-agnostic)
+>   * Mixed keys clearly show both: `🆔 [1, 2, 3], {4, 5, 6} → 🟣 value`
+>   * Nested structures properly display with appropriate delimiters
+>
+> * **ADDED**: Comprehensive test coverage for MultiKeyMap equals(), hashCode(), and toString() functionality:
+>   * `MultiKeyMapEqualsHashCodeTest`: 25 tests verifying equals/hashCode contracts with mixed List/Set keys
+>   * `MultiKeyMapToStringTest`: 21 tests verifying correct List/Set notation in output
+>   * `MultiKeyMapMixedListSetTest`: 16 tests verifying order-sensitive List and order-agnostic Set matching
 
 #### 4.1.0
 > * **FIXED**: `ClassUtilities.setUseUnsafe()` is now thread-local instead of global, preventing race conditions in multi-threaded environments where concurrent threads need different unsafe mode settings

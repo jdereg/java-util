@@ -1,5 +1,16 @@
 ### Revision History
 #### 4.2.0 (unreleased)
+> * **FIXED**: `MultiKeyMap` critical NULL_SENTINEL equality bug - Fixed `elementEquals()` to properly check equality after normalizing NULL_SENTINEL to null. Previously, NULL_SENTINEL and null were incorrectly treated as unequal, breaking null key handling.
+>
+> * **IMPROVED**: `MultiKeyMap` thread-safety enhancements:
+>   * **Fixed hashCode() cache race condition**: Implemented double-checked locking with dedicated `hashCodeLock` to prevent multiple threads from computing and caching different hashCode values during concurrent access
+>   * **Improved resize race condition handling**: Added double-checked load factor validation before expensive CAS operations to prevent threads from queuing on unnecessary resize attempts after first resize completes
+>
+> * **IMPROVED**: `MultiKeyMap` performance optimizations:
+>   * **Removed duplicate getClass() calls**: Eliminated redundant `getClass()` and `isArray()` calls in `flattenKey()` by declaring variables once and reusing across code paths
+>   * **Optimized instanceof checks**: Deferred rare atomic array type checks until after confirming key is an array, eliminating 3 instanceof checks per call on hot paths (normalizeForLookup, findSimpleOrComplexKey, createMultiKey)
+>   * **Increased Set comparison threshold**: Changed from 3 to 6 elements for nested O(n²) comparison vs HashMap allocation. Benchmarking shows 36 comparisons (6²) is faster than HashMap overhead, improving Set/List performance ratio from 6.15x to 4.8x (22% improvement)
+>
 > * **IMPROVED**: `MultiKeyMap` performance optimizations for `equals()` and `hashCode()`:
 >   * **Optimized equals() implementation**: Refactored to walk the OTHER map and query THIS map using `get()`, eliminating unnecessary key reconstruction on our side. Reduces work by 50% and eliminates all extra memory allocations during equality checks
 >   * **Added hashCode() caching**: Implemented cached hashCode with invalidation on mutations (put, remove, clear). First call computes O(n*k), subsequent calls are O(1). Provides massive speedup for maps used in HashSets or as keys in other maps

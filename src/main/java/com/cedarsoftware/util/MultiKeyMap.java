@@ -368,6 +368,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     // Cached hashCode for performance (invalidated on mutations)
     private transient volatile Integer cachedHashCode;
+    // Lock for hashCode computation to prevent race conditions
+    private final Object hashCodeLock = new Object();
 
     private static final int STRIPE_COUNT = calculateOptimalStripeCount();
     private static final int STRIPE_MASK = STRIPE_COUNT - 1;
@@ -914,17 +916,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return n;
         }
         
-        // Fast path: simple keys (not arrays or collections or atomic arrays)
-        if (!(key instanceof Collection) && 
-            !(key instanceof AtomicIntegerArray) &&
-            !(key instanceof AtomicLongArray) &&
-            !(key instanceof AtomicReferenceArray)) {
+        // Fast path: simple keys (not arrays or collections)
+        if (!(key instanceof Collection)) {
             Class<?> keyClass = key.getClass();
             if (!keyClass.isArray()) {
+                // Simple object - not a collection or array
                 n.key = key;
                 n.hash = computeElementHash(key, caseSensitive);
                 return n;
             }
+            // It's an array - fall through to flattenKey which handles all array types
+            // (including rare atomic arrays)
         }
         
         // Complex keys: fall back to flattenKey but extract just the data we need
@@ -943,12 +945,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the MultiKey entry if found, null otherwise
      */
     private MultiKey<V> findSimpleOrComplexKey(Object key) {
-        // Ultra-fast path: Simple single keys (non-collection, non-array, non-atomic-array)
+        // Ultra-fast path: Simple single keys (non-collection, non-array)
         // This optimization bypasses normalization entirely for the most common case
-        if (key != null && !(key instanceof Collection) &&
-            !(key instanceof AtomicIntegerArray) &&
-            !(key instanceof AtomicLongArray) &&
-            !(key instanceof AtomicReferenceArray)) {
+        if (key != null && !(key instanceof Collection)) {
             Class<?> keyClass = key.getClass();
             if (!keyClass.isArray()) {
                 // Direct bucket access - no normalization needed for simple keys
@@ -969,6 +968,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 }
                 return null;
             }
+            // It's an array (including rare atomic arrays) - fall through to complex path
         }
         
         // Complex keys: Use zero-allocation lookup with simple new Norm()
@@ -1051,20 +1051,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 return new MultiKey<>(key, computeElementHash(key, caseSensitive), value);
             }
             // Collection needs expansion - fall through to handle below
-        } else if (!(key instanceof AtomicIntegerArray) &&
-                   !(key instanceof AtomicLongArray) &&
-                   !(key instanceof AtomicReferenceArray)) {
-            // Not a Collection and not an atomic array - now check if it's a regular array
+        } else {
+            // Not a Collection - check if it's an array
             Class<?> keyClass = key.getClass();
             boolean isKeyArray = keyClass.isArray();
 
             if (!isKeyArray) {
-                // === FAST PATH: Simple objects (not arrays nor collections nor atomic arrays) ===
+                // === FAST PATH: Simple objects (not arrays or collections) ===
                 return new MultiKey<>(key, computeElementHash(key, caseSensitive), value);
             }
-            // Continue with array processing below
+            // It's an array (including rare atomic arrays) - fall through to flattenKey
         }
-        // For atomic arrays, fall through to use flattenKey
 
         // For complex keys (arrays/collections), use the standard flattenKey path
         final MultiKey<V> normalizedKey = flattenKey(key);
@@ -1154,18 +1151,23 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // === OPTIMIZATION: Check instanceof Collection first (faster than getClass().isArray()) ===
         // For simple keys (the common case), this avoids the expensive getClass() call when possible.
+        Class<?> keyClass;
+        boolean isKeyArray;
+
         if (key instanceof Collection) {
             // It's a Collection - handle based on mode
             if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
                 // Treat Collection as single key - fast return
                 return new MultiKey<>(key, computeElementHash(key, caseSensitive), null);
             }
-            // Collection needs expansion - fall through to handle below
+            // Collection needs expansion - set array flags for later processing
+            keyClass = key.getClass();
+            isKeyArray = false;  // Collections are not arrays
         } else {
             // Not a Collection - now check if it's an array
-            Class<?> keyClass = key.getClass();
-            boolean isKeyArray = keyClass.isArray();
-            
+            keyClass = key.getClass();
+            isKeyArray = keyClass.isArray();
+
             if (!isKeyArray) {
                 // === FAST PATH: Simple objects (not arrays or collections) ===
                 // This is the most common case (String, Integer, etc.) - return immediately
@@ -1175,10 +1177,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
 
         // At this point, key is either:
-        // 1. An array (isKeyArray is already set if we came from the !Collection branch)
-        // 2. A Collection that needs expansion
-        Class<?> keyClass = key.getClass();
-        boolean isKeyArray = keyClass.isArray();
+        // 1. An array (isKeyArray == true from the else branch above)
+        // 2. A Collection that needs expansion (isKeyArray == false from the if branch above)
         
         // === FAST PATH: Object[] arrays with length-based optimization ===
         if (keyClass == Object[].class) {
@@ -2083,9 +2083,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (setSize == 0) {
                     // Empty sets - equal, nothing to compare
                     // No action needed - continue to next element
-                } else if (setSize <= 3) {
-                    // Optimization: For small Sets (≤3 elements), nested loop is faster than allocation
-                    // O(n²) comparison but avoids all allocations
+                } else if (setSize <= 6) {
+                    // Optimization: For small Sets (≤6 elements), nested loop is faster than allocation
+                    // O(n²) comparison (max 36 operations) but avoids HashMap overhead
                     for (int s1 = startIdx; s1 < startIdx + setSize; s1++) {
                         boolean found = false;
                         for (int s2 = startIdx; s2 < startIdx + setSize; s2++) {
@@ -2099,7 +2099,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         }
                     }
                 } else {
-                    // For larger Sets (>3 elements), use hash-bucketing approach inspired by DeepEquals
+                    // For larger Sets (>6 elements), use hash-bucketing approach inspired by DeepEquals
                     // This is much more efficient than creating two ArrayLists + two HashSets
                     // We only allocate ONE Map<Integer, List<Object>> for array2's elements
 
@@ -2221,9 +2221,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (setSize == 0) {
                     // Empty sets - equal, nothing to compare
                     // No action needed - continue to next element
-                } else if (setSize <= 3) {
-                    // Optimization: For small Sets (≤3 elements), nested loop is faster than allocation
-                    // O(n²) comparison - we only allocate the iterator list
+                } else if (setSize <= 6) {
+                    // Optimization: For small Sets (≤6 elements), nested loop is faster than allocation
+                    // O(n²) comparison (max 36 operations) - we only allocate the iterator list
                     for (int s1 = arrayStartIdx; s1 < arrayStartIdx + arraySetSize; s1++) {
                         boolean found = false;
                         for (Object iterElem : iterElements) {
@@ -2237,7 +2237,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         }
                     }
                 } else {
-                    // For larger Sets (>3 elements), use hash-bucketing approach
+                    // For larger Sets (>6 elements), use hash-bucketing approach
                     // Build hash buckets for iterator elements (unavoidable since we already collected them)
                     Map<Integer, List<Object>> hashBuckets = new java.util.HashMap<>(Math.max(16, setSize * 4 / 3));
                     for (Object elem : iterElements) {
@@ -2354,9 +2354,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 if (setSize == 0) {
                     // Empty sets - equal, nothing to compare
                     // No action needed - continue to next element
-                } else if (setSize <= 3) {
-                    // Optimization: For small Sets (≤3 elements), nested loop is faster than additional allocation
-                    // O(n²) comparison - we already have the two lists
+                } else if (setSize <= 6) {
+                    // Optimization: For small Sets (≤6 elements), nested loop is faster than additional allocation
+                    // O(n²) comparison (max 36 operations) - we already have the two lists
                     for (Object setElem1 : set1Elements) {
                         boolean found = false;
                         for (Object setElem2 : set2Elements) {
@@ -2370,7 +2370,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         }
                     }
                 } else {
-                    // For larger Sets (>3 elements), use hash-bucketing approach instead of creating HashSets
+                    // For larger Sets (>6 elements), use hash-bucketing approach instead of creating HashSets
                     // Build hash buckets for set2 elements (we already have them in a list)
                     Map<Integer, List<Object>> hashBuckets = new java.util.HashMap<>(Math.max(16, setSize * 4 / 3));
                     for (Object elem : set2Elements) {
@@ -2624,11 +2624,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private static boolean elementEquals(Object a, Object b, boolean valueBasedEquality, boolean caseSensitive) {
         // Fast identity check - handles same object, both null, and NULL_SENTINEL cases
         if (a == b) return true;
-        
+
         // Normalize internal null sentinel so comparisons treat stored sentinel and real null as equivalent
         if (a == NULL_SENTINEL) { a = null; }
         if (b == NULL_SENTINEL) { b = null; }
-        
+
+        // Check again after normalization - if one was NULL_SENTINEL and other was null, they're now equal
+        if (a == b) return true;
+        if (a == null || b == null) return false;  // One is null, the other isn't
+
         // Handle case-insensitive CharSequence comparison
         if (!caseSensitive && a instanceof CharSequence && b instanceof CharSequence) {
             // OPTIMIZATION: Use StringUtilities for efficient case-insensitive comparison
@@ -3043,15 +3047,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Helper method to handle resize request.
      * Performs resize if requested and no resize is already in progress.
-     * 
+     * Uses double-checked pattern to avoid unnecessary CAS operations.
+     *
      * @param resize whether to perform resize
      */
     private void resizeRequest(boolean resize) {
-        if (resize && resizeInProgress.compareAndSet(false, true)) {
-            try { 
-                resizeInternal(); 
-            } finally { 
-                resizeInProgress.set(false); 
+        // Quick exit if no resize needed or already in progress (fast volatile read)
+        if (!resize || resizeInProgress.get()) {
+            return;
+        }
+
+        // Double-check load factor before expensive CAS - another thread may have resized
+        if (atomicSize.get() <= buckets.length() * loadFactor) {
+            return;
+        }
+
+        // Attempt to acquire resize permission via CAS
+        if (resizeInProgress.compareAndSet(false, true)) {
+            try {
+                resizeInternal();
+            } finally {
+                resizeInProgress.set(false);
             }
         }
     }
@@ -3581,24 +3597,33 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @return the hash code value for this map
      */
     public int hashCode() {
-        // Check cache first - hashCode is expensive due to reconstruction
+        // First check (outside lock) - fast path for cached value
         Integer cached = cachedHashCode;
         if (cached != null) {
             return cached;
         }
 
-        // Compute hashCode (requires reconstruction for HashMap compatibility)
-        int h = 0;
-        for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : reconstructKey(e.keys);
-            // Use Arrays.hashCode() for Object[] keys (content-based), Objects.hashCode() for others
-            int keyHash = (k instanceof Object[]) ? Arrays.hashCode((Object[]) k) : Objects.hashCode(k);
-            h += keyHash ^ Objects.hashCode(e.value);
-        }
+        // Double-checked locking to ensure only one thread computes hashCode
+        synchronized (hashCodeLock) {
+            // Second check (inside lock) - another thread may have computed it
+            cached = cachedHashCode;
+            if (cached != null) {
+                return cached;
+            }
 
-        // Cache the result
-        cachedHashCode = h;
-        return h;
+            // Compute hashCode (requires reconstruction for HashMap compatibility)
+            int h = 0;
+            for (MultiKeyEntry<V> e : entries()) {
+                Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : reconstructKey(e.keys);
+                // Use Arrays.hashCode() for Object[] keys (content-based), Objects.hashCode() for others
+                int keyHash = (k instanceof Object[]) ? Arrays.hashCode((Object[]) k) : Objects.hashCode(k);
+                h += keyHash ^ Objects.hashCode(e.value);
+            }
+
+            // Cache the result (volatile write ensures visibility to all threads)
+            cachedHashCode = h;
+            return h;
+        }
     }
 
     /**

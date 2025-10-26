@@ -3,7 +3,6 @@
 > * **IMPROVED**: `MultiKeyMap` performance optimizations for `equals()` and `hashCode()`:
 >   * **Optimized equals() implementation**: Refactored to walk the OTHER map and query THIS map using `get()`, eliminating unnecessary key reconstruction on our side. Reduces work by 50% and eliminates all extra memory allocations during equality checks
 >   * **Added hashCode() caching**: Implemented cached hashCode with invalidation on mutations (put, remove, clear). First call computes O(n*k), subsequent calls are O(1). Provides massive speedup for maps used in HashSets or as keys in other maps
->   * **Refactored reconstructKey() to eliminate code duplication**: Extracted common collection-building logic into `collectElements()` helper method, eliminating 50+ lines of duplicated code between OPEN and SET_OPEN handling. Adopted cleaner `int[]` index pattern for state management
 >
 > * **IMPROVED**: `MultiKeyMap` toString() now uses distinct notation for Lists vs Sets:
 >   * Lists use square brackets `[1, 2, 3]` (order-sensitive)

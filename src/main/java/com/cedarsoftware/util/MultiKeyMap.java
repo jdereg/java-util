@@ -68,6 +68,37 @@ import java.util.logging.Logger;
  *   <li><b>Simple Keys Mode:</b> Optional performance optimization that skips nested structure checks when keys are known to be flat</li>
  * </ul>
  *
+ * <h3>Capacity and Size Limits:</h3>
+ * <p>MultiKeyMap uses {@code AtomicLong} internally for size tracking, allowing it to scale well beyond
+ * the traditional {@code Integer.MAX_VALUE} (2<sup>31</sup>-1) limitation:</p>
+ * <ul>
+ *   <li><b>Actual Capacity:</b> The map can hold many more than 2<sup>31</sup>-1 entries, limited only by heap memory.</li>
+ *   <li><b>size() Method:</b> Due to the {@link Map#size()} interface contract requiring {@code int},
+ *       the {@link #size()} method returns {@link Integer#MAX_VALUE} if the actual size exceeds this limit.</li>
+ *   <li><b>longSize() Method:</b> Use {@link #longSize()} to get the exact count for very large maps.
+ *       This method returns the true size as a {@code long} without the 2<sup>31</sup>-1 cap.</li>
+ *   <li><b>Memory Requirements:</b> Storing 2<sup>31</sup> entries requires approximately 200-300 GB of heap memory
+ *       (assuming ~100-150 bytes per entry including bucket overhead).</li>
+ *   <li><b>Practical Limit:</b> On modern servers with 512GB-2TB RAM, maps with billions of entries are feasible.</li>
+ * </ul>
+ *
+ * <h3>Performance Complexity:</h3>
+ * <p>MultiKeyMap provides constant-time performance for most operations:</p>
+ * <ul>
+ *   <li><b>get/put/remove/containsKey:</b> O(k) average, O(k + c) worst case
+ *       <br>where k = key components, c = chain length (typically 1-3)</li>
+ *   <li><b>size/longSize/isEmpty:</b> O(1) - atomic counter access</li>
+ *   <li><b>clear:</b> O(capacity) - must clear all buckets</li>
+ *   <li><b>keySet/values/entrySet:</b> O(n) - creates snapshot of n entries</li>
+ * </ul>
+ * <p><b>Key Processing Complexity:</b></p>
+ * <ul>
+ *   <li>Simple keys (String, Integer): O(1) hash and comparison</li>
+ *   <li>Multi-dimensional keys: O(k) where k = number of components</li>
+ *   <li>Nested collections: O(k × m) where k = depth, m = average size per level</li>
+ *   <li>Set keys: ~3-4x slower than List keys (order-agnostic hashing)</li>
+ * </ul>
+ *
  * <h3>Value-Based vs Type-Based Equality:</h3>
  * <p>MultiKeyMap provides two equality modes for key comparison, controlled via the {@code valueBasedEquality} parameter:</p>
  * <ul>
@@ -172,6 +203,36 @@ import java.util.logging.Logger;
  *   <li><b>Performance:</b> Set operations are approximately 3-4x slower than List operations due to order-agnostic hash computation.</li>
  *   <li><b>Empty Sets:</b> Empty Sets are distinct from empty Lists/Arrays.</li>
  * </ul>
+ *
+ * <h3>Complex Key Examples with Sets:</h3>
+ * <p>Sets can be combined with other key types in multi-dimensional keys:</p>
+ * <pre>{@code
+ * MultiKeyMap<String> map = new MultiKeyMap<>();
+ *
+ * // Example 1: Set combined with Object[] as a multi-key
+ * Set<String> permissions = new HashSet<>(Arrays.asList("read", "write", "execute"));
+ * Object[] userKey = new Object[]{"user123", permissions, "config"};
+ * map.put(userKey, "user-permissions-config");
+ *
+ * // Lookup works with different Set order
+ * Set<String> samePermsDiffOrder = new LinkedHashSet<>(Arrays.asList("execute", "read", "write"));
+ * Object[] lookupKey = new Object[]{"user123", samePermsDiffOrder, "config"};
+ * assertEquals("user-permissions-config", map.get(lookupKey));  // Found!
+ *
+ * // Example 2: Set combined with List as a multi-key
+ * Set<Integer> tags = Set.of(100, 200, 300);  // Order doesn't matter
+ * List<String> path = Arrays.asList("api", "v1", "users");  // Order DOES matter
+ * map.putMultiKey("endpoint-handler", tags, path);
+ *
+ * // Lookup with different Set order but same List order
+ * Set<Integer> sameTags = Set.of(300, 100, 200);  // Different order - still matches
+ * List<String> samePath = Arrays.asList("api", "v1", "users");  // Same order required
+ * assertEquals("endpoint-handler", map.getMultiKey(sameTags, samePath));  // Found!
+ *
+ * // Different List order will NOT match
+ * List<String> differentPath = Arrays.asList("v1", "api", "users");  // Different order
+ * assertNull(map.getMultiKey(sameTags, differentPath));  // Not found!
+ * }</pre>
  *
  * @param <V> the type of values stored in the map
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -299,15 +360,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         SIMPLE_ARRAY_TYPES.add(java.util.Currency[].class);
         SIMPLE_ARRAY_TYPES.add(java.util.TimeZone[].class);
         SIMPLE_ARRAY_TYPES.add(java.util.regex.Pattern[].class);
-        
-        // AWT/Swing basic types (immutable DTOs)
-//        SIMPLE_ARRAY_TYPES.add(java.awt.Color[].class);
-//        SIMPLE_ARRAY_TYPES.add(java.awt.Font[].class);
-//        SIMPLE_ARRAY_TYPES.add(java.awt.Dimension[].class);
-//        SIMPLE_ARRAY_TYPES.add(java.awt.Point[].class);
-//        SIMPLE_ARRAY_TYPES.add(java.awt.Rectangle[].class);
-//        SIMPLE_ARRAY_TYPES.add(java.awt.Insets[].class);
-        
+
         // Enum arrays are also simple (enums can't contain collections/arrays)
         SIMPLE_ARRAY_TYPES.add(java.time.DayOfWeek[].class);
         SIMPLE_ARRAY_TYPES.add(java.time.Month[].class);
@@ -354,7 +407,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     private volatile AtomicReferenceArray<MultiKey<V>[]> buckets;
-    private final AtomicInteger atomicSize = new AtomicInteger(0);
+    private final AtomicLong atomicSize = new AtomicLong(0);
     // Diagnostic metric: tracks the maximum chain length seen since map creation (never decreases on remove)
     private final AtomicInteger maxChainLength = new AtomicInteger(0);
     private final int capacity;
@@ -858,8 +911,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     private ReentrantLock getStripeLock(int hash) {
         // GPT5 optimization: Use bucket index for stripe selection to reduce false contention
         // between independent buckets that happen to have same low-order hash bits
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
+        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
         int bucketIndex = hash & mask;
         return stripeLocks[bucketIndex & STRIPE_MASK];
     }
@@ -1068,11 +1121,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return new MultiKey<>(normalizedKey.keys, normalizedKey.hash, value);
     }
 
-    // Method for when only the hash is needed, not the normalized key
     // Update maxChainLength to the maximum of current value and newValue
-    // Uses getAndAccumulate for better performance under contention
+    // Uses CAS loop to avoid method reference allocation overhead
     private void updateMaxChainLength(int newValue) {
-        maxChainLength.getAndAccumulate(newValue, Math::max);
+        int current;
+        while ((current = maxChainLength.get()) < newValue) {
+            if (maxChainLength.compareAndSet(current, newValue)) {
+                break;
+            }
+        }
     }
     
     /**
@@ -1125,7 +1182,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             for (int i = 0; i < len; i++) {
                 regularArr[i] = atomicArr.get(i);
             }
-            // DEBUG: System.out.println("DEBUG: Converting AtomicIntegerArray to int[]");
             return flattenKey(regularArr);
         }
         
@@ -1826,8 +1882,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * the normalized key and precomputed hash. This is the core of informed handoff optimization.
      */
     private MultiKey<V> findEntryWithPrecomputedHash(final Object normalizedKey, final int hash) {
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
+        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
         final int index = hash & mask;
         final MultiKey<V>[] chain = table.get(index);
         if (chain == null) return null;
@@ -2832,8 +2888,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private V getNoLock(MultiKey<V> lookupKey) {
         int hash = lookupKey.hash;
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
+        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
         int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
@@ -2849,8 +2905,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     private V putNoLock(MultiKey<V> newKey) {
         int hash = newKey.hash;
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
+        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
         int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
@@ -2975,8 +3031,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private V removeNoLock(MultiKey<V> removeKey) {
         int hash = removeKey.hash;
-        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Pin table reference
-        final int mask = table.length() - 1;  // Cache mask to avoid repeated volatile reads
+        final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
+        final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
         int index = hash & mask;
         MultiKey<V>[] chain = table.get(index);
 
@@ -3074,20 +3130,38 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     /**
      * Returns the number of key-value mappings in this map.
-     * 
-     * @return the number of key-value mappings in this map
+     * <p>Note: Due to the {@link Map#size()} interface contract requiring {@code int},
+     * this method returns {@link Integer#MAX_VALUE} if the actual size exceeds 2<sup>31</sup>-1.
+     * For maps that may exceed this limit, use {@link #longSize()} to get the accurate count.</p>
+     *
+     * @return the number of key-value mappings in this map, capped at {@link Integer#MAX_VALUE}
+     * @see #longSize()
      */
     public int size() {
+        long sz = atomicSize.get();
+        return sz > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) sz;
+    }
+
+    /**
+     * Returns the exact number of key-value mappings in this map as a {@code long}.
+     * <p>This method provides the true size without the 2<sup>31</sup>-1 limitation
+     * imposed by the {@link Map#size()} contract. Use this method when working with
+     * very large maps that may contain more than {@link Integer#MAX_VALUE} entries.</p>
+     *
+     * @return the exact number of key-value mappings in this map
+     * @see #size()
+     */
+    public long longSize() {
         return atomicSize.get();
     }
 
     /**
      * Returns {@code true} if this map contains no key-value mappings.
-     * 
+     *
      * @return {@code true} if this map contains no key-value mappings
      */
     public boolean isEmpty() {
-        return size() == 0;
+        return atomicSize.get() == 0;
     }
 
     /**
@@ -3168,10 +3242,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Returns a {@link Set} view of the keys contained in this map.
      * <p>Multidimensional keys are represented as immutable List<Object>, while single keys
-     * are returned as their original objects. Changes to the returned set are not
-     * reflected in the map.</p>
-     * 
-     * @return a set view of the keys contained in this map
+     * are returned as their original objects.</p>
+     *
+     * <p><b>CONTRACT VIOLATION:</b> This method returns a <b>snapshot</b>, not a live view.
+     * Changes to the returned set are <b>NOT</b> reflected in the map, and vice versa.
+     * This violates the {@link Map#keySet()} contract which requires a live view.</p>
+     *
+     * @return a snapshot set view of the keys contained in this map
      */
     public Set<Object> keySet() {
         Set<Object> set = new HashSet<>();
@@ -3184,9 +3261,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     /**
      * Returns a {@link Collection} view of the values contained in this map.
-     * <p>Changes to the returned collection are not reflected in the map.</p>
-     * 
-     * @return a collection view of the values contained in this map
+     *
+     * <p><b>CONTRACT VIOLATION:</b> This method returns a <b>snapshot</b>, not a live view.
+     * Changes to the returned collection are <b>NOT</b> reflected in the map, and vice versa.
+     * This violates the {@link Map#values()} contract which requires a live view.</p>
+     *
+     * @return a snapshot collection view of the values contained in this map
      */
     public Collection<V> values() {
         List<V> vals = new ArrayList<>();
@@ -3197,10 +3277,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Returns a {@link Set} view of the mappings contained in this map.
      * <p>Multidimensional keys are represented as immutable List<Object>, while single keys
-     * are returned as their original objects. Changes to the returned set are not
-     * reflected in the map.</p>
-     * 
-     * @return a set view of the mappings contained in this map
+     * are returned as their original objects.</p>
+     *
+     * <p><b>CONTRACT VIOLATION:</b> This method returns a <b>snapshot</b>, not a live view.
+     * Changes to the returned set are <b>NOT</b> reflected in the map, and vice versa.
+     * This violates the {@link Map#entrySet()} contract which requires a live view.</p>
+     *
+     * <p><b>Rationale:</b> Implementing a true live view would require maintaining bidirectional
+     * references between the set and map, adding significant complexity and memory overhead.
+     * The snapshot approach provides better performance and thread-safety characteristics
+     * for this concurrent data structure, at the cost of contract compliance.</p>
+     *
+     * <p>If you need to iterate over entries, consider using {@link #entries()} instead,
+     * which provides a weakly-consistent iterator over the internal representation.</p>
+     *
+     * @return a snapshot set view of the mappings contained in this map
      */
     public Set<Map.Entry<Object, V>> entrySet() {
         Set<Map.Entry<Object, V>> set = new HashSet<>();

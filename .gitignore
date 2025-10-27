@@ -19,3 +19,7 @@ CODE_REVIEW.md
 CONVERTER_ROADMAP.md
 RELEASE_PROCESS.md
 CLAUDE.md
+
+# Debug/test output files
+perf_results.txt
+test_output.txt

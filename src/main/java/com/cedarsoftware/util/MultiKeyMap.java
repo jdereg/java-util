@@ -3855,6 +3855,72 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
+     * Externalize internal marker objects to serializable strings for json-io.
+     * Converts:
+     * - OPEN → "~~OPEN~~"
+     * - CLOSE → "~~CLOSE~~"
+     * - SET_OPEN → "~~SET_OPEN~~"
+     * - SET_CLOSE → "~~SET_CLOSE~~"
+     * - NULL_SENTINEL → null
+     *
+     * @param in array that may contain marker objects
+     * @return new array with markers converted to strings and NULL_SENTINEL converted to null
+     */
+    public static Object[] externalizeMarkers(Object[] in) {
+        Object[] out = new Object[in.length];
+        for (int i = 0; i < in.length; i++) {
+            Object elem = in[i];
+            if (elem == OPEN) {
+                out[i] = "~~OPEN~~";
+            } else if (elem == CLOSE) {
+                out[i] = "~~CLOSE~~";
+            } else if (elem == SET_OPEN) {
+                out[i] = "~~SET_OPEN~~";
+            } else if (elem == SET_CLOSE) {
+                out[i] = "~~SET_CLOSE~~";
+            } else if (elem == NULL_SENTINEL) {
+                out[i] = null;
+            } else {
+                out[i] = elem;
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Internalize serialized marker strings back to internal marker objects for json-io.
+     * Converts:
+     * - "~~OPEN~~" → OPEN
+     * - "~~CLOSE~~" → CLOSE
+     * - "~~SET_OPEN~~" → SET_OPEN
+     * - "~~SET_CLOSE~~" → SET_CLOSE
+     * - null → NULL_SENTINEL
+     *
+     * @param in array that may contain marker strings
+     * @return new array with marker strings converted back to marker objects and null converted to NULL_SENTINEL
+     */
+    public static Object[] internalizeMarkers(Object[] in) {
+        Object[] out = new Object[in.length];
+        for (int i = 0; i < in.length; i++) {
+            Object elem = in[i];
+            if ("~~OPEN~~".equals(elem)) {
+                out[i] = OPEN;
+            } else if ("~~CLOSE~~".equals(elem)) {
+                out[i] = CLOSE;
+            } else if ("~~SET_OPEN~~".equals(elem)) {
+                out[i] = SET_OPEN;
+            } else if ("~~SET_CLOSE~~".equals(elem)) {
+                out[i] = SET_CLOSE;
+            } else if (elem == null) {
+                out[i] = NULL_SENTINEL;
+            } else {
+                out[i] = elem;
+            }
+        }
+        return out;
+    }
+
+    /**
      * Externalize a key by stripping all markers (OPEN, CLOSE, SET_OPEN, SET_CLOSE)
      * and converting NULL_SENTINEL to null. Returns an array with just the actual key values.
      */
@@ -3909,6 +3975,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Reconstructs the original key structure from a flattened internal representation.
      * This method properly handles composite keys with mixed Lists and Sets.
+     * <p>Public to allow json-io deserialization to reconstruct keys from serialized form.</p>
      *
      * For example, the internal representation:
      *   [OPEN, 1, 2, 3, CLOSE, SET_OPEN, 4, 5, 6, SET_CLOSE]
@@ -3918,7 +3985,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * @param in the flattened internal key array with markers
      * @return the reconstructed key as an Object or Object[] that matches the original structure
      */
-    private static Object reconstructKey(Object[] in) {
+    public static Object reconstructKey(Object[] in) {
         // Check if there are any markers in the array
         boolean hasMarkers = false;
         boolean hasSetMarker = false;
@@ -3931,14 +3998,19 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
 
-        // If no markers, this is a simple flattened Collection
-        // Wrap as Set if SET markers present, otherwise as List
+        // If no markers, check if it's a single element or a multi-element array
         if (!hasMarkers) {
-            List<Object> elements = new ArrayList<>(in.length);
-            for (Object elem : in) {
-                elements.add(elem == NULL_SENTINEL ? null : elem);
+            if (in.length == 1) {
+                // Single element without markers - return as-is (it's a simple key)
+                return (in[0] == NULL_SENTINEL) ? null : in[0];
+            } else {
+                // Multi-element array without markers - this came from a List/Array key
+                List<Object> elements = new ArrayList<>(in.length);
+                for (Object elem : in) {
+                    elements.add(elem == NULL_SENTINEL ? null : elem);
+                }
+                return Collections.unmodifiableList(elements);
             }
-            return Collections.unmodifiableList(elements);
         }
 
         // If only Set markers and no List markers, wrap entire content as Set

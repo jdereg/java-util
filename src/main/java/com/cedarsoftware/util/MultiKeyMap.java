@@ -3857,11 +3857,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Externalize internal marker objects to serializable strings for json-io.
      * Converts:
-     * - OPEN → "~~OPEN~~"
-     * - CLOSE → "~~CLOSE~~"
-     * - SET_OPEN → "~~SET_OPEN~~"
-     * - SET_CLOSE → "~~SET_CLOSE~~"
+     * - OPEN → "OPEN"
+     * - CLOSE → "CLOSE"
+     * - SET_OPEN → "SET_OPEN"
+     * - SET_CLOSE → "SET_CLOSE"
      * - NULL_SENTINEL → null
+     * - User strings that collide with markers → prefixed with "~~ESC~~"
      *
      * @param in array that may contain marker objects
      * @return new array with markers converted to strings and NULL_SENTINEL converted to null
@@ -3871,18 +3872,27 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         for (int i = 0; i < in.length; i++) {
             Object elem = in[i];
             if (elem == OPEN) {
-                out[i] = "~~OPEN~~";
+                out[i] = "~OPEN~";
             } else if (elem == CLOSE) {
-                out[i] = "~~CLOSE~~";
+                out[i] = "~CLOSE~";
             } else if (elem == SET_OPEN) {
-                out[i] = "~~SET_OPEN~~";
+                out[i] = "~SET_OPEN~";
             } else if (elem == SET_CLOSE) {
-                out[i] = "~~SET_CLOSE~~";
+                out[i] = "~SET_CLOSE~";
             } else if (elem == NULL_SENTINEL) {
                 out[i] = null;
-            } else if (elem instanceof String && ((String) elem).startsWith("~~")) {
-                // Escape user strings that start with ~~ to prevent collision with marker syntax
-                out[i] = "~~ESC~~" + elem;
+            } else if (elem instanceof String) {
+                String str = (String) elem;
+                // Escape user strings that would collide with marker syntax
+                // - "~OPEN~", "~CLOSE~", "~SET_OPEN~", "~SET_CLOSE~" → prefix with ~~ESC~~
+                // - Strings already starting with ~~ESC~~ → prefix with another ~~ESC~~ (recursive)
+                if (str.equals("~OPEN~") || str.equals("~CLOSE~") ||
+                    str.equals("~SET_OPEN~") || str.equals("~SET_CLOSE~") ||
+                    str.startsWith("~~ESC~~")) {
+                    out[i] = "~~ESC~~" + str;
+                } else {
+                    out[i] = elem;
+                }
             } else {
                 out[i] = elem;
             }
@@ -3893,11 +3903,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Internalize serialized marker strings back to internal marker objects for json-io.
      * Converts:
-     * - "~~OPEN~~" → OPEN
-     * - "~~CLOSE~~" → CLOSE
-     * - "~~SET_OPEN~~" → SET_OPEN
-     * - "~~SET_CLOSE~~" → SET_CLOSE
+     * - "~OPEN~" → OPEN
+     * - "~CLOSE~" → CLOSE
+     * - "~SET_OPEN~" → SET_OPEN
+     * - "~SET_CLOSE~" → SET_CLOSE
      * - null → NULL_SENTINEL
+     * - "~~ESC~~{string}" → {string} (unescape user strings)
      *
      * @param in array that may contain marker strings
      * @return new array with marker strings converted back to marker objects and null converted to NULL_SENTINEL
@@ -3906,13 +3917,13 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         Object[] out = new Object[in.length];
         for (int i = 0; i < in.length; i++) {
             Object elem = in[i];
-            if ("~~OPEN~~".equals(elem)) {
+            if ("~OPEN~".equals(elem)) {
                 out[i] = OPEN;
-            } else if ("~~CLOSE~~".equals(elem)) {
+            } else if ("~CLOSE~".equals(elem)) {
                 out[i] = CLOSE;
-            } else if ("~~SET_OPEN~~".equals(elem)) {
+            } else if ("~SET_OPEN~".equals(elem)) {
                 out[i] = SET_OPEN;
-            } else if ("~~SET_CLOSE~~".equals(elem)) {
+            } else if ("~SET_CLOSE~".equals(elem)) {
                 out[i] = SET_CLOSE;
             } else if (elem == null) {
                 out[i] = NULL_SENTINEL;

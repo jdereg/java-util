@@ -3880,6 +3880,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 out[i] = "~~SET_CLOSE~~";
             } else if (elem == NULL_SENTINEL) {
                 out[i] = null;
+            } else if (elem instanceof String && ((String) elem).startsWith("~~")) {
+                // Escape user strings that start with ~~ to prevent collision with marker syntax
+                out[i] = "~~ESC~~" + elem;
             } else {
                 out[i] = elem;
             }
@@ -3913,6 +3916,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 out[i] = SET_CLOSE;
             } else if (elem == null) {
                 out[i] = NULL_SENTINEL;
+            } else if (elem instanceof String && ((String) elem).startsWith("~~ESC~~")) {
+                // Unescape user strings that were escaped to prevent marker collision
+                out[i] = ((String) elem).substring(7); // Remove "~~ESC~~" prefix
             } else {
                 out[i] = elem;
             }

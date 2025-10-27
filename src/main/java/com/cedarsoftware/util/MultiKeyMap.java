@@ -781,9 +781,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     
     /**
      * Returns the current case sensitivity setting for CharSequence comparisons.
-     * <p>This setting controls how CharSequence instances (String, StringBuilder, etc.) 
+     * <p>This setting controls how CharSequence instances (String, StringBuilder, etc.)
      * are compared within keys.</p>
-     * 
+     *
      * @return {@code true} if case-sensitive comparison is enabled (default),
      *         {@code false} if case-insensitive comparison is used
      * @since 3.6.0
@@ -791,7 +791,41 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     public boolean getCaseSensitive() {
         return caseSensitive;
     }
-    
+
+    /**
+     * Returns the initial capacity setting for this map.
+     * <p>This is the capacity value specified when the map was built, which was used
+     * to determine the initial internal bucket array size.</p>
+     *
+     * @return the initial capacity
+     */
+    public int getCapacity() {
+        return capacity;
+    }
+
+    /**
+     * Returns the load factor setting for this map.
+     * <p>The load factor determines when the map will resize. A value of 0.75 means
+     * the map will resize when it's 75% full.</p>
+     *
+     * @return the load factor
+     */
+    public float getLoadFactor() {
+        return loadFactor;
+    }
+
+    /**
+     * Returns the value-based equality setting for numeric keys.
+     * <p>When enabled, numeric keys are compared by value rather than type.
+     * For example, Integer(42) will match Long(42) when value-based equality is enabled.</p>
+     *
+     * @return {@code true} if value-based equality is enabled (default),
+     *         {@code false} if type-based equality is used
+     */
+    public boolean getValueBasedEquality() {
+        return valueBasedEquality;
+    }
+
     private static int computeElementHash(Object key, boolean caseSensitive) {
         if (key == null) return 0;
         
@@ -3804,8 +3838,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Convert internal NULL_SENTINEL references to null for external presentation.
      * This ensures that users never see our internal sentinel values.
+     * <p>Public to allow json-io serialization to externalize keys properly.</p>
+     *
+     * @param in array that may contain NULL_SENTINEL objects
+     * @return new array with NULL_SENTINEL replaced by null
      */
-    private static Object[] externalizeNulls(Object[] in) {
+    public static Object[] externalizeNulls(Object[] in) {
         Object[] out = Arrays.copyOf(in, in.length);
         int len = in.length;
         for (int i = 0; i < len; i++) {

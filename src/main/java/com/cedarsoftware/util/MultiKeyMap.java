@@ -1921,8 +1921,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         final AtomicReferenceArray<MultiKey<V>[]> table = buckets;  // Volatile read of buckets
         final int mask = table.length() - 1;  // Array length is immutable (not a volatile read)
         final int index = hash & mask;
+
         final MultiKey<V>[] chain = table.get(index);
-        if (chain == null) return null;
+        if (chain == null) {
+            return null;
+        }
+
         final int chLen = chain.length;
         for (int i = 0; i < chLen; i++) {
             MultiKey<V> entry = chain[i];
@@ -1946,8 +1950,24 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Early arity rejection - if stored has precomputed arity, check it first
         if (stored.kind == MultiKey.KIND_SINGLE) {
             // Single key optimization
+            // In COLLECTIONS_NOT_EXPANDED mode, a Collection/array can be a single key
             if (lookupClass.isArray() || lookup instanceof Collection) {
-                return false; // Collection/array not single element
+                // If stored key is also a Collection/array, compare using elementEquals
+                // This handles COLLECTIONS_NOT_EXPANDED mode where collections are single keys
+                if (stored.keys instanceof Collection || stored.keys.getClass().isArray()) {
+                    // In COLLECTIONS_NOT_EXPANDED mode, use the collection's own equals()
+                    if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
+                        if (stored.keys instanceof Collection && lookup instanceof Collection) {
+                            return stored.keys.equals(lookup);
+                        }
+                        // For arrays in COLLECTIONS_NOT_EXPANDED mode, still use elementEquals
+                        return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);
+                    }
+                    // In COLLECTIONS_EXPANDED mode, use elementEquals
+                    return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);
+                }
+                // Stored is not Collection/array but lookup is - no match
+                return false;
             }
             // Use elementEquals to respect value-based equality for single keys
             return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);

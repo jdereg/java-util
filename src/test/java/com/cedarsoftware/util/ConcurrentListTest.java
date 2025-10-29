@@ -247,4 +247,72 @@ class ConcurrentListTest {
         list.addAll(7, Arrays.asList(6, 7));
         assert deepEquals(Arrays.asList(-1, 0, 2, 3, 4, 1, 5, 6, 7), list);
     }
+
+    /**
+     * Test that null elements are properly preserved in toArray() methods.
+     * With pollFirst/pollLast now using write locks, toArray() (which uses read lock)
+     * cannot run concurrently with poll operations, so null values are safe.
+     */
+    @Test
+    void testNullElementsInToArray() {
+        // Test with nulls in various positions
+        List<String> list = new ConcurrentList<>();
+        list.add("a");
+        list.add(null);
+        list.add("b");
+        list.add(null);
+        list.add("c");
+
+        // Test toArray()
+        Object[] array = list.toArray();
+        assertEquals(5, array.length, "toArray() should preserve all elements including nulls");
+        assertEquals("a", array[0]);
+        assertEquals(null, array[1]);
+        assertEquals("b", array[2]);
+        assertEquals(null, array[3]);
+        assertEquals("c", array[4]);
+
+        // Test toArray(T[])
+        String[] typedArray = new String[5];
+        String[] result = list.toArray(typedArray);
+        assertEquals(5, result.length, "toArray(T[]) should preserve all elements including nulls");
+        assertEquals("a", result[0]);
+        assertEquals(null, result[1]);
+        assertEquals("b", result[2]);
+        assertEquals(null, result[3]);
+        assertEquals("c", result[4]);
+
+        // Test with null at start
+        List<String> list2 = new ConcurrentList<>();
+        list2.add(null);
+        list2.add("x");
+        list2.add("y");
+        Object[] array2 = list2.toArray();
+        assertEquals(3, array2.length, "Should preserve null at start");
+        assertEquals(null, array2[0]);
+        assertEquals("x", array2[1]);
+        assertEquals("y", array2[2]);
+
+        // Test with null at end
+        List<String> list3 = new ConcurrentList<>();
+        list3.add("x");
+        list3.add("y");
+        list3.add(null);
+        Object[] array3 = list3.toArray();
+        assertEquals(3, array3.length, "Should preserve null at end");
+        assertEquals("x", array3[0]);
+        assertEquals("y", array3[1]);
+        assertEquals(null, array3[2]);
+
+        // Test with all nulls
+        List<String> list4 = new ConcurrentList<>();
+        list4.add(null);
+        list4.add(null);
+        list4.add(null);
+        Object[] array4 = list4.toArray();
+        assertEquals(3, array4.length, "Should preserve all null elements");
+        assertEquals(null, array4[0]);
+        assertEquals(null, array4[1]);
+        assertEquals(null, array4[2]);
+    }
 }

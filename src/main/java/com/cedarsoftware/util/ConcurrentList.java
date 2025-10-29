@@ -243,12 +243,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             for (int i = 0; i < sz; i++) {
                 try {
                     Object element = get(i);
-                    if (element != null) {
-                        result.add(element);
-                    } else {
-                        // Element vanished due to concurrent removal
-                        break;
-                    }
+                    result.add(element);  // Add element even if null (null is a valid value)
                 } catch (IndexOutOfBoundsException e) {
                     // List shrunk during iteration - stop here and return what we have
                     break;
@@ -278,12 +273,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             for (int i = 0; i < sz; i++) {
                 try {
                     T element = (T) get(i);
-                    if (element != null) {
-                        result.add(element);
-                    } else {
-                        // Element vanished due to concurrent removal
-                        break;
-                    }
+                    result.add(element);  // Add element even if null (null is a valid value)
                 } catch (IndexOutOfBoundsException e) {
                     // List shrunk during iteration - stop here and return what we have
                     break;
@@ -587,7 +577,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public E pollFirst() {
-        lock.readLock().lock();
+        lock.writeLock().lock();
         try {
             while (true) {
                 long h = head.get();
@@ -603,13 +593,13 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
                 }
             }
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
     @Override
     public E pollLast() {
-        lock.readLock().lock();
+        lock.writeLock().lock();
         try {
             while (true) {
                 long t = tail.get();
@@ -626,7 +616,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
                 }
             }
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 

@@ -1429,15 +1429,20 @@ public final class Converter {
      */
     private static void expandSurrogateBridges(BridgeDirection direction) {
         // Create a snapshot of existing entries to avoid ConcurrentModificationException
-        List<MultiKeyMap.MultiKeyEntry<Convert<?>>> existingEntries = new ArrayList<>();
-        for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : CONVERSION_DB.entries()) {
+        List<Map.Entry<Object, Convert<?>>> existingEntries = new ArrayList<>();
+        for (Map.Entry<Object, Convert<?>> entry : CONVERSION_DB.entrySet()) {
             // Skip entries that don't follow the classic (Class, Class, long) pattern
             // This includes coconut-wrapped single-key entries and other N-Key entries
-            if (entry.keys.length >= 3) {
-                Object source = entry.keys[0];
-                Object target = entry.keys[1];
-                if (source instanceof Class && target instanceof Class) {
-                    existingEntries.add(entry);
+            // Multi-keys are reconstructed as List
+            if (entry.getKey() instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> keyList = (List<Object>) entry.getKey();
+                if (keyList.size() >= 3) {
+                    Object source = keyList.get(0);
+                    Object target = keyList.get(1);
+                    if (source instanceof Class && target instanceof Class) {
+                        existingEntries.add(entry);
+                    }
                 }
             }
         }
@@ -1455,14 +1460,16 @@ public final class Converter {
                 Class<?> primaryClass = config.primaryClass;
 
                 // Find all targets that the primary class can convert to
-                for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : existingEntries) {
-                    Class<?> sourceClass = (Class<?>) entry.keys[0];
-                    Class<?> targetClass = (Class<?>) entry.keys[1];
+                for (Map.Entry<Object, Convert<?>> entry : existingEntries) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> keyList = (List<Object>) entry.getKey();
+                    Class<?> sourceClass = (Class<?>) keyList.get(0);
+                    Class<?> targetClass = (Class<?>) keyList.get(1);
                     if (sourceClass.equals(primaryClass)) {
                         // Only add if not already defined and not converting to itself
                         if (CONVERSION_DB.getMultiKey(surrogateClass, targetClass, 0L) == null && !targetClass.equals(surrogateClass)) {
                             // Create composite conversion: Surrogate → primary → target
-                            Object instanceIdObj = entry.keys[2];
+                            Object instanceIdObj = keyList.get(2);
                             long instanceId = (instanceIdObj instanceof Integer) ? ((Integer) instanceIdObj).longValue() : (Long) instanceIdObj;
                             Convert<?> originalConversion = CONVERSION_DB.getMultiKey(sourceClass, targetClass, instanceId);
                             Convert<?> bridgeConversion = createSurrogateToPrimaryBridgeConversion(config, originalConversion);
@@ -1477,14 +1484,16 @@ public final class Converter {
                 Class<?> surrogateClass = config.primaryClass;  // and primary is the target
 
                 // Find all sources that can convert to the primary class
-                for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : existingEntries) {
-                    Class<?> sourceClass = (Class<?>) entry.keys[0];
-                    Class<?> targetClass = (Class<?>) entry.keys[1];
+                for (Map.Entry<Object, Convert<?>> entry : existingEntries) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> keyList = (List<Object>) entry.getKey();
+                    Class<?> sourceClass = (Class<?>) keyList.get(0);
+                    Class<?> targetClass = (Class<?>) keyList.get(1);
                     if (targetClass.equals(primaryClass)) {
                         // Only add if not already defined and not converting from itself
                         if (CONVERSION_DB.getMultiKey(sourceClass, surrogateClass, 0L) == null && !sourceClass.equals(surrogateClass)) {
                             // Create composite conversion: Source → primary → surrogate
-                            Object instanceIdObj = entry.keys[2];
+                            Object instanceIdObj = keyList.get(2);
                             long instanceId = (instanceIdObj instanceof Integer) ? ((Integer) instanceIdObj).longValue() : (Long) instanceIdObj;
                             Convert<?> originalConversion = CONVERSION_DB.getMultiKey(sourceClass, targetClass, instanceId);
                             Convert<?> bridgeConversion = createPrimaryToSurrogateBridgeConversion(config, originalConversion);
@@ -2483,12 +2492,20 @@ public final class Converter {
      * @param toFrom The map to populate with supported conversions.
      */
     private static void addSupportedConversion(MultiKeyMap<Convert<?>> db, Map<Class<?>, Set<Class<?>>> toFrom) {
-        for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : db.entries()) {
-            if (entry.value != UNSUPPORTED && entry.keys.length >= 2) {
-                Object source = entry.keys[0];
-                Object target = entry.keys[1];
-                if (source instanceof Class && target instanceof Class) {
-                    toFrom.computeIfAbsent((Class<?>) source, k -> new TreeSet<>(Comparator.comparing((Class<?> c) -> c.getName()))).add((Class<?>) target);
+        for (Map.Entry<Object, Convert<?>> entry : db.entrySet()) {
+            if (entry.getValue() != UNSUPPORTED) {
+                Object key = entry.getKey();
+                // Multi-keys are reconstructed as List
+                if (key instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> keyList = (List<Object>) key;
+                    if (keyList.size() >= 2) {
+                        Object source = keyList.get(0);
+                        Object target = keyList.get(1);
+                        if (source instanceof Class && target instanceof Class) {
+                            toFrom.computeIfAbsent((Class<?>) source, k -> new TreeSet<>(Comparator.comparing((Class<?> c) -> c.getName()))).add((Class<?>) target);
+                        }
+                    }
                 }
             }
         }
@@ -2501,12 +2518,20 @@ public final class Converter {
      * @param toFrom The map to populate with supported conversions by class names.
      */
     private static void addSupportedConversionName(MultiKeyMap<Convert<?>> db, Map<String, Set<String>> toFrom) {
-        for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : db.entries()) {
-            if (entry.value != UNSUPPORTED && entry.keys.length >= 2) {
-                Object source = entry.keys[0];
-                Object target = entry.keys[1];
-                if (source instanceof Class && target instanceof Class) {
-                    toFrom.computeIfAbsent(getShortName((Class<?>) source), k -> new TreeSet<>(String::compareTo)).add(getShortName((Class<?>) target));
+        for (Map.Entry<Object, Convert<?>> entry : db.entrySet()) {
+            if (entry.getValue() != UNSUPPORTED) {
+                Object key = entry.getKey();
+                // Multi-keys are reconstructed as List
+                if (key instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> keyList = (List<Object>) key;
+                    if (keyList.size() >= 2) {
+                        Object source = keyList.get(0);
+                        Object target = keyList.get(1);
+                        if (source instanceof Class && target instanceof Class) {
+                            toFrom.computeIfAbsent(getShortName((Class<?>) source), k -> new TreeSet<>(String::compareTo)).add(getShortName((Class<?>) target));
+                        }
+                    }
                 }
             }
         }
@@ -2635,27 +2660,37 @@ public final class Converter {
         // but necessary for the static addConversion API.
         
         // Collect keys to remove (can't modify during iteration)
-        java.util.List<Object[]> keysToRemove = new java.util.ArrayList<>();
-        for (MultiKeyMap.MultiKeyEntry<Convert<?>> entry : FULL_CONVERSION_CACHE.entries()) {
-            if (entry.keys.length >= 2) {
-                Object keySource = entry.keys[0];
-                Object keyTarget = entry.keys[1];
-                if (keySource instanceof Class && keyTarget instanceof Class) {
-                    Class<?> sourceClass = (Class<?>) keySource;
-                    Class<?> targetClass = (Class<?>) keyTarget;
-                    if ((sourceClass == source && targetClass == target) ||
-                        // Also clear inheritance-based entries
-                        isInheritanceRelated(sourceClass, targetClass, source, target)) {
-                        keysToRemove.add(entry.keys.clone());
+        java.util.List<Object> keysToRemove = new java.util.ArrayList<>();
+        for (Map.Entry<Object, Convert<?>> entry : FULL_CONVERSION_CACHE.entrySet()) {
+            Object key = entry.getKey();
+            // Multi-keys are reconstructed as List
+            if (key instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> keyList = (List<Object>) key;
+                if (keyList.size() >= 2) {
+                    Object keySource = keyList.get(0);
+                    Object keyTarget = keyList.get(1);
+                    if (keySource instanceof Class && keyTarget instanceof Class) {
+                        Class<?> sourceClass = (Class<?>) keySource;
+                        Class<?> targetClass = (Class<?>) keyTarget;
+                        if ((sourceClass == source && targetClass == target) ||
+                            // Also clear inheritance-based entries
+                            isInheritanceRelated(sourceClass, targetClass, source, target)) {
+                            keysToRemove.add(key);
+                        }
                     }
                 }
             }
         }
         
         // Remove the collected keys
-        for (Object[] keys : keysToRemove) {
-            if (keys.length >= 3) {
-                FULL_CONVERSION_CACHE.removeMultiKey(keys[0], keys[1], keys[2]);
+        for (Object key : keysToRemove) {
+            if (key instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> keyList = (List<Object>) key;
+                if (keyList.size() >= 3) {
+                    FULL_CONVERSION_CACHE.removeMultiKey(keyList.get(0), keyList.get(1), keyList.get(2));
+                }
             }
         }
 

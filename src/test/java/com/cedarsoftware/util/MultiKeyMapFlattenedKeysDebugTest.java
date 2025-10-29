@@ -47,39 +47,72 @@ class MultiKeyMapFlattenedKeysDebugTest {
         closeField.setAccessible(true);
         Object CLOSE = closeField.get(null);
         
-        // Get the actual stored keys from the map entries
-        for (MultiKeyMap.MultiKeyEntry<String> entry : map.entries()) {
-            Object[] storedKeys = entry.keys;
-            log.info("Stored keys array length: " + storedKeys.length);
-            log.info("Stored keys contents:");
-            
-            for (int i = 0; i < storedKeys.length; i++) {
-                Object obj = storedKeys[i];
-                log.info("  [" + i + "] " + obj + " (class: " + obj.getClass().getSimpleName() + ")");
-                log.info("      == NULL_SENTINEL: " + (obj == NULL_SENTINEL));
-                log.info("      == OPEN: " + (obj == OPEN));
-                log.info("      == CLOSE: " + (obj == CLOSE));
-                
-                // If it's a collection, examine its contents
-                if (obj instanceof Collection) {
-                    Collection<?> coll = (Collection<?>) obj;
-                    log.info("      Collection size: " + coll.size());
-                    log.info("      Collection contents:");
-                    int j = 0;
-                    for (Object element : coll) {
-                        log.info("        [" + j + "] " + element + " (class: " + element.getClass().getSimpleName() + ")");
-                        log.info("            == NULL_SENTINEL: " + (element == NULL_SENTINEL));
-                        log.info("            == OPEN: " + (element == OPEN));
-                        log.info("            == CLOSE: " + (element == CLOSE));
-                        j++;
-                        if (j > 10) { // Limit output for readability
-                            log.info("        ... (truncated)");
-                            break;
+        // Verify entrySet() works
+        log.info("Testing entrySet():");
+        for (java.util.Map.Entry<Object, String> entry : map.entrySet()) {
+            log.info("  Reconstructed key: " + entry.getKey());
+            log.info("  Reconstructed key type: " + entry.getKey().getClass().getSimpleName());
+        }
+        log.info("");
+
+        // Access internal bucket structure to examine flattened keys with markers
+        Field bucketsField = MultiKeyMap.class.getDeclaredField("buckets");
+        bucketsField.setAccessible(true);
+        Object buckets = bucketsField.get(map);
+
+        // Get actual stored keys from internal buckets
+        if (buckets instanceof java.util.concurrent.atomic.AtomicReferenceArray) {
+            @SuppressWarnings("unchecked")
+            java.util.concurrent.atomic.AtomicReferenceArray<Object[]> bucketsArray =
+                (java.util.concurrent.atomic.AtomicReferenceArray<Object[]>) buckets;
+            for (int i = 0; i < bucketsArray.length(); i++) {
+                Object[] chain = bucketsArray.get(i);
+                if (chain != null && chain.length > 0) {
+                    // Access MultiKey.keys field
+                    Object multiKey = chain[0];
+                    Field keysField = multiKey.getClass().getDeclaredField("keys");
+                    keysField.setAccessible(true);
+                    Object keys = keysField.get(multiKey);
+
+                    Object[] storedKeys;
+                    if (keys instanceof Object[]) {
+                        storedKeys = (Object[]) keys;
+                    } else {
+                        storedKeys = new Object[]{keys};
+                    }
+
+                    log.info("Stored keys array length: " + storedKeys.length);
+                    log.info("Stored keys contents:");
+
+                    for (int idx = 0; idx < storedKeys.length; idx++) {
+                        Object obj = storedKeys[idx];
+                        log.info("  [" + idx + "] " + obj + " (class: " + obj.getClass().getSimpleName() + ")");
+                        log.info("      == NULL_SENTINEL: " + (obj == NULL_SENTINEL));
+                        log.info("      == OPEN: " + (obj == OPEN));
+                        log.info("      == CLOSE: " + (obj == CLOSE));
+
+                        // If it's a collection, examine its contents
+                        if (obj instanceof Collection) {
+                            Collection<?> coll = (Collection<?>) obj;
+                            log.info("      Collection size: " + coll.size());
+                            log.info("      Collection contents:");
+                            int j = 0;
+                            for (Object element : coll) {
+                                log.info("        [" + j + "] " + element + " (class: " + element.getClass().getSimpleName() + ")");
+                                log.info("            == NULL_SENTINEL: " + (element == NULL_SENTINEL));
+                                log.info("            == OPEN: " + (element == OPEN));
+                                log.info("            == CLOSE: " + (element == CLOSE));
+                                j++;
+                                if (j > 10) { // Limit output for readability
+                                    log.info("        ... (truncated)");
+                                    break;
+                                }
+                            }
                         }
                     }
+                    break; // Only process the first entry
                 }
             }
-            break; // Only process the first entry
         }
     }
 }

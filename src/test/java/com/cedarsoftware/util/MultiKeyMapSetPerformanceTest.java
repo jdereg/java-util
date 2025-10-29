@@ -59,12 +59,18 @@ class MultiKeyMapSetPerformanceTest {
         long listEnd = System.nanoTime();
         long listTime = listEnd - listStart;
 
-        System.out.println("Set insertion time: " + setTime / 1_000_000.0 + " ms");
-        System.out.println("List insertion time: " + listTime / 1_000_000.0 + " ms");
-        System.out.println("Set/List ratio: " + (double) setTime / listTime);
+        double setTimeMs = setTime / 1_000_000.0;
+        double listTimeMs = listTime / 1_000_000.0;
+        double ratio = (double) setTime / listTime;
+
+        System.out.println("Set insertion time: " + setTimeMs + " ms");
+        System.out.println("List insertion time: " + listTimeMs + " ms");
+        System.out.println("Set/List ratio: " + ratio);
 
         // Sets should be within 5x of List performance (expected ~4x due to order-agnostic processing)
-        assertTrue(setTime < listTime * 5, "Set insertion should be within 5x of List performance");
+        assertTrue(setTime < listTime * 5,
+            String.format("Set insertion should be within 5x of List performance. Actual: Set=%.2fms, List=%.2fms, Ratio=%.2fx (threshold: 5.0x)",
+                setTimeMs, listTimeMs, ratio));
     }
 
     @Test
@@ -113,13 +119,19 @@ class MultiKeyMapSetPerformanceTest {
         long listEnd = System.nanoTime();
         long listTime = listEnd - listStart;
 
-        System.out.println("Set lookup time: " + setTime / 1_000_000.0 + " ms");
-        System.out.println("List lookup time: " + listTime / 1_000_000.0 + " ms");
-        System.out.println("Set/List ratio: " + (double) setTime / listTime);
+        double setTimeMs = setTime / 1_000_000.0;
+        double listTimeMs = listTime / 1_000_000.0;
+        double ratio = (double) setTime / listTime;
+
+        System.out.println("Set lookup time: " + setTimeMs + " ms");
+        System.out.println("List lookup time: " + listTimeMs + " ms");
+        System.out.println("Set/List ratio: " + ratio);
 
         // Sets should be within 10x of List performance (lenient threshold for benchmark variability)
         // Typical ratio is ~3x, but can vary due to JVM warmup, GC, etc.
-        assertTrue(setTime < listTime * 10, "Set lookup should be within 10x of List performance");
+        assertTrue(setTime < listTime * 10,
+            String.format("Set lookup should be within 10x of List performance. Actual: Set=%.2fms, List=%.2fms, Ratio=%.2fx (threshold: 10.0x)",
+                setTimeMs, listTimeMs, ratio));
     }
 
     @Test

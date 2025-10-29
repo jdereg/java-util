@@ -1,6 +1,21 @@
 ### Revision History
 #### 4.2.0 (unreleased)
+> * **REMOVED**: `MultiKeyMap.entries()`, `MultiKeyEntry`, and `EntryIterator` - Removed deprecated `entries()` method that exposed internal flattened key structure with markers. All code now uses standard `entrySet()` which returns keys as native List/Set/single structures suitable for serialization. This cleanup:
+>   * Eliminates 3 unused public methods: `externalizeNulls()`, `externalizeMarkers()`, `internalizeMarkers()`
+>   * Removes 2 classes: public `MultiKeyEntry` and private `EntryIterator`
+>   * Refactors internal methods (`keySet()`, `values()`, `hashCode()`, `toString()`) to use `entrySet()` or direct bucket iteration
+>   * Migrates all tests and `Converter` to use `entrySet()` instead of deprecated `entries()`
+>
+> * **REMOVED**: `MultiKeyMap` reconstruct method consolidation - Consolidated multiple reconstruct methods into a single clean `reconstructKey()` method:
+>   * Removed `reconstructKeyForSerialization()` redundant wrapper method
+>   * Removed deprecated `reconstructKey()` that returned Object[] arrays
+>   * Removed `collectElements()`, `keyView()`, `externalizeAndWrapKey()`, and `externalizeKey()` helper methods
+>   * Renamed `reconstructKeyToNative()` → `reconstructKey()` as the single public key reconstruction method
+>   * Updated json-io's `MultiKeyMapFactory` to remove old format handling with `internalizeMarkers()`
+>
 > * **FIXED**: `MultiKeyMap` critical NULL_SENTINEL equality bug - Fixed `elementEquals()` to properly check equality after normalizing NULL_SENTINEL to null. Previously, NULL_SENTINEL and null were incorrectly treated as unequal, breaking null key handling.
+>
+> * **FIXED**: `ConcurrentList` pollFirst()/pollLast() lock usage - Changed pollFirst() and pollLast() to use write locks instead of read locks. Previously they used read locks while modifying data (setting bucket elements to null), creating a race condition with toArray() which also uses read locks. This caused toArray() to see "phantom nulls" from concurrent removals. With write locks, poll operations are properly synchronized with read operations, allowing toArray() to safely preserve legitimate null values.
 >
 > * **IMPROVED**: `MultiKeyMap` thread-safety enhancements:
 >   * **Fixed hashCode cache race condition**: Implemented double-checked locking with dedicated hashCodeLock to prevent concurrent hashCode computations during map modification

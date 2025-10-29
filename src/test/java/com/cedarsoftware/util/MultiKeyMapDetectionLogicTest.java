@@ -22,15 +22,47 @@ class MultiKeyMapDetectionLogicTest {
         Object[] complexArray = {berriesList1D, "middle_string", berries2D, null};
         map.put(complexArray, "debug_value");
         
-        // Get the stored flattened structure
-        Object storedKey = null;
-        for (MultiKeyMap.MultiKeyEntry<String> entry : map.entries()) {
-            storedKey = entry.keys[0];
+        // Verify entrySet() works
+        Object reconstructedKey = null;
+        for (java.util.Map.Entry<Object, String> entry : map.entrySet()) {
+            reconstructedKey = entry.getKey();
             break;
         }
-        
-        log.info("Stored key type: " + storedKey.getClass().getSimpleName());
-        log.info("Stored key: " + storedKey);
+
+        log.info("Reconstructed key type: " + reconstructedKey.getClass().getSimpleName());
+        log.info("Reconstructed key: " + reconstructedKey);
+
+        // Access internal bucket structure for testing flattened keys with markers
+        Field bucketsField = MultiKeyMap.class.getDeclaredField("buckets");
+        bucketsField.setAccessible(true);
+        Object buckets = bucketsField.get(map);
+
+        // Get first non-null bucket chain
+        Object storedKey = null;
+        if (buckets instanceof java.util.concurrent.atomic.AtomicReferenceArray) {
+            @SuppressWarnings("unchecked")
+            java.util.concurrent.atomic.AtomicReferenceArray<Object[]> bucketsArray =
+                (java.util.concurrent.atomic.AtomicReferenceArray<Object[]>) buckets;
+            for (int i = 0; i < bucketsArray.length(); i++) {
+                Object[] chain = bucketsArray.get(i);
+                if (chain != null && chain.length > 0) {
+                    // Access MultiKey.keys field
+                    Object multiKey = chain[0];
+                    Field keysField = multiKey.getClass().getDeclaredField("keys");
+                    keysField.setAccessible(true);
+                    Object keys = keysField.get(multiKey);
+                    if (keys instanceof Object[]) {
+                        storedKey = ((Object[]) keys)[0];
+                    } else {
+                        storedKey = keys;
+                    }
+                    break;
+                }
+            }
+        }
+
+        log.info("Internal stored key type: " + (storedKey != null ? storedKey.getClass().getSimpleName() : "null"));
+        log.info("Internal stored key: " + storedKey);
         
         if (!(storedKey instanceof Collection)) {
             log.info("Not a collection - using original debug test instead");

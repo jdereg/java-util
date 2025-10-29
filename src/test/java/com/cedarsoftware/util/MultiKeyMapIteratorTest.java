@@ -85,16 +85,20 @@ class MultiKeyMapIteratorTest {
                     int count = 0;
                     Set<String> seenKeys = new HashSet<>();
                     
-                    for (MultiKeyMap.MultiKeyEntry<String> entry : map.entries()) {
+                    for (java.util.Map.Entry<Object, String> entry : map.entrySet()) {
                         count++;
-                        
+
+                        // Key is reconstructed as List for multi-key entries
+                        @SuppressWarnings("unchecked")
+                        List<Object> keyList = (List<Object>) entry.getKey();
+
                         // Verify entry integrity
-                        assertNotNull(entry.keys[0], "Entry source should not be null");
-                        assertNotNull(entry.keys[1], "Entry target should not be null");
-                        assertNotNull(entry.value, "Entry value should not be null");
-                        
+                        assertNotNull(keyList.get(0), "Entry source should not be null");
+                        assertNotNull(keyList.get(1), "Entry target should not be null");
+                        assertNotNull(entry.getValue(), "Entry value should not be null");
+
                         // Check for duplicates in this iteration
-                        String key = ((Class<?>) entry.keys[0]).getSimpleName() + ":" + ((Class<?>) entry.keys[1]).getSimpleName() + ":" + entry.keys[2];
+                        String key = ((Class<?>) keyList.get(0)).getSimpleName() + ":" + ((Class<?>) keyList.get(1)).getSimpleName() + ":" + keyList.get(2);
                         assertFalse(seenKeys.contains(key), "Duplicate key found in iteration: " + key);
                         seenKeys.add(key);
                     }
@@ -176,19 +180,23 @@ class MultiKeyMapIteratorTest {
                     int count = 0;
                     Set<Long> seenInstanceIds = new HashSet<>();
                     
-                    for (MultiKeyMap.MultiKeyEntry<String> entry : map.entries()) {
+                    for (java.util.Map.Entry<Object, String> entry : map.entrySet()) {
                         count++;
-                        
+
+                        // Key is reconstructed as List for multi-key entries
+                        @SuppressWarnings("unchecked")
+                        List<Object> keyList = (List<Object>) entry.getKey();
+
                         // Verify no duplicate instance IDs in this iteration
-                        long instanceId = (Long) entry.keys[2];
-                        assertFalse(seenInstanceIds.contains(instanceId), 
+                        long instanceId = (Long) keyList.get(2);
+                        assertFalse(seenInstanceIds.contains(instanceId),
                                    "Duplicate instanceId found: " + instanceId);
                         seenInstanceIds.add(instanceId);
-                        
+
                         // Verify entry consistency
-                        assertEquals(String.class, entry.keys[0]);
-                        assertEquals(Integer.class, entry.keys[1]);
-                        assertTrue(entry.value.startsWith("resize-test-"));
+                        assertEquals(String.class, keyList.get(0));
+                        assertEquals(Integer.class, keyList.get(1));
+                        assertTrue(entry.getValue().startsWith("resize-test-"));
                     }
                     
                     iterationCounts.add(count);
@@ -246,12 +254,15 @@ class MultiKeyMapIteratorTest {
                     
                     for (int iteration = 0; iteration < 5; iteration++) {
                         int count = 0;
-                        for (MultiKeyMap.MultiKeyEntry<String> entry : map.entries()) {
+                        for (java.util.Map.Entry<Object, String> entry : map.entrySet()) {
                             count++;
+                            // Key is reconstructed as List for multi-key entries
+                            @SuppressWarnings("unchecked")
+                            List<Object> keyList = (List<Object>) entry.getKey();
                             // Verify entry is valid
-                            assertNotNull(entry.keys[0]);
-                            assertNotNull(entry.keys[1]);
-                            assertNotNull(entry.value);
+                            assertNotNull(keyList.get(0));
+                            assertNotNull(keyList.get(1));
+                            assertNotNull(entry.getValue());
                         }
                         totalIterations.addAndGet(count);
                         Thread.sleep(1);

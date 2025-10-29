@@ -85,19 +85,20 @@ class MultiKeyMapMapInterfaceTest {
         
         // Check that keys contain the expected values
         boolean hasSingleKey = false;
-        boolean hasArrayKey = false;
-        
+        boolean hasListKey = false;
+        List<Object> expectedListKey = Arrays.asList("multi", "key");
+
         for (Object key : keys) {
             if ("singleKey".equals(key)) {
                 hasSingleKey = true;
-            } else if (key instanceof List && Arrays.deepEquals(((List<?>) key).toArray(), new Object[]{"multi", "key"})) {
-                // Multi-keys are now exposed as Lists for proper equals/hashCode behavior
-                hasArrayKey = true;
+            } else if (key instanceof List && key.equals(expectedListKey)) {
+                // Multi-keys are now exposed as List (ordered) or Set (unordered)
+                hasListKey = true;
             }
         }
-        
+
         assertTrue(hasSingleKey, "Should contain single key");
-        assertTrue(hasArrayKey, "Should contain array key");
+        assertTrue(hasListKey, "Should contain List key");
     }
     
     @Test
@@ -135,17 +136,18 @@ class MultiKeyMapMapInterfaceTest {
         // Check single key entry
         assertTrue(entryMap.containsKey("singleKey"));
         assertEquals("value1", entryMap.get("singleKey"));
-        
-        // Check array key entry - now exposed as List, not array
-        String arrayValue = null;
+
+        // Check List key entry - multi-keys are now exposed as List (ordered) or Set (unordered)
+        String listValue = null;
+        List<Object> expectedListKey = Arrays.asList("multi", "key");
         for (Map.Entry<Object, String> entry : entryMap.entrySet()) {
-            if (entry.getKey() instanceof List && 
-                Arrays.asList(arrayKey).equals(entry.getKey())) {
-                arrayValue = entry.getValue();
+            Object key = entry.getKey();
+            if (key instanceof List && key.equals(expectedListKey)) {
+                listValue = entry.getValue();
                 break;
             }
         }
-        assertEquals("value2", arrayValue);
+        assertEquals("value2", listValue);
     }
     
     @Test

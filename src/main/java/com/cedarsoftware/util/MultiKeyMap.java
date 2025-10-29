@@ -1,6 +1,8 @@
 package com.cedarsoftware.util;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -342,8 +344,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         SIMPLE_ARRAY_TYPES.add(java.time.ZoneOffset[].class);
         
         // Math/Precision types
-        SIMPLE_ARRAY_TYPES.add(java.math.BigInteger[].class);
-        SIMPLE_ARRAY_TYPES.add(java.math.BigDecimal[].class);
+        SIMPLE_ARRAY_TYPES.add(BigInteger[].class);
+        SIMPLE_ARRAY_TYPES.add(BigDecimal[].class);
         
         // Network/IO types
         SIMPLE_ARRAY_TYPES.add(java.net.URL[].class);
@@ -883,14 +885,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         }
         
         // BigInteger/BigDecimal: convert to primitive type for consistent hashing
-        if (o instanceof java.math.BigDecimal) {
-            java.math.BigDecimal bd = (java.math.BigDecimal) o;
+        if (o instanceof BigDecimal) {
+            BigDecimal bd = (BigDecimal) o;
             try {
                 // Check if it can be represented as a long (whole number)
-                if (bd.scale() <= 0 || bd.remainder(java.math.BigDecimal.ONE).compareTo(java.math.BigDecimal.ZERO) == 0) {
+                if (bd.scale() <= 0 || bd.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
                     // It's a whole number - try to convert to long
-                    if (bd.compareTo(new java.math.BigDecimal(Long.MAX_VALUE)) <= 0 && 
-                        bd.compareTo(new java.math.BigDecimal(Long.MIN_VALUE)) >= 0) {
+                    if (bd.compareTo(new BigDecimal(Long.MAX_VALUE)) <= 0 && 
+                        bd.compareTo(new BigDecimal(Long.MIN_VALUE)) >= 0) {
                         return hashLong(bd.longValue());
                     }
                 }
@@ -908,8 +910,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
         
-        if (o instanceof java.math.BigInteger) {
-            java.math.BigInteger bi = (java.math.BigInteger) o;
+        if (o instanceof BigInteger) {
+            BigInteger bi = (BigInteger) o;
             try {
                 // Try to convert to long if it fits
                 if (bi.bitLength() < 64) {
@@ -2821,8 +2823,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             if (ca == Byte.class)    return ((Byte) a).byteValue()     == ((Byte) b).byteValue();
             if (ca == Double.class)  { double x = (Double) a, y = (Double) b; return (x == y) || (Double.isNaN(x) && Double.isNaN(y)); }
             if (ca == Float.class)   { float  x = (Float)  a, y = (Float)  b; return (x == y) || (Float.isNaN(x)  && Float.isNaN(y)); }
-            if (ca == java.math.BigInteger.class) return ((java.math.BigInteger) a).compareTo((java.math.BigInteger) b) == 0;
-            if (ca == java.math.BigDecimal.class) return ((java.math.BigDecimal) a).compareTo((java.math.BigDecimal) b) == 0;
+            if (ca == BigInteger.class) return ((BigInteger) a).compareTo((BigInteger) b) == 0;
+            if (ca == BigDecimal.class) return ((BigDecimal) a).compareTo((BigDecimal) b) == 0;
             if (ca == AtomicInteger.class) return ((AtomicInteger) a).get() == ((AtomicInteger) b).get();
             if (ca == AtomicLong.class)    return ((AtomicLong) a).get()    == ((AtomicLong) b).get();
         }
@@ -2866,7 +2868,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
     
     private static boolean isBig(Class<?> c) {
-        return c == java.math.BigInteger.class || c == java.math.BigDecimal.class;
+        return c == BigInteger.class || c == BigDecimal.class;
     }
 
     private static long extractLongFast(Object o) {
@@ -2879,11 +2881,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         return ((Number) o).longValue();
     }
     
-    private static java.math.BigDecimal toBigDecimal(Number n) {
-        if (n instanceof java.math.BigDecimal) return (java.math.BigDecimal) n;
-        if (n instanceof java.math.BigInteger) return new java.math.BigDecimal((java.math.BigInteger) n);
-        if (n instanceof Double || n instanceof Float) return new java.math.BigDecimal(n.toString()); // exact
-        return java.math.BigDecimal.valueOf(n.longValue());
+    private static BigDecimal toBigDecimal(Number n) {
+        if (n instanceof BigDecimal) return (BigDecimal) n;
+        if (n instanceof BigInteger) return new BigDecimal((BigInteger) n);
+        if (n instanceof Double || n instanceof Float) return new BigDecimal(n.toString()); // exact
+        return BigDecimal.valueOf(n.longValue());
     }
 
     private V putInternal(MultiKey<V> newKey) {
@@ -3235,48 +3237,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * Helper method to create an immutable view of multi-key arrays.
-     * This ensures external code cannot mutate our internal key arrays.
-     */
-    private static List<Object> keyView(Object[] keys) {
-        return Collections.unmodifiableList(Arrays.asList(keys));
-    }
-
-    /**
-     * Externalizes a raw key and wraps it in the appropriate container type (Set or List)
-     * based on the markers present in the raw key. This preserves the original container
-     * type that was used when the key was stored.
-     *
-     * @param rawKeys the raw internal key array with markers (SET_OPEN/CLOSE, OPEN/CLOSE, etc.)
-     * @return Set if SET_OPEN/SET_CLOSE markers are present, List otherwise
-     */
-    private static Object externalizeAndWrapKey(Object[] rawKeys) {
-        // Check if this was originally a Set by looking for SET_OPEN marker
-        boolean isSet = false;
-        for (Object elem : rawKeys) {
-            if (elem == SET_OPEN) {
-                isSet = true;
-                break;
-            }
-        }
-
-        // Externalize (strip markers and convert NULL_SENTINEL)
-        Object[] externalizedKeys = externalizeKey(rawKeys);
-
-        // Wrap in appropriate container type
-        if (isSet) {
-            // Return as unmodifiable LinkedHashSet to preserve insertion order
-            return Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(externalizedKeys)));
-        } else {
-            // Return as unmodifiable List (original behavior)
-            return Collections.unmodifiableList(Arrays.asList(externalizedKeys));
-        }
-    }
-
-    /**
      * Returns a {@link Set} view of the keys contained in this map.
-     * <p>Multidimensional keys are represented as immutable List<Object>, while single keys
-     * are returned as their original objects.</p>
+     * <p>Multidimensional keys are represented as List (ordered) or Set (unordered),
+     * while single keys are returned as their original objects. This provides a consistent
+     * mental model: keys are always single items, Lists, or Sets - regardless of nesting depth.</p>
      *
      * <p><b>CONTRACT VIOLATION:</b> This method returns a <b>snapshot</b>, not a live view.
      * Changes to the returned set are <b>NOT</b> reflected in the map, and vice versa.
@@ -3286,9 +3250,8 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public Set<Object> keySet() {
         Set<Object> set = new HashSet<>();
-        for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : reconstructKey(e.keys);
-            set.add(k);
+        for (Map.Entry<Object, V> e : entrySet()) {
+            set.add(e.getKey());
         }
         return set;
     }
@@ -3304,14 +3267,17 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      */
     public Collection<V> values() {
         List<V> vals = new ArrayList<>();
-        for (MultiKeyEntry<V> e : entries()) vals.add(e.value);
+        for (Map.Entry<Object, V> e : entrySet()) {
+            vals.add(e.getValue());
+        }
         return vals;
     }
 
     /**
      * Returns a {@link Set} view of the mappings contained in this map.
-     * <p>Multidimensional keys are represented as immutable List<Object>, while single keys
-     * are returned as their original objects.</p>
+     * <p>Multidimensional keys are represented as List (ordered) or Set (unordered),
+     * while single keys are returned as their original objects. This provides a consistent
+     * mental model: keys are always single items, Lists, or Sets - regardless of nesting depth.</p>
      *
      * <p><b>CONTRACT VIOLATION:</b> This method returns a <b>snapshot</b>, not a live view.
      * Changes to the returned set are <b>NOT</b> reflected in the map, and vice versa.
@@ -3322,16 +3288,36 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * The snapshot approach provides better performance and thread-safety characteristics
      * for this concurrent data structure, at the cost of contract compliance.</p>
      *
-     * <p>If you need to iterate over entries, consider using {@link #entries()} instead,
-     * which provides a weakly-consistent iterator over the internal representation.</p>
-     *
      * @return a snapshot set view of the mappings contained in this map
      */
     public Set<Map.Entry<Object, V>> entrySet() {
         Set<Map.Entry<Object, V>> set = new HashSet<>();
-        for (MultiKeyEntry<V> e : entries()) {
-            Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : reconstructKey(e.keys);
-            set.add(new AbstractMap.SimpleEntry<>(k, e.value));
+        // Iterate buckets directly instead of using deprecated entries()
+        final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
+        final int len = snapshot.length();
+        for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
+            MultiKey<V>[] chain = snapshot.get(bucketIdx);
+            if (chain != null) {
+                for (MultiKey<V> e : chain) {
+                    // Reconstruct key for external presentation
+                    Object keys = e.keys;
+                    Object k;
+                    if (keys == null || keys == NULL_SENTINEL) {
+                        k = null;
+                    } else if (keys instanceof Object[]) {
+                        Object[] keysArray = (Object[]) keys;
+                        k = keysArray.length == 1 ? (keysArray[0] == NULL_SENTINEL ? null : keysArray[0]) : reconstructKey(keysArray);
+                    } else if (keys instanceof Collection) {
+                        // Collection means nested structure - need to convert to array for reconstruction
+                        Object[] keysArray = ((Collection<?>) keys).toArray();
+                        k = reconstructKey(keysArray);
+                    } else {
+                        // Single key
+                        k = keys;
+                    }
+                    set.add(new AbstractMap.SimpleEntry<>(k, e.value));
+                }
+            }
         }
         return set;
     }
@@ -3738,11 +3724,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
             // Compute hashCode (requires reconstruction for HashMap compatibility)
             int h = 0;
-            for (MultiKeyEntry<V> e : entries()) {
-                Object k = e.keys.length == 1 ? (e.keys[0] == NULL_SENTINEL ? null : e.keys[0]) : reconstructKey(e.keys);
-                // Use Arrays.hashCode() for Object[] keys (content-based), Objects.hashCode() for others
-                int keyHash = (k instanceof Object[]) ? Arrays.hashCode((Object[]) k) : Objects.hashCode(k);
-                h += keyHash ^ Objects.hashCode(e.value);
+            for (Map.Entry<Object, V> e : entrySet()) {
+                // Use Objects.hashCode() - List/Set have proper content-based hashCode implementations
+                int keyHash = Objects.hashCode(e.getKey());
+                h += keyHash ^ Objects.hashCode(e.getValue());
             }
 
             // Cache the result (volatile write ensures visibility to all threads)
@@ -3801,206 +3786,59 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (isEmpty()) return "{}";
         StringBuilder sb = new StringBuilder("{\n");
         boolean first = true;
-        for (MultiKeyEntry<V> e : entries()) {
-            if (!first) sb.append(",\n");
-            first = false;
-            sb.append("  ");  // Two-space indentation
-            String keyStr = dumpExpandedKeyStatic(e.keys, true, this);
-            // Remove trailing comma and space if present
-            if (keyStr.endsWith(", ")) {
-                keyStr = keyStr.substring(0, keyStr.length() - 2);
+        // Iterate buckets directly to access raw keys for formatting
+        final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
+        final int len = snapshot.length();
+        for (int bucketIdx = 0; bucketIdx < len; bucketIdx++) {
+            MultiKey<V>[] chain = snapshot.get(bucketIdx);
+            if (chain != null) {
+                for (MultiKey<V> e : chain) {
+                    if (!first) sb.append(",\n");
+                    first = false;
+                    sb.append("  ");  // Two-space indentation
+                    // Access raw keys for dumpExpandedKeyStatic
+                    Object keys = e.keys;
+                    Object[] keysArray;
+                    if (keys instanceof Object[]) {
+                        keysArray = (Object[]) keys;
+                    } else if (keys instanceof Collection) {
+                        keysArray = ((Collection<?>) keys).toArray();
+                    } else {
+                        keysArray = new Object[]{keys};
+                    }
+                    String keyStr = dumpExpandedKeyStatic(keysArray, true, this);
+                    // Remove trailing comma and space if present
+                    if (keyStr.endsWith(", ")) {
+                        keyStr = keyStr.substring(0, keyStr.length() - 2);
+                    }
+                    sb.append(keyStr).append(" → ");
+                    sb.append(EMOJI_VALUE);
+                    sb.append(formatValueForToString(e.value, this));
+                }
             }
-            sb.append(keyStr).append(" → ");
-            sb.append(EMOJI_VALUE);
-            sb.append(formatValueForToString(e.value, this));
         }
         return sb.append("\n}").toString();
     }
 
-    /**
-     * Returns an {@link Iterable} of {@link MultiKeyEntry} objects representing all key-value
-     * mappings in this map.
-     * <p>Each {@code MultiKeyEntry} contains the complete key information as an Object array
-     * and the associated value. This provides access to the full multidimensional key structure
-     * that may not be available through the standard {@link #entrySet()} method.</p>
-     * <p>The returned iterable provides a <b>weakly consistent</b> view - it captures the buckets
-     * reference at creation time and walks live bucket elements. Concurrent modifications may or may
-     * not be reflected during iteration, and the iterator will never throw ConcurrentModificationException.</p>
-     * 
-     * @return an iterable of {@code MultiKeyEntry} objects containing all mappings in this map
-     * @see MultiKeyEntry
-     * @see #entrySet()
-     */
-    public Iterable<MultiKeyEntry<V>> entries() {
-        return EntryIterator::new;
-    }
+
 
     /**
-     * Convert internal NULL_SENTINEL references to null for external presentation.
-     * This ensures that users never see our internal sentinel values.
-     * <p>Public to allow json-io serialization to externalize keys properly.</p>
-     *
-     * @param in array that may contain NULL_SENTINEL objects
-     * @return new array with NULL_SENTINEL replaced by null
-     */
-    public static Object[] externalizeNulls(Object[] in) {
-        Object[] out = Arrays.copyOf(in, in.length);
-        int len = in.length;
-        for (int i = 0; i < len; i++) {
-            if (out[i] == NULL_SENTINEL) {
-                out[i] = null;
-            }
-        }
-        return out;
-    }
-
-    /**
-     * Externalize internal marker objects to serializable strings for json-io.
-     * Converts:
-     * - OPEN → "OPEN"
-     * - CLOSE → "CLOSE"
-     * - SET_OPEN → "SET_OPEN"
-     * - SET_CLOSE → "SET_CLOSE"
-     * - NULL_SENTINEL → null
-     * - User strings that collide with markers → prefixed with "~~ESC~~"
-     *
-     * @param in array that may contain marker objects
-     * @return new array with markers converted to strings and NULL_SENTINEL converted to null
-     */
-    public static Object[] externalizeMarkers(Object[] in) {
-        Object[] out = new Object[in.length];
-        for (int i = 0; i < in.length; i++) {
-            Object elem = in[i];
-            if (elem == OPEN) {
-                out[i] = "~OPEN~";
-            } else if (elem == CLOSE) {
-                out[i] = "~CLOSE~";
-            } else if (elem == SET_OPEN) {
-                out[i] = "~SET_OPEN~";
-            } else if (elem == SET_CLOSE) {
-                out[i] = "~SET_CLOSE~";
-            } else if (elem == NULL_SENTINEL) {
-                out[i] = null;
-            } else if (elem instanceof String) {
-                String str = (String) elem;
-                // Escape user strings that would collide with marker syntax
-                // - "~OPEN~", "~CLOSE~", "~SET_OPEN~", "~SET_CLOSE~" → prefix with ~~ESC~~
-                // - Strings already starting with ~~ESC~~ → prefix with another ~~ESC~~ (recursive)
-                if (str.equals("~OPEN~") || str.equals("~CLOSE~") ||
-                    str.equals("~SET_OPEN~") || str.equals("~SET_CLOSE~") ||
-                    str.startsWith("~~ESC~~")) {
-                    out[i] = "~~ESC~~" + str;
-                } else {
-                    out[i] = elem;
-                }
-            } else {
-                out[i] = elem;
-            }
-        }
-        return out;
-    }
-
-    /**
-     * Internalize serialized marker strings back to internal marker objects for json-io.
-     * Converts:
-     * - "~OPEN~" → OPEN
-     * - "~CLOSE~" → CLOSE
-     * - "~SET_OPEN~" → SET_OPEN
-     * - "~SET_CLOSE~" → SET_CLOSE
-     * - null → NULL_SENTINEL
-     * - "~~ESC~~{string}" → {string} (unescape user strings)
-     *
-     * @param in array that may contain marker strings
-     * @return new array with marker strings converted back to marker objects and null converted to NULL_SENTINEL
-     */
-    public static Object[] internalizeMarkers(Object[] in) {
-        Object[] out = new Object[in.length];
-        for (int i = 0; i < in.length; i++) {
-            Object elem = in[i];
-            if ("~OPEN~".equals(elem)) {
-                out[i] = OPEN;
-            } else if ("~CLOSE~".equals(elem)) {
-                out[i] = CLOSE;
-            } else if ("~SET_OPEN~".equals(elem)) {
-                out[i] = SET_OPEN;
-            } else if ("~SET_CLOSE~".equals(elem)) {
-                out[i] = SET_CLOSE;
-            } else if (elem == null) {
-                out[i] = NULL_SENTINEL;
-            } else if (elem instanceof String && ((String) elem).startsWith("~~ESC~~")) {
-                // Unescape user strings that were escaped to prevent marker collision
-                out[i] = ((String) elem).substring(7); // Remove "~~ESC~~" prefix
-            } else {
-                out[i] = elem;
-            }
-        }
-        return out;
-    }
-
-    /**
-     * Externalize a key by stripping all markers (OPEN, CLOSE, SET_OPEN, SET_CLOSE)
-     * and converting NULL_SENTINEL to null. Returns an array with just the actual key values.
-     */
-    private static Object[] externalizeKey(Object[] in) {
-        List<Object> result = new ArrayList<>(in.length);
-        for (Object elem : in) {
-            // Skip all markers
-            if (elem == OPEN || elem == CLOSE || elem == SET_OPEN || elem == SET_CLOSE) {
-                continue;
-            }
-            // Convert NULL_SENTINEL to null
-            if (elem == NULL_SENTINEL) {
-                result.add(null);
-            } else {
-                result.add(elem);
-            }
-        }
-        return result.toArray();
-    }
-
-    /**
-     * Helper method to collect elements between open and close markers.
-     * Handles nested structures recursively.
-     *
-     * @param in the flattened key array
-     * @param index current position (mutated as elements are collected)
-     * @param closeMarker the marker that ends this collection (CLOSE or SET_CLOSE)
-     * @return list of collected elements
-     */
-    private static List<Object> collectElements(Object[] in, int[] index, Object closeMarker) {
-        List<Object> elements = new ArrayList<>();
-
-        while (index[0] < in.length && in[index[0]] != closeMarker) {
-            Object current = in[index[0]];
-
-            if (current == SET_OPEN || current == OPEN) {
-                // Nested structure - find matching close and recurse
-                Object matchingClose = (current == SET_OPEN) ? SET_CLOSE : CLOSE;
-                int closeIdx = findMatchingClose(in, index[0], current, matchingClose);
-                Object[] nested = Arrays.copyOfRange(in, index[0], closeIdx + 1);
-                elements.add(reconstructKey(nested));
-                index[0] = closeIdx + 1;
-            } else {
-                elements.add(current == NULL_SENTINEL ? null : current);
-                index[0]++;
-            }
-        }
-
-        return elements;
-    }
-
-    /**
-     * Reconstructs the original key structure from a flattened internal representation.
-     * This method properly handles composite keys with mixed Lists and Sets.
-     * <p>Public to allow json-io deserialization to reconstruct keys from serialized form.</p>
-     *
-     * For example, the internal representation:
-     *   [OPEN, 1, 2, 3, CLOSE, SET_OPEN, 4, 5, 6, SET_CLOSE]
-     * is reconstructed as:
-     *   Object[]{List(1,2,3), Set(4,5,6)}
+     * Reconstructs keys as native structures (List, Set, or single items) for serialization.
+     * This is the preferred method for entrySet()/keySet() as it returns structures that serialize
+     * naturally in JSON without requiring marker parsing.
+     * <p>
+     * Returns:
+     * <ul>
+     *   <li>Single item if the key has only one component</li>
+     *   <li>List (ArrayList) for ordered sequences (from OPEN/CLOSE markers or unmarked arrays)</li>
+     *   <li>Set (LinkedHashSet) for unordered sequences (from SET_OPEN/SET_CLOSE markers)</li>
+     * </ul>
+     * <p>Nested structures are handled recursively, so Lists can contain Sets/Lists/singles,
+     * and Sets can contain Lists/Sets/singles. This ensures proper equals/hashCode behavior
+     * at all nesting levels.</p>
      *
      * @param in the flattened internal key array with markers
-     * @return the reconstructed key as an Object or Object[] that matches the original structure
+     * @return the reconstructed key using native List/Set/single-item structures
      */
     public static Object reconstructKey(Object[] in) {
         // Check if there are any markers in the array
@@ -4015,16 +3853,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
 
-        // If no markers, check if it's a single element or a multi-element array
+        // If no markers, check if it's a single element or a multi-element sequence
         if (!hasMarkers) {
             if (in.length == 1) {
                 // Single element without markers - return as-is (it's a simple key)
                 return (in[0] == NULL_SENTINEL) ? null : in[0];
             } else {
-                // Multi-element array without markers - this came from a List/Array key
+                // Multi-element array without markers - return as List (ordered sequence)
                 List<Object> elements = new ArrayList<>(in.length);
-                for (Object elem : in) {
-                    elements.add(elem == NULL_SENTINEL ? null : elem);
+                for (int i = 0; i < in.length; i++) {
+                    elements.add((in[i] == NULL_SENTINEL) ? null : in[i]);
                 }
                 return Collections.unmodifiableList(elements);
             }
@@ -4043,20 +3881,20 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
         // Has markers - reconstruct composite structure
         List<Object> components = new ArrayList<>();
-        int[] index = {0};  // Use array for mutability (like processNestedStructure)
+        int[] index = {0};  // Use array for mutability
 
         while (index[0] < in.length) {
             Object elem = in[index[0]];
 
             if (elem == OPEN) {
                 index[0]++;  // Skip OPEN
-                List<Object> elements = collectElements(in, index, CLOSE);
-                components.add(Collections.unmodifiableList(elements));
+                List<Object> elements = collectElementsToNative(in, index, CLOSE);
+                components.add(Collections.unmodifiableList(elements));  // Return as List for ordered sequence
                 index[0]++;  // Skip CLOSE
             } else if (elem == SET_OPEN) {
                 index[0]++;  // Skip SET_OPEN
-                List<Object> elements = collectElements(in, index, SET_CLOSE);
-                components.add(Collections.unmodifiableSet(new LinkedHashSet<>(elements)));
+                List<Object> elements = collectElementsToNative(in, index, SET_CLOSE);
+                components.add(Collections.unmodifiableSet(new LinkedHashSet<>(elements)));  // Return as LinkedHashSet
                 index[0]++;  // Skip SET_CLOSE
             } else {
                 // Regular element (not inside a collection marker)
@@ -4065,12 +3903,43 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             }
         }
 
-        // Return single element if only one component, otherwise return as Object[]
+        // Return single element if only one component, otherwise return as List
         if (components.size() == 1) {
             return components.get(0);
         } else {
-            return components.toArray();
+            return Collections.unmodifiableList(components);
         }
+    }
+
+    /**
+     * Helper method to collect elements between open and close markers for native reconstruction.
+     * Handles nested structures recursively, returning List/Set structures.
+     *
+     * @param in the flattened key array
+     * @param index current position (mutated as elements are collected)
+     * @param closeMarker the marker that ends this collection (CLOSE or SET_CLOSE)
+     * @return list of collected elements (to be converted to List or Set by caller)
+     */
+    private static List<Object> collectElementsToNative(Object[] in, int[] index, Object closeMarker) {
+        List<Object> elements = new ArrayList<>();
+
+        while (index[0] < in.length && in[index[0]] != closeMarker) {
+            Object current = in[index[0]];
+
+            if (current == SET_OPEN || current == OPEN) {
+                // Nested structure - find matching close and recurse
+                Object matchingClose = (current == SET_OPEN) ? SET_CLOSE : CLOSE;
+                int closeIdx = findMatchingClose(in, index[0], current, matchingClose);
+                Object[] nested = Arrays.copyOfRange(in, index[0], closeIdx + 1);
+                elements.add(reconstructKey(nested));  // Use native reconstruction
+                index[0] = closeIdx + 1;
+            } else {
+                elements.add(current == NULL_SENTINEL ? null : current);
+                index[0]++;
+            }
+        }
+
+        return elements;
     }
 
     /**
@@ -4104,70 +3973,6 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         throw new IllegalStateException("No matching close marker found");
     }
 
-    public static class MultiKeyEntry<V> {
-        public final Object[] keys;
-        public final V value;
-
-        MultiKeyEntry(Object k, V v) {
-            // Canonicalize to Object[] for consistent external presentation
-            // Note: We keep NULL_SENTINEL here for toString() to display as ∅
-            // The externalization happens in keySet()/entrySet() only
-            if (k instanceof Object[]) {
-                keys = (Object[]) k;
-            } else if (k instanceof Collection) {
-                // Convert internal List representation back to Object[] for API consistency
-                keys = ((Collection<?>) k).toArray();
-            } else if (k != null && k.getClass().isArray() && k.getClass().getComponentType().isPrimitive()) {
-                // Box primitive arrays so they display correctly in keySet/entrySet/toString
-                final int n = Array.getLength(k);
-                Object[] boxed = new Object[n];
-                for (int i = 0; i < n; i++) {
-                    boxed[i] = Array.get(k, i);
-                }
-                keys = boxed;  // No NULL_SENTINEL in primitive arrays
-            } else {
-                keys = new Object[]{k};
-            }
-            value = v;
-        }
-    }
-
-    private class EntryIterator implements Iterator<MultiKeyEntry<V>> {
-        private final AtomicReferenceArray<MultiKey<V>[]> snapshot = buckets;
-        private int bucketIdx = 0;
-        private int chainIdx = 0;
-        private MultiKeyEntry<V> next;
-
-        EntryIterator() {
-            advance();
-        }
-
-        public boolean hasNext() {
-            return next != null;
-        }
-
-        public MultiKeyEntry<V> next() {
-            if (next == null) throw new NoSuchElementException();
-            MultiKeyEntry<V> current = next;
-            advance();
-            return current;
-        }
-
-        private void advance() {
-            final int len = snapshot.length();  // Cache length locally to avoid repeated volatile reads
-            while (bucketIdx < len) {
-                MultiKey<V>[] chain = snapshot.get(bucketIdx);
-                if (chain != null && chainIdx < chain.length) {
-                    MultiKey<V> e = chain[chainIdx++];
-                    next = new MultiKeyEntry<>(e.keys, e.value);
-                    return;
-                }
-                bucketIdx++;
-                chainIdx = 0;
-            }
-            next = null;
-        }
-    }
 
     private static int calculateOptimalStripeCount() {
         int cores = Runtime.getRuntime().availableProcessors();

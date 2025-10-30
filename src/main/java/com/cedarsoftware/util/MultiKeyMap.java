@@ -1955,12 +1955,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 // If stored key is also a Collection/array, compare using elementEquals
                 // This handles COLLECTIONS_NOT_EXPANDED mode where collections are single keys
                 if (stored.keys instanceof Collection || stored.keys.getClass().isArray()) {
-                    // In COLLECTIONS_NOT_EXPANDED mode, use the collection's own equals()
+                    // In COLLECTIONS_NOT_EXPANDED mode, collections are treated as single keys
+                    // Use elementEquals to handle cases where collection types differ (e.g., List vs Set)
+                    // but content is the same - this can happen after deserialization when MultiKeyMap
+                    // converts Sets to Lists internally
                     if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
-                        if (stored.keys instanceof Collection && lookup instanceof Collection) {
-                            return stored.keys.equals(lookup);
-                        }
-                        // For arrays in COLLECTIONS_NOT_EXPANDED mode, still use elementEquals
                         return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);
                     }
                     // In COLLECTIONS_EXPANDED mode, use elementEquals
@@ -3328,9 +3327,15 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                         Object[] keysArray = (Object[]) keys;
                         k = keysArray.length == 1 ? (keysArray[0] == NULL_SENTINEL ? null : keysArray[0]) : reconstructKey(keysArray);
                     } else if (keys instanceof Collection) {
-                        // Collection means nested structure - need to convert to array for reconstruction
-                        Object[] keysArray = ((Collection<?>) keys).toArray();
-                        k = reconstructKey(keysArray);
+                        // In COLLECTIONS_NOT_EXPANDED mode, Collections are stored as single keys without flattening
+                        // Return them as-is to preserve the original type and hashCode
+                        if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED) {
+                            k = keys;
+                        } else {
+                            // Collection represents nested structure - need to convert to array for reconstruction
+                            Object[] keysArray = ((Collection<?>) keys).toArray();
+                            k = reconstructKey(keysArray);
+                        }
                     } else {
                         // Single key
                         k = keys;

@@ -1,5 +1,7 @@
 ### Revision History
 #### 4.2.0 (unreleased)
+> * **FIXED**: `MultiKeyMap` collection key handling in COLLECTIONS_NOT_EXPANDED mode - Fixed two critical issues: (1) keysMatch() now uses collection.equals() instead of element-by-element comparison for proper equality semantics across different Collection implementations (e.g., Arrays.ArrayList vs Collections.UnmodifiableRandomAccessList), (2) entrySet() now preserves original collection types instead of reconstructing them, preventing hash code mismatches after deserialization. These fixes ensure collection keys can be looked up correctly after serialization/deserialization cycles.
+>
 > * **REMOVED**: `MultiKeyMap.entries()`, `MultiKeyEntry`, and `EntryIterator` - Removed deprecated `entries()` method that exposed internal flattened key structure with markers. All code now uses standard `entrySet()` which returns keys as native List/Set/single structures suitable for serialization. This cleanup:
 >   * Eliminates 3 unused public methods: `externalizeNulls()`, `externalizeMarkers()`, `internalizeMarkers()`
 >   * Removes 2 classes: public `MultiKeyEntry` and private `EntryIterator`

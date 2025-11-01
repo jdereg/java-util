@@ -251,7 +251,7 @@ class ConcurrentListIteratorTest {
                             LOG.fine("Iterator encountered exception during extreme concurrency: " + iterException.getMessage());
                         }
 
-                        // Each iterator should see some elements (best-effort snapshot)
+                        // Each iterator should see some elements (best-effort snapshot)                                                                     1
                         // With the fix, iterator creation should never fail
                         assertThat(count).isGreaterThanOrEqualTo(0); // Could be empty if all elements were removed
                         successfulIterations.incrementAndGet();
@@ -268,9 +268,12 @@ class ConcurrentListIteratorTest {
         startLatch.countDown(); // Start all threads
         boolean completed = completionLatch.await(30, TimeUnit.SECONDS);
 
-        executor.shutdownNow();
+        // Graceful shutdown - don't interrupt threads that are still working
+        executor.shutdown();
+        boolean terminated = executor.awaitTermination(5, TimeUnit.SECONDS);
 
         assertThat(completed).describedAs("All threads should complete within timeout").isTrue();
+        assertThat(terminated).describedAs("Executor should terminate gracefully").isTrue();
         assertThat(failure.get()).describedAs("No thread should fail").isNull();
         assertThat(successfulIterations.get()).describedAs("All iterations should succeed")
                 .isEqualTo(numThreads * iterationsPerThread);

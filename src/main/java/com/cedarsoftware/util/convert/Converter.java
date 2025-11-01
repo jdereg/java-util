@@ -51,7 +51,6 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -203,7 +202,7 @@ public final class Converter {
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
     private static final MultiKeyMap<Convert<?>> CONVERSION_DB = new MultiKeyMap<>(4096, 0.8f);
     private final MultiKeyMap<Convert<?>> USER_DB = new MultiKeyMap<>(16, 0.8f);
-    private static final Map<ConversionPair, Convert<?>> FULL_CONVERSION_CACHE = new ConcurrentHashMap<>(1024, 0.75f);
+    private static final MultiKeyMap<Convert<?>> FULL_CONVERSION_CACHE = new MultiKeyMap<>(1024, 0.75f);
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SIMPLE_TYPE_CACHE = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SELF_CONVERSION_CACHE = new ClassValueMap<>();
@@ -1743,7 +1742,7 @@ public final class Converter {
         conversionMethod = CONVERSION_DB.getMultiKey(sourceType, toType, 0L);
         if (isValidConversion(conversionMethod)) {
             // Cache built-in conversions with instance ID 0 to keep them shared across instances
-            FULL_CONVERSION_CACHE.put(pair(sourceType, toType, 0L), conversionMethod);
+            FULL_CONVERSION_CACHE.putMultiKey(conversionMethod, sourceType, toType, 0L);
             // Also cache with current instance ID for faster future lookup
             cacheConverter(sourceType, toType, conversionMethod);
             return (T) conversionMethod.convert(from, this, toType);
@@ -1784,17 +1783,17 @@ public final class Converter {
 
     private Convert<?> getCachedConverter(Class<?> source, Class<?> target) {
         // First check instance-specific cache
-        Convert<?> converter = FULL_CONVERSION_CACHE.get(pair(source, target, this.instanceId));
+        Convert<?> converter = FULL_CONVERSION_CACHE.getMultiKey(source, target, this.instanceId);
         if (converter != null) {
             return converter;
         }
 
         // Fall back to shared conversions (instance ID 0)
-        return FULL_CONVERSION_CACHE.get(pair(source, target, 0L));
+        return FULL_CONVERSION_CACHE.getMultiKey(source, target, 0L);
     }
 
     private void cacheConverter(Class<?> source, Class<?> target, Convert<?> converter) {
-        FULL_CONVERSION_CACHE.put(pair(source, target, this.instanceId), converter);
+        FULL_CONVERSION_CACHE.putMultiKey(converter, source, target, this.instanceId);
     }
 
     // Cache JsonObject class to avoid repeated reflection lookups
@@ -2661,21 +2660,38 @@ public final class Converter {
         // but necessary for the static addConversion API.
         
         // Collect keys to remove (can't modify during iteration)
-        java.util.List<ConversionPair> keysToRemove = new java.util.ArrayList<>();
-        for (Map.Entry<ConversionPair, Convert<?>> entry : FULL_CONVERSION_CACHE.entrySet()) {
-            ConversionPair key = entry.getKey();
-            Class<?> sourceClass = key.getSource();
-            Class<?> targetClass = key.getTarget();
-            if ((sourceClass == source && targetClass == target) ||
-                // Also clear inheritance-based entries
-                isInheritanceRelated(sourceClass, targetClass, source, target)) {
-                keysToRemove.add(key);
+        java.util.List<Object> keysToRemove = new java.util.ArrayList<>();
+        for (Map.Entry<Object, Convert<?>> entry : FULL_CONVERSION_CACHE.entrySet()) {
+            Object key = entry.getKey();
+            // Multi-keys are reconstructed as List
+            if (key instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> keyList = (List<Object>) key;
+                if (keyList.size() >= 2) {
+                    Object keySource = keyList.get(0);
+                    Object keyTarget = keyList.get(1);
+                    if (keySource instanceof Class && keyTarget instanceof Class) {
+                        Class<?> sourceClass = (Class<?>) keySource;
+                        Class<?> targetClass = (Class<?>) keyTarget;
+                        if ((sourceClass == source && targetClass == target) ||
+                            // Also clear inheritance-based entries
+                            isInheritanceRelated(sourceClass, targetClass, source, target)) {
+                            keysToRemove.add(key);
+                        }
+                    }
+                }
             }
         }
-
+        
         // Remove the collected keys
-        for (ConversionPair key : keysToRemove) {
-            FULL_CONVERSION_CACHE.remove(key);
+        for (Object key : keysToRemove) {
+            if (key instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Object> keyList = (List<Object>) key;
+                if (keyList.size() >= 3) {
+                    FULL_CONVERSION_CACHE.removeMultiKey(keyList.get(0), keyList.get(1), keyList.get(2));
+                }
+            }
         }
 
         SIMPLE_TYPE_CACHE.remove(source);

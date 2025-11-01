@@ -286,11 +286,18 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     // Pre-created MultiKey for null to avoid allocation on every null key operation
     @SuppressWarnings("rawtypes")
     private static final MultiKey NULL_NORMALIZED_KEY = new MultiKey<>(NULL_SENTINEL, 0, null);
-    
+
+    // ThreadLocal arrays for zero-allocation multi-key lookups (getMultiKey/containsMultiKey)
+    // Each size has its own ThreadLocal to provide exact-sized arrays without allocation
+    private static final ThreadLocal<Object[]> LOOKUP_KEY_2 = ThreadLocal.withInitial(() -> new Object[2]);
+    private static final ThreadLocal<Object[]> LOOKUP_KEY_3 = ThreadLocal.withInitial(() -> new Object[3]);
+    private static final ThreadLocal<Object[]> LOOKUP_KEY_4 = ThreadLocal.withInitial(() -> new Object[4]);
+    private static final ThreadLocal<Object[]> LOOKUP_KEY_5 = ThreadLocal.withInitial(() -> new Object[5]);
+
     // ThreadLocal holder for normalized key and hash - avoids allocation on GET operations
-    private static final class Norm { 
-        Object key; 
-        int hash; 
+    private static final class Norm {
+        Object key;
+        int hash;
     }
 
     // Common strings
@@ -987,7 +994,75 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (keys.length == 1) return get(keys[0]);
         return get(keys);  // Let get()'s normalizeLookup() handle everything!
     }
-    
+
+    /**
+     * Optimized 2-key lookup with zero allocation using ThreadLocal array.
+     *
+     * @param k1 first key component
+     * @param k2 second key component
+     * @return the value associated with the multi-key, or {@code null} if no mapping exists
+     */
+    public V getMultiKey(Object k1, Object k2) {
+        Object[] key = LOOKUP_KEY_2.get();
+        key[0] = k1;
+        key[1] = k2;
+        return get(key);
+    }
+
+    /**
+     * Optimized 3-key lookup with zero allocation using ThreadLocal array.
+     *
+     * @param k1 first key component
+     * @param k2 second key component
+     * @param k3 third key component
+     * @return the value associated with the multi-key, or {@code null} if no mapping exists
+     */
+    public V getMultiKey(Object k1, Object k2, Object k3) {
+        Object[] key = LOOKUP_KEY_3.get();
+        key[0] = k1;
+        key[1] = k2;
+        key[2] = k3;
+        return get(key);
+    }
+
+    /**
+     * Optimized 4-key lookup with zero allocation using ThreadLocal array.
+     *
+     * @param k1 first key component
+     * @param k2 second key component
+     * @param k3 third key component
+     * @param k4 fourth key component
+     * @return the value associated with the multi-key, or {@code null} if no mapping exists
+     */
+    public V getMultiKey(Object k1, Object k2, Object k3, Object k4) {
+        Object[] key = LOOKUP_KEY_4.get();
+        key[0] = k1;
+        key[1] = k2;
+        key[2] = k3;
+        key[3] = k4;
+        return get(key);
+    }
+
+    /**
+     * Optimized 5-key lookup with zero allocation using ThreadLocal array.
+     *
+     * @param k1 first key component
+     * @param k2 second key component
+     * @param k3 third key component
+     * @param k4 fourth key component
+     * @param k5 fifth key component
+     * @return the value associated with the multi-key, or {@code null} if no mapping exists
+     */
+    public V getMultiKey(Object k1, Object k2, Object k3, Object k4, Object k5) {
+        Object[] key = LOOKUP_KEY_5.get();
+        key[0] = k1;
+        key[1] = k2;
+        key[2] = k3;
+        key[3] = k4;
+        key[4] = k5;
+        return get(key);
+    }
+
     /**
      * Normalizes a key for lookup operations without allocating a MultiKey object.
      * This method uses a ThreadLocal Norm holder to avoid allocations on the hot path.
@@ -3007,6 +3082,74 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         if (keys == null || keys.length == 0) return containsKey(null);
         if (keys.length == 1) return containsKey(keys[0]);
         return containsKey(keys);  // Let containsKey()'s normalization handle everything!
+    }
+
+    /**
+     * Optimized 2-key containsKey check with zero allocation using ThreadLocal array.
+     *
+     * @param k1 first key component
+     * @param k2 second key component
+     * @return {@code true} if this map contains a mapping for the multi-key
+     */
+    public boolean containsMultiKey(Object k1, Object k2) {
+        Object[] key = LOOKUP_KEY_2.get();
+        key[0] = k1;
+        key[1] = k2;
+        return containsKey(key);
+    }
+
+    /**
+     * Optimized 3-key containsKey check with zero allocation using ThreadLocal array.
+     *
+     * @param k1 first key component
+     * @param k2 second key component
+     * @param k3 third key component
+     * @return {@code true} if this map contains a mapping for the multi-key
+     */
+    public boolean containsMultiKey(Object k1, Object k2, Object k3) {
+        Object[] key = LOOKUP_KEY_3.get();
+        key[0] = k1;
+        key[1] = k2;
+        key[2] = k3;
+        return containsKey(key);
+    }
+
+    /**
+     * Optimized 4-key containsKey check with zero allocation using ThreadLocal array.
+     *
+     * @param k1 first key component
+     * @param k2 second key component
+     * @param k3 third key component
+     * @param k4 fourth key component
+     * @return {@code true} if this map contains a mapping for the multi-key
+     */
+    public boolean containsMultiKey(Object k1, Object k2, Object k3, Object k4) {
+        Object[] key = LOOKUP_KEY_4.get();
+        key[0] = k1;
+        key[1] = k2;
+        key[2] = k3;
+        key[3] = k4;
+        return containsKey(key);
+    }
+
+    /**
+     * Optimized 5-key containsKey check with zero allocation using ThreadLocal array.
+     *
+     * @param k1 first key component
+     * @param k2 second key component
+     * @param k3 third key component
+     * @param k4 fourth key component
+     * @param k5 fifth key component
+     * @return {@code true} if this map contains a mapping for the multi-key
+     */
+    public boolean containsMultiKey(Object k1, Object k2, Object k3, Object k4, Object k5) {
+        Object[] key = LOOKUP_KEY_5.get();
+        key[0] = k1;
+        key[1] = k2;
+        key[2] = k3;
+        key[3] = k4;
+        key[4] = k5;
+        return containsKey(key);
     }
 
     /**

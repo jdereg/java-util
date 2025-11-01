@@ -1,16 +1,16 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Conversions to and from java.awt.Insets.
+ * Conversions to and from com.cedarsoftware.util.Insets.
  * Supports conversion from various formats including Map with top/left/bottom/right keys,
  * int arrays, and strings to Insets objects, as well as converting Insets
  * objects to these various representations.
@@ -44,7 +44,7 @@ final class InsetsConversions {
      */
     static String toString(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return "(" + insets.top + "," + insets.left + "," + insets.bottom + "," + insets.right + ")";
+        return "(" + insets.getTop() + "," + insets.getLeft() + "," + insets.getBottom() + "," + insets.getRight() + ")";
     }
 
     /**
@@ -56,10 +56,10 @@ final class InsetsConversions {
     static Map<String, Object> toMap(Object from, Converter converter) {
         Insets insets = (Insets) from;
         Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.TOP, insets.top);
-        target.put(MapConversions.LEFT, insets.left);
-        target.put(MapConversions.BOTTOM, insets.bottom);
-        target.put(MapConversions.RIGHT, insets.right);
+        target.put(MapConversions.TOP, insets.getTop());
+        target.put(MapConversions.LEFT, insets.getLeft());
+        target.put(MapConversions.BOTTOM, insets.getBottom());
+        target.put(MapConversions.RIGHT, insets.getRight());
         return target;
     }
 
@@ -71,7 +71,7 @@ final class InsetsConversions {
      */
     static int[] toIntArray(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return new int[]{insets.top, insets.left, insets.bottom, insets.right};
+        return new int[]{insets.getTop(), insets.getLeft(), insets.getBottom(), insets.getRight()};
     }
 
     /**
@@ -82,7 +82,7 @@ final class InsetsConversions {
      */
     static Long toLong(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return (long) insets.top + insets.left + insets.bottom + insets.right;
+        return (long) insets.getTop() + insets.getLeft() + insets.getBottom() + insets.getRight();
     }
 
     /**
@@ -93,7 +93,7 @@ final class InsetsConversions {
      */
     static Integer toInteger(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return insets.top + insets.left + insets.bottom + insets.right;
+        return insets.getTop() + insets.getLeft() + insets.getBottom() + insets.getRight();
     }
 
     /**
@@ -104,7 +104,7 @@ final class InsetsConversions {
      */
     static BigInteger toBigInteger(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return BigInteger.valueOf((long) insets.top + insets.left + insets.bottom + insets.right);
+        return BigInteger.valueOf((long) insets.getTop() + insets.getLeft() + insets.getBottom() + insets.getRight());
     }
 
     /**
@@ -115,7 +115,7 @@ final class InsetsConversions {
      */
     static BigDecimal toBigDecimal(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return BigDecimal.valueOf((long) insets.top + insets.left + insets.bottom + insets.right);
+        return BigDecimal.valueOf((long) insets.getTop() + insets.getLeft() + insets.getBottom() + insets.getRight());
     }
 
     /**
@@ -126,7 +126,7 @@ final class InsetsConversions {
      */
     static Boolean toBoolean(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return insets.top != 0 || insets.left != 0 || insets.bottom != 0 || insets.right != 0;
+        return insets.getTop() != 0 || insets.getLeft() != 0 || insets.getBottom() != 0 || insets.getRight() != 0;
     }
 
     /**
@@ -147,7 +147,7 @@ final class InsetsConversions {
      */
     static Point toPoint(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return new Point(insets.top, insets.left);
+        return new Point(insets.getTop(), insets.getLeft());
     }
 
     /**
@@ -158,7 +158,7 @@ final class InsetsConversions {
      */
     static Dimension toDimension(Object from, Converter converter) {
         Insets insets = (Insets) from;
-        return new Dimension(insets.left + insets.right, insets.top + insets.bottom);
+        return new Dimension(insets.getLeft() + insets.getRight(), insets.getTop() + insets.getBottom());
     }
 
     /**
@@ -171,8 +171,8 @@ final class InsetsConversions {
         Insets insets = (Insets) from;
         // For insets, we interpret them as defining a rectangular area
         // where left/top are the position and right/bottom define the extent
-        int width = Math.max(0, insets.right - insets.left);
-        int height = Math.max(0, insets.bottom - insets.top);
-        return new Rectangle(insets.left, insets.top, width, height);
+        int width = Math.max(0, insets.getRight() - insets.getLeft());
+        int height = Math.max(0, insets.getBottom() - insets.getTop());
+        return new Rectangle(insets.getLeft(), insets.getTop(), width, height);
     }
 }

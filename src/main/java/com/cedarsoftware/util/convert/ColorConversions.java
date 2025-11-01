@@ -1,13 +1,13 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Color;
+import com.cedarsoftware.util.Color;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Conversions to and from java.awt.Color.
+ * Conversions to and from com.cedarsoftware.util.Color.
  * Supports conversion from various formats including hex strings, RGB maps, 
  * packed integers, and arrays to Color objects, as well as converting Color 
  * objects to these various representations.

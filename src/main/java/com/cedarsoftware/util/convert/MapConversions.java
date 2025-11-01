@@ -1,9 +1,10 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Color;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -1081,7 +1082,7 @@ final class MapConversions {
      * @return A Color instance
      * @throws IllegalArgumentException if the map cannot be converted to a Color
      */
-    static java.awt.Color toColor(Object from, Converter converter) {
+    static Color toColor(Object from, Converter converter) {
         Map<?, ?> map = (Map<?, ?>) from;
 
         // Try full RGB components first (most explicit)
@@ -1092,9 +1093,9 @@ final class MapConversions {
             
             if (map.containsKey(ALPHA)) {
                 int a = converter.convert(map.get(ALPHA), int.class);
-                return new java.awt.Color(r, g, b, a);
+                return new Color(r, g, b, a);
             } else {
-                return new java.awt.Color(r, g, b);
+                return new Color(r, g, b);
             }
         }
 
@@ -1106,20 +1107,20 @@ final class MapConversions {
             
             if (map.containsKey(A)) {
                 int a = converter.convert(map.get(A), int.class);
-                return new java.awt.Color(r, g, b, a);
+                return new Color(r, g, b, a);
             } else {
-                return new java.awt.Color(r, g, b);
+                return new Color(r, g, b);
             }
         }
 
         // Try packed RGB value
         if (map.containsKey(RGB)) {
             int rgb = converter.convert(map.get(RGB), Integer.class);
-            return new java.awt.Color(rgb, map.containsKey(ALPHA));
+            return new Color(rgb, map.containsKey(ALPHA));
         }
 
         // Try standard key-based dispatch for hex strings or other formats
-        return dispatch(from, converter, java.awt.Color.class, COLOR_KEYS);
+        return dispatch(from, converter, Color.class, COLOR_KEYS);
     }
 
     /**

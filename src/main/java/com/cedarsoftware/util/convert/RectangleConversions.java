@@ -1,16 +1,16 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Conversions to and from java.awt.Rectangle.
+ * Conversions to and from com.cedarsoftware.util.Rectangle.
  * Supports conversion from various formats including Map with x/y/width/height keys,
  * int arrays, and strings to Rectangle objects, as well as converting Rectangle
  * objects to these various representations.
@@ -44,7 +44,7 @@ final class RectangleConversions {
      */
     static String toString(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return "(" + rectangle.x + "," + rectangle.y + "," + rectangle.width + "," + rectangle.height + ")";
+        return "(" + rectangle.getX() + "," + rectangle.getY() + "," + rectangle.getWidth() + "," + rectangle.getHeight() + ")";
     }
 
     /**
@@ -56,10 +56,10 @@ final class RectangleConversions {
     static Map<String, Object> toMap(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
         Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.X, rectangle.x);
-        target.put(MapConversions.Y, rectangle.y);
-        target.put(MapConversions.WIDTH, rectangle.width);
-        target.put(MapConversions.HEIGHT, rectangle.height);
+        target.put(MapConversions.X, rectangle.getX());
+        target.put(MapConversions.Y, rectangle.getY());
+        target.put(MapConversions.WIDTH, rectangle.getWidth());
+        target.put(MapConversions.HEIGHT, rectangle.getHeight());
         return target;
     }
 
@@ -71,7 +71,7 @@ final class RectangleConversions {
      */
     static int[] toIntArray(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return new int[]{rectangle.x, rectangle.y, rectangle.width, rectangle.height};
+        return new int[]{rectangle.getX(), rectangle.getY(), rectangle.getWidth(), rectangle.getHeight()};
     }
 
     /**
@@ -82,7 +82,7 @@ final class RectangleConversions {
      */
     static Long toLong(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return (long) rectangle.width * rectangle.height;
+        return (long) rectangle.getWidth() * rectangle.getHeight();
     }
 
     /**
@@ -93,7 +93,7 @@ final class RectangleConversions {
      */
     static Integer toInteger(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return rectangle.width * rectangle.height;
+        return rectangle.getWidth() * rectangle.getHeight();
     }
 
     /**
@@ -104,7 +104,7 @@ final class RectangleConversions {
      */
     static BigInteger toBigInteger(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return BigInteger.valueOf((long) rectangle.width * rectangle.height);
+        return BigInteger.valueOf((long) rectangle.getWidth() * rectangle.getHeight());
     }
 
     /**
@@ -126,7 +126,7 @@ final class RectangleConversions {
      */
     static Boolean toBoolean(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return rectangle.x != 0 || rectangle.y != 0 || rectangle.width != 0 || rectangle.height != 0;
+        return rectangle.getX() != 0 || rectangle.getY() != 0 || rectangle.getWidth() != 0 || rectangle.getHeight() != 0;
     }
 
     /**
@@ -147,7 +147,7 @@ final class RectangleConversions {
      */
     static Point toPoint(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return new Point(rectangle.x, rectangle.y);
+        return new Point(rectangle.getX(), rectangle.getY());
     }
 
     /**
@@ -158,7 +158,7 @@ final class RectangleConversions {
      */
     static Dimension toDimension(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return new Dimension(rectangle.width, rectangle.height);
+        return new Dimension(rectangle.getWidth(), rectangle.getHeight());
     }
 
     /**
@@ -169,9 +169,9 @@ final class RectangleConversions {
      */
     static Insets toInsets(Object from, Converter converter) {
         Rectangle rectangle = (Rectangle) from;
-        return new Insets(rectangle.y, rectangle.x, 
-                         rectangle.y + rectangle.height, 
-                         rectangle.x + rectangle.width);
+        return new Insets(rectangle.getY(), rectangle.getX(), 
+                         rectangle.getY() + rectangle.getHeight(), 
+                         rectangle.getX() + rectangle.getWidth());
     }
 
 }

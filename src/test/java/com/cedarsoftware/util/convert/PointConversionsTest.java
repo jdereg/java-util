@@ -1,7 +1,7 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Point;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Point;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -64,36 +64,36 @@ class PointConversionsTest {
     @Test
     void testStringToPoint_parenthesesFormat() {
         Point result = converter.convert("(100,200)", Point.class);
-        assertThat(result.x).isEqualTo(100);
-        assertThat(result.y).isEqualTo(200);
+        assertThat(result.getX()).isEqualTo(100);
+        assertThat(result.getY()).isEqualTo(200);
     }
 
     @Test
     void testStringToPoint_commaSeparated() {
         Point result = converter.convert("150,250", Point.class);
-        assertThat(result.x).isEqualTo(150);
-        assertThat(result.y).isEqualTo(250);
+        assertThat(result.getX()).isEqualTo(150);
+        assertThat(result.getY()).isEqualTo(250);
     }
 
     @Test
     void testStringToPoint_spaceSeparated() {
         Point result = converter.convert("300 400", Point.class);
-        assertThat(result.x).isEqualTo(300);
-        assertThat(result.y).isEqualTo(400);
+        assertThat(result.getX()).isEqualTo(300);
+        assertThat(result.getY()).isEqualTo(400);
     }
 
     @Test
     void testStringToPoint_withWhitespace() {
         Point result = converter.convert("  ( 50 , 75 )  ", Point.class);
-        assertThat(result.x).isEqualTo(50);
-        assertThat(result.y).isEqualTo(75);
+        assertThat(result.getX()).isEqualTo(50);
+        assertThat(result.getY()).isEqualTo(75);
     }
 
     @Test
     void testStringToPoint_negativeCoordinates() {
         Point result = converter.convert("(-10,-20)", Point.class);
-        assertThat(result.x).isEqualTo(-10);
-        assertThat(result.y).isEqualTo(-20);
+        assertThat(result.getX()).isEqualTo(-10);
+        assertThat(result.getY()).isEqualTo(-20);
     }
 
     @Test
@@ -121,8 +121,8 @@ class PointConversionsTest {
         map.put("y", 200);
         
         Point result = converter.convert(map, Point.class);
-        assertThat(result.x).isEqualTo(100);
-        assertThat(result.y).isEqualTo(200);
+        assertThat(result.getX()).isEqualTo(100);
+        assertThat(result.getY()).isEqualTo(200);
     }
 
     @Test
@@ -131,8 +131,8 @@ class PointConversionsTest {
         map.put("value", "(75,125)");
         
         Point result = converter.convert(map, Point.class);
-        assertThat(result.x).isEqualTo(75);
-        assertThat(result.y).isEqualTo(125);
+        assertThat(result.getX()).isEqualTo(75);
+        assertThat(result.getY()).isEqualTo(125);
     }
 
     // ========================================
@@ -144,8 +144,8 @@ class PointConversionsTest {
         int[] array = {300, 400};
         
         Point result = converter.convert(array, Point.class);
-        assertThat(result.x).isEqualTo(300);
-        assertThat(result.y).isEqualTo(400);
+        assertThat(result.getX()).isEqualTo(300);
+        assertThat(result.getY()).isEqualTo(400);
     }
 
     @Test
@@ -153,8 +153,8 @@ class PointConversionsTest {
         int[] array = {-50, -100};
         
         Point result = converter.convert(array, Point.class);
-        assertThat(result.x).isEqualTo(-50);
-        assertThat(result.y).isEqualTo(-100);
+        assertThat(result.getX()).isEqualTo(-50);
+        assertThat(result.getY()).isEqualTo(-100);
     }
 
     @Test
@@ -249,8 +249,8 @@ class PointConversionsTest {
     void testDimensionToPoint() {
         Dimension dimension = new Dimension(800, 600);
         Point result = converter.convert(dimension, Point.class);
-        assertThat(result.x).isEqualTo(800);
-        assertThat(result.y).isEqualTo(600);
+        assertThat(result.getX()).isEqualTo(800);
+        assertThat(result.getY()).isEqualTo(600);
     }
 
     // ========================================

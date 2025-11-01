@@ -2,10 +2,10 @@ package com.cedarsoftware.util.convert;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.Dimension;
-import java.awt.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;

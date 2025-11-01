@@ -1,16 +1,16 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Conversions to and from java.awt.Dimension.
+ * Conversions to and from com.cedarsoftware.util.Dimension.
  * Supports conversion from various formats including Map with width/height keys,
  * int arrays, and strings to Dimension objects, as well as converting Dimension
  * objects to these various representations.
@@ -44,7 +44,7 @@ final class DimensionConversions {
      */
     static String toString(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return dimension.width + "x" + dimension.height;
+        return dimension.getWidth() + "x" + dimension.getHeight();
     }
 
     /**
@@ -56,8 +56,8 @@ final class DimensionConversions {
     static Map<String, Object> toMap(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
         Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.WIDTH, dimension.width);
-        target.put(MapConversions.HEIGHT, dimension.height);
+        target.put(MapConversions.WIDTH, dimension.getWidth());
+        target.put(MapConversions.HEIGHT, dimension.getHeight());
         return target;
     }
 
@@ -69,7 +69,7 @@ final class DimensionConversions {
      */
     static int[] toIntArray(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return new int[]{dimension.width, dimension.height};
+        return new int[]{dimension.getWidth(), dimension.getHeight()};
     }
 
     /**
@@ -80,7 +80,7 @@ final class DimensionConversions {
      */
     static Integer toInteger(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return dimension.width * dimension.height;
+        return dimension.getWidth() * dimension.getHeight();
     }
 
     /**
@@ -91,7 +91,7 @@ final class DimensionConversions {
      */
     static Long toLong(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return (long) dimension.width * dimension.height;
+        return (long) dimension.getWidth() * dimension.getHeight();
     }
 
     /**
@@ -102,7 +102,7 @@ final class DimensionConversions {
      */
     static BigInteger toBigInteger(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return BigInteger.valueOf((long) dimension.width * dimension.height);
+        return BigInteger.valueOf((long) dimension.getWidth() * dimension.getHeight());
     }
 
     /**
@@ -124,7 +124,7 @@ final class DimensionConversions {
      */
     static Point toPoint(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return new Point(dimension.width, dimension.height);
+        return new Point(dimension.getWidth(), dimension.getHeight());
     }
 
     /**
@@ -135,7 +135,7 @@ final class DimensionConversions {
      */
     static Boolean toBoolean(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return dimension.width != 0 || dimension.height != 0;
+        return dimension.getWidth() != 0 || dimension.getHeight() != 0;
     }
 
     /**
@@ -168,7 +168,7 @@ final class DimensionConversions {
      */
     static Rectangle toRectangle(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        return new Rectangle(0, 0, dimension.width, dimension.height);
+        return new Rectangle(0, 0, dimension.getWidth(), dimension.getHeight());
     }
 
     /**
@@ -179,7 +179,7 @@ final class DimensionConversions {
      */
     static Insets toInsets(Object from, Converter converter) {
         Dimension dimension = (Dimension) from;
-        int value = Math.min(dimension.width, dimension.height);
+        int value = Math.min(dimension.getWidth(), dimension.getHeight());
         return new Insets(value, value, value, value);
     }
 }

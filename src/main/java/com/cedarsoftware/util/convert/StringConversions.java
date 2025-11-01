@@ -1,9 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -41,7 +41,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Map;
 import java.util.LinkedHashMap;
-import java.awt.Color;
+import com.cedarsoftware.util.Color;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
@@ -781,9 +781,10 @@ final class StringConversions {
             throw new IllegalArgumentException("Cannot convert empty/null string to Dimension");
         }
 
-        // Try "java.awt.Dimension[width=100,height=200]" format (toString format) - check this FIRST
-        if (str.startsWith("java.awt.Dimension[") && str.endsWith("]")) {
-            String content = str.substring(19, str.length() - 1); // Remove "java.awt.Dimension[" and "]"
+        // Try "Dimension[width=100,height=200]" or "java.awt.Dimension[width=100,height=200]" format (toString format) - check this FIRST
+        if ((str.startsWith("Dimension[") || str.startsWith("java.awt.Dimension[")) && str.endsWith("]")) {
+            int startIndex = str.indexOf('[') + 1;
+            String content = str.substring(startIndex, str.length() - 1); // Remove prefix and "]"
             String[] parts = content.split(",");
             if (parts.length == 2) {
                 String widthPart = parts[0].trim();
@@ -872,9 +873,10 @@ final class StringConversions {
             throw new IllegalArgumentException("Cannot convert empty/null string to Point");
         }
 
-        // Try "java.awt.Point[x=10,y=20]" format (toString format) - check this FIRST
-        if (str.startsWith("java.awt.Point[") && str.endsWith("]")) {
-            String content = str.substring(15, str.length() - 1); // Remove "java.awt.Point[" and "]"
+        // Try "Point[x=10,y=20]" or "java.awt.Point[x=10,y=20]" format (toString format) - check this FIRST
+        if ((str.startsWith("Point[") || str.startsWith("java.awt.Point[")) && str.endsWith("]")) {
+            int startIndex = str.indexOf('[') + 1;
+            String content = str.substring(startIndex, str.length() - 1); // Remove prefix and "]"
             String[] parts = content.split(",");
             if (parts.length == 2) {
                 String xPart = parts[0].trim();
@@ -942,9 +944,10 @@ final class StringConversions {
             throw new IllegalArgumentException("Cannot convert empty/null string to Rectangle");
         }
 
-        // Try "java.awt.Rectangle[x=10,y=20,width=100,height=200]" format (toString format) - check this FIRST
-        if (str.startsWith("java.awt.Rectangle[") && str.endsWith("]")) {
-            String content = str.substring(19, str.length() - 1); // Remove "java.awt.Rectangle[" and "]"
+        // Try "Rectangle[x=10,y=20,width=100,height=200]" or "java.awt.Rectangle[x=10,y=20,width=100,height=200]" format (toString format) - check this FIRST
+        if ((str.startsWith("Rectangle[") || str.startsWith("java.awt.Rectangle[")) && str.endsWith("]")) {
+            int startIndex = str.indexOf('[') + 1;
+            String content = str.substring(startIndex, str.length() - 1); // Remove prefix and "]"
             String[] parts = content.split(",");
             if (parts.length == 4) {
                 try {
@@ -1042,9 +1045,10 @@ final class StringConversions {
             throw new IllegalArgumentException("Cannot convert empty/null string to Insets");
         }
 
-        // Try "java.awt.Insets[top=5,left=10,bottom=15,right=20]" format (toString format) - check this FIRST
-        if (str.startsWith("java.awt.Insets[") && str.endsWith("]")) {
-            String content = str.substring(16, str.length() - 1); // Remove "java.awt.Insets[" and "]"
+        // Try "Insets[top=5,left=10,bottom=15,right=20]" or "java.awt.Insets[top=5,left=10,bottom=15,right=20]" format (toString format) - check this FIRST
+        if ((str.startsWith("Insets[") || str.startsWith("java.awt.Insets[")) && str.endsWith("]")) {
+            int startIndex = str.indexOf('[') + 1;
+            String content = str.substring(startIndex, str.length() - 1); // Remove prefix and "]"
             String[] parts = content.split(",");
             if (parts.length == 4) {
                 try {

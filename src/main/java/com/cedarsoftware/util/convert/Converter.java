@@ -1,6 +1,10 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.*;
+import com.cedarsoftware.util.Color;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.io.Externalizable;
 import java.io.File;
 import java.io.Serializable;

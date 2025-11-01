@@ -1,16 +1,16 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Conversions to and from java.awt.Point.
+ * Conversions to and from com.cedarsoftware.util.Point.
  * Supports conversion from various formats including Map with x/y keys,
  * int arrays, and strings to Point objects, as well as converting Point
  * objects to these various representations.
@@ -44,7 +44,7 @@ final class PointConversions {
      */
     static String toString(Object from, Converter converter) {
         Point point = (Point) from;
-        return "(" + point.x + "," + point.y + ")";
+        return "(" + point.getX() + "," + point.getY() + ")";
     }
 
     /**
@@ -56,8 +56,8 @@ final class PointConversions {
     static Map<String, Object> toMap(Object from, Converter converter) {
         Point point = (Point) from;
         Map<String, Object> target = new LinkedHashMap<>();
-        target.put(MapConversions.X, point.x);
-        target.put(MapConversions.Y, point.y);
+        target.put(MapConversions.X, point.getX());
+        target.put(MapConversions.Y, point.getY());
         return target;
     }
 
@@ -69,7 +69,7 @@ final class PointConversions {
      */
     static int[] toIntArray(Object from, Converter converter) {
         Point point = (Point) from;
-        return new int[]{point.x, point.y};
+        return new int[]{point.getX(), point.getY()};
     }
 
     /**
@@ -80,7 +80,7 @@ final class PointConversions {
      */
     static Integer toInteger(Object from, Converter converter) {
         Point point = (Point) from;
-        return point.x;
+        return point.getX();
     }
 
     /**
@@ -91,7 +91,7 @@ final class PointConversions {
      */
     static Long toLong(Object from, Converter converter) {
         Point point = (Point) from;
-        return (long) point.x;
+        return (long) point.getX();
     }
 
     /**
@@ -102,7 +102,7 @@ final class PointConversions {
      */
     static BigInteger toBigInteger(Object from, Converter converter) {
         Point point = (Point) from;
-        return BigInteger.valueOf(point.x);
+        return BigInteger.valueOf(point.getX());
     }
 
     /**
@@ -124,7 +124,7 @@ final class PointConversions {
      */
     static Dimension toDimension(Object from, Converter converter) {
         Point point = (Point) from;
-        return new Dimension(point.x, point.y);
+        return new Dimension(point.getX(), point.getY());
     }
 
     /**
@@ -135,7 +135,7 @@ final class PointConversions {
      */
     static Boolean toBoolean(Object from, Converter converter) {
         Point point = (Point) from;
-        return point.x != 0 || point.y != 0;
+        return point.getX() != 0 || point.getY() != 0;
     }
 
     /**
@@ -156,7 +156,7 @@ final class PointConversions {
      */
     static Rectangle toRectangle(Object from, Converter converter) {
         Point point = (Point) from;
-        return new Rectangle(point.x, point.y, 0, 0);
+        return new Rectangle(point.getX(), point.getY(), 0, 0);
     }
 
     /**
@@ -167,7 +167,7 @@ final class PointConversions {
      */
     static Insets toInsets(Object from, Converter converter) {
         Point point = (Point) from;
-        return new Insets(point.x, point.y, 0, 0);
+        return new Insets(point.getX(), point.getY(), 0, 0);
     }
 
 }

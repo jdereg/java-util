@@ -1,6 +1,7 @@
 package com.cedarsoftware.util;
 
-import java.awt.*;
+import com.cedarsoftware.util.Color;
+import com.cedarsoftware.util.Point;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;

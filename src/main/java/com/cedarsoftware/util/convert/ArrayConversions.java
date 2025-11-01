@@ -1,10 +1,10 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Color;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.EnumSet;

@@ -1,9 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -66,46 +66,46 @@ class RectangleConversionsTest {
     @Test
     void testStringToRectangle_parenthesesFormat() {
         Rectangle result = converter.convert("(10,20,100,50)", Rectangle.class);
-        assertThat(result.x).isEqualTo(10);
-        assertThat(result.y).isEqualTo(20);
-        assertThat(result.width).isEqualTo(100);
-        assertThat(result.height).isEqualTo(50);
+        assertThat(result.getX()).isEqualTo(10);
+        assertThat(result.getY()).isEqualTo(20);
+        assertThat(result.getWidth()).isEqualTo(100);
+        assertThat(result.getHeight()).isEqualTo(50);
     }
 
     @Test
     void testStringToRectangle_commaSeparated() {
         Rectangle result = converter.convert("5,15,200,80", Rectangle.class);
-        assertThat(result.x).isEqualTo(5);
-        assertThat(result.y).isEqualTo(15);
-        assertThat(result.width).isEqualTo(200);
-        assertThat(result.height).isEqualTo(80);
+        assertThat(result.getX()).isEqualTo(5);
+        assertThat(result.getY()).isEqualTo(15);
+        assertThat(result.getWidth()).isEqualTo(200);
+        assertThat(result.getHeight()).isEqualTo(80);
     }
 
     @Test
     void testStringToRectangle_spaceSeparated() {
         Rectangle result = converter.convert("0 0 300 150", Rectangle.class);
-        assertThat(result.x).isEqualTo(0);
-        assertThat(result.y).isEqualTo(0);
-        assertThat(result.width).isEqualTo(300);
-        assertThat(result.height).isEqualTo(150);
+        assertThat(result.getX()).isEqualTo(0);
+        assertThat(result.getY()).isEqualTo(0);
+        assertThat(result.getWidth()).isEqualTo(300);
+        assertThat(result.getHeight()).isEqualTo(150);
     }
 
     @Test
     void testStringToRectangle_withWhitespace() {
         Rectangle result = converter.convert("  ( 25 , 30 , 400 , 200 )  ", Rectangle.class);
-        assertThat(result.x).isEqualTo(25);
-        assertThat(result.y).isEqualTo(30);
-        assertThat(result.width).isEqualTo(400);
-        assertThat(result.height).isEqualTo(200);
+        assertThat(result.getX()).isEqualTo(25);
+        assertThat(result.getY()).isEqualTo(30);
+        assertThat(result.getWidth()).isEqualTo(400);
+        assertThat(result.getHeight()).isEqualTo(200);
     }
 
     @Test
     void testStringToRectangle_negativeCoordinates() {
         Rectangle result = converter.convert("(-10,-20,100,50)", Rectangle.class);
-        assertThat(result.x).isEqualTo(-10);
-        assertThat(result.y).isEqualTo(-20);
-        assertThat(result.width).isEqualTo(100);
-        assertThat(result.height).isEqualTo(50);
+        assertThat(result.getX()).isEqualTo(-10);
+        assertThat(result.getY()).isEqualTo(-20);
+        assertThat(result.getWidth()).isEqualTo(100);
+        assertThat(result.getHeight()).isEqualTo(50);
     }
 
     @Test
@@ -142,10 +142,10 @@ class RectangleConversionsTest {
         map.put("height", 50);
         
         Rectangle result = converter.convert(map, Rectangle.class);
-        assertThat(result.x).isEqualTo(10);
-        assertThat(result.y).isEqualTo(20);
-        assertThat(result.width).isEqualTo(100);
-        assertThat(result.height).isEqualTo(50);
+        assertThat(result.getX()).isEqualTo(10);
+        assertThat(result.getY()).isEqualTo(20);
+        assertThat(result.getWidth()).isEqualTo(100);
+        assertThat(result.getHeight()).isEqualTo(50);
     }
 
 
@@ -155,10 +155,10 @@ class RectangleConversionsTest {
         map.put("value", "(0,0,300,150)");
         
         Rectangle result = converter.convert(map, Rectangle.class);
-        assertThat(result.x).isEqualTo(0);
-        assertThat(result.y).isEqualTo(0);
-        assertThat(result.width).isEqualTo(300);
-        assertThat(result.height).isEqualTo(150);
+        assertThat(result.getX()).isEqualTo(0);
+        assertThat(result.getY()).isEqualTo(0);
+        assertThat(result.getWidth()).isEqualTo(300);
+        assertThat(result.getHeight()).isEqualTo(150);
     }
 
     // ========================================
@@ -170,10 +170,10 @@ class RectangleConversionsTest {
         int[] array = {10, 20, 100, 50};
         
         Rectangle result = converter.convert(array, Rectangle.class);
-        assertThat(result.x).isEqualTo(10);
-        assertThat(result.y).isEqualTo(20);
-        assertThat(result.width).isEqualTo(100);
-        assertThat(result.height).isEqualTo(50);
+        assertThat(result.getX()).isEqualTo(10);
+        assertThat(result.getY()).isEqualTo(20);
+        assertThat(result.getWidth()).isEqualTo(100);
+        assertThat(result.getHeight()).isEqualTo(50);
     }
 
     @Test
@@ -181,10 +181,10 @@ class RectangleConversionsTest {
         int[] array = {-10, -20, 100, 50};
         
         Rectangle result = converter.convert(array, Rectangle.class);
-        assertThat(result.x).isEqualTo(-10);
-        assertThat(result.y).isEqualTo(-20);
-        assertThat(result.width).isEqualTo(100);
-        assertThat(result.height).isEqualTo(50);
+        assertThat(result.getX()).isEqualTo(-10);
+        assertThat(result.getY()).isEqualTo(-20);
+        assertThat(result.getWidth()).isEqualTo(100);
+        assertThat(result.getHeight()).isEqualTo(50);
     }
 
     @Test
@@ -287,10 +287,10 @@ class RectangleConversionsTest {
     void testDimensionToRectangle() {
         Dimension dimension = new Dimension(200, 150);
         Rectangle result = converter.convert(dimension, Rectangle.class);
-        assertThat(result.x).isEqualTo(0);
-        assertThat(result.y).isEqualTo(0);
-        assertThat(result.width).isEqualTo(200);
-        assertThat(result.height).isEqualTo(150);
+        assertThat(result.getX()).isEqualTo(0);
+        assertThat(result.getY()).isEqualTo(0);
+        assertThat(result.getWidth()).isEqualTo(200);
+        assertThat(result.getHeight()).isEqualTo(150);
     }
 
 

@@ -1,9 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Dimension;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -73,55 +73,55 @@ class InsetsConversionsTest {
     @Test
     void testStringToInsets_parenthesesFormat() {
         Insets result = converter.convert("(5,10,15,20)", Insets.class);
-        assertThat(result.top).isEqualTo(5);
-        assertThat(result.left).isEqualTo(10);
-        assertThat(result.bottom).isEqualTo(15);
-        assertThat(result.right).isEqualTo(20);
+        assertThat(result.getTop()).isEqualTo(5);
+        assertThat(result.getLeft()).isEqualTo(10);
+        assertThat(result.getBottom()).isEqualTo(15);
+        assertThat(result.getRight()).isEqualTo(20);
     }
 
     @Test
     void testStringToInsets_commaSeparated() {
         Insets result = converter.convert("8,12,16,24", Insets.class);
-        assertThat(result.top).isEqualTo(8);
-        assertThat(result.left).isEqualTo(12);
-        assertThat(result.bottom).isEqualTo(16);
-        assertThat(result.right).isEqualTo(24);
+        assertThat(result.getTop()).isEqualTo(8);
+        assertThat(result.getLeft()).isEqualTo(12);
+        assertThat(result.getBottom()).isEqualTo(16);
+        assertThat(result.getRight()).isEqualTo(24);
     }
 
     @Test
     void testStringToInsets_spaceSeparated() {
         Insets result = converter.convert("1 2 3 4", Insets.class);
-        assertThat(result.top).isEqualTo(1);
-        assertThat(result.left).isEqualTo(2);
-        assertThat(result.bottom).isEqualTo(3);
-        assertThat(result.right).isEqualTo(4);
+        assertThat(result.getTop()).isEqualTo(1);
+        assertThat(result.getLeft()).isEqualTo(2);
+        assertThat(result.getBottom()).isEqualTo(3);
+        assertThat(result.getRight()).isEqualTo(4);
     }
 
     @Test
     void testStringToInsets_withWhitespace() {
         Insets result = converter.convert("  ( 10 , 20 , 30 , 40 )  ", Insets.class);
-        assertThat(result.top).isEqualTo(10);
-        assertThat(result.left).isEqualTo(20);
-        assertThat(result.bottom).isEqualTo(30);
-        assertThat(result.right).isEqualTo(40);
+        assertThat(result.getTop()).isEqualTo(10);
+        assertThat(result.getLeft()).isEqualTo(20);
+        assertThat(result.getBottom()).isEqualTo(30);
+        assertThat(result.getRight()).isEqualTo(40);
     }
 
     @Test
     void testStringToInsets_negativeValues() {
         Insets result = converter.convert("(-5,-10,15,20)", Insets.class);
-        assertThat(result.top).isEqualTo(-5);
-        assertThat(result.left).isEqualTo(-10);
-        assertThat(result.bottom).isEqualTo(15);
-        assertThat(result.right).isEqualTo(20);
+        assertThat(result.getTop()).isEqualTo(-5);
+        assertThat(result.getLeft()).isEqualTo(-10);
+        assertThat(result.getBottom()).isEqualTo(15);
+        assertThat(result.getRight()).isEqualTo(20);
     }
 
     @Test
     void testStringToInsets_allZero() {
         Insets result = converter.convert("(0,0,0,0)", Insets.class);
-        assertThat(result.top).isEqualTo(0);
-        assertThat(result.left).isEqualTo(0);
-        assertThat(result.bottom).isEqualTo(0);
-        assertThat(result.right).isEqualTo(0);
+        assertThat(result.getTop()).isEqualTo(0);
+        assertThat(result.getLeft()).isEqualTo(0);
+        assertThat(result.getBottom()).isEqualTo(0);
+        assertThat(result.getRight()).isEqualTo(0);
     }
 
     @Test
@@ -148,28 +148,28 @@ class InsetsConversionsTest {
     @Test
     void testStringToInsets_nativeToStringFormat() {
         Insets result = converter.convert("java.awt.Insets[top=5,left=10,bottom=15,right=20]", Insets.class);
-        assertThat(result.top).isEqualTo(5);
-        assertThat(result.left).isEqualTo(10);
-        assertThat(result.bottom).isEqualTo(15);
-        assertThat(result.right).isEqualTo(20);
+        assertThat(result.getTop()).isEqualTo(5);
+        assertThat(result.getLeft()).isEqualTo(10);
+        assertThat(result.getBottom()).isEqualTo(15);
+        assertThat(result.getRight()).isEqualTo(20);
     }
 
     @Test
     void testStringToInsets_nativeToStringFormat_withWhitespace() {
         Insets result = converter.convert("  java.awt.Insets[top=8,left=12,bottom=16,right=24]  ", Insets.class);
-        assertThat(result.top).isEqualTo(8);
-        assertThat(result.left).isEqualTo(12);
-        assertThat(result.bottom).isEqualTo(16);
-        assertThat(result.right).isEqualTo(24);
+        assertThat(result.getTop()).isEqualTo(8);
+        assertThat(result.getLeft()).isEqualTo(12);
+        assertThat(result.getBottom()).isEqualTo(16);
+        assertThat(result.getRight()).isEqualTo(24);
     }
 
     @Test
     void testStringToInsets_nativeToStringFormat_negativeValues() {
         Insets result = converter.convert("java.awt.Insets[top=-5,left=-10,bottom=15,right=20]", Insets.class);
-        assertThat(result.top).isEqualTo(-5);
-        assertThat(result.left).isEqualTo(-10);
-        assertThat(result.bottom).isEqualTo(15);
-        assertThat(result.right).isEqualTo(20);
+        assertThat(result.getTop()).isEqualTo(-5);
+        assertThat(result.getLeft()).isEqualTo(-10);
+        assertThat(result.getBottom()).isEqualTo(15);
+        assertThat(result.getRight()).isEqualTo(20);
     }
 
     // ========================================
@@ -185,10 +185,10 @@ class InsetsConversionsTest {
         map.put("right", 20);
         
         Insets result = converter.convert(map, Insets.class);
-        assertThat(result.top).isEqualTo(5);
-        assertThat(result.left).isEqualTo(10);
-        assertThat(result.bottom).isEqualTo(15);
-        assertThat(result.right).isEqualTo(20);
+        assertThat(result.getTop()).isEqualTo(5);
+        assertThat(result.getLeft()).isEqualTo(10);
+        assertThat(result.getBottom()).isEqualTo(15);
+        assertThat(result.getRight()).isEqualTo(20);
     }
 
     @Test
@@ -197,10 +197,10 @@ class InsetsConversionsTest {
         map.put("value", "(8,12,16,24)");
         
         Insets result = converter.convert(map, Insets.class);
-        assertThat(result.top).isEqualTo(8);
-        assertThat(result.left).isEqualTo(12);
-        assertThat(result.bottom).isEqualTo(16);
-        assertThat(result.right).isEqualTo(24);
+        assertThat(result.getTop()).isEqualTo(8);
+        assertThat(result.getLeft()).isEqualTo(12);
+        assertThat(result.getBottom()).isEqualTo(16);
+        assertThat(result.getRight()).isEqualTo(24);
     }
 
     @Test
@@ -209,10 +209,10 @@ class InsetsConversionsTest {
         map.put("_v", "1,2,3,4");
         
         Insets result = converter.convert(map, Insets.class);
-        assertThat(result.top).isEqualTo(1);
-        assertThat(result.left).isEqualTo(2);
-        assertThat(result.bottom).isEqualTo(3);
-        assertThat(result.right).isEqualTo(4);
+        assertThat(result.getTop()).isEqualTo(1);
+        assertThat(result.getLeft()).isEqualTo(2);
+        assertThat(result.getBottom()).isEqualTo(3);
+        assertThat(result.getRight()).isEqualTo(4);
     }
 
     // ========================================
@@ -224,10 +224,10 @@ class InsetsConversionsTest {
         int[] array = {5, 10, 15, 20};
         
         Insets result = converter.convert(array, Insets.class);
-        assertThat(result.top).isEqualTo(5);
-        assertThat(result.left).isEqualTo(10);
-        assertThat(result.bottom).isEqualTo(15);
-        assertThat(result.right).isEqualTo(20);
+        assertThat(result.getTop()).isEqualTo(5);
+        assertThat(result.getLeft()).isEqualTo(10);
+        assertThat(result.getBottom()).isEqualTo(15);
+        assertThat(result.getRight()).isEqualTo(20);
     }
 
     @Test
@@ -235,10 +235,10 @@ class InsetsConversionsTest {
         int[] array = {-5, -10, 15, 20};
         
         Insets result = converter.convert(array, Insets.class);
-        assertThat(result.top).isEqualTo(-5);
-        assertThat(result.left).isEqualTo(-10);
-        assertThat(result.bottom).isEqualTo(15);
-        assertThat(result.right).isEqualTo(20);
+        assertThat(result.getTop()).isEqualTo(-5);
+        assertThat(result.getLeft()).isEqualTo(-10);
+        assertThat(result.getBottom()).isEqualTo(15);
+        assertThat(result.getRight()).isEqualTo(20);
     }
 
     @Test
@@ -342,10 +342,10 @@ class InsetsConversionsTest {
         Dimension dimension = new Dimension(100, 200);
         Insets result = converter.convert(dimension, Insets.class);
         int minValue = Math.min(100, 200); // min(width, height) = 100
-        assertThat(result.top).isEqualTo(minValue); // all sides = min value
-        assertThat(result.left).isEqualTo(minValue);
-        assertThat(result.bottom).isEqualTo(minValue);
-        assertThat(result.right).isEqualTo(minValue);
+        assertThat(result.getTop()).isEqualTo(minValue); // all sides = min value
+        assertThat(result.getLeft()).isEqualTo(minValue);
+        assertThat(result.getBottom()).isEqualTo(minValue);
+        assertThat(result.getRight()).isEqualTo(minValue);
     }
 
     @Test
@@ -379,10 +379,10 @@ class InsetsConversionsTest {
         // Test if the current converter can parse this format back to Insets
         try {
             Insets parsedBack = converter.convert(actualToString, Insets.class);
-            assertThat(parsedBack.top).isEqualTo(5);
-            assertThat(parsedBack.left).isEqualTo(10);
-            assertThat(parsedBack.bottom).isEqualTo(15);
-            assertThat(parsedBack.right).isEqualTo(20);
+            assertThat(parsedBack.getTop()).isEqualTo(5);
+            assertThat(parsedBack.getLeft()).isEqualTo(10);
+            assertThat(parsedBack.getBottom()).isEqualTo(15);
+            assertThat(parsedBack.getRight()).isEqualTo(20);
             LOG.info("SUCCESS: Converter can parse the native toString() format!");
         } catch (Exception e) {
             LOG.warning("INFO: Converter cannot parse the native toString() format: " + e.getMessage());
@@ -504,10 +504,10 @@ class InsetsConversionsTest {
         Insets parsedInsets = converter.convert(nativeString, Insets.class);
         
         // Verify round-trip works perfectly
-        assertThat(parsedInsets.top).isEqualTo(originalInsets.top);
-        assertThat(parsedInsets.left).isEqualTo(originalInsets.left);
-        assertThat(parsedInsets.bottom).isEqualTo(originalInsets.bottom);
-        assertThat(parsedInsets.right).isEqualTo(originalInsets.right);
+        assertThat(parsedInsets.getTop()).isEqualTo(originalInsets.getTop());
+        assertThat(parsedInsets.getLeft()).isEqualTo(originalInsets.getLeft());
+        assertThat(parsedInsets.getBottom()).isEqualTo(originalInsets.getBottom());
+        assertThat(parsedInsets.getRight()).isEqualTo(originalInsets.getRight());
     }
 
 }

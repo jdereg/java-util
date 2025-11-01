@@ -1,6 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.*;
+import com.cedarsoftware.util.Dimension;
+import com.cedarsoftware.util.Insets;
+import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -61,29 +64,29 @@ class DimensionConversionsTest {
     @Test
     void testStringToDimension_widthXheight() {
         Dimension result = converter.convert("800x600", Dimension.class);
-        assertThat(result.width).isEqualTo(800);
-        assertThat(result.height).isEqualTo(600);
+        assertThat(result.getWidth()).isEqualTo(800);
+        assertThat(result.getHeight()).isEqualTo(600);
     }
 
     @Test
     void testStringToDimension_commaSeparated() {
         Dimension result = converter.convert("1920,1080", Dimension.class);
-        assertThat(result.width).isEqualTo(1920);
-        assertThat(result.height).isEqualTo(1080);
+        assertThat(result.getWidth()).isEqualTo(1920);
+        assertThat(result.getHeight()).isEqualTo(1080);
     }
 
     @Test
     void testStringToDimension_spaceSeparated() {
         Dimension result = converter.convert("640 480", Dimension.class);
-        assertThat(result.width).isEqualTo(640);
-        assertThat(result.height).isEqualTo(480);
+        assertThat(result.getWidth()).isEqualTo(640);
+        assertThat(result.getHeight()).isEqualTo(480);
     }
 
     @Test
     void testStringToDimension_withWhitespace() {
         Dimension result = converter.convert("  1024 x 768  ", Dimension.class);
-        assertThat(result.width).isEqualTo(1024);
-        assertThat(result.height).isEqualTo(768);
+        assertThat(result.getWidth()).isEqualTo(1024);
+        assertThat(result.getHeight()).isEqualTo(768);
     }
 
     @Test
@@ -111,8 +114,8 @@ class DimensionConversionsTest {
         map.put("height", 600);
         
         Dimension result = converter.convert(map, Dimension.class);
-        assertThat(result.width).isEqualTo(800);
-        assertThat(result.height).isEqualTo(600);
+        assertThat(result.getWidth()).isEqualTo(800);
+        assertThat(result.getHeight()).isEqualTo(600);
     }
 
     @Test
@@ -122,8 +125,8 @@ class DimensionConversionsTest {
         map.put("h", 1080);
         
         Dimension result = converter.convert(map, Dimension.class);
-        assertThat(result.width).isEqualTo(1920);
-        assertThat(result.height).isEqualTo(1080);
+        assertThat(result.getWidth()).isEqualTo(1920);
+        assertThat(result.getHeight()).isEqualTo(1080);
     }
 
     @Test
@@ -132,8 +135,8 @@ class DimensionConversionsTest {
         map.put("value", "640x480");
         
         Dimension result = converter.convert(map, Dimension.class);
-        assertThat(result.width).isEqualTo(640);
-        assertThat(result.height).isEqualTo(480);
+        assertThat(result.getWidth()).isEqualTo(640);
+        assertThat(result.getHeight()).isEqualTo(480);
     }
 
     // ========================================
@@ -145,8 +148,8 @@ class DimensionConversionsTest {
         int[] array = {800, 600};
         
         Dimension result = converter.convert(array, Dimension.class);
-        assertThat(result.width).isEqualTo(800);
-        assertThat(result.height).isEqualTo(600);
+        assertThat(result.getWidth()).isEqualTo(800);
+        assertThat(result.getHeight()).isEqualTo(600);
     }
 
     @Test

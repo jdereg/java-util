@@ -1,6 +1,6 @@
 package com.cedarsoftware.util.convert;
 
-import java.awt.Color;
+import com.cedarsoftware.util.Color;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;

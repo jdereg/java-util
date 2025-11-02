@@ -314,7 +314,8 @@
                                 <moduleInfoSource>
                                     module com.cedarsoftware.util {
                                     requires java.sql;
-                                    requires java.xml;
+                                    requires static java.compiler;
+                                    requires static java.xml;
                                     exports com.cedarsoftware.util;
                                     exports com.cedarsoftware.util.convert;
                                     }

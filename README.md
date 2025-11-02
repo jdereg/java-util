@@ -41,6 +41,35 @@ As of version 3.6.0 the library is built with the `-parameters`
 compiler flag. Parameter names are now retained for tasks such as
 constructor discovery (increased the jar size by about 10K.)
 
+## JDK Module Requirements
+
+### Required Modules
+**java.sql** - Required for date/time conversions (`java.sql.Timestamp` and `java.sql.Date`)
+- **Impact**: ~500KB footprint, includes JDBC API interfaces (no drivers required)
+- **Why**: Core `Converter` uses `java.sql.Timestamp` extensively for date/time type conversions
+- **Headless containers**: This adds ~500KB to your deployment but does NOT require database connectivity or JDBC drivers
+
+### Optional Modules (static dependencies)
+**java.compiler** - Optional for `CompactMap` runtime code generation (`javax.tools.JavaCompiler`)
+- Only needed if using `CompactMap.newMap()` dynamic subclass generation
+- Most users don't need this feature
+- Code checks availability and throws clear error if not present
+
+**java.xml** - Optional for `IOUtilities` XML stream operations (`javax.xml.stream.*`)
+- Only needed for XML-specific methods in `IOUtilities`
+- Most library functionality works without it
+- See `IOUtilities` javadoc for details
+
+### JPMS Module Descriptor
+When using java-util as a JPMS module, add to your `module-info.java`:
+```java
+requires com.cedarsoftware.util;  // Automatically brings in java.sql
+// java.compiler and java.xml are marked as 'static' - not required at runtime
+```
+
+### OSGi
+The OSGi manifest automatically imports all required packages. Optional packages (`javax.tools`, `javax.xml.stream`) are marked as optional imports.
+
 ## Featured Utilities
 
 ### 🚀 DeepEquals - Complete Object Comparison

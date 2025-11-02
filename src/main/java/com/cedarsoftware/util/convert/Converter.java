@@ -133,6 +133,20 @@ import com.cedarsoftware.util.MultiKeyMap;
  * </p>
  *
  * <p>
+ * <strong>JDK Module Requirements:</strong>
+ * <ul>
+ *     <li><b>java.sql</b> (REQUIRED): Core date/time conversions use {@code java.sql.Timestamp} and {@code java.sql.Date}.
+ *         This adds ~500KB to your runtime footprint but does NOT require database connectivity or JDBC drivers.
+ *         For JPMS modules, this dependency is automatically transitive when you {@code requires com.cedarsoftware.util}.</li>
+ *     <li><b>java.compiler</b> (OPTIONAL): Only needed for {@code CompactMap} runtime code generation.
+ *         Most users don't need this. Available at compile time in JDK, may not be present in JRE-only environments.</li>
+ *     <li><b>java.xml</b> (OPTIONAL): Only needed for XML-specific methods in {@code IOUtilities}.
+ *         Marked as a static (optional) dependency in the JPMS module descriptor.</li>
+ * </ul>
+ * See the README for more details on module requirements and deployment considerations.
+ * </p>
+ *
+ * <p>
  * <strong>Usage Example:</strong>
  * <pre>{@code
  *     ConverterOptions options = new ConverterOptions();
@@ -165,21 +179,6 @@ import com.cedarsoftware.util.MultiKeyMap;
  * }</pre>
  * </p>
  *
- * <p>
- * <strong>Module Dependencies:</strong>
- * </p>
- * <ul>
- *   <li>
- *     <b>SQL support:</b> Conversions involving {@code java.sql.Date} and {@code java.sql.Timestamp} require
- *     the {@code java.sql} module to be present at runtime. If you're using OSGi, ensure your bundle imports
- *     the {@code java.sql} package or declare it as an optional import if SQL support is not required.
- *   </li>
- *   <li>
- *     <b>XML support:</b> This library does not directly use XML classes, but {@link com.cedarsoftware.util.IOUtilities}
- *     provides XML stream support that requires the {@code java.xml} module. See {@link com.cedarsoftware.util.IOUtilities}
- *     for more details.
- *   </li>
- * </ul>
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  * Copyright (c) Cedar Software LLC

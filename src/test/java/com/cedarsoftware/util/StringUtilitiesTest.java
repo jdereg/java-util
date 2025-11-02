@@ -1009,7 +1009,7 @@ public class StringUtilitiesTest
     @Test
     void testGetRandomChar_returnsDeterministicCharacters() {
         Random random = new Random(42);
-        assertEquals("A", StringUtilities.getRandomChar(random, true));
-        assertEquals("h", StringUtilities.getRandomChar(random, false));
+        assertEquals('A', StringUtilities.getRandomChar(random, true));
+        assertEquals('h', StringUtilities.getRandomChar(random, false));
     }
 }

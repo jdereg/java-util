@@ -198,13 +198,23 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public int size() {
-        long diff = tail.get() - head.get();
-        return diff > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) diff;
+        lock.readLock().lock();
+        try {
+            long diff = tail.get() - head.get();
+            return diff > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) diff;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Override
     public boolean isEmpty() {
-        return tail.get() == head.get();
+        lock.readLock().lock();
+        try {
+            return tail.get() == head.get();
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Override
@@ -406,30 +416,40 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public E get(int index) {
-        long h = head.get();
-        long t = tail.get();
-        long pos = h + index;
-        if (index < 0 || pos >= t) {
-            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size());
+        lock.readLock().lock();
+        try {
+            long h = head.get();
+            long t = tail.get();
+            long pos = h + index;
+            if (index < 0 || pos >= t) {
+                throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size());
+            }
+            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+            @SuppressWarnings("unchecked")
+            E e = (E) bucket.get(bucketOffset(pos));
+            return e;
+        } finally {
+            lock.readLock().unlock();
         }
-        AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-        @SuppressWarnings("unchecked")
-        E e = (E) bucket.get(bucketOffset(pos));
-        return e;
     }
 
     @Override
     public E set(int index, E element) {
-        long h = head.get();
-        long t = tail.get();
-        long pos = h + index;
-        if (index < 0 || pos >= t) {
-            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size());
+        lock.readLock().lock();
+        try {
+            long h = head.get();
+            long t = tail.get();
+            long pos = h + index;
+            if (index < 0 || pos >= t) {
+                throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size());
+            }
+            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+            @SuppressWarnings("unchecked")
+            E old = (E) bucket.getAndSet(bucketOffset(pos), element);
+            return old;
+        } finally {
+            lock.readLock().unlock();
         }
-        AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-        @SuppressWarnings("unchecked")
-        E old = (E) bucket.getAndSet(bucketOffset(pos), element);
-        return old;
     }
 
     @Override
@@ -640,29 +660,39 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public E peekFirst() {
-        long h = head.get();
-        long t = tail.get();
-        if (h >= t) {
-            return null;
+        lock.readLock().lock();
+        try {
+            long h = head.get();
+            long t = tail.get();
+            if (h >= t) {
+                return null;
+            }
+            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(h));
+            @SuppressWarnings("unchecked")
+            E val = (E) bucket.get(bucketOffset(h));
+            return val;
+        } finally {
+            lock.readLock().unlock();
         }
-        AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(h));
-        @SuppressWarnings("unchecked")
-        E val = (E) bucket.get(bucketOffset(h));
-        return val;
     }
 
     @Override
     public E peekLast() {
-        long t = tail.get();
-        long h = head.get();
-        if (t <= h) {
-            return null;
+        lock.readLock().lock();
+        try {
+            long t = tail.get();
+            long h = head.get();
+            if (t <= h) {
+                return null;
+            }
+            long pos = t - 1;
+            AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
+            @SuppressWarnings("unchecked")
+            E val = (E) bucket.get(bucketOffset(pos));
+            return val;
+        } finally {
+            lock.readLock().unlock();
         }
-        long pos = t - 1;
-        AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(pos));
-        @SuppressWarnings("unchecked")
-        E val = (E) bucket.get(bucketOffset(pos));
-        return val;
     }
 
     @Override

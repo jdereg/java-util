@@ -10,12 +10,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -456,7 +455,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             this.hash = hash;
             this.value = value;
             
-            // Compute and cache arity and kind for fast operations
+            // Compute and cache size and kind for fast operations
             if (normalizedKeys == null) {
                 this.size = 1;
                 this.kind = KIND_SINGLE;
@@ -2011,7 +2010,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     }
 
     /**
-     * Optimized keysMatch that leverages MultiKey's precomputed arity and kind.
+     * Optimized keysMatch that leverages MultiKey's precomputed size and kind.
      * This is used when we have access to the stored MultiKey object.
      */
     private boolean keysMatch(MultiKey<V> stored, Object lookup) {
@@ -2022,7 +2021,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         // Multi-key case - use precomputed kind for fast switching
         final Class<?> lookupClass = lookup.getClass();
 
-        // Early arity rejection - if stored has precomputed arity, check it first
+        // Early size rejection - if stored has precomputed size, check it first
         if (stored.kind == MultiKey.KIND_SINGLE) {
             // Single key optimization
             // In COLLECTIONS_NOT_EXPANDED mode, a Collection/array can be a single key
@@ -2047,7 +2046,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return elementEquals(stored.keys, lookup, valueBasedEquality, caseSensitive);
         }
 
-        // Check arity match first (early rejection)
+        // Check size match first (early rejection)
         final int lookupSize;
         final byte lookupKind;
         
@@ -2065,8 +2064,14 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return false;
         }
         
-        // Early rejection on arity mismatch
-        if (stored.size != lookupSize) return false;
+        // Early rejection on size mismatch
+        // IMPORTANT: Skip size check when stored is expanded Collection and lookup is un-expanded Collection
+        // In COLLECTIONS_EXPANDED mode, stored.size is the EXPANDED size (includes SET_OPEN/SET_CLOSE markers)
+        // but lookupSize is the UN-EXPANDED Collection size. The compareCollections method handles this correctly.
+        boolean skipSizeCheck = (collectionKeyMode == CollectionKeyMode.COLLECTIONS_EXPANDED &&
+                                  stored.kind == MultiKey.KIND_COLLECTION &&
+                                  lookupKind == MultiKey.KIND_COLLECTION);
+        if (!skipSizeCheck && stored.size != lookupSize) return false;
         
         // Handle COLLECTIONS_NOT_EXPANDED mode - Collections should use their own equals
         if (collectionKeyMode == CollectionKeyMode.COLLECTIONS_NOT_EXPANDED && stored.kind == MultiKey.KIND_COLLECTION) {
@@ -2085,16 +2090,16 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Unified container comparison handling all type combinations.
      * Optimized fast paths for same-type comparisons, cross-type handling for others.
      */
-    private boolean compareContainers(Object stored, Object lookup, int arity, byte storedKind, byte lookupKind, 
+    private boolean compareContainers(Object stored, Object lookup, int size, byte storedKind, byte lookupKind,
                                       Class<?> storedClass, Class<?> lookupClass, boolean valueBasedEquality, boolean caseSensitive) {
         // Fast path: same container types
         if (storedKind == lookupKind) {
             switch (storedKind) {
                 case MultiKey.KIND_OBJECT_ARRAY:
-                    return compareObjectArrays((Object[]) stored, (Object[]) lookup, arity);
+                    return compareObjectArrays((Object[]) stored, (Object[]) lookup, size);
                     
                 case MultiKey.KIND_COLLECTION:
-                    return compareCollections((Collection<?>) stored, (Collection<?>) lookup, arity, valueBasedEquality, caseSensitive);
+                    return compareCollections((Collection<?>) stored, (Collection<?>) lookup, size, valueBasedEquality, caseSensitive);
                     
                 case MultiKey.KIND_PRIMITIVE_ARRAY:
                     // Same primitive array type - use optimized comparison
@@ -2111,29 +2116,29 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
         
         // Object[] vs Collection (or vice versa)
         if (storedKind == MultiKey.KIND_OBJECT_ARRAY && lookupKind == MultiKey.KIND_COLLECTION) {
-            return compareObjectArrayToCollection((Object[]) stored, (Collection<?>) lookup, arity, valueBasedEquality, caseSensitive);
+            return compareObjectArrayToCollection((Object[]) stored, (Collection<?>) lookup, size, valueBasedEquality, caseSensitive);
         }
         if (storedKind == MultiKey.KIND_COLLECTION && lookupKind == MultiKey.KIND_OBJECT_ARRAY) {
             // Just swap arguments
-            return compareObjectArrayToCollection((Object[]) lookup, (Collection<?>) stored, arity, valueBasedEquality, caseSensitive);
+            return compareObjectArrayToCollection((Object[]) lookup, (Collection<?>) stored, size, valueBasedEquality, caseSensitive);
         }
         
         // Primitive array vs Collection (or vice versa)
         if (storedKind == MultiKey.KIND_PRIMITIVE_ARRAY && lookupKind == MultiKey.KIND_COLLECTION) {
-            return comparePrimitiveArrayToCollection(stored, (Collection<?>) lookup, arity, valueBasedEquality, caseSensitive);
+            return comparePrimitiveArrayToCollection(stored, (Collection<?>) lookup, size, valueBasedEquality, caseSensitive);
         }
         if (storedKind == MultiKey.KIND_COLLECTION && lookupKind == MultiKey.KIND_PRIMITIVE_ARRAY) {
             // Just swap arguments
-            return comparePrimitiveArrayToCollection(lookup, (Collection<?>) stored, arity, valueBasedEquality, caseSensitive);
+            return comparePrimitiveArrayToCollection(lookup, (Collection<?>) stored, size, valueBasedEquality, caseSensitive);
         }
         
         // Primitive array vs Object array (or vice versa)
         if (storedKind == MultiKey.KIND_PRIMITIVE_ARRAY && lookupKind == MultiKey.KIND_OBJECT_ARRAY) {
-            return comparePrimitiveArrayToObjectArray(stored, (Object[]) lookup, arity, valueBasedEquality, caseSensitive);
+            return comparePrimitiveArrayToObjectArray(stored, (Object[]) lookup, size, valueBasedEquality, caseSensitive);
         }
         if (storedKind == MultiKey.KIND_OBJECT_ARRAY && lookupKind == MultiKey.KIND_PRIMITIVE_ARRAY) {
             // Just swap arguments
-            return comparePrimitiveArrayToObjectArray(lookup, (Object[]) stored, arity, valueBasedEquality, caseSensitive);
+            return comparePrimitiveArrayToObjectArray(lookup, (Object[]) stored, size, valueBasedEquality, caseSensitive);
         }
         
         // Fallback for any other cases (e.g., different primitive array types)
@@ -2145,7 +2150,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             ? ((Collection<?>) lookup).iterator()
             : new ArrayIterator(lookup);
             
-        for (int i = 0; i < arity; i++) {
+        for (int i = 0; i < size; i++) {
             if (!elementEquals(storedIter.next(), lookupIter.next(), valueBasedEquality, caseSensitive)) {
                 return false;
             }
@@ -2238,9 +2243,9 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Compare two Object[] arrays using configured equality semantics.
      */
-    private boolean compareObjectArrays(Object[] array1, Object[] array2, int arity) {
+    private boolean compareObjectArrays(Object[] array1, Object[] array2, int size) {
         int i = 0;
-        while (i < arity) {
+        while (i < size) {
             Object elem1 = array1[i];
             Object elem2 = array2[i];
 
@@ -2252,7 +2257,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                 int setSize = 0;
 
                 // Count elements in both sets and verify size match
-                while (i < arity) {
+                while (i < size) {
                     Object next1 = array1[i];
                     Object next2 = array2[i];
 
@@ -2369,10 +2374,10 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
     /**
      * Compare Object[] to non-RandomAccess Collection using iterator.
      */
-    private static boolean compareObjectArrayToCollection(Object[] array, Collection<?> coll, int arity, boolean valueBasedEquality, boolean caseSensitive) {
+    private static boolean compareObjectArrayToCollection(Object[] array, Collection<?> coll, int size, boolean valueBasedEquality, boolean caseSensitive) {
         Iterator<?> iter = coll.iterator();
         int i = 0;
-        while (i < arity) {
+        while (i < size) {
             Object elem1 = array[i];
             Object elem2 = iter.next();
 
@@ -2384,7 +2389,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
                 // Count array set elements
                 int arraySetSize = 0;
-                while (i < arity && array[i] != SET_CLOSE) {
+                while (i < size && array[i] != SET_CLOSE) {
                     arraySetSize++;
                     i++;
                 }
@@ -2501,33 +2506,57 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Compare two Collections where at least one is non-RandomAccess.
      * Uses iterators for both.
      */
-    private static boolean compareCollections(Collection<?> coll1, Collection<?> coll2, int arity, boolean valueBasedEquality, boolean caseSensitive) {
+    private static boolean compareCollections(Collection<?> coll1, Collection<?> coll2, int size, boolean valueBasedEquality, boolean caseSensitive) {
         Iterator<?> iter1 = coll1.iterator();
         Iterator<?> iter2 = coll2.iterator();
         int i = 0;
-        while (i < arity) {
+        while (i < size) {
             Object elem1 = iter1.next();
             Object elem2 = iter2.next();
 
             // Check if we're entering a Set portion
             if (elem1 == SET_OPEN && elem2 == SET_OPEN) {
+                i++;  // Count the SET_OPEN element itself
+
                 // Collect elements from both iterators (unavoidable since we're using iterators)
                 List<Object> set1Elements = new ArrayList<>();
                 List<Object> set2Elements = new ArrayList<>();
 
-                // Extract from first set
-                while (iter1.hasNext()) {
+                // Extract from first set (track nesting depth for nested Sets!)
+                int depth1 = 1;  // We've already consumed the outer SET_OPEN
+                while (iter1.hasNext() && depth1 > 0) {
                     Object next1 = iter1.next();
                     i++;
-                    if (next1 == SET_CLOSE) break;
-                    set1Elements.add(next1);
+                    if (next1 == SET_OPEN) {
+                        depth1++;
+                        set1Elements.add(next1);
+                    } else if (next1 == SET_CLOSE) {
+                        depth1--;
+                        if (depth1 > 0) {
+                            set1Elements.add(next1);  // Inner SET_CLOSE, add it
+                        }
+                        // If depth1 == 0, we've found the matching outer SET_CLOSE, stop
+                    } else {
+                        set1Elements.add(next1);
+                    }
                 }
 
-                // Extract from second set
-                while (iter2.hasNext()) {
+                // Extract from second set (track nesting depth for nested Sets!)
+                int depth2 = 1;  // We've already consumed the outer SET_OPEN
+                while (iter2.hasNext() && depth2 > 0) {
                     Object next2 = iter2.next();
-                    if (next2 == SET_CLOSE) break;
-                    set2Elements.add(next2);
+                    if (next2 == SET_OPEN) {
+                        depth2++;
+                        set2Elements.add(next2);
+                    } else if (next2 == SET_CLOSE) {
+                        depth2--;
+                        if (depth2 > 0) {
+                            set2Elements.add(next2);  // Inner SET_CLOSE, add it
+                        }
+                        // If depth2 == 0, we've found the matching outer SET_CLOSE, stop
+                    } else {
+                        set2Elements.add(next2);
+                    }
                 }
 
                 // Size check first (fast rejection)
@@ -2614,7 +2643,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     }
                 }
 
-                i++; // Count the SET_CLOSE marker
+                // Note: SET_CLOSE was already counted when extracted (line 2529), no need to count again
             } else if (elem1 == SET_OPEN || elem2 == SET_OPEN) {
                 // One is SET_OPEN but not the other - mismatch
                 return false;
@@ -2643,12 +2672,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Unified implementation for both List and Object[] comparisons.
      * Optimized for each primitive type to avoid Array.get() overhead.
      */
-    private static boolean comparePrimitiveArrayToElements(Object primArray, ElementAccessor accessor, int arity, boolean valueBasedEquality, boolean caseSensitive) {
+    private static boolean comparePrimitiveArrayToElements(Object primArray, ElementAccessor accessor, int size, boolean valueBasedEquality, boolean caseSensitive) {
         Class<?> arrayClass = primArray.getClass();
         
         if (arrayClass == int[].class) {
             int[] array = (int[]) primArray;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2656,7 +2685,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == long[].class) {
             long[] array = (long[]) primArray;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2664,7 +2693,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == double[].class) {
             double[] array = (double[]) primArray;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2672,7 +2701,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == float[].class) {
             float[] array = (float[]) primArray;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2680,7 +2709,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == boolean[].class) {
             boolean[] array = (boolean[]) primArray;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2688,7 +2717,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == byte[].class) {
             byte[] array = (byte[]) primArray;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2696,7 +2725,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == char[].class) {
             char[] array = (char[]) primArray;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2704,7 +2733,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == short[].class) {
             short[] array = (short[]) primArray;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(array[i], accessor.get(i), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2720,21 +2749,21 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
      * Compare primitive array to Object[].
      * Direct access on both sides.
      */
-    private static boolean comparePrimitiveArrayToObjectArray(Object primArray, Object[] objArray, int arity, boolean valueBasedEquality, boolean caseSensitive) {
-        return comparePrimitiveArrayToElements(primArray, i -> objArray[i], arity, valueBasedEquality, caseSensitive);
+    private static boolean comparePrimitiveArrayToObjectArray(Object primArray, Object[] objArray, int size, boolean valueBasedEquality, boolean caseSensitive) {
+        return comparePrimitiveArrayToElements(primArray, i -> objArray[i], size, valueBasedEquality, caseSensitive);
     }
     
     /**
      * Compare primitive array to Collection.
      * For non-RandomAccess Collections, uses iterator.
      */
-    private static boolean comparePrimitiveArrayToCollection(Object array, Collection<?> coll, int arity, boolean valueBasedEquality, boolean caseSensitive) {
+    private static boolean comparePrimitiveArrayToCollection(Object array, Collection<?> coll, int size, boolean valueBasedEquality, boolean caseSensitive) {
         Iterator<?> iter = coll.iterator();
         Class<?> arrayClass = array.getClass();
         
         if (arrayClass == int[].class) {
             int[] intArray = (int[]) array;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(intArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2742,7 +2771,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == long[].class) {
             long[] longArray = (long[]) array;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(longArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2750,7 +2779,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == double[].class) {
             double[] doubleArray = (double[]) array;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(doubleArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2758,7 +2787,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == float[].class) {
             float[] floatArray = (float[]) array;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(floatArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2766,7 +2795,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == boolean[].class) {
             boolean[] boolArray = (boolean[]) array;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(boolArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2774,7 +2803,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == byte[].class) {
             byte[] byteArray = (byte[]) array;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(byteArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2782,7 +2811,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == char[].class) {
             char[] charArray = (char[]) array;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(charArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }
@@ -2790,7 +2819,7 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
             return true;
         } else if (arrayClass == short[].class) {
             short[] shortArray = (short[]) array;
-            for (int i = 0; i < arity; i++) {
+            for (int i = 0; i < size; i++) {
                 if (!elementEquals(shortArray[i], iter.next(), valueBasedEquality, caseSensitive)) {
                     return false;
                 }

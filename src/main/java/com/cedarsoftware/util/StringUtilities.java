@@ -150,31 +150,59 @@ public final class StringUtilities {
     }
     
     private static int getMaxHexDecodeSize() {
-        return Integer.parseInt(System.getProperty("stringutilities.max.hex.decode.size", "0"));
+        try {
+            return Converter.convert(System.getProperty("stringutilities.max.hex.decode.size", "0"), int.class);
+        } catch (Exception e) {
+            return 0;
+        }
     }
-    
+
     private static int getMaxWildcardLength() {
-        return Integer.parseInt(System.getProperty("stringutilities.max.wildcard.length", "0"));
+        try {
+            return Converter.convert(System.getProperty("stringutilities.max.wildcard.length", "0"), int.class);
+        } catch (Exception e) {
+            return 0;
+        }
     }
-    
+
     private static int getMaxWildcardCount() {
-        return Integer.parseInt(System.getProperty("stringutilities.max.wildcard.count", "0"));
+        try {
+            return Converter.convert(System.getProperty("stringutilities.max.wildcard.count", "0"), int.class);
+        } catch (Exception e) {
+            return 0;
+        }
     }
-    
+
     private static int getMaxLevenshteinStringLength() {
-        return Integer.parseInt(System.getProperty("stringutilities.max.levenshtein.string.length", "0"));
+        try {
+            return Converter.convert(System.getProperty("stringutilities.max.levenshtein.string.length", "0"), int.class);
+        } catch (Exception e) {
+            return 0;
+        }
     }
-    
+
     private static int getMaxDamerauLevenshteinStringLength() {
-        return Integer.parseInt(System.getProperty("stringutilities.max.damerau.levenshtein.string.length", "0"));
+        try {
+            return Converter.convert(System.getProperty("stringutilities.max.damerau.levenshtein.string.length", "0"), int.class);
+        } catch (Exception e) {
+            return 0;
+        }
     }
-    
+
     private static int getMaxRepeatCount() {
-        return Integer.parseInt(System.getProperty("stringutilities.max.repeat.count", "0"));
+        try {
+            return Converter.convert(System.getProperty("stringutilities.max.repeat.count", "0"), int.class);
+        } catch (Exception e) {
+            return 0;
+        }
     }
-    
+
     private static int getMaxRepeatTotalSize() {
-        return Integer.parseInt(System.getProperty("stringutilities.max.repeat.total.size", "0"));
+        try {
+            return Converter.convert(System.getProperty("stringutilities.max.repeat.total.size", "0"), int.class);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     /**
@@ -525,7 +553,18 @@ public final class StringUtilities {
     }
 
     public static int count(String s, char c) {
-        return count(s, EMPTY + c);
+        if (s == null) {
+            return 0;
+        }
+
+        int answer = 0;
+        int len = s.length();
+        for (int i = 0; i < len; i++) {
+            if (s.charAt(i) == c) {
+                answer++;
+            }
+        }
+        return answer;
     }
 
     /**
@@ -538,21 +577,31 @@ public final class StringUtilities {
             return 0;
         }
 
-        String source = content.toString();
-        if (source.isEmpty()) {
-            return 0;
-        }
-        String sub = token.toString();
-        if (sub.isEmpty()) {
+        int contentLen = content.length();
+        int tokenLen = token.length();
+
+        if (contentLen == 0 || tokenLen == 0) {
             return 0;
         }
 
         int answer = 0;
         int idx = 0;
 
-        while ((idx = source.indexOf(sub, idx)) != -1) {
-            answer++;
-            idx += sub.length();
+        // Use CharSequence comparison instead of converting to String
+        while (idx <= contentLen - tokenLen) {
+            boolean match = true;
+            for (int i = 0; i < tokenLen; i++) {
+                if (content.charAt(idx + i) != token.charAt(i)) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                answer++;
+                idx += tokenLen;
+            } else {
+                idx++;
+            }
         }
 
         return answer;
@@ -813,9 +862,9 @@ public final class StringUtilities {
         return s.toString();
     }
 
-    public static String getRandomChar(Random random, boolean upper) {
+    public static char getRandomChar(Random random, boolean upper) {
         int r = random.nextInt(26);
-        return upper ? EMPTY + (char) ('A' + r) : EMPTY + (char) ('a' + r);
+        return upper ? (char) ('A' + r) : (char) ('a' + r);
     }
 
     /**

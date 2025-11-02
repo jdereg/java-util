@@ -1,11 +1,18 @@
 package com.cedarsoftware.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 
 public class MultiKeyMapTest {
@@ -442,7 +449,7 @@ public class MultiKeyMapTest {
         MultiKeyMap<String> map = new MultiKeyMap<>();
         
         // Test with ArrayList - modify after put
-        java.util.ArrayList<String> mutableList = new java.util.ArrayList<>();
+        ArrayList<String> mutableList = new ArrayList<>();
         mutableList.add("a");
         mutableList.add("b");
         
@@ -456,7 +463,7 @@ public class MultiKeyMapTest {
         mutableList.add("c");
         
         // Key should still work with original content (a,b) due to defensive copy
-        java.util.ArrayList<String> lookupList = new java.util.ArrayList<>();
+        ArrayList<String> lookupList = new ArrayList<>();
         lookupList.add("a");
         lookupList.add("b");
         assertEquals("original", map.get(lookupList));
@@ -482,7 +489,7 @@ public class MultiKeyMapTest {
         assertEquals("linkedlist", map.get(lookupLinkedList));
         
         // Test with HashSet - modify after put
-        java.util.HashSet<String> mutableSet = new java.util.HashSet<>();
+        HashSet<String> mutableSet = new HashSet<>();
         mutableSet.add("x");
         mutableSet.add("y");
         
@@ -492,7 +499,7 @@ public class MultiKeyMapTest {
         mutableSet.add("z");
         
         // Key should still work with original content (x,y) due to defensive copy
-        java.util.HashSet<String> lookupSet = new java.util.HashSet<>();
+        HashSet<String> lookupSet = new HashSet<>();
         lookupSet.add("x");
         lookupSet.add("y");
         assertEquals("hashset", map.get(lookupSet));
@@ -507,5 +514,70 @@ public class MultiKeyMapTest {
         assert map.size() == 2;
         map.clear();
         assert map.isEmpty();
+    }
+
+    @Test
+    void testDeeplyNestedSetAsKey() {
+        // Test for bug where Set<List<Set<Integer>>> key fails after deserialization
+        // The issue: expanded size (19 with markers) != original size (2)
+        // This test proves the bug exists before fix
+
+        MultiKeyMap<String> map = MultiKeyMap.<String>builder()
+                .collectionKeyMode(MultiKeyMap.CollectionKeyMode.COLLECTIONS_EXPANDED)
+                .build();
+
+        // Create Set<List<Set<Integer>>> - use LinkedHashSet to control iteration order
+        List<Set<Integer>> innerList1 = new ArrayList<>();
+        innerList1.add(new HashSet<>(Arrays.asList(1, 2, 3)));
+        innerList1.add(new HashSet<>(Arrays.asList(4, 5)));
+
+        List<Set<Integer>> innerList2 = new ArrayList<>();
+        innerList2.add(new HashSet<>(Arrays.asList(6, 7)));
+
+        Set<List<Set<Integer>>> setListSet = new LinkedHashSet<>();
+        setListSet.add(innerList1);
+        setListSet.add(innerList2);
+
+        // Put the nested Set as a key
+        map.put(setListSet, "setListSetValue");
+
+        // This should work - get with same key
+        assertEquals("setListSetValue", map.get(setListSet));
+        assertTrue(map.containsKey(setListSet));
+
+        // Create an equivalent Set with REVERSED iteration order
+        // This simulates what happens after deserialization
+        List<Set<Integer>> lookupList1 = new ArrayList<>();
+        lookupList1.add(new HashSet<>(Arrays.asList(1, 2, 3)));
+        lookupList1.add(new HashSet<>(Arrays.asList(4, 5)));
+
+        List<Set<Integer>> lookupList2 = new ArrayList<>();
+        lookupList2.add(new HashSet<>(Arrays.asList(6, 7)));
+
+        // Add in REVERSE order to force different iteration order (use LinkedHashSet)
+        Set<List<Set<Integer>>> lookupSet = new LinkedHashSet<>();
+        lookupSet.add(lookupList2);  // Reverse: add list2 first
+        lookupSet.add(lookupList1);  // Then list1
+
+        // Verify they're equal but have different iteration order
+        assertEquals(setListSet, lookupSet);  // Sets are equal
+
+        // Log iteration orders to show they differ
+        StringBuilder original = new StringBuilder("Original order: ");
+        for (List<Set<Integer>> elem : setListSet) {
+            original.append(elem.hashCode()).append(" ");
+        }
+        StringBuilder lookup = new StringBuilder("Lookup order: ");
+        for (List<Set<Integer>> elem : lookupSet) {
+            lookup.append(elem.hashCode()).append(" ");
+        }
+        LOG.info(original.toString());
+        LOG.info(lookup.toString());
+
+        // This should work - get with equivalent key even with different iteration order
+        assertEquals("setListSetValue", map.get(lookupSet));
+        assertTrue(map.containsKey(lookupSet));
+
+        LOG.info("testDeeplyNestedSetAsKey passed");
     }
 }

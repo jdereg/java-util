@@ -1974,9 +1974,14 @@ public class ClassUtilities {
                 // Sort entries by the numeric part of the key to handle gaps (e.g., arg0, arg2 without arg1)
                 List<Map.Entry<String, Object>> entries = new ArrayList<>(map.entrySet());
                 entries.sort((e1, e2) -> {
-                    int num1 = Integer.parseInt(e1.getKey().substring(3));
-                    int num2 = Integer.parseInt(e2.getKey().substring(3));
-                    return Integer.compare(num1, num2);
+                    try {
+                        int num1 = Integer.parseInt(e1.getKey().substring(3));
+                        int num2 = Integer.parseInt(e2.getKey().substring(3));
+                        return Integer.compare(num1, num2);
+                    } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+                        // Fall back to string comparison for malformed keys
+                        return e1.getKey().compareTo(e2.getKey());
+                    }
                 });
                 List<Object> orderedValues = new ArrayList<>(entries.size());
                 for (Map.Entry<String, Object> entry : entries) {

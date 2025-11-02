@@ -1,5 +1,15 @@
 ### Revision History
 #### 4.2.0 (unreleased)
+> * **FIXED**: `MultiKeyMap` nested Set lookup bug in COLLECTIONS_EXPANDED mode - Fixed size mismatch false negatives when looking up keys containing expanded Collections. In COLLECTIONS_EXPANDED mode, stored keys have expanded size (includes SET_OPEN/SET_CLOSE markers) while lookup keys have un-expanded Collection size. Added skipSizeCheck logic to bypass size comparison for Collection-to-Collection matches in expanded mode, allowing compareCollections() to handle the structural comparison correctly. This fixes lookups failing incorrectly when using nested Sets or Collections as multi-keys.
+>
+> * **IMPROVED**: Code quality improvements from comprehensive IntelliJ IDEA inspection analysis (17 fixes across 5 classes):
+>   * **MultiKeyMap**: Improved comment precision (arity → size), enhanced Javadoc clarity, optimized variable declarations for better readability
+>   * **StringUtilities**: Enhanced null safety with explicit checks, improved loop variable scoping, added type casting safety guards, optimized string concatenation patterns
+>   * **ConcurrentList**: Improved synchronization block granularity, enhanced iterator safety, optimized size calculations with better caching
+>   * **ClassUtilities**: Reduced cognitive complexity in findClosest(), improved exception handling clarity, enhanced method parameter validation
+>   * **CaseInsensitiveMap**: Optimized keySet() and values() operations, improved type safety in internal operations, enhanced edge case handling
+>   * All changes maintain 100% backward compatibility while improving code maintainability and reducing potential edge case issues
+>
 > * **FIXED**: Map and Set hashCode() contract compliance - Removed incorrect `EncryptionUtilities.finalizeHash()` calls from 6 classes that violated the Map and Set interface contracts. The Map contract requires `hashCode() = sum of entry hashCodes`, and the Set contract requires `hashCode() = sum of element hashCodes`. Using finalizeHash() broke the Object.hashCode() contract (equal objects must have equal hashCodes) and caused HashSet/HashMap storage failures. Fixed classes: `AbstractConcurrentNullSafeMap`, `TTLCache`, `LockingLRUCacheStrategy`, `ThreadedLRUCacheStrategy`, `ConcurrentSet`, `ClassValueSet`.
 >
 > * **CHANGED**: `IOUtilities` close/flush methods now throw exceptions as unchecked - **Breaking behavioral change**: All `close()` and `flush()` methods in `IOUtilities` (for `Closeable`, `Flushable`, `XMLStreamReader`, `XMLStreamWriter`) now throw exceptions as unchecked via `ExceptionUtilities.uncheckedThrow()` instead of silently swallowing them. This change provides:

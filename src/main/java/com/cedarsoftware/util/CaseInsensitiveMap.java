@@ -984,10 +984,19 @@ public class CaseInsensitiveMap<K, V> extends AbstractMap<K, V> implements Concu
         private final int hash;
 
         // Configuration values with system property overrides
-        private static final int DEFAULT_CACHE_SIZE = Integer.parseInt(
-            System.getProperty("caseinsensitive.cache.size", "5000"));
-        private static final int DEFAULT_MAX_STRING_LENGTH = Integer.parseInt(
-            System.getProperty("caseinsensitive.max.string.length", "100"));
+        private static final int DEFAULT_CACHE_SIZE = parseIntSafely(
+            System.getProperty("caseinsensitive.cache.size", "5000"), 5000);
+        private static final int DEFAULT_MAX_STRING_LENGTH = parseIntSafely(
+            System.getProperty("caseinsensitive.max.string.length", "100"), 100);
+
+        // Helper method to safely parse integers from system properties using Converter
+        private static int parseIntSafely(String value, int defaultValue) {
+            try {
+                return Converter.convert(value, int.class);
+            } catch (Exception e) {
+                return defaultValue;
+            }
+        }
             
         // Add static cache for common strings - use AtomicReference for thread safety
         private static final AtomicReference<Map<String, CaseInsensitiveString>> COMMON_STRINGS_REF = 

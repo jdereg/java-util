@@ -1,5 +1,7 @@
 ### Revision History
 #### 4.2.0 (unreleased)
+> * **FIXED**: Map and Set hashCode() contract compliance - Removed incorrect `EncryptionUtilities.finalizeHash()` calls from 6 classes that violated the Map and Set interface contracts. The Map contract requires `hashCode() = sum of entry hashCodes`, and the Set contract requires `hashCode() = sum of element hashCodes`. Using finalizeHash() broke the Object.hashCode() contract (equal objects must have equal hashCodes) and caused HashSet/HashMap storage failures. Fixed classes: `AbstractConcurrentNullSafeMap`, `TTLCache`, `LockingLRUCacheStrategy`, `ThreadedLRUCacheStrategy`, `ConcurrentSet`, `ClassValueSet`.
+>
 > * **CHANGED**: `IOUtilities` close/flush methods now throw exceptions as unchecked - **Breaking behavioral change**: All `close()` and `flush()` methods in `IOUtilities` (for `Closeable`, `Flushable`, `XMLStreamReader`, `XMLStreamWriter`) now throw exceptions as unchecked via `ExceptionUtilities.uncheckedThrow()` instead of silently swallowing them. This change provides:
 >   * **Better diagnostics**: Close/flush failures are now visible rather than silently hidden
 >   * **Cleaner code**: No try-catch required at call sites - works seamlessly in finally blocks

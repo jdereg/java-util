@@ -107,7 +107,7 @@ public class ConcurrentSet<T> implements Set<T>, Serializable {
         for (T item : this) { // Iterates over unwrapped items
             h += (item == null ? 0 : item.hashCode());
         }
-        return EncryptionUtilities.finalizeHash(h);
+        return h;
     }
 
     @Override

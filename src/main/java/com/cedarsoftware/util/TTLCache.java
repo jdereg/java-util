@@ -375,7 +375,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
     }
 
     /**
-     * Removes all of the mappings from this cache.
+     * Removes all the mappings from this cache.
      */
     @Override
     public void clear() {
@@ -579,7 +579,7 @@ public class TTLCache<K, V> implements Map<K, V>, AutoCloseable {
                 int valueHash = (value == null ? 0 : value.hashCode());
                 hash += keyHash ^ valueHash;
             }
-            return EncryptionUtilities.finalizeHash(hash);
+            return hash;
         } finally {
             lock.unlock();
         }

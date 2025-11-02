@@ -459,7 +459,7 @@ public class LockingLRUCacheStrategy<K, V> implements Map<K, V> {
                 hashCode = 31 * hashCode + (key == null ? 0 : key.hashCode());
                 hashCode = 31 * hashCode + (value == null ? 0 : value.hashCode());
             }
-            return EncryptionUtilities.finalizeHash(hashCode);
+            return hashCode;
         } finally {
             lock.unlock();
         }

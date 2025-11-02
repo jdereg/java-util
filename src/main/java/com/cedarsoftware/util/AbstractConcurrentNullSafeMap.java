@@ -471,7 +471,7 @@ public abstract class AbstractConcurrentNullSafeMap<K, V> implements ConcurrentM
             int valueHash = (value == null) ? 0 : value.hashCode();
             h += keyHash ^ valueHash;
         }
-        return EncryptionUtilities.finalizeHash(h);
+        return h;
     }
 
     /**

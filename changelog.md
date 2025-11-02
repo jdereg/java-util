@@ -1,5 +1,5 @@
 ### Revision History
-#### 4.2.0 (unreleased)
+#### 4.2.0 - 2025-11-02
 > * **FIXED**: `MultiKeyMap` nested Set lookup bug in COLLECTIONS_EXPANDED mode - Fixed size mismatch false negatives when looking up keys containing expanded Collections. In COLLECTIONS_EXPANDED mode, stored keys have expanded size (includes SET_OPEN/SET_CLOSE markers) while lookup keys have un-expanded Collection size. Added skipSizeCheck logic to bypass size comparison for Collection-to-Collection matches in expanded mode, allowing compareCollections() to handle the structural comparison correctly. This fixes lookups failing incorrectly when using nested Sets or Collections as multi-keys.
 >
 > * **IMPROVED**: Code quality improvements from comprehensive IntelliJ IDEA inspection analysis (17 fixes across 5 classes):

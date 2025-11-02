@@ -1,5 +1,12 @@
 ### Revision History
 #### 4.2.0 (unreleased)
+> * **CHANGED**: `IOUtilities` close/flush methods now throw exceptions as unchecked - **Breaking behavioral change**: All `close()` and `flush()` methods in `IOUtilities` (for `Closeable`, `Flushable`, `XMLStreamReader`, `XMLStreamWriter`) now throw exceptions as unchecked via `ExceptionUtilities.uncheckedThrow()` instead of silently swallowing them. This change provides:
+>   * **Better diagnostics**: Close/flush failures are now visible rather than silently hidden
+>   * **Cleaner code**: No try-catch required at call sites - works seamlessly in finally blocks
+>   * **Early problem detection**: Infrastructure issues (disk full, network failures, resource exhaustion) surface immediately
+>   * **Caller flexibility**: Exceptions can still be caught higher in the call stack if desired
+>   * **Important**: While close/flush exceptions are rare, when they occur they often indicate serious issues that should be diagnosed rather than hidden. This change makes java-util consistent with its existing philosophy of throwing checked exceptions as unchecked (see `transfer()`, `compressBytes()`, etc. which already use this pattern).
+>
 > * **REMOVED**: java.awt/java.desktop dependency eliminated - Created 5 Cedar DTO classes (`Color`, `Dimension`, `Point`, `Rectangle`, `Insets`) to replace java.awt equivalents, completely removing the java.desktop module dependency. This enables:
 >   * **Headless deployment**: No display system required - ideal for servers, containers, and cloud platforms
 >   * **Smaller footprint**: Eliminates 100MB+ java.desktop module from runtime

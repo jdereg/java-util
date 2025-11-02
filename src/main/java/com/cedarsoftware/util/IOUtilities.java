@@ -44,16 +44,30 @@ import java.util.logging.Logger;
  * <ul>
  *   <li>Automatic buffer management for optimal performance</li>
  *   <li>GZIP and Deflate compression support</li>
- *   <li>Silent exception handling for close/flush operations</li>
+ *   <li>Unchecked exception handling for close/flush operations (fail-fast, not silent)</li>
  *   <li>Progress tracking through callback mechanism</li>
- *   <li>Support for XML stream operations</li>
+ *   <li>Support for XML stream operations with unchecked exception handling</li>
  *   <li>
- *     <b>XML stream support:</b> Some methods work with {@code javax.xml.stream.XMLStreamReader} and
- *     {@code javax.xml.stream.XMLStreamWriter}. <b>These methods require the {@code java.xml} module to be present at runtime.</b>
- *     If you're using OSGi, ensure your bundle imports the {@code javax.xml.stream} package or declare it as an optional import
+ *     <b>XML stream support:</b> Methods {@link #close(XMLStreamReader)}, {@link #close(XMLStreamWriter)},
+ *     and {@link #flush(XMLStreamWriter)} work with {@code javax.xml.stream} classes.
+ *     <b>These methods require the {@code java.xml} module to be present at runtime.</b>
+ *     If you're using JPMS, add {@code requires java.xml;} to your module-info.java if using these methods.
+ *     For OSGi, ensure your bundle imports the {@code javax.xml.stream} package or declare it as an optional import
  *     if XML support is not required. The rest of the library does <b>not</b> require {@code java.xml}.
  *   </li>
  * </ul>
+ * <p>
+ * <b>Exception Handling Philosophy:</b> All close() and flush() methods in this class throw exceptions as
+ * <b>unchecked</b> via {@link ExceptionUtilities#uncheckedThrow(Throwable)}. This design choice provides:
+ * <ul>
+ *   <li>Cleaner code - no try-catch required in finally blocks or cleanup code</li>
+ *   <li>Better diagnostics - close/flush failures are visible rather than silently swallowed</li>
+ *   <li>Early problem detection - infrastructure issues surface immediately rather than hiding until later failures</li>
+ *   <li>Flexibility - callers can catch these as regular exceptions higher in the call stack if desired</li>
+ * </ul>
+ * While close/flush exceptions are rare, they often indicate serious issues (disk full, network failures,
+ * resource exhaustion) that should be diagnosed rather than hidden.
+ * </p>
  *
  * <p><strong>Usage Example:</strong></p>
  * <pre>{@code
@@ -938,76 +952,122 @@ public final class IOUtilities {
     }
 
     /**
-     * Safely closes an XMLStreamReader, suppressing any exceptions.
+     * Closes an XMLStreamReader, throwing any exceptions as unchecked.
+     * <p>
+     * This method can be safely used in finally blocks without requiring a try-catch,
+     * as {@link XMLStreamException} will be thrown unchecked via {@link ExceptionUtilities#uncheckedThrow(Throwable)}.
+     * This provides cleaner code while ensuring close failures are visible rather than silently swallowed.
+     * </p>
+     * <p>
+     * Close exceptions are rare but important - they often indicate serious issues like network failures,
+     * resource exhaustion, or data corruption. Making them visible helps diagnose problems earlier.
+     * </p>
      *
      * @param reader the XMLStreamReader to close (may be null)
+     * @throws XMLStreamException if close fails (thrown as unchecked)
      */
     public static void close(XMLStreamReader reader) {
         if (reader != null) {
             try {
                 reader.close();
             } catch (XMLStreamException e) {
-                debug("Failed to close XMLStreamReader", e);
+                ExceptionUtilities.uncheckedThrow(e);
             }
         }
     }
 
     /**
-     * Safely closes an XMLStreamWriter, suppressing any exceptions.
+     * Closes an XMLStreamWriter, throwing any exceptions as unchecked.
+     * <p>
+     * This method can be safely used in finally blocks without requiring a try-catch,
+     * as {@link XMLStreamException} will be thrown unchecked via {@link ExceptionUtilities#uncheckedThrow(Throwable)}.
+     * This provides cleaner code while ensuring close failures are visible rather than silently swallowed.
+     * </p>
      *
      * @param writer the XMLStreamWriter to close (may be null)
+     * @throws XMLStreamException if close fails (thrown as unchecked)
      */
     public static void close(XMLStreamWriter writer) {
         if (writer != null) {
             try {
                 writer.close();
             } catch (XMLStreamException e) {
-                debug("Failed to close XMLStreamWriter", e);
+                ExceptionUtilities.uncheckedThrow(e);
             }
         }
     }
 
     /**
-     * Safely closes any Closeable resource, suppressing any exceptions.
+     * Closes any Closeable resource, throwing any exceptions as unchecked.
+     * <p>
+     * This method can be safely used in finally blocks or cleanup code without requiring a try-catch,
+     * as {@link IOException} will be thrown unchecked via {@link ExceptionUtilities#uncheckedThrow(Throwable)}.
+     * This provides cleaner code while ensuring close failures are visible rather than silently swallowed.
+     * </p>
+     * <p>
+     * <b>Why close exceptions matter:</b> While rare, close failures often indicate serious issues:
+     * <ul>
+     *   <li>File streams: Disk full, permission denied, filesystem corruption</li>
+     *   <li>Network streams: Connection lost, timeout, broken pipe</li>
+     *   <li>Database connections: Transaction rollback failures, connection pool issues</li>
+     *   <li>Compressed streams: Incomplete data, corruption, checksum failures</li>
+     * </ul>
+     * Making these exceptions visible helps diagnose infrastructure problems early rather than
+     * hiding them until they cause more serious failures downstream.
+     * </p>
      *
      * @param c the Closeable resource to close (may be null)
+     * @throws IOException if close fails (thrown as unchecked)
      */
     public static void close(Closeable c) {
         if (c != null) {
             try {
                 c.close();
             } catch (IOException e) {
-                debug("Failed to close Closeable", e);
+                ExceptionUtilities.uncheckedThrow(e);
             }
         }
     }
 
     /**
-     * Safely flushes any Flushable resource, suppressing any exceptions.
+     * Flushes any Flushable resource, throwing any exceptions as unchecked.
+     * <p>
+     * This method can be safely used without requiring a try-catch, as {@link IOException}
+     * will be thrown unchecked via {@link ExceptionUtilities#uncheckedThrow(Throwable)}.
+     * Flush failures often indicate buffer overflow, disk full, or network issues that
+     * should be made visible rather than silently ignored.
+     * </p>
      *
      * @param f the Flushable resource to flush (may be null)
+     * @throws IOException if flush fails (thrown as unchecked)
      */
     public static void flush(Flushable f) {
         if (f != null) {
             try {
                 f.flush();
             } catch (IOException e) {
-                debug("Failed to flush", e);
+                ExceptionUtilities.uncheckedThrow(e);
             }
         }
     }
 
     /**
-     * Safely flushes an XMLStreamWriter, suppressing any exceptions.
+     * Flushes an XMLStreamWriter, throwing any exceptions as unchecked.
+     * <p>
+     * This method can be safely used without requiring a try-catch, as {@link XMLStreamException}
+     * will be thrown unchecked via {@link ExceptionUtilities#uncheckedThrow(Throwable)}.
+     * Flush failures often indicate buffer or output stream issues that should be made visible.
+     * </p>
      *
      * @param writer the XMLStreamWriter to flush (may be null)
+     * @throws XMLStreamException if flush fails (thrown as unchecked)
      */
     public static void flush(XMLStreamWriter writer) {
         if (writer != null) {
             try {
                 writer.flush();
             } catch (XMLStreamException e) {
-                debug("Failed to flush XMLStreamWriter", e);
+                ExceptionUtilities.uncheckedThrow(e);
             }
         }
     }

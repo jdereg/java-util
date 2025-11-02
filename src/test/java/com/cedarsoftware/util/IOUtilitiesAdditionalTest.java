@@ -89,10 +89,12 @@ public class IOUtilitiesAdditionalTest {
     }
 
     @Test
-    public void testCloseCloseableSwallowsException() {
+    public void testCloseCloseableThrowsUnchecked() {
         AtomicBoolean closed = new AtomicBoolean(false);
         Closeable c = () -> { closed.set(true); throw new IOException("fail"); };
-        IOUtilities.close(c);
+
+        // close() should throw IOException as unchecked
+        assertThrows(IOException.class, () -> IOUtilities.close(c));
         assertTrue(closed.get());
     }
 

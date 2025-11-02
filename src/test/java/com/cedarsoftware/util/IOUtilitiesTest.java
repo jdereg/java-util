@@ -402,12 +402,16 @@ public class IOUtilitiesTest
         try
         {
             XMLStreamWriter writer = xmlOutputFactory.createXMLStreamWriter(new BufferedOutputStream(new ByteArrayOutputStream()), "UTF-8");
+            writer.writeStartDocument();  // Need at least a document start to avoid exception on close
+            writer.writeStartElement("root");
+            writer.writeEndElement();
+            writer.writeEndDocument();
             IOUtilities.flush(writer);
             IOUtilities.close(writer);
         }
         catch (Exception e)
         {
-            fail();
+            fail("Unexpected exception: " + e.getClass().getName() + ": " + e.getMessage(), e);
         }
         IOUtilities.close((XMLStreamWriter)null);
     }

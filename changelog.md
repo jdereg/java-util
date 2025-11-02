@@ -7,6 +7,24 @@
 >   * **Caller flexibility**: Exceptions can still be caught higher in the call stack if desired
 >   * **Important**: While close/flush exceptions are rare, when they occur they often indicate serious issues that should be diagnosed rather than hidden. This change makes java-util consistent with its existing philosophy of throwing checked exceptions as unchecked (see `transfer()`, `compressBytes()`, etc. which already use this pattern).
 >
+> * **CHANGED**: Geometric classes moved to dedicated `geom` package - Moved 5 AWT-replacement classes (`Point`, `Rectangle`, `Dimension`, `Insets`, `Color`) from `com.cedarsoftware.util` to `com.cedarsoftware.util.geom` for better organization and to eliminate AWT confusion. This change:
+>   * **Clarifies intent**: Dedicated package for geometric/graphical primitives following Java's pattern (`java.awt.geom`)
+>   * **Enhanced documentation**: All classes now prominently state "Zero-dependency - No java.desktop/java.awt required" with emphasis on headless server/microservices use
+>   * **Package exports updated**: Added `com.cedarsoftware.util.geom` to both JPMS module descriptor and OSGi MANIFEST
+>   * **Git history preserved**: Used `git mv` to maintain file history (78-91% similarity)
+>   * **Migration impact**: Existing code must update imports from `com.cedarsoftware.util.Point` → `com.cedarsoftware.util.geom.Point` (and similar for the other 4 classes)
+>   * **Non-breaking for Maven Central**: Since 4.2.0 has not been released yet, this is effectively a pre-release refactoring
+>
+> * **FIXED**: Added missing `cache` package to JPMS and OSGi exports - The `com.cedarsoftware.util.cache` package (containing `LockingLRUCacheStrategy` and `ThreadedLRUCacheStrategy`) was not exported in module descriptors. Added `exports com.cedarsoftware.util.cache;` to moditect configuration and OSGi Export-Package directive. This ensures the cache package is properly accessible to both JPMS modules and OSGi bundles.
+>
+> * **IMPROVED**: Added comprehensive cloud-native and containerization documentation to README - Added prominent "Cloud Native & Container Ready" section highlighting java-util's advantages for modern cloud deployments:
+>   * **Platform badges**: AWS, Azure, GCP, Kubernetes, Docker compatibility
+>   * **Container optimization**: Minimal footprint (~1.1MB total, 85% smaller than Guava), zero dependencies, fast startup optimized for serverless/FaaS
+>   * **Deployment guide**: Platform-specific advantages for AWS Lambda/ECS/EKS, Azure Functions/AKS, GCP Cloud Run/GKE, Kubernetes, Docker
+>   * **Performance examples**: Dockerfile showing 50% image size reduction, Kubernetes YAML demonstrating lower resource requests
+>   * **Serverless ready**: Explicit callouts for Lambda, Cloud Functions, Cloudflare Workers, edge computing
+>   * **Enterprise security**: Minimal attack surface, no Log4Shell exposure, SOC 2/FedRAMP/PCI-DSS compliance benefits
+>
 > * **REMOVED**: java.awt/java.desktop dependency eliminated - Created 5 Cedar DTO classes (`Color`, `Dimension`, `Point`, `Rectangle`, `Insets`) to replace java.awt equivalents, completely removing the java.desktop module dependency. This enables:
 >   * **Headless deployment**: No display system required - ideal for servers, containers, and cloud platforms
 >   * **Smaller footprint**: Eliminates 100MB+ java.desktop module from runtime

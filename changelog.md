@@ -11,7 +11,6 @@
 >   * **Clear organization**: Geometric/graphical primitives grouped separately from general utilities
 >   * **Enhanced documentation**: All classes prominently state "Zero-dependency - No java.desktop/java.awt required" with emphasis on headless server/microservices use
 >   * **Full module support**: Package exported via both JPMS module descriptor and OSGi MANIFEST
->   * **Note for pre-release testers**: If you tested unreleased 4.2.0 development snapshots, update imports from `com.cedarsoftware.util.*` to `com.cedarsoftware.util.geom.*` for these five classes
 >
 > * **FIXED**: Added missing `cache` package to JPMS and OSGi exports - The `com.cedarsoftware.util.cache` package (containing `LockingLRUCacheStrategy` and `ThreadedLRUCacheStrategy`) was not exported in module descriptors. Added `exports com.cedarsoftware.util.cache;` to moditect configuration and OSGi Export-Package directive. This ensures the cache package is properly accessible to both JPMS modules and OSGi bundles.
 >
@@ -56,11 +55,6 @@
 >
 > * **FIXED**: `ConcurrentList` pollFirst()/pollLast() lock usage - Changed pollFirst() and pollLast() to use write locks instead of read locks. Previously they used read locks while modifying data (setting bucket elements to null), creating a race condition with toArray() which also uses read locks. This caused toArray() to see "phantom nulls" from concurrent removals. With write locks, poll operations are properly synchronized with read operations, allowing toArray() to safely preserve legitimate null values.
 >
-> * **IMPROVED**: `MultiKeyMap` thread-safety enhancements:
->   * **Fixed hashCode cache race condition**: Implemented double-checked locking with dedicated hashCodeLock to prevent concurrent hashCode computations during map modification
->   * **Improved resize race condition handling**: Added double-checked load factor validation before expensive CAS operations to prevent threads from queuing on unnecessary resize attempts after first resize completes
->   * **Optimized updateMaxChainLength**: Replaced method reference with CAS loop to avoid allocation overhead and enable early exit when no update needed
->
 > * **IMPROVED**: `MultiKeyMap` performance optimizations:
 >   * **Removed duplicate getClass() calls**: Eliminated redundant `getClass()` and `isArray()` calls in `flattenKey()` by declaring variables once and reusing across code paths
 >   * **Optimized instanceof checks**: Deferred rare atomic array type checks until after confirming key is an array, eliminating 9 redundant instanceof checks across 3 hot-path methods (normalizeForLookup, findSimpleOrComplexKey, createMultiKey)
@@ -73,7 +67,7 @@
 >
 > * **IMPROVED**: `MultiKeyMap` documentation enhancements:
 >   * **Fixed misleading volatile read comments**: Corrected 5 instances where comments incorrectly stated `table.length()` was a volatile read (array lengths are immutable). Comments now accurately describe that only the `buckets` reference read is volatile
->   * **Documented Map contract violations**: Added explicit documentation that `entrySet()`, `keySet()`, and `values()` return snapshots (not live views), explaining rationale and directing users to `entries()` for weakly-consistent iteration
+>   * **Documented Map contract violations**: Added explicit documentation that `entrySet()`, `keySet()`, and `values()` return snapshots (not live views), explaining the rationale and performance trade-offs of snapshot semantics in concurrent contexts
 >   * **Added Big-O complexity documentation**: New class-level section documenting performance characteristics (O(k) for get/put/remove, O(1) for size, O(n) for snapshots) with clear explanations of complexity variables
 >   * **Added capacity/size limits documentation**: Comprehensive section explaining AtomicLong usage, Integer.MAX_VALUE capping in size(), memory requirements (~200-300GB for 2³¹ entries), and feasibility on modern servers
 >   * **Enhanced Set key examples**: Added detailed examples showing Sets combined with Object[] and List keys, demonstrating order-agnostic Set matching vs order-dependent List matching in multi-dimensional keys

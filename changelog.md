@@ -83,12 +83,7 @@
 >   * Mixed keys clearly show both: `🆔 [1, 2, 3], {4, 5, 6} → 🟣 value`
 >   * Nested structures properly display with appropriate delimiters
 >
-> * **ADDED**: `MultiKeyMap` serialization support for json-io:
->   * **Added `externalizeMarkers()` method**: Public static method that converts internal marker objects (OPEN, CLOSE, SET_OPEN, SET_CLOSE, NULL_SENTINEL) to serializable strings using consistent tilde notation (`~OPEN~`, `~CLOSE~`, `~SET_OPEN~`, `~SET_CLOSE~`, null)
->   * **Added `internalizeMarkers()` method**: Public static method that converts serialized marker strings back to internal marker objects for deserialization
->   * **Collision detection and escaping**: User strings matching marker names are automatically escaped with `~~ESC~~` prefix to prevent corruption, with support for recursive escaping
->   * **Made `reconstructKey()` public**: Enables json-io to rebuild original Set/List/Array structures from flattened marker representation
->   * **Consistent tilde marker format**: All markers use rare `~NAME~` pattern for clean JSON output and minimal user data collision
+> * **ADDED**: `MultiKeyMap` json-io serialization support - `MultiKeyMap` instances can now be serialized and deserialized using json-io, preserving complex multi-dimensional keys including Lists, Sets, Arrays, and null values. Keys are serialized in their native structures (not flattened arrays), making the JSON output clean and human-readable. This enables `MultiKeyMap` use in distributed caching, persistent storage, REST APIs, and microservices communication
 >
 > * **ADDED**: Comprehensive test coverage for MultiKeyMap equals(), hashCode(), and toString() functionality:
 >   * `MultiKeyMapEqualsHashCodeTest`: 25 tests verifying equals/hashCode contracts with mixed List/Set keys

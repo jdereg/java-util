@@ -18,11 +18,11 @@ import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import com.cedarsoftware.util.Color;
-import com.cedarsoftware.util.Dimension;
-import com.cedarsoftware.util.Insets;
-import com.cedarsoftware.util.Point;
-import com.cedarsoftware.util.Rectangle;
+import com.cedarsoftware.util.geom.Color;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 
 /**
  * @author Kenny Partlow (kpartlow@gmail.com)

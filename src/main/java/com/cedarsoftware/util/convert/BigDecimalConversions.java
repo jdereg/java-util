@@ -15,9 +15,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
 import java.time.MonthDay;
-import com.cedarsoftware.util.Dimension;
-import com.cedarsoftware.util.Insets;
-import com.cedarsoftware.util.Rectangle;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Rectangle;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)

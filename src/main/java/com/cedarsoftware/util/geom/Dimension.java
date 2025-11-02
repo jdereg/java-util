@@ -1,9 +1,13 @@
-package com.cedarsoftware.util;
+package com.cedarsoftware.util.geom;
 
 /**
- * Immutable Dimension class representing width and height.
- * This is a lightweight replacement for java.awt.Dimension to eliminate java.desktop dependency.
- * API-compatible with java.awt.Dimension for common operations.
+ * <b>Zero-dependency geometric primitive</b> - Immutable Dimension class representing width and height.
+ * <p>
+ * This class provides an API-compatible replacement for {@code java.awt.Dimension} without requiring
+ * the {@code java.desktop} module (~8MB), making it ideal for headless servers, microservices,
+ * and modular applications.
+ * <p>
+ * <b>No AWT dependency</b> - This class is completely independent and does not require {@code java.awt}.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

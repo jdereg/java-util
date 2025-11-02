@@ -220,7 +220,8 @@
                         <Export-Package>
                             com.cedarsoftware.util,
                             com.cedarsoftware.util.cache,
-                            com.cedarsoftware.util.convert
+                            com.cedarsoftware.util.convert,
+                            com.cedarsoftware.util.geom
                         </Export-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
@@ -320,6 +321,7 @@
                                     exports com.cedarsoftware.util;
                                     exports com.cedarsoftware.util.cache;
                                     exports com.cedarsoftware.util.convert;
+                                    exports com.cedarsoftware.util.geom;
                                     }
                                 </moduleInfoSource>
                             </module>

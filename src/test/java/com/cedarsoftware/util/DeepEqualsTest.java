@@ -1,7 +1,7 @@
 package com.cedarsoftware.util;
 
-import com.cedarsoftware.util.Color;
-import com.cedarsoftware.util.Point;
+import com.cedarsoftware.util.geom.Color;
+import com.cedarsoftware.util.geom.Point;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;

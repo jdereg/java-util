@@ -1,9 +1,13 @@
-package com.cedarsoftware.util;
+package com.cedarsoftware.util.geom;
 
 /**
- * Immutable Color class representing RGB or RGBA color values.
- * This is a lightweight replacement for java.awt.Color to eliminate java.desktop dependency.
- * API-compatible with java.awt.Color for common operations.
+ * <b>Zero-dependency geometric primitive</b> - Immutable Color class representing RGB or RGBA color values.
+ * <p>
+ * This class provides an API-compatible replacement for {@code java.awt.Color} without requiring
+ * the {@code java.desktop} module (~8MB), making it ideal for headless servers, microservices,
+ * and modular applications.
+ * <p>
+ * <b>No AWT dependency</b> - This class is completely independent and does not require {@code java.awt}.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

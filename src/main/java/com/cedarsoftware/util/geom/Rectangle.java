@@ -1,9 +1,14 @@
-package com.cedarsoftware.util;
+package com.cedarsoftware.util.geom;
 
 /**
- * Immutable Rectangle class representing a rectangular region defined by location (x, y) and size (width, height).
- * This is a lightweight replacement for java.awt.Rectangle to eliminate java.desktop dependency.
- * API-compatible with java.awt.Rectangle for common operations.
+ * <b>Zero-dependency geometric primitive</b> - Immutable Rectangle class representing a rectangular region
+ * defined by location (x, y) and size (width, height).
+ * <p>
+ * This class provides an API-compatible replacement for {@code java.awt.Rectangle} without requiring
+ * the {@code java.desktop} module (~8MB), making it ideal for headless servers, microservices,
+ * and modular applications.
+ * <p>
+ * <b>No AWT dependency</b> - This class is completely independent and does not require {@code java.awt}.
  *
  * @author John DeRegnaucourt (jdereg@gmail.com)
  *         <br>

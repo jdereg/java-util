@@ -1,9 +1,9 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.Dimension;
-import com.cedarsoftware.util.Insets;
-import com.cedarsoftware.util.Point;
-import com.cedarsoftware.util.Rectangle;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -41,7 +41,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Map;
 import java.util.LinkedHashMap;
-import com.cedarsoftware.util.Color;
+import com.cedarsoftware.util.geom.Color;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;

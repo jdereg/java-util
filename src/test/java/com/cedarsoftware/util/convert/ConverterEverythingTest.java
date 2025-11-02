@@ -1,10 +1,10 @@
 package com.cedarsoftware.util.convert;
 
-import com.cedarsoftware.util.Color;
-import com.cedarsoftware.util.Dimension;
-import com.cedarsoftware.util.Insets;
-import com.cedarsoftware.util.Point;
-import com.cedarsoftware.util.Rectangle;
+import com.cedarsoftware.util.geom.Color;
+import com.cedarsoftware.util.geom.Dimension;
+import com.cedarsoftware.util.geom.Insets;
+import com.cedarsoftware.util.geom.Point;
+import com.cedarsoftware.util.geom.Rectangle;
 import java.io.File;
 import java.math.BigDecimal;
 import java.math.BigInteger;

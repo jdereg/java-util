@@ -219,6 +219,7 @@
                     <instructions>
                         <Export-Package>
                             com.cedarsoftware.util,
+                            com.cedarsoftware.util.cache,
                             com.cedarsoftware.util.convert
                         </Export-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
@@ -317,6 +318,7 @@
                                     requires static java.compiler;
                                     requires static java.xml;
                                     exports com.cedarsoftware.util;
+                                    exports com.cedarsoftware.util.cache;
                                     exports com.cedarsoftware.util.convert;
                                     }
                                 </moduleInfoSource>

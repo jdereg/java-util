@@ -7,13 +7,11 @@
 >   * **Caller flexibility**: Exceptions can still be caught higher in the call stack if desired
 >   * **Important**: While close/flush exceptions are rare, when they occur they often indicate serious issues that should be diagnosed rather than hidden. This change makes java-util consistent with its existing philosophy of throwing checked exceptions as unchecked (see `transfer()`, `compressBytes()`, etc. which already use this pattern).
 >
-> * **CHANGED**: Geometric classes moved to dedicated `geom` package - Moved 5 AWT-replacement classes (`Point`, `Rectangle`, `Dimension`, `Insets`, `Color`) from `com.cedarsoftware.util` to `com.cedarsoftware.util.geom` for better organization and to eliminate AWT confusion. This change:
->   * **Clarifies intent**: Dedicated package for geometric/graphical primitives following Java's pattern (`java.awt.geom`)
->   * **Enhanced documentation**: All classes now prominently state "Zero-dependency - No java.desktop/java.awt required" with emphasis on headless server/microservices use
->   * **Package exports updated**: Added `com.cedarsoftware.util.geom` to both JPMS module descriptor and OSGi MANIFEST
->   * **Git history preserved**: Used `git mv` to maintain file history (78-91% similarity)
->   * **Migration impact**: Existing code must update imports from `com.cedarsoftware.util.Point` → `com.cedarsoftware.util.geom.Point` (and similar for the other 4 classes)
->   * **Non-breaking for Maven Central**: Since 4.2.0 has not been released yet, this is effectively a pre-release refactoring
+> * **ADDED**: Geometric primitives in dedicated `geom` package - The 5 AWT-replacement classes (`Point`, `Rectangle`, `Dimension`, `Insets`, `Color`) are organized in `com.cedarsoftware.util.geom` following Java's package organization pattern (`java.awt.geom`). This provides:
+>   * **Clear organization**: Geometric/graphical primitives grouped separately from general utilities
+>   * **Enhanced documentation**: All classes prominently state "Zero-dependency - No java.desktop/java.awt required" with emphasis on headless server/microservices use
+>   * **Full module support**: Package exported via both JPMS module descriptor and OSGi MANIFEST
+>   * **Note for pre-release testers**: If you tested unreleased 4.2.0 development snapshots, update imports from `com.cedarsoftware.util.*` to `com.cedarsoftware.util.geom.*` for these five classes
 >
 > * **FIXED**: Added missing `cache` package to JPMS and OSGi exports - The `com.cedarsoftware.util.cache` package (containing `LockingLRUCacheStrategy` and `ThreadedLRUCacheStrategy`) was not exported in module descriptors. Added `exports com.cedarsoftware.util.cache;` to moditect configuration and OSGi Export-Package directive. This ensures the cache package is properly accessible to both JPMS modules and OSGi bundles.
 >

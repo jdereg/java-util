@@ -48,7 +48,7 @@ constructor discovery (increased the jar size by about 10K.)
 Optimized for modern cloud deployments and container environments:
 
 **Technical Characteristics:**
-- **Minimal Footprint**: ~600KB JAR + ~500KB java.sql module = ~1.1MB total (85% smaller than Guava ~2.7MB or Eclipse Collections ~2.8MB)
+- **Minimal Footprint**: ~600KB JAR
 - **Zero Runtime Dependencies**: No transitive dependencies to manage, reducing classpath conflicts and container image complexity
 - **Fast Startup**: JDK 8 bytecode (class file format 52) with instant classloading, optimized for serverless cold starts
 - **Thread-Safe**: All concurrent collections designed for horizontal scaling in Kubernetes and containerized environments

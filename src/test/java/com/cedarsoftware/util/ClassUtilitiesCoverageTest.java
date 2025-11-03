@@ -48,7 +48,13 @@ class ClassUtilitiesCoverageTest {
         ClassUtilities.ClassHierarchyInfo info1 = ClassUtilities.getClassHierarchyInfo(ArrayList.class);
         ClassUtilities.ClassHierarchyInfo info2 = ClassUtilities.getClassHierarchyInfo(ArrayList.class);
         assertSame(info1, info2);
-        assertEquals(3, info1.getDepth());
+
+        // Java 21+ introduced SequencedCollection interface (JEP 431) which adds a level
+        // between List and Collection, increasing the depth from 3 to 4
+        int javaVersion = SystemUtilities.currentJdkMajorVersion();
+        int expectedDepth = javaVersion >= 21 ? 4 : 3;
+        assertEquals(expectedDepth, info1.getDepth());
+
         Map<Class<?>, Integer> map = info1.getDistanceMap();
         assertEquals(0, map.get(ArrayList.class));
         assertEquals(1, map.get(AbstractList.class));

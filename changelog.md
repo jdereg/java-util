@@ -1,4 +1,7 @@
 ### Revision History
+#### 4.4.0-SNAPSHOT
+> *
+
 #### 4.3.0 - 2025-11-07
 > * **ADDED**: `DataGeneratorInputStream` - A flexible, memory-efficient `InputStream` that generates data on-the-fly using various strategies without consuming memory to store the data. This class is ideal for testing code that handles large streams, generating synthetic test data, or creating pattern-based input. Supports multiple generation modes:
 >   * **Random bytes**: Generates random bytes (0-255) with optional seed for reproducible tests. Can exclude zero bytes if needed for specific testing scenarios

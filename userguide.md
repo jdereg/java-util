@@ -3939,6 +3939,274 @@ Date date = DateUtilities.parseDate(null);  // Returns null
 This utility provides robust date parsing capabilities with extensive format support and timezone handling, making it suitable for applications dealing with various date/time string representations.
 
 ---
+## DataGeneratorInputStream
+[Source](/src/main/java/com/cedarsoftware/util/DataGeneratorInputStream.java)
+
+A memory-efficient `InputStream` implementation that generates data on-the-fly using various generation strategies. Ideal for testing stream processing code, generating synthetic data, or creating pattern-based input without consuming memory to store the data.
+
+### Key Features
+- Memory efficient - generates data as needed, immediately discarded
+- Multiple generation modes (random, sequential, pattern-based, custom)
+- Supports very large stream sizes (TB+ scale) with constant memory usage
+- Uses standard `IntSupplier` functional interface for custom generators
+- Thread-safe read operations
+- Repeatable sequences with seed-based random generation
+
+### Generation Modes
+
+#### Random Bytes
+Generate random byte values with optional zero exclusion:
+
+```java
+// Random bytes (0-255 inclusive, default seed)
+try (InputStream stream = DataGeneratorInputStream.withRandomBytes(1024 * 1024)) {
+    processStream(stream);
+}
+
+// Random bytes with custom seed (repeatable)
+try (InputStream stream = DataGeneratorInputStream.withRandomBytes(1024, 42L)) {
+    // Same seed produces same sequence
+}
+
+// Random bytes excluding zero (1-255 only)
+try (InputStream stream = DataGeneratorInputStream.withRandomBytes(1024, 12345L, false)) {
+    // Will never generate zero byte
+}
+```
+
+#### Repeating Patterns
+Repeat a string or byte pattern throughout the stream:
+
+```java
+// Repeat string pattern
+try (InputStream stream = DataGeneratorInputStream.withRepeatingPattern(1024, "Hello")) {
+    // Generates: HelloHelloHello...
+}
+
+// Repeat byte pattern
+byte[] pattern = {0x01, 0x02, 0x03, 0xFF};
+try (InputStream stream = DataGeneratorInputStream.withRepeatingPattern(1024, pattern)) {
+    // Generates: 01 02 03 FF 01 02 03 FF...
+}
+```
+
+#### Constant Byte
+Output the same byte value repeatedly:
+
+```java
+// All zeros
+try (InputStream stream = DataGeneratorInputStream.withConstantByte(1024, 0)) {
+    // Generates 1024 zero bytes
+}
+
+// All 'A' characters
+try (InputStream stream = DataGeneratorInputStream.withConstantByte(1024, 'A')) {
+    // Generates 1024 'A' bytes
+}
+```
+
+#### Sequential Bytes
+Count sequentially between two byte values with automatic wrapping:
+
+```java
+// Count up: 10, 11, 12, ..., 20, 10, 11, ...
+try (InputStream stream = DataGeneratorInputStream.withSequentialBytes(100, 10, 20)) {
+    // Wraps when reaching end value
+}
+
+// Count down: 20, 19, 18, ..., 10, 20, 19, ...
+try (InputStream stream = DataGeneratorInputStream.withSequentialBytes(100, 20, 10)) {
+    // Automatically detects backward counting
+}
+
+// Full byte range
+try (InputStream stream = DataGeneratorInputStream.withSequentialBytes(1024, 0, 255)) {
+    // Generates: 0, 1, 2, ..., 255, 0, 1, 2, ...
+}
+```
+
+#### Random Strings
+Generate random proper-case alphabetic strings:
+
+```java
+// Random strings with space separator
+Random random = new Random(42L);
+try (InputStream stream = DataGeneratorInputStream.withRandomStrings(
+        1024,           // size
+        random,         // Random instance
+        3,              // min word length
+        8,              // max word length
+        ' '             // separator
+)) {
+    // Generates: "Xkqmz Pqwer Fgthn ..."
+    // Uses StringUtilities.getRandomString()
+}
+
+// Random strings with newline separator
+try (InputStream stream = DataGeneratorInputStream.withRandomStrings(
+        1024, new Random(), 5, 10, '\n'
+)) {
+    // Each line is a random string
+}
+```
+
+#### Custom Generator
+Use a lambda or `IntSupplier` for custom byte generation logic:
+
+```java
+// Simple lambda - always return 42
+try (InputStream stream = DataGeneratorInputStream.withGenerator(1024, () -> 42)) {
+    // Generates 1024 bytes of value 42
+}
+
+// Alternating pattern
+try (InputStream stream = DataGeneratorInputStream.withGenerator(1024, new IntSupplier() {
+    private boolean toggle = false;
+    public int getAsInt() {
+        toggle = !toggle;
+        return toggle ? 0xFF : 0x00;
+    }
+})) {
+    // Generates: FF 00 FF 00 FF 00...
+}
+
+// Complex logic
+try (InputStream stream = DataGeneratorInputStream.withGenerator(1024, new IntSupplier() {
+    private int counter = 0;
+    public int getAsInt() {
+        return (counter++ % 3 == 0) ? 'A' : 'B';
+    }
+})) {
+    // Generates: A B B A B B...
+}
+```
+
+### Common Use Cases
+
+**Testing Large Stream Handling:**
+```java
+// Test with 10GB stream without allocating 10GB of memory
+long tenGB = 10L * 1024L * 1024L * 1024L;
+try (InputStream stream = DataGeneratorInputStream.withRandomBytes(tenGB)) {
+    testStreamProcessor(stream);
+}
+```
+
+**Generating Test Files:**
+```java
+// Create large test file efficiently
+try (InputStream source = DataGeneratorInputStream.withRandomBytes(100 * 1024 * 1024);
+     OutputStream dest = new FileOutputStream("large-test-file.bin")) {
+    source.transferTo(dest);
+}
+```
+
+**Consistent Test Data:**
+```java
+// Use seed for repeatable tests
+@Test
+void testStreamProcessing() {
+    // Same seed = same data every test run
+    try (InputStream stream = DataGeneratorInputStream.withRandomBytes(1024, 42L)) {
+        byte[] result = processStream(stream);
+        assertEquals(expectedHash, hash(result));
+    }
+}
+```
+
+**Pattern-Based Testing:**
+```java
+// Test with known patterns
+try (InputStream stream = DataGeneratorInputStream.withSequentialBytes(256, 0, 255)) {
+    // Easy to verify: byte at position N should have value N % 256
+    byte[] buffer = new byte[1000];
+    int read = stream.read(buffer);
+    for (int i = 0; i < read; i++) {
+        assertEquals((byte)(i % 256), buffer[i]);
+    }
+}
+```
+
+### Direct Constructor Usage
+
+For advanced scenarios, you can use the constructor directly:
+
+```java
+// Custom generator with state
+IntSupplier generator = new IntSupplier() {
+    private int value = 0;
+    public int getAsInt() {
+        return value++ & 0xFF;
+    }
+};
+
+try (DataGeneratorInputStream stream = new DataGeneratorInputStream(1024, generator)) {
+    // Full control over generation logic
+}
+```
+
+### Implementation Notes
+- **Memory efficient**: Data is generated on-demand and immediately discarded
+- **No buffering**: Each `read()` call generates fresh data
+- **Skip consistency**: `skip()` maintains sequence consistency by calling generator
+- **Thread-safe reads**: Individual read operations are thread-safe
+- **IntSupplier contract**: Generator should return values in range 0-255
+
+### Performance Characteristics
+- **Constant memory usage**: Stream size doesn't affect memory consumption
+- **O(1) generation**: Each byte is generated in constant time
+- **No I/O overhead**: Pure computation, no disk or network access
+- **Suitable for testing**: Ideal for benchmarking stream processors
+
+### Best Practices
+
+```java
+// Always use try-with-resources
+try (InputStream stream = DataGeneratorInputStream.withRandomBytes(1024)) {
+    // Stream auto-closes
+}
+
+// Use seeds for repeatable tests
+DataGeneratorInputStream.withRandomBytes(size, 42L);  // Repeatable
+
+// Choose appropriate mode for your test
+DataGeneratorInputStream.withSequentialBytes(size, 0, 255);  // Predictable
+DataGeneratorInputStream.withRandomBytes(size);              // Realistic
+DataGeneratorInputStream.withConstantByte(size, 0);          // Edge case
+
+// For very large sizes, use long values
+long oneTerabyte = 1024L * 1024L * 1024L * 1024L;
+DataGeneratorInputStream.withRandomBytes(oneTerabyte);
+```
+
+### Error Handling
+
+```java
+// Negative size throws IllegalArgumentException
+try {
+    DataGeneratorInputStream.withRandomBytes(-1);
+} catch (IllegalArgumentException e) {
+    // Size cannot be negative
+}
+
+// Null generator throws NullPointerException
+try {
+    DataGeneratorInputStream.withGenerator(1024, null);
+} catch (NullPointerException e) {
+    // Generator cannot be null
+}
+
+// Empty pattern throws IllegalArgumentException
+try {
+    DataGeneratorInputStream.withRepeatingPattern(1024, "");
+} catch (IllegalArgumentException e) {
+    // Pattern cannot be empty
+}
+```
+
+This utility provides efficient data generation for testing and synthetic data scenarios, with flexible generation strategies and minimal memory overhead.
+
+---
 ## DeepEquals
 [Source](/src/main/java/com/cedarsoftware/util/DeepEquals.java)
 

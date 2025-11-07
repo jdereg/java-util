@@ -495,6 +495,10 @@ System.setProperty("io.debug.detailed.paths", "true");
 <td>Advanced date parsing and manipulation.</td>
 </tr>
 <tr>
+<td><a href="userguide.md#datageneratorinputstream">DataGeneratorInputStream</a></td>
+<td>Memory-efficient <code>InputStream</code> for generating test data on-the-fly with multiple generation modes (random, sequential, patterns, custom).</td>
+</tr>
+<tr>
 <td><a href="userguide.md#deepequals">DeepEquals</a></td>
 <td>Recursive object graph comparison.</td>
 </tr>

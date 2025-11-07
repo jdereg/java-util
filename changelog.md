@@ -1,6 +1,16 @@
 ### Revision History
-#### 4.3.0-SNAPSHOT
-> *
+#### 4.3.0 - 2025-11-07
+> * **ADDED**: `DataGeneratorInputStream` - A flexible, memory-efficient `InputStream` that generates data on-the-fly using various strategies without consuming memory to store the data. This class is ideal for testing code that handles large streams, generating synthetic test data, or creating pattern-based input. Supports multiple generation modes:
+>   * **Random bytes**: Generates random bytes (0-255) with optional seed for reproducible tests. Can exclude zero bytes if needed for specific testing scenarios
+>   * **Repeating patterns**: Repeats a string or byte array pattern cyclically (e.g., "ABC" → ABCABCABC...)
+>   * **Constant byte**: Outputs the same byte value repeatedly for simple fill patterns
+>   * **Sequential bytes**: Counts sequentially between two byte values with automatic wrap-around. Supports both ascending (10→20) and descending (20→10) sequences
+>   * **Random strings**: Generates random proper-case alphabetic strings (like "Xkqmz Pqwer Fgthn") using `StringUtilities.getRandomString()`, separated by configurable delimiters
+>   * **Custom generator**: Accepts any `IntSupplier` lambda for complete flexibility
+>   * All methods use static factory pattern (`withRandomBytes()`, `withRepeatingPattern()`, etc.) for clear, readable code
+>   * Zero memory overhead - data is generated on-demand and immediately discarded, enabling efficient testing with TB+ scale streams
+>   * Thread-safe read operations with proper `InputStream` contract compliance
+>   * Full JavaDoc with comprehensive examples for each generation mode
 
 #### 4.2.0 - 2025-11-02
 > * **FIXED**: `MultiKeyMap` nested Set lookup bug in COLLECTIONS_EXPANDED mode - Fixed size mismatch false negatives when looking up keys containing expanded Collections. In COLLECTIONS_EXPANDED mode, stored keys have expanded size (includes SET_OPEN/SET_CLOSE markers) while lookup keys have un-expanded Collection size. Added skipSizeCheck logic to bypass size comparison for Collection-to-Collection matches in expanded mode, allowing compareCollections() to handle the structural comparison correctly. This fixes lookups failing incorrectly when using nested Sets or Collections as multi-keys.

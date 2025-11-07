@@ -565,7 +565,7 @@ The jar already ships with all necessary OSGi headers and a `module-info.class`.
 To add the bundle to an Eclipse feature or any OSGi runtime simply reference it:
 
 ```xml
-<plugin id="com.cedarsoftware.java-util" version="4.2.0"/>
+<plugin id="com.cedarsoftware.java-util" version="4.3.0"/>
 ```
 
 Both of these features ensure that our library can be seamlessly integrated into modular Java applications, providing robust dependency management and encapsulation.
@@ -576,7 +576,7 @@ To include in your project:
 
 ##### Gradle
 ```groovy
-implementation 'com.cedarsoftware:java-util:4.2.0'
+implementation 'com.cedarsoftware:java-util:4.3.0'
 ```
 
 ##### Maven
@@ -584,7 +584,7 @@ implementation 'com.cedarsoftware:java-util:4.2.0'
 <dependency>
   <groupId>com.cedarsoftware</groupId>
   <artifactId>java-util</artifactId>
-  <version>4.2.0</version>
+  <version>4.3.0</version>
 </dependency>
 ```
 

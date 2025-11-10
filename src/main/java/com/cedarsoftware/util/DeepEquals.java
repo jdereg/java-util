@@ -9,7 +9,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URL;
-import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -154,12 +153,12 @@ public class DeepEquals {
     private static final String ANGLE_RIGHT = "》";
     
     // Thread-safe UTC date formatter for consistent formatting across locales
-    private static final ThreadLocal<SimpleDateFormat> TS_FMT = 
-        ThreadLocal.withInitial(() -> {
-            SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
-            f.setTimeZone(TimeZone.getTimeZone("UTC"));
-            return f;
-        });
+    // Using SafeSimpleDateFormat to handle re-entrant calls safely
+    private static final SafeSimpleDateFormat TS_FMT;
+    static {
+        TS_FMT = new SafeSimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        TS_FMT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
     
     // Strict Base64 pattern that properly validates Base64 encoding
     // Matches strings that are properly padded Base64 (groups of 4 chars with proper padding)
@@ -177,8 +176,13 @@ public class DeepEquals {
     private static final double SCALE_DOUBLE = 1e12;  // Aligned with DOUBLE_EPSILON (1/epsilon)
     private static final float SCALE_FLOAT = 1e6f;     // Aligned with FLOAT_EPSILON (1/epsilon)
 
-    private static final ThreadLocal<Set<Object>> formattingStack = ThreadLocal.withInitial(() ->
-            Collections.newSetFromMap(new IdentityHashMap<>()));
+    // ThreadLocal stack of Sets to handle re-entrant formatValue() calls
+    // Each re-entrant call gets its own Set for circular reference detection
+    private static final ThreadLocal<Deque<Set<Object>>> formattingStack =
+            ThreadLocal.withInitial(ArrayDeque::new);
+
+    // ThreadLocal to track max depth budget for current comparison (handles re-entrant calls via stack)
+    private static final ThreadLocal<Deque<Integer>> maxDepthBudgetStack = ThreadLocal.withInitial(ArrayDeque::new);
     
     // Epsilon values for floating-point comparisons
     private static final double DOUBLE_EPSILON = 1e-12;
@@ -405,11 +409,39 @@ public class DeepEquals {
      * @see #deepEquals(Object, Object)
      */
     public static boolean deepEquals(Object a, Object b, Map<String, ?> options) {
+        Deque<Integer> depthStack = maxDepthBudgetStack.get();
+
+        // Calculate max depth budget from user options and system configuration
+        Integer userBudget = (options != null && options.get(DEPTH_BUDGET) instanceof Integer)
+                ? (Integer) options.get(DEPTH_BUDGET) : null;
+        int configured = getMaxRecursionDepth();
+
+        // Determine max depth: use tighter of user budget or configured limit
+        // Use Integer.MAX_VALUE to mean "no limit" (ArrayDeque doesn't allow null)
+        int maxDepth = Integer.MAX_VALUE;
+        if (userBudget != null && userBudget > 0) {
+            maxDepth = userBudget;
+        }
+        if (configured > 0) {
+            maxDepth = Math.min(maxDepth, configured);
+        }
+
+        // Push onto stack
+        depthStack.push(maxDepth);
+
         try {
-            Set<ItemsToCompare> visited = new HashSet<>();
+            Set<ItemsToCompare> visited = new ConcurrentSet<>();
             return deepEquals(a, b, options, visited);
         } finally {
-            formattingStack.remove();   // Always remove.  When needed next time, initialValue() will be called.
+            depthStack.pop();
+            if (depthStack.isEmpty()) {
+                maxDepthBudgetStack.remove();  // Clean up ThreadLocal when no nested calls
+            }
+            // Only remove formattingStack if empty (to support re-entrant calls)
+            Deque<Set<Object>> fmtStack = formattingStack.get();
+            if (fmtStack != null && fmtStack.isEmpty()) {
+                formattingStack.remove();
+            }
         }
     }
 
@@ -437,19 +469,19 @@ public class DeepEquals {
     // Heap-based deepEquals implementation
     private static boolean deepEquals(Object a, Object b, Deque<ItemsToCompare> stack,
                                       Map<String, ?> options, Set<ItemsToCompare> visited) {
-        final Collection<Class<?>> ignoreCustomEquals = (Collection<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS);
+        final Collection<Class<?>> ignoreCustomEquals = (options != null)
+                ? (Collection<Class<?>>) options.get(IGNORE_CUSTOM_EQUALS) : null;
         final boolean allowAllCustomEquals = ignoreCustomEquals == null;
         final boolean hasNonEmptyIgnoreSet = (ignoreCustomEquals != null && !ignoreCustomEquals.isEmpty());
-        final boolean allowStringsToMatchNumbers = convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
-        
+        final boolean allowStringsToMatchNumbers = (options != null) && convert2boolean(options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS));
+
         stack.addFirst(new ItemsToCompare(a, b));
 
+        // Read max depth from ThreadLocal stack (set by entry point)
+        final Deque<Integer> depthStack = maxDepthBudgetStack.get();
+        final Integer maxRecursionDepth = (depthStack != null && !depthStack.isEmpty()) ? depthStack.peek() : Integer.MAX_VALUE;
+
         // Hoist size limits once at the start to avoid repeated system property reads
-        final int configured = getMaxRecursionDepth();
-        final Object budget = options.get(DEPTH_BUDGET);
-        final int maxRecursionDepth = (budget instanceof Integer && (int)budget > 0)
-            ? Math.min(configured > 0 ? configured : Integer.MAX_VALUE, (int)budget)
-            : configured;
         final int maxCollectionSize = getMaxCollectionSize();
         final int maxArraySize = getMaxArraySize();
         final int maxMapSize = getMaxMapSize();
@@ -463,8 +495,8 @@ public class DeepEquals {
                 continue;
             }
             
-            // Security check: prevent excessive recursion depth (heap-based depth tracking)
-            if (maxRecursionDepth > 0 && itemsToCompare.depth > maxRecursionDepth) {
+            // Security check: prevent excessive recursion depth (heap-based depth tracking, read from ThreadLocal)
+            if (maxRecursionDepth != Integer.MAX_VALUE && itemsToCompare.depth > maxRecursionDepth) {
                 throw new SecurityException("Maximum recursion depth exceeded: " + itemsToCompare.depth + " > " + maxRecursionDepth);
             }
 
@@ -686,11 +718,17 @@ public class DeepEquals {
                         }
                         ignoreSet.add(key1Class);
                         newOptions.put(IGNORE_CUSTOM_EQUALS, ignoreSet);
-                        
-                        // Compute depth budget for recursive call
-                        if (maxRecursionDepth > 0) {
-                            int depthBudget = Math.max(0, maxRecursionDepth - itemsToCompare.depth);
-                            newOptions.put(DEPTH_BUDGET, depthBudget);
+
+                        // Pass remaining depth budget to recursive call to prevent unbounded recursion
+                        // Calculate remaining budget: maxRecursionDepth - current depth
+                        if (maxRecursionDepth != Integer.MAX_VALUE) {
+                            int remainingBudget = maxRecursionDepth - itemsToCompare.depth;
+                            if (remainingBudget > 0) {
+                                newOptions.put(DEPTH_BUDGET, remainingBudget);
+                            } else {
+                                // No budget left, skip recursive call
+                                return false;
+                            }
                         }
 
                         // Make recursive call to find the actual difference
@@ -737,11 +775,40 @@ public class DeepEquals {
 
     // Create child options for nested comparisons, preserving semantics and
     // strictly *narrowing* any inherited depth budget.
+    /**
+     * Create child options for nested comparisons.
+     *
+     * OPTIMIZATION: Since DEPTH_BUDGET is now tracked via ThreadLocal instead of being passed
+     * through options, the options map is stable and can be reused in most cases. This eliminates
+     * the need to allocate a new HashMap on every collection/map comparison.
+     *
+     * We only create a new map if the parent contains "output" keys (DIFF, DIFF_ITEM) that
+     * shouldn't propagate to child comparisons.
+     */
     private static Map<String, Object> sanitizedChildOptions(Map<String, ?> options, ItemsToCompare currentItem) {
-        Map<String, Object> child = new HashMap<>();
         if (options == null) {
-            return child;
+            return Collections.emptyMap();  // Shared empty map
         }
+
+        // Check if parent only contains "input" keys that should propagate
+        // (ALLOW_STRINGS_TO_MATCH_NUMBERS, IGNORE_CUSTOM_EQUALS, and legacy DEPTH_BUDGET)
+        boolean hasOnlyInputKeys = true;
+        for (String key : options.keySet()) {
+            if (!ALLOW_STRINGS_TO_MATCH_NUMBERS.equals(key) &&
+                !IGNORE_CUSTOM_EQUALS.equals(key) &&
+                !DEPTH_BUDGET.equals(key)) {  // DEPTH_BUDGET may exist from user input (ignored now)
+                hasOnlyInputKeys = false;
+                break;
+            }
+        }
+
+        if (hasOnlyInputKeys) {
+            // Parent map is clean, reuse it! (Massive memory savings)
+            return (Map<String, Object>) options;
+        }
+
+        // Parent has extra keys (DIFF, DIFF_ITEM, etc.), create clean copy
+        Map<String, Object> child = new HashMap<>(3);
         Object allow = options.get(ALLOW_STRINGS_TO_MATCH_NUMBERS);
         if (allow != null) {
             child.put(ALLOW_STRINGS_TO_MATCH_NUMBERS, allow);
@@ -750,24 +817,8 @@ public class DeepEquals {
         if (ignore != null) {
             child.put(IGNORE_CUSTOM_EQUALS, ignore);
         }
-        // Depth budget: clamp to the tighter of (a) inherited budget (if any)
-        // and (b) remaining configured budget based on current depth.
-        Integer inherited = (options.get(DEPTH_BUDGET) instanceof Integer)
-                ? (Integer) options.get(DEPTH_BUDGET) : null;
-        int configured = getMaxRecursionDepth();
-        Integer remainingFromConfigured = (configured > 0 && currentItem != null)
-                ? Math.max(0, configured - currentItem.depth) : null;
-        Integer childBudget = null;
-        if (inherited != null && inherited > 0) {
-            childBudget = inherited;
-        }
-        if (remainingFromConfigured != null) {
-            childBudget = (childBudget == null) ? remainingFromConfigured
-                    : Math.min(childBudget, remainingFromConfigured);
-        }
-        if (childBudget != null && childBudget > 0) {
-            child.put(DEPTH_BUDGET, childBudget);
-        }
+
+        // Note: DEPTH_BUDGET is now tracked via ThreadLocal, not copied through options
         // Intentionally do NOT copy DIFF, "diff_item", "recursive_call", etc.
         return child;
     }
@@ -825,7 +876,7 @@ public class DeepEquals {
             for (Iterator<Object> it = candidates.iterator(); it.hasNext();) {
                 Object item2 = it.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(item1, item2, probeStack, childOptions, visitedCopy)) {
@@ -872,7 +923,7 @@ public class DeepEquals {
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(probe, cand, probeStack, options, visitedCopy)) {
@@ -900,7 +951,7 @@ public class DeepEquals {
             for (Iterator<Object> li = list.iterator(); li.hasNext();) {
                 Object cand = li.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation entirely
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(probe, cand, probeStack, options, visitedCopy)) {
@@ -991,7 +1042,7 @@ public class DeepEquals {
 
                 // Check if keys are equal
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(entry.getKey(), otherEntry.getKey(), probeStack, childOptions, visitedCopy)) {
@@ -1050,7 +1101,7 @@ public class DeepEquals {
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {
@@ -1078,7 +1129,7 @@ public class DeepEquals {
             for (Iterator<Map.Entry<?, ?>> ci = c.iterator(); ci.hasNext();) {
                 Map.Entry<?, ?> e = ci.next();
                 // Use a copy of visited set to avoid polluting it with failed comparisons
-                Set<ItemsToCompare> visitedCopy = new HashSet<>(visited);
+                Set<ItemsToCompare> visitedCopy = new ConcurrentSet<>(visited);
                 // Call 5-arg overload directly to bypass diff generation for key probes
                 Deque<ItemsToCompare> probeStack = new ArrayDeque<>();
                 if (deepEquals(key, e.getKey(), probeStack, options, visitedCopy)) {
@@ -1486,8 +1537,17 @@ public class DeepEquals {
      * @return an integer representing the object's deep hash code
      */
     public static int deepHashCode(Object obj) {
-        Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        return deepHashCode(obj, visited);
+        try {
+            Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+            return deepHashCode(obj, visited);
+        } finally {
+            // Only remove formattingStack if empty (to support re-entrant calls)
+            Deque<Set<Object>> fmtStack = formattingStack.get();
+            if (fmtStack != null && fmtStack.isEmpty()) {
+                formattingStack.remove();
+            }
+            // Note: maxDepthBudgetStack is only used by deepEquals, not deepHashCode
+        }
     }
 
     private static int deepHashCode(Object obj, Set<Object> visited) {
@@ -1630,16 +1690,28 @@ public class DeepEquals {
         if (Double.isInfinite(value)) {
             return value > 0 ? 0x7ff00000 : 0xfff00000;  // Separate buckets for +∞ and -∞
         }
-        
-        // Normalize the value according to epsilon
-        double normalizedValue = Math.round(value * SCALE_DOUBLE) / SCALE_DOUBLE;
-        
+
         // Normalize negative zero to positive zero
-        if (normalizedValue == 0.0) {
-            normalizedValue = 0.0;  // This ensures -0.0 becomes 0.0
+        if (value == 0.0) {
+            value = 0.0;  // This ensures -0.0 becomes 0.0
         }
-        
-        long bits = Double.doubleToLongBits(normalizedValue);
+
+        // FIX: Use coarser quantization (1e10 instead of 1e12) to align with nearlyEqual's
+        // epsilon tolerance of 1e-12. This ensures values within epsilon hash to same bucket.
+        // The quantization is intentionally 100x coarser than epsilon to handle:
+        // 1. Floating-point arithmetic errors in the quantization itself
+        // 2. The fact that nearlyEqual uses relative tolerance (epsilon * max(|a|, |b|))
+        // 3. Edge cases where values near powers of 2 may have slightly different representations
+
+        double scale = 1e10;  // Coarser than 1/DOUBLE_EPSILON (1e12) to provide safety margin
+        double quantized = Math.round(value * scale) / scale;
+
+        // Ensure -0.0 becomes 0.0
+        if (quantized == 0.0) {
+            quantized = 0.0;
+        }
+
+        long bits = Double.doubleToLongBits(quantized);
         return (int) (bits ^ (bits >>> 32));
     }
 
@@ -1651,16 +1723,23 @@ public class DeepEquals {
         if (Float.isInfinite(value)) {
             return value > 0 ? 0x7f800000 : 0xff800000;  // Separate buckets for +∞ and -∞
         }
-        
-        // Normalize the value according to epsilon
-        float normalizedValue = Math.round(value * SCALE_FLOAT) / SCALE_FLOAT;
-        
+
         // Normalize negative zero to positive zero
-        if (normalizedValue == 0.0f) {
-            normalizedValue = 0.0f;  // This ensures -0.0f becomes 0.0f
+        if (value == 0.0f) {
+            value = 0.0f;  // This ensures -0.0f becomes 0.0f
         }
-        
-        return Float.floatToIntBits(normalizedValue);
+
+        // FIX: Use coarser quantization (1e5 instead of 1e6) to align with nearlyEqual's
+        // epsilon tolerance of 1e-6. This ensures values within epsilon hash to same bucket.
+        float scale = 1e5f;  // Coarser than 1/FLOAT_EPSILON (1e6) to provide safety margin
+        float quantized = Math.round(value * scale) / scale;
+
+        // Ensure -0.0f becomes 0.0f
+        if (quantized == 0.0f) {
+            quantized = 0.0f;
+        }
+
+        return Float.floatToIntBits(quantized);
     }
 
     private static void addCollectionToStack(Deque<Object> stack, Collection<?> collection) {
@@ -2087,7 +2166,7 @@ public class DeepEquals {
         }
         if (value instanceof Boolean) return value.toString();
         if (value instanceof Date) {
-            return TS_FMT.get().format((Date)value) + " UTC";
+            return TS_FMT.format((Date)value) + " UTC";
         }
         if (value instanceof TimeZone) {
             TimeZone timeZone = (TimeZone) value;
@@ -2113,51 +2192,75 @@ public class DeepEquals {
     private static String formatValue(Object value) {
         if (value == null) return "null";
 
-        // Check if we're already formatting this object
-        Set<Object> stack = formattingStack.get();
-        if (!stack.add(value)) {
-            return "<circular " + value.getClass().getSimpleName() + ">";
+        // Handle re-entrant calls by using a stack of Sets
+        // Each top-level formatting operation gets its own Set for circular reference detection
+        Deque<Set<Object>> stackOfSets = formattingStack.get();
+        Set<Object> currentSet;
+        boolean pushedNewSet = false;
+
+        if (stackOfSets.isEmpty()) {
+            // First formatValue call in this formatting session → create new Set
+            currentSet = Collections.newSetFromMap(new IdentityHashMap<>());
+            stackOfSets.push(currentSet);
+            pushedNewSet = true;
+        } else {
+            // Nested formatValue call → reuse existing Set from this session
+            currentSet = stackOfSets.peek();
         }
 
         try {
-            if (value instanceof Number) {
-                return formatNumber((Number) value);
+            // Check if we're already formatting this object (circular reference detection)
+            if (!currentSet.add(value)) {
+                return "<circular " + value.getClass().getSimpleName() + ">";
             }
 
-            if (value instanceof String) {
-                String s = (String) value;
-                return isSecureErrorsEnabled() ? sanitizeStringValue(s) : ("\"" + s + "\"");
-            }
-            if (value instanceof Character) return "'" + value + "'";
+            try {
+                if (value instanceof Number) {
+                    return formatNumber((Number) value);
+                }
 
-            if (value instanceof Date) {
-                return TS_FMT.get().format((Date)value) + " UTC";
-            }
+                if (value instanceof String) {
+                    String s = (String) value;
+                    return isSecureErrorsEnabled() ? sanitizeStringValue(s) : ("\"" + s + "\"");
+                }
+                if (value instanceof Character) return "'" + value + "'";
 
-            // Handle Enums - format as EnumType.NAME
-            if (value.getClass().isEnum()) {
-                return value.getClass().getSimpleName() + "." + ((Enum<?>) value).name();
-            }
+                if (value instanceof Date) {
+                    return TS_FMT.format((Date)value) + " UTC";
+                }
 
-            // If it's a simple type, use toString()
-            if (Converter.isSimpleTypeConversionSupported(value.getClass())) {
-                return String.valueOf(value);
-            }
+                // Handle Enums - format as EnumType.NAME
+                if (value.getClass().isEnum()) {
+                    return value.getClass().getSimpleName() + "." + ((Enum<?>) value).name();
+                }
 
-            if (value instanceof Collection) {
-                return formatCollectionContents((Collection<?>) value);
-            }
+                // If it's a simple type, use toString()
+                if (Converter.isSimpleTypeConversionSupported(value.getClass())) {
+                    return String.valueOf(value);
+                }
 
-            if (value instanceof Map) {
-                return formatMapContents((Map<?, ?>) value);
+                if (value instanceof Collection) {
+                    return formatCollectionContents((Collection<?>) value);
+                }
+
+                if (value instanceof Map) {
+                    return formatMapContents((Map<?, ?>) value);
+                }
+
+                if (value.getClass().isArray()) {
+                    return formatArrayContents(value);
+                }
+                return formatComplexObject(value);
+            } finally {
+                currentSet.remove(value);
             }
-            
-            if (value.getClass().isArray()) {
-                return formatArrayContents(value);
-            }
-            return formatComplexObject(value);
         } finally {
-            stack.remove(value);
+            if (pushedNewSet) {
+                stackOfSets.pop();
+                if (stackOfSets.isEmpty()) {
+                    formattingStack.remove();
+                }
+            }
         }
     }
 

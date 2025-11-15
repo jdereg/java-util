@@ -1,18 +1,26 @@
 ### Revision History
 #### 4.4.0-SNAPSHOT
+
+> * **IMPROVED**: `IOUtilities` transfer methods now return byte counts - All `transfer*()` methods now return the number of bytes transferred instead of void, enabling callers to verify transfer completion and track progress:
+>   * **Methods returning `long`**: `transfer(InputStream, OutputStream)`, `transfer(InputStream, OutputStream, callback)`, `transfer(File, OutputStream)`, `transfer(InputStream, File, callback)`, `transfer(URLConnection, File, callback)`, `transfer(File, URLConnection, callback)` - Use `long` to support files and streams larger than 2GB (Integer.MAX_VALUE)
+>   * **Methods returning `int`**: `transfer(InputStream, byte[])`, `transfer(URLConnection, byte[])` - Use `int` since Java arrays are bounded by Integer.MAX_VALUE
+>   * **Backward compatible**: Existing code that ignores return values continues to work unchanged
+>   * **Test coverage**: Added 6 comprehensive tests using `DataGeneratorInputStream` to verify byte counts for transfers ranging from 0 bytes to 5MB, including callback verification and pattern validation
+>   * **Use cases**: Enables verification of complete transfers, progress tracking for large files, detecting truncated transfers, and audit logging of transfer operations
 > * **FIXED**: `DeepEquals` - Fixed 7 critical and high-severity thread safety and reliability issues found via comprehensive adversarial code review:
->   * **[CRITICAL] Deep recursion StackOverflowError** - Recursive deepEquals calls now inherit remaining depth budget instead of resetting to full budget, preventing unbounded recursion when custom equals() methods trigger nested comparisons. Added budget inheritance logic that passes (maxDepth - currentDepth) to recursive calls.
->   * **[CRITICAL] Hash/equals contract violation** - Fixed hashDouble() and hashFloat() to maintain contract that equal values have equal hashes. Changed quantization from 1e12 to 1e10 (100× coarser) to match epsilon-based equality tolerance (1e-12), preventing HashMap/HashSet storage failures. Trade-off: ~40% hash collisions for values 2-10× epsilon apart (acceptable - narrow band).
->   * **[CRITICAL] ThreadLocal memory leak** - Added try-finally blocks with ThreadLocal.remove() in deepHashCode() entry point to prevent memory leaks in long-running applications, especially those using thread pools where threads are reused.
->   * **[CRITICAL] Unbounded memory allocation** - Moved depth budget tracking from options Map to separate ThreadLocal stack, making options Map stable and reusable. Reduced HashMap allocations from 500,000 to ~2 for 1M-node graphs (500,000× improvement), preventing OutOfMemoryError with large object graphs.
->   * **[THREAD SAFETY] SimpleDateFormat race condition** - Replaced ThreadLocal<SimpleDateFormat> with SafeSimpleDateFormat for date formatting in diff output. SafeSimpleDateFormat provides copy-on-write semantics and per-thread LRU cache, preventing corrupted date formatting from re-entrant callbacks.
->   * **[THREAD SAFETY] formattingStack re-entrancy** - Changed formattingStack from ThreadLocal<Set<Object>> to ThreadLocal<Deque<Set<Object>>> (stack of Sets), where each top-level formatValue() call gets its own Set for circular reference detection. Prevents false "<circular Object>" detection when re-entrant deepEquals calls format the same object in different contexts.
->   * **[THREAD SAFETY] Unsafe visited set publication** - Replaced HashSet with ConcurrentSet for visited set tracking. ConcurrentSet uses weakly consistent iterators (backed by ConcurrentHashMap) that never throw ConcurrentModificationException, providing fail-safe behavior instead of fail-fast when inputs are modified concurrently.
+>   * **Deep recursion StackOverflowError** - Recursive deepEquals calls now inherit remaining depth budget instead of resetting to full budget, preventing unbounded recursion when custom equals() methods trigger nested comparisons. Added budget inheritance logic that passes (maxDepth - currentDepth) to recursive calls.
+>   * **Hash/equals contract violation** - Fixed hashDouble() and hashFloat() to maintain contract that equal values have equal hashes. Changed quantization from 1e12 to 1e10 (100× coarser) to match epsilon-based equality tolerance (1e-12), preventing HashMap/HashSet storage failures. Trade-off: ~40% hash collisions for values 2-10× epsilon apart (acceptable - narrow band).
+>   * **ThreadLocal memory leak** - Added try-finally blocks with ThreadLocal.remove() in deepHashCode() entry point to prevent memory leaks in long-running applications, especially those using thread pools where threads are reused.
+>   * **Unbounded memory allocation** - Moved depth budget tracking from options Map to separate ThreadLocal stack, making options Map stable and reusable. Reduced HashMap allocations from 500,000 to ~2 for 1M-node graphs (500,000× improvement), preventing OutOfMemoryError with large object graphs.
+>   * **SimpleDateFormat race condition** - Replaced ThreadLocal<SimpleDateFormat> with SafeSimpleDateFormat for date formatting in diff output. SafeSimpleDateFormat provides copy-on-write semantics and per-thread LRU cache, preventing corrupted date formatting from re-entrant callbacks.
+>   * **formattingStack re-entrancy** - Changed formattingStack from ThreadLocal<Set<Object>> to ThreadLocal<Deque<Set<Object>>> (stack of Sets), where each top-level formatValue() call gets its own Set for circular reference detection. Prevents false "<circular Object>" detection when re-entrant deepEquals calls format the same object in different contexts.
+>   * **Unsafe visited set publication** - Replaced HashSet with ConcurrentSet for visited set tracking. ConcurrentSet uses weakly consistent iterators (backed by ConcurrentHashMap) that never throw ConcurrentModificationException, providing fail-safe behavior instead of fail-fast when inputs are modified concurrently.
 >   * **Test coverage**: Added 37 comprehensive tests across 6 new test classes verifying all fixes. All 17,726 existing tests pass with zero regressions.
 >   * **Performance**: Minimal overhead for normal usage, with massive improvements for edge cases (500,000× fewer allocations for large graphs, 100 MB → 400 bytes memory usage)
 >   * **Backward compatibility**: 100% backward compatible - all public APIs unchanged, behavior identical for normal usage patterns
 
 #### 4.3.0 - 2025-11-07
+
 > * **ADDED**: `DataGeneratorInputStream` - A flexible, memory-efficient `InputStream` that generates data on-the-fly using various strategies without consuming memory to store the data. This class is ideal for testing code that handles large streams, generating synthetic test data, or creating pattern-based input. Supports multiple generation modes:
 >   * **Random bytes**: Generates random bytes (0-255) with optional seed for reproducible tests. Can exclude zero bytes if needed for specific testing scenarios
 >   * **Repeating patterns**: Repeats a string or byte array pattern cyclically (e.g., "ABC" → ABCABCABC...)
@@ -26,6 +34,7 @@
 >   * Full JavaDoc with comprehensive examples for each generation mode
 
 #### 4.2.0 - 2025-11-02
+
 > * **FIXED**: `MultiKeyMap` nested Set lookup bug in COLLECTIONS_EXPANDED mode - Fixed size mismatch false negatives when looking up keys containing expanded Collections. In COLLECTIONS_EXPANDED mode, stored keys have expanded size (includes SET_OPEN/SET_CLOSE markers) while lookup keys have un-expanded Collection size. Added skipSizeCheck logic to bypass size comparison for Collection-to-Collection matches in expanded mode, allowing compareCollections() to handle the structural comparison correctly. This fixes lookups failing incorrectly when using nested Sets or Collections as multi-keys.
 >
 > * **IMPROVED**: Code quality improvements from comprehensive IntelliJ IDEA inspection analysis (17 fixes across 5 classes):
@@ -129,6 +138,7 @@
 >   * `MultiKeyMapMixedListSetTest`: 16 tests verifying order-sensitive List and order-agnostic Set matching
 
 #### 4.1.0
+
 > * **FIXED**: `ClassUtilities.setUseUnsafe()` is now thread-local instead of global, preventing race conditions in multi-threaded environments where concurrent threads need different unsafe mode settings
 > 
 > * **IMPROVED**: `ClassUtilities` comprehensive improvements from GPT-5 review:
@@ -339,7 +349,9 @@
 >   * **Removed pre-emptive SecurityManager checks**: Removed unnecessary SecurityManager checks from call() methods since setAccessible is already wrapped
 >   * **Documented null-caching requirement**: Added clear documentation to all cache setter methods that custom Map implementations must support null values
 >   * **Fixed getClassAnnotation javadoc**: Corrected @throws documentation to accurately reflect that only annoClass=null throws, classToCheck=null returns null
+
 #### 4.0.0
+
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
 >   * **Deep Container Copy**: Iteratively copies all arrays and collections to any depth while preserving references to non-container objects ("berries")
 >   * **Iterative Implementation**: Uses heap-based traversal with work queue to avoid stack overflow on deeply nested structures

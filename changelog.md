@@ -1,4 +1,5 @@
 ### Revision History
+
 #### 4.4.0-SNAPSHOT
 
 > * **IMPROVED**: `IOUtilities` transfer methods now return byte counts - All `transfer*()` methods now return the number of bytes transferred instead of void, enabling callers to verify transfer completion and track progress:
@@ -19,6 +20,8 @@
 >   * **Performance**: Minimal overhead for normal usage, with massive improvements for edge cases (500,000× fewer allocations for large graphs, 100 MB → 400 bytes memory usage)
 >   * **Backward compatibility**: 100% backward compatible - all public APIs unchanged, behavior identical for normal usage patterns
 
+---
+
 #### 4.3.0 - 2025-11-07
 
 > * **ADDED**: `DataGeneratorInputStream` - A flexible, memory-efficient `InputStream` that generates data on-the-fly using various strategies without consuming memory to store the data. This class is ideal for testing code that handles large streams, generating synthetic test data, or creating pattern-based input. Supports multiple generation modes:
@@ -32,6 +35,8 @@
 >   * Zero memory overhead - data is generated on-demand and immediately discarded, enabling efficient testing with TB+ scale streams
 >   * Thread-safe read operations with proper `InputStream` contract compliance
 >   * Full JavaDoc with comprehensive examples for each generation mode
+
+---
 
 #### 4.2.0 - 2025-11-02
 
@@ -136,6 +141,8 @@
 >   * `MultiKeyMapEqualsHashCodeTest`: 25 tests verifying equals/hashCode contracts with mixed List/Set keys
 >   * `MultiKeyMapToStringTest`: 21 tests verifying correct List/Set notation in output
 >   * `MultiKeyMapMixedListSetTest`: 16 tests verifying order-sensitive List and order-agnostic Set matching
+
+---
 
 #### 4.1.0
 
@@ -350,6 +357,8 @@
 >   * **Documented null-caching requirement**: Added clear documentation to all cache setter methods that custom Map implementations must support null values
 >   * **Fixed getClassAnnotation javadoc**: Corrected @throws documentation to accurately reflect that only annoClass=null throws, classToCheck=null returns null
 
+---
+
 #### 4.0.0
 
 > * **FEATURE**: Added `deepCopyContainers()` method to `CollectionUtilities` and `ArrayUtilities`:
@@ -402,7 +411,9 @@
 >   * **Generic Array Processing**: Improved reflection-based array processing with hash computation limits
 >   * **Collection Processing**: Optimized both ArrayList and generic Collection processing with early termination
 >   * **Performance Testing**: Added comprehensive test coverage including hash distribution analysis, collision analysis, and performance comparisons
+
 #### 3.9.0
+
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with comprehensive performance and robustness improvements:
 >   * **Security Enhancement**: Replaced String sentinels with custom objects to prevent key collisions in internal operations
 >   * **Performance Optimization**: Added comprehensive collection and typed array optimizations with NULL_SENTINEL uniformity
@@ -424,7 +435,9 @@
 >   * **Bug Fix**: Fixed JSON serialization constructors for proper deserialization support
 >   * **Documentation**: Added comprehensive quanta calculation examples using Math.nextUp() and temporal precision APIs
 > * **DOCUMENTATION**: Updated changelog.md and improved table formatting throughout documentation
+
 #### 3.8.0
+
 > * **MAJOR FEATURE**: Added `IntervalSet` - thread-safe set of half-open intervals [start, end). Optimized (collapsed) by default, or all intervals retained if `autoMerge=false` (audit mode):
 >   * **Half-Open Semantics**: Uses [start, end) intervals where start is inclusive, end is exclusive - eliminates boundary ambiguity
 >   * **High Performance**: O(log n) operations using `ConcurrentSkipListMap` for all queries, insertions, and range operations
@@ -440,7 +453,9 @@
 > * **BUG FIX**: Corrected `IntervalSet` range removal operations, enforced unique start keys in discrete mode, and improved type support documentation.
 > * **REFACTOR**: Simplified `MultiKeyMap` by removing the redundant volatile `size` field and relying on the existing `AtomicInteger` for size tracking.
 > * **REFACTOR**: Consolidated hash computation logic in `MultiKeyMap` to reduce duplication and improve readability.
+
 #### 3.7.0
+
 > * **MAJOR FEATURE**: Enhanced `MultiKeyMap` with N-dimensional array expansion support:
 >   * **N-Dimensional Array Expansion**: Nested arrays of any depth are automatically flattened recursively into multi-keys with sentinel preservation
 >   * **Visual Notation**: `{{"a", "b"}, {"c", "d"}} → [SENTINELS, DN, "a", "b", UP, DN, "c", "d", UP]` - powerful structural preservation
@@ -472,7 +487,9 @@
 > * **PERFORMANCE**: Optimized test execution by disabling compilation for faster test cycles during development
 > * **TEST FIX**: Stabilized `ConcurrentListIteratorTest.testReadFailsGracefullyWhenConcurrentRemoveShrinksList`
 >   * Used a latch to reliably detect the expected exception under heavy load
+
 #### 3.6.0
+
 > * **MAJOR FEATURE**: Added many additional types to `Converter`, expanding conversion capability (1,700+ total conversion pairs):
 >   * **Atomic Arrays**: Added full bidirectional conversion support for `AtomicIntegerArray`, `AtomicLongArray`, and `AtomicReferenceArray`
 >   * **NIO Buffers**: Added complete bridge system for all NIO buffer types (`IntBuffer`, `LongBuffer`, `FloatBuffer`, `DoubleBuffer`, `ShortBuffer`) with existing `ByteBuffer` and `CharBuffer`
@@ -623,13 +640,17 @@
 >   * 15 new JUnit tests for `CompactSet` concurrent functionality and builder pattern enhancements  
 >   * 23 new JUnit tests for `CaseInsensitiveSet` concurrent operations and feature parity validation
 >   * Added multi-dimensional array conversion test matching README.md example for better documentation accuracy
+
 #### 3.5.0
+
 > * `Converter.getInstance()` exposes the default instance used by the static API
 > * `ClassUtilities.newInstance()` accepts `Map` arguments using parameter names and falls back to the no‑arg constructor
 > * `Converter.convert()` returns the source when assignment compatible (when no other conversion path is selected)
 > * Throwable creation from a `Map` handles aliases and nested causes
 > * Jar file is built with `-parameters` flag going forward (increased the jar size by about 10K)
+
 #### 3.4.0
+
 > * `MapUtilities.getUnderlyingMap()` now uses identity comparison to avoid false cycle detection with wrapper maps
 > * `ConcurrentNavigableMapNullSafe.pollFirstEntry()` and `pollLastEntry()` now return correct values after removal
 > * `UrlInvocationHandler` (deprecated) was finally removed.
@@ -649,7 +670,9 @@
 > * Logging instructions merged into `userguide.md`; README section condensed
 > * `ExceptionUtilities` adds private `uncheckedThrow` for rethrowing any `Throwable` unchecked
 > * `IOUtilities` and related APIs now throw `IOException` unchecked
+
 #### 3.3.3 LLM inspired updates against the life-long "todo" list.
+
 > * `TTLCache` now recreates its background scheduler if used after `TTLCache.shutdown()`.
 > * `SafeSimpleDateFormat.equals()` now correctly handles other `SafeSimpleDateFormat` instances.
 > * Manifest cleaned up by removing `Import-Package` entries for `java.sql` and `java.xml`

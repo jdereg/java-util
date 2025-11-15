@@ -14,13 +14,11 @@
 >   * **ThreadLocal memory leak** - Added try-finally blocks with ThreadLocal.remove() in deepHashCode() entry point to prevent memory leaks in long-running applications, especially those using thread pools where threads are reused.
 >   * **Unbounded memory allocation** - Moved depth budget tracking from options Map to separate ThreadLocal stack, making options Map stable and reusable. Reduced HashMap allocations from 500,000 to ~2 for 1M-node graphs (500,000× improvement), preventing OutOfMemoryError with large object graphs.
 >   * **SimpleDateFormat race condition** - Replaced ThreadLocal<SimpleDateFormat> with SafeSimpleDateFormat for date formatting in diff output. SafeSimpleDateFormat provides copy-on-write semantics and per-thread LRU cache, preventing corrupted date formatting from re-entrant callbacks.
->   * **formattingStack re-entrancy** - Changed formattingStack from ThreadLocal<Set<Object>> to ThreadLocal<Deque<Set<Object>>> (stack of Sets), where each top-level formatValue() call gets its own Set for circular reference detection. Prevents false "<circular Object>" detection when re-entrant deepEquals calls format the same object in different contexts.
+>   * **formattingStack re-entrancy** - Changed formattingStack from `ThreadLocal<Set<Object>>` to `ThreadLocal<Deque<Set<Object>>` (stack of Sets), where each top-level formatValue() call gets its own Set for circular reference detection. Prevents false `<circular Object>` detection when re-entrant deepEquals calls format the same object in different contexts.
 >   * **Unsafe visited set publication** - Replaced HashSet with ConcurrentSet for visited set tracking. ConcurrentSet uses weakly consistent iterators (backed by ConcurrentHashMap) that never throw ConcurrentModificationException, providing fail-safe behavior instead of fail-fast when inputs are modified concurrently.
 >   * **Test coverage**: Added 37 comprehensive tests across 6 new test classes verifying all fixes. All 17,726 existing tests pass with zero regressions.
 >   * **Performance**: Minimal overhead for normal usage, with massive improvements for edge cases (500,000× fewer allocations for large graphs, 100 MB → 400 bytes memory usage)
 >   * **Backward compatibility**: 100% backward compatible - all public APIs unchanged, behavior identical for normal usage patterns
-
----
 
 #### 4.3.0 - 2025-11-07
 
@@ -35,8 +33,6 @@
 >   * Zero memory overhead - data is generated on-demand and immediately discarded, enabling efficient testing with TB+ scale streams
 >   * Thread-safe read operations with proper `InputStream` contract compliance
 >   * Full JavaDoc with comprehensive examples for each generation mode
-
----
 
 #### 4.2.0 - 2025-11-02
 
@@ -141,8 +137,6 @@
 >   * `MultiKeyMapEqualsHashCodeTest`: 25 tests verifying equals/hashCode contracts with mixed List/Set keys
 >   * `MultiKeyMapToStringTest`: 21 tests verifying correct List/Set notation in output
 >   * `MultiKeyMapMixedListSetTest`: 16 tests verifying order-sensitive List and order-agnostic Set matching
-
----
 
 #### 4.1.0
 
@@ -311,7 +305,7 @@
 >     * Improved MAP_MISSING_KEY error messages with clearer formatting
 >     * Added security check in formatComplexObject for sensitive fields
 >     * Added string sanitization for secure errors
->     * Type-safe visited set using Set<ItemsToCompare>
+>     * Type-safe visited set using `Set<ItemsToCompare>`
 >     * Skip static/transient fields in formatting
 >     * Implemented global depth budget across recursive paths
 >     * Added Locale.ROOT for consistent formatting
@@ -334,7 +328,7 @@
 >   * Removed static System.setProperty calls during initialization
 >     * **Fixed Javadoc typo**: Corrected "instants hashCode()" to "instance's hashCode()" in deepHashCode documentation
 >     * **Added regex pattern commentary**: Clarified that HEX_32_PLUS and UUID_PATTERN use lowercase patterns since strings are lowercased before matching
->     * **Type-safe visited set**: Changed visited set type from Set<Object> to Set<ItemsToCompare> for compile-time type safety and to prevent accidental misuse
+>     * **Type-safe visited set**: Changed visited set type from `Set<Object>` to `Set<ItemsToCompare>` for compile-time type safety and to prevent accidental misuse
 >     * **Added Arrays.equals fast-path**: Use native Arrays.equals for primitive arrays as optimization before element-by-element comparison with diff tracking
 >     * **Skip static/transient fields in formatting**: Aligned formatComplexObject and formatValueConcise with equality semantics by skipping static and transient fields
 >     * **Implemented global depth budget**: Pass remaining depth budget through child calls to ensure security limits are truly global across all recursive paths, preventing excessive recursion
@@ -356,8 +350,6 @@
 >   * **Removed pre-emptive SecurityManager checks**: Removed unnecessary SecurityManager checks from call() methods since setAccessible is already wrapped
 >   * **Documented null-caching requirement**: Added clear documentation to all cache setter methods that custom Map implementations must support null values
 >   * **Fixed getClassAnnotation javadoc**: Corrected @throws documentation to accurately reflect that only annoClass=null throws, classToCheck=null returns null
-
----
 
 #### 4.0.0
 

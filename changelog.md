@@ -41,14 +41,6 @@
 >   * **Impact**: Profiler showed severe lock contention in `putInternal()` - 6,588ms blocked waiting for locks. With 4x more stripes, contention drops dramatically as threads distribute across more locks.
 >   * **Rationale**: Matches ConcurrentHashMap's DEFAULT_CONCURRENCY_LEVEL approach (concurrency = cores or higher) for optimal write parallelism
 >   * **Backward compatible**: Auto-tuned based on CPU cores, no API changes
-> * **PERFORMANCE**: `ConcurrentList.size()` and `isEmpty()` made lock-free - removed unnecessary readLock:
->   * **Problem**: Profiler flame graph showed `ConcurrentList.size()` as prominent hot spot across entire test suite (17K+ tests). Implementation had unnecessary `readLock` acquisition for operations that are already thread-safe.
->   * **Previous code**: `readLock.lock()` → `tail.get() - head.get()` → `readLock.unlock()` - lock overhead on every call
->   * **New code**: Direct `tail.get() - head.get()` - lock-free, just 2 volatile reads
->   * **Why safe**: `AtomicLong.get()` is already thread-safe. Slight staleness between two reads is acceptable for `size()` and `isEmpty()` - approximate values are fine for typical use cases.
->   * **Impact**: Eliminates lock acquisition overhead (memory barriers, cache line bouncing, potential contention with writers) for frequently-called methods
->   * **Rationale**: Matches original 3.9.0 design - the readLock was a performance regression. Lock-free implementations align with ConcurrentList's design philosophy of minimal locking.
->   * **Backward compatible**: Same semantics, just faster and less contention
 > * **IMPROVED**: `IOUtilities` transfer methods now return byte counts - All `transfer*()` methods now return the number of bytes transferred instead of void, enabling callers to verify transfer completion and track progress:
 >   * **Methods returning `long`**: `transfer(InputStream, OutputStream)`, `transfer(InputStream, OutputStream, callback)`, `transfer(File, OutputStream)`, `transfer(InputStream, File, callback)`, `transfer(URLConnection, File, callback)`, `transfer(File, URLConnection, callback)` - Use `long` to support files and streams larger than 2GB (Integer.MAX_VALUE)
 >   * **Methods returning `int`**: `transfer(InputStream, byte[])`, `transfer(URLConnection, byte[])` - Use `int` since Java arrays are bounded by Integer.MAX_VALUE

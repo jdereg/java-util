@@ -198,17 +198,23 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public int size() {
-        // Lock-free implementation - AtomicLong.get() is already thread-safe
-        // Slight staleness is acceptable for size() - performance is critical here
-        long diff = tail.get() - head.get();
-        return diff > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) diff;
+        lock.readLock().lock();
+        try {
+            long diff = tail.get() - head.get();
+            return diff > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) diff;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Override
     public boolean isEmpty() {
-        // Lock-free implementation - AtomicLong.get() is already thread-safe
-        // No atomicity guarantee needed between the two reads - acceptable trade-off
-        return tail.get() == head.get();
+        lock.readLock().lock();
+        try {
+            return tail.get() == head.get();
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Override

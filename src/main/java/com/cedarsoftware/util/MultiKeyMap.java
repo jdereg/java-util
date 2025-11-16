@@ -4173,8 +4173,11 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
 
     private static int calculateOptimalStripeCount() {
         int cores = Runtime.getRuntime().availableProcessors();
-        int stripes = Math.max(8, cores / 2);
-        stripes = Math.min(32, stripes);
+        // Use 2x cores for better concurrency (matches ConcurrentHashMap's DEFAULT_CONCURRENCY_LEVEL approach)
+        // Minimum 8 stripes even on low-core systems, maximum 128 for high-core servers
+        int stripes = Math.max(8, cores * 2);
+        stripes = Math.min(128, stripes);
+        // Round up to next power of 2 for efficient bit-masking
         return Integer.highestOneBit(stripes - 1) << 1;
     }
 

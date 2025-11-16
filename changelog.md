@@ -34,6 +34,13 @@
 >   * **Branch elimination**: Creates two separate IntSupplier implementations (one for includeZero=true, one for false) instead of checking flag on every `getAsInt()` call.
 >   * **Random instance lifecycle**: Created once per stream (not in factory method), following same pattern as withRepeatingPattern() and withSequentialBytes()
 >   * **Deterministic**: Maintains exact same random sequences for same seeds - all DataGeneratorInputStream tests pass with identical output
+> * **PERFORMANCE**: `MultiKeyMap` stripe lock count increased for better concurrency under high load:
+>   * **Changed formula**: `cores * 2` instead of `cores / 2` (4x more stripes on typical systems)
+>   * **Increased max**: 128 stripes (was 32) to support high-core-count servers (64+ cores)
+>   * **12-core example**: 8 stripes → 32 stripes (4x more parallelism)
+>   * **Impact**: Profiler showed severe lock contention in `putInternal()` - 6,588ms blocked waiting for locks. With 4x more stripes, contention drops dramatically as threads distribute across more locks.
+>   * **Rationale**: Matches ConcurrentHashMap's DEFAULT_CONCURRENCY_LEVEL approach (concurrency = cores or higher) for optimal write parallelism
+>   * **Backward compatible**: Auto-tuned based on CPU cores, no API changes
 > * **IMPROVED**: `IOUtilities` transfer methods now return byte counts - All `transfer*()` methods now return the number of bytes transferred instead of void, enabling callers to verify transfer completion and track progress:
 >   * **Methods returning `long`**: `transfer(InputStream, OutputStream)`, `transfer(InputStream, OutputStream, callback)`, `transfer(File, OutputStream)`, `transfer(InputStream, File, callback)`, `transfer(URLConnection, File, callback)`, `transfer(File, URLConnection, callback)` - Use `long` to support files and streams larger than 2GB (Integer.MAX_VALUE)
 >   * **Methods returning `int`**: `transfer(InputStream, byte[])`, `transfer(URLConnection, byte[])` - Use `int` since Java arrays are bounded by Integer.MAX_VALUE

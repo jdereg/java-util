@@ -203,9 +203,21 @@ public final class Converter {
     public static final String PRECISION_MILLIS = "millis";
     public static final String PRECISION_NANOS = "nanos";
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
-    private static final MultiKeyMap<Convert<?>> CONVERSION_DB = new MultiKeyMap<>(4096, 0.8f);
-    private final MultiKeyMap<Convert<?>> USER_DB = new MultiKeyMap<>(16, 0.8f);
-    private static final MultiKeyMap<Convert<?>> FULL_CONVERSION_CACHE = new MultiKeyMap<>(1024, 0.75f);
+    private static final MultiKeyMap<Convert<?>> CONVERSION_DB = MultiKeyMap.<Convert<?>>builder()
+            .capacity(4096)
+            .loadFactor(0.8f)
+            .simpleKeysMode(true)  // Performance: keys are always simple (Class, Class, Long) - never nested
+            .build();
+    private final MultiKeyMap<Convert<?>> USER_DB = MultiKeyMap.<Convert<?>>builder()
+            .capacity(16)
+            .loadFactor(0.8f)
+            .simpleKeysMode(true)  // Performance: keys are always simple (Class, Class, Long) - never nested
+            .build();
+    private static final MultiKeyMap<Convert<?>> FULL_CONVERSION_CACHE = MultiKeyMap.<Convert<?>>builder()
+            .capacity(1024)
+            .loadFactor(0.75f)
+            .simpleKeysMode(true)  // Performance: keys are always simple (Class, Class, Long) - never nested
+            .build();
     private static final Map<Class<?>, String> CUSTOM_ARRAY_NAMES = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SIMPLE_TYPE_CACHE = new ClassValueMap<>();
     private static final ClassValueMap<Boolean> SELF_CONVERSION_CACHE = new ClassValueMap<>();

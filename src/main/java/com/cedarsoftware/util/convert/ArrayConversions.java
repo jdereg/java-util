@@ -6,8 +6,11 @@ import com.cedarsoftware.util.geom.Insets;
 import com.cedarsoftware.util.geom.Point;
 import com.cedarsoftware.util.geom.Rectangle;
 import java.lang.reflect.Array;
+import java.util.ArrayDeque;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.EnumSet;
+import java.util.IdentityHashMap;
 
 /**
  * @author John DeRegnaucourt (jdereg@gmail.com)
@@ -31,7 +34,12 @@ final class ArrayConversions {
 
     /**
      * Converts an array to another array of the specified target array type.
-     * Handles multidimensional arrays recursively.
+     * Handles multidimensional arrays iteratively with cycle detection.
+     * Uses IdentityHashMap to detect and handle circular references without stack overflow.
+     *
+     * Circular reference handling:
+     * - Reference to reference arrays: Cycle preserved (target array points to itself)
+     * - Reference to primitive arrays: Zero-value used (0, 0.0, false, '\0')
      *
      * @param sourceArray     The source array to convert
      * @param targetArrayType The desired target array type
@@ -39,32 +47,116 @@ final class ArrayConversions {
      * @return A new array of the specified target type
      */
     static Object arrayToArray(Object sourceArray, Class<?> targetArrayType, Converter converter) {
+        // IdentityHashMap to track source array -> target array mappings (for cycle detection)
+        IdentityHashMap<Object, Object> visited = new IdentityHashMap<>();
+
+        // Create root target array
         int length = Array.getLength(sourceArray);
         Class<?> targetComponentType = targetArrayType.getComponentType();
         Object targetArray = Array.newInstance(targetComponentType, length);
 
-        for (int i = 0; i < length; i++) {
-            Object value = Array.get(sourceArray, i);
-            Object convertedValue;
+        // Track the root mapping
+        visited.put(sourceArray, targetArray);
 
-            if (value != null && value.getClass().isArray()) {
-                // Recursively handle nested arrays
-                convertedValue = arrayToArray(value, targetComponentType, converter);
-            } else if (value == null || targetComponentType.isAssignableFrom(value.getClass())) {
-                // Direct assignment if types are compatible or value is null
-                convertedValue = value;
-            } else {
-                // Convert the value to the target component type
-                convertedValue = converter.convert(value, targetComponentType);
+        // Work queue for iterative processing (avoids stack overflow)
+        Deque<ArrayWorkItem> queue = new ArrayDeque<>();
+        queue.add(new ArrayWorkItem(sourceArray, targetArray, targetComponentType));
+
+        while (!queue.isEmpty()) {
+            ArrayWorkItem work = queue.poll();
+            Object src = work.sourceArray;
+            Object tgt = work.targetArray;
+            Class<?> compType = work.targetComponentType;
+
+            int len = Array.getLength(src);
+            for (int i = 0; i < len; i++) {
+                Object value = Array.get(src, i);
+                Object convertedValue;
+
+                if (value == null) {
+                    convertedValue = null;
+                } else if (value.getClass().isArray()) {
+                    // Source value is an array
+                    if (visited.containsKey(value)) {
+                        // Cycle detected - reuse the target array we already created
+                        Object existingTarget = visited.get(value);
+                        if (compType.isAssignableFrom(existingTarget.getClass())) {
+                            // Target type can hold the existing target - preserve cycle
+                            convertedValue = existingTarget;
+                        } else if (compType.isPrimitive()) {
+                            // Converting reference cycle to primitive - use zero value
+                            convertedValue = getPrimitiveZeroValue(compType);
+                        } else {
+                            // Type mismatch - try to use existing target anyway
+                            convertedValue = existingTarget;
+                        }
+                    } else if (compType.isArray() || compType == Object.class || compType.isAssignableFrom(value.getClass())) {
+                        // Target can hold arrays (either it's an array type, Object.class, or assignable)
+                        // Convert nested array recursively
+                        int valueLen = Array.getLength(value);
+                        Class<?> nestedComponentType = compType.isArray() ? compType.getComponentType() : Object.class;
+                        Object nestedTarget = Array.newInstance(nestedComponentType, valueLen);
+                        visited.put(value, nestedTarget);
+                        queue.add(new ArrayWorkItem(value, nestedTarget, nestedComponentType));
+                        convertedValue = nestedTarget;
+                    } else {
+                        // Source is array but target component doesn't support arrays
+                        // Try converting via Converter (may flatten or fail)
+                        convertedValue = converter.convert(value, compType);
+                    }
+                } else if (compType.isAssignableFrom(value.getClass())) {
+                    // Direct assignment if types are compatible
+                    convertedValue = value;
+                } else {
+                    // Convert the value to the target component type
+                    convertedValue = converter.convert(value, compType);
+                }
+
+                Array.set(tgt, i, convertedValue);
             }
-
-            Array.set(targetArray, i, convertedValue);
         }
+
         return targetArray;
     }
 
     /**
-     * Converts a collection to an array, handling nested collections recursively.
+     * Returns the zero-value for primitive types.
+     * Used when a circular reference cannot be preserved (e.g., reference to primitive array).
+     */
+    private static Object getPrimitiveZeroValue(Class<?> primitiveType) {
+        if (primitiveType == int.class) return 0;
+        if (primitiveType == long.class) return 0L;
+        if (primitiveType == double.class) return 0.0;
+        if (primitiveType == float.class) return 0.0f;
+        if (primitiveType == short.class) return (short) 0;
+        if (primitiveType == byte.class) return (byte) 0;
+        if (primitiveType == char.class) return '\0';
+        if (primitiveType == boolean.class) return false;
+        return null;  // Not a primitive
+    }
+
+    /**
+     * Work item for iterative array processing.
+     */
+    private static class ArrayWorkItem {
+        final Object sourceArray;
+        final Object targetArray;
+        final Class<?> targetComponentType;
+
+        ArrayWorkItem(Object sourceArray, Object targetArray, Class<?> targetComponentType) {
+            this.sourceArray = sourceArray;
+            this.targetArray = targetArray;
+            this.targetComponentType = targetComponentType;
+        }
+    }
+
+    /**
+     * Converts a collection to an array, handling nested collections iteratively with cycle detection.
+     * Uses IdentityHashMap to detect and handle circular references without stack overflow.
+     *
+     * Circular reference handling:
+     * - Collection to reference arrays: Cycle preserved (target array points to itself)
+     * - Collection to primitive arrays: Zero-value used (0, 0.0, false, '\0')
      *
      * @param collection The source collection to convert
      * @param arrayType  The target array type
@@ -72,27 +164,91 @@ final class ArrayConversions {
      * @return An array of the specified type containing the collection elements
      */
     static Object collectionToArray(Collection<?> collection, Class<?> arrayType, Converter converter) {
+        // IdentityHashMap to track source collection -> target array mappings (for cycle detection)
+        IdentityHashMap<Object, Object> visited = new IdentityHashMap<>();
+
+        // Create root target array
         Class<?> componentType = arrayType.getComponentType();
         Object array = Array.newInstance(componentType, collection.size());
-        int index = 0;
 
-        for (Object item : collection) {
-            Object convertedValue;
+        // Track the root mapping
+        visited.put(collection, array);
 
-            if (item instanceof Collection && componentType.isArray()) {
-                // Recursively handle nested collections
-                convertedValue = collectionToArray((Collection<?>) item, componentType, converter);
-            } else if (item == null || componentType.isAssignableFrom(item.getClass())) {
-                // Direct assignment if types are compatible or item is null
-                convertedValue = item;
-            } else {
-                // Convert the item to the target component type
-                convertedValue = converter.convert(item, componentType);
+        // Work queue for iterative processing (avoids stack overflow)
+        Deque<CollectionWorkItem> queue = new ArrayDeque<>();
+        queue.add(new CollectionWorkItem(collection, array, componentType));
+
+        while (!queue.isEmpty()) {
+            CollectionWorkItem work = queue.poll();
+            Collection<?> srcCollection = work.sourceCollection;
+            Object tgtArray = work.targetArray;
+            Class<?> compType = work.targetComponentType;
+
+            int index = 0;
+            for (Object item : srcCollection) {
+                Object convertedValue;
+
+                if (item == null) {
+                    convertedValue = null;
+                } else if (item instanceof Collection) {
+                    // Source item is a collection
+                    if (visited.containsKey(item)) {
+                        // Cycle detected - reuse the target array we already created
+                        Object existingTarget = visited.get(item);
+                        if (compType.isAssignableFrom(existingTarget.getClass())) {
+                            // Target type can hold the existing target - preserve cycle
+                            convertedValue = existingTarget;
+                        } else if (compType.isPrimitive()) {
+                            // Converting reference cycle to primitive - use zero value
+                            convertedValue = getPrimitiveZeroValue(compType);
+                        } else {
+                            // Type mismatch - try to use existing target anyway
+                            convertedValue = existingTarget;
+                        }
+                    } else if (compType.isArray()) {
+                        // Target explicitly wants arrays - convert nested collection to array
+                        Collection<?> nestedCollection = (Collection<?>) item;
+                        Class<?> nestedComponentType = compType.getComponentType();
+                        Object nestedTarget = Array.newInstance(nestedComponentType, nestedCollection.size());
+                        visited.put(item, nestedTarget);
+                        queue.add(new CollectionWorkItem(nestedCollection, nestedTarget, nestedComponentType));
+                        convertedValue = nestedTarget;
+                    } else if (compType.isAssignableFrom(item.getClass())) {
+                        // Target type can hold collections (e.g., Object.class) - keep as collection
+                        convertedValue = item;
+                    } else {
+                        // Source is collection but target component doesn't support it
+                        // Try converting via Converter (may flatten or fail)
+                        convertedValue = converter.convert(item, compType);
+                    }
+                } else if (compType.isAssignableFrom(item.getClass())) {
+                    // Direct assignment if types are compatible
+                    convertedValue = item;
+                } else {
+                    // Convert the item to the target component type
+                    convertedValue = converter.convert(item, compType);
+                }
+
+                Array.set(tgtArray, index++, convertedValue);
             }
-
-            Array.set(array, index++, convertedValue);
         }
+
         return array;
+    }
+
+    /**
+     * Work item for iterative collection processing.
+     */
+    private static class CollectionWorkItem {
+        final Collection<?> sourceCollection;
+        final Object targetArray;
+        final Class<?> targetComponentType;
+
+        CollectionWorkItem(Collection<?> sourceCollection, Object targetArray, Class<?> targetComponentType) {
+            this.sourceCollection = sourceCollection;
+            this.targetArray = targetArray;
+            this.targetComponentType = targetComponentType;
+        }
     }
 
     /**

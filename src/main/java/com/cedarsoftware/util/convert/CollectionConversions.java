@@ -1,7 +1,10 @@
 package com.cedarsoftware.util.convert;
 
 import java.lang.reflect.Array;
+import java.util.ArrayDeque;
 import java.util.Collection;
+import java.util.Deque;
+import java.util.IdentityHashMap;
 
 import static com.cedarsoftware.util.CollectionUtilities.getSynchronizedCollection;
 import static com.cedarsoftware.util.CollectionUtilities.getUnmodifiableCollection;
@@ -45,7 +48,8 @@ public final class CollectionConversions {
 
     /**
      * Converts an array to a collection, supporting special collection types
-     * and nested arrays.
+     * and nested arrays. Uses iterative processing to handle deeply nested
+     * structures without stack overflow. Preserves circular references.
      *
      * @param array      The source array to convert
      * @param targetType The target collection type
@@ -54,50 +58,75 @@ public final class CollectionConversions {
      */
     @SuppressWarnings("unchecked")
     public static <T extends Collection<?>> T arrayToCollection(Object array, Class<T> targetType) {
-
-        int length = Array.getLength(array);
+        // Track visited arrays to handle circular references
+        IdentityHashMap<Object, Object> visited = new IdentityHashMap<>();
 
         // Determine if the target type requires unmodifiable behavior
         boolean requiresUnmodifiable = isUnmodifiable(targetType);
         boolean requiresSynchronized = isSynchronized(targetType);
 
         // Create the appropriate collection using CollectionHandling
-        Collection<Object> collection = (Collection<Object>) createCollection(array, targetType);
+        Collection<Object> rootCollection = (Collection<Object>) createCollection(array, targetType);
 
         // If the target represents an empty collection, return it immediately
         if (isEmptyCollection(targetType)) {
-            return (T) collection;
+            return (T) rootCollection;
         }
 
-        // Populate the collection with array elements
-        for (int i = 0; i < length; i++) {
-            Object element = Array.get(array, i);
+        // Track source array → target collection mapping
+        visited.put(array, rootCollection);
 
-            if (element != null && element.getClass().isArray()) {
-                // Recursively handle nested arrays
-                element = arrayToCollection(element, targetType);
+        // Work queue for iterative processing
+        Deque<ArrayToCollectionWorkItem> queue = new ArrayDeque<>();
+        queue.add(new ArrayToCollectionWorkItem(array, rootCollection, targetType));
+
+        while (!queue.isEmpty()) {
+            ArrayToCollectionWorkItem work = queue.poll();
+            int workLength = Array.getLength(work.sourceArray);
+
+            for (int i = 0; i < workLength; i++) {
+                Object element = Array.get(work.sourceArray, i);
+
+                if (element != null && element.getClass().isArray()) {
+                    // Check if we've already converted this array (circular reference)
+                    if (visited.containsKey(element)) {
+                        // Reuse existing collection - preserves cycles
+                        work.targetCollection.add(visited.get(element));
+                    } else {
+                        // Create new collection for this nested array
+                        Collection<Object> nestedCollection = (Collection<Object>) createCollection(element, work.targetType);
+                        visited.put(element, nestedCollection);
+                        work.targetCollection.add(nestedCollection);
+
+                        // Queue for processing
+                        queue.add(new ArrayToCollectionWorkItem(element, nestedCollection, work.targetType));
+                    }
+                } else {
+                    // Simple element - add directly
+                    work.targetCollection.add(element);
+                }
             }
-
-            collection.add(element);
         }
 
         // If the created collection already matches the target type, return it as is
-        if (targetType.isAssignableFrom(collection.getClass())) {
-            return (T) collection;
+        if (targetType.isAssignableFrom(rootCollection.getClass())) {
+            return (T) rootCollection;
         }
 
         // If wrapping is required, return the wrapped version
         if (requiresUnmodifiable) {
-            return (T) getUnmodifiableCollection(collection);
+            return (T) getUnmodifiableCollection(rootCollection);
         }
         if (requiresSynchronized) {
-            return (T) getSynchronizedCollection(collection);
+            return (T) getSynchronizedCollection(rootCollection);
         }
-        return (T) collection;
+        return (T) rootCollection;
     }
 
     /**
      * Converts a collection to another collection type, preserving characteristics.
+     * Uses iterative processing to handle deeply nested collections without stack overflow.
+     * Preserves circular references.
      *
      * @param source     The source collection to convert
      * @param targetType The target collection type
@@ -105,41 +134,86 @@ public final class CollectionConversions {
      */
     @SuppressWarnings("unchecked")
     public static Object collectionToCollection(Collection<?> source, Class<?> targetType) {
+        // Track visited collections to handle circular references
+        IdentityHashMap<Object, Object> visited = new IdentityHashMap<>();
 
         // Determine if the target type requires unmodifiable behavior
         boolean requiresUnmodifiable = isUnmodifiable(targetType);
         boolean requiresSynchronized = isSynchronized(targetType);
 
         // Create a modifiable collection of the specified target type
-        Collection<Object> targetCollection = (Collection<Object>) createCollection(source, targetType);
+        Collection<Object> rootCollection = (Collection<Object>) createCollection(source, targetType);
 
         // If the target represents an empty collection, return it without population
         if (isEmptyCollection(targetType)) {
-            return targetCollection;
+            return rootCollection;
         }
 
-        // Populate the target collection, handling nested collections recursively
-        for (Object element : source) {
-            if (element instanceof Collection) {
-                // Recursively convert nested collections
-                element = collectionToCollection((Collection<?>) element, targetType);
+        // Track source collection → target collection mapping
+        visited.put(source, rootCollection);
+
+        // Work queue for iterative processing
+        Deque<CollectionToCollectionWorkItem> queue = new ArrayDeque<>();
+        queue.add(new CollectionToCollectionWorkItem(source, rootCollection, targetType, requiresUnmodifiable, requiresSynchronized));
+
+        while (!queue.isEmpty()) {
+            CollectionToCollectionWorkItem work = queue.poll();
+
+            for (Object element : work.sourceCollection) {
+                if (element instanceof Collection) {
+                    // Check if we've already converted this collection (circular reference)
+                    if (visited.containsKey(element)) {
+                        // Reuse existing collection - preserves cycles
+                        work.targetCollection.add(visited.get(element));
+                    } else {
+                        // Create new modifiable collection for this nested collection
+                        Collection<Object> nestedModifiable = (Collection<Object>) createCollection(element, work.targetType);
+
+                        // Wrap it before adding to parent if needed (wrapping is a view, so we can still populate it)
+                        Object nestedToAdd;
+                        if (work.requiresUnmodifiable) {
+                            nestedToAdd = getUnmodifiableCollection(nestedModifiable);
+                        } else if (work.requiresSynchronized) {
+                            nestedToAdd = getSynchronizedCollection(nestedModifiable);
+                        } else {
+                            nestedToAdd = nestedModifiable;
+                        }
+
+                        // Track the wrapped version for cycle detection
+                        visited.put(element, nestedToAdd);
+
+                        // Add wrapped version to parent
+                        work.targetCollection.add(nestedToAdd);
+
+                        // Queue the MODIFIABLE version for processing (so we can populate it)
+                        queue.add(new CollectionToCollectionWorkItem(
+                            (Collection<?>) element,
+                            nestedModifiable,  // Process the modifiable version
+                            work.targetType,
+                            work.requiresUnmodifiable,
+                            work.requiresSynchronized
+                        ));
+                    }
+                } else {
+                    // Simple element - add directly
+                    work.targetCollection.add(element);
+                }
             }
-            targetCollection.add(element);
         }
 
         // If the created collection already matches the target type, return it as is
-        if (targetType.isAssignableFrom(targetCollection.getClass())) {
-            return targetCollection;
+        if (targetType.isAssignableFrom(rootCollection.getClass())) {
+            return rootCollection;
         }
 
         // If wrapping is required, return the wrapped version
         if (requiresUnmodifiable) {
-            return getUnmodifiableCollection(targetCollection);
+            return getUnmodifiableCollection(rootCollection);
         }
         if (requiresSynchronized) {
-            return getSynchronizedCollection(targetCollection);
+            return getSynchronizedCollection(rootCollection);
         }
-        return targetCollection;
+        return rootCollection;
     }
 
     /**
@@ -152,5 +226,41 @@ public final class CollectionConversions {
                 || CollectionsWrappers.getEmptySetClass().isAssignableFrom(targetType)
                 || CollectionsWrappers.getEmptySortedSetClass().isAssignableFrom(targetType)
                 || CollectionsWrappers.getEmptyNavigableSetClass().isAssignableFrom(targetType);
+    }
+
+    /**
+     * Work item for iterative array-to-collection conversion.
+     * Holds the state needed to process one array during the conversion.
+     */
+    private static class ArrayToCollectionWorkItem {
+        final Object sourceArray;
+        final Collection<Object> targetCollection;
+        final Class<?> targetType;
+
+        ArrayToCollectionWorkItem(Object sourceArray, Collection<Object> targetCollection, Class<?> targetType) {
+            this.sourceArray = sourceArray;
+            this.targetCollection = targetCollection;
+            this.targetType = targetType;
+        }
+    }
+
+    /**
+     * Work item for iterative collection-to-collection conversion.
+     * Holds the state needed to process one collection during the conversion.
+     */
+    private static class CollectionToCollectionWorkItem {
+        final Collection<?> sourceCollection;
+        final Collection<Object> targetCollection;
+        final Class<?> targetType;
+        final boolean requiresUnmodifiable;
+        final boolean requiresSynchronized;
+
+        CollectionToCollectionWorkItem(Collection<?> sourceCollection, Collection<Object> targetCollection, Class<?> targetType, boolean requiresUnmodifiable, boolean requiresSynchronized) {
+            this.sourceCollection = sourceCollection;
+            this.targetCollection = targetCollection;
+            this.targetType = targetType;
+            this.requiresUnmodifiable = requiresUnmodifiable;
+            this.requiresSynchronized = requiresSynchronized;
+        }
     }
 }

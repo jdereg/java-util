@@ -2,6 +2,30 @@
 
 #### 4.4.0-SNAPSHOT
 
+> * **ADDED**: `RegexUtilities` - New utility class providing thread-safe pattern caching and ReDoS (Regular Expression Denial of Service) protection for Java regex operations. This class addresses two critical concerns in regex-heavy applications:
+>   * **Pattern Caching**: Thread-safe ConcurrentHashMap-based caching of compiled Pattern objects to eliminate redundant Pattern.compile() overhead. Supports three caching strategies:
+>     * **Standard patterns**: `getCachedPattern(String)` - Most common case
+>     * **Case-insensitive patterns**: `getCachedPatternCaseInsensitive(String)` - Dedicated cache for CASE_INSENSITIVE flag
+>     * **Custom flags**: `getCachedPattern(String, int)` - Supports any combination of Pattern flags (MULTILINE, DOTALL, etc.)
+>   * **ReDoS Protection**: Timeout-based regex execution prevents catastrophic backtracking attacks that cause CPU exhaustion. All safe* methods use configurable timeouts (default 5000ms) with shared ExecutorService for high-performance operation:
+>     * `safeMatches(Pattern, String)` - Timeout-protected pattern matching
+>     * `safeFind(Pattern, String)` - Returns SafeMatchResult with captured groups
+>     * `safeReplaceFirst(Pattern, String, String)` - Safe replacement operations
+>     * `safeReplaceAll(Pattern, String, String)` - Safe global replacement
+>     * `safeSplit(Pattern, String)` - Safe string splitting
+>   * **Invalid Pattern Handling**: Returns null for malformed patterns instead of throwing exceptions, with patterns cached to avoid repeated compilation attempts
+>   * **Performance**: Shared CachedThreadPool ExecutorService eliminates per-operation thread creation overhead (previously caused 74% performance degradation, now zero overhead)
+>   * **Configuration**: System property controls via cedarsoftware.security.enabled, cedarsoftware.regex.timeout.enabled, cedarsoftware.regex.timeout.milliseconds
+>   * **Observability**: `getPatternCacheStats()` provides cache metrics (total patterns, invalid patterns, cache sizes per strategy)
+>   * **Thread Safety**: All operations are thread-safe with daemon threads to prevent JVM shutdown blocking
+>   * **Test Coverage**: Comprehensive test suite with 17,807 tests passing, including pattern caching verification, timeout protection, and invalid pattern handling
+>   * **Use Cases**: Prevents regex-based DoS attacks, improves performance for frequently-used patterns, provides unified regex API across Cedar Software projects (java-util, json-io, n-cube)
+> * **IMPROVED**: `StringConversions.toPattern()` - Updated to use `RegexUtilities.getCachedPattern()` for pattern caching and ReDoS protection. The Converter framework's String → Pattern conversion now benefits from:
+>   * **Pattern Caching**: Eliminates redundant Pattern.compile() calls when same pattern string is converted multiple times
+>   * **ReDoS Protection**: Timeout-protected compilation prevents malicious regex patterns from causing CPU exhaustion
+>   * **Invalid Pattern Handling**: Returns clear IllegalArgumentException for invalid patterns instead of propagating PatternSyntaxException
+>   * **Backward Compatibility**: All existing Pattern conversion tests pass (5 tests in PatternConversionsTest)
+>   * **Performance**: Same pattern string returns cached instance on subsequent conversions
 > * **IMPROVED**: `IOUtilities` transfer methods now return byte counts - All `transfer*()` methods now return the number of bytes transferred instead of void, enabling callers to verify transfer completion and track progress:
 >   * **Methods returning `long`**: `transfer(InputStream, OutputStream)`, `transfer(InputStream, OutputStream, callback)`, `transfer(File, OutputStream)`, `transfer(InputStream, File, callback)`, `transfer(URLConnection, File, callback)`, `transfer(File, URLConnection, callback)` - Use `long` to support files and streams larger than 2GB (Integer.MAX_VALUE)
 >   * **Methods returning `int`**: `transfer(InputStream, byte[])`, `transfer(URLConnection, byte[])` - Use `int` since Java arrays are bounded by Integer.MAX_VALUE

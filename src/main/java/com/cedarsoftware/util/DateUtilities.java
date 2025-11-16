@@ -10,6 +10,11 @@ import java.util.Date;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -275,69 +280,139 @@ public final class DateUtilities {
     }
     
     /**
-     * Performs regex matching with timeout protection to prevent ReDoS attacks.
-     * 
-     * @param pattern the pattern to match against
-     * @param input the input string
-     * @return the matcher result, or null if timeout occurs
-     * @throws SecurityException if timeout occurs and security is enabled
+     * Thread-safe matcher result that holds extracted groups and match information.
+     * This is an immutable snapshot of a Matcher's state after a successful operation.
      */
-    private static Matcher safePatternMatch(Pattern pattern, String input) {
-        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
-            // No timeout protection when security is disabled
-            return pattern.matcher(input);
+    private static class SafeMatcherResult {
+        private final String[] groups;
+        private final String replacement;
+        private final boolean matched;
+
+        SafeMatcherResult(Matcher matcher, String originalInput) {
+            if (matcher != null) {
+                int groupCount = matcher.groupCount();
+                this.groups = new String[groupCount + 1];
+                for (int i = 0; i <= groupCount; i++) {
+                    this.groups[i] = matcher.group(i);
+                }
+                this.replacement = matcher.replaceFirst("");
+                this.matched = true;
+            } else {
+                this.groups = new String[0];
+                this.replacement = originalInput;
+                this.matched = false;
+            }
         }
-        
-        long timeout = getRegexTimeoutMilliseconds();
-        long startTime = System.currentTimeMillis();
-        
-        try {
-            Matcher matcher = pattern.matcher(input);
-            
-            // Check timeout before operations that could be expensive
-            if (System.currentTimeMillis() - startTime > timeout) {
-                throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack");
+
+        SafeMatcherResult(boolean matches) {
+            this.matched = matches;
+            this.groups = new String[0];
+            this.replacement = null;
+        }
+
+        String group(int index) {
+            if (index < 0 || index >= groups.length) {
+                return null;
             }
-            
-            return matcher;
-        } catch (Exception e) {
-            if (System.currentTimeMillis() - startTime > timeout) {
-                throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
-            }
-            throw e;
+            return groups[index];
+        }
+
+        String getReplacement() {
+            return replacement;
+        }
+
+        boolean matched() {
+            return matched;
         }
     }
-    
+
     /**
-     * Performs regex find operation with timeout protection.
-     * 
+     * Performs regex matching with REAL timeout protection using ExecutorService.
+     * This properly protects against ReDoS attacks by executing the expensive regex
+     * operation in a separate thread that can be interrupted.
+     *
+     * @param pattern the pattern to match against
+     * @param input the input string
+     * @return SafeMatcherResult containing groups and replacement, never null
+     * @throws SecurityException if timeout occurs and security is enabled
+     */
+    private static SafeMatcherResult safePatternMatch(Pattern pattern, String input) {
+        if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
+            // No timeout protection when security is disabled - use fast path
+            Matcher matcher = pattern.matcher(input);
+            String remnant = matcher.replaceFirst("");
+            if (remnant.length() < input.length()) {
+                return new SafeMatcherResult(matcher, input);
+            } else {
+                return new SafeMatcherResult(null, input);
+            }
+        }
+
+        long timeout = getRegexTimeoutMilliseconds();
+        ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r);
+            t.setDaemon(true);  // Don't prevent JVM shutdown
+            return t;
+        });
+
+        try {
+            Future<SafeMatcherResult> future = executor.submit(() -> {
+                Matcher matcher = pattern.matcher(input);
+                String remnant = matcher.replaceFirst("");
+                if (remnant.length() < input.length()) {
+                    return new SafeMatcherResult(matcher, input);
+                } else {
+                    return new SafeMatcherResult(null, input);
+                }
+            });
+
+            try {
+                return future.get(timeout, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException e) {
+                future.cancel(true);  // Attempt to interrupt the thread
+                throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
+            } catch (Exception e) {
+                throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
+            }
+        } finally {
+            executor.shutdownNow();  // Immediately shutdown and interrupt
+        }
+    }
+
+    /**
+     * Performs regex matches() operation with REAL timeout protection using ExecutorService.
+     *
      * @param pattern the pattern to match against
      * @param input the input string
      * @return true if pattern matches, false otherwise
      * @throws SecurityException if timeout occurs and security is enabled
      */
-    private static boolean safePatternFind(Pattern pattern, String input) {
+    private static boolean safePatternMatches(Pattern pattern, String input) {
         if (!isSecurityEnabled() || !isRegexTimeoutEnabled()) {
             // No timeout protection when security is disabled
-            return pattern.matcher(input).find();
+            return pattern.matcher(input).matches();
         }
-        
+
         long timeout = getRegexTimeoutMilliseconds();
-        long startTime = System.currentTimeMillis();
-        
+        ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r);
+            t.setDaemon(true);
+            return t;
+        });
+
         try {
-            boolean result = pattern.matcher(input).find();
-            
-            if (System.currentTimeMillis() - startTime > timeout) {
-                throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack");
-            }
-            
-            return result;
-        } catch (Exception e) {
-            if (System.currentTimeMillis() - startTime > timeout) {
+            Future<Boolean> future = executor.submit(() -> pattern.matcher(input).matches());
+
+            try {
+                return future.get(timeout, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException e) {
+                future.cancel(true);
                 throw new SecurityException("Regex operation timed out (>" + timeout + "ms) - possible ReDoS attack", e);
+            } catch (Exception e) {
+                throw new SecurityException("Regex operation failed: " + e.getMessage(), e);
             }
-            throw e;
+        } finally {
+            executor.shutdownNow();
         }
     }
     
@@ -625,7 +700,7 @@ public final class DateUtilities {
         }
 
         // If purely digits => epoch millis
-        if (safePatternMatch(allDigits, dateStr).matches()) {
+        if (safePatternMatches(allDigits, dateStr)) {
             // Security: Validate epoch milliseconds range to prevent overflow
             if (isSecurityEnabled() && isInputValidationEnabled()) {
                 int maxEpochDigits = getMaxEpochDigits();
@@ -646,93 +721,91 @@ public final class DateUtilities {
         int month;
 
         // 1) Try matching ISO or numeric style date
-        Matcher matcher = safePatternMatch(isoDatePattern, dateStr);
-        String remnant = matcher.replaceFirst("");
+        SafeMatcherResult result = safePatternMatch(isoDatePattern, dateStr);
+        String remnant = result.getReplacement();
         if (remnant.length() < dateStr.length()) {
-            if (matcher.group(1) != null) {
-                year = matcher.group(1);
-                month = Integer.parseInt(matcher.group(3));
-                day = matcher.group(4);
+            if (result.group(1) != null) {
+                year = result.group(1);
+                month = Integer.parseInt(result.group(3));
+                day = result.group(4);
             } else {
-                year = matcher.group(8);
-                month = Integer.parseInt(matcher.group(5));
-                day = matcher.group(7);
+                year = result.group(8);
+                month = Integer.parseInt(result.group(5));
+                day = result.group(7);
             }
             remains = remnant;
             // Do we have a Date with a TimeZone after it, but no time?
             if (remnant.startsWith("T")) {
-                matcher = safePatternMatch(zonePattern, remnant.substring(1));
-                if (matcher.matches()) {
+                if (safePatternMatches(zonePattern, remnant.substring(1))) {
                     throw new IllegalArgumentException("Time zone information without time is invalid: " + dateStr);
                 }
             } else {
-                matcher = safePatternMatch(zonePattern, remnant);
-                if (matcher.matches()) {
+                if (safePatternMatches(zonePattern, remnant)) {
                     throw new IllegalArgumentException("Time zone information without time is invalid: " + dateStr);
                 }
             }
         } else {
             // 2) Try alphaMonthPattern
-            matcher = safePatternMatch(alphaMonthPattern, dateStr);
-            remnant = matcher.replaceFirst("");
+            result = safePatternMatch(alphaMonthPattern, dateStr);
+            remnant = result.getReplacement();
             if (remnant.length() < dateStr.length()) {
                 String mon;
-                if (matcher.group(1) != null) {
-                    mon = matcher.group(1);
-                    day = matcher.group(2);
-                    year = matcher.group(4);
+                if (result.group(1) != null) {
+                    mon = result.group(1);
+                    day = result.group(2);
+                    year = result.group(4);
                     remains = remnant;
-                } else if (matcher.group(7) != null) {
-                    mon = matcher.group(7);
-                    day = matcher.group(5);
-                    year = matcher.group(8);
+                } else if (result.group(7) != null) {
+                    mon = result.group(7);
+                    day = result.group(5);
+                    year = result.group(8);
                     remains = remnant;
                 } else {
-                    year = matcher.group(9);
-                    mon = matcher.group(10);
-                    day = matcher.group(11);
+                    year = result.group(9);
+                    mon = result.group(10);
+                    day = result.group(11);
                     remains = remnant;
                 }
                 month = months.get(mon.trim().toLowerCase());
             } else {
                 // 3) Try unixDateTimePattern
-                matcher = safePatternMatch(unixDateTimePattern, dateStr);
-                if (matcher.replaceFirst("").length() == dateStr.length()) {
+                result = safePatternMatch(unixDateTimePattern, dateStr);
+                if (result.getReplacement().length() == dateStr.length()) {
                     throw new IllegalArgumentException("Unable to parse: " + dateStr + " as a date-time");
                 }
-                year = matcher.group(6);
-                String mon = matcher.group(2);
+                year = result.group(6);
+                String mon = result.group(2);
                 month = months.get(mon.trim().toLowerCase());
-                day = matcher.group(3);
+                day = result.group(3);
 
                 // e.g. "EST"
-                tz = matcher.group(5);
+                tz = result.group(5);
 
                 // time portion remains to parse
-                remains = matcher.group(4);
+                remains = result.group(4);
             }
         }
 
         // 4) Parse time portion (could appear before or after date)
         String hour = null, min = null, sec = "00", fracSec = "0";
         remains = remains.trim();
-        matcher = safePatternMatch(timePattern, remains);
-        remnant = matcher.replaceFirst("");
+        result = safePatternMatch(timePattern, remains);
+        remnant = result.getReplacement();
 
         if (remnant.length() < remains.length()) {
-            hour = matcher.group(1);
-            min  = matcher.group(2);
-            if (matcher.group(3) != null) {
-                sec = matcher.group(3);
+            hour = result.group(1);
+            min  = result.group(2);
+            if (result.group(3) != null) {
+                sec = result.group(3);
             }
-            if (matcher.group(4) != null) {
-                fracSec = "0" + matcher.group(4);
+            if (result.group(4) != null) {
+                fracSec = "0" + result.group(4);
             }
-            if (matcher.group(5) != null) {
-                tz = matcher.group(5).trim();
+            if (result.group(5) != null) {
+                tz = result.group(5).trim();
             }
-            if (matcher.group(6) != null) {
-                tz = stripBrackets(matcher.group(6).trim());
+            if (result.group(6) != null) {
+                tz = stripBrackets(result.group(6).trim());
             }
         }
 
@@ -916,8 +989,8 @@ public final class DateUtilities {
     private static void verifyNoGarbageLeft(String remnant) {
         // Clear out day of week (mon, tue, wed, ...)
         if (StringUtilities.length(remnant) > 0) {
-            Matcher dayMatcher = safePatternMatch(dayPattern, remnant);
-            remnant = dayMatcher.replaceFirst("").trim();
+            SafeMatcherResult dayResult = safePatternMatch(dayPattern, remnant);
+            remnant = dayResult.getReplacement().trim();
         }
 
         // Verify that nothing, "T" or "," is all that remains

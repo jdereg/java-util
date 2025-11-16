@@ -45,6 +45,7 @@ import com.cedarsoftware.util.geom.Color;
 
 import com.cedarsoftware.util.ClassUtilities;
 import com.cedarsoftware.util.DateUtilities;
+import com.cedarsoftware.util.RegexUtilities;
 import com.cedarsoftware.util.StringUtilities;
 
 import static com.cedarsoftware.util.ArrayUtilities.EMPTY_BYTE_ARRAY;
@@ -646,7 +647,12 @@ final class StringConversions {
     }
 
     static Pattern toPattern(Object from, Converter converter) {
-        return Pattern.compile(((String) from).trim());
+        String patternString = ((String) from).trim();
+        Pattern pattern = RegexUtilities.getCachedPattern(patternString);
+        if (pattern == null) {
+            throw new IllegalArgumentException("Invalid regex pattern: " + patternString);
+        }
+        return pattern;
     }
 
     static Currency toCurrency(Object from, Converter converter) {

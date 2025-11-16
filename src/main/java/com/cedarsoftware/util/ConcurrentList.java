@@ -131,6 +131,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
     private final ConcurrentMap<Integer, AtomicReferenceArray<Object>> buckets = new ConcurrentHashMap<>();
     private final AtomicLong head = new AtomicLong(0);
     private final AtomicLong tail = new AtomicLong(0);
+    private final AtomicLong sizeCounter = new AtomicLong(0);  // Dedicated size counter for O(1) lock-free size()
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -198,23 +199,15 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
 
     @Override
     public int size() {
-        lock.readLock().lock();
-        try {
-            long diff = tail.get() - head.get();
-            return diff > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) diff;
-        } finally {
-            lock.readLock().unlock();
-        }
+        // Lock-free O(1) operation using dedicated size counter
+        long size = sizeCounter.get();
+        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
     }
 
     @Override
     public boolean isEmpty() {
-        lock.readLock().lock();
-        try {
-            return tail.get() == head.get();
-        } finally {
-            lock.readLock().unlock();
-        }
+        // Lock-free O(1) operation using dedicated size counter
+        return sizeCounter.get() == 0;
     }
 
     @Override
@@ -409,6 +402,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             buckets.clear();
             head.set(0);
             tail.set(0);
+            sizeCounter.set(0);  // Reset size counter
         } finally {
             lock.writeLock().unlock();
         }
@@ -548,6 +542,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             long pos = head.decrementAndGet();
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
             bucket.lazySet(bucketOffset(pos), e);
+            sizeCounter.incrementAndGet();  // Maintain size counter
         } finally {
             lock.readLock().unlock();
         }
@@ -560,6 +555,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
             long pos = tail.getAndIncrement();
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
             bucket.lazySet(bucketOffset(pos), e);
+            sizeCounter.incrementAndGet();  // Maintain size counter
         } finally {
             lock.readLock().unlock();
         }
@@ -609,6 +605,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
                     AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(h));
                     @SuppressWarnings("unchecked")
                     E val = (E) bucket.getAndSet(bucketOffset(h), null);
+                    sizeCounter.decrementAndGet();  // Maintain size counter
                     return val;
                 }
             }
@@ -632,6 +629,7 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
                     AtomicReferenceArray<Object> bucket = getBucket(bucketIndex(newTail));
                     @SuppressWarnings("unchecked")
                     E val = (E) bucket.getAndSet(bucketOffset(newTail), null);
+                    sizeCounter.decrementAndGet();  // Maintain size counter
                     return val;
                 }
             }
@@ -840,10 +838,12 @@ public final class ConcurrentList<E> implements List<E>, Deque<E>, RandomAccess,
         buckets.clear();
         head.set(0);
         tail.set(0);
+        sizeCounter.set(0);  // Reset size counter before rebuilding
         for (E e : elements) {
             long pos = tail.getAndIncrement();
             AtomicReferenceArray<Object> bucket = ensureBucket(bucketIndex(pos));
             bucket.lazySet(bucketOffset(pos), e);
+            sizeCounter.incrementAndGet();  // Maintain size counter during rebuild
         }
     }
 }

@@ -71,10 +71,8 @@ class ConcurrentList2Test {
         };
 
         Runnable iteratorRunnable = () -> {
-            Random random = new SecureRandom();
             while (true) {
                 try {
-                    int start = random.nextInt(random.nextInt(list.size()));
                     Iterator<Integer> it = list.iterator();
                     while (it.hasNext()) { it.next(); }
                 } catch (UnsupportedOperationException | IllegalArgumentException | IndexOutOfBoundsException e) {
@@ -83,10 +81,8 @@ class ConcurrentList2Test {
         };
 
         Runnable listIteratorRunnable = () -> {
-            Random random = new SecureRandom();
             while (true) {
                 try {
-                    int start = random.nextInt(random.nextInt(list.size()));
                     ListIterator<Integer> it = list.listIterator();
                     while (it.hasNext()) { it.next(); }
                 } catch (UnsupportedOperationException | IllegalArgumentException | IndexOutOfBoundsException e) {

@@ -50,6 +50,10 @@
 >   * **Overhead**: Adds one `incrementAndGet()`/`decrementAndGet()` to add/remove operations, but these already have locks or atomic operations, so impact is minimal compared to massive speedup of lock-free `size()`.
 >   * **Impact**: Eliminates readLock acquisition for size queries (called 100+ times across codebase), reduces lock contention, improves scalability
 >   * All ConcurrentList tests pass (including concurrency stress tests)
+> * **TEST PERFORMANCE**: `ConcurrentList2Test` - Removed wasteful unused Random number generation (88+ seconds saved):
+>   * **Problem**: After size() optimization, profiler showed `Random.nextInt()` as new hot spot in test suite. Found two lines computing `int start = random.nextInt(random.nextInt(list.size()))` - nested calls taking 44+ seconds each, but `start` variable was unused (gray in IDE).
+>   * **Fix**: Removed unused random number generation from iterator/listIterator test threads. Iterators work correctly without random start positions.
+>   * **Impact**: Eliminates 88+ seconds of wasted CPU time across test suite (44.27s + 44.22s). Same test coverage, much faster execution.
 > * **IMPROVED**: `IOUtilities` transfer methods now return byte counts - All `transfer*()` methods now return the number of bytes transferred instead of void, enabling callers to verify transfer completion and track progress:
 >   * **Methods returning `long`**: `transfer(InputStream, OutputStream)`, `transfer(InputStream, OutputStream, callback)`, `transfer(File, OutputStream)`, `transfer(InputStream, File, callback)`, `transfer(URLConnection, File, callback)`, `transfer(File, URLConnection, callback)` - Use `long` to support files and streams larger than 2GB (Integer.MAX_VALUE)
 >   * **Methods returning `int`**: `transfer(InputStream, byte[])`, `transfer(URLConnection, byte[])` - Use `int` since Java arrays are bounded by Integer.MAX_VALUE

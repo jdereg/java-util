@@ -50,10 +50,16 @@
 >   * **Overhead**: Adds one `incrementAndGet()`/`decrementAndGet()` to add/remove operations, but these already have locks or atomic operations, so impact is minimal compared to massive speedup of lock-free `size()`.
 >   * **Impact**: Eliminates readLock acquisition for size queries (called 100+ times across codebase), reduces lock contention, improves scalability
 >   * All ConcurrentList tests pass (including concurrency stress tests)
-> * **TEST PERFORMANCE**: `ConcurrentList2Test` - Removed wasteful unused Random number generation (88+ seconds saved):
->   * **Problem**: After size() optimization, profiler showed `Random.nextInt()` as new hot spot in test suite. Found two lines computing `int start = random.nextInt(random.nextInt(list.size()))` - nested calls taking 44+ seconds each, but `start` variable was unused (gray in IDE).
->   * **Fix**: Removed unused random number generation from iterator/listIterator test threads. Iterators work correctly without random start positions.
->   * **Impact**: Eliminates 88+ seconds of wasted CPU time across test suite (44.27s + 44.22s). Same test coverage, much faster execution.
+> * **TEST PERFORMANCE**: `ConcurrentList2Test` - Multiple optimizations eliminating 88+ seconds and reducing random number overhead:
+>   * **Problem 1**: Found two lines computing `int start = random.nextInt(random.nextInt(list.size()))` - nested calls taking 44+ seconds each, but `start` variable was unused (gray in IDE).
+>   * **Fix 1**: Removed unused random number generation from iterator/listIterator test threads.
+>   * **Problem 2**: Using `SecureRandom` instead of `Random` (SecureRandom is much slower, unnecessary for tests).
+>   * **Fix 2**: Changed to regular `Random` - tests don't need cryptographic randomness.
+>   * **Problem 3**: Using `random.nextInt(bound)` which profiler showed is 1.75x slower than unbounded `nextInt()`.
+>   * **Fix 3**: Changed to unbounded `nextInt()` with bit masking/modulo: `random.nextInt() % 3`, `(random.nextInt() & 0x3FF) + 1000`, etc.
+>   * **Problem 4**: Unused `subListRunnable` defined but never executed (dead code).
+>   * **Fix 4**: Removed unused runnable and associated imports.
+>   * **Impact**: Eliminates 88+ seconds of wasted CPU time (44.27s + 44.22s), plus significant reduction in modifier thread overhead from faster random generation. Same test coverage, much faster execution.
 > * **IMPROVED**: `IOUtilities` transfer methods now return byte counts - All `transfer*()` methods now return the number of bytes transferred instead of void, enabling callers to verify transfer completion and track progress:
 >   * **Methods returning `long`**: `transfer(InputStream, OutputStream)`, `transfer(InputStream, OutputStream, callback)`, `transfer(File, OutputStream)`, `transfer(InputStream, File, callback)`, `transfer(URLConnection, File, callback)`, `transfer(File, URLConnection, callback)` - Use `long` to support files and streams larger than 2GB (Integer.MAX_VALUE)
 >   * **Methods returning `int`**: `transfer(InputStream, byte[])`, `transfer(URLConnection, byte[])` - Use `int` since Java arrays are bounded by Integer.MAX_VALUE

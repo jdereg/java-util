@@ -1,8 +1,6 @@
 package com.cedarsoftware.util;
 
-import java.security.SecureRandom;
 import java.util.Iterator;
-import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Random;
@@ -47,13 +45,15 @@ class ConcurrentList2Test {
 
         // Define random operations on the list
         Runnable modifierRunnable = () -> {
-            Random random = new SecureRandom();
+            Random random = new Random();  // Regular Random (not SecureRandom) - much faster for testing
             while (true) {
                 try {
-                    int operation = random.nextInt(3);
-                    int value = random.nextInt(1000) + 1000;
-                    int index = random.nextInt(list.size());
-                    
+                    int operation = random.nextInt() % 3;  // Unbounded nextInt() is faster
+                    int value = (random.nextInt() & 0x3FF) + 1000;  // Mask to 0-1023, add 1000 = 1000-2023
+                    int size = list.size();
+                    if (size == 0) continue;  // Skip if empty
+                    int index = (random.nextInt() & Integer.MAX_VALUE) % size;  // Unbounded, then modulo size
+
                     switch (operation) {
                         case 0:
                             list.add(index, value);
@@ -86,25 +86,6 @@ class ConcurrentList2Test {
                     ListIterator<Integer> it = list.listIterator();
                     while (it.hasNext()) { it.next(); }
                 } catch (UnsupportedOperationException | IllegalArgumentException | IndexOutOfBoundsException e) {
-                }
-            }
-        };
-
-        Runnable subListRunnable = () -> {
-            Random random = new SecureRandom();
-            while (true) {
-                try {
-                    int x = random.nextInt(99);
-                    int y = random.nextInt(99);
-                    if (x > y) {
-                        int temp = x;
-                        x = y;
-                        y = temp;
-                    }
-                    List list2 = list.subList(x, y);
-                    Iterator i = list2.iterator();
-                    while (i.hasNext()) { i.next(); }
-                } catch (IndexOutOfBoundsException e) {
                 }
             }
         };

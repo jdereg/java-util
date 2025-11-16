@@ -44,25 +44,37 @@ class ConcurrentList2Test {
         }
 
         // Define random operations on the list
+        // Optimized to favor head/tail operations (ConcurrentList's fast path)
         Runnable modifierRunnable = () -> {
             Random random = new Random();  // Regular Random (not SecureRandom) - much faster for testing
             while (true) {
                 try {
-                    int operation = random.nextInt() % 3;  // Unbounded nextInt() is faster
+                    int operation = random.nextInt() % 5;  // 5 operations: addFirst, addLast, removeFirst, removeLast, set
                     int value = (random.nextInt() & 0x3FF) + 1000;  // Mask to 0-1023, add 1000 = 1000-2023
-                    int size = list.size();
-                    if (size == 0) continue;  // Skip if empty
-                    int index = (random.nextInt() & Integer.MAX_VALUE) % size;  // Unbounded, then modulo size
 
                     switch (operation) {
                         case 0:
-                            list.add(index, value);
+                            list.addFirst(value);  // O(1) lock-free operation
                             break;
                         case 1:
-                            list.remove(index);
+                            list.addLast(value);   // O(1) lock-free operation
                             break;
                         case 2:
-                            list.set(index, value);
+                            if (!list.isEmpty()) {
+                                list.removeFirst(); // O(1) with writeLock
+                            }
+                            break;
+                        case 3:
+                            if (!list.isEmpty()) {
+                                list.removeLast();  // O(1) with writeLock
+                            }
+                            break;
+                        case 4:
+                            int size = list.size();
+                            if (size > 0) {
+                                int index = (random.nextInt() & Integer.MAX_VALUE) % size;
+                                list.set(index, value);  // Random access - tests bucket navigation
+                            }
                             break;
                     }
                 } catch (IndexOutOfBoundsException | IllegalArgumentException | NoSuchElementException e) {

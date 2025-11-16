@@ -752,6 +752,32 @@ public class DeepEquals {
         return true;
     }
 
+    /**
+     * Calculate safe HashMap initial capacity to prevent integer overflow.
+     * HashMap uses capacity = size * 4/3 to account for 0.75 load factor.
+     * For large sizes approaching Integer.MAX_VALUE, this can overflow.
+     *
+     * @param size the expected number of elements
+     * @return safe initial capacity, capped at Integer.MAX_VALUE
+     */
+    private static int safeHashMapCapacity(int size) {
+        if (size < 0) {
+            return 16;  // Default capacity for invalid sizes
+        }
+
+        // Calculate capacity = size * 4 / 3, but check for overflow
+        // Max safe size before overflow: Integer.MAX_VALUE * 3 / 4 = 1,610,612,735
+        if (size > 1_610_612_735) {
+            return Integer.MAX_VALUE;  // Cap at max to prevent overflow
+        }
+
+        // Safe to multiply: size * 4 won't overflow since size <= 1,610,612,735
+        long capacity = (long) size * 4 / 3;
+
+        // Ensure minimum capacity of 16
+        return Math.max(16, (int) capacity);
+    }
+
     private static boolean decomposeRecord(Object rec1, Object rec2, Deque<ItemsToCompare> stack, ItemsToCompare currentItem) {
         // Get record components using reflection (Java 14+ feature)
         Object[] components = ReflectionUtils.getRecordComponents(rec1.getClass());
@@ -763,9 +789,14 @@ public class DeepEquals {
         // Compare each record component
         for (Object component : components) {
             String componentName = ReflectionUtils.getRecordComponentName(component);
+            if (componentName == null) {
+                // Skip components we can't access (reflection failure)
+                continue;
+            }
+
             Object value1 = ReflectionUtils.getRecordComponentValue(component, rec1);
             Object value2 = ReflectionUtils.getRecordComponentValue(component, rec2);
-            
+
             // Push component values for comparison with proper naming
             stack.addFirst(new ItemsToCompare(value1, value2, componentName, currentItem, Difference.FIELD_VALUE_MISMATCH));
         }
@@ -850,7 +881,7 @@ public class DeepEquals {
 
         // Group col2 items by hash for efficient lookup (with slow-path fallback)
         // Pre-size to avoid rehashing: capacity = size * 4/3 to account for 0.75 load factor
-        Map<Integer, List<Object>> hashGroups = new HashMap<>(Math.max(16, col2.size() * 4 / 3));
+        Map<Integer, List<Object>> hashGroups = new HashMap<>(safeHashMapCapacity(col2.size()));
         for (Object o : col2) {
             int hash = deepHashCode(o);
             hashGroups.computeIfAbsent(hash, k -> new ArrayList<>()).add(o);
@@ -1005,7 +1036,7 @@ public class DeepEquals {
 
         // Build lookup of map2 entries for efficient matching (with slow-path fallback)
         // Pre-size to avoid rehashing: capacity = size * 4/3 to account for 0.75 load factor
-        Map<Integer, Collection<Map.Entry<?, ?>>> fastLookup = new HashMap<>(Math.max(16, map2.size() * 4 / 3));
+        Map<Integer, Collection<Map.Entry<?, ?>>> fastLookup = new HashMap<>(safeHashMapCapacity(map2.size()));
         for (Map.Entry<?, ?> entry : map2.entrySet()) {
             int hash = deepHashCode(entry.getKey());
             fastLookup.computeIfAbsent(hash, k -> new ArrayList<>())

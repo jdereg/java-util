@@ -761,17 +761,19 @@ public final class IOUtilities {
      * @param f  the source File to transfer
      * @param c  the destination URLConnection
      * @param cb optional callback for progress monitoring and cancellation (may be null)
+     * @return the number of bytes transferred
      * @throws IOException if an I/O error occurs during the transfer (thrown as unchecked)
      */
-    public static void transfer(File f, URLConnection c, TransferCallback cb) {
+    public static long transfer(File f, URLConnection c, TransferCallback cb) {
         Convention.throwIfNull(f, "File cannot be null");
         Convention.throwIfNull(c, "URLConnection cannot be null");
         validateFilePath(f);
         try (InputStream in = new BufferedInputStream(Files.newInputStream(f.toPath()));
              OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
-            transfer(in, out, cb);
+            return transfer(in, out, cb);
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
+            return 0; // unreachable
         }
     }
 
@@ -785,16 +787,18 @@ public final class IOUtilities {
      * @param c  the source URLConnection
      * @param f  the destination File
      * @param cb optional callback for progress monitoring and cancellation (may be null)
+     * @return the number of bytes transferred
      * @throws IOException if an I/O error occurs during the transfer (thrown as unchecked)
      */
-    public static void transfer(URLConnection c, File f, TransferCallback cb) {
+    public static long transfer(URLConnection c, File f, TransferCallback cb) {
         Convention.throwIfNull(c, "URLConnection cannot be null");
         Convention.throwIfNull(f, "File cannot be null");
         validateFilePath(f);
         try (InputStream in = getInputStream(c)) {
-            transfer(in, f, cb);
+            return transfer(in, f, cb);
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
+            return 0; // unreachable
         }
     }
 
@@ -808,16 +812,18 @@ public final class IOUtilities {
      * @param s  the source InputStream
      * @param f  the destination File
      * @param cb optional callback for progress monitoring and cancellation (may be null)
+     * @return the number of bytes transferred
      * @throws IOException if an I/O error occurs during the transfer (thrown as unchecked)
      */
-    public static void transfer(InputStream s, File f, TransferCallback cb) {
+    public static long transfer(InputStream s, File f, TransferCallback cb) {
         Convention.throwIfNull(s, "InputStream cannot be null");
         Convention.throwIfNull(f, "File cannot be null");
         validateFilePath(f);
         try (OutputStream out = new BufferedOutputStream(Files.newOutputStream(f.toPath()))) {
-            transfer(s, out, cb);
+            return transfer(s, out, cb);
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
+            return 0; // unreachable
         }
     }
 
@@ -856,16 +862,19 @@ public final class IOUtilities {
      * @param in  the source InputStream
      * @param out the destination OutputStream
      * @param cb  optional callback for progress monitoring and cancellation (may be null)
+     * @return the number of bytes transferred
      * @throws IOException if an I/O error occurs during transfer (thrown as unchecked)
      */
-    public static void transfer(InputStream in, OutputStream out, TransferCallback cb) {
+    public static long transfer(InputStream in, OutputStream out, TransferCallback cb) {
         Convention.throwIfNull(in, "InputStream cannot be null");
         Convention.throwIfNull(out, "OutputStream cannot be null");
         try {
             byte[] buffer = new byte[TRANSFER_BUFFER];
             int count;
+            long total = 0;
             while ((count = in.read(buffer)) != -1) {
                 out.write(buffer, 0, count);
+                total += count;
                 if (cb != null) {
                     // Create a defensive copy to prevent race conditions and buffer corruption
                     byte[] callbackBuffer = createSafeCallbackBuffer(buffer, count);
@@ -875,8 +884,10 @@ public final class IOUtilities {
                     }
                 }
             }
+            return total;
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
+            return 0; // unreachable
         }
     }
 
@@ -889,15 +900,18 @@ public final class IOUtilities {
      *
      * @param in    the InputStream to read from
      * @param bytes the byte array to fill
+     * @return the number of bytes transferred (always bytes.length if successful)
      * @throws IOException if the stream ends before the byte array is filled or if any other I/O error occurs (thrown as unchecked)
      */
-    public static void transfer(InputStream in, byte[] bytes) {
+    public static int transfer(InputStream in, byte[] bytes) {
         Convention.throwIfNull(in, "InputStream cannot be null");
         Convention.throwIfNull(bytes, "byte array cannot be null");
         try {
             new DataInputStream(in).readFully(bytes);
+            return bytes.length;
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
+            return 0; // unreachable
         }
     }
 
@@ -910,20 +924,25 @@ public final class IOUtilities {
      *
      * @param in  the source InputStream
      * @param out the destination OutputStream
+     * @return the number of bytes transferred
      * @throws IOException if an I/O error occurs during transfer (thrown as unchecked)
      */
-    public static void transfer(InputStream in, OutputStream out) {
+    public static long transfer(InputStream in, OutputStream out) {
         Convention.throwIfNull(in, "InputStream cannot be null");
         Convention.throwIfNull(out, "OutputStream cannot be null");
         try {
             byte[] buffer = new byte[TRANSFER_BUFFER];
             int count;
+            long total = 0;
             while ((count = in.read(buffer)) != -1) {
                 out.write(buffer, 0, count);
+                total += count;
             }
             out.flush();
+            return total;
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
+            return 0; // unreachable
         }
     }
 
@@ -936,16 +955,18 @@ public final class IOUtilities {
      *
      * @param file the source File
      * @param out  the destination OutputStream
+     * @return the number of bytes transferred
      * @throws IOException if an I/O error occurs during transfer (thrown as unchecked)
      */
-    public static void transfer(File file, OutputStream out) {
+    public static long transfer(File file, OutputStream out) {
         Convention.throwIfNull(file, "File cannot be null");
         Convention.throwIfNull(out, "OutputStream cannot be null");
         validateFilePath(file);
         try (InputStream in = new BufferedInputStream(Files.newInputStream(file.toPath()), TRANSFER_BUFFER)) {
-            transfer(in, out);
+            return transfer(in, out);
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
+            return 0; // unreachable
         } finally {
             flush(out);
         }
@@ -1131,15 +1152,18 @@ public final class IOUtilities {
      *
      * @param c     the URLConnection to write to
      * @param bytes the byte array to transfer
+     * @return the number of bytes transferred
      * @throws IOException if an I/O error occurs during transfer (thrown as unchecked)
      */
-    public static void transfer(URLConnection c, byte[] bytes) {
+    public static int transfer(URLConnection c, byte[] bytes) {
         Convention.throwIfNull(c, "URLConnection cannot be null");
         Convention.throwIfNull(bytes, "byte array cannot be null");
         try (OutputStream out = new BufferedOutputStream(c.getOutputStream())) {
             out.write(bytes);
+            return bytes.length;
         } catch (IOException e) {
             ExceptionUtilities.uncheckedThrow(e);
+            return 0; // unreachable
         }
     }
 

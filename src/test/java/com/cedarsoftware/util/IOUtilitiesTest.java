@@ -415,4 +415,114 @@ public class IOUtilitiesTest
         }
         IOUtilities.close((XMLStreamWriter)null);
     }
+
+    @Test
+    public void testTransferInputStreamToOutputStreamReturnsBytes() throws Exception {
+        // Test with various sizes to ensure long return type handles large transfers
+        long[] testSizes = {0L, 100L, 32768L, 100_000L, 5_000_000L};
+
+        for (long size : testSizes) {
+            try (InputStream in = DataGeneratorInputStream.withRandomBytes(size);
+                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                long bytesTransferred = IOUtilities.transfer(in, out);
+                assertEquals(size, bytesTransferred,
+                    "Expected " + size + " bytes transferred but got " + bytesTransferred);
+                assertEquals(size, out.size(),
+                    "Output stream should contain " + size + " bytes");
+            }
+        }
+    }
+
+    @Test
+    public void testTransferInputStreamToOutputStreamWithCallbackReturnsBytes() throws Exception {
+        long size = 100_000L;
+        final long[] callbackTotal = {0};
+
+        try (InputStream in = DataGeneratorInputStream.withRandomBytes(size);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            long bytesTransferred = IOUtilities.transfer(in, out, (bytes, count) -> {
+                callbackTotal[0] += count;
+            });
+
+            assertEquals(size, bytesTransferred,
+                "Expected " + size + " bytes transferred but got " + bytesTransferred);
+            assertEquals(size, callbackTotal[0],
+                "Callback should have been called with total of " + size + " bytes");
+            assertEquals(size, out.size(),
+                "Output stream should contain " + size + " bytes");
+        }
+    }
+
+    @Test
+    public void testTransferFileToOutputStreamReturnsBytes() throws Exception {
+        File tempFile = File.createTempFile("transfer-test", ".dat");
+        tempFile.deleteOnExit();
+
+        long size = 50_000L;
+
+        // Write test data to file
+        try (InputStream in = DataGeneratorInputStream.withRepeatingPattern(size, "TestData");
+             OutputStream fileOut = Files.newOutputStream(tempFile.toPath())) {
+            IOUtilities.transfer(in, fileOut);
+        }
+
+        // Transfer file to output stream and verify bytes transferred
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            long bytesTransferred = IOUtilities.transfer(tempFile, out);
+            assertEquals(size, bytesTransferred,
+                "Expected " + size + " bytes transferred from file");
+            assertEquals(size, out.size(),
+                "Output stream should contain " + size + " bytes");
+        }
+    }
+
+    @Test
+    public void testTransferInputStreamToByteArrayReturnsBytes() throws Exception {
+        int size = 1024;
+        byte[] buffer = new byte[size];
+
+        try (InputStream in = DataGeneratorInputStream.withRepeatingPattern(size, "AB")) {
+            int bytesTransferred = IOUtilities.transfer(in, buffer);
+            assertEquals(size, bytesTransferred,
+                "Expected " + size + " bytes transferred to byte array");
+
+            // Verify the pattern was actually written
+            assertEquals('A', buffer[0]);
+            assertEquals('B', buffer[1]);
+            assertEquals('A', buffer[2]);
+            assertEquals('B', buffer[3]);
+        }
+    }
+
+    @Test
+    public void testTransferURLConnectionToByteArrayReturnsBytes() throws Exception {
+        byte[] testData = "Test data for URLConnection".getBytes(StandardCharsets.UTF_8);
+        ByteArrayOutputStream mockOutput = new ByteArrayOutputStream();
+
+        URLConnection c = mock(URLConnection.class);
+        when(c.getOutputStream()).thenReturn(mockOutput);
+
+        int bytesTransferred = IOUtilities.transfer(c, testData);
+        assertEquals(testData.length, bytesTransferred,
+            "Expected " + testData.length + " bytes transferred to URLConnection");
+        assertArrayEquals(testData, mockOutput.toByteArray(),
+            "URLConnection should contain the transferred data");
+    }
+
+    @Test
+    public void testTransferLargeStreamReturnsLong() throws Exception {
+        // Test that we properly use long for large transfers (> 2GB would take too long, so test > Integer.MAX_VALUE / 1000)
+        long size = 3_000_000L; // 3MB, large enough to verify long arithmetic
+
+        try (InputStream in = DataGeneratorInputStream.withRandomBytes(size);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            long bytesTransferred = IOUtilities.transfer(in, out);
+            assertEquals(size, bytesTransferred,
+                "Expected " + size + " bytes transferred");
+
+            // Verify the return type can handle values > Integer.MAX_VALUE conceptually
+            // (we're not actually transferring > 2GB due to test time, but the type is correct)
+            assertThat(bytesTransferred).isInstanceOf(Long.class);
+        }
+    }
 }

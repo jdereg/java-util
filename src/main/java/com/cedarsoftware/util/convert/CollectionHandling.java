@@ -222,9 +222,10 @@ final class CollectionHandling {
     private static void validateMapOrder(Map<Class<?>, ?> map) {
         List<Class<?>> interfaces = new ArrayList<>(map.keySet());
 
-        for (int i = 0; i < interfaces.size(); i++) {
+        int len = interfaces.size();
+        for (int i = 0; i < len; i++) {
             Class<?> current = interfaces.get(i);
-            for (int j = i + 1; j < interfaces.size(); j++) {
+            for (int j = i + 1; j < len; j++) {
                 Class<?> next = interfaces.get(j);
                 if (current != next && current.isAssignableFrom(next)) {
                     throw new IllegalStateException("Mapping order error: " + next.getName() +

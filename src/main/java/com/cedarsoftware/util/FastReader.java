@@ -116,7 +116,7 @@ public class FastReader extends Reader {
 
     public int read(char[] cbuf, int off, int len) {
         if (in == null) {
-            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+            ExceptionUtilities.uncheckedThrow(new IOException("inputReader is null"));
         }
         int bytesRead = 0;
 

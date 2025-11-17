@@ -379,4 +379,260 @@ public class ArrayUtilitiesTest
         assertSame("a", copy[0]);
         assertSame("b", ((Object[])copy[1])[0]);
     }
+
+    @Test
+    void testSetObjectArray()
+    {
+        // Test that setPrimitiveElement() throws exception for Object[] arrays
+        // Object[] should use direct assignment instead
+        Object[] array = new Object[5];
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> {
+            ArrayUtilities.setPrimitiveElement(array, 0, "Hello");
+        });
+        assertTrue(e.getMessage().contains("setPrimitiveElement() should only be used for primitive arrays"));
+        assertTrue(e.getMessage().contains("java.lang.Object[]"));
+
+        // Verify direct assignment works correctly
+        array[0] = "Hello";
+        array[1] = 42;
+        array[2] = null;
+        array[3] = new StringBuilder("test");
+        array[4] = new int[]{1, 2, 3};
+
+        assertEquals("Hello", array[0]);
+        assertEquals(42, array[1]);
+        assertNull(array[2]);
+        assertEquals("test", array[3].toString());
+        assertArrayEquals(new int[]{1, 2, 3}, (int[])array[4]);
+    }
+
+    @Test
+    void testSetStringArray()
+    {
+        // Test that setPrimitiveElement() throws exception for String[] arrays
+        // String[] should use direct assignment instead
+        String[] strings = new String[3];
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> {
+            ArrayUtilities.setPrimitiveElement(strings, 0, "First");
+        });
+        assertTrue(e.getMessage().contains("setPrimitiveElement() should only be used for primitive arrays"));
+        assertTrue(e.getMessage().contains("java.lang.String[]"));
+
+        // Verify direct assignment works correctly
+        strings[0] = "First";
+        strings[1] = "Second";
+        strings[2] = null;
+
+        assertEquals("First", strings[0]);
+        assertEquals("Second", strings[1]);
+        assertNull(strings[2]);
+    }
+
+    @Test
+    void testSetIntArray()
+    {
+        // Test int[] array with Integer objects
+        int[] numbers = new int[5];
+
+        ArrayUtilities.setPrimitiveElement(numbers, 0, 10);
+        ArrayUtilities.setPrimitiveElement(numbers, 1, Integer.valueOf(20));
+        ArrayUtilities.setPrimitiveElement(numbers, 2, null);  // Should set to 0
+        ArrayUtilities.setPrimitiveElement(numbers, 3, 30);
+        ArrayUtilities.setPrimitiveElement(numbers, 4, -40);
+
+        assertEquals(10, numbers[0]);
+        assertEquals(20, numbers[1]);
+        assertEquals(0, numbers[2]);  // null converts to 0
+        assertEquals(30, numbers[3]);
+        assertEquals(-40, numbers[4]);
+    }
+
+    @Test
+    void testSetLongArray()
+    {
+        // Test long[] array
+        long[] longs = new long[4];
+
+        ArrayUtilities.setPrimitiveElement(longs, 0, 100L);
+        ArrayUtilities.setPrimitiveElement(longs, 1, Long.valueOf(200L));
+        ArrayUtilities.setPrimitiveElement(longs, 2, null);  // Should set to 0L
+        ArrayUtilities.setPrimitiveElement(longs, 3, Integer.valueOf(300));  // Auto-convert from int
+
+        assertEquals(100L, longs[0]);
+        assertEquals(200L, longs[1]);
+        assertEquals(0L, longs[2]);
+        assertEquals(300L, longs[3]);
+    }
+
+    @Test
+    void testSetDoubleArray()
+    {
+        // Test double[] array
+        double[] doubles = new double[4];
+
+        ArrayUtilities.setPrimitiveElement(doubles, 0, 1.5);
+        ArrayUtilities.setPrimitiveElement(doubles, 1, Double.valueOf(2.5));
+        ArrayUtilities.setPrimitiveElement(doubles, 2, null);  // Should set to 0.0
+        ArrayUtilities.setPrimitiveElement(doubles, 3, Integer.valueOf(3));  // Auto-convert from int
+
+        assertEquals(1.5, doubles[0], 0.001);
+        assertEquals(2.5, doubles[1], 0.001);
+        assertEquals(0.0, doubles[2], 0.001);
+        assertEquals(3.0, doubles[3], 0.001);
+    }
+
+    @Test
+    void testSetFloatArray()
+    {
+        // Test float[] array
+        float[] floats = new float[3];
+
+        ArrayUtilities.setPrimitiveElement(floats, 0, 1.5f);
+        ArrayUtilities.setPrimitiveElement(floats, 1, Float.valueOf(2.5f));
+        ArrayUtilities.setPrimitiveElement(floats, 2, null);  // Should set to 0.0f
+
+        assertEquals(1.5f, floats[0], 0.001f);
+        assertEquals(2.5f, floats[1], 0.001f);
+        assertEquals(0.0f, floats[2], 0.001f);
+    }
+
+    @Test
+    void testSetBooleanArray()
+    {
+        // Test boolean[] array
+        boolean[] booleans = new boolean[4];
+
+        ArrayUtilities.setPrimitiveElement(booleans, 0, true);
+        ArrayUtilities.setPrimitiveElement(booleans, 1, Boolean.valueOf(false));
+        ArrayUtilities.setPrimitiveElement(booleans, 2, null);  // Should set to false
+        ArrayUtilities.setPrimitiveElement(booleans, 3, Boolean.TRUE);
+
+        assertTrue(booleans[0]);
+        assertFalse(booleans[1]);
+        assertFalse(booleans[2]);  // null converts to false
+        assertTrue(booleans[3]);
+    }
+
+    @Test
+    void testSetByteArray()
+    {
+        // Test byte[] array
+        byte[] bytes = new byte[4];
+
+        ArrayUtilities.setPrimitiveElement(bytes, 0, (byte)10);
+        ArrayUtilities.setPrimitiveElement(bytes, 1, Byte.valueOf((byte)20));
+        ArrayUtilities.setPrimitiveElement(bytes, 2, null);  // Should set to 0
+        ArrayUtilities.setPrimitiveElement(bytes, 3, Integer.valueOf(30));  // Auto-convert from int
+
+        assertEquals((byte)10, bytes[0]);
+        assertEquals((byte)20, bytes[1]);
+        assertEquals((byte)0, bytes[2]);
+        assertEquals((byte)30, bytes[3]);
+    }
+
+    @Test
+    void testSetCharArray()
+    {
+        // Test char[] array
+        char[] chars = new char[5];
+
+        ArrayUtilities.setPrimitiveElement(chars, 0, 'A');
+        ArrayUtilities.setPrimitiveElement(chars, 1, Character.valueOf('B'));
+        ArrayUtilities.setPrimitiveElement(chars, 2, null);  // Should set to '\0'
+        ArrayUtilities.setPrimitiveElement(chars, 3, "C");  // String conversion
+        ArrayUtilities.setPrimitiveElement(chars, 4, "Hello");  // Takes first char
+
+        assertEquals('A', chars[0]);
+        assertEquals('B', chars[1]);
+        assertEquals('\0', chars[2]);
+        assertEquals('C', chars[3]);
+        assertEquals('H', chars[4]);  // First char of "Hello"
+    }
+
+    @Test
+    void testSetShortArray()
+    {
+        // Test short[] array
+        short[] shorts = new short[4];
+
+        ArrayUtilities.setPrimitiveElement(shorts, 0, (short)100);
+        ArrayUtilities.setPrimitiveElement(shorts, 1, Short.valueOf((short)200));
+        ArrayUtilities.setPrimitiveElement(shorts, 2, null);  // Should set to 0
+        ArrayUtilities.setPrimitiveElement(shorts, 3, Integer.valueOf(300));  // Auto-convert from int
+
+        assertEquals((short)100, shorts[0]);
+        assertEquals((short)200, shorts[1]);
+        assertEquals((short)0, shorts[2]);
+        assertEquals((short)300, shorts[3]);
+    }
+
+    @Test
+    void testSetArrayIndexOutOfBounds()
+    {
+        // Test index out of bounds
+        int[] array = new int[3];
+
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> {
+            ArrayUtilities.setPrimitiveElement(array, 5, 10);
+        });
+
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> {
+            ArrayUtilities.setPrimitiveElement(array, -1, 10);
+        });
+    }
+
+    @Test
+    void testSetArrayTypeMismatch()
+    {
+        // Test type mismatch for Object[]
+        String[] strings = new String[3];
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            ArrayUtilities.setPrimitiveElement(strings, 0, new Integer(42));  // Integer can't go in String[]
+        });
+    }
+
+    @Test
+    void testSetNullArray()
+    {
+        // Test null array
+        assertThrows(NullPointerException.class, () -> {
+            ArrayUtilities.setPrimitiveElement(null, 0, "value");
+        });
+    }
+
+    @Test
+    void testSetPerformanceComparison()
+    {
+        // Performance test showing ArrayUtilities.setPrimitiveElement() is faster than Array.set()
+        // This is more of a validation that our optimization works correctly
+        int[] numbers = new int[1000];
+
+        // Using ArrayUtilities.setPrimitiveElement() should work correctly
+        for (int i = 0; i < numbers.length; i++) {
+            ArrayUtilities.setPrimitiveElement(numbers, i, i * 2);
+        }
+
+        // Verify values
+        for (int i = 0; i < numbers.length; i++) {
+            assertEquals(i * 2, numbers[i]);
+        }
+    }
+
+    @Test
+    void testSetMixedTypes()
+    {
+        // Test that Number types can be converted to primitive arrays
+        int[] ints = new int[3];
+
+        ArrayUtilities.setPrimitiveElement(ints, 0, Integer.valueOf(10));
+        ArrayUtilities.setPrimitiveElement(ints, 1, Long.valueOf(20L));     // Long to int
+        ArrayUtilities.setPrimitiveElement(ints, 2, Double.valueOf(30.7));  // Double to int
+
+        assertEquals(10, ints[0]);
+        assertEquals(20, ints[1]);
+        assertEquals(30, ints[2]);  // 30.7 truncated to 30
+    }
 }

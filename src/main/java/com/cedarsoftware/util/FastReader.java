@@ -125,7 +125,10 @@ public class FastReader extends Reader {
             if (available > 0) {
                 int toRead = Math.min(available, len);
                 System.arraycopy(pushbackBuffer, pushbackPosition, cbuf, off, toRead);
-                pushbackPosition += toRead;
+                // Track line/col for each character read from pushback buffer
+                for (int i = 0; i < toRead; i++) {
+                    movePosition(pushbackBuffer[pushbackPosition++]);
+                }
                 off += toRead;
                 len -= toRead;
                 bytesRead += toRead;
@@ -136,7 +139,10 @@ public class FastReader extends Reader {
                 }
                 int toRead = Math.min(limit - position, len);
                 System.arraycopy(buf, position, cbuf, off, toRead);
-                position += toRead;
+                // Track line/col for each character read from main buffer
+                for (int i = 0; i < toRead; i++) {
+                    movePosition(buf[position++]);
+                }
                 off += toRead;
                 len -= toRead;
                 bytesRead += toRead;

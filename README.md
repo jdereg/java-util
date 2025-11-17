@@ -527,6 +527,10 @@ System.setProperty("io.debug.detailed.paths", "true");
 <td>Optimized reflection operations.</td>
 </tr>
 <tr>
+<td><a href="userguide.md#regexutilities">RegexUtilities</a></td>
+<td>Safe regex operations with ReDoS protection, pattern caching, and timeout enforcement.</td>
+</tr>
+<tr>
 <td><a href="userguide.md#stringutilities">StringUtilities</a></td>
 <td>Extended <code>String</code> manipulation operations.</td>
 </tr>

@@ -6105,6 +6105,156 @@ if (sm != null) {
 This implementation provides high-performance reflection utilities with sophisticated caching and comprehensive access to Java's reflection capabilities.
 
 ---
+## RegexUtilities
+[Source](/src/main/java/com/cedarsoftware/util/RegexUtilities.java)
+
+A utility class providing safe and efficient regular expression operations with built-in protection against ReDoS (Regular Expression Denial of Service) attacks through timeout enforcement and performance optimization through pattern caching.
+
+### Key Features
+- **ReDoS Protection**: Configurable timeouts prevent catastrophic backtracking
+- **Pattern Caching**: Compiled patterns are cached to avoid repeated compilation overhead
+- **Thread Safety**: All operations are thread-safe with concurrent caching
+- **Invalid Pattern Tracking**: Remembers invalid patterns to avoid repeated compilation attempts
+- **Configurable Security**: Control security features via system properties
+
+### Security Configuration
+
+Security features can be controlled via system properties:
+```java
+// Enable/disable all security features (default: true)
+System.setProperty("cedarsoftware.security.enabled", "true");
+
+// Enable/disable regex timeout (default: true)
+System.setProperty("cedarsoftware.regex.timeout.enabled", "true");
+
+// Set timeout in milliseconds (default: 5000)
+System.setProperty("cedarsoftware.regex.timeout.milliseconds", "3000");
+```
+
+### Public API
+
+```java
+// Pattern caching
+public static Pattern getCachedPattern(String regex)
+public static Pattern getCachedPattern(String regex, boolean caseInsensitive)
+public static void clearCaches()
+
+// Safe matching operations with timeout protection
+public static boolean safeMatches(Pattern pattern, String input)
+public static SafeMatchResult safeFind(Pattern pattern, String input)
+
+// Pattern validation
+public static boolean isValidPattern(String regex)
+```
+
+### Usage Examples
+
+#### Basic Pattern Caching
+```java
+// Get a cached pattern (compiled once, reused many times)
+Pattern pattern = RegexUtilities.getCachedPattern("\\d+");
+boolean matches = RegexUtilities.safeMatches(pattern, "12345");  // true
+
+// Case-insensitive pattern caching
+Pattern ciPattern = RegexUtilities.getCachedPattern("hello", true);
+boolean found = RegexUtilities.safeMatches(ciPattern, "HELLO World");  // true
+```
+
+#### ReDoS Protection
+```java
+// This pattern with malicious input would cause catastrophic backtracking
+// But RegexUtilities enforces a timeout (default 5 seconds)
+Pattern dangerous = RegexUtilities.getCachedPattern("(a+)+$");
+String malicious = "aaaaaaaaaaaaaaaaaaaaaaaaaX";
+
+try {
+    boolean result = RegexUtilities.safeMatches(dangerous, malicious);
+    // Returns false if timeout occurs
+} catch (Exception e) {
+    // Timeout protection prevented ReDoS attack
+}
+```
+
+#### Safe Find with Result Capture
+```java
+Pattern pattern = RegexUtilities.getCachedPattern("\\d+");
+SafeMatchResult result = RegexUtilities.safeFind(pattern, "abc123def456");
+
+if (result.matched()) {
+    String found = result.group(0);      // "123"
+    int start = result.start();          // 3
+    int end = result.end();              // 6
+    int groupCount = result.groupCount(); // 0
+}
+
+// Access groups
+if (result.groupCount() > 0) {
+    String group1 = result.group(1);
+}
+```
+
+#### Pattern Validation
+```java
+// Check if a regex pattern is valid before using it
+String userInput = "(unclosed group";
+if (RegexUtilities.isValidPattern(userInput)) {
+    Pattern pattern = RegexUtilities.getCachedPattern(userInput);
+    // Use the pattern
+} else {
+    // Handle invalid pattern
+    System.err.println("Invalid regex pattern");
+}
+```
+
+#### Performance: Pattern Caching Benefits
+```java
+// Without caching (slow - compiles pattern every time)
+for (String input : inputs) {
+    Pattern.compile("\\d{3}-\\d{2}-\\d{4}").matcher(input).matches();
+}
+
+// With RegexUtilities caching (fast - compiles once)
+Pattern pattern = RegexUtilities.getCachedPattern("\\d{3}-\\d{2}-\\d{4}");
+for (String input : inputs) {
+    RegexUtilities.safeMatches(pattern, input);
+}
+```
+
+#### Clear Caches When Needed
+```java
+// Clear all cached patterns (useful for memory management in long-running apps)
+RegexUtilities.clearCaches();
+```
+
+### SafeMatchResult API
+
+The `SafeMatchResult` class provides access to match results:
+```java
+public boolean matched()           // Whether the match succeeded
+public String group(int group)     // Get captured group
+public int start()                 // Start index of match
+public int end()                   // End index of match
+public int groupCount()            // Number of capturing groups
+public String getInput()           // Original input string
+```
+
+### Performance Characteristics
+
+- **Pattern Compilation**: O(1) amortized (cached after first compilation)
+- **Matching**: O(n) with timeout protection against catastrophic backtracking
+- **Memory**: Bounded by cache size (cleared on demand)
+- **Thread Safety**: Lock-free concurrent caching
+
+### Security Benefits
+
+1. **ReDoS Prevention**: Timeout enforcement prevents regex-based DoS attacks
+2. **Invalid Pattern Handling**: Tracks and rejects known invalid patterns
+3. **Configurable Security**: Fine-grained control via system properties
+4. **Safe Defaults**: Security enabled by default with reasonable timeout (5s)
+
+This implementation provides enterprise-grade regex utilities with built-in security and performance optimizations.
+
+---
 ## StringUtilities
 [Source](/src/main/java/com/cedarsoftware/util/StringUtilities.java)
 

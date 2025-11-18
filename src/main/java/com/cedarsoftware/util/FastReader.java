@@ -24,13 +24,13 @@ import java.io.Reader;
  *         See the License for the specific language governing permissions and
  *         limitations under the License.
  */
-public class FastReader extends Reader {
+public final class FastReader extends Reader {
     private Reader in;
     private final char[] buf;
     private final int bufferSize;
     private final int pushbackBufferSize;
     private int position; // Current position in the buffer
-    private int limit; // Number of characters currently in the buffer
+    private int limit;    // Number of characters currently in the buffer, or -1 for EOF
     private final char[] pushbackBuffer;
     private int pushbackPosition; // Current position in the pushback buffer
     private int line = 1;
@@ -56,6 +56,10 @@ public class FastReader extends Reader {
     }
 
     private void fill() {
+        // Once EOF is reached, avoid re-reading.
+        if (limit == -1) {
+            return;
+        }
         if (position >= limit) {
             try {
                 limit = in.read(buf, 0, bufferSize);
@@ -73,22 +77,12 @@ public class FastReader extends Reader {
             ExceptionUtilities.uncheckedThrow(new IOException("Pushback buffer is full"));
         }
         pushbackBuffer[--pushbackPosition] = ch;
-        if (ch == 0x0a) {
-            line--;
-        }
-        else {
-            col--;
-        }
-    }
 
-    protected void movePosition(char ch)
-    {
-        if (ch == 0x0a) {
-            line++;
-            col = 0;
-        }
-        else {
-            col++;
+        // Reverse the position movement for this character
+        if (ch == '\n') {
+            line--;
+        } else {
+            col--;
         }
     }
 
@@ -97,10 +91,17 @@ public class FastReader extends Reader {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
         }
-        char ch;
+
+        // First, serve from pushback buffer if available
         if (pushbackPosition < pushbackBufferSize) {
-            ch = pushbackBuffer[pushbackPosition++];
-            movePosition(ch);
+            char ch = pushbackBuffer[pushbackPosition++];
+            // Inline movePosition for hot path
+            if (ch == '\n') {
+                line++;
+                col = 0;
+            } else {
+                col++;
+            }
             return ch;
         }
 
@@ -109,50 +110,98 @@ public class FastReader extends Reader {
             return -1;
         }
 
-        ch = buf[position++];
-        movePosition(ch);
+        char ch = buf[position++];
+        // Inline movePosition for hot path
+        if (ch == '\n') {
+            line++;
+            col = 0;
+        } else {
+            col++;
+        }
         return ch;
     }
 
+    @Override
     public int read(char[] cbuf, int off, int len) {
         if (in == null) {
             ExceptionUtilities.uncheckedThrow(new IOException("inputReader is null"));
         }
-        int bytesRead = 0;
+        if (len == 0) {
+            return 0;
+        }
+
+        int charsRead = 0;
 
         while (len > 0) {
-            int available = pushbackBufferSize - pushbackPosition;
-            if (available > 0) {
-                int toRead = Math.min(available, len);
-                System.arraycopy(pushbackBuffer, pushbackPosition, cbuf, off, toRead);
-                // Track line/col for each character read from pushback buffer
+            // Consume from pushback buffer first
+            int availableFromPushback = pushbackBufferSize - pushbackPosition;
+            if (availableFromPushback > 0) {
+                int toRead = Math.min(availableFromPushback, len);
+
+                int p = pushbackPosition;
+                int o = off;
+
                 for (int i = 0; i < toRead; i++) {
-                    movePosition(pushbackBuffer[pushbackPosition++]);
+                    char ch = pushbackBuffer[p++];
+                    cbuf[o++] = ch;
+
+                    // Inline movePosition
+                    if (ch == '\n') {
+                        line++;
+                        col = 0;
+                    } else {
+                        col++;
+                    }
                 }
-                off += toRead;
+
+                pushbackPosition = p;
+                off = o;
                 len -= toRead;
-                bytesRead += toRead;
+                charsRead += toRead;
             } else {
+                // Consume from main buffer
                 fill();
                 if (limit == -1) {
-                    return bytesRead > 0 ? bytesRead : -1;
+                    // EOF: return what we've got, or -1 if we have nothing
+                    return charsRead > 0 ? charsRead : -1;
                 }
-                int toRead = Math.min(limit - position, len);
-                System.arraycopy(buf, position, cbuf, off, toRead);
-                // Track line/col for each character read from main buffer
+
+                int availableFromMain = limit - position;
+                if (availableFromMain <= 0) {
+                    // Shouldn't normally happen if fill() behaves, but guard anyway
+                    return charsRead > 0 ? charsRead : -1;
+                }
+
+                int toRead = Math.min(availableFromMain, len);
+
+                int p = position;
+                int o = off;
+
                 for (int i = 0; i < toRead; i++) {
-                    movePosition(buf[position++]);
+                    char ch = buf[p++];
+                    cbuf[o++] = ch;
+
+                    // Inline movePosition
+                    if (ch == '\n') {
+                        line++;
+                        col = 0;
+                    } else {
+                        col++;
+                    }
                 }
-                off += toRead;
+
+                position = p;
+                off = o;
                 len -= toRead;
-                bytesRead += toRead;
+                charsRead += toRead;
             }
         }
 
-        return bytesRead;
+        return charsRead;
     }
 
-    public void close()  {
+    @Override
+    public void close() {
         if (in != null) {
             try {
                 in.close();
@@ -163,21 +212,17 @@ public class FastReader extends Reader {
         }
     }
 
-    public int getLine()
-    {
+    public int getLine() {
         return line;
     }
 
-    public int getCol()
-    {
+    public int getCol() {
         return col;
     }
 
-    public String getLastSnippet()
-    {
-        StringBuilder s = new StringBuilder();
-        for (int i=0; i < position; i++)
-        {
+    public String getLastSnippet() {
+        StringBuilder s = new StringBuilder(position);
+        for (int i = 0; i < position; i++) {
             s.append(buf[i]);
         }
         return s.toString();

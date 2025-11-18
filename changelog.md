@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.4.0-SNAPSHOT
+#### 4.70.0 - 2025-01-18
 
 > * **ADDED**: `RegexUtilities` - New utility class providing thread-safe pattern caching and ReDoS (Regular Expression Denial of Service) protection for Java regex operations. This class addresses two critical concerns in regex-heavy applications:
 >   * **Pattern Caching**: Thread-safe ConcurrentHashMap-based caching of compiled Pattern objects to eliminate redundant Pattern.compile() overhead. Supports three caching strategies:
@@ -20,6 +20,15 @@
 >   * **Thread Safety**: All operations are thread-safe with daemon threads to prevent JVM shutdown blocking
 >   * **Test Coverage**: Comprehensive test suite with 17,807 tests passing, including pattern caching verification, timeout protection, and invalid pattern handling
 >   * **Use Cases**: Prevents regex-based DoS attacks, improves performance for frequently-used patterns, provides unified regex API across Cedar Software projects (java-util, json-io, n-cube)
+> * **PERFORMANCE**: `FastReader` - Multiple performance and reliability optimizations:
+>   * **Made class `final`**: Prevents subclassing and enables JVM optimizations (method inlining, devirtualization)
+>   * **Inlined `movePosition()` in hot path**: Eliminated ~1.5M method calls per MB of JSON by inlining line/column tracking directly in `read()` and `read(char[], int, int)` methods
+>   * **Improved EOF handling**: Added early-exit check (`if (limit == -1) return;`) in `fill()` to avoid redundant read attempts after EOF
+>   * **Optimized `read(char[], int, int)`**: Reduced local variable allocations and improved loop efficiency by hoisting position/offset updates outside inner loops
+>   * **Fixed pushback tracking**: Corrected line/column position reversal when characters are pushed back (changed `0x0a` to `'\n'` for clarity)
+>   * **Pre-sized StringBuilder**: `getLastSnippet()` now pre-allocates capacity to avoid internal array resizing
+>   * **Increased default buffer sizes**: Changed from 10 to 16 pushback buffers (60% more capacity) for better handling of complex tokenization scenarios
+>   * **Impact**: These micro-optimizations compound in json-io's parsing hot path where `FastReader` methods are called millions of times per large JSON file
 > * **IMPROVED**: `StringConversions.toPattern()` - Updated to use `RegexUtilities.getCachedPattern()` for pattern caching and ReDoS protection. The Converter framework's String → Pattern conversion now benefits from:
 >   * **Pattern Caching**: Eliminates redundant Pattern.compile() calls when same pattern string is converted multiple times
 >   * **ReDoS Protection**: Timeout-protected compilation prevents malicious regex patterns from causing CPU exhaustion

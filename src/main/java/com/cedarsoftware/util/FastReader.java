@@ -121,6 +121,76 @@ public final class FastReader extends Reader {
         return ch;
     }
 
+    /**
+     * Efficiently skip whitespace characters (space, tab, newline, carriage return).
+     * This method advances the buffer pointer directly, avoiding repeated method calls
+     * and overhead. Optimized for JSON parsing hot paths.
+     *
+     * @return the first non-whitespace character encountered, or -1 for EOF
+     */
+    public int skipWhitespace() {
+        if (in == null) {
+            ExceptionUtilities.uncheckedThrow(new IOException("in is null"));
+        }
+
+        while (true) {
+            // Check pushback buffer first
+            while (pushbackPosition < pushbackBufferSize) {
+                char ch = pushbackBuffer[pushbackPosition];
+                if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+                    pushbackPosition++;
+                    // Track line/col for whitespace
+                    if (ch == '\n') {
+                        line++;
+                        col = 0;
+                    } else {
+                        col++;
+                    }
+                } else {
+                    // Found non-whitespace in pushback
+                    pushbackPosition++;
+                    if (ch == '\n') {
+                        line++;
+                        col = 0;
+                    } else {
+                        col++;
+                    }
+                    return ch;
+                }
+            }
+
+            // Check main buffer
+            fill();
+            if (limit == -1) {
+                return -1; // EOF
+            }
+
+            while (position < limit) {
+                char ch = buf[position];
+                if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+                    position++;
+                    // Track line/col for whitespace
+                    if (ch == '\n') {
+                        line++;
+                        col = 0;
+                    } else {
+                        col++;
+                    }
+                } else {
+                    // Found non-whitespace
+                    position++;
+                    if (ch == '\n') {
+                        line++;
+                        col = 0;
+                    } else {
+                        col++;
+                    }
+                    return ch;
+                }
+            }
+        }
+    }
+
     @Override
     public int read(char[] cbuf, int off, int len) {
         if (in == null) {

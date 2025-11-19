@@ -1,6 +1,6 @@
 ### Revision History
 
-#### 4.70.0 - 2025-01-18
+#### 4.70.0 - 2025-11-18
 
 > * **ADDED**: `RegexUtilities` - New utility class providing thread-safe pattern caching and ReDoS (Regular Expression Denial of Service) protection for Java regex operations. This class addresses two critical concerns in regex-heavy applications:
 >   * **Pattern Caching**: Thread-safe ConcurrentHashMap-based caching of compiled Pattern objects to eliminate redundant Pattern.compile() overhead. Supports three caching strategies:

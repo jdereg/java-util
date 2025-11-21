@@ -402,6 +402,7 @@ public class ClassUtilitiesSecurityTest {
             // Enable enhanced security with constructor arg limit
             System.setProperty("classutilities.enhanced.security.enabled", "true");
             System.setProperty("classutilities.max.constructor.args", "5");
+            ClassUtilities.reinitializeSecuritySettings(); // Reload cached properties
 
             // Create test class that we can safely instantiate
             Object[] args = new Object[10]; // Exceeds limit of 5
@@ -429,6 +430,7 @@ public class ClassUtilitiesSecurityTest {
             // Enable enhanced security with resource name length limit
             System.setProperty("classutilities.enhanced.security.enabled", "true");
             System.setProperty("classutilities.max.resource.name.length", "150");
+            ClassUtilities.reinitializeSecuritySettings(); // Reload cached properties
 
             // Create resource name that exceeds limit (minimum is 100, so 150 should work)
             StringBuilder longName = new StringBuilder("test_");
@@ -458,6 +460,7 @@ public class ClassUtilitiesSecurityTest {
             System.setProperty("classutilities.enhanced.security.enabled", "true");
             System.setProperty("classutilities.max.constructor.args", "0");
             System.setProperty("classutilities.max.class.load.depth", "0");
+            ClassUtilities.reinitializeSecuritySettings(); // Reload cached properties
 
             // Should work normally when limits are set to 0
             assertDoesNotThrow(() -> {
@@ -479,6 +482,7 @@ public class ClassUtilitiesSecurityTest {
             System.setProperty("classutilities.enhanced.security.enabled", "true");
             System.setProperty("classutilities.max.constructor.args", "invalid");
             System.setProperty("classutilities.max.resource.name.length", "not_a_number");
+            ClassUtilities.reinitializeSecuritySettings(); // Reload cached properties
 
             // Should use default values when properties are invalid
             // Test that property parsing doesn't crash with invalid values
@@ -515,6 +519,7 @@ public class ClassUtilitiesSecurityTest {
             System.clearProperty("classutilities.max.constructor.args");
             System.clearProperty("classutilities.max.class.load.depth");
             System.clearProperty("classutilities.max.resource.name.length");
+            ClassUtilities.reinitializeSecuritySettings(); // Reload cached properties
 
             // Should work normally without enhanced security restrictions
             // Note: Core security (dangerous class blocking) should still be active
@@ -542,6 +547,7 @@ public class ClassUtilitiesSecurityTest {
         try {
             // Disable enhanced security but verify core security still works
             System.setProperty("classutilities.enhanced.security.enabled", "false");
+            ClassUtilities.reinitializeSecuritySettings(); // Reload cached properties
 
             // Core security should still block dangerous classes
             SecurityException e = assertThrows(SecurityException.class, () -> {

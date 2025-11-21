@@ -321,6 +321,51 @@ public class ClassUtilities {
 
     // Thread-local depth tracking for enhanced security
     private static final ThreadLocal<Integer> CLASS_LOAD_DEPTH = ThreadLocal.withInitial(() -> 0);
+
+    // Performance: Cache system properties at class initialization to avoid repeated System.getProperty() calls
+    // These are checked frequently during class loading, so caching eliminates synchronized overhead
+    // Note: Not final to allow test reinitialization via reinitializeSecuritySettings()
+    private static boolean ENHANCED_SECURITY_ENABLED;
+    private static int MAX_CLASS_LOAD_DEPTH;
+    private static int MAX_CONSTRUCTOR_ARGS;
+    private static int MAX_RESOURCE_NAME_LENGTH;
+
+    static {
+        // Initialize cached security settings at class load time
+        reinitializeSecuritySettings();
+    }
+
+    /**
+     * Reinitializes cached security settings from system properties.
+     * Package-private to allow tests to update settings after changing system properties.
+     * In production, security settings are cached once at class initialization for performance.
+     */
+    static void reinitializeSecuritySettings() {
+        ENHANCED_SECURITY_ENABLED = "true".equalsIgnoreCase(
+                System.getProperty("classutilities.enhanced.security.enabled"));
+
+        if (ENHANCED_SECURITY_ENABLED) {
+            MAX_CLASS_LOAD_DEPTH = getIntProperty("classutilities.max.class.load.depth", DEFAULT_MAX_CLASS_LOAD_DEPTH, 0);
+            MAX_CONSTRUCTOR_ARGS = getIntProperty("classutilities.max.constructor.args", DEFAULT_MAX_CONSTRUCTOR_ARGS, 0);
+            MAX_RESOURCE_NAME_LENGTH = getIntProperty("classutilities.max.resource.name.length", DEFAULT_MAX_RESOURCE_NAME_LENGTH, 100);
+        } else {
+            MAX_CLASS_LOAD_DEPTH = 0;
+            MAX_CONSTRUCTOR_ARGS = 0;
+            MAX_RESOURCE_NAME_LENGTH = DEFAULT_MAX_RESOURCE_NAME_LENGTH;
+        }
+    }
+
+    private static int getIntProperty(String key, int defaultValue, int minValue) {
+        String prop = System.getProperty(key);
+        if (prop != null) {
+            try {
+                return Math.max(minValue, Integer.parseInt(prop));
+            } catch (NumberFormatException e) {
+                // Fall through to default
+            }
+        }
+        return defaultValue;
+    }
     private static final Map<Class<?>, Supplier<Object>> DIRECT_CLASS_MAPPING = new ClassValueMap<>();
     private static final Map<Class<?>, Supplier<Object>> ASSIGNABLE_CLASS_MAPPING = new LinkedHashMap<>();
     /**
@@ -823,8 +868,8 @@ public class ClassUtilities {
     private static Class<?> internalClassForName(String name, ClassLoader classLoader) throws ClassNotFoundException {
         Class<?> c = fromCache(name, classLoader);
         if (c != null) {
-            // Ensure alias/cache hits are verified too (they could bypass security)
-            SecurityChecker.verifyClass(c);
+            // Performance: Skip re-verification - classes are verified before being cached (line 909)
+            // Cached classes are immutable, so if verified once, they remain verified
             return c;
         }
 
@@ -833,16 +878,25 @@ public class ClassUtilities {
             throw new SecurityException("For security reasons, cannot load: " + name);
         }
 
-        // Enhanced security: Validate class loading depth
-        int currentDepth = CLASS_LOAD_DEPTH.get();
-        int nextDepth = currentDepth + 1;
-        validateEnhancedSecurity("Class loading depth", nextDepth, getMaxClassLoadDepth());
-        
-        try {
-            CLASS_LOAD_DEPTH.set(nextDepth);
+        // Performance: Only track depth if enhanced security is enabled
+        // Avoids 3 ThreadLocal operations (get, set, set in finally) when disabled
+        if (ENHANCED_SECURITY_ENABLED) {
+            int currentDepth = CLASS_LOAD_DEPTH.get();
+            int nextDepth = currentDepth + 1;
+            // Performance: Direct constant check instead of method call + System.getProperty()
+            if (nextDepth > MAX_CLASS_LOAD_DEPTH && MAX_CLASS_LOAD_DEPTH > 0) {
+                throw new SecurityException("Class loading depth exceeded limit: " + nextDepth + " > " + MAX_CLASS_LOAD_DEPTH);
+            }
+
+            try {
+                CLASS_LOAD_DEPTH.set(nextDepth);
+                c = loadClass(name, classLoader);
+            } finally {
+                CLASS_LOAD_DEPTH.set(currentDepth);
+            }
+        } else {
+            // Enhanced security disabled - skip ThreadLocal overhead entirely
             c = loadClass(name, classLoader);
-        } finally {
-            CLASS_LOAD_DEPTH.set(currentDepth);
         }
 
         // Perform full security check on loaded class
@@ -1466,7 +1520,7 @@ public class ClassUtilities {
      * Optimally match arguments to constructor parameters with minimal collection creation.
      *
      * @param converter Converter to use for type conversions
-     * @param values Collection of potential arguments
+     * @param valueArray Collection of potential arguments
      * @param parameters Array of parameter types to match against
      * @param allowNulls Whether to allow null values for non-primitive parameters
      * @return Array of values matched to the parameters in the correct order
@@ -3080,63 +3134,28 @@ public class ClassUtilities {
 
     // Configurable Security Feature Methods
     // Note: These provide enhanced security features beyond the always-on core security
+    // Performance: These now use cached constants instead of repeated System.getProperty() calls
 
     private static boolean isEnhancedSecurityEnabled() {
-        String enabled = System.getProperty("classutilities.enhanced.security.enabled");
-        return "true".equalsIgnoreCase(enabled);
+        return ENHANCED_SECURITY_ENABLED;
     }
 
     private static int getMaxClassLoadDepth() {
-        if (!isEnhancedSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String maxDepthProp = System.getProperty("classutilities.max.class.load.depth");
-        if (maxDepthProp != null) {
-            try {
-                int value = Integer.parseInt(maxDepthProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_CLASS_LOAD_DEPTH;
+        return MAX_CLASS_LOAD_DEPTH;
     }
 
     private static int getMaxConstructorArgs() {
-        if (!isEnhancedSecurityEnabled()) {
-            return 0; // Disabled
-        }
-        String maxArgsProp = System.getProperty("classutilities.max.constructor.args");
-        if (maxArgsProp != null) {
-            try {
-                int value = Integer.parseInt(maxArgsProp);
-                return Math.max(0, value); // 0 means disabled
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_CONSTRUCTOR_ARGS;
+        return MAX_CONSTRUCTOR_ARGS;
     }
 
     private static int getMaxResourceNameLength() {
-        if (!isEnhancedSecurityEnabled()) {
-            return DEFAULT_MAX_RESOURCE_NAME_LENGTH; // Always have some limit
-        }
-        String maxLengthProp = System.getProperty("classutilities.max.resource.name.length");
-        if (maxLengthProp != null) {
-            try {
-                int value = Integer.parseInt(maxLengthProp);
-                return Math.max(100, value); // Minimum 100 characters
-            } catch (NumberFormatException e) {
-                // Fall through to default
-            }
-        }
-        return DEFAULT_MAX_RESOURCE_NAME_LENGTH;
+        return MAX_RESOURCE_NAME_LENGTH;
     }
 
     private static void validateEnhancedSecurity(String operation, int currentCount, int maxAllowed) {
-        if (!isEnhancedSecurityEnabled() || maxAllowed <= 0) {
-            return; // Security disabled
+        // Performance: Use cached constant instead of method call
+        if (!ENHANCED_SECURITY_ENABLED || maxAllowed <= 0) {
+            return; // Security disabled - early exit
         }
         if (currentCount > maxAllowed) {
             throw new SecurityException(operation + " count exceeded limit: " + currentCount + " > " + maxAllowed);

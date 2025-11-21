@@ -37,7 +37,7 @@ public final class FastReader extends Reader {
     private int col = 0;
 
     public FastReader(Reader in) {
-        this(in, 16384, 16);
+        this(in, 8192, 16);
     }
 
     public FastReader(Reader in, int bufferSize, int pushbackBufferSize) {
@@ -296,5 +296,183 @@ public final class FastReader extends Reader {
             s.append(buf[i]);
         }
         return s.toString();
+    }
+
+    /**
+     * Scans ahead in buffer to find closing quote, detecting if string has escapes.
+     * This is a performance optimization for the common case where JSON strings
+     * contain no escape sequences (field names, simple values, etc).
+     *
+     * - Scans buffer directly (tight loop, CPU cache friendly)
+     * - Detects escape-free strings (80-90% of cases)
+     * - Avoids StringBuilder overhead for simple strings
+     *
+     * @return length of string (excluding quotes) if no escapes found, -1 if escapes present or other complexity
+     */
+    public int scanStringNoEscape() {
+        // If pushback buffer has content, use slow path for safety
+        if (pushbackPosition < pushbackBufferSize) {
+            return -1;
+        }
+
+        // Ensure buffer has data
+        fill();
+        if (limit == -1) {
+            return -1; // EOF
+        }
+
+        int startPos = position;
+
+        // Scan for closing quote while detecting escapes
+        while (position < limit) {
+            char c = buf[position];
+
+            if (c == '"') {
+                // Found closing quote - no escapes encountered!
+                int length = position - startPos;
+                // Don't advance position - caller will consume via extractString()
+                position = startPos; // Reset so extractString can advance properly
+                return length;
+            }
+
+            // Check for escape sequences or control characters
+            if (c == '\\' || c < 0x20) {
+                // Has escape or control char - needs slow path
+                position = startPos; // Reset position
+                return -1;
+            }
+
+            position++;
+        }
+
+        // String spans buffer boundary or EOF - use slow path
+        position = startPos; // Reset position
+        return -1;
+    }
+
+    /**
+     * Extracts string directly from buffer at current position.
+     * Only call this after scanStringNoEscape() returns a valid length.
+     *
+     * Performance: Creates String directly from buffer without StringBuilder,
+     * similar to Jackson/Gson's fast-path string extraction.
+     *
+     * @param length the length of string to extract (from prior scanStringNoEscape call)
+     * @return String extracted from buffer
+     */
+    public String extractString(int length) {
+        // Extract string from buffer (no copy needed - String constructor handles it)
+        String result = new String(buf, position, length);
+
+        // Advance position past string content and closing quote
+        position += length + 1;
+
+        // Update column tracking (assume single-line string for fast path)
+        col += length + 1;
+
+        return result;
+    }
+
+    /**
+     * Scans ahead in buffer to parse a simple integer (no decimal point, no exponent).
+     * This is a performance optimization for the common case where JSON numbers are simple integers.
+     *
+     * Performance: Enables Jackson/Gson-style fast-path number parsing by:
+     * - Scanning buffer directly (tight loop, CPU cache friendly)
+     * - Parsing all digits in one pass without individual read() calls
+     * - Avoiding overflow checks until after parsing
+     *
+     * @param firstChar the first character already read (typically '-' or a digit)
+     * @return parsed long value if successful, or Long.MIN_VALUE as sentinel for complex numbers/overflow/EOF
+     */
+    public long scanInteger(int firstChar) {
+        // If pushback buffer has content, use slow path for safety
+        if (pushbackPosition < pushbackBufferSize) {
+            return Long.MIN_VALUE;
+        }
+
+        // Ensure buffer has data
+        fill();
+        if (limit == -1) {
+            return Long.MIN_VALUE; // EOF
+        }
+
+        boolean negative = false;
+        long value = 0;
+        int startPos = position;
+        int scanPos = position;
+
+        // Handle first character (already consumed by caller)
+        if (firstChar == '-') {
+            negative = true;
+            // First digit must come from buffer
+            if (scanPos >= limit) {
+                fill();
+                if (limit == -1) {
+                    return Long.MIN_VALUE;
+                }
+            }
+            char firstDigit = buf[scanPos];
+            if (firstDigit < '0' || firstDigit > '9') {
+                return Long.MIN_VALUE; // Invalid number
+            }
+            value = firstDigit - '0';
+            scanPos++; // Consumed first digit
+        } else if (firstChar >= '0' && firstChar <= '9') {
+            // First digit already in value
+            value = firstChar - '0';
+            // Start scanning from current buffer position for more digits
+        } else {
+            return Long.MIN_VALUE; // Invalid start
+        }
+
+        // Scan remaining digits from buffer
+        while (scanPos < limit) {
+            char c = buf[scanPos];
+
+            if (c >= '0' && c <= '9') {
+                long prevValue = value;
+                value = value * 10 + (c - '0');
+
+                // Check for overflow
+                if (value < prevValue) {
+                    // Overflow - use slow path
+                    position = startPos;
+                    return Long.MIN_VALUE;
+                }
+
+                scanPos++;
+            } else if (c == '.' || c == 'e' || c == 'E') {
+                // Floating point - use slow path
+                position = startPos;
+                return Long.MIN_VALUE;
+            } else {
+                // End of number - found non-digit terminator
+                break;
+            }
+        }
+
+        // Check if we hit buffer boundary (number might continue in next buffer)
+        if (scanPos >= limit) {
+            // Number might span buffer boundary - use slow path for safety
+            position = startPos;
+            return Long.MIN_VALUE;
+        }
+
+        // Check if we found at least one digit
+        int totalCharsConsumed = scanPos - startPos;
+        if (totalCharsConsumed == 0 && !negative) {
+            // No progress made
+            return Long.MIN_VALUE;
+        }
+
+        // Success - advance position and update tracking
+        position = scanPos;
+        col += totalCharsConsumed;
+        // Note: Do NOT add 1 for '-' because firstChar was already consumed
+        // by caller (via in.read()) which already updated col
+
+        // Apply sign
+        return negative ? -value : value;
     }
 }

@@ -147,14 +147,9 @@ public final class FastReader extends Reader {
                         col++;
                     }
                 } else {
-                    // Found non-whitespace in pushback
+                    // Found non-whitespace in pushback (not \n since that's whitespace)
                     pushbackPosition++;
-                    if (ch == '\n') {
-                        line++;
-                        col = 0;
-                    } else {
-                        col++;
-                    }
+                    col++;
                     return ch;
                 }
             }
@@ -177,14 +172,9 @@ public final class FastReader extends Reader {
                         col++;
                     }
                 } else {
-                    // Found non-whitespace
+                    // Found non-whitespace (not \n since that's whitespace)
                     position++;
-                    if (ch == '\n') {
-                        line++;
-                        col = 0;
-                    } else {
-                        col++;
-                    }
+                    col++;
                     return ch;
                 }
             }

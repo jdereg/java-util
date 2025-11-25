@@ -374,6 +374,166 @@ public final class FastReader extends Reader {
     }
 
     /**
+     * Result of scanning a number from the buffer.
+     * Contains the parsed value and information about why scanning stopped.
+     */
+    public static final class NumberScanResult {
+        /** The parsed numeric value (valid only if digitCount > 0) */
+        public long value;
+        /** Number of digits parsed (0 means no valid number found) */
+        public int digitCount;
+        /** True if the number is negative */
+        public boolean negative;
+        /** The character that terminated parsing (-1 for EOF, or '.', 'e', 'E', or other terminator) */
+        public int stopChar;
+        /** True if parsing stopped due to '.', 'e', or 'E' (floating point indicator) */
+        public boolean isFloatingPoint;
+        /** True if overflow was detected during parsing */
+        public boolean overflow;
+
+        // Private constructor - use the instance from FastReader
+        private NumberScanResult() {}
+
+        /** Reset for reuse */
+        void reset() {
+            value = 0;
+            digitCount = 0;
+            negative = false;
+            stopChar = 0;
+            isFloatingPoint = false;
+            overflow = false;
+        }
+
+        /** Check if this represents a successfully parsed simple integer */
+        public boolean isSimpleInteger() {
+            return digitCount > 0 && !isFloatingPoint && !overflow;
+        }
+    }
+
+    // Reusable result object to avoid allocation
+    private final NumberScanResult numberScanResult = new NumberScanResult();
+
+    /**
+     * Scans a number from the buffer, returning detailed information about what was parsed.
+     * This method is optimized for JSON number parsing and handles:
+     * - Simple integers (returns complete value)
+     * - Floating point numbers (returns integer part and sets isFloatingPoint)
+     * - Overflow detection (returns partial value and sets overflow)
+     *
+     * Performance: Scans buffer directly in a tight loop. When a floating point
+     * indicator is found, the integer portion is preserved so callers don't need
+     * to re-parse those digits.
+     *
+     * @param firstChar the first character already read (typically '-' or a digit)
+     * @return NumberScanResult with parsed value and metadata (reused instance - copy if needed)
+     */
+    public NumberScanResult scanNumber(int firstChar) {
+        NumberScanResult result = numberScanResult;
+        result.reset();
+
+        // If pushback buffer has content, signal caller to use slow path
+        if (pushbackPosition < pushbackBufferSize) {
+            return result; // digitCount = 0 signals failure
+        }
+
+        // Ensure buffer has data
+        fill();
+        if (limit == -1) {
+            result.stopChar = -1;
+            return result; // EOF
+        }
+
+        int scanPos = position;
+        long value = 0;
+        int digitCount = 0;
+        boolean negative = false;
+
+        // Handle first character (already consumed by caller)
+        if (firstChar == '-') {
+            negative = true;
+            // First digit must come from buffer
+            if (scanPos >= limit) {
+                return result; // Need more data - use slow path
+            }
+            char firstDigit = buf[scanPos];
+            if (firstDigit < '0' || firstDigit > '9') {
+                return result; // Invalid number - no digits after '-'
+            }
+            value = firstDigit - '0';
+            digitCount = 1;
+            scanPos++;
+        } else if (firstChar >= '0' && firstChar <= '9') {
+            value = firstChar - '0';
+            digitCount = 1;
+        } else {
+            return result; // Invalid start character
+        }
+
+        // Scan remaining digits from buffer
+        while (scanPos < limit) {
+            char c = buf[scanPos];
+
+            if (c >= '0' && c <= '9') {
+                long prevValue = value;
+                value = value * 10 + (c - '0');
+                digitCount++;
+
+                // Check for overflow
+                if (value < prevValue) {
+                    // Overflow detected - return what we have
+                    result.value = negative ? -prevValue : prevValue;
+                    result.digitCount = digitCount - 1;
+                    result.negative = negative;
+                    result.stopChar = c;
+                    result.overflow = true;
+                    // Advance position to just before the overflow digit
+                    int charsConsumed = scanPos - position;
+                    position = scanPos;
+                    col += charsConsumed;
+                    return result;
+                }
+
+                scanPos++;
+            } else if (c == '.' || c == 'e' || c == 'E') {
+                // Floating point - return integer portion
+                result.value = negative ? -value : value;
+                result.digitCount = digitCount;
+                result.negative = negative;
+                result.stopChar = c;
+                result.isFloatingPoint = true;
+                // Advance position past the digits we consumed, but NOT past the '.' or 'e'
+                int charsConsumed = scanPos - position;
+                position = scanPos;
+                col += charsConsumed;
+                return result;
+            } else {
+                // End of number - found non-digit terminator
+                break;
+            }
+        }
+
+        // Check if we hit buffer boundary (number might continue in next buffer)
+        if (scanPos >= limit) {
+            // Number might span buffer boundary - signal to use slow path
+            // Don't advance position - caller needs to re-read
+            return result; // digitCount > 0 but we return without advancing position
+        }
+
+        // Success - complete integer parsed
+        result.value = negative ? -value : value;
+        result.digitCount = digitCount;
+        result.negative = negative;
+        result.stopChar = buf[scanPos]; // The terminating character
+
+        // Advance position past the digits we consumed
+        int charsConsumed = scanPos - position;
+        position = scanPos;
+        col += charsConsumed;
+
+        return result;
+    }
+
+    /**
      * Scans ahead in buffer to parse a simple integer (no decimal point, no exponent).
      * This is a performance optimization for the common case where JSON numbers are simple integers.
      *
@@ -384,7 +544,9 @@ public final class FastReader extends Reader {
      *
      * @param firstChar the first character already read (typically '-' or a digit)
      * @return parsed long value if successful, or Long.MIN_VALUE as sentinel for complex numbers/overflow/EOF
+     * @deprecated Use {@link #scanNumber(int)} instead for better performance with floating point numbers
      */
+    @Deprecated
     public long scanInteger(int firstChar) {
         // If pushback buffer has content, use slow path for safety
         if (pushbackPosition < pushbackBufferSize) {

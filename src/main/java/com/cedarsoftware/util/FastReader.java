@@ -292,6 +292,75 @@ public final class FastReader extends Reader {
     }
 
     /**
+     * Callback interface for string cache lookup during extraction.
+     * Allows cache lookup BEFORE String allocation, avoiding allocation on cache hits.
+     */
+    public interface StringCache {
+        /**
+         * Find a cached string matching the given buffer contents and hash.
+         *
+         * @param buf the character buffer
+         * @param offset start position in buffer
+         * @param length length of string
+         * @param hash pre-computed hash code (matches String.hashCode())
+         * @return cached String instance if found, null otherwise
+         */
+        String findCached(char[] buf, int offset, int length, int hash);
+
+        /**
+         * Cache a newly created string for future lookups.
+         *
+         * @param str the string to cache
+         */
+        void cache(String str);
+    }
+
+    /**
+     * Extracts string from buffer with cache lookup BEFORE allocation.
+     * Only call this after scanStringNoEscape() returns a valid length.
+     *
+     * Performance: This is the key optimization - on cache hit, no String is allocated.
+     * The hash is computed from buffer contents and used to find cached instances.
+     *
+     * @param length the length of string to extract (from prior scanStringNoEscape call)
+     * @param cache the string cache to use (may be null to skip caching)
+     * @param maxCacheLength maximum string length to cache (longer strings skip cache)
+     * @return String extracted from buffer (cached instance on hit, new instance on miss)
+     */
+    public String extractStringCached(int length, StringCache cache, int maxCacheLength) {
+        // Advance position past string content and closing quote at the end
+        final int startPos = position;
+
+        // Skip cache for null cache, empty strings, or strings exceeding max length
+        if (cache == null || length == 0 || length > maxCacheLength) {
+            String result = new String(buf, startPos, length);
+            position = startPos + length + 1;
+            return length == 0 ? "" : result;
+        }
+
+        // Compute hash from buffer BEFORE allocating String
+        // This matches String.hashCode() algorithm exactly
+        int hash = 0;
+        for (int i = 0; i < length; i++) {
+            hash = 31 * hash + buf[startPos + i];
+        }
+
+        // Try to find cached instance
+        String cached = cache.findCached(buf, startPos, length, hash);
+        if (cached != null) {
+            // Cache hit - no allocation needed!
+            position = startPos + length + 1;
+            return cached;
+        }
+
+        // Cache miss - allocate and cache
+        String result = new String(buf, startPos, length);
+        position = startPos + length + 1;
+        cache.cache(result);
+        return result;
+    }
+
+    /**
      * Result of scanning a field name from the buffer.
      * Used for fast-path field name parsing in JSON.
      */

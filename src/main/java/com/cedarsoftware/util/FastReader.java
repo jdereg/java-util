@@ -244,6 +244,7 @@ public final class FastReader extends Reader {
         int startPos = position;
 
         // Scan for closing quote while detecting escapes
+        // Note: Direct comparisons outperform lookup tables for char[] buffers
         while (position < limit) {
             char c = buf[position];
 
@@ -255,9 +256,9 @@ public final class FastReader extends Reader {
                 return length;
             }
 
-            // Check for escape sequences or control characters
-            if (c == '\\' || c < 0x20) {
-                // Has escape or control char - needs slow path
+            // Check for escape sequences, control characters, or non-ASCII
+            if (c == '\\' || c < 0x20 || c >= 128) {
+                // Has escape, control char, or non-ASCII - needs slow path
                 position = startPos; // Reset position
                 return -1;
             }
@@ -288,6 +289,158 @@ public final class FastReader extends Reader {
         position += length + 1;
 
         return result;
+    }
+
+    /**
+     * Result of scanning a field name from the buffer.
+     * Used for fast-path field name parsing in JSON.
+     */
+    public static final class FieldNameScanResult {
+        /** Start position in buffer where field name begins */
+        public int startPos;
+        /** Length of field name (excluding quotes) */
+        public int length;
+        /** Pre-computed hash code matching String.hashCode() algorithm */
+        public int hash;
+        /** True if scan was successful */
+        public boolean success;
+
+        private FieldNameScanResult() {}
+
+        void reset() {
+            startPos = 0;
+            length = 0;
+            hash = 0;
+            success = false;
+        }
+    }
+
+    // Reusable result object to avoid allocation
+    private final FieldNameScanResult fieldNameScanResult = new FieldNameScanResult();
+
+    /**
+     * Scans a JSON field name directly from the buffer, computing hash as we go.
+     * This is optimized for the common case where field names are:
+     * - Short (< 32 chars)
+     * - ASCII only (no escapes)
+     * - Entirely within the current buffer
+     *
+     * The method skips leading whitespace and the opening quote, then scans
+     * the field name while computing its hash code.
+     *
+     * Performance: This enables looking up cached field names without creating
+     * intermediate String objects. The hash is computed inline during scanning.
+     *
+     * @return FieldNameScanResult with position, length, and pre-computed hash
+     *         (success=false if escapes found, spans buffer, or other complexity)
+     */
+    public FieldNameScanResult scanFieldName() {
+        FieldNameScanResult result = fieldNameScanResult;
+        result.reset();
+
+        // If pushback buffer has content, use slow path
+        if (pushbackPosition < pushbackBufferSize) {
+            return result;
+        }
+
+        // Ensure buffer has data
+        fill();
+        if (limit == -1) {
+            return result; // EOF
+        }
+
+        int scanPos = position;
+
+        // Skip whitespace
+        while (scanPos < limit) {
+            char c = buf[scanPos];
+            if (c != ' ' && c != '\t' && c != '\n' && c != '\r') {
+                break;
+            }
+            scanPos++;
+        }
+
+        // Need to refill if we consumed all whitespace
+        if (scanPos >= limit) {
+            return result; // Spans buffer - use slow path
+        }
+
+        // Expect opening quote
+        if (buf[scanPos] != '"') {
+            return result; // Not a quoted field name - use slow path
+        }
+        scanPos++;
+
+        // Check buffer space for field name
+        if (scanPos >= limit) {
+            return result; // Spans buffer
+        }
+
+        int startPos = scanPos;
+        int hash = 0;
+
+        // Scan field name characters and compute hash inline
+        // Note: Direct comparisons outperform lookup tables for char[] buffers
+        // because the JIT optimizes simple comparisons very well
+        while (scanPos < limit) {
+            char c = buf[scanPos];
+
+            if (c == '"') {
+                // Found closing quote - success!
+                result.startPos = startPos;
+                result.length = scanPos - startPos;
+                result.hash = hash;
+                result.success = true;
+
+                // Advance position past field name and closing quote
+                position = scanPos + 1;
+                return result;
+            }
+
+            // Check for escapes, control characters, or non-ASCII
+            if (c == '\\' || c < 0x20 || c >= 128) {
+                return result; // Use slow path
+            }
+
+            // Simple ASCII character - compute hash and continue
+            hash = 31 * hash + c;
+            scanPos++;
+        }
+
+        // Field name spans buffer boundary - use slow path
+        return result;
+    }
+
+    /**
+     * Creates a String from a previously scanned field name.
+     * Call this after scanFieldName() returns success=true.
+     *
+     * @param scanResult the result from scanFieldName()
+     * @return the field name as a String
+     */
+    public String extractFieldName(FieldNameScanResult scanResult) {
+        return new String(buf, scanResult.startPos, scanResult.length);
+    }
+
+    /**
+     * Compares a scanned field name against a cached String.
+     * This avoids creating a String just for comparison.
+     *
+     * @param scanResult the result from scanFieldName()
+     * @param cached the cached string to compare against
+     * @return true if they match
+     */
+    public boolean fieldNameEquals(FieldNameScanResult scanResult, String cached) {
+        if (scanResult.length != cached.length()) {
+            return false;
+        }
+        int pos = scanResult.startPos;
+        for (int i = 0; i < scanResult.length; i++) {
+            if (buf[pos + i] != cached.charAt(i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -442,107 +595,5 @@ public final class FastReader extends Reader {
         position = scanPos;
 
         return result;
-    }
-
-    /**
-     * Scans ahead in buffer to parse a simple integer (no decimal point, no exponent).
-     * This is a performance optimization for the common case where JSON numbers are simple integers.
-     *
-     * Performance: Enables Jackson/Gson-style fast-path number parsing by:
-     * - Scanning buffer directly (tight loop, CPU cache friendly)
-     * - Parsing all digits in one pass without individual read() calls
-     * - Avoiding overflow checks until after parsing
-     *
-     * @param firstChar the first character already read (typically '-' or a digit)
-     * @return parsed long value if successful, or Long.MIN_VALUE as sentinel for complex numbers/overflow/EOF
-     * @deprecated Use {@link #scanNumber(int)} instead for better performance with floating point numbers
-     */
-    @Deprecated
-    public long scanInteger(int firstChar) {
-        // If pushback buffer has content, use slow path for safety
-        if (pushbackPosition < pushbackBufferSize) {
-            return Long.MIN_VALUE;
-        }
-
-        // Ensure buffer has data
-        fill();
-        if (limit == -1) {
-            return Long.MIN_VALUE; // EOF
-        }
-
-        boolean negative = false;
-        long value = 0;
-        int startPos = position;
-        int scanPos = position;
-
-        // Handle first character (already consumed by caller)
-        if (firstChar == '-') {
-            negative = true;
-            // First digit must come from buffer
-            if (scanPos >= limit) {
-                fill();
-                if (limit == -1) {
-                    return Long.MIN_VALUE;
-                }
-            }
-            char firstDigit = buf[scanPos];
-            if (firstDigit < '0' || firstDigit > '9') {
-                return Long.MIN_VALUE; // Invalid number
-            }
-            value = firstDigit - '0';
-            scanPos++; // Consumed first digit
-        } else if (firstChar >= '0' && firstChar <= '9') {
-            // First digit already in value
-            value = firstChar - '0';
-            // Start scanning from current buffer position for more digits
-        } else {
-            return Long.MIN_VALUE; // Invalid start
-        }
-
-        // Scan remaining digits from buffer
-        while (scanPos < limit) {
-            char c = buf[scanPos];
-
-            if (c >= '0' && c <= '9') {
-                long prevValue = value;
-                value = value * 10 + (c - '0');
-
-                // Check for overflow
-                if (value < prevValue) {
-                    // Overflow - use slow path
-                    position = startPos;
-                    return Long.MIN_VALUE;
-                }
-
-                scanPos++;
-            } else if (c == '.' || c == 'e' || c == 'E') {
-                // Floating point - use slow path
-                position = startPos;
-                return Long.MIN_VALUE;
-            } else {
-                // End of number - found non-digit terminator
-                break;
-            }
-        }
-
-        // Check if we hit buffer boundary (number might continue in next buffer)
-        if (scanPos >= limit) {
-            // Number might span buffer boundary - use slow path for safety
-            position = startPos;
-            return Long.MIN_VALUE;
-        }
-
-        // Check if we found at least one digit
-        int totalCharsConsumed = scanPos - startPos;
-        if (totalCharsConsumed == 0 && !negative) {
-            // No progress made
-            return Long.MIN_VALUE;
-        }
-
-        // Success - advance position
-        position = scanPos;
-
-        // Apply sign
-        return negative ? -value : value;
     }
 }

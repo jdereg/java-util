@@ -33,8 +33,7 @@ public final class FastReader extends Reader {
     private int limit;    // Number of characters currently in the buffer, or -1 for EOF
     private final char[] pushbackBuffer;
     private int pushbackPosition; // Current position in the pushback buffer
-    private int line = 1;
-    private int col = 0;
+    // Line/col tracking removed for performance - use getLastSnippet() for error context
 
     public FastReader(Reader in) {
         this(in, 8192, 16);
@@ -77,13 +76,6 @@ public final class FastReader extends Reader {
             ExceptionUtilities.uncheckedThrow(new IOException("Pushback buffer is full"));
         }
         pushbackBuffer[--pushbackPosition] = ch;
-
-        // Reverse the position movement for this character
-        if (ch == '\n') {
-            line--;
-        } else {
-            col--;
-        }
     }
 
     @Override
@@ -94,15 +86,7 @@ public final class FastReader extends Reader {
 
         // First, serve from pushback buffer if available
         if (pushbackPosition < pushbackBufferSize) {
-            char ch = pushbackBuffer[pushbackPosition++];
-            // Inline movePosition for hot path
-            if (ch == '\n') {
-                line++;
-                col = 0;
-            } else {
-                col++;
-            }
-            return ch;
+            return pushbackBuffer[pushbackPosition++];
         }
 
         fill();
@@ -110,15 +94,7 @@ public final class FastReader extends Reader {
             return -1;
         }
 
-        char ch = buf[position++];
-        // Inline movePosition for hot path
-        if (ch == '\n') {
-            line++;
-            col = 0;
-        } else {
-            col++;
-        }
-        return ch;
+        return buf[position++];
     }
 
     /**
@@ -136,20 +112,8 @@ public final class FastReader extends Reader {
         while (true) {
             // Check pushback buffer first
             while (pushbackPosition < pushbackBufferSize) {
-                char ch = pushbackBuffer[pushbackPosition];
-                if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
-                    pushbackPosition++;
-                    // Track line/col for whitespace
-                    if (ch == '\n') {
-                        line++;
-                        col = 0;
-                    } else {
-                        col++;
-                    }
-                } else {
-                    // Found non-whitespace in pushback (not \n since that's whitespace)
-                    pushbackPosition++;
-                    col++;
+                char ch = pushbackBuffer[pushbackPosition++];
+                if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r') {
                     return ch;
                 }
             }
@@ -161,20 +125,8 @@ public final class FastReader extends Reader {
             }
 
             while (position < limit) {
-                char ch = buf[position];
-                if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
-                    position++;
-                    // Track line/col for whitespace
-                    if (ch == '\n') {
-                        line++;
-                        col = 0;
-                    } else {
-                        col++;
-                    }
-                } else {
-                    // Found non-whitespace (not \n since that's whitespace)
-                    position++;
-                    col++;
+                char ch = buf[position++];
+                if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r') {
                     return ch;
                 }
             }
@@ -197,25 +149,9 @@ public final class FastReader extends Reader {
             int availableFromPushback = pushbackBufferSize - pushbackPosition;
             if (availableFromPushback > 0) {
                 int toRead = Math.min(availableFromPushback, len);
-
-                int p = pushbackPosition;
-                int o = off;
-
-                for (int i = 0; i < toRead; i++) {
-                    char ch = pushbackBuffer[p++];
-                    cbuf[o++] = ch;
-
-                    // Inline movePosition
-                    if (ch == '\n') {
-                        line++;
-                        col = 0;
-                    } else {
-                        col++;
-                    }
-                }
-
-                pushbackPosition = p;
-                off = o;
+                System.arraycopy(pushbackBuffer, pushbackPosition, cbuf, off, toRead);
+                pushbackPosition += toRead;
+                off += toRead;
                 len -= toRead;
                 charsRead += toRead;
             } else {
@@ -233,25 +169,9 @@ public final class FastReader extends Reader {
                 }
 
                 int toRead = Math.min(availableFromMain, len);
-
-                int p = position;
-                int o = off;
-
-                for (int i = 0; i < toRead; i++) {
-                    char ch = buf[p++];
-                    cbuf[o++] = ch;
-
-                    // Inline movePosition
-                    if (ch == '\n') {
-                        line++;
-                        col = 0;
-                    } else {
-                        col++;
-                    }
-                }
-
-                position = p;
-                off = o;
+                System.arraycopy(buf, position, cbuf, off, toRead);
+                position += toRead;
+                off += toRead;
                 len -= toRead;
                 charsRead += toRead;
             }
@@ -272,12 +192,22 @@ public final class FastReader extends Reader {
         }
     }
 
+    /**
+     * @return 0 - line tracking removed for performance. Use getLastSnippet() for error context.
+     * @deprecated Line tracking removed for performance optimization
+     */
+    @Deprecated
     public int getLine() {
-        return line;
+        return 0;
     }
 
+    /**
+     * @return 0 - column tracking removed for performance. Use getLastSnippet() for error context.
+     * @deprecated Column tracking removed for performance optimization
+     */
+    @Deprecated
     public int getCol() {
-        return col;
+        return 0;
     }
 
     public String getLastSnippet() {
@@ -356,9 +286,6 @@ public final class FastReader extends Reader {
 
         // Advance position past string content and closing quote
         position += length + 1;
-
-        // Update column tracking (assume single-line string for fast path)
-        col += length + 1;
 
         return result;
     }
@@ -477,9 +404,7 @@ public final class FastReader extends Reader {
                     result.stopChar = c;
                     result.overflow = true;
                     // Advance position to just before the overflow digit
-                    int charsConsumed = scanPos - position;
                     position = scanPos;
-                    col += charsConsumed;
                     return result;
                 }
 
@@ -492,9 +417,7 @@ public final class FastReader extends Reader {
                 result.stopChar = c;
                 result.isFloatingPoint = true;
                 // Advance position past the digits we consumed, but NOT past the '.' or 'e'
-                int charsConsumed = scanPos - position;
                 position = scanPos;
-                col += charsConsumed;
                 return result;
             } else {
                 // End of number - found non-digit terminator
@@ -516,9 +439,7 @@ public final class FastReader extends Reader {
         result.stopChar = buf[scanPos]; // The terminating character
 
         // Advance position past the digits we consumed
-        int charsConsumed = scanPos - position;
         position = scanPos;
-        col += charsConsumed;
 
         return result;
     }
@@ -618,11 +539,8 @@ public final class FastReader extends Reader {
             return Long.MIN_VALUE;
         }
 
-        // Success - advance position and update tracking
+        // Success - advance position
         position = scanPos;
-        col += totalCharsConsumed;
-        // Note: Do NOT add 1 for '-' because firstChar was already consumed
-        // by caller (via in.read()) which already updated col
 
         // Apply sign
         return negative ? -value : value;

@@ -385,141 +385,24 @@ class FastReaderTest {
         assertEquals('t', buffer[1]);
     }
 
-    // Tests for getLine(), getCol(), and getLastSnippet()
+    // Tests for getLine(), getCol() (deprecated - now return 0), and getLastSnippet()
     @Test
-    public void testLineAndColumnTrackingOneCharAtATime() throws IOException {
+    public void testLineAndColumnReturnZero() throws IOException {
+        // Line/col tracking was removed for performance - methods now return 0
         fastReader = new FastReader(new StringReader("abc\ndef\nghi"));
 
-        // Initial values - line starts at 1 in FastReader
-        assertEquals(1, fastReader.getLine());
+        // Both should return 0 (deprecated)
+        assertEquals(0, fastReader.getLine());
         assertEquals(0, fastReader.getCol());
 
-        // Read 'a'
-        assertEquals('a', fastReader.read());
-        assertEquals(1, fastReader.getLine());
-        assertEquals(1, fastReader.getCol());
-
-        // Read 'b'
-        assertEquals('b', fastReader.read());
-        assertEquals(1, fastReader.getLine());
-        assertEquals(2, fastReader.getCol());
-
-        // Read 'c'
-        assertEquals('c', fastReader.read());
-        assertEquals(1, fastReader.getLine());
-        assertEquals(3, fastReader.getCol());
-
-        // Read '\n'
-        assertEquals('\n', fastReader.read());
-        assertEquals(2, fastReader.getLine()); // Line increments after reading newline
-        assertEquals(0, fastReader.getCol());   // Column resets
-
-        // Read 'd'
-        assertEquals('d', fastReader.read());
-        assertEquals(2, fastReader.getLine());
-        assertEquals(1, fastReader.getCol());
-
-        // Read 'e'
-        assertEquals('e', fastReader.read());
-        assertEquals(2, fastReader.getLine());
-        assertEquals(2, fastReader.getCol());
-
-        // Read 'f'
-        assertEquals('f', fastReader.read());
-        assertEquals(2, fastReader.getLine());
-        assertEquals(3, fastReader.getCol());
-
-        // Read '\n'
-        assertEquals('\n', fastReader.read());
-        assertEquals(3, fastReader.getLine()); // Line increments again
-        assertEquals(0, fastReader.getCol());
-
-        // Read 'g'
-        assertEquals('g', fastReader.read());
-        assertEquals(3, fastReader.getLine());
-        assertEquals(1, fastReader.getCol());
-    }
-
-    @Test
-    public void testInitialLineAndColumnValues() throws IOException {
-        fastReader = new FastReader(new StringReader("test"));
-        assertEquals(1, fastReader.getLine()); // Line starts at 1, not 0
-        assertEquals(0, fastReader.getCol());
-    }
-
-    @Test
-    public void testLineAndColumnTrackingWithRegularChars() throws IOException {
-        fastReader = new FastReader(new StringReader("abcdef"));
-
-        // Initially at (1,0) not (0,0)
-        assertEquals(1, fastReader.getLine());
-        assertEquals(0, fastReader.getCol());
-
-        // Read 3 chars
-        for (int i = 0; i < 3; i++) {
+        // Read some content
+        for (int i = 0; i < 5; i++) {
             fastReader.read();
         }
 
-        // Should still be line 1, but column 3
-        assertEquals(1, fastReader.getLine());
-        assertEquals(3, fastReader.getCol());
-    }
-
-    @Test
-    public void testLineAndColumnTrackingWithNewlines() throws IOException {
-        fastReader = new FastReader(new StringReader("abc\ndef\nghi"));
-
-        // Read first line
-        for (int i = 0; i < 4; i++) { // 'a', 'b', 'c', '\n'
-            fastReader.read();
-        }
-
-        // After reading the first newline, line should be 2
-        assertEquals(2, fastReader.getLine());
+        // Still returns 0 after reading
+        assertEquals(0, fastReader.getLine());
         assertEquals(0, fastReader.getCol());
-
-        // Read 'def\n'
-        for (int i = 0; i < 4; i++) {
-            fastReader.read();
-        }
-
-        // After reading the second newline, line should be 3
-        assertEquals(3, fastReader.getLine());
-        assertEquals(0, fastReader.getCol());
-
-        // Read 'g'
-        fastReader.read();
-
-        // Should be at line 3, column 1
-        assertEquals(3, fastReader.getLine());
-        assertEquals(1, fastReader.getCol());
-    }
-    
-    @Test
-    public void testLineAndColumnTrackingWithPushback() throws IOException {
-        fastReader = new FastReader(new StringReader("def"));
-
-        // Pushback newline and a char
-        fastReader.pushback('c');
-        fastReader.pushback('\n');
-        fastReader.pushback('b');
-        fastReader.pushback('a');
-
-        // Read 'a', 'b', '\n'
-        for (int i = 0; i < 3; i++) {
-            fastReader.read();
-        }
-
-        // Should be at line 1, column 0 after reading newline
-        assertEquals(1, fastReader.getLine());
-        assertEquals(0, fastReader.getCol());
-
-        // Read 'c'
-        fastReader.read();
-
-        // Should be at line 1, column 1
-        assertEquals(1, fastReader.getLine());
-        assertEquals(1, fastReader.getCol());
     }
 
     @Test

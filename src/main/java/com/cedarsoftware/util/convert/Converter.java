@@ -2503,14 +2503,26 @@ public final class Converter {
         // Array to Collection
         toFrom.computeIfAbsent(Object[].class, k -> new TreeSet<>(classComparator)).add(Collection.class);
 
+        // Array to Enum (creates EnumSet)
+        toFrom.computeIfAbsent(Object[].class, k -> new TreeSet<>(classComparator)).add(Enum.class);
+
         // Collection to Array
         toFrom.computeIfAbsent(Collection.class, k -> new TreeSet<>(classComparator)).add(Object[].class);
 
         // Collection to Collection
         toFrom.computeIfAbsent(Collection.class, k -> new TreeSet<>(classComparator)).add(Collection.class);
 
+        // Collection to Enum (creates EnumSet)
+        toFrom.computeIfAbsent(Collection.class, k -> new TreeSet<>(classComparator)).add(Enum.class);
+
+        // Map to Enum (creates EnumSet from keySet)
+        toFrom.computeIfAbsent(Map.class, k -> new TreeSet<>(classComparator)).add(Enum.class);
+
         // EnumSet to Array
         toFrom.computeIfAbsent(EnumSet.class, k -> new TreeSet<>(classComparator)).add(Object[].class);
+
+        // EnumSet to Collection
+        toFrom.computeIfAbsent(EnumSet.class, k -> new TreeSet<>(classComparator)).add(Collection.class);
     }
 
     /**
@@ -2523,14 +2535,26 @@ public final class Converter {
         // Array to Collection
         toFrom.computeIfAbsent("Object[]", k -> new TreeSet<>()).add("Collection");
 
+        // Array to Enum (creates EnumSet)
+        toFrom.computeIfAbsent("Object[]", k -> new TreeSet<>()).add("Enum");
+
         // Collection to Array
         toFrom.computeIfAbsent("Collection", k -> new TreeSet<>()).add("Object[]");
 
         // Collection to Collection
         toFrom.computeIfAbsent("Collection", k -> new TreeSet<>()).add("Collection");
 
+        // Collection to Enum (creates EnumSet)
+        toFrom.computeIfAbsent("Collection", k -> new TreeSet<>()).add("Enum");
+
+        // Map to Enum (creates EnumSet from keySet)
+        toFrom.computeIfAbsent("Map", k -> new TreeSet<>()).add("Enum");
+
         // EnumSet to Array
         toFrom.computeIfAbsent("EnumSet", k -> new TreeSet<>()).add("Object[]");
+
+        // EnumSet to Collection
+        toFrom.computeIfAbsent("EnumSet", k -> new TreeSet<>()).add("Collection");
     }
 
     /**

@@ -1220,6 +1220,50 @@ class ConverterArrayCollectionTest {
         }
 
         @Test
+        @DisplayName("allSupportedConversions includes EnumSet to Collection conversion")
+        void testAllSupportedConversionsIncludesEnumSetToCollection() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(EnumSet.class),
+                    "allSupportedConversions should contain EnumSet as a source");
+            assertTrue(conversions.get(EnumSet.class).contains(Collection.class),
+                    "EnumSet should be convertible to Collection");
+        }
+
+        @Test
+        @DisplayName("allSupportedConversions includes array to Enum conversion")
+        void testAllSupportedConversionsIncludesArrayToEnum() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(Object[].class),
+                    "allSupportedConversions should contain Object[] as a source");
+            assertTrue(conversions.get(Object[].class).contains(Enum.class),
+                    "Object[] should be convertible to Enum (creates EnumSet)");
+        }
+
+        @Test
+        @DisplayName("allSupportedConversions includes Collection to Enum conversion")
+        void testAllSupportedConversionsIncludesCollectionToEnum() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(Collection.class),
+                    "allSupportedConversions should contain Collection as a source");
+            assertTrue(conversions.get(Collection.class).contains(Enum.class),
+                    "Collection should be convertible to Enum (creates EnumSet)");
+        }
+
+        @Test
+        @DisplayName("allSupportedConversions includes Map to Enum conversion")
+        void testAllSupportedConversionsIncludesMapToEnum() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(Map.class),
+                    "allSupportedConversions should contain Map as a source");
+            assertTrue(conversions.get(Map.class).contains(Enum.class),
+                    "Map should be convertible to Enum (creates EnumSet from keySet)");
+        }
+
+        @Test
         @DisplayName("getSupportedConversions includes array to array conversion")
         void testGetSupportedConversionsIncludesArrayToArray() {
             Map<String, Set<String>> conversions = Converter.getSupportedConversions();
@@ -1272,6 +1316,50 @@ class ConverterArrayCollectionTest {
                     "getSupportedConversions should contain 'EnumSet' as a source");
             assertTrue(conversions.get("EnumSet").contains("Object[]"),
                     "'EnumSet' should be convertible to 'Object[]'");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes EnumSet to Collection conversion")
+        void testGetSupportedConversionsIncludesEnumSetToCollection() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("EnumSet"),
+                    "getSupportedConversions should contain 'EnumSet' as a source");
+            assertTrue(conversions.get("EnumSet").contains("Collection"),
+                    "'EnumSet' should be convertible to 'Collection'");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes array to Enum conversion")
+        void testGetSupportedConversionsIncludesArrayToEnum() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("Object[]"),
+                    "getSupportedConversions should contain 'Object[]' as a source");
+            assertTrue(conversions.get("Object[]").contains("Enum"),
+                    "'Object[]' should be convertible to 'Enum' (creates EnumSet)");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes Collection to Enum conversion")
+        void testGetSupportedConversionsIncludesCollectionToEnum() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("Collection"),
+                    "getSupportedConversions should contain 'Collection' as a source");
+            assertTrue(conversions.get("Collection").contains("Enum"),
+                    "'Collection' should be convertible to 'Enum' (creates EnumSet)");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes Map to Enum conversion")
+        void testGetSupportedConversionsIncludesMapToEnum() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("Map"),
+                    "getSupportedConversions should contain 'Map' as a source");
+            assertTrue(conversions.get("Map").contains("Enum"),
+                    "'Map' should be convertible to 'Enum' (creates EnumSet from keySet)");
         }
     }
 

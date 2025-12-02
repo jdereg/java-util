@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -1153,6 +1154,124 @@ class ConverterArrayCollectionTest {
                     "HashSet to ArrayList should be supported");
             assertTrue(converter.isConversionSupportedFor(LinkedList.class, TreeSet.class),
                     "LinkedList to TreeSet should be supported");
+        }
+    }
+
+    /**
+     * Nested test class for getSupportedConversions and allSupportedConversions APIs.
+     */
+    @Nested
+    @DisplayName("getSupportedConversions and allSupportedConversions Tests")
+    class SupportedConversionsApiTests {
+
+        @Test
+        @DisplayName("allSupportedConversions includes array to array conversion")
+        void testAllSupportedConversionsIncludesArrayToArray() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(Object[].class),
+                    "allSupportedConversions should contain Object[] as a source");
+            assertTrue(conversions.get(Object[].class).contains(Object[].class),
+                    "Object[] should be convertible to Object[]");
+        }
+
+        @Test
+        @DisplayName("allSupportedConversions includes array to Collection conversion")
+        void testAllSupportedConversionsIncludesArrayToCollection() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(Object[].class),
+                    "allSupportedConversions should contain Object[] as a source");
+            assertTrue(conversions.get(Object[].class).contains(Collection.class),
+                    "Object[] should be convertible to Collection");
+        }
+
+        @Test
+        @DisplayName("allSupportedConversions includes Collection to array conversion")
+        void testAllSupportedConversionsIncludesCollectionToArray() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(Collection.class),
+                    "allSupportedConversions should contain Collection as a source");
+            assertTrue(conversions.get(Collection.class).contains(Object[].class),
+                    "Collection should be convertible to Object[]");
+        }
+
+        @Test
+        @DisplayName("allSupportedConversions includes Collection to Collection conversion")
+        void testAllSupportedConversionsIncludesCollectionToCollection() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(Collection.class),
+                    "allSupportedConversions should contain Collection as a source");
+            assertTrue(conversions.get(Collection.class).contains(Collection.class),
+                    "Collection should be convertible to Collection");
+        }
+
+        @Test
+        @DisplayName("allSupportedConversions includes EnumSet to array conversion")
+        void testAllSupportedConversionsIncludesEnumSetToArray() {
+            Map<Class<?>, Set<Class<?>>> conversions = Converter.allSupportedConversions();
+
+            assertTrue(conversions.containsKey(EnumSet.class),
+                    "allSupportedConversions should contain EnumSet as a source");
+            assertTrue(conversions.get(EnumSet.class).contains(Object[].class),
+                    "EnumSet should be convertible to Object[]");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes array to array conversion")
+        void testGetSupportedConversionsIncludesArrayToArray() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("Object[]"),
+                    "getSupportedConversions should contain 'Object[]' as a source");
+            assertTrue(conversions.get("Object[]").contains("Object[]"),
+                    "'Object[]' should be convertible to 'Object[]'");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes array to Collection conversion")
+        void testGetSupportedConversionsIncludesArrayToCollection() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("Object[]"),
+                    "getSupportedConversions should contain 'Object[]' as a source");
+            assertTrue(conversions.get("Object[]").contains("Collection"),
+                    "'Object[]' should be convertible to 'Collection'");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes Collection to array conversion")
+        void testGetSupportedConversionsIncludesCollectionToArray() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("Collection"),
+                    "getSupportedConversions should contain 'Collection' as a source");
+            assertTrue(conversions.get("Collection").contains("Object[]"),
+                    "'Collection' should be convertible to 'Object[]'");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes Collection to Collection conversion")
+        void testGetSupportedConversionsIncludesCollectionToCollection() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("Collection"),
+                    "getSupportedConversions should contain 'Collection' as a source");
+            assertTrue(conversions.get("Collection").contains("Collection"),
+                    "'Collection' should be convertible to 'Collection'");
+        }
+
+        @Test
+        @DisplayName("getSupportedConversions includes EnumSet to array conversion")
+        void testGetSupportedConversionsIncludesEnumSetToArray() {
+            Map<String, Set<String>> conversions = Converter.getSupportedConversions();
+
+            assertTrue(conversions.containsKey("EnumSet"),
+                    "getSupportedConversions should contain 'EnumSet' as a source");
+            assertTrue(conversions.get("EnumSet").contains("Object[]"),
+                    "'EnumSet' should be convertible to 'Object[]'");
         }
     }
 

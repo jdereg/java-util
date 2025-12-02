@@ -2455,12 +2455,17 @@ public final class Converter {
      * The returned map's keys are source classes, and each key maps to a {@code Set} of target classes
      * that the source can be converted to.
      * </p>
+     * <p>
+     * This includes both simple type conversions from the conversion database and dynamic
+     * array/collection conversions which are handled at runtime.
+     * </p>
      *
      * @return A {@code Map<Class<?>, Set<Class<?>>>} representing all supported (built-in) conversions.
      */
     public static Map<Class<?>, Set<Class<?>>> allSupportedConversions() {
         Map<Class<?>, Set<Class<?>>> toFrom = new TreeMap<>(Comparator.comparing(Class::getName));
         addSupportedConversion(CONVERSION_DB, toFrom);
+        addArrayCollectionConversions(toFrom);
         return toFrom;
     }
 
@@ -2470,13 +2475,62 @@ public final class Converter {
      * The returned map's keys are source class names, and each key maps to a {@code Set} of target class names
      * that the source can be converted to.
      * </p>
+     * <p>
+     * This includes both simple type conversions from the conversion database and dynamic
+     * array/collection conversions which are handled at runtime.
+     * </p>
      *
      * @return A {@code Map<String, Set<String>>} representing all supported (built-int) conversions by class names.
      */
     public static Map<String, Set<String>> getSupportedConversions() {
         Map<String, Set<String>> toFrom = new TreeMap<>(String::compareTo);
         addSupportedConversionName(CONVERSION_DB, toFrom);
+        addArrayCollectionConversionNames(toFrom);
         return toFrom;
+    }
+
+    /**
+     * Adds the dynamic array/collection conversion entries to the supported conversions map.
+     * These conversions are handled at runtime by ArrayConversions and CollectionConversions
+     * and support any component types where the component conversion is supported.
+     */
+    private static void addArrayCollectionConversions(Map<Class<?>, Set<Class<?>>> toFrom) {
+        Comparator<Class<?>> classComparator = Comparator.comparing(Class::getName);
+
+        // Array to Array (component types converted dynamically)
+        toFrom.computeIfAbsent(Object[].class, k -> new TreeSet<>(classComparator)).add(Object[].class);
+
+        // Array to Collection
+        toFrom.computeIfAbsent(Object[].class, k -> new TreeSet<>(classComparator)).add(Collection.class);
+
+        // Collection to Array
+        toFrom.computeIfAbsent(Collection.class, k -> new TreeSet<>(classComparator)).add(Object[].class);
+
+        // Collection to Collection
+        toFrom.computeIfAbsent(Collection.class, k -> new TreeSet<>(classComparator)).add(Collection.class);
+
+        // EnumSet to Array
+        toFrom.computeIfAbsent(EnumSet.class, k -> new TreeSet<>(classComparator)).add(Object[].class);
+    }
+
+    /**
+     * Adds the dynamic array/collection conversion entry names to the supported conversions map.
+     */
+    private static void addArrayCollectionConversionNames(Map<String, Set<String>> toFrom) {
+        // Array to Array (component types converted dynamically)
+        toFrom.computeIfAbsent("Object[]", k -> new TreeSet<>()).add("Object[]");
+
+        // Array to Collection
+        toFrom.computeIfAbsent("Object[]", k -> new TreeSet<>()).add("Collection");
+
+        // Collection to Array
+        toFrom.computeIfAbsent("Collection", k -> new TreeSet<>()).add("Object[]");
+
+        // Collection to Collection
+        toFrom.computeIfAbsent("Collection", k -> new TreeSet<>()).add("Collection");
+
+        // EnumSet to Array
+        toFrom.computeIfAbsent("EnumSet", k -> new TreeSet<>()).add("Object[]");
     }
 
     /**

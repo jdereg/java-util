@@ -27,6 +27,7 @@ import org.junit.jupiter.api.function.Executable;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -963,5 +964,250 @@ class ConverterArrayCollectionTest {
         assertEquals(1, backToArray[2].length, "Third sub-array should have 1 element");
         assertEquals(1, backToArray[2][0].length, "First element should have 1 item");
         assertEquals('k', backToArray[2][0][0]);
+    }
+
+    /**
+     * Nested test class for isConversionSupportedFor with arrays and collections.
+     * Tests the optimistic Object[] handling and recursive component type checking.
+     */
+    @Nested
+    @DisplayName("isConversionSupportedFor Array Tests")
+    class IsConversionSupportedForArrayTests {
+
+        @Test
+        @DisplayName("Object[] to String[] should return true (optimistic)")
+        void testObjectArrayToStringArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Object[].class, String[].class),
+                    "Object[] to String[] should be supported (optimistic - actual element types unknown at compile time)");
+        }
+
+        @Test
+        @DisplayName("Object[] to Integer[] should return true (optimistic)")
+        void testObjectArrayToIntegerArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Object[].class, Integer[].class),
+                    "Object[] to Integer[] should be supported (optimistic)");
+        }
+
+        @Test
+        @DisplayName("Object[] to Long[] should return true (optimistic)")
+        void testObjectArrayToLongArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Object[].class, Long[].class),
+                    "Object[] to Long[] should be supported (optimistic)");
+        }
+
+        @Test
+        @DisplayName("Object[] to int[] should return true (optimistic)")
+        void testObjectArrayToPrimitiveIntArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Object[].class, int[].class),
+                    "Object[] to int[] should be supported (optimistic)");
+        }
+
+        @Test
+        @DisplayName("String[] to Object[] should return true")
+        void testStringArrayToObjectArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(String[].class, Object[].class),
+                    "String[] to Object[] should be supported (target is Object)");
+        }
+
+        @Test
+        @DisplayName("Integer[] to Object[] should return true")
+        void testIntegerArrayToObjectArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Integer[].class, Object[].class),
+                    "Integer[] to Object[] should be supported (target is Object)");
+        }
+
+        @Test
+        @DisplayName("String[] to Long[] should return true (component conversion supported)")
+        void testStringArrayToLongArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(String[].class, Long[].class),
+                    "String[] to Long[] should be supported (String to Long is supported)");
+        }
+
+        @Test
+        @DisplayName("Integer[] to String[] should return true (component conversion supported)")
+        void testIntegerArrayToStringArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Integer[].class, String[].class),
+                    "Integer[] to String[] should be supported (Integer to String is supported)");
+        }
+
+        @Test
+        @DisplayName("int[] to long[] should return true (primitive conversion)")
+        void testIntArrayToLongArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(int[].class, long[].class),
+                    "int[] to long[] should be supported");
+        }
+
+        @Test
+        @DisplayName("long[] to int[] should return true (primitive narrowing)")
+        void testLongArrayToIntArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(long[].class, int[].class),
+                    "long[] to int[] should be supported");
+        }
+
+        @Test
+        @DisplayName("int[] to Integer[] should return true (boxing)")
+        void testIntArrayToIntegerArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(int[].class, Integer[].class),
+                    "int[] to Integer[] should be supported (boxing)");
+        }
+
+        @Test
+        @DisplayName("Integer[] to int[] should return true (unboxing)")
+        void testIntegerArrayToIntArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Integer[].class, int[].class),
+                    "Integer[] to int[] should be supported (unboxing)");
+        }
+
+        @Test
+        @DisplayName("String[][] to Long[][] should return true (nested arrays)")
+        void testNestedStringArrayToLongArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(String[][].class, Long[][].class),
+                    "String[][] to Long[][] should be supported (recursive component check)");
+        }
+
+        @Test
+        @DisplayName("Object[][] to String[][] should return true (nested optimistic)")
+        void testNestedObjectArrayToStringArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Object[][].class, String[][].class),
+                    "Object[][] to String[][] should be supported (optimistic at each level)");
+        }
+
+        @Test
+        @DisplayName("int[][] to long[][] should return true (nested primitives)")
+        void testNestedIntArrayToLongArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(int[][].class, long[][].class),
+                    "int[][] to long[][] should be supported");
+        }
+
+        @Test
+        @DisplayName("Object[][][] to Integer[][][] should return true (3D arrays)")
+        void test3DObjectArrayToIntegerArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(Object[][][].class, Integer[][][].class),
+                    "Object[][][] to Integer[][][] should be supported (optimistic 3D)");
+        }
+
+        @Test
+        @DisplayName("Actual conversion Object[] containing Strings to String[] works")
+        void testActualObjectArrayToStringArrayConversion() {
+            Object[] source = {"hello", "world", "test"};
+            String[] result = converter.convert(source, String[].class);
+            assertArrayEquals(new String[]{"hello", "world", "test"}, result);
+        }
+
+        @Test
+        @DisplayName("Actual conversion Object[] containing Integers to Long[] works")
+        void testActualObjectArrayToLongArrayConversion() {
+            Object[] source = {1, 2, 3};
+            Long[] result = converter.convert(source, Long[].class);
+            assertArrayEquals(new Long[]{1L, 2L, 3L}, result);
+        }
+
+        @Test
+        @DisplayName("Actual conversion Object[] containing mixed Numbers to String[] works")
+        void testActualMixedObjectArrayToStringArrayConversion() {
+            Object[] source = {1, 2.5, 3L, "four"};
+            String[] result = converter.convert(source, String[].class);
+            assertArrayEquals(new String[]{"1", "2.5", "3", "four"}, result);
+        }
+
+        @Test
+        @DisplayName("isConversionSupportedFor with same array type returns false (no conversion needed)")
+        void testSameArrayTypeNotSupported() {
+            // Same component types don't need conversion - this is a no-op, not a "conversion"
+            assertFalse(converter.isConversionSupportedFor(String[].class, String[].class),
+                    "String[] to String[] is a no-op, not a conversion");
+            assertFalse(converter.isConversionSupportedFor(Integer[].class, Integer[].class),
+                    "Integer[] to Integer[] is a no-op, not a conversion");
+            assertFalse(converter.isConversionSupportedFor(int[].class, int[].class),
+                    "int[] to int[] is a no-op, not a conversion");
+        }
+
+        @Test
+        @DisplayName("Array to Collection supported")
+        void testArrayToCollectionSupported() {
+            assertTrue(converter.isConversionSupportedFor(String[].class, List.class),
+                    "String[] to List should be supported");
+            assertTrue(converter.isConversionSupportedFor(int[].class, Set.class),
+                    "int[] to Set should be supported");
+            assertTrue(converter.isConversionSupportedFor(Object[].class, ArrayList.class),
+                    "Object[] to ArrayList should be supported");
+        }
+
+        @Test
+        @DisplayName("Collection to Array supported")
+        void testCollectionToArraySupported() {
+            assertTrue(converter.isConversionSupportedFor(List.class, String[].class),
+                    "List to String[] should be supported");
+            assertTrue(converter.isConversionSupportedFor(Set.class, int[].class),
+                    "Set to int[] should be supported");
+            assertTrue(converter.isConversionSupportedFor(ArrayList.class, Object[].class),
+                    "ArrayList to Object[] should be supported");
+        }
+
+        @Test
+        @DisplayName("Collection to Collection supported")
+        void testCollectionToCollectionSupported() {
+            assertTrue(converter.isConversionSupportedFor(List.class, Set.class),
+                    "List to Set should be supported");
+            assertTrue(converter.isConversionSupportedFor(HashSet.class, ArrayList.class),
+                    "HashSet to ArrayList should be supported");
+            assertTrue(converter.isConversionSupportedFor(LinkedList.class, TreeSet.class),
+                    "LinkedList to TreeSet should be supported");
+        }
+    }
+
+    /**
+     * Nested test class for performance verification of isConversionSupportedFor caching.
+     */
+    @Nested
+    @DisplayName("isConversionSupportedFor Caching Performance Tests")
+    class IsConversionSupportedForCachingTests {
+
+        @Test
+        @DisplayName("Repeated calls to isConversionSupportedFor should be fast (cached)")
+        void testCachingPerformance() {
+            // Warm up the cache
+            converter.isConversionSupportedFor(Object[].class, String[].class);
+            converter.isConversionSupportedFor(String[].class, Long[].class);
+            converter.isConversionSupportedFor(int[][].class, long[][].class);
+
+            // Time many repeated calls
+            long startTime = System.nanoTime();
+            for (int i = 0; i < 100_000; i++) {
+                converter.isConversionSupportedFor(Object[].class, String[].class);
+                converter.isConversionSupportedFor(String[].class, Long[].class);
+                converter.isConversionSupportedFor(int[][].class, long[][].class);
+            }
+            long elapsedNanos = System.nanoTime() - startTime;
+            double elapsedMs = elapsedNanos / 1_000_000.0;
+
+            // Should complete quickly due to caching (less than 500ms for 300K lookups)
+            assertTrue(elapsedMs < 500,
+                    "300K cached isConversionSupportedFor calls should complete in < 500ms, took: " + elapsedMs + "ms");
+        }
+
+        @Test
+        @DisplayName("First call vs repeated calls shows caching benefit")
+        void testFirstCallVsRepeatedCalls() {
+            // Create a new converter to ensure clean cache state
+            Converter freshConverter = new Converter(new DefaultConverterOptions());
+
+            // Time first call (may need to compute)
+            long firstCallStart = System.nanoTime();
+            boolean result1 = freshConverter.isConversionSupportedFor(Object[].class, String[].class);
+            long firstCallTime = System.nanoTime() - firstCallStart;
+
+            // Time second call (should be cached)
+            long secondCallStart = System.nanoTime();
+            boolean result2 = freshConverter.isConversionSupportedFor(Object[].class, String[].class);
+            long secondCallTime = System.nanoTime() - secondCallStart;
+
+            // Both should return same result
+            assertEquals(result1, result2);
+            assertTrue(result1, "Object[] to String[] should be supported");
+
+            // Second call should generally be faster (though JIT might optimize both)
+            // We don't strictly enforce this as JIT behavior varies
+        }
     }
 }

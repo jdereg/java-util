@@ -2393,8 +2393,12 @@ public final class Converter {
         if (isContainerConversionSupported(source, target)) {
             // Special handling for array-to-array conversions:
             if (source.isArray() && target.isArray()) {
-                return target.getComponentType() == Object.class ||
-                        isConversionSupportedFor(source.getComponentType(), target.getComponentType());
+                Class<?> srcComp = source.getComponentType();
+                Class<?> tgtComp = target.getComponentType();
+                // If either component is Object, be optimistic - we can't know actual element types at compile time
+                // If both are specific types, recursively check if component conversion is supported
+                return srcComp == Object.class || tgtComp == Object.class ||
+                        isConversionSupportedFor(srcComp, tgtComp);
             }
             return true;  // All other collection conversions are supported.
         }

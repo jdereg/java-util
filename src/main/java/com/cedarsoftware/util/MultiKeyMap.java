@@ -1951,12 +1951,12 @@ public final class MultiKeyMap<V> implements ConcurrentMap<Object, V> {
                     runningHash = runningHash * 31 + SET_OPEN.hashCode();
 
                     // Order-agnostic hash for Set elements (XOR with rotation for better distribution)
+                    // Optimization: Add elements directly to result instead of allocating tempResult per element.
+                    // By passing 1 as runningHash, expandAndHash returns just that element's hash.
                     int setHash = 0;
                     for (Object e : coll) {
-                        List<Object> tempResult = new ArrayList<>();
-                        int elemHash = expandAndHash(e, tempResult, visited, 1, useFlatten, caseSensitive);
-                        result.addAll(tempResult);
-                        setHash ^= Integer.rotateLeft(elemHash, 1);  // XOR with rotation for order-agnostic and better distribution
+                        int elemHash = expandAndHash(e, result, visited, 1, useFlatten, caseSensitive);
+                        setHash ^= Integer.rotateLeft(elemHash, 1);
                     }
                     runningHash = runningHash * 31 + setHash;
 

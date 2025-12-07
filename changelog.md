@@ -1,5 +1,29 @@
 ### Revision History
 
+#### 4.72.0 (Upcoming)
+* **PERFORMANCE**: `MultiKeyMap.expandAndHash()` - Multiple optimizations for faster key processing:
+  * **Fast-path for common leaf types**: Added early-exit check for common final types (String, Integer, Long, Double, Boolean, Short, Byte, Character, Float) using class identity comparison (`==`) instead of falling through the `instanceof` chain. Since these are the most frequent key types, checking them first skips the more expensive `instanceof` checks (Map, Set, Collection) for 80%+ of calls.
+  * **Array detection optimization**: Replaced `isArray()` with `getComponentType() != null` for slight additional speedup.
+  * **Set allocation elimination**: Eliminated per-element ArrayList allocation when processing Sets. Previously created N temporary ArrayLists and N `addAll()` calls for a Set with N elements. Now adds elements directly to result list.
+  * **Benchmark impact**: 3 additional wins vs Apache Commons MultiKeyMap (29 wins vs 26 before), converting ties to wins with no new losses.
+* **PERFORMANCE**: `MultiKeyMap.keysMatch()` - Removed redundant conditional check where both branches performed identical operations.
+* **PERFORMANCE**: `Converter.getInheritedConverter()` - Added caching for inheritance pairs:
+  * **cacheCompleteHierarchy**: Caches full type hierarchy including level 0
+  * **cacheInheritancePairs**: Uses MultiKeyMap to cache sorted pairs per (source, target)
+  * **InheritancePair class**: Holds cached pair data without instanceId
+  * First call for each (source, target) pair builds and caches the sorted pairs. Subsequent calls use O(1) cache lookup + iteration over pre-sorted list.
+* **IMPROVED**: `Converter.getSupportedConversions()` and `allSupportedConversions()` - Now correctly report all dynamic container conversions:
+  * Array/Collection conversions: Object[] ↔ Collection, array to array
+  * Enum conversions: Array/Collection/Map to Enum (creates EnumSet), EnumSet to Collection/Object[]
+  * `isConversionSupportedFor()`: Added optimistic handling for Object[] source component type - returns true when source component is Object.class (can't know actual element types at compile time)
+* **PERFORMANCE**: `FastReader` - Multiple parsing optimizations for JSON processing:
+  * **scanNumber()**: New method returning NumberScanResult with parsed value, float detection, overflow detection, and terminating character. Allows parsers to avoid re-parsing digits when transitioning from integer to floating point.
+  * **scanFieldName()**: New method that scans field names computing hash inline, enabling cache lookup before String allocation.
+  * **extractStringCached()**: New method with StringCache interface for allocation-free cache lookups. Computes hash from buffer and looks up in cache BEFORE allocating a String - on cache hit, returns cached String with zero allocation.
+  * **Line/column tracking removed**: Eliminated line/col fields and all tracking logic for performance. `getLine()` and `getCol()` deprecated (return 0). Error context should use `getLastSnippet()` instead.
+  * **Dead code removal**: Fixed skipWhitespace() impossible newline checks after determining character is not whitespace.
+  * **Bulk read optimization**: Use `System.arraycopy()` in `read(char[], off, len)` instead of char-by-char copy.
+
 #### 4.71.0 - 2025-11-21
 * **PERFORMANCE**: `FastReader` - Added buffer-scanning fast-path methods for JSON parsing optimization:
   * **`scanStringNoEscape()`**: Scans buffer directly for escape-free strings (80-90% of JSON strings). Returns string length if no escapes found, -1 otherwise. Enables avoiding StringBuilder overhead for simple field names and values.

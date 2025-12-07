@@ -204,6 +204,8 @@ public final class Converter {
     public static final String PRECISION_MILLIS = "millis";
     public static final String PRECISION_NANOS = "nanos";
     private static final Map<Class<?>, SortedSet<ClassLevel>> cacheParentTypes = new ClassValueMap<>();
+    private static final Map<Class<?>, SortedSet<ClassLevel>> cacheCompleteHierarchy = new ClassValueMap<>();
+    private static final MultiKeyMap<List<InheritancePair>> cacheInheritancePairs = new MultiKeyMap<>();
     private static final Map<ConversionPair, Convert<?>> CONVERSION_DB = new ConcurrentHashMap<>(4096, 0.8f);
     private final Map<ConversionPair, Convert<?>> USER_DB = new ConcurrentHashMap<>(16, 0.8f);
     private static final Map<ConversionPair, Convert<?>> FULL_CONVERSION_CACHE = new ConcurrentHashMap<>(1024, 0.75f);
@@ -1903,97 +1905,16 @@ public final class Converter {
      * @return A {@link Convert} instance for the most appropriate conversion, or {@code null} if no suitable converter is found
      */
     private Convert<?> getInheritedConverter(Class<?> sourceType, Class<?> toType, long instanceId) {
-        // Build the complete set of source types (including sourceType itself) with levels.
-        Set<ClassLevel> sourceTypes = new TreeSet<>(getSuperClassesAndInterfaces(sourceType));
-        sourceTypes.add(new ClassLevel(sourceType, 0));
-        // Build the complete set of target types (including toType itself) with levels.
-        Set<ClassLevel> targetTypes = new TreeSet<>(getSuperClassesAndInterfaces(toType));
-        targetTypes.add(new ClassLevel(toType, 0));
-
-        // Create pairs of source/target types with their associated levels.
-        class ConversionPairWithLevel {
-            private final Class<?> source;
-            private final Class<?> target;
-            private final long instanceId;
-            private final int sourceLevel;
-            private final int targetLevel;
-
-            private ConversionPairWithLevel(Class<?> source, Class<?> target, long instanceId, int sourceLevel, int targetLevel) {
-                this.source = source;
-                this.target = target;
-                this.instanceId = instanceId;
-                this.sourceLevel = sourceLevel;
-                this.targetLevel = targetLevel;
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (this == obj) return true;
-                if (!(obj instanceof ConversionPairWithLevel)) return false;
-                ConversionPairWithLevel other = (ConversionPairWithLevel) obj;
-                return source == other.source && 
-                       target == other.target && 
-                       instanceId == other.instanceId &&
-                       sourceLevel == other.sourceLevel &&
-                       targetLevel == other.targetLevel;
-            }
-
-            @Override
-            public int hashCode() {
-                return Objects.hash(source, target, instanceId, sourceLevel, targetLevel);
-            }
-        }
-
-        List<ConversionPairWithLevel> pairs = new ArrayList<>();
-        for (ClassLevel source : sourceTypes) {
-            for (ClassLevel target : targetTypes) {
-                pairs.add(new ConversionPairWithLevel(source.clazz, target.clazz, instanceId, source.level, target.level));
-            }
-        }
-
-        // Sort the pairs by a composite of rules:
-        // - Exact target matches first.
-        // - Then by assignability of the target types.
-        // - Then by combined inheritance distance.
-        // - Finally, prefer concrete classes over interfaces.
-        pairs.sort((p1, p2) -> {
-            boolean p1ExactTarget = p1.target == toType;
-            boolean p2ExactTarget = p2.target == toType;
-            if (p1ExactTarget != p2ExactTarget) {
-                return p1ExactTarget ? -1 : 1;
-            }
-            if (p1.target != p2.target) {
-                boolean p1AssignableToP2 = p2.target.isAssignableFrom(p1.target);
-                boolean p2AssignableToP1 = p1.target.isAssignableFrom(p2.target);
-                if (p1AssignableToP2 != p2AssignableToP1) {
-                    return p1AssignableToP2 ? -1 : 1;
-                }
-            }
-            int dist1 = p1.sourceLevel + p1.targetLevel;
-            int dist2 = p2.sourceLevel + p2.targetLevel;
-            if (dist1 != dist2) {
-                return dist1 - dist2;
-            }
-            boolean p1FromInterface = p1.source.isInterface();
-            boolean p2FromInterface = p2.source.isInterface();
-            if (p1FromInterface != p2FromInterface) {
-                return p1FromInterface ? 1 : -1;
-            }
-            boolean p1ToInterface = p1.target.isInterface();
-            boolean p2ToInterface = p2.target.isInterface();
-            if (p1ToInterface != p2ToInterface) {
-                return p1ToInterface ? 1 : -1;
-            }
-            return 0;
-        });
+        // Get cached sorted inheritance pairs (builds and caches on first call for this source/target combination)
+        List<InheritancePair> pairs = getSortedInheritancePairs(sourceType, toType);
 
         // Iterate over sorted pairs and check the converter databases.
-        for (ConversionPairWithLevel pairWithLevel : pairs) {
-            Convert<?> tempConverter = USER_DB.get(pair(pairWithLevel.source, pairWithLevel.target, pairWithLevel.instanceId));
+        for (InheritancePair inheritancePair : pairs) {
+            Convert<?> tempConverter = USER_DB.get(pair(inheritancePair.source, inheritancePair.target, instanceId));
             if (tempConverter != null) {
                 return tempConverter;
             }
-            tempConverter = CONVERSION_DB.get(pair(pairWithLevel.source, pairWithLevel.target, 0L));
+            tempConverter = CONVERSION_DB.get(pair(inheritancePair.source, inheritancePair.target, 0L));
             if (tempConverter != null) {
                 return tempConverter;
             }
@@ -2030,6 +1951,105 @@ public final class Converter {
 
             return parentTypes;
         });
+    }
+
+    /**
+     * Gets the complete type hierarchy for a class, including the class itself at level 0.
+     * <p>
+     * This method returns a cached, immutable sorted set containing:
+     * <ul>
+     *   <li>The class itself at level 0</li>
+     *   <li>All superclasses and interfaces with their inheritance distances</li>
+     * </ul>
+     * The result is cached per class, so no copying is needed on subsequent calls.
+     * </p>
+     *
+     * @param clazz The class to analyze
+     * @return Sorted set of ClassLevel objects representing the complete type hierarchy
+     */
+    private static SortedSet<ClassLevel> getCompleteTypeHierarchy(Class<?> clazz) {
+        return cacheCompleteHierarchy.computeIfAbsent(clazz, key -> {
+            SortedSet<ClassLevel> hierarchy = new TreeSet<>(getSuperClassesAndInterfaces(key));
+            hierarchy.add(new ClassLevel(key, 0));
+            return hierarchy;
+        });
+    }
+
+    /**
+     * Gets the sorted list of inheritance pairs for a given source/target type combination.
+     * <p>
+     * The pairs are sorted by:
+     * <ol>
+     *   <li>Exact target matches first</li>
+     *   <li>More specific target types (assignability)</li>
+     *   <li>Combined inheritance distance (lower is better)</li>
+     *   <li>Concrete classes before interfaces</li>
+     * </ol>
+     * The result is cached per (sourceType, toType) combination.
+     * </p>
+     *
+     * @param sourceType The source type
+     * @param toType The target type
+     * @return Cached, sorted list of InheritancePair objects
+     */
+    private static List<InheritancePair> getSortedInheritancePairs(Class<?> sourceType, Class<?> toType) {
+        Object[] key = {sourceType, toType};
+        List<InheritancePair> cached = cacheInheritancePairs.get(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        // Build pairs from complete hierarchies (already cached per type)
+        SortedSet<ClassLevel> sourceTypes = getCompleteTypeHierarchy(sourceType);
+        SortedSet<ClassLevel> targetTypes = getCompleteTypeHierarchy(toType);
+
+        List<InheritancePair> pairs = new ArrayList<>(sourceTypes.size() * targetTypes.size());
+        for (ClassLevel source : sourceTypes) {
+            for (ClassLevel target : targetTypes) {
+                pairs.add(new InheritancePair(source.clazz, target.clazz, source.level, target.level));
+            }
+        }
+
+        // Sort the pairs by a composite of rules
+        final Class<?> finalToType = toType;
+        pairs.sort((p1, p2) -> {
+            // Exact target matches first
+            boolean p1ExactTarget = p1.target == finalToType;
+            boolean p2ExactTarget = p2.target == finalToType;
+            if (p1ExactTarget != p2ExactTarget) {
+                return p1ExactTarget ? -1 : 1;
+            }
+            // More specific target types (by assignability)
+            if (p1.target != p2.target) {
+                boolean p1AssignableToP2 = p2.target.isAssignableFrom(p1.target);
+                boolean p2AssignableToP1 = p1.target.isAssignableFrom(p2.target);
+                if (p1AssignableToP2 != p2AssignableToP1) {
+                    return p1AssignableToP2 ? -1 : 1;
+                }
+            }
+            // Combined inheritance distance
+            int dist1 = p1.sourceLevel + p1.targetLevel;
+            int dist2 = p2.sourceLevel + p2.targetLevel;
+            if (dist1 != dist2) {
+                return dist1 - dist2;
+            }
+            // Prefer concrete classes over interfaces (source)
+            boolean p1FromInterface = p1.source.isInterface();
+            boolean p2FromInterface = p2.source.isInterface();
+            if (p1FromInterface != p2FromInterface) {
+                return p1FromInterface ? 1 : -1;
+            }
+            // Prefer concrete classes over interfaces (target)
+            boolean p1ToInterface = p1.target.isInterface();
+            boolean p2ToInterface = p2.target.isInterface();
+            if (p1ToInterface != p2ToInterface) {
+                return p1ToInterface ? 1 : -1;
+            }
+            return 0;
+        });
+
+        cacheInheritancePairs.putMultiKey(pairs, sourceType, toType);
+        return pairs;
     }
 
     /**
@@ -2081,6 +2101,27 @@ public final class Converter {
         @Override
         public int hashCode() {
             return clazz.hashCode() * 31 + level;
+        }
+    }
+
+    /**
+     * Represents a source/target class pair with their inheritance levels for converter lookup.
+     * <p>
+     * This class is used to cache the sorted list of inheritance pairs for a given source/target
+     * type combination, avoiding repeated computation and sorting.
+     * </p>
+     */
+    static final class InheritancePair {
+        final Class<?> source;
+        final Class<?> target;
+        final int sourceLevel;
+        final int targetLevel;
+
+        InheritancePair(Class<?> source, Class<?> target, int sourceLevel, int targetLevel) {
+            this.source = source;
+            this.target = target;
+            this.sourceLevel = sourceLevel;
+            this.targetLevel = targetLevel;
         }
     }
 
